@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta name="viewport" content="width=device-width, user-scalable=no" />
+	<title>⚡ Saturn.jl ⚡</title>
+	<meta charset="utf-8" />
+	<script>
+		console.log("Saturn.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
+	</script>
+	<meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
+	<link rel="license" href="https://github.com/fonsp/Saturn.jl/blob/master/LICENSE" />
+	<meta name="theme-color" content="#000000" />
+	<meta name="description" content="Saturn.jl notebook" />
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+
+
+	<style>
+		/* GENERAL PAGE LAYOUT */
+
+		body {
+			background-color: #ffffff;
+			margin: 0px;
+            font-family: 'Open Sans', serif;
+            font-weight: 400;
+            color: #222
+		}
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Roboto Slab', serif;
+        }
+
+        h1{
+            font-size: 2.2em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+            border-bottom: 3px solid rgba(0,0,0,.15);
+        }
+        h2{
+            font-size: 1.8em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+            border-bottom: 2px dotted rgba(0,0,0,.15);
+        }
+        h3{
+            font-size: 1.6em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+            /* border-bottom: 2px dotted rgba(0,0,0,.15); */
+        }
+        h4{
+            font-size: 1.4em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+        }
+        h5{
+            font-size: 1.2em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+        }
+        h6{
+            font-size: 1em;
+            margin-block-start: 1em;
+            margin-block-end: 0em;
+        }
+
+        p{
+            margin-block-start: .5em;
+        }
+
+        html, body {
+            height: 100%;
+        }
+
+        main {
+            min-height: calc(100% - 73px - 30px );
+        }
+		main {
+			margin: 0 auto;
+			max-width: 960px;
+			align-content: center;
+		}
+
+		#logje {
+			text-align: left;
+			font-family: monospace;
+		}
+
+		#logje p::before {
+			content: "> ";
+			opacity: .5;
+		}
+
+		/* HEADER */
+
+		header {
+			letter-spacing: 2px;
+			background-color: #ffffff;
+			width: 100%;
+            height: 70px;
+			overflow: hidden;
+			color: black;
+			/* white-space: nowrap; */
+			/*font-weight: normal;*/
+			font-family: 'Ubuntu Mono', monospace;
+            border-bottom: solid 3px #000000;
+		}
+
+		#logocontainer {
+			margin: 0 auto;
+			max-width: 960px;
+			padding-top: 14px;
+            padding-left: 20px;
+			padding-bottom: 0px;
+		}
+
+		#logocontainer img {
+			margin-bottom: -9px;
+			margin-right: 15px;
+			filter: invert(100%);
+			-webkit-filter: invert(100%);
+			/* Alttext: */
+			color: black;
+			/* should be black beacuse we are reversing its color */
+			font-family: 'Courgette', sans-serif;
+			font-weight: bold !important;
+			font-style: normal;
+		}
+
+		#logocontainer h1 {
+			font-weight: 700;
+			font-size: 30px;
+            display: inline;
+            border-bottom: none;
+		}
+
+        #logocontainer h2 {
+            display: inline;
+            border-bottom: none;
+        }
+
+        #logocontainer h1 > span {
+            font-weight: 400;
+        }
+
+		@media (min-width: 400px) {
+			#printernametitle {
+				/* position: absolute; */
+			}
+
+			#logocontainer img {
+				/* margin-left: -221px; */
+			}
+		}
+
+		#printernametitle {
+			opacity: .6;
+			font-style: normal;
+			font-size: 25px;
+		}
+
+		/* MAIN */
+
+        celloutput {
+            display: block;
+            padding-left: 10px;
+            padding-right: 10px;
+            overflow: hidden;
+        }
+
+		#inputboxy {
+			text-align: left;
+			font-family: monospace;
+			font-size: 16px;
+			background-color: white;
+			border: 5px solid white;
+			border-radius: 5px;
+		}
+
+		.CodeMirror {
+			height: auto !important;
+			font-family: 'Roboto Mono', monospace !important;
+			font-size: 14px;
+			border: 6px solid pink;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+			z-index: 2;
+		}
+
+		.CodeMirror-scroll {
+			min-height: 0px;
+		}
+
+		@media (min-width: 450px) {
+
+			.CodeMirror {
+				width: calc(100% - 6px - 6px);
+			}
+		}
+
+        footer {
+            width: 100%;
+            height: 30px;
+            font-family: monospace;
+            margin-top:30px;
+        }
+
+        footer a {
+            color: black;
+            opacity: .6;
+            font-weight: 700;;
+        }
+
+		#info {
+			max-width: 9400px;
+			margin: 0 auto;
+            text-align: right;
+            padding: 5px;
+		}
+
+		/*.CodeMirror-linenumber {
+			font-family: 'Courgette';
+		}*/
+	</style>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/lucario.min.css"/>
+
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
+</head>
+
+<body>
+	<header>
+		<div id="logocontainer">
+			<h1>
+				SATURN<span>.jl</span></h1><h2>
+				<span id="printernametitle">/editor</span></h2>
+		</div>
+	</header>
+
+	<main>
+        <br >
+        <br >
+        <cell>
+            <celloutput>
+                <h1>Wow! I am a heading!</h1>
+                <p>er studies the model Poisson problem —Au = f with homogeneous
+                    boundary conditions of Dirichlet type. A variational principle for this model problem
+                    on spaces of functions not satisfying the boundary conditions is studied and, based
+                    on this principle, a variant of the finite element method is given. This new scheme
+                    has a rate of convergence that is arbitrarily close to the optimal rate found by using
+                    the usual finite element method with elements satisfying the boundary conditions.
+                    The analysis also shows that the finite el</p>
+                    <h2>Wow! I am a heading!</h2>
+                    <p>er studies the model Poisson problem —Au = f with homogeneous
+                        boundary conditions of Dirichlet type. A variational principle for this model problem
+                        on spaces of functions n method with elements satisfying the boundary conditions.
+                        The analysis also shows that the finite el</p>
+                        <h3>Wow! I am a heading!</h3>
+                        <p>er studies the model Poisson problem —Au = f with homogeneous
+                            boundary conditions of Dirichlet type. A variational principle for this model problem
+                            on spaces of functions n method with elements satisfying the boundary conditions.
+                            The analysis also shows that the finite el</p>
+                            <h4>Wow! I am a heading!</h4>
+                            <p>er studies the model Poisson problem —Au = f with homogeneous
+                                boundary conditions of Dirichlet type. A variational principle for this model problem
+                                on spaces of functions n method with elements satisfying the boundary conditions.
+                                The analysis also shows that the finite el</p>
+                                <h5>Wow! I am a heading!</h5>
+                                <p>er studies the model Poisson problem —Au = f with homogeneous
+                                    boundary conditions of Dirichlet type. A variational principle for this model problem
+                                    on spaces of functions n method with elements satisfying the boundary conditions.
+                                    The analysis also shows that the finite el</p>
+                                    <h6>Wow! I am a heading!</h6>
+                                    <p>er studies the model Poisson problem —Au = f with homogeneous
+                                        boundary conditions of Dirichlet type. A variational principle for this model problem
+                                        on spaces of functions n method with elements satisfying the boundary conditions.
+                                        The analysis also shows that the finite el</p>
+                                                            
+            </celloutput>
+            <textarea spellcheck="false"></textarea>
+        </cell>
+	</main>
+
+	<footer>
+		<div id="info">
+			<a href="https://github.com/fonsp/Saturn.jl">Saturn.jl</a>, by <a href="https://github.com/fonsp" rel="author">fonsp</a> and <a href="https://github.com/malyvsen" rel="author">malyvsen</a>
+		</div>
+	</footer>
+
+	<script>
+		document.addEventListener("DOMContentLoaded", function() {
+
+			var channelName = "UNKNOWN";
+
+			var givenUrl = new URL(document.location);
+
+			if(givenUrl.pathname.startsWith("/view")){
+				document.location = "/view?" + givenUrl.pathname.substring(6)
+			}
+			if (givenUrl.search == "") {
+				channelName = givenUrl.pathname.substring(1)
+			} else {
+				channelName = givenUrl.search.substring(1);
+			}
+
+            channelName = "test_notebook.jl"
+
+			document.querySelector("#printernametitle").innerText = "/" + channelName;
+
+
+			var startScript =
+				"x = let\n\ty = 2\n\ty + 3\nend";
+
+			var textarea = document.querySelector("textarea")
+
+			var editor = CodeMirror.fromTextArea(document.querySelector("textarea"), {
+				lineNumbers: true,
+				mode: "julia",
+				lineWrapping: true,
+				lineNumberFormatter: function(i) {
+					return "⋅"
+				},
+				theme: "lucario",
+				viewportMargin: Infinity,
+			});
+
+			editor.setValue(startScript);
+			//editor.setOption("readOnly", true);
+
+			if ("fonts" in document) {
+				document.fonts.ready.then(function() {
+					console.log("fonts loaded");
+					editor.refresh()
+				});
+			}
+			window.editor = editor;
+			var inputboxy = document.querySelector("#inputboxy")
+
+			editor.setOption("extraKeys", {
+				//"Ctrl-Enter": alert("run!")
+			});
+			//editor.on("change", window.preview);
+
+		});
+	</script>
+	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/dot/1.1.3/doT.min.js" integrity="sha256-0Mj4wysSsxKrjqVsgnOgOeRZbPreFi/T3+zb+cyR7Jw=" crossorigin="anonymous"></script>-->
+</body>
+
+</html>
