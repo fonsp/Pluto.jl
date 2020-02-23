@@ -1,0 +1,7 @@
+authors = ["Fons van der Plas <fonsvdplas@gmail.com>", "Mikołaj Bochenski <iceflamecode@gmail.com>"]
+name = "Saturn"
+uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
+version = "0.1.0"
+license = "MIT"
+
+[deps]
