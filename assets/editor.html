@@ -159,20 +159,21 @@
 			font-weight: 400;
 		}
 
-		@media (min-width: 400px) {
-			#printernametitle {
-				/* position: absolute; */
-			}
-
-			#logocontainer img {
-				/* margin-left: -221px; */
-			}
-		}
-
 		#printernametitle {
 			opacity: .6;
 			font-style: normal;
 			font-size: 25px;
+		}
+
+		header.disconnected {
+			background-color: rgba(255,100,0,.3);
+		}
+
+		.disconnected > #logocontainer:after {
+			content: "NOT CONNECTED";
+			text-align: right;
+			float: right;
+			padding: 12px;
 		}
 
 		/* MAIN */
@@ -187,10 +188,16 @@
 			display: block;
 			padding-left: 10px;
 			padding-right: 10px;
-			overflow: hidden;
+			overflow: scroll;
+			max-height: 300px;
 			border: 1px solid rgba(0, 0, 0, .1);
 			border-top-left-radius: 6px;
 			border-top-right-radius: 6px;
+		}
+
+		code {
+			font-family: 'Roboto Mono', monospace;
+			font-size: 12px;
 		}
 
 		.CodeMirror {
@@ -255,7 +262,7 @@
 		<br>
 		<template id="celltemplate">
 			<cell>
-				<celloutput>a</celloutput>
+				<celloutput></celloutput>
 				<cellinput></cellinput>
 			</cell>
 		</template>
@@ -314,15 +321,21 @@
 				});
 			}
 
-			function updateCellOutput(cellNode, output) {
-				cellNode.querySelector("celloutput").innerHTML = output
+			function updateCellOutput(cellNode, mime, output) {
+				console.log(mime)
+				if(mime == "text/html"){
+					cellNode.querySelector("celloutput").innerHTML = output
+				} else {
+					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
+					cellNode.querySelector("celloutput").querySelector("code").innerText = output
+				}
 			}
 
 			cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
 			notebookNode = document.querySelector("notebook")
 			window.notebookNode = notebookNode
 
-			function createCell(newIndex, uuid, code, output) {
+			function createCell(newIndex, uuid, code) {
 				var newCellNode = cellTemplate.cloneNode(true)
 				newCellNode.id = uuid
 
@@ -339,7 +352,7 @@
 				}
 
 				createCodeMirrorInsideCell(newCellNode, code)
-				updateCellOutput(newCellNode, output)
+				//updateCellOutput(newCellNode, mime, output)
 			}
 
 			function deleteCell(cellNode) {
@@ -373,15 +386,14 @@
 			// This is kind of overkill
 			function ping(onSucces, onFailure) {
 				fetch("/ping", {
-					method: 'GET', // *GET, POST, PUT, DELETE, etc.
-					cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+					method: 'GET',
+					cache: 'no-cache',
 					headers: {
-						'Content-Type': 'application/json'
-						// 'Content-Type': 'application/x-www-form-urlencoded',
+						'Content-Type': 'application/json',
 					},
-					redirect: 'follow', // manual, *follow, error
-					referrerPolicy: 'no-referrer', // no-referrer, *client
-					//body: "hiiiii" // body data type must match "Content-Type" header
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					//body: "hiiiii"
 				}).then((response) => {
 					return response.json()
 				}).then((response) => {
@@ -395,20 +407,19 @@
 			ping(console.log, console.warn)
 
 
-			function reloadAllCells(onFailure) {
+			function reloadAllCells(onFailure, onSucces) {
 				ping(() => {
 					// We have a connection!
 
 					fetch("/getallcells", {
-						method: 'GET', // *GET, POST, PUT, DELETE, etc.
-						cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+						method: 'GET',
+						cache: 'no-cache',
 						headers: {
-							'Content-Type': 'application/json'
-							// 'Content-Type': 'application/x-www-form-urlencoded',
+							'Content-Type': 'application/json',
 						},
-						redirect: 'follow', // manual, *follow, error
-						referrerPolicy: 'no-referrer', // no-referrer, *client
-						//body: "hiiiii" // body data type must match "Content-Type" header
+						redirect: 'follow',
+						referrerPolicy: 'no-referrer',
+						//body: "hiiiii"
 					}).then((response) => {
 						return response.json()
 					}).then((remoteCells) => {
@@ -418,9 +429,11 @@
 						for (var cellIndex in remoteCells) {
 							remoteCell = remoteCells[cellIndex]
 							//createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.output)
-							createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.code)
+							// createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.code)
+							createCell(cellIndex, remoteCell.uuid, remoteCell.code)
 						}
 
+						onSucces()
 					}).catch(onFailure)
 				}, console.warn)
 			}
@@ -429,16 +442,24 @@
 				var onFailure = (response) => {
 					console.warn("Failed to update cell!")
 					console.log(response)
+
+					document.querySelector("header").classList.add("disconnected")
+
+					setTimeout(() => {
+						ping(() => {
+							document.querySelector("header").classList.remove("disconnected")
+						}, onFailure)
+					}, 1000)
 				}
 				newCode = window.codeMirrors[uuid].getValue()
 				fetch("/changecell", {
-					method: 'PUT', // *GET, POST, PUT, DELETE, etc.
-					cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+					method: 'PUT',
+					cache: 'no-cache',
 					headers: {
 						'Content-Type': 'application/json'
 					},
-					redirect: 'follow', // manual, *follow, error
-					referrerPolicy: 'no-referrer', // no-referrer, *client
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
 					body: JSON.stringify({ "uuid": uuid, "code": newCode }),
 				}).then((response) => {
 					if (response.status == 200) {
@@ -449,8 +470,57 @@
 				}).catch(onFailure)
 			}
 
+			function runUpdateLoop() {
+				console.log("run update loop")
+				var onFailure = (response) => {
+					console.warn("Failed to get updates!")
+					console.log(response)
 
-			reloadAllCells()
+					document.querySelector("header").classList.add("disconnected")
+
+					
+					setTimeout(() => {
+						ping(() => {
+							document.querySelector("header").classList.remove("disconnected")
+							runUpdateLoop()
+						}, onFailure)
+					}, 1000)
+				}
+
+				fetch("/nextcellupdate", {
+					method: 'GET',
+					cache: 'no-cache',
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+				}).then((response) => {
+					console.log("update response received")
+					console.log(response)
+					if (response.status == 200) {
+						response.json().then((update) => {
+							// UPDATE RECEIVED
+							console.log("output deserialized")
+							console.log(update)
+							updateCellOutput(window.cells[update.uuid], update.mime, update.output)
+							//TODO: animation ✨
+
+							runUpdateLoop()
+						})
+					} else if (response.status == 204) {
+						runUpdateLoop()
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+
+
+			reloadAllCells(console.warn, runUpdateLoop)
+
+			// TODO: with a delay if the last request went poorly
+			// this would avoid hanging UI when the connection is lost maybe?
+			// implemented, but untested
+			// TODO: notify user when connection is lost
+
 
 			window.reloadAllCells = reloadAllCells
 			window.ping = ping

@@ -19,7 +19,7 @@ end
 
 "Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
 function serialize(cell::Cell)
-    Dict(:uuid => string(cell.uuid), :code => cell.code, :output => cell.output)
+    Dict(:uuid => string(cell.uuid), :code => cell.code)#, :output => cell.output)
 end
 
 createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing)
@@ -45,8 +45,8 @@ function samplenotebook()
     cells = Cell[]
 
     push!(cells, createcell_fromcode("x = 1 + 1"))
-    push!(cells, createcell_fromcode("html\"<h1>Hi!</h1>\n<p>My name is <em>kiki</em></p>\""))
-    push!(cells, createcell_fromcode("md\"# Hi!\nMy name is **baba**\""))
+    push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
+    push!(cells, createcell_fromcode("using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\""))
 
     Notebook("test.jl", cells)
 end
@@ -58,8 +58,9 @@ module SaturnNotebook
 end
 
 
+iocontext = IOContext(stdout, :compact => true, :limit => true, :displaysize=>(18,120))
+
 function evaluate_cell(notebook::Notebook, cell::Cell)
-    @show cell.code
     # TODO: REACTIVE :))) that's why notebook is a param
     if cell.parsedcode === nothing
         cell.parsedcode = Meta.parse(cell.code)
@@ -69,25 +70,34 @@ function evaluate_cell(notebook::Notebook, cell::Cell)
     # REACTIVE: will be its own module
     result = Core.eval(SaturnNotebook, cell.parsedcode)
     # TODO: capture display(), println(), throw() and such
-    println("RESULT")
     # show(result |> typeof)
-    show(result)
+    @show result
 
     # TODO: Here we could do richer formatting
     # MIME types and stuff!
     # interactive Arrays!
+    # use Weave.jl? that would be sw€€t
+
+    # in order of coolness
+    # text/plain always matches
+    mimes = ["text/html", "text/plain"]
+    
+    mime = first(filter(m -> showable(m, result), mimes))
 
     # TODO: limit output!
     # (very easy way to improve upon jupyter)
 
-    resultPayload = repr(MIME("text/plain"), result)
+    resultPayload = repr(mime, result; context=iocontext)
 
-    put!(pendingclientupdates, Dict(:uuid => cell.uuid, :output => resultPayload))
+    put!(pendingclientupdates, Dict(:uuid => string(cell.uuid), :mime => mime, :output => resultPayload))
 end
 
-
+# buffer must contain all undisplayed outputs
 pendingclientupdates = Channel(128)
-
+# buffer size is max. number of concurrent/messed up connections
+longpollers = Channel{Nothing}(32)
+# unbuffered
+longpollerclosing = Channel{Nothing}(0)
 
 
 # struct SaturnDisplay <: AbstractDisplay
@@ -142,7 +152,7 @@ function serve(;port::Int64=8000, launchbrowser=false)
     end
 
     Endpoint("/changecell",PUT) do request::HTTP.Request
-        println(request)
+        #println(request)
 
         bodyobject = JSON.parse(String(request.body))
         uuid = UUID(bodyobject["uuid"])
@@ -152,8 +162,11 @@ function serve(;port::Int64=8000, launchbrowser=false)
         if cell === nothing
             return HTTP.Response(404, JSON.json("Cell not found!"))
         end
-        cell.code = newcode
-        cell.parsedcode = nothing
+        # don't reparse when code is identical (?)
+        if cell.code != newcode
+            cell.code = newcode
+            cell.parsedcode = nothing
+        end
 
         evaluate_cell(notebook, cell)
         
@@ -168,21 +181,42 @@ function serve(;port::Int64=8000, launchbrowser=false)
 
     # DYNAMIC: Returning cell output to user
 
+    
+
     # This is done using so-called "HTTP long polling": the server stalls for every request, until an update needs to be sent, and then responds with that update.
     # (Hacky solution that powers millions of printis around the globe)
     # TODO: change to WebSockets implementation, is built into Pages.jl?
     Endpoint("/nextcellupdate",GET) do request::HTTP.Request
+        # This method became a bit complicated - it needs to close old requests when a new one came in.
+        # otherwise it would be one line:
+        #JSON.json(take!(pendingclientupdates))
         
-        # TODO: a new request to this endpoint should close all standing long-polls.
-        # Maybe this can be done by like so:
+        #println("nextcellupdate")
+        #@show isready(pendingclientupdates), isready(longpollers)
 
-        #if !isready(pendingclientupdates)
-        #   put!(pendingclientupdates, "STOP")
-        #end
+        # while there are other long poll requests
+        while isready(longpollers)
+            # stop the next poller
+            put!(pendingclientupdates, "STOP")
+            # and remove it from the list (this must be done by me, not the other poller, because i am running the while loop)
+            take!(longpollers)
+            # wait for it to close...
+            take!(longpollerclosing)
+        end
 
+        # register on the list of long pollers
+        put!(longpollers, nothing)
+        # and start polling (this call is blocking)
         nextUpdate = take!(pendingclientupdates)
-
-        #nextUpdate == "STOP" && return nothing
+        # we now have the next update
+        if nextUpdate == "STOP"
+            # TODO: the stream might be closed, we should handle this more gracefully
+            put!(longpollerclosing, nothing)
+            return HTTP.Messages.Response(0)
+        end
+        
+        # remove ourself from the list
+        take!(longpollers)
 
         JSON.json(nextUpdate)
     end
