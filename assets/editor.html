@@ -12,11 +12,11 @@
 	<link rel="license" href="https://github.com/fonsp/Saturn.jl/blob/master/LICENSE" />
 	<meta name="theme-color" content="#000000" />
 	<meta name="description" content="Saturn.jl notebook" />
-    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
 
 
 	<style>
@@ -25,60 +25,72 @@
 		body {
 			background-color: #ffffff;
 			margin: 0px;
-            font-family: 'Open Sans', serif;
-            font-weight: 400;
-            color: #222
+			font-family: 'Open Sans', serif;
+			font-weight: 400;
+			color: #222
 		}
 
-        h1, h2, h3, h4, h5, h6 {
-            font-family: 'Roboto Slab', serif;
-        }
+		h1,
+		h2,
+		h3,
+		h4,
+		h5,
+		h6 {
+			font-family: 'Roboto Slab', serif;
+		}
 
-        h1{
-            font-size: 2.2em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-            border-bottom: 3px solid rgba(0,0,0,.15);
-        }
-        h2{
-            font-size: 1.8em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-            border-bottom: 2px dotted rgba(0,0,0,.15);
-        }
-        h3{
-            font-size: 1.6em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-            /* border-bottom: 2px dotted rgba(0,0,0,.15); */
-        }
-        h4{
-            font-size: 1.4em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-        }
-        h5{
-            font-size: 1.2em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-        }
-        h6{
-            font-size: 1em;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
-        }
+		h1 {
+			font-size: 2.2em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+			border-bottom: 3px solid rgba(0, 0, 0, .15);
+		}
 
-        p{
-            margin-block-start: .5em;
-        }
+		h2 {
+			font-size: 1.8em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+			border-bottom: 2px dotted rgba(0, 0, 0, .15);
+		}
 
-        html, body {
-            height: 100%;
-        }
+		h3 {
+			font-size: 1.6em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+			/* border-bottom: 2px dotted rgba(0,0,0,.15); */
+		}
 
-        main {
-            min-height: calc(100% - 73px - 30px );
-        }
+		h4 {
+			font-size: 1.4em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+		}
+
+		h5 {
+			font-size: 1.2em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+		}
+
+		h6 {
+			font-size: 1em;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
+		}
+
+		p {
+			margin-block-start: .5em;
+		}
+
+		html,
+		body {
+			height: 100%;
+		}
+
+		main {
+			min-height: calc(100% - 73px - 60px);
+		}
+
 		main {
 			margin: 0 auto;
 			max-width: 960px;
@@ -101,20 +113,20 @@
 			letter-spacing: 2px;
 			background-color: #ffffff;
 			width: 100%;
-            height: 70px;
+			height: 70px;
 			overflow: hidden;
 			color: black;
 			/* white-space: nowrap; */
 			/*font-weight: normal;*/
 			font-family: 'Ubuntu Mono', monospace;
-            border-bottom: solid 3px #000000;
+			border-bottom: solid 3px #000000;
 		}
 
 		#logocontainer {
 			margin: 0 auto;
 			max-width: 960px;
 			padding-top: 14px;
-            padding-left: 20px;
+			padding-left: 20px;
 			padding-bottom: 0px;
 		}
 
@@ -134,18 +146,18 @@
 		#logocontainer h1 {
 			font-weight: 700;
 			font-size: 30px;
-            display: inline;
-            border-bottom: none;
+			display: inline;
+			border-bottom: none;
 		}
 
-        #logocontainer h2 {
-            display: inline;
-            border-bottom: none;
-        }
+		#logocontainer h2 {
+			display: inline;
+			border-bottom: none;
+		}
 
-        #logocontainer h1 > span {
-            font-weight: 400;
-        }
+		#logocontainer h1>span {
+			font-weight: 400;
+		}
 
 		@media (min-width: 400px) {
 			#printernametitle {
@@ -165,29 +177,30 @@
 
 		/* MAIN */
 
-        celloutput {
-            display: block;
-            padding-left: 10px;
-            padding-right: 10px;
-            overflow: hidden;
-        }
+		cell {
+			display: block;
+			margin-bottom: 20px;
+			box-shadow: 0px 0px 12px -6px rgba(0, 0, 0, 0.2);
+		}
 
-		#inputboxy {
-			text-align: left;
-			font-family: monospace;
-			font-size: 16px;
-			background-color: white;
-			border: 5px solid white;
-			border-radius: 5px;
+		celloutput {
+			display: block;
+			padding-left: 10px;
+			padding-right: 10px;
+			overflow: hidden;
+			border: 1px solid rgba(0, 0, 0, .1);
+			border-top-left-radius: 6px;
+			border-top-right-radius: 6px;
 		}
 
 		.CodeMirror {
 			height: auto !important;
+			width: 100%;
 			font-family: 'Roboto Mono', monospace !important;
 			font-size: 14px;
 			border: 6px solid pink;
-            border-bottom-left-radius: 6px;
-            border-bottom-right-radius: 6px;
+			border-bottom-left-radius: 6px;
+			border-bottom-right-radius: 6px;
 			z-index: 2;
 		}
 
@@ -195,31 +208,25 @@
 			min-height: 0px;
 		}
 
-		@media (min-width: 450px) {
-
-			.CodeMirror {
-				width: calc(100% - 6px - 6px);
-			}
+		footer {
+			width: 100%;
+			height: 30px;
+			font-family: monospace;
+			margin-top: 30px;
 		}
 
-        footer {
-            width: 100%;
-            height: 30px;
-            font-family: monospace;
-            margin-top:30px;
-        }
-
-        footer a {
-            color: black;
-            opacity: .6;
-            font-weight: 700;;
-        }
+		footer a {
+			color: black;
+			opacity: .6;
+			font-weight: 700;
+			;
+		}
 
 		#info {
 			max-width: 9400px;
 			margin: 0 auto;
-            text-align: right;
-            padding: 5px;
+			text-align: right;
+			padding: 5px;
 		}
 
 		/*.CodeMirror-linenumber {
@@ -227,7 +234,7 @@
 		}*/
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/lucario.min.css"/>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/lucario.min.css" />
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
@@ -237,53 +244,23 @@
 	<header>
 		<div id="logocontainer">
 			<h1>
-				SATURN<span>.jl</span></h1><h2>
+				SATURN<span>.jl</span></h1>
+			<h2>
 				<span id="printernametitle">/editor</span></h2>
 		</div>
 	</header>
 
 	<main>
-        <br >
-        <br >
-        <cell>
-            <celloutput>
-                <h1>Wow! I am a heading!</h1>
-                <p>er studies the model Poisson problem —Au = f with homogeneous
-                    boundary conditions of Dirichlet type. A variational principle for this model problem
-                    on spaces of functions not satisfying the boundary conditions is studied and, based
-                    on this principle, a variant of the finite element method is given. This new scheme
-                    has a rate of convergence that is arbitrarily close to the optimal rate found by using
-                    the usual finite element method with elements satisfying the boundary conditions.
-                    The analysis also shows that the finite el</p>
-                    <h2>Wow! I am a heading!</h2>
-                    <p>er studies the model Poisson problem —Au = f with homogeneous
-                        boundary conditions of Dirichlet type. A variational principle for this model problem
-                        on spaces of functions n method with elements satisfying the boundary conditions.
-                        The analysis also shows that the finite el</p>
-                        <h3>Wow! I am a heading!</h3>
-                        <p>er studies the model Poisson problem —Au = f with homogeneous
-                            boundary conditions of Dirichlet type. A variational principle for this model problem
-                            on spaces of functions n method with elements satisfying the boundary conditions.
-                            The analysis also shows that the finite el</p>
-                            <h4>Wow! I am a heading!</h4>
-                            <p>er studies the model Poisson problem —Au = f with homogeneous
-                                boundary conditions of Dirichlet type. A variational principle for this model problem
-                                on spaces of functions n method with elements satisfying the boundary conditions.
-                                The analysis also shows that the finite el</p>
-                                <h5>Wow! I am a heading!</h5>
-                                <p>er studies the model Poisson problem —Au = f with homogeneous
-                                    boundary conditions of Dirichlet type. A variational principle for this model problem
-                                    on spaces of functions n method with elements satisfying the boundary conditions.
-                                    The analysis also shows that the finite el</p>
-                                    <h6>Wow! I am a heading!</h6>
-                                    <p>er studies the model Poisson problem —Au = f with homogeneous
-                                        boundary conditions of Dirichlet type. A variational principle for this model problem
-                                        on spaces of functions n method with elements satisfying the boundary conditions.
-                                        The analysis also shows that the finite el</p>
-                                                            
-            </celloutput>
-            <textarea spellcheck="false"></textarea>
-        </cell>
+		<br>
+		<br>
+		<template id="celltemplate">
+			<cell>
+				<celloutput>a</celloutput>
+				<cellinput></cellinput>
+			</cell>
+		</template>
+		<notebook>
+		</notebook>
 	</main>
 
 	<footer>
@@ -293,13 +270,12 @@
 	</footer>
 
 	<script>
-		document.addEventListener("DOMContentLoaded", function() {
+		document.addEventListener("DOMContentLoaded", function () {
+
 
 			var channelName = "UNKNOWN";
-
 			var givenUrl = new URL(document.location);
-
-			if(givenUrl.pathname.startsWith("/view")){
+			if (givenUrl.pathname.startsWith("/view")) {
 				document.location = "/view?" + givenUrl.pathname.substring(6)
 			}
 			if (givenUrl.search == "") {
@@ -307,43 +283,177 @@
 			} else {
 				channelName = givenUrl.search.substring(1);
 			}
-
-            channelName = "test_notebook.jl"
-
+			channelName = "test_notebook.jl"
 			document.querySelector("#printernametitle").innerText = "/" + channelName;
 
 
-			var startScript =
-				"x = let\n\ty = 2\n\ty + 3\nend";
 
-			var textarea = document.querySelector("textarea")
+			window.cells = {}
+			window.codeMirrors = {}
 
-			var editor = CodeMirror.fromTextArea(document.querySelector("textarea"), {
-				lineNumbers: true,
-				mode: "julia",
-				lineWrapping: true,
-				lineNumberFormatter: function(i) {
-					return "⋅"
-				},
-				theme: "lucario",
-				viewportMargin: Infinity,
-			});
+			function createCodeMirrorInsideCell(cellNode, code) {
+				var editor = CodeMirror((elt) => {
+					cellNode.querySelector("cellinput").appendChild(elt)
+				}, {
+					value: code,
+					lineNumbers: true,
+					mode: "julia",
+					lineWrapping: true,
+					lineNumberFormatter: function (i) {
+						return "⋅"
+					},
+					theme: "lucario",
+					viewportMargin: Infinity,
+				});
 
-			editor.setValue(startScript);
-			//editor.setOption("readOnly", true);
+				window.codeMirrors[cellNode.id] = editor
+				//editor.setOption("readOnly", true);
 
-			if ("fonts" in document) {
-				document.fonts.ready.then(function() {
-					console.log("fonts loaded");
-					editor.refresh()
+				editor.setOption("extraKeys", {
+					"Ctrl-Enter": () => changeCell(cellNode.id)
 				});
 			}
-			window.editor = editor;
-			var inputboxy = document.querySelector("#inputboxy")
 
-			editor.setOption("extraKeys", {
-				//"Ctrl-Enter": alert("run!")
-			});
+			function updateCellOutput(cellNode, output) {
+				cellNode.querySelector("celloutput").innerHTML = output
+			}
+
+			cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
+			notebookNode = document.querySelector("notebook")
+			window.notebookNode = notebookNode
+
+			function createCell(newIndex, uuid, code, output) {
+				var newCellNode = cellTemplate.cloneNode(true)
+				newCellNode.id = uuid
+
+				window.cells[uuid] = newCellNode
+
+
+				if (notebookNode.children.length == newIndex) {
+					notebookNode.appendChild(newCellNode)
+				} else if (notebookNode.children.length > newIndex) {
+					notebookNode.insertBefore(newCellNode, notebookNode.children[newIndex])
+				} else {
+					console.error("Tried to insert cell at illegal position! Notebook order might be messed up!")
+					notebookNode.appendChild(newCellNode)
+				}
+
+				createCodeMirrorInsideCell(newCellNode, code)
+				updateCellOutput(newCellNode, output)
+			}
+
+			function deleteCell(cellNode) {
+				// TODO: event listeners? gc?
+				uuid = cellNode.id
+				try {
+					delete window.codeMirrors[uuid]
+				} catch (err) { }
+				try {
+					delete window.cells[uuid]
+				} catch (err) { }
+
+				cellNode.remove()
+			}
+
+			function deleteAllCells() {
+				for (var uuid in window.cells) {
+					deleteCell(window.cells[uuid])
+				}
+			}
+
+			if ("fonts" in document) {
+				document.fonts.ready.then(function () {
+					console.log("fonts loaded");
+					for (var uuid in window.codeMirrors) {
+						window.codeMirrors[uuid].refresh()
+					}
+				});
+			}
+
+			// This is kind of overkill
+			function ping(onSucces, onFailure) {
+				fetch("/ping", {
+					method: 'GET', // *GET, POST, PUT, DELETE, etc.
+					cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+					headers: {
+						'Content-Type': 'application/json'
+						// 'Content-Type': 'application/x-www-form-urlencoded',
+					},
+					redirect: 'follow', // manual, *follow, error
+					referrerPolicy: 'no-referrer', // no-referrer, *client
+					//body: "hiiiii" // body data type must match "Content-Type" header
+				}).then((response) => {
+					return response.json()
+				}).then((response) => {
+					if (response == "OK!") {
+						onSucces(response)
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+			ping(console.log, console.warn)
+
+
+			function reloadAllCells(onFailure) {
+				ping(() => {
+					// We have a connection!
+
+					fetch("/getallcells", {
+						method: 'GET', // *GET, POST, PUT, DELETE, etc.
+						cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+						headers: {
+							'Content-Type': 'application/json'
+							// 'Content-Type': 'application/x-www-form-urlencoded',
+						},
+						redirect: 'follow', // manual, *follow, error
+						referrerPolicy: 'no-referrer', // no-referrer, *client
+						//body: "hiiiii" // body data type must match "Content-Type" header
+					}).then((response) => {
+						return response.json()
+					}).then((remoteCells) => {
+						console.log("Remote cells loaded")
+						console.log(remoteCells)
+
+						for (var cellIndex in remoteCells) {
+							remoteCell = remoteCells[cellIndex]
+							//createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.output)
+							createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.code)
+						}
+
+					}).catch(onFailure)
+				}, console.warn)
+			}
+
+			function changeCell(uuid) {
+				var onFailure = (response) => {
+					console.warn("Failed to update cell!")
+					console.log(response)
+				}
+				newCode = window.codeMirrors[uuid].getValue()
+				fetch("/changecell", {
+					method: 'PUT', // *GET, POST, PUT, DELETE, etc.
+					cache: 'no-cache', // *default, no-cache, reload, force-cache, only-if-cached
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow', // manual, *follow, error
+					referrerPolicy: 'no-referrer', // no-referrer, *client
+					body: JSON.stringify({ "uuid": uuid, "code": newCode }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell updated.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+
+
+			reloadAllCells()
+
+			window.reloadAllCells = reloadAllCells
+			window.ping = ping
 			//editor.on("change", window.preview);
 
 		});
