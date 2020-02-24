@@ -166,10 +166,10 @@
 		}
 
 		header.disconnected {
-			background-color: rgba(255,100,0,.3);
+			background-color: rgba(255, 100, 0, .3);
 		}
 
-		.disconnected > #logocontainer:after {
+		.disconnected>#logocontainer:after {
 			content: "NOT CONNECTED";
 			text-align: right;
 			float: right;
@@ -189,7 +189,8 @@
 			padding-left: 10px;
 			padding-right: 10px;
 			overflow: scroll;
-			max-height: 300px;
+			/*are we sure? people might write very long documents*/
+			max-height: 200vh;
 			border: 1px solid rgba(0, 0, 0, .1);
 			border-top-left-radius: 6px;
 			border-top-right-radius: 6px;
@@ -323,8 +324,35 @@
 
 			function updateCellOutput(cellNode, mime, output) {
 				console.log(mime)
-				if(mime == "text/html"){
+				if (mime == "text/html") {
+					// from https://stackoverflow.com/a/26716182
+
 					cellNode.querySelector("celloutput").innerHTML = output
+
+					// to execute all scripts in the html:
+
+					try {
+						var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
+						for (var i = 0; i < scripts.length; i++) {
+							if (scripts[i].src != "") {
+								if(!Array.prototype.map.call(document.head.querySelectorAll("script"), s=>s.src).includes(scripts[i]))
+								{
+									var tag = document.createElement("script")
+									tag.src = scripts[i].src
+									document.head.appendChild(tag)
+								}
+							}
+							else {
+								eval(scripts[i].innerHTML)
+							}
+						}
+					} catch (err) {
+						console.log("Couldn't execute all scripts:")
+						console.log(err)
+						// TODO: relay to user
+						// might be wise to wait after adding scripts to head
+						//
+					}
 				} else {
 					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
 					cellNode.querySelector("celloutput").querySelector("code").innerText = output
@@ -478,7 +506,7 @@
 
 					document.querySelector("header").classList.add("disconnected")
 
-					
+
 					setTimeout(() => {
 						ping(() => {
 							document.querySelector("header").classList.remove("disconnected")
