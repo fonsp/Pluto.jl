@@ -14,7 +14,7 @@ mutable struct Cell
     "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     uuid::UUID
     code::String
-    parsedcode::Union{Expr, Nothing}
+    parsedcode::Any
     output::Any
 end
 
@@ -96,7 +96,7 @@ function evaluate_cell(notebook::Notebook, cell::Cell)
 
     resultPayload = repr(mime, result; context = iocontext)
 
-    put!(pendingclientupdates, Dict(:uuid => string(cell.uuid), :mime => mime, :output => resultPayload))
+    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => resultPayload)
 end
 
 
@@ -136,21 +136,12 @@ prints(x) = RawDisplayString(repr("text/plain", x; context = iocontext))
 
 #### SERVER ####
 
-# For long polling (see `/nextcellupdate`)
-
-# buffer must contain all undisplayed outputs
-pendingclientupdates = Channel(128)
-# buffer size is max. number of concurrent/messed up connections
-longpollers = Channel{Nothing}(32)
-# unbuffered
-longpollerclosing = Channel{Nothing}(0)
-
 
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
 function serve(;port::Int64 = 8000, launchbrowser = false)
     # We use `Pages.jl` to serve the API
     # docs are straightforward
-    # Eventually we might want to switch to pure `HTTP.jl` but it looked difficult :(
+    # Eventually we might want to switch to pure `HTTP.jl` but it looked difficult :(    
 
 
     # STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
@@ -168,6 +159,15 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
 
     notebook::Notebook = samplenotebook()
     
+    # For long polling (see `/nextcellupdate`):
+
+    # buffer must contain all undisplayed outputs
+    pendingclientupdates = Channel(128)
+    # buffer size is max. number of concurrent/messed up connections
+    longpollers = Channel{Nothing}(32)
+    # unbuffered
+    longpollerclosing = Channel{Nothing}(0)
+
 
     # DYNAMIC: Input from user
     # TODO: actions on the notebook are not thread safe
@@ -217,7 +217,8 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
         end
 
         # TODO: REACTIVE: this is unreactive!
-        evaluate_cell(notebook, cell)
+        result = evaluate_cell(notebook, cell)
+        put!(pendingclientupdates, result)
         
         # TODO: try catch around evaluation? evaluation async?
         JSON.json("OK!")
@@ -290,6 +291,6 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     Pages.start(port)
 end
 
-serve(p = 1234) = serve(;port = p)
+serve(p = 8000) = serve(;port = p)
 
 end
