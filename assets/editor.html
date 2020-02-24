@@ -23,11 +23,16 @@
 		/* GENERAL PAGE LAYOUT */
 
 		body {
-			background-color: #ffffff;
+			/* background-color: #ffffff; */
 			margin: 0px;
 			font-family: 'Open Sans', serif;
 			font-weight: 400;
-			color: #222
+			color: #222;
+		}
+
+		body.swoosh{
+			animation: 🌈 30s linear 0s infinite;
+
 		}
 
 		h1,
@@ -111,7 +116,7 @@
 
 		header {
 			letter-spacing: 2px;
-			background-color: #ffffff;
+			background: hsla(0,100%,100%,80%);
 			width: 100%;
 			height: 70px;
 			overflow: hidden;
@@ -185,6 +190,7 @@
 		}
 
 		celloutput {
+			background-color: white;
 			display: block;
 			padding-left: 10px;
 			padding-right: 10px;
@@ -235,6 +241,24 @@
 			margin: 0 auto;
 			text-align: right;
 			padding: 5px;
+		}
+
+		@keyframes 🌈 {
+		from {
+			background-color: hsl(0, 100%, 98%);
+		}
+		10% {
+			background-color: hsl(90, 100%, 98%);
+		}
+		50% {
+			background-color: hsl(180, 100%, 98%);
+		}
+		75% {
+			background-color: hsl(270, 100%, 98%);
+		}
+		100% {
+			background-color: hsl(360, 100%, 98%);
+		}
 		}
 
 		/*.CodeMirror-linenumber {
@@ -544,10 +568,14 @@
 
 			reloadAllCells(console.warn, runUpdateLoop)
 
-			// TODO: with a delay if the last request went poorly
+			// TODO: reconnect with a delay if the last request went poorly
 			// this would avoid hanging UI when the connection is lost maybe?
 			// implemented, but untested
-			// TODO: notify user when connection is lost
+
+			// TODO: check cell order every now and then?
+			// or do ___maths___ to make sure that it never gets messed up
+
+
 
 
 			window.reloadAllCells = reloadAllCells
