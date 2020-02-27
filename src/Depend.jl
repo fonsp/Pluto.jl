@@ -1,30 +1,40 @@
-module Vars
-export dependent, dependencies
+module Depend
+export modified, referenced
 
 
 const modifiers = [:(=), :+=, :-=, :*=, :/=] # TODO: anything else?
 
 
-function dependent(ast::Expr)
+# TODO: doesn't work for things like "x=1;y=2" yet
+"The symbols whose values are modified in the expression"
+function modified(ast::Expr)
     if ast.head in modifiers
-        return ast.args[1]
+        if typeof(ast.args[1]) == Symbol # otherwise lambdas get treated as assignments too
+            return [ast.args[1]]
+        end
     end
-    return nothing
+    return []
 end
 
+modified(code::String) = modified(Meta.parse(code))
 
-function dependencies(ast::Expr)
+
+# TODO: doesn't ignore local scope variables
+"The symbols whose values are read in the expression"
+function referenced(ast::Expr)
     used_args = []
     if ast.head in modifiers # only right-hand side matters
         used_args = ast.args[2:end]
-    else # both sides matter
+    else
         used_args = ast.args[1:end]
     end
-    return vcat([dependencies(arg) for arg in used_args]...)
+    return vcat([referenced(arg) for arg in used_args]...)
 end
 
+referenced(symbol::Symbol) = Base.isidentifier(symbol) ? [symbol] : []
+referenced(sth::Any) = []
 
-dependencies(symbol::Symbol) = Base.isidentifier(symbol) ? [symbol] : []
-dependencies(sth::Any) = []
+referenced(code::String) = referenced(Meta.parse(code))
+
 
 end
