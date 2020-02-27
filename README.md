@@ -8,16 +8,16 @@ Still under development - we currently have a classical (imperative) notebook sy
 
 ## Input
 
-The central idea is that Saturn notebooks will be ***reactive***, just like [Observable notebooks](https://observablehq.com/@observablehq/observables-not-javascript), but using Julia instead of JavaScript. _This reactivity is still under development!_
+The central idea is that Saturn notebooks will be ***reactive***, just like [Observable notebooks](https://observablehq.com/@observablehq/observables-not-javascript), but using Julia instead of JavaScript. _This reactivity is currently under development!_
 
 ## Output
 Cell output is simple: one cell outputs one variable, which is displayed using the richest available formatter. We believe that this limitation actually [_makes programming easier_](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0)!
 
 <img alt="formatting screenshot" src="http://fonsp.com/img/saturnformatting.png" height=400>
 
-Plotting is supported out-of-the-box with most backends!
+Plotting is supported out-of-the-box!
 
-`insert plot screenshot here`
+<img alt="plotting screenshot" src="http://fonsp.com/img/saturnplotting.png" height=600>
 
 ## Installation
 
