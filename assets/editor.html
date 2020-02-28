@@ -539,7 +539,7 @@
 
 
 			//editor.on("change", window.preview);
-			window.createFakeCells = () => {
+			window.fakeCells = () => {
 				var last;
 				last = createCell(0, "0", "100*x + y")
 				updateCellOutput(last, "text/plain", "100*x + y", "")
@@ -553,8 +553,6 @@
 				updateCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
 	
 			}
-
-			window.createFakeCells()
 		});
 	</script>
 	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/dot/1.1.3/doT.min.js" integrity="sha256-0Mj4wysSsxKrjqVsgnOgOeRZbPreFi/T3+zb+cyR7Jw=" crossorigin="anonymous"></script>-->
