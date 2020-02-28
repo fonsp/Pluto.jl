@@ -1,4 +1,4 @@
-module Symbols
+module ExploreExpression
 export modified, referenced
 
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9

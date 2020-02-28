@@ -1,5 +1,5 @@
 include("./Notebook.jl")
-include("./Symbols.jl")
+include("./ExploreExpression.jl")
 
 
 module ModuleManager
@@ -24,8 +24,8 @@ function run_cell(notebook::Notebook, cell::Cell)
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
 
-    modified = Symbols.modified(cell.parsedcode)
-    referenced = Symbols.referenced(cell.parsedcode)
+    modified = ExploreExpression.modified(cell.parsedcode)
+    referenced = ExploreExpression.referenced(cell.parsedcode)
 
     # TODO: assert that cell doesn't modify variables which are modified by other cells
     # TODO: remove all variables that the cell used to modify
