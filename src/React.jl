@@ -33,15 +33,16 @@ function run_cell(notebook::Notebook, cell::Cell)
     cell.modified_symbols = modified
     cell.referenced_symbols = referenced
 
-    for to_eval in dependent_cells(notebook, cell)
-        @show Core.eval(ModuleManager.get_module(), to_eval.parsedcode)
-        # TODO: make this show in the notebook UI
+    dependent = dependent_cells(notebook, cell) # TODO: catch recursive error
+
+    for to_eval in dependent
+        to_eval.output = Core.eval(ModuleManager.get_module(), to_eval.parsedcode)
+        display(to_eval.output)
         # TODO: capture display(), println(), throw() and such
         # TODO: exception handling
     end
 
-    # FIXME: for testing only (displaying should actually be done in the loop above)
-    return Core.eval(ModuleManager.get_module(), cell.parsedcode)
+    return dependent
 end
 
 

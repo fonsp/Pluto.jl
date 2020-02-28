@@ -12,22 +12,12 @@ include("./React.jl")
 const packagerootdir = normpath(joinpath(@__DIR__, ".."))
 
 
-# Code will be executed _inside_ this module (in imperative mode)
-# It serves as a 'playground' for defined variables.
-# module SaturnNotebook
-# end
-# executionModule = SaturnNotebook
-
-# nvm, we can execute in Main!
-executionModule = Main
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 
 
-function evaluate_cell(notebook::Notebook, cell::Cell)
-    result = run_cell(notebook, cell)
-
+function cell_update(cell::Cell)
     # TODO: Here we could do richer formatting
     # See Julia IO docs for the full explanation
     # MIME types and stuff!
@@ -38,13 +28,13 @@ function evaluate_cell(notebook::Notebook, cell::Cell)
     # text/plain always matches
     mimes = ["text/html", "text/plain"]
     
-    mime = first(filter(m->showable(m, result), mimes))
+    mime = first(filter(m->showable(m, cell.output), mimes))
 
     # TODO: limit output!
 
-    resultPayload = repr(mime, result; context = iocontext)
+    payload = repr(mime, cell.output; context = iocontext)
 
-    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => resultPayload)
+    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => payload)
 end
 
 
@@ -164,9 +154,10 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
             cell.parsedcode = nothing
         end
 
-        # TODO: REACTIVE: this is unreactive!
-        result = evaluate_cell(notebook, cell)
-        put!(pendingclientupdates, result)
+        to_update = run_cell(notebook, cell)
+        for c in to_update
+            put!(pendingclientupdates, cell_update(c))
+        end
         
         # TODO: try catch around evaluation? evaluation async?
         JSON.json("OK!")
