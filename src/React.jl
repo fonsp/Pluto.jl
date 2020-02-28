@@ -3,24 +3,25 @@ include("./Symbols.jl")
 
 
 module ModuleManager
-    module_count = 0
+    workspace_count = 0
 
-    function make_module()
-        code = "module module$(module_count + 1) end"
+    function make_workspace()
+        # TODO: define `expr` directly, but it's more readable right now
+        code = "module workspace$(workspace_count + 1) end"
         expr = Meta.parse(code)
         Core.eval(ModuleManager, expr)
-        global module_count += 1
+        global workspace_count += 1
     end
-    make_module() # so that there's immediately something to work with
+    make_workspace() # so that there's immediately something to work with
 
-    get_module(id=module_count) = Core.eval(ModuleManager, Meta.parse("module$id"))
+    get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
 end
 
 
 "Run a cell and all the cells that depend on it"
 function run_cell(notebook::Notebook, cell::Cell)
     if cell.parsedcode === nothing
-        cell.parsedcode = Meta.parse(cell.code)
+        cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
 
     modified = Symbols.modified(cell.parsedcode)
@@ -36,10 +37,16 @@ function run_cell(notebook::Notebook, cell::Cell)
     dependent = dependent_cells(notebook, cell) # TODO: catch recursive error
 
     for to_eval in dependent
-        to_eval.output = Core.eval(ModuleManager.get_module(), to_eval.parsedcode)
+        try
+            to_eval.output = Core.eval(ModuleManager.get_workspace(), to_eval.parsedcode)
+            to_eval.errormessage = nothing
+        catch err
+            # TODO: errored symbols should be deleted, leading to errors at referencers, which is good
+            to_eval.output = nothing
+            to_eval.errormessage = sprint(showerror, err)
+        end
         display(to_eval.output)
-        # TODO: capture display(), println(), throw() and such
-        # TODO: exception handling
+        # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
     end
 
     return dependent
@@ -59,7 +66,9 @@ function dependent_cells(notebook::Notebook, root::Cell)
         end
 
         push!(entries, cell)
-        [dfs(c) for c in referencing_cells(notebook, cell.modified_symbols)]
+
+        dfs.(referencing_cells(notebook, cell.modified_symbols))
+
         push!(exits, cell)
     end
 
@@ -68,11 +77,9 @@ function dependent_cells(notebook::Notebook, root::Cell)
 end
 
 
-"Cells that reference given symbols - does *not* recurse"
+"Return cells that reference any of the given symbols - does *not* recurse"
 function referencing_cells(notebook::Notebook, symbols::Array{Symbol, 1})
-    function references(cell::Cell)
-        return any(symbol in symbols for symbol in cell.referenced_symbols)
+    return filter(notebook.cells) do cell
+        return any(s in symbols for s in cell.referenced_symbols)
     end
-
-    return filter(references, notebook.cells)
 end

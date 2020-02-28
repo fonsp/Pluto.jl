@@ -30,7 +30,7 @@
 			color: #222;
 		}
 
-		body.swoosh{
+		body.swoosh {
 			animation: 🌈 30s linear 0s infinite;
 
 		}
@@ -116,7 +116,7 @@
 
 		header {
 			letter-spacing: 2px;
-			background: hsla(0,100%,100%,80%);
+			background: hsla(0, 100%, 100%, 80%);
 			width: 100%;
 			height: 70px;
 			overflow: hidden;
@@ -194,7 +194,7 @@
 			display: block;
 			padding-left: 10px;
 			padding-right: 10px;
-			overflow: scroll;
+			overflow: auto;
 			/*are we sure? people might write very long documents*/
 			max-height: 200vh;
 			border: 1px solid rgba(0, 0, 0, .1);
@@ -205,6 +205,11 @@
 		code {
 			font-family: 'Roboto Mono', monospace;
 			font-size: 12px;
+		}
+
+		.errormessage {
+			color: darkred;
+			font-weight: bold;
 		}
 
 		.CodeMirror {
@@ -244,21 +249,25 @@
 		}
 
 		@keyframes 🌈 {
-		from {
-			background-color: hsl(0, 100%, 98%);
-		}
-		10% {
-			background-color: hsl(90, 100%, 98%);
-		}
-		50% {
-			background-color: hsl(180, 100%, 98%);
-		}
-		75% {
-			background-color: hsl(270, 100%, 98%);
-		}
-		100% {
-			background-color: hsl(360, 100%, 98%);
-		}
+			from {
+				background-color: hsl(0, 100%, 98%);
+			}
+
+			10% {
+				background-color: hsl(90, 100%, 98%);
+			}
+
+			50% {
+				background-color: hsl(180, 100%, 98%);
+			}
+
+			75% {
+				background-color: hsl(270, 100%, 98%);
+			}
+
+			100% {
+				background-color: hsl(360, 100%, 98%);
+			}
 		}
 
 		/*.CodeMirror-linenumber {
@@ -346,40 +355,43 @@
 				});
 			}
 
-			function updateCellOutput(cellNode, mime, output) {
+			function updateCellOutput(cellNode, mime, output, errormessage) {
 				console.log(mime)
-				if (mime == "text/html") {
-					// from https://stackoverflow.com/a/26716182
+				if (errormessage) {
+					cellNode.querySelector("celloutput").innerHTML = "<pre><code class=\"errormessage\"></code></pre>"
+					cellNode.querySelector("celloutput").querySelector("code").innerText = errormessage
+				} else {
+					if (mime == "text/html") {
+						// from https://stackoverflow.com/a/26716182
 
-					cellNode.querySelector("celloutput").innerHTML = output
+						cellNode.querySelector("celloutput").innerHTML = output
 
-					// to execute all scripts in the html:
-
-					try {
-						var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
-						for (var i = 0; i < scripts.length; i++) {
-							if (scripts[i].src != "") {
-								if(!Array.prototype.map.call(document.head.querySelectorAll("script"), s=>s.src).includes(scripts[i]))
-								{
-									var tag = document.createElement("script")
-									tag.src = scripts[i].src
-									document.head.appendChild(tag)
+						// to execute all scripts in the output html:
+						try {
+							var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
+							for (var i = 0; i < scripts.length; i++) {
+								if (scripts[i].src != "") {
+									if (!Array.prototype.map.call(document.head.querySelectorAll("script"), s => s.src).includes(scripts[i])) {
+										var tag = document.createElement("script")
+										tag.src = scripts[i].src
+										document.head.appendChild(tag)
+									}
+								}
+								else {
+									eval(scripts[i].innerHTML)
 								}
 							}
-							else {
-								eval(scripts[i].innerHTML)
-							}
+						} catch (err) {
+							console.log("Couldn't execute all scripts:")
+							console.log(err)
+							// TODO: relay to user
+							// might be wise to wait after adding scripts to head
+							//
 						}
-					} catch (err) {
-						console.log("Couldn't execute all scripts:")
-						console.log(err)
-						// TODO: relay to user
-						// might be wise to wait after adding scripts to head
-						//
+					} else {
+						cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
+						cellNode.querySelector("celloutput").querySelector("code").innerText = output
 					}
-				} else {
-					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
-					cellNode.querySelector("celloutput").querySelector("code").innerText = output
 				}
 			}
 
@@ -404,7 +416,7 @@
 				}
 
 				createCodeMirrorInsideCell(newCellNode, code)
-				//updateCellOutput(newCellNode, mime, output)
+				//updateCellOutput(newCellNode, mime, output, errormessage)
 			}
 
 			function deleteCell(cellNode) {
@@ -552,7 +564,7 @@
 							// UPDATE RECEIVED
 							console.log("output deserialized")
 							console.log(update)
-							updateCellOutput(window.cells[update.uuid], update.mime, update.output)
+							updateCellOutput(window.cells[update.uuid], update.mime, update.output, update.errormessage)
 							//TODO: animation ✨
 
 							runUpdateLoop()

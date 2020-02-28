@@ -34,7 +34,7 @@ function cell_update(cell::Cell)
 
     payload = repr(mime, cell.output; context = iocontext)
 
-    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => payload)
+    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => payload, :errormessage => cell.errormessage)
 end
 
 
@@ -64,9 +64,9 @@ struct RawDisplayString
  s::String
 end
 
-    function show(io::IO, z::RawDisplayString)
+function show(io::IO, z::RawDisplayString)
    print(io, z.s)
-    end
+end
 
 prints(x::String) = RawDisplayString(x)
 prints(x) = RawDisplayString(repr("text/plain", x; context = iocontext))
