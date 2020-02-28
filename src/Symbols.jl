@@ -1,4 +1,4 @@
-module Depend
+module Symbols
 export modified, referenced
 
 

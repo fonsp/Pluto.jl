@@ -6,52 +6,10 @@ using JSON
 using UUIDs
 using HTTP
 import Base: show
+include("./React.jl")
+
 
 const packagerootdir = normpath(joinpath(@__DIR__, ".."))
-
-"The building block of `Notebook`s. Contains both code and output."
-mutable struct Cell
-    "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
-    uuid::UUID
-    code::String
-    parsedcode::Any
-    output::Any
-end
-
-"Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
-function serialize(cell::Cell)
-    Dict(:uuid => string(cell.uuid), :code => cell.code)# , :output => cell.output)
-end
-
-createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing)
-
-
-mutable struct Notebook
-    name::String
-
-    "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cells::Array{Cell,1}
-end
-
-function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
-    cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)
-    if cellIndex === nothing
-        @warn "Requested non-existing cell with UUID $(uuid)\nTry refreshing the page in your browser."
-        return nothing
-    end
-    notebook.cells[cellIndex]
-end
-
-
-function samplenotebook()
-    cells = Cell[]
-
-    push!(cells, createcell_fromcode("x = 1 + 1"))
-    push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
-    push!(cells, createcell_fromcode("using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\""))
-
-    Notebook("test.jl", cells)
-end
 
 
 # Code will be executed _inside_ this module (in imperative mode)
@@ -68,17 +26,7 @@ iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true,
 
 
 function evaluate_cell(notebook::Notebook, cell::Cell)
-    # TODO: REACTIVE :))) that's why notebook is a param
-    if cell.parsedcode === nothing
-        cell.parsedcode = Meta.parse(cell.code)
-    end
-    @show cell.parsedcode
-
-    # REACTIVE: will be its own module
-    result = Core.eval(executionModule, cell.parsedcode)
-    # TODO: capture display(), println(), throw() and such
-    # @show result |> typeof
-    @show result
+    result = run_cell(notebook, cell)
 
     # TODO: Here we could do richer formatting
     # See Julia IO docs for the full explanation
