@@ -12,8 +12,7 @@
 	<link rel="license" href="https://github.com/fonsp/Saturn.jl/blob/master/LICENSE" />
 	<meta name="theme-color" content="#000000" />
 	<meta name="description" content="Saturn.jl notebook" />
-	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
@@ -23,25 +22,18 @@
 		/* GENERAL PAGE LAYOUT */
 
 		body {
-			/* background-color: #ffffff; */
 			margin: 0px;
-			font-family: 'Open Sans', serif;
-			font-weight: 400;
-			color: #222;
 		}
 
-		body.swoosh {
-			animation: 🌈 30s linear 0s infinite;
-
-		}
-
+		/* more sensible defaults for html tags: */
+		/* (can be overriden by custom style) */
 		h1,
 		h2,
 		h3,
 		h4,
 		h5,
 		h6 {
-			font-family: 'Roboto Slab', serif;
+			font-family: sans-serif;
 		}
 
 		h1 {
@@ -100,16 +92,6 @@
 			margin: 0 auto;
 			max-width: 960px;
 			align-content: center;
-		}
-
-		#logje {
-			text-align: left;
-			font-family: monospace;
-		}
-
-		#logje p::before {
-			content: "> ";
-			opacity: .5;
 		}
 
 		/* HEADER */
@@ -185,41 +167,26 @@
 
 		cell {
 			display: block;
-			margin-bottom: 20px;
-			box-shadow: 0px 0px 12px -6px rgba(0, 0, 0, 0.2);
 		}
 
 		celloutput {
-			background-color: white;
 			display: block;
 			padding-left: 10px;
 			padding-right: 10px;
 			overflow: auto;
-			/*are we sure? people might write very long documents*/
-			max-height: 200vh;
-			border: 1px solid rgba(0, 0, 0, .1);
-			border-top-left-radius: 6px;
-			border-top-right-radius: 6px;
 		}
 
 		code {
-			font-family: 'Roboto Mono', monospace;
-			font-size: 12px;
+			font-family: monospace;
 		}
 
 		.errormessage {
 			color: darkred;
-			font-weight: bold;
 		}
 
 		.CodeMirror {
 			height: auto !important;
 			width: 100%;
-			font-family: 'Roboto Mono', monospace !important;
-			font-size: 14px;
-			border: 6px solid pink;
-			border-bottom-left-radius: 6px;
-			border-bottom-right-radius: 6px;
 			z-index: 2;
 		}
 
@@ -247,35 +214,11 @@
 			text-align: right;
 			padding: 5px;
 		}
-
-		@keyframes 🌈 {
-			from {
-				background-color: hsl(0, 100%, 98%);
-			}
-
-			10% {
-				background-color: hsl(90, 100%, 98%);
-			}
-
-			50% {
-				background-color: hsl(180, 100%, 98%);
-			}
-
-			75% {
-				background-color: hsl(270, 100%, 98%);
-			}
-
-			100% {
-				background-color: hsl(360, 100%, 98%);
-			}
-		}
-
-		/*.CodeMirror-linenumber {
-			font-family: 'Courgette';
-		}*/
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/lucario.min.css" />
+	<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/paraiso-light.min.css" /> -->
+	<link rel="stylesheet" href="./light.css" />
+	<link rel="stylesheet" href="/customstyle.css" />
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
@@ -343,7 +286,7 @@
 					lineNumberFormatter: function (i) {
 						return "⋅"
 					},
-					theme: "lucario",
+					// theme: "paraiso-light",
 					viewportMargin: Infinity,
 				});
 
@@ -417,6 +360,7 @@
 
 				createCodeMirrorInsideCell(newCellNode, code)
 				//updateCellOutput(newCellNode, mime, output, errormessage)
+				return newCellNode
 			}
 
 			function deleteCell(cellNode) {
@@ -592,8 +536,25 @@
 
 			window.reloadAllCells = reloadAllCells
 			window.ping = ping
-			//editor.on("change", window.preview);
 
+
+			//editor.on("change", window.preview);
+			window.createFakeCells = () => {
+				var last;
+				last = createCell(0, "0", "100*x + y")
+				updateCellOutput(last, "text/plain", "100*x + y", "")
+				last = createCell(1, "0", "x = 1 + 1")
+				updateCellOutput(last, "text/plain", "x = 1 + 1", "")
+				last = createCell(2, "0", "y = x * 2")
+				updateCellOutput(last, "text/plain", "y = x * 2", "")
+				last = createCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
+				updateCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
+				last = createCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
+				updateCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
+	
+			}
+
+			window.createFakeCells()
 		});
 	</script>
 	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/dot/1.1.3/doT.min.js" integrity="sha256-0Mj4wysSsxKrjqVsgnOgOeRZbPreFi/T3+zb+cyR7Jw=" crossorigin="anonymous"></script>-->

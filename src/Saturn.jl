@@ -85,11 +85,14 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     # STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
     # index.html also contains the CSS and JS
 
-    serveindex(request::HTTP.Request) = read(joinpath(packagerootdir, "assets", "editor.html"), String)
+    function assetserver(assetname)
+        return request::HTTP.Request -> read(joinpath(packagerootdir, "assets", assetname), String)
+    end
+    Endpoint(assetserver("index.html"), "/index.html", GET)
+    Endpoint(assetserver("index.html"), "/index", GET)
+    Endpoint(assetserver("index.html"), "/", GET)
 
-    Endpoint(serveindex, "/index.html", GET)
-    Endpoint(serveindex, "/index", GET)
-    Endpoint(serveindex, "/", GET)
+    Endpoint(assetserver("light.css"), "/customstyle.css", GET)
 
     Endpoint("/ping", GET) do request::HTTP.Request
         JSON.json("OK!")

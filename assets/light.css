@@ -1,0 +1,117 @@
+body {
+    /* background-color: #ffffff; */
+    font-family: 'Open Sans', serif;
+    font-weight: 400;
+    color: #222;
+}
+
+body.swoosh {
+    animation: 🌈 30s linear 0s infinite;
+
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: 'Roboto Slab', serif;
+}
+
+
+/* HEADER */
+
+
+/* MAIN */
+
+cell {
+    margin-bottom: 20px;
+    box-shadow: 0px 0px 12px -6px rgba(0, 0, 0, 0.2);
+}
+
+celloutput {
+    background-color: white;
+    border: 1px solid rgba(0, 0, 0, .1);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+code {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 12px;
+}
+
+.errormessage {
+    color: darkred;
+    font-weight: bold;
+}
+
+.CodeMirror {
+    font-family: 'Roboto Mono', monospace !important;
+    font-size: 14px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+@keyframes 🌈 {
+    from {
+        background-color: hsl(0, 100%, 98%);
+    }
+
+    10% {
+        background-color: hsl(90, 100%, 98%);
+    }
+
+    50% {
+        background-color: hsl(180, 100%, 98%);
+    }
+
+    75% {
+        background-color: hsl(270, 100%, 98%);
+    }
+
+    100% {
+        background-color: hsl(360, 100%, 98%);
+    }
+}
+
+
+
+/* CODEMIRROR STYLE */
+
+/*
+Based on "Paraíso (Light)" by Jan T. Sott:
+    Color scheme by Jan T. Sott (https://github.com/idleberg/Paraiso-CodeMirror)
+    Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
+*/
+
+.cm-s-default.CodeMirror { background: hsla(46, 100%, 98%, 1); color: #41323f; }
+.cm-s-default div.CodeMirror-selected { background: #b9b6b0; }
+.cm-s-default .CodeMirror-line::selection, .cm-s-default .CodeMirror-line > span::selection, .cm-s-default .CodeMirror-line > span > span::selection { background: #b9b6b0; }
+.cm-s-default .CodeMirror-line::-moz-selection, .cm-s-default .CodeMirror-line > span::-moz-selection, .cm-s-default .CodeMirror-line > span > span::-moz-selection { background: #b9b6b0; }
+.cm-s-default .CodeMirror-gutters { background:  hsl(46, 100%, 98%); border-right: solid 1px hsla(0, 0%, 0%, .0); }
+.cm-s-default .CodeMirror-guttermarker { color: black; }
+.cm-s-default .CodeMirror-guttermarker-subtle { color: #8d8687; }
+.cm-s-default .CodeMirror-linenumber { color: #8d8687; }
+.cm-s-default .CodeMirror-cursor { border-left: 1px solid #776e71; }
+
+.cm-s-default span.cm-comment { color: #e96ba8; font-style: italic;}
+.cm-s-default span.cm-atom { color: #815ba4; }
+.cm-s-default span.cm-number { color: #815ba4; }
+
+.cm-s-default span.cm-property, .cm-s-default span.cm-attribute { color: #48b685; }
+.cm-s-default span.cm-keyword { color: #ef6155; }
+.cm-s-default span.cm-string { color: #ce7d0a; }
+
+.cm-s-default span.cm-variable { color: #5668a4; font-weight: 500;}
+.cm-s-default span.cm-builtin { color: #5e7ad3; font-weight: 500;}
+.cm-s-default span.cm-variable-2 { color: #06b6ef; }
+.cm-s-default span.cm-def { color: #f99b15; }
+.cm-s-default span.cm-bracket { color: #41323f; }
+.cm-s-default span.cm-tag { color: #ef6155; }
+.cm-s-default span.cm-link { color: #815ba4; }
+.cm-s-default span.cm-error { background: #ef6155; color: #776e71; }
+
+.cm-s-default .CodeMirror-activeline-background { background: #CFD1C4; }
+.cm-s-default .CodeMirror-matchingbracket { text-decoration: underline; color: white !important; }
