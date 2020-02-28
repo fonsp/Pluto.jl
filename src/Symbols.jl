@@ -17,6 +17,7 @@ function modified(ast::Expr)
 end
 
 modified(code::String) = modified(Meta.parse(code))
+modified(thing::Any) = []
 
 
 # TODO: doesn't ignore local scope variables
