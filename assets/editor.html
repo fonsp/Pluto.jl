@@ -95,7 +95,7 @@
 			/* white-space: nowrap; */
 			/*font-weight: normal;*/
 			font-family: 'Ubuntu Mono', monospace;
-			border-bottom: solid 3px rgba(0, 0, 0);
+			border-bottom: solid 1px rgba(0, 0, 0, .1);
 		}
 
 		#logocontainer {
@@ -192,7 +192,7 @@
 			/* display: inline-block; */
 		}
 
-		cell.code-folded > cellinput {
+		cell.code-folded>cellinput {
 			display: none;
 		}
 
@@ -409,7 +409,7 @@
 				newCellNode.querySelector("clickshoulder").onclick = (e) => {
 					e.target.parentElement.classList.toggle("code-folded")
 					// You may not fold code if the output is empty (it would be confusing)
-					if(!e.target.parentElement.querySelector("celloutput").innerHTML){
+					if (!e.target.parentElement.querySelector("celloutput").innerHTML) {
 						e.target.parentElement.classList.remove("code-folded")
 					}
 				}
@@ -492,9 +492,10 @@
 
 						for (var cellIndex in remoteCells) {
 							remoteCell = remoteCells[cellIndex]
-							//createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.output)
-							// createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.code)
-							createCell(cellIndex, remoteCell.uuid, remoteCell.code)
+							cellElement = createCell(cellIndex, remoteCell.uuid, remoteCell.code)
+							// if ((remoteCell.mime && remoteCell.output) || remoteCell.errormessage) {
+							// 	updateCellOutput(cellElement, remoteCell.mime, remoteCell.output, remoteCell.errormessage)
+							// }
 						}
 
 						onSucces()

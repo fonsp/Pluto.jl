@@ -158,8 +158,8 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
         end
 
         to_update = run_cell(notebook, cell)
-        for c in to_update
-            put!(pendingclientupdates, cell_update(c))
+        for cell in to_update
+            put!(pendingclientupdates, cell_update(cell))
         end
         
         # TODO: try catch around evaluation? evaluation async?
@@ -222,6 +222,9 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     end
 
     Endpoint("/getallcells", GET) do request::HTTP.Request
+        for cell in notebook.cells
+            put!(pendingclientupdates, cell_update(cell))
+        end
         JSON.json(serialize.(notebook.cells))
     end
 
