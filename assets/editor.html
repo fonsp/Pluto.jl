@@ -180,7 +180,7 @@
 			font-family: monospace;
 		}
 
-		cell.error > code {
+		cell.error>code {
 			color: darkred;
 		}
 
@@ -202,6 +202,10 @@
 			/* display: inline-block; */
 		}
 
+		cell.code-folded > cellinput {
+			display: none;
+		}
+
 
 		trafficlight {
 			width: 4px;
@@ -213,17 +217,33 @@
 
 		/* In order of severity: */
 
-		cell.dependent > trafficlight {
+		cell.dependent>trafficlight {
 			background: lightblue;
 		}
 
-		cell.warning > trafficlight {
+		cell.warning>trafficlight {
 			background: orange;
 		}
 
 
-		cell.error > trafficlight {
+		cell.error>trafficlight {
 			background: red;
+		}
+
+
+		element.style {}
+
+		clickshoulder {
+			position: absolute;
+			top: 0px;
+			bottom: 0px;
+			width: 2000px;
+			left: -2000px;
+			cursor: pointer;
+		}
+
+		clickshoulder:hover {
+			background: rgba(0, 0, 0, .05);
 		}
 
 		footer {
@@ -271,6 +291,7 @@
 		<br>
 		<template id="celltemplate">
 			<cell>
+				<clickshoulder></clickshoulder>
 				<trafficlight></trafficlight>
 				<button class="addcellbefore"><span>add cell +</span></button>
 				<celloutput tabindex="1"></celloutput>
@@ -393,6 +414,14 @@
 				} else {
 					console.error("Tried to insert cell at illegal position! Notebook order might be messed up!")
 					notebookNode.appendChild(newCellNode)
+				}
+
+				newCellNode.querySelector("clickshoulder").onclick = (e) => {
+					e.target.parentElement.classList.toggle("code-folded")
+					// You may not fold code if the output is empty (it would be confusing)
+					if(!e.target.parentElement.querySelector("celloutput").innerHTML){
+						e.target.parentElement.classList.remove("code-folded")
+					}
 				}
 
 				createCodeMirrorInsideCell(newCellNode, code)
