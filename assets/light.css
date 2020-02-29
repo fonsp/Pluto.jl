@@ -19,6 +19,30 @@ h6 {
     font-family: 'Roboto Slab', serif;
     color: hsl(0, 0%, 12%);
 }
+h1:first-child,
+h2:first-child,
+h3:first-child,
+h4:first-child,
+h5:first-child,
+h6:first-child {
+    margin-block-start: 0px;
+}
+
+p {
+    margin-block-start: 8px;
+}
+
+p {
+    margin-block-end: 20px;
+}
+
+p:first-child {
+    margin-block-start: 0px;
+}
+
+p:last-child {
+    margin-block-end: 0px;
+}
 
 
 /* HEADER */
