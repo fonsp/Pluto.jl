@@ -12,7 +12,8 @@
 	<link rel="license" href="https://github.com/fonsp/Saturn.jl/blob/master/LICENSE" />
 	<meta name="theme-color" content="#000000" />
 	<meta name="description" content="Saturn.jl notebook" />
-	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
@@ -86,12 +87,10 @@
 
 		main {
 			min-height: calc(100% - 73px - 60px);
-		}
-
-		main {
 			margin: 0 auto;
 			max-width: 960px;
 			align-content: center;
+			padding: 8px;
 		}
 
 		/* HEADER */
@@ -106,7 +105,7 @@
 			/* white-space: nowrap; */
 			/*font-weight: normal;*/
 			font-family: 'Ubuntu Mono', monospace;
-			border-bottom: solid 3px #000000;
+			border-bottom: solid 3px rgba(0, 0, 0);
 		}
 
 		#logocontainer {
@@ -171,6 +170,7 @@
 
 		celloutput {
 			display: block;
+			min-height: 25px;
 			padding-left: 10px;
 			padding-right: 10px;
 			overflow: auto;
@@ -180,7 +180,7 @@
 			font-family: monospace;
 		}
 
-		.errormessage {
+		cell.error > code {
 			color: darkred;
 		}
 
@@ -192,6 +192,38 @@
 
 		.CodeMirror-scroll {
 			min-height: 0px;
+		}
+
+		cell>button.addcellbefore {
+			/* display: none; */
+		}
+
+		cell:first-of-type>button.addcellbefore {
+			/* display: inline-block; */
+		}
+
+
+		trafficlight {
+			width: 4px;
+			position: absolute;
+			left: -4px;
+			top: 0px;
+			bottom: 0px;
+		}
+
+		/* In order of severity: */
+
+		cell.dependent > trafficlight {
+			background: lightblue;
+		}
+
+		cell.warning > trafficlight {
+			background: orange;
+		}
+
+
+		cell.error > trafficlight {
+			background: red;
 		}
 
 		footer {
@@ -239,8 +271,11 @@
 		<br>
 		<template id="celltemplate">
 			<cell>
-				<celloutput></celloutput>
+				<trafficlight></trafficlight>
+				<button class="addcellbefore"><span>add cell +</span></button>
+				<celloutput tabindex="1"></celloutput>
 				<cellinput></cellinput>
+				<button class="addcellafter"><span>add cell +</span></button>
 			</cell>
 		</template>
 		<notebook>
@@ -301,9 +336,11 @@
 			function updateCellOutput(cellNode, mime, output, errormessage) {
 				console.log(mime)
 				if (errormessage) {
-					cellNode.querySelector("celloutput").innerHTML = "<pre><code class=\"errormessage\"></code></pre>"
+					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
 					cellNode.querySelector("celloutput").querySelector("code").innerText = errormessage
+					cellNode.classList.add("error")
 				} else {
+					cellNode.classList.remove("error")
 					if (mime == "text/html") {
 						// from https://stackoverflow.com/a/26716182
 
@@ -551,7 +588,11 @@
 				updateCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
 				last = createCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
 				updateCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
-	
+
+			}
+
+			if (document.location.protocol == "file:") {
+				window.fakeCells()
 			}
 		});
 	</script>
