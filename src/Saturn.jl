@@ -88,9 +88,9 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     function assetserver(assetname)
         return request::HTTP.Request -> read(joinpath(packagerootdir, "assets", assetname), String)
     end
-    Endpoint(assetserver("index.html"), "/index.html", GET)
-    Endpoint(assetserver("index.html"), "/index", GET)
-    Endpoint(assetserver("index.html"), "/", GET)
+    Endpoint(assetserver("editor.html"), "/index.html", GET)
+    Endpoint(assetserver("editor.html"), "/index", GET)
+    Endpoint(assetserver("editor.html"), "/", GET)
 
     Endpoint(assetserver("light.css"), "/customstyle.css", GET)
 
