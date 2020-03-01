@@ -1,4 +1,4 @@
-module Saturn
+module Pluto
 export Notebook, prints
 
 using Pages
@@ -71,26 +71,26 @@ function notebookupdate_cell_moved(cell::Cell, new_index::Integer)
 end
 
 
-# struct SaturnDisplay <: AbstractDisplay
+# struct PlutoDisplay <: AbstractDisplay
 #     io::IO
 # end
 
-# display(d::SaturnDisplay, x) = display(d, MIME"text/plain"(), x)
-# function display(d::SaturnDisplay, M::MIME, x)
+# display(d::PlutoDisplay, x) = display(d, MIME"text/plain"(), x)
+# function display(d::PlutoDisplay, M::MIME, x)
 #     displayable(d, M) || throw(MethodError(display, (d, M, x)))
 #     println(d.io, "SATURN 1")
 #     println(d.io, repr(M, x))
 # end
-# function display(d::SaturnDisplay, M::MIME"text/plain", x)
+# function display(d::PlutoDisplay, M::MIME"text/plain", x)
 #     println(d.io, "SATURN 2")
 #     println(d.io, repr(M, x))
 # end
-# displayable(d::SaturnDisplay, M::MIME"text/plain") = true
+# displayable(d::PlutoDisplay, M::MIME"text/plain") = true
 
 
 # sd_io = IOBuffer()
-# saturndisplay = SaturnDisplay(sd_io)
-# pushdisplay(saturndisplay)
+# plutodisplay = PlutoDisplay(sd_io)
+# pushdisplay(plutodisplay)
 
 
 struct RawDisplayString
