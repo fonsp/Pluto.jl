@@ -12,7 +12,7 @@
 	<link rel="license" href="https://github.com/fonsp/Saturn.jl/blob/master/LICENSE" />
 	<meta name="theme-color" content="#000000" />
 	<meta name="description" content="Saturn.jl notebook" />
-	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
 	<link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
@@ -23,64 +23,47 @@
 		/* GENERAL PAGE LAYOUT */
 
 		body {
-			/* background-color: #ffffff; */
 			margin: 0px;
-			font-family: 'Open Sans', serif;
-			font-weight: 400;
-			color: #222;
 		}
 
-		body.swoosh{
-			animation: 🌈 30s linear 0s infinite;
-
-		}
-
+		/* more sensible defaults for html tags: */
+		/* (can be overriden by custom style) */
 		h1,
 		h2,
 		h3,
 		h4,
 		h5,
 		h6 {
-			font-family: 'Roboto Slab', serif;
+			font-family: sans-serif;
+			margin-block-start: 1em;
+			margin-block-end: 0em;
 		}
 
 		h1 {
 			font-size: 2.2em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 			border-bottom: 3px solid rgba(0, 0, 0, .15);
 		}
 
 		h2 {
 			font-size: 1.8em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 			border-bottom: 2px dotted rgba(0, 0, 0, .15);
 		}
 
 		h3 {
 			font-size: 1.6em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 			/* border-bottom: 2px dotted rgba(0,0,0,.15); */
 		}
 
 		h4 {
 			font-size: 1.4em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 		}
 
 		h5 {
 			font-size: 1.2em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 		}
 
 		h6 {
 			font-size: 1em;
-			margin-block-start: 1em;
-			margin-block-end: 0em;
 		}
 
 		p {
@@ -94,29 +77,17 @@
 
 		main {
 			min-height: calc(100% - 73px - 60px);
-		}
-
-		main {
 			margin: 0 auto;
 			max-width: 960px;
 			align-content: center;
-		}
-
-		#logje {
-			text-align: left;
-			font-family: monospace;
-		}
-
-		#logje p::before {
-			content: "> ";
-			opacity: .5;
+			padding: 8px;
 		}
 
 		/* HEADER */
 
 		header {
 			letter-spacing: 2px;
-			background: hsla(0,100%,100%,80%);
+			background: hsla(0, 100%, 100%, 80%);
 			width: 100%;
 			height: 70px;
 			overflow: hidden;
@@ -124,7 +95,7 @@
 			/* white-space: nowrap; */
 			/*font-weight: normal;*/
 			font-family: 'Ubuntu Mono', monospace;
-			border-bottom: solid 3px #000000;
+			border-bottom: solid 1px rgba(0, 0, 0, .1);
 		}
 
 		#logocontainer {
@@ -185,41 +156,85 @@
 
 		cell {
 			display: block;
-			margin-bottom: 20px;
-			box-shadow: 0px 0px 12px -6px rgba(0, 0, 0, 0.2);
 		}
 
 		celloutput {
-			background-color: white;
 			display: block;
+			min-height: 25px;
 			padding-left: 10px;
 			padding-right: 10px;
-			overflow: scroll;
-			/*are we sure? people might write very long documents*/
-			max-height: 200vh;
-			border: 1px solid rgba(0, 0, 0, .1);
-			border-top-left-radius: 6px;
-			border-top-right-radius: 6px;
+			overflow: auto;
 		}
 
 		code {
-			font-family: 'Roboto Mono', monospace;
-			font-size: 12px;
+			font-family: monospace;
+		}
+
+		cell.error>code {
+			color: darkred;
 		}
 
 		.CodeMirror {
 			height: auto !important;
 			width: 100%;
-			font-family: 'Roboto Mono', monospace !important;
-			font-size: 14px;
-			border: 6px solid pink;
-			border-bottom-left-radius: 6px;
-			border-bottom-right-radius: 6px;
 			z-index: 2;
 		}
 
 		.CodeMirror-scroll {
 			min-height: 0px;
+		}
+
+		.CodeMirror-empty {
+			color: rgba(0, 0, 0, .15);
+		}
+
+		cell.code-folded>cellinput {
+			display: none;
+		}
+
+		trafficlight {
+			pointer-events: none;
+			width: 4px;
+			position: absolute;
+			left: -4px;
+			top: 0px;
+			bottom: 0px;
+		}
+
+		/* In ascending order of severity: */
+
+		cell.running>trafficlight {
+			background: yellow;
+		}
+
+		cell.dependent>trafficlight {
+			background: lightblue;
+		}
+
+		cell.warning>trafficlight {
+			background: orange;
+		}
+
+
+		cell.error>trafficlight {
+			background: red;
+		}
+
+		clickshoulder {
+			position: absolute;
+			top: 0px;
+			bottom: 0px;
+			width: 2000px;
+			left: -2000px;
+			cursor: pointer;
+		}
+
+		clickshoulder:hover {
+			background: rgba(0, 0, 0, .05);
+		}
+
+		cell>button>span {
+			pointer-events: none;
 		}
 
 		footer {
@@ -242,34 +257,15 @@
 			text-align: right;
 			padding: 5px;
 		}
-
-		@keyframes 🌈 {
-		from {
-			background-color: hsl(0, 100%, 98%);
-		}
-		10% {
-			background-color: hsl(90, 100%, 98%);
-		}
-		50% {
-			background-color: hsl(180, 100%, 98%);
-		}
-		75% {
-			background-color: hsl(270, 100%, 98%);
-		}
-		100% {
-			background-color: hsl(360, 100%, 98%);
-		}
-		}
-
-		/*.CodeMirror-linenumber {
-			font-family: 'Courgette';
-		}*/
 	</style>
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/lucario.min.css" />
+	<!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/paraiso-light.min.css" /> -->
+	<link rel="stylesheet" href="./light.css" />
+	<link rel="stylesheet" href="/customstyle.css" />
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/display/placeholder.min.js"></script>
 </head>
 
 <body>
@@ -283,16 +279,19 @@
 	</header>
 
 	<main>
-		<br>
-		<br>
-		<template id="celltemplate">
-			<cell>
-				<celloutput></celloutput>
-				<cellinput></cellinput>
-			</cell>
-		</template>
 		<notebook>
 		</notebook>
+		<template id="celltemplate">
+			<cell>
+				<clickshoulder></clickshoulder>
+				<trafficlight></trafficlight>
+				<button class="addcell before"><span>add +</span></button>
+				<button class="deletecell"><span>delete X</span></button>
+				<celloutput tabindex="1"></celloutput>
+				<cellinput></cellinput>
+				<button class="addcell after"><span>add +</span></button>
+			</cell>
+		</template>
 	</main>
 
 	<footer>
@@ -302,25 +301,20 @@
 	</footer>
 
 	<script>
-		document.addEventListener("DOMContentLoaded", function () {
+		document.addEventListener("DOMContentLoaded", () => {
+			notebookName = "test_notebook.jl"
+			document.querySelector("#printernametitle").innerText = "/" + notebookName;
 
-
-			var channelName = "UNKNOWN";
-			var givenUrl = new URL(document.location);
-			if (givenUrl.pathname.startsWith("/view")) {
-				document.location = "/view?" + givenUrl.pathname.substring(6)
+			function startDisconnectedBanner() {
+				document.querySelector("header").classList.add("disconnected")
+				setTimeout(() => {
+					ping(() => {
+						document.querySelector("header").classList.remove("disconnected")
+					}, startDisconnectedBanner)
+				}, 1000)
 			}
-			if (givenUrl.search == "") {
-				channelName = givenUrl.pathname.substring(1)
-			} else {
-				channelName = givenUrl.search.substring(1);
-			}
-			channelName = "test_notebook.jl"
-			document.querySelector("#printernametitle").innerText = "/" + channelName;
 
-
-
-			window.cells = {}
+			window.localCells = {}
 			window.codeMirrors = {}
 
 			function createCodeMirrorInsideCell(cellNode, code) {
@@ -334,52 +328,60 @@
 					lineNumberFormatter: function (i) {
 						return "⋅"
 					},
-					theme: "lucario",
+					// theme: "paraiso-light",
 					viewportMargin: Infinity,
+					placeholder: "Enter cell code...",
 				});
 
 				window.codeMirrors[cellNode.id] = editor
 				//editor.setOption("readOnly", true);
 
 				editor.setOption("extraKeys", {
-					"Ctrl-Enter": () => changeCell(cellNode.id)
+					"Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id)
 				});
 			}
 
-			function updateCellOutput(cellNode, mime, output) {
+			function updateLocalCellOutput(cellNode, mime, output, errormessage) {
 				console.log(mime)
-				if (mime == "text/html") {
-					// from https://stackoverflow.com/a/26716182
+				cellNode.classList.remove("running")
 
-					cellNode.querySelector("celloutput").innerHTML = output
+				if (errormessage) {
+					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
+					cellNode.querySelector("celloutput").querySelector("code").innerText = errormessage
+					cellNode.classList.add("error")
+				} else {
+					cellNode.classList.remove("error")
+					if (mime == "text/html") {
+						// from https://stackoverflow.com/a/26716182
 
-					// to execute all scripts in the html:
+						cellNode.querySelector("celloutput").innerHTML = output
 
-					try {
-						var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
-						for (var i = 0; i < scripts.length; i++) {
-							if (scripts[i].src != "") {
-								if(!Array.prototype.map.call(document.head.querySelectorAll("script"), s=>s.src).includes(scripts[i]))
-								{
-									var tag = document.createElement("script")
-									tag.src = scripts[i].src
-									document.head.appendChild(tag)
+						// to execute all scripts in the output html:
+						try {
+							var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
+							for (var i = 0; i < scripts.length; i++) {
+								if (scripts[i].src != "") {
+									if (!Array.prototype.map.call(document.head.querySelectorAll("script"), s => s.src).includes(scripts[i])) {
+										var tag = document.createElement("script")
+										tag.src = scripts[i].src
+										document.head.appendChild(tag)
+									}
+								}
+								else {
+									eval(scripts[i].innerHTML)
 								}
 							}
-							else {
-								eval(scripts[i].innerHTML)
-							}
+						} catch (err) {
+							console.log("Couldn't execute all scripts:")
+							console.log(err)
+							// TODO: relay to user
+							// might be wise to wait after adding scripts to head
+							//
 						}
-					} catch (err) {
-						console.log("Couldn't execute all scripts:")
-						console.log(err)
-						// TODO: relay to user
-						// might be wise to wait after adding scripts to head
-						//
+					} else {
+						cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
+						cellNode.querySelector("celloutput").querySelector("code").innerText = output
 					}
-				} else {
-					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
-					cellNode.querySelector("celloutput").querySelector("code").innerText = output
 				}
 			}
 
@@ -387,11 +389,20 @@
 			notebookNode = document.querySelector("notebook")
 			window.notebookNode = notebookNode
 
-			function createCell(newIndex, uuid, code) {
+			function indexOfLocalCell(cellNode) {
+				// .indexOf doesn't work on HTMLCollection
+				for (var i = 0; i < notebookNode.children.length; i++) {
+					if (notebookNode.children[i].id == cellNode.id) {
+						return i
+					}
+				}
+			}
+
+			function createLocalCell(newIndex, uuid, code) {
 				var newCellNode = cellTemplate.cloneNode(true)
 				newCellNode.id = uuid
 
-				window.cells[uuid] = newCellNode
+				window.localCells[uuid] = newCellNode
 
 
 				if (notebookNode.children.length == newIndex) {
@@ -403,36 +414,51 @@
 					notebookNode.appendChild(newCellNode)
 				}
 
+				// EVENT LISTENERS FOR CLICKY THINGS
+
+				newCellNode.querySelector("clickshoulder").onclick = (e) => {
+					e.target.parentElement.classList.toggle("code-folded")
+					// You may not fold code if the output is empty (it would be confusing)
+					if (!e.target.parentElement.querySelector("celloutput").innerHTML) {
+						e.target.parentElement.classList.remove("code-folded")
+					}
+				}
+
+
+				newCellNode.querySelector(".addcell.before").onclick = (e) => {
+					requestNewRemoteCell(indexOfLocalCell(e.target.parentElement))
+				}
+				newCellNode.querySelector(".addcell.after").onclick = (e) => {
+					requestNewRemoteCell(indexOfLocalCell(e.target.parentElement) + 1)
+				}
+				newCellNode.querySelector(".deletecell").onclick = (e) => {
+					console.log(e.target.parentElement)
+					console.log(e)
+					requestDeleteRemoteCell(e.target.parentElement.id)
+				}
+
 				createCodeMirrorInsideCell(newCellNode, code)
-				//updateCellOutput(newCellNode, mime, output)
+				//updateLocalCellOutput(newCellNode, mime, output, errormessage)
+				return newCellNode
 			}
 
-			function deleteCell(cellNode) {
+			function deleteLocalCell(cellNode) {
 				// TODO: event listeners? gc?
 				uuid = cellNode.id
 				try {
 					delete window.codeMirrors[uuid]
 				} catch (err) { }
 				try {
-					delete window.cells[uuid]
+					delete window.localCells[uuid]
 				} catch (err) { }
 
 				cellNode.remove()
 			}
 
-			function deleteAllCells() {
-				for (var uuid in window.cells) {
-					deleteCell(window.cells[uuid])
+			function deleteAllLocalCells() {
+				for (var uuid in window.localCells) {
+					deleteLocalCell(window.localCells[uuid])
 				}
-			}
-
-			if ("fonts" in document) {
-				document.fonts.ready.then(function () {
-					console.log("fonts loaded");
-					for (var uuid in window.codeMirrors) {
-						window.codeMirrors[uuid].refresh()
-					}
-				});
 			}
 
 			// This is kind of overkill
@@ -456,8 +482,6 @@
 					}
 				}).catch(onFailure)
 			}
-			ping(console.log, console.warn)
-
 
 			function reloadAllCells(onFailure, onSucces) {
 				ping(() => {
@@ -480,9 +504,10 @@
 
 						for (var cellIndex in remoteCells) {
 							remoteCell = remoteCells[cellIndex]
-							//createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.output)
-							// createCell(cellIndex, remoteCell.uuid, remoteCell.code, remoteCell.code)
-							createCell(cellIndex, remoteCell.uuid, remoteCell.code)
+							cellElement = createLocalCell(cellIndex, remoteCell.uuid, remoteCell.code)
+							// if ((remoteCell.mime && remoteCell.output) || remoteCell.errormessage) {
+							// 	updateLocalCellOutput(cellElement, remoteCell.mime, remoteCell.output, remoteCell.errormessage)
+							// }
 						}
 
 						onSucces()
@@ -490,18 +515,13 @@
 				}, console.warn)
 			}
 
-			function changeCell(uuid) {
+			function requestChangeRemoteCell(uuid) {
+				window.localCells[uuid].classList.add("running")
 				var onFailure = (response) => {
 					console.warn("Failed to update cell!")
 					console.log(response)
 
-					document.querySelector("header").classList.add("disconnected")
-
-					setTimeout(() => {
-						ping(() => {
-							document.querySelector("header").classList.remove("disconnected")
-						}, onFailure)
-					}, 1000)
+					startDisconnectedBanner()
 				}
 				newCode = window.codeMirrors[uuid].getValue()
 				fetch("/changecell", {
@@ -516,6 +536,8 @@
 				}).then((response) => {
 					if (response.status == 200) {
 						console.log("Cell updated.")
+						// TODO: 
+						//cellsthatwillbeupdate.foreach.classList.add("running")
 					} else {
 						onFailure(response)
 					}
@@ -552,7 +574,30 @@
 							// UPDATE RECEIVED
 							console.log("output deserialized")
 							console.log(update)
-							updateCellOutput(window.cells[update.uuid], update.mime, update.output)
+
+							var message = update.message
+
+							switch (update.type) {
+								case "update_output":
+									updateLocalCellOutput(window.localCells[message.uuid], message.mime, message.output, message.errormessage)
+									break
+								case "cell_added":
+									createLocalCell(message.index, message.uuid, "")
+									break
+								case "cell_deleted":
+									// TODO: catch exception
+									var toDelete = window.localCells[message.uuid]
+									deleteLocalCell(toDelete)
+									break
+								case "cell_moved":
+									// TODO: handle move!
+
+									break
+								default:
+									console.error("Received unknown update type!")
+									alert("Something went wrong 🙈\n Try refreshing the page")
+									break
+							}
 							//TODO: animation ✨
 
 							runUpdateLoop()
@@ -565,8 +610,66 @@
 				}).catch(onFailure)
 			}
 
+			function requestNewRemoteCell(newIndex) {
+				var onFailure = (response) => {
+					console.warn("Failed to request remote cell!")
+					console.log(response)
 
+					startDisconnectedBanner()
+				}
+				fetch("/addcell", {
+					method: 'POST',
+					cache: 'no-cache',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					body: JSON.stringify({ "index": newIndex }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell added.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+
+			function requestDeleteRemoteCell(uuid) {
+				var onFailure = (response) => {
+					console.warn("Failed to delete remote cell!")
+					console.log(response)
+
+					startDisconnectedBanner()
+				}
+				fetch("/deletecell", {
+					method: 'DELETE',
+					cache: 'no-cache',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					body: JSON.stringify({ "uuid": uuid }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell deleted.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+			ping(console.log, console.warn)
 			reloadAllCells(console.warn, runUpdateLoop)
+
+			if ("fonts" in document) {
+				document.fonts.ready.then(function () {
+					console.log("fonts loaded");
+					for (var uuid in window.codeMirrors) {
+						window.codeMirrors[uuid].refresh()
+					}
+				});
+			}
 
 			// TODO: reconnect with a delay if the last request went poorly
 			// this would avoid hanging UI when the connection is lost maybe?
@@ -580,8 +683,27 @@
 
 			window.reloadAllCells = reloadAllCells
 			window.ping = ping
-			//editor.on("change", window.preview);
 
+
+			//editor.on("change", window.preview);
+			window.fakeCells = () => {
+				var last;
+				last = createLocalCell(0, "0", "100*x + y")
+				updateLocalCellOutput(last, "text/plain", "100*x + y", "")
+				last = createLocalCell(1, "0", "x = 1 + 1")
+				updateLocalCellOutput(last, "text/plain", "x = 1 + 1", "")
+				last = createLocalCell(2, "0", "y = x * 2")
+				updateLocalCellOutput(last, "text/plain", "y = x * 2", "")
+				last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
+				updateLocalCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
+				last = createLocalCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
+				updateLocalCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
+
+			}
+
+			if (document.location.protocol == "file:") {
+				window.fakeCells()
+			}
 		});
 	</script>
 	<!--<script src="https://cdnjs.cloudflare.com/ajax/libs/dot/1.1.3/doT.min.js" integrity="sha256-0Mj4wysSsxKrjqVsgnOgOeRZbPreFi/T3+zb+cyR7Jw=" crossorigin="anonymous"></script>-->

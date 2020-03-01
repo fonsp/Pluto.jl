@@ -1,22 +1,21 @@
-module Depend
+module ExploreExpression
 export modified, referenced
 
-
-const modifiers = [:(=), :+=, :-=, :*=, :/=] # TODO: anything else?
-
+# from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
+const modifiers = [:(=), :(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
 
 # TODO: doesn't work for things like "x=1;y=2" yet
 "The symbols whose values are modified in the expression"
 function modified(ast::Expr)
     if ast.head in modifiers
-        if typeof(ast.args[1]) == Symbol # otherwise lambdas get treated as assignments too
+        if isa(ast.args[1], Symbol) # otherwise lambdas get treated as assignments too
             return [ast.args[1]]
         end
     end
     return []
 end
 
-modified(code::String) = modified(Meta.parse(code))
+modified(thing::Any) = []
 
 
 # TODO: doesn't ignore local scope variables
@@ -33,8 +32,6 @@ end
 
 referenced(symbol::Symbol) = Base.isidentifier(symbol) ? [symbol] : []
 referenced(sth::Any) = []
-
-referenced(code::String) = referenced(Meta.parse(code))
 
 
 end
