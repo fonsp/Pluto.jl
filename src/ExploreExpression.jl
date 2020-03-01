@@ -15,7 +15,6 @@ function modified(ast::Expr)
     return []
 end
 
-#modified(code::String) = modified(Meta.parse(code))
 modified(thing::Any) = []
 
 
@@ -33,9 +32,6 @@ end
 
 referenced(symbol::Symbol) = Base.isidentifier(symbol) ? [symbol] : []
 referenced(sth::Any) = []
-
-#referenced(code::String) = referenced(Meta.parse(code))
-# this seems wrong: code like :(a = "x = 1") actually has a string in the AST
 
 
 end

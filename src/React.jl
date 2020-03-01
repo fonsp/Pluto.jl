@@ -5,6 +5,8 @@ include("./ExploreExpression.jl")
 module ModuleManager
     workspace_count = 0
 
+    get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
+
     function make_workspace()
         # TODO: define `expr` directly, but it's more readable right now
         code = "module workspace$(workspace_count + 1) end"
@@ -14,7 +16,16 @@ module ModuleManager
     end
     make_workspace() # so that there's immediately something to work with
 
-    get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
+    function move_vars(from::Int, to::Int, delete::Array{Symbol, 1}=[])
+        # TODO
+        for symbol in names(from, all=true)
+            if symbol in delete
+                Core.eval(from, Meta.parse("$symbol = nothing"))
+            else
+                Core.eval(from, Meta.parse("$symbol = "))
+            end
+        end
+    end
 end
 
 
