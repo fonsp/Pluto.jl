@@ -17,10 +17,14 @@ const packagerootdir = normpath(joinpath(@__DIR__, ".."))
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 
 
-function cell_update(cell::Cell)
-    # TODO: Here we could do richer formatting
-    # See Julia IO docs for the full explanation
-    # MIME types and stuff!
+struct NotebookUpdateMessage
+    type::Symbol
+    message::Any
+end
+
+
+function notebookupdate_cell_output(cell::Cell)
+    # TODO: Here we could do even richer formatting
     # interactive Arrays!
     # use Weave.jl? that would be sw€€t
 
@@ -34,7 +38,36 @@ function cell_update(cell::Cell)
 
     payload = repr(mime, cell.output; context = iocontext)
 
-    return Dict(:uuid => string(cell.uuid), :mime => mime, :output => payload, :errormessage => cell.errormessage)
+    if cell.output === nothing
+        payload = ""
+    end
+    
+    return NotebookUpdateMessage(:update_output, 
+        Dict(:uuid => string(cell.uuid),
+             :mime => mime,
+             :output => payload,
+             :errormessage => cell.errormessage,
+            ))
+end
+
+function notebookupdate_cell_added(cell::Cell, new_index::Integer)
+    return NotebookUpdateMessage(:cell_added, 
+        Dict(:uuid => string(cell.uuid),
+             :index => new_index - 1, # 1-based index to 0-based index
+            ))
+end
+
+function notebookupdate_cell_deleted(cell::Cell)
+    return NotebookUpdateMessage(:cell_deleted, 
+        Dict(:uuid => string(cell.uuid),
+            ))
+end
+
+function notebookupdate_cell_moved(cell::Cell, new_index::Integer)
+    return NotebookUpdateMessage(:cell_moved, 
+        Dict(:uuid => string(cell.uuid),
+             :index => new_index - 1, # 1-based index to 0-based index
+            ))
 end
 
 
@@ -76,7 +109,7 @@ prints(x) = RawDisplayString(repr("text/plain", x; context = iocontext))
 
 
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
-function serve(;port::Int64 = 8000, launchbrowser = false)
+function serve_notebook(port::Int64 = 8000, launchbrowser = false)
     # We use `Pages.jl` to serve the API
     # docs are straightforward
     # Eventually we might want to switch to pure `HTTP.jl` but it looked difficult :(    
@@ -86,7 +119,7 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     # index.html also contains the CSS and JS
 
     function assetserver(assetname)
-        return request::HTTP.Request -> read(joinpath(packagerootdir, "assets", assetname), String)
+        return request::HTTP.Request->read(joinpath(packagerootdir, "assets", assetname), String)
     end
     Endpoint(assetserver("editor.html"), "/index.html", GET)
     Endpoint(assetserver("editor.html"), "/index", GET)
@@ -95,7 +128,7 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     Endpoint(assetserver("light.css"), "/customstyle.css", GET)
 
     Endpoint("/ping", GET) do request::HTTP.Request
-        JSON.json("OK!")
+        HTTP.Response(200, JSON.json("OK!"))
     end
 
     notebook::Notebook = samplenotebook()
@@ -113,43 +146,13 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     # DYNAMIC: Input from user
     # TODO: actions on the notebook are not thread safe
 
-    Endpoint("/addcell", POST) do request::HTTP.Request
-        println(request)
-
-        # TODO: NOT IMPLEMENTED
-        
-        JSON.json("OK!")
-    end
-
-    Endpoint("/deletecell", DELETE) do request::HTTP.Request
-        println(request)
-
-        # TODO: NOT IMPLEMENTED
-
-        JSON.json("OK!")
-    end
-
-    Endpoint("/movecell", PUT) do request::HTTP.Request
-        println(request)
-
-        # TODO: NOT IMPLEMENTED
-
-        JSON.json("OK!")
-    end
-
-    Endpoint("/changecell", PUT) do request::HTTP.Request
-        # println(request)
-
+    function handleChangeCell(uuid, newcode)
         # i.e. Ctrl+Enter was pressed on this cell
         # we update our `Notebook` and start execution
 
-        bodyobject = JSON.parse(String(request.body))
-        uuid = UUID(bodyobject["uuid"])
-        newcode = bodyobject["code"]
-
         cell = selectcell_byuuid(notebook, uuid)
         if cell === nothing
-            return HTTP.Response(404, JSON.json("Cell not found!"))
+            return false
         end
         # don't reparse when code is identical (?)
         if cell.code != newcode
@@ -159,11 +162,66 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
 
         to_update = run_cell(notebook, cell)
         for cell in to_update
-            put!(pendingclientupdates, cell_update(cell))
+            put!(pendingclientupdates, notebookupdate_cell_output(cell))
         end
         
-        # TODO: try catch around evaluation? evaluation async?
-        JSON.json("OK!")
+        # TODO: evaluation async
+        return true
+    end
+
+    Endpoint("/addcell", POST) do request::HTTP.Request
+        bodyobject = JSON.parse(String(request.body))
+        display(bodyobject)
+        new_index = bodyobject["index"] + 1 # 0-based index to 1-based index
+
+        new_cell = createcell_fromcode("")
+
+        insert!(notebook.cells, new_index, new_cell)
+
+        put!(pendingclientupdates, notebookupdate_cell_added(new_cell, new_index))
+        
+        HTTP.Response(200, JSON.json("OK!"))
+    end
+
+    Endpoint("/deletecell", DELETE) do request::HTTP.Request
+        bodyobject = JSON.parse(String(request.body))
+        uuid = UUID(bodyobject["uuid"])
+
+        # Before deleting the cell, we change its code to the empty string and run it
+        # This will delete any definitions of that cell
+        changecell_succes = handleChangeCell(uuid, "")
+        if !changecell_succes
+            HTTP.Response(404, JSON.json("Cell not found!"))
+        end
+
+        to_delete = selectcell_byuuid(notebook, uuid)
+        
+        filter!(cell->cell.uuid ≠ uuid, notebook.cells)
+
+        put!(pendingclientupdates, notebookupdate_cell_deleted(to_delete))
+
+        HTTP.Response(200, JSON.json("OK!"))
+    end
+
+    Endpoint("/movecell", PUT) do request::HTTP.Request
+        println(request)
+
+        # TODO: NOT IMPLEMENTED
+
+        HTTP.Response(200, JSON.json("OK!"))
+    end
+
+    Endpoint("/changecell", PUT) do request::HTTP.Request
+        bodyobject = JSON.parse(String(request.body))
+        uuid = UUID(bodyobject["uuid"])
+        newcode = bodyobject["code"]
+
+        success = handleChangeCell(uuid, newcode)
+        if success
+            HTTP.Response(200, JSON.json("OK!"))
+        else
+            HTTP.Response(404, JSON.json("Cell not found!"))
+        end
     end
 
     
@@ -222,8 +280,10 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
     end
 
     Endpoint("/getallcells", GET) do request::HTTP.Request
+        # TOOD: when reloading, the old client will get the first update
+        # to solve this, it might be better to move this for loop to the client:
         for cell in notebook.cells
-            put!(pendingclientupdates, cell_update(cell))
+            put!(pendingclientupdates, notebookupdate_cell_output(cell))
         end
         JSON.json(serialize.(notebook.cells))
     end
@@ -235,7 +295,5 @@ function serve(;port::Int64 = 8000, launchbrowser = false)
 
     Pages.start(port)
 end
-
-serve(p = 8000) = serve(;port = p)
 
 end

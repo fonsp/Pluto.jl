@@ -93,21 +93,24 @@ code {
 }
 
 cell > button {
-    width: 100%;
-    margin: 0px !important;
+    margin: 0px;
     border: none;
     background: none;
     cursor: pointer;
-    margin: 4px;
     color: hsl(204, 86%, 35%);
-    font-style: italic;
     font-family: 'Roboto Mono', monospace;
-    height:20px;
     position: absolute;
+}
+cell > button.addcell {
+    width: 100%;
+    font-style: italic;
+    height:20px;
     left: 0px;
-    /* right: 0px; */
 }
 
+cell > button.deletecell {
+    right: 0px;
+}
 @media (any-pointer: fine), (any-pointer: caorse){
     cell > button {
         opacity: 0%;
@@ -122,7 +125,7 @@ cell > button:hover{
     opacity: 100%;
 }
 
-cell > button.addcellbefore {
+cell > button.addcell.before {
     margin-top: -20px !important;
 }
 
@@ -223,3 +226,5 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 .cm-s-default .CodeMirror-activeline-background { background: #CFD1C4; }
 .cm-s-default .CodeMirror-matchingbracket { text-decoration: underline; color: white !important; }
+
+.cm-s-default.CodeMirror-empty { color: rgba(0,0,0,.2); font-style: italic;}

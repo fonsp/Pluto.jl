@@ -16,7 +16,7 @@ module ModuleManager
     end
     make_workspace() # so that there's immediately something to work with
 
-    function move_vars(from::Int, to::Int, delete::Array{Symbol, 1}=[])
+    function move_vars(from::Integer, to::Integer, delete::Array{Symbol, 1}=[])
         # TODO
         for symbol in names(from, all=true)
             if symbol in delete

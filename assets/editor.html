@@ -184,20 +184,16 @@
 			min-height: 0px;
 		}
 
-		cell>button.addcellbefore {
-			/* display: none; */
-		}
-
-		cell:first-of-type>button.addcellbefore {
-			/* display: inline-block; */
+		.CodeMirror-empty {
+			color:rgba(0, 0, 0, .15);
 		}
 
 		cell.code-folded>cellinput {
 			display: none;
 		}
 
-
 		trafficlight {
+			pointer-events: none;
 			width: 4px;
 			position: absolute;
 			left: -4px;
@@ -220,9 +216,6 @@
 			background: red;
 		}
 
-
-		element.style {}
-
 		clickshoulder {
 			position: absolute;
 			top: 0px;
@@ -234,6 +227,10 @@
 
 		clickshoulder:hover {
 			background: rgba(0, 0, 0, .05);
+		}
+
+		cell > button > span {
+			pointer-events: none;
 		}
 
 		footer {
@@ -264,6 +261,7 @@
 
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/display/placeholder.min.js"></script>
 </head>
 
 <body>
@@ -277,20 +275,19 @@
 	</header>
 
 	<main>
-		<br>
-		<br>
+		<notebook>
+		</notebook>
 		<template id="celltemplate">
 			<cell>
 				<clickshoulder></clickshoulder>
 				<trafficlight></trafficlight>
-				<button class="addcellbefore"><span>add cell +</span></button>
+				<button class="addcell before"><span>add +</span></button>
+				<button class="deletecell"><span>delete X</span></button>
 				<celloutput tabindex="1"></celloutput>
 				<cellinput></cellinput>
-				<button class="addcellafter"><span>add cell +</span></button>
+				<button class="addcell after"><span>add +</span></button>
 			</cell>
 		</template>
-		<notebook>
-		</notebook>
 	</main>
 
 	<footer>
@@ -300,25 +297,20 @@
 	</footer>
 
 	<script>
-		document.addEventListener("DOMContentLoaded", function () {
+		document.addEventListener("DOMContentLoaded", () => {
+			notebookName = "test_notebook.jl"
+			document.querySelector("#printernametitle").innerText = "/" + notebookName;
 
-
-			var channelName = "UNKNOWN";
-			var givenUrl = new URL(document.location);
-			if (givenUrl.pathname.startsWith("/view")) {
-				document.location = "/view?" + givenUrl.pathname.substring(6)
+			function startDisconnectedBanner() {
+				document.querySelector("header").classList.add("disconnected")
+				setTimeout(() => {
+					ping(() => {
+						document.querySelector("header").classList.remove("disconnected")
+					}, startDisconnectedBanner)
+				}, 1000)
 			}
-			if (givenUrl.search == "") {
-				channelName = givenUrl.pathname.substring(1)
-			} else {
-				channelName = givenUrl.search.substring(1);
-			}
-			channelName = "test_notebook.jl"
-			document.querySelector("#printernametitle").innerText = "/" + channelName;
 
-
-
-			window.cells = {}
+			window.localCells = {}
 			window.codeMirrors = {}
 
 			function createCodeMirrorInsideCell(cellNode, code) {
@@ -334,17 +326,18 @@
 					},
 					// theme: "paraiso-light",
 					viewportMargin: Infinity,
+					placeholder: "Enter cell code...",
 				});
 
 				window.codeMirrors[cellNode.id] = editor
 				//editor.setOption("readOnly", true);
 
 				editor.setOption("extraKeys", {
-					"Ctrl-Enter": () => changeCell(cellNode.id)
+					"Ctrl-Enter": () => changeRemoteCell(cellNode.id)
 				});
 			}
 
-			function updateCellOutput(cellNode, mime, output, errormessage) {
+			function updateLocalCellOutput(cellNode, mime, output, errormessage) {
 				console.log(mime)
 				if (errormessage) {
 					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
@@ -390,11 +383,20 @@
 			notebookNode = document.querySelector("notebook")
 			window.notebookNode = notebookNode
 
-			function createCell(newIndex, uuid, code) {
+			function indexOfLocalCell(cellNode) {
+				// .indexOf doesn't work on HTMLCollection
+				for (var i = 0; i < notebookNode.children.length; i++) {
+					if (notebookNode.children[i].id == cellNode.id) {
+						return i
+					}
+				}
+			}
+
+			function createLocalCell(newIndex, uuid, code) {
 				var newCellNode = cellTemplate.cloneNode(true)
 				newCellNode.id = uuid
 
-				window.cells[uuid] = newCellNode
+				window.localCells[uuid] = newCellNode
 
 
 				if (notebookNode.children.length == newIndex) {
@@ -406,6 +408,8 @@
 					notebookNode.appendChild(newCellNode)
 				}
 
+				// EVENT LISTENERS FOR CLICKY THINGS
+
 				newCellNode.querySelector("clickshoulder").onclick = (e) => {
 					e.target.parentElement.classList.toggle("code-folded")
 					// You may not fold code if the output is empty (it would be confusing)
@@ -414,37 +418,41 @@
 					}
 				}
 
+
+				newCellNode.querySelector(".addcell.before").onclick = (e) => {
+					requestNewRemoteCell(indexOfLocalCell(e.target.parentElement))
+				}
+				newCellNode.querySelector(".addcell.after").onclick = (e) => {
+					requestNewRemoteCell(indexOfLocalCell(e.target.parentElement) + 1)
+				}
+				newCellNode.querySelector(".deletecell").onclick = (e) => {
+					console.log(e.target.parentElement)
+					console.log(e)
+					requestDeleteRemoteCell(e.target.parentElement.id)
+				}
+
 				createCodeMirrorInsideCell(newCellNode, code)
-				//updateCellOutput(newCellNode, mime, output, errormessage)
+				//updateLocalCellOutput(newCellNode, mime, output, errormessage)
 				return newCellNode
 			}
 
-			function deleteCell(cellNode) {
+			function deleteLocalCell(cellNode) {
 				// TODO: event listeners? gc?
 				uuid = cellNode.id
 				try {
 					delete window.codeMirrors[uuid]
 				} catch (err) { }
 				try {
-					delete window.cells[uuid]
+					delete window.localCells[uuid]
 				} catch (err) { }
 
 				cellNode.remove()
 			}
 
-			function deleteAllCells() {
-				for (var uuid in window.cells) {
-					deleteCell(window.cells[uuid])
+			function deleteAllLocalCells() {
+				for (var uuid in window.localCells) {
+					deleteLocalCell(window.localCells[uuid])
 				}
-			}
-
-			if ("fonts" in document) {
-				document.fonts.ready.then(function () {
-					console.log("fonts loaded");
-					for (var uuid in window.codeMirrors) {
-						window.codeMirrors[uuid].refresh()
-					}
-				});
 			}
 
 			// This is kind of overkill
@@ -468,8 +476,6 @@
 					}
 				}).catch(onFailure)
 			}
-			ping(console.log, console.warn)
-
 
 			function reloadAllCells(onFailure, onSucces) {
 				ping(() => {
@@ -492,9 +498,9 @@
 
 						for (var cellIndex in remoteCells) {
 							remoteCell = remoteCells[cellIndex]
-							cellElement = createCell(cellIndex, remoteCell.uuid, remoteCell.code)
+							cellElement = createLocalCell(cellIndex, remoteCell.uuid, remoteCell.code)
 							// if ((remoteCell.mime && remoteCell.output) || remoteCell.errormessage) {
-							// 	updateCellOutput(cellElement, remoteCell.mime, remoteCell.output, remoteCell.errormessage)
+							// 	updateLocalCellOutput(cellElement, remoteCell.mime, remoteCell.output, remoteCell.errormessage)
 							// }
 						}
 
@@ -503,18 +509,12 @@
 				}, console.warn)
 			}
 
-			function changeCell(uuid) {
+			function changeRemoteCell(uuid) {
 				var onFailure = (response) => {
 					console.warn("Failed to update cell!")
 					console.log(response)
 
-					document.querySelector("header").classList.add("disconnected")
-
-					setTimeout(() => {
-						ping(() => {
-							document.querySelector("header").classList.remove("disconnected")
-						}, onFailure)
-					}, 1000)
+					startDisconnectedBanner()
 				}
 				newCode = window.codeMirrors[uuid].getValue()
 				fetch("/changecell", {
@@ -565,7 +565,30 @@
 							// UPDATE RECEIVED
 							console.log("output deserialized")
 							console.log(update)
-							updateCellOutput(window.cells[update.uuid], update.mime, update.output, update.errormessage)
+
+							var message = update.message
+
+							switch (update.type) {
+								case "update_output":
+									updateLocalCellOutput(window.localCells[message.uuid], message.mime, message.output, message.errormessage)
+									break
+								case "cell_added":
+									createLocalCell(message.index, message.uuid, "")
+									break
+								case "cell_deleted":
+									// TODO: catch exception
+									var toDelete = window.localCells[message.uuid]
+									deleteLocalCell(toDelete)
+									break
+								case "cell_moved":
+									// TODO: handle move!
+
+									break
+								default:
+									console.error("Received unknown update type!")
+									alert("Something went wrong 🙈\n Try refreshing the page")
+									break
+							}
 							//TODO: animation ✨
 
 							runUpdateLoop()
@@ -578,8 +601,66 @@
 				}).catch(onFailure)
 			}
 
+			function requestNewRemoteCell(newIndex) {
+				var onFailure = (response) => {
+					console.warn("Failed to request remote cell!")
+					console.log(response)
 
+					startDisconnectedBanner()
+				}
+				fetch("/addcell", {
+					method: 'POST',
+					cache: 'no-cache',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					body: JSON.stringify({ "index": newIndex }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell added.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+
+			function requestDeleteRemoteCell(uuid) {
+				var onFailure = (response) => {
+					console.warn("Failed to delete remote cell!")
+					console.log(response)
+
+					startDisconnectedBanner()
+				}
+				fetch("/deletecell", {
+					method: 'DELETE',
+					cache: 'no-cache',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					body: JSON.stringify({ "uuid": uuid }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell deleted.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+			ping(console.log, console.warn)
 			reloadAllCells(console.warn, runUpdateLoop)
+
+			if ("fonts" in document) {
+				document.fonts.ready.then(function () {
+					console.log("fonts loaded");
+					for (var uuid in window.codeMirrors) {
+						window.codeMirrors[uuid].refresh()
+					}
+				});
+			}
 
 			// TODO: reconnect with a delay if the last request went poorly
 			// this would avoid hanging UI when the connection is lost maybe?
@@ -598,16 +679,16 @@
 			//editor.on("change", window.preview);
 			window.fakeCells = () => {
 				var last;
-				last = createCell(0, "0", "100*x + y")
-				updateCellOutput(last, "text/plain", "100*x + y", "")
-				last = createCell(1, "0", "x = 1 + 1")
-				updateCellOutput(last, "text/plain", "x = 1 + 1", "")
-				last = createCell(2, "0", "y = x * 2")
-				updateCellOutput(last, "text/plain", "y = x * 2", "")
-				last = createCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
-				updateCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
-				last = createCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
-				updateCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
+				last = createLocalCell(0, "0", "100*x + y")
+				updateLocalCellOutput(last, "text/plain", "100*x + y", "")
+				last = createLocalCell(1, "0", "x = 1 + 1")
+				updateLocalCellOutput(last, "text/plain", "x = 1 + 1", "")
+				last = createLocalCell(2, "0", "y = x * 2")
+				updateLocalCellOutput(last, "text/plain", "y = x * 2", "")
+				last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
+				updateLocalCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
+				last = createLocalCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
+				updateLocalCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
 
 			}
 
