@@ -41,7 +41,7 @@ function notebookupdate_cell_output(cell::Cell)
     if cell.output === nothing
         payload = ""
     end
-    
+
     return NotebookUpdateMessage(:update_output, 
         Dict(:uuid => string(cell.uuid),
              :mime => mime,
@@ -160,6 +160,8 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
             cell.parsedcode = nothing
         end
 
+        # TODO: this should be done async, so that the HTTP server can return a list of dependent cells immediately.
+        # we could pass `pendingclientupdates` to `run_cell`, and handle cell updates there
         to_update = run_cell(notebook, cell)
         for cell in to_update
             put!(pendingclientupdates, notebookupdate_cell_output(cell))

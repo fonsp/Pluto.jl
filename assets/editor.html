@@ -185,7 +185,7 @@
 		}
 
 		.CodeMirror-empty {
-			color:rgba(0, 0, 0, .15);
+			color: rgba(0, 0, 0, .15);
 		}
 
 		cell.code-folded>cellinput {
@@ -201,7 +201,11 @@
 			bottom: 0px;
 		}
 
-		/* In order of severity: */
+		/* In ascending order of severity: */
+
+		cell.running>trafficlight {
+			background: yellow;
+		}
 
 		cell.dependent>trafficlight {
 			background: lightblue;
@@ -229,7 +233,7 @@
 			background: rgba(0, 0, 0, .05);
 		}
 
-		cell > button > span {
+		cell>button>span {
 			pointer-events: none;
 		}
 
@@ -333,12 +337,14 @@
 				//editor.setOption("readOnly", true);
 
 				editor.setOption("extraKeys", {
-					"Ctrl-Enter": () => changeRemoteCell(cellNode.id)
+					"Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id)
 				});
 			}
 
 			function updateLocalCellOutput(cellNode, mime, output, errormessage) {
 				console.log(mime)
+				cellNode.classList.remove("running")
+
 				if (errormessage) {
 					cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
 					cellNode.querySelector("celloutput").querySelector("code").innerText = errormessage
@@ -509,7 +515,8 @@
 				}, console.warn)
 			}
 
-			function changeRemoteCell(uuid) {
+			function requestChangeRemoteCell(uuid) {
+				window.localCells[uuid].classList.add("running")
 				var onFailure = (response) => {
 					console.warn("Failed to update cell!")
 					console.log(response)
@@ -529,6 +536,8 @@
 				}).then((response) => {
 					if (response.status == 200) {
 						console.log("Cell updated.")
+						// TODO: 
+						//cellsthatwillbeupdate.foreach.classList.add("running")
 					} else {
 						onFailure(response)
 					}

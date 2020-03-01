@@ -114,6 +114,8 @@ cell > button.deletecell {
 @media (any-pointer: fine), (any-pointer: caorse){
     cell > button {
         opacity: 0%;
+        /* to make it feel smooth: */
+        transition: opacity .25s ease-in-out;
     }
 }
 
@@ -123,6 +125,8 @@ cell:hover > button {
 
 cell > button:hover{
     opacity: 100%;
+    /* to make it feel snappy: */
+    transition: opacity .05s ease-in-out;
 }
 
 cell > button.addcell.before {
@@ -136,10 +140,34 @@ cell > button > span {
 trafficlight {
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
+    transition: background .15s ease-in-out;
 }
 
 cell:hover > trafficlight {
     background: rgba(0,0,0,.1);
+    transition: background .05s ease-in-out;
+
+}
+
+cell.running > trafficlight {
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(20, 20%, 80%, 1),
+        hsla(20, 20%, 80%, 1) 8px,
+        hsla(20, 20%, 80%, .1) 8px,
+        hsla(20, 20%, 80%, .1) 16px
+      );
+    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 2s linear 0s infinite running scrollbackground;
+}
+
+@keyframes scrollbackground {
+    0%{
+        background-position-y: 0px;
+    }
+    100%{
+        background-position-y: 22.62741699797px; /* 16 * sqrt(2) */
+    }
 }
 
 cell.dependent > trafficlight {
