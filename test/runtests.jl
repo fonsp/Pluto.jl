@@ -2,8 +2,24 @@ using Test
 using Pluto
 import Pluto.ExploreExpression: SymbolsState, compute_symbolreferences
 
+verbose = true
 
-testee(expr, ref, def) = compute_symbolreferences(expr) == SymbolsState(Set(ref), Set(def))
+function testee(expr, ref, def)
+    expected = SymbolsState(Set(ref), Set(def))
+    result = compute_symbolreferences(expr)
+    if verbose && expected != result
+        println()
+        println("FAILED TEST")
+        println(expr)
+        println()
+        dump(expr)
+        println()
+        @show expected
+        @show result
+        println()
+    end
+    return expected == result
+end
 
 @testset "Explore Expression" begin
 @testset "Basics" begin
@@ -22,7 +38,13 @@ end
     @test testee(:(f = x->x * y), [:y, :*], [:f])
     @test testee(:(function g() r = 2; r end), [], [:g])
     @test testee(:(function f(x, y=1; r, s=3+3) r+s+x * y * z end), [:z, :+, :*], [:f])
-    @test testee(:(function f(x, y=a; r, s=b) r+s+x * y * z end), [:z, :a, :b, :+, :*], [:f])
+    @test testee(:(function f(x, y=a; r, s=b) r+s+x * y * z end), [:z, :+, :*], [:f])
     @test testee(:(function f(x) x * y * z end), [:y, :z, :*], [:f])
+end
+@testset "Global exposure" begin
+    @test testee(:(let global k = 3; 123 end), [], [:k])
+    @test testee(:(let global k; k = 2123 end), [], [:k])
+    @test testee(:(function f(x) global k = x end), [:f], [:k])
+    # @test testee(:(), [], [])
 end
 end
