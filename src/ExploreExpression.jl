@@ -1,5 +1,5 @@
 module ExploreExpression
-export modified, referenced, SymbolsState
+export compute_symbolreferences
 
 import Base: union, ==
 
@@ -10,8 +10,8 @@ const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<
 
 "SymbolsState trickels _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root"
 mutable struct SymbolsState
-    foundrefs::Set{Symbol}
-    founddefs::Set{Symbol}
+    references::Set{Symbol}
+    assignments::Set{Symbol}
 end
 
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints"
@@ -22,7 +22,7 @@ mutable struct ScopeState
 end
 
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.foundrefs ∪ b.foundrefs, a.founddefs ∪ b.founddefs)
+    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments)
 end
 
 function union(a::ScopeState, b::ScopeState)
@@ -30,7 +30,7 @@ function union(a::ScopeState, b::ScopeState)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    return a.foundrefs == b.foundrefs && a.founddefs == b.founddefs
+    return a.references == b.references && a.assignments == b.assignments
 end
 
 # We handle a list of function arguments separately.
@@ -116,7 +116,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         symstate = symstate ∪ innersymstate
 
         if assigning_global
-            symstate.founddefs = union(symstate.founddefs, [assignee])
+            symstate.assignments = union(symstate.assignments, [assignee])
         end
 
         return symstate, scstate
@@ -154,7 +154,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         end
         
         if assigning_global
-            symstate.founddefs = union(symstate.founddefs, [assignee])
+            symstate.assignments = union(symstate.assignments, [assignee])
         end
 
         return symstate, scstate
@@ -179,39 +179,5 @@ end
 function compute_symbolreferences(ex)
     explore(ex, SymbolsState(Set{Symbol}(), Set{Symbol}()), ScopeState(true, Set{Symbol}(), Set{Symbol}()))[1]
 end
-
-
-# OLD
-
-
-# TODO: doesn't work for things like "x=1;y=2" yet
-"The symbols whose values are modified in the expression"
-function modified(ast::Expr)
-    if ast.head in modifiers || ast.head == :(=)
-        if isa(ast.args[1], Symbol) # otherwise lambdas get treated as assignments too
-            return [ast.args[1]]
-        end
-    end
-    return []
-end
-
-modified(thing::Any) = []
-
-
-# TODO: doesn't ignore local scope variables
-"The symbols whose values are read in the expression"
-function referenced(ast::Expr)
-    used_args = []
-    if ast.head in modifiers || ast.head == :(=) # only right-hand side matters
-        used_args = ast.args[2:end]
-    else
-        used_args = ast.args[1:end]
-    end
-    return vcat([referenced(arg) for arg in used_args]...)
-end
-
-referenced(symbol::Symbol) = Base.isidentifier(symbol) ? [symbol] : []
-referenced(sth::Any) = []
-
 
 end

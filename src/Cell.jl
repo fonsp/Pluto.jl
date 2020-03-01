@@ -9,8 +9,8 @@ mutable struct Cell
     parsedcode::Any
     output::Any
     errormessage::Any
-    modified_symbols::Array{Symbol, 1}
-    referenced_symbols::Array{Symbol, 1}
+    modified_symbols::Set{Symbol}
+    referenced_symbols::Set{Symbol}
 end
 
 "Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
@@ -18,4 +18,4 @@ function serialize(cell::Cell)
     Dict(:uuid => string(cell.uuid), :code => cell.code)# , :output => cell.output)
 end
 
-createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, [], [])
+createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}())

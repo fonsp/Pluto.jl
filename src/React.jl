@@ -35,8 +35,8 @@ function run_cell(notebook::Notebook, cell::Cell)
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
 
-    modified = ExploreExpression.modified(cell.parsedcode)
-    referenced = ExploreExpression.referenced(cell.parsedcode)
+    symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
+    referenced, modified = symstate.references, symstate.assignments
 
     # TODO: assert that cell doesn't modify variables which are modified by other cells
     # TODO: remove all variables that the cell used to modify
@@ -89,7 +89,7 @@ end
 
 
 "Return cells that reference any of the given symbols - does *not* recurse"
-function referencing_cells(notebook::Notebook, symbols::Array{Symbol, 1})
+function referencing_cells(notebook::Notebook, symbols::Set{Symbol})
     return filter(notebook.cells) do cell
         return any(s in symbols for s in cell.referenced_symbols)
     end
