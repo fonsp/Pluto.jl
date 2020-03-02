@@ -50,23 +50,30 @@ function run_reactive(notebook::Notebook, cell::Cell)
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
 
-    old_modified = cell.modified_symbols
-    old_dependent, _ = dependent_cells(notebook, cell)
-
     symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
+    all_modified = union(cell.modified_symbols, symstate.assignments)
     cell.referenced_symbols = symstate.references
     cell.modified_symbols = symstate.assignments
 
-    # TODO: assert that cell doesn't modify variables which are modified by other cells
+    modifiers = where_modified(notebook, all_modified)
+    remodified = length(modifiers) > 1 ? modifiers : []
 
-    new_dependent, cyclic = dependent_cells(notebook, cell)
-    will_update = union(old_dependent, new_dependent)
+    dependency_info = dependent_cells.([notebook], union(modifiers, [cell]))
+    will_update = union([d[1] for d in dependency_info]...)
+    cyclic = union([d[2] for d in dependency_info]...)
 
-    union(old_modified, [c.modified_symbols for c in will_update]...) |>
+    union([c.modified_symbols for c in will_update]...) |>
     ModuleManager.delete_vars
 
-    run_single.(setdiff(will_update, cyclic))
-    show_error.(cyclic, "Cyclic reference")
+    for to_run in will_update
+        if to_run in remodified
+            show_error(to_run, "Multiple cells modify the same variable")
+        elseif to_run in cyclic
+            show_error(to_run, "Cyclic reference")
+        else
+            run_single(to_run)
+        end
+    end
 
     return will_update
 end
@@ -104,7 +111,7 @@ function dependent_cells(notebook::Notebook, root::Cell)
         end
 
         push!(entries, cell)
-        dfs.(directly_dependent_cells(notebook, cell.modified_symbols))
+        dfs.(where_referenced(notebook, cell.modified_symbols))
         push!(exits, cell)
     end
 
@@ -114,8 +121,16 @@ end
 
 
 "Return cells that reference any of the given symbols - does *not* recurse"
-function directly_dependent_cells(notebook::Notebook, symbols::Set{Symbol})
+function where_referenced(notebook::Notebook, symbols::Set{Symbol})
     return filter(notebook.cells) do cell
         return any(s in symbols for s in cell.referenced_symbols)
+    end
+end
+
+
+"Return cells that modify any of the given symbols"
+function where_modified(notebook::Notebook, symbols::Set{Symbol})
+    return filter(notebook.cells) do cell
+        return any(s in symbols for s in cell.modified_symbols)
     end
 end
