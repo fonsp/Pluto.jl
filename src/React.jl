@@ -105,7 +105,8 @@ function dependent_cells(notebook::Notebook, root::Cell)
         if cell in exits
             return
         elseif cell in entries
-            detected_cycle = entries[findfirst(entries .== [cell]):end]
+            currently_entered = setdiff(entries, exits)
+            detected_cycle = currently_entered[findfirst(currently_entered .== [cell]):end]
             cyclic = union(cyclic, detected_cycle)
             return
         end
