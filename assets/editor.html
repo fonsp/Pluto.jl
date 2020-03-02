@@ -283,7 +283,7 @@
 		</notebook>
 		<template id="celltemplate">
 			<cell>
-				<clickshoulder></clickshoulder>
+				<clickshoulder draggable="true"></clickshoulder>
 				<trafficlight></trafficlight>
 				<button class="addcell before"><span>add +</span></button>
 				<button class="deletecell"><span>delete X</span></button>
@@ -339,6 +339,8 @@
 				editor.setOption("extraKeys", {
 					"Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id)
 				});
+
+				return editor
 			}
 
 			function updateLocalCellOutput(cellNode, mime, output, errormessage) {
@@ -437,7 +439,8 @@
 					requestDeleteRemoteCell(e.target.parentElement.id)
 				}
 
-				createCodeMirrorInsideCell(newCellNode, code)
+				editor = createCodeMirrorInsideCell(newCellNode, code)
+				editor.focus()
 				//updateLocalCellOutput(newCellNode, mime, output, errormessage)
 				return newCellNode
 			}
@@ -678,7 +681,24 @@
 			// TODO: check cell order every now and then?
 			// or do ___maths___ to make sure that it never gets messed up
 
+			document.ondragover = (e) =>{
+				e.preventDefault();
+			}
 
+			document.ondrop = console.log
+			document.ondrag = (e) => {}
+			document.ondragstart = console.log
+			document.ondragenter = (e) => {
+				var dropcell = null
+				for(var i = 0; i < e.path.length; i++)
+				{
+					var current = e.path[i]
+					if(current.tagName == "CELL"){
+						dropcell = current
+						break
+					}
+				}
+			}
 
 
 			window.reloadAllCells = reloadAllCells

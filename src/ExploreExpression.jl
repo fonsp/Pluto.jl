@@ -1,11 +1,10 @@
 module ExploreExpression
-export compute_symbolreferences
+export compute_symbolreferences, SymbolsState
 
 import Base: union, ==
 
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
 const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
-
 
 
 "SymbolsState trickels _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root"
@@ -106,9 +105,17 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
             # x = 123
             [ex.args[1]]
         elseif isa(ex.args[1], Expr)
-            # (x, y) = (1, 23)
-            @assert ex.args[1].head == :tuple
-            ex.args[1].args
+            if ex.args[1].head == :tuple
+                # (x, y) = (1, 23)
+                ex.args[1].args
+            elseif ex.args[1].head == :ref
+                # TODO: what is the desired behaviour here?
+                # right now, it registers no reference, and no assignment
+                []
+            elseif ex.args[1].head == :(.)
+                # TODO: what is the desired behaviour here?
+                []
+            end
         end
         val = ex.args[2]
 
@@ -260,7 +267,6 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
             return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames)), scstate
         end
         return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
-
     else
         # fallback, includes:
         # begin, block, 

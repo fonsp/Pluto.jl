@@ -29,6 +29,11 @@ end
     @test testee(:(x = 1 + y), [:+, :y], [:x])
     @test testee(:(x = let r = 1; r + r end), [:+], [:x])
     @test testee(:(begin let r = 1; r + r end; r = 2 end), [:+], [:r])
+    @test testee(:(1:3), [:(:)], [])
+    @test testee(:(a[1:3,4]), [:a, :(:)], [])
+    @test testee(:(a[1:3,4] = b[5]), [:b], [])
+    @test testee(:(a.property), [:a], [])
+    @test testee(:(a.property = 1), [], [])
 end
 @testset "Multiple expressions" begin
     @test testee(:(a, b = 1, 2), [], [:a, :b])
