@@ -53,7 +53,7 @@ end
 function notebookupdate_cell_added(cell::Cell, new_index::Integer)
     return NotebookUpdateMessage(:cell_added, 
         Dict(:uuid => string(cell.uuid),
-             :index => new_index - 1, # 1-based index to 0-based index
+             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
             ))
 end
 
@@ -66,7 +66,7 @@ end
 function notebookupdate_cell_moved(cell::Cell, new_index::Integer)
     return NotebookUpdateMessage(:cell_moved, 
         Dict(:uuid => string(cell.uuid),
-             :index => new_index - 1, # 1-based index to 0-based index
+             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
             ))
 end
 
@@ -174,7 +174,7 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
     Endpoint("/addcell", POST) do request::HTTP.Request
         bodyobject = JSON.parse(String(request.body))
         display(bodyobject)
-        new_index = bodyobject["index"] + 1 # 0-based index to 1-based index
+        new_index = bodyobject["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
         new_cell = createcell_fromcode("")
 
@@ -206,9 +206,27 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
     end
 
     Endpoint("/movecell", PUT) do request::HTTP.Request
-        println(request)
+        bodyobject = JSON.parse(String(request.body))
+        uuid = UUID(bodyobject["uuid"])
+        to_move = selectcell_byuuid(notebook, uuid)
 
-        # TODO: NOT IMPLEMENTED
+        # Indexing works as if a new cell is added.
+        # e.g. if the third cell (at julia-index 3) of [0, 1, 2, 3, 4]
+        # is moved to the end, that would be new julia-index 6
+
+        new_index = bodyobject["index"] + 1 # 0-based index (js) to 1-based index (julia)
+        old_index = findfirst(isequal(to_move), notebook.cells)
+
+        # Because our cells run in _topological_ order, we don't need to reevaluate anything.
+        if new_index < old_index
+            deleteat!(notebook.cells, old_index)
+            insert!(notebook.cells, new_index, to_move)
+        elseif new_index > old_index + 1
+            insert!(notebook.cells, new_index, to_move)
+            deleteat!(notebook.cells, old_index)
+        end
+
+        put!(pendingclientupdates, notebookupdate_cell_moved(to_move, new_index))
 
         HTTP.Response(200, JSON.json("OK!"))
     end

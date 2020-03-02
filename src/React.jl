@@ -49,6 +49,14 @@ function run_cell(notebook::Notebook, cell::Cell)
     if cell.parsedcode === nothing
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
+    if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
+        cell.output = nothing
+        cell.errormessage = "Use `import` instead of `using`.\nSupport for `using` will be added soon."
+        # Don't run this cell. We set its output directly and stop the method prematurely.
+        
+        # Must be array, not set, to maintain order with `union`
+        return [cell]
+    end
 
     old_dependent = try
         dependent_cells(notebook, cell)

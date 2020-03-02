@@ -237,6 +237,15 @@
 			pointer-events: none;
 		}
 
+		dropruler {
+			position: absolute;
+			left: 0px;
+			right: 0px;
+			height: 4px;
+			background: rgba(0, 0, 0, .50);
+			display: none;
+		}
+
 		footer {
 			width: 100%;
 			height: 30px;
@@ -281,6 +290,7 @@
 	<main>
 		<notebook>
 		</notebook>
+		<dropruler></dropruler>
 		<template id="celltemplate">
 			<cell>
 				<clickshoulder draggable="true"></clickshoulder>
@@ -406,22 +416,14 @@
 
 				window.localCells[uuid] = newCellNode
 
-
-				if (notebookNode.children.length == newIndex) {
-					notebookNode.appendChild(newCellNode)
-				} else if (notebookNode.children.length > newIndex) {
-					notebookNode.insertBefore(newCellNode, notebookNode.children[newIndex])
-				} else {
-					console.error("Tried to insert cell at illegal position! Notebook order might be messed up!")
-					notebookNode.appendChild(newCellNode)
-				}
+				moveLocalCell(newCellNode, newIndex)
 
 				// EVENT LISTENERS FOR CLICKY THINGS
 
 				newCellNode.querySelector("clickshoulder").onclick = (e) => {
 					e.target.parentElement.classList.toggle("code-folded")
 					// You may not fold code if the output is empty (it would be confusing)
-					if (!e.target.parentElement.querySelector("celloutput").innerHTML) {
+					if (!e.target.parentElement.querySelector("celloutput").innerHTML || e.target.parentElement.querySelector("celloutput").innerText == "") {
 						e.target.parentElement.classList.remove("code-folded")
 					}
 				}
@@ -456,6 +458,20 @@
 				} catch (err) { }
 
 				cellNode.remove()
+			}
+
+			function moveLocalCell(cellNode, newIndex) {
+				// If you append or insert a DOM element that is already a child, then it will move that child.
+				// So we have the lucky effect that this method works for both use cases: `cellNode` is not yet attached to DOM, and `cellNode` is already in the `notebookNode`.
+
+				if (newIndex == notebookNode.children.length) {
+					notebookNode.appendChild(cellNode)
+				} else if (newIndex < notebookNode.children.length) {
+					notebookNode.insertBefore(cellNode, notebookNode.children[newIndex])
+				} else {
+					console.error("Tried to insert cell at illegal position! Notebook order might be messed up!")
+					notebookNode.appendChild(cellNode)
+				}
 			}
 
 			function deleteAllLocalCells() {
@@ -547,6 +563,34 @@
 				}).catch(onFailure)
 			}
 
+			// Indexing works as if a new cell is added.
+			// e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
+			// is moved to the end, that would be new js-index = 5
+			function requestMoveRemoteCell(uuid, newIndex) {
+				var onFailure = (response) => {
+					console.warn("Failed to move cell!")
+					console.log(response)
+
+					startDisconnectedBanner()
+				}
+				fetch("/movecell", {
+					method: 'PUT',
+					cache: 'no-cache',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					redirect: 'follow',
+					referrerPolicy: 'no-referrer',
+					body: JSON.stringify({ "uuid": uuid, "index": newIndex }),
+				}).then((response) => {
+					if (response.status == 200) {
+						console.log("Cell moved.")
+					} else {
+						onFailure(response)
+					}
+				}).catch(onFailure)
+			}
+
 			function runUpdateLoop() {
 				console.log("run update loop")
 				var onFailure = (response) => {
@@ -593,8 +637,8 @@
 									deleteLocalCell(toDelete)
 									break
 								case "cell_moved":
-									// TODO: handle move!
-
+									// TODO: catch exception
+									moveLocalCell(window.localCells[message.uuid], message.index)
 									break
 								default:
 									console.error("Received unknown update type!")
@@ -681,23 +725,53 @@
 			// TODO: check cell order every now and then?
 			// or do ___maths___ to make sure that it never gets messed up
 
-			document.ondragover = (e) =>{
+			function argmin(x) {
+				var best_val = Infinity
+				var best_index = -1
+				var val
+				for (var i = 0; i < x.length; i++) {
+					val = x[i]
+					if (val < best_val) {
+						best_index = i
+						best_val = val
+					}
+				}
+				return best_index
+			}
+
+			dropruler = document.querySelector("dropruler")
+
+			document.ondragover = (e) => {
 				e.preventDefault();
 			}
 
-			document.ondrop = console.log
-			document.ondrag = (e) => {}
-			document.ondragstart = console.log
-			document.ondragenter = (e) => {
-				var dropcell = null
-				for(var i = 0; i < e.path.length; i++)
-				{
-					var current = e.path[i]
-					if(current.tagName == "CELL"){
-						dropcell = current
-						break
-					}
+			var dropPositions = []
+			var dropee = null
+			document.ondragstart = (e) => {
+				dropee = e.target.parentElement
+
+				dropPositions = []
+				for (var i = 0; i < notebookNode.children.length; i++) {
+					dropPositions.push(notebookNode.children[i].offsetTop)
 				}
+				dropPositions.push(notebookNode.lastChild.offsetTop + notebookNode.lastChild.scrollHeight)
+			}
+			// Called continuously during drag
+			document.ondrag = (e) => {
+				dist = dropPositions.map(p => Math.abs(p - e.pageY))
+				dropIndex = argmin(dist)
+
+				dropruler.style.top = dropPositions[dropIndex] + "px";
+				dropruler.style.display = "block";
+				console.log(dropIndex)
+			}
+			document.ondrop = (e) => {
+				dist = dropPositions.map(p => Math.abs(p - e.pageY))
+				dropIndex = argmin(dist)
+
+				dropruler.style.display = "none";
+
+				requestMoveRemoteCell(dropee.id, dropIndex)
 			}
 
 
