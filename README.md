@@ -1,10 +1,10 @@
-<h1><img alt="Pluto.jl" src="http://fonsp.com/img/saturnlogo3.svg" height=100></h1>
+<h1><img alt="Pluto.jl" src="http://fonsp.com/img/plutologo1.svg" height=100></h1>
 
 Lightweight ***reactive*** notebooks for Julia ⚡
 
 Still under development - we currently have a classical (imperative) notebook system.
 
-<img alt="interactivity screencap" src="http://fonsp.com/img/saturn.gif" height=300>
+<img alt="interactivity screencap" src="http://fonsp.com/img/saturnreactive.gif" height=300>
 
 ## Input
 
