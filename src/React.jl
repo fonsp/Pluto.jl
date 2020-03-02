@@ -19,9 +19,6 @@ module ModuleManager
     forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("include")]
 
     function move_vars(from_index::Integer, to_index::Integer, to_delete::Set{Symbol}=Set{Symbol}())
-        println("Moving workspace!")
-        println("Deleting:")
-        println(to_delete)
         old_workspace = get_workspace(from_index)
         new_workspace = get_workspace(to_index)
         Core.eval(new_workspace, Meta.parse("import ..workspace$(from_index)"))
@@ -31,9 +28,7 @@ module ModuleManager
                 if symbol in to_delete
                     Core.eval(old_workspace, Meta.parse("$symbol = nothing"))
                 else
-                    # Core.eval(ModuleManager, Meta.parse("workspace$(to_index).$symbol = workspace$(from_index).$symbol"))
                     Core.eval(new_workspace, Meta.parse("$symbol = workspace$(from_index).$symbol"))
-                    # Core.eval(old_workspace, Meta.parse("$symbol = nothing"))
                 end
             end
         end
@@ -55,7 +50,6 @@ function run_cell(notebook::Notebook, cell::Cell)
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
 
-    old_modified_symbols = cell.modified_symbols
     old_dependent = try
         dependent_cells(notebook, cell)
     catch e
@@ -64,17 +58,10 @@ function run_cell(notebook::Notebook, cell::Cell)
     end
 
     symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
-    referenced, modified = symstate.references, symstate.assignments
+    cell.referenced_symbols = symstate.references
+    cell.modified_symbols = symstate.assignments
 
     # TODO: assert that cell doesn't modify variables which are modified by other cells
-    # TODO: remove all variables that the cell used to modify
-    # this way, those which it assigns to will get re-added, and cyclic references will throw an error
-
-    cell.modified_symbols = modified
-    cell.referenced_symbols = referenced
-
-    setdiff(old_modified_symbols, cell.modified_symbols) |> ModuleManager.delete_vars
-
 
     will_update = try
         new_dependent = dependent_cells(notebook, cell)
@@ -88,18 +75,18 @@ function run_cell(notebook::Notebook, cell::Cell)
         return [cell]
     end
 
+    # TODO: this should be done earlier
+    # otherwise a user can create a circular reference and continue using variables from errored cells
+    union([c.modified_symbols for c in will_update]...) |> ModuleManager.delete_vars
 
     for to_eval in will_update
         try
             to_eval.output = Core.eval(ModuleManager.get_workspace(), to_eval.parsedcode)
             to_eval.errormessage = nothing
-
         catch err
-            # TODO: errored symbols should be deleted, leading to errors at referencers, which is good
             to_eval.output = nothing
             to_eval.errormessage = sprint(showerror, err)
         end
-        # display(to_eval.output)
         # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
     end
 
