@@ -92,38 +92,37 @@ code {
     width: auto;
 }
 
-cell > button {
+cell > button, cellinput > button {
     margin: 0px;
     border: none;
     background: none;
     cursor: pointer;
     color: hsl(204, 86%, 35%);
-    font-family: 'Roboto Mono', monospace;
+    font-family: 'Segoe UI Emoji', 'Roboto Mono', monospace;
     position: absolute;
+    z-index: 3; /* CodeMirror is 2 */
 }
 cell > button.addcell {
-    width: 100%;
-    font-style: italic;
+    /* width: 100%; */
+    font-family: 'Roboto Mono', monospace;
+    /* font-style: italic; */
     height:20px;
-    left: 0px;
+    left: -11px;
 }
 
-cell > button.deletecell {
-    right: 0px;
-}
 @media (any-pointer: fine), (any-pointer: caorse){
-    cell > button {
+    cell > button, cellinput > button {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
-}
 
-cell:hover > button {
-    opacity: 25%;
+    cell:hover > button, cell:hover > cellinput > button {
+        opacity: 25%;
+    }
+    
 }
-
-cell > button:hover{
+cell > button:hover, cell > cellinput > button:hover {
     opacity: 100%;
     /* to make it feel snappy: */
     transition: opacity .05s ease-in-out;
@@ -135,6 +134,15 @@ cell > button.addcell.before {
 
 cell > button > span {
     /* background: rgba(0,0,0,.1); */
+}
+
+cellinput > button.runcell {
+    font-weight: 500;
+    right: 0px;
+}
+
+cellinput > button.deletecell {
+    right: 20px;
 }
 
 trafficlight {
