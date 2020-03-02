@@ -19,3 +19,15 @@ function serialize(cell::Cell)
 end
 
 createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}())
+
+function show_output(cell::Cell, output::Any)
+    cell.output = output
+    cell.errormessage = nothing
+end
+
+function show_error(cell::Cell, message::String)
+    cell.output = nothing
+    cell.errormessage = message
+end
+
+show_error(cell::Cell, err::Exception) = show_error(cell, sprint(showerror, err))

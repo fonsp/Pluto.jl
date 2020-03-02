@@ -45,25 +45,13 @@ end
 
 
 "Run a cell and all the cells that depend on it"
-function run_cell(notebook::Notebook, cell::Cell)
+function run_reactive(notebook::Notebook, cell::Cell)
     if cell.parsedcode === nothing
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
-    if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
-        cell.output = nothing
-        cell.errormessage = "Use `import` instead of `using`.\nSupport for `using` will be added soon."
-        # Don't run this cell. We set its output directly and stop the method prematurely.
-        
-        # Must be array, not set, to maintain order with `union`
-        return [cell]
-    end
 
-    old_dependent = try
-        dependent_cells(notebook, cell)
-    catch e
-        # must be array, not set, to maintain order with `union`
-        Cell[]
-    end
+    old_modified = cell.modified_symbols
+    old_dependent, _ = dependent_cells(notebook, cell)
 
     symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
     cell.referenced_symbols = symstate.references
@@ -71,63 +59,62 @@ function run_cell(notebook::Notebook, cell::Cell)
 
     # TODO: assert that cell doesn't modify variables which are modified by other cells
 
-    will_update = try
-        new_dependent = dependent_cells(notebook, cell)
-        union(old_dependent, new_dependent)
-    catch err
-        # cell.parsedcode = Expr(:call, :error, sprint(showerror, err))
-        cell.output = nothing
-        cell.errormessage = sprint(showerror, err)
-        # Don't run this cell. We set its output directly and stop the method prematurely.
-        # Must be array, not set, to maintain order with `union`
-        return [cell]
-    end
+    new_dependent, cyclic = dependent_cells(notebook, cell)
+    will_update = union(old_dependent, new_dependent)
 
-    # TODO: this should be done earlier
-    # otherwise a user can create a circular reference and continue using variables from errored cells
-    union([c.modified_symbols for c in will_update]...) |> ModuleManager.delete_vars
+    union(old_modified, [c.modified_symbols for c in will_update]...) |>
+    ModuleManager.delete_vars
 
-    for to_eval in will_update
-        try
-            to_eval.output = Core.eval(ModuleManager.get_workspace(), to_eval.parsedcode)
-            to_eval.errormessage = nothing
-        catch err
-            to_eval.output = nothing
-            to_eval.errormessage = sprint(showerror, err)
-        end
-        # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
-    end
+    run_single.(setdiff(will_update, cyclic))
+    show_error.(cyclic, "Cyclic reference")
 
     return will_update
 end
 
 
+function run_single(cell::Cell)
+    if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
+        # Don't run this cell. We set its output directly and stop the method prematurely.
+        show_error(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
+        return
+    end
+
+    try
+        show_output(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))
+        # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
+    catch err
+        show_error(cell, err)
+    end
+end
+
+
 "Cells to be evaluated in a single reactive cell run, in order - including the given cell"
-function dependent_cells(notebook::Notebook, root::Cell)::Array{Cell, 1}
-    entries = Array{Cell, 1}()
-    exits = Array{Cell, 1}()
+function dependent_cells(notebook::Notebook, root::Cell)
+    entries = Cell[]
+    exits = Cell[]
+    cyclic = Set{Cell}()
 
     function dfs(cell::Cell)
         if cell in exits
             return
         elseif cell in entries
-            throw(ArgumentError("Circular reference"))
+            detected_cycle = entries[findfirst(entries .== [cell]):end]
+            cyclic = union(cyclic, detected_cycle)
+            return
         end
 
         push!(entries, cell)
-
-        dfs.(referencing_cells(notebook, cell.modified_symbols))
-
+        dfs.(directly_dependent_cells(notebook, cell.modified_symbols))
         push!(exits, cell)
     end
 
     dfs(root)
-    return reverse(exits)
+    return reverse(exits), cyclic
 end
 
 
 "Return cells that reference any of the given symbols - does *not* recurse"
-function referencing_cells(notebook::Notebook, symbols::Set{Symbol})
+function directly_dependent_cells(notebook::Notebook, symbols::Set{Symbol})
     return filter(notebook.cells) do cell
         return any(s in symbols for s in cell.referenced_symbols)
     end
