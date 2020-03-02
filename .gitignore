@@ -4,3 +4,6 @@
 precompile.jl
 build
 Manifest.toml
+
+# editor-specific
+.vscode
