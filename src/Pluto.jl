@@ -70,6 +70,13 @@ function notebookupdate_cell_moved(cell::Cell, new_index::Integer)
             ))
 end
 
+function notebookupdate_cell_dependecies(cell::Cell, dependentcells)
+    return NotebookUpdateMessage(:cell_dependecies, 
+        Dict(:uuid => string(cell.uuid),
+             :depenentcells => [string(c.uuid) for c in dependentcells],
+            ))
+end
+
 
 # struct PlutoDisplay <: AbstractDisplay
 #     io::IO
@@ -117,6 +124,8 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
 
     # STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
     # index.html also contains the CSS and JS
+
+    # TODO: crawl assets folder and serve all files
 
     function assetserver(assetname)
         return request::HTTP.Request->read(joinpath(packagerootdir, "assets", assetname), String)

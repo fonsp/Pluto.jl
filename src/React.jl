@@ -3,43 +3,45 @@ include("./ExploreExpression.jl")
 
 
 module ModuleManager
+    "These expressions get executed whenever a new workspace is created."
+    workspace_preamble = [Expr(:using, Expr(:(.), :Markdown))]
+    
     workspace_count = 0
 
     get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
 
     function make_workspace()
         global workspace_count += 1
-        # TODO: define `expr` directly, but it's more readable right now
-        code = "module workspace$(workspace_count) end"
-        expr = Meta.parse(code)
-        Core.eval(ModuleManager, expr)
+        
+        new_workspace_name = Symbol("workspace", workspace_count)
+        workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
+        
+        Core.eval(ModuleManager, workspace_creation)
     end
     make_workspace() # so that there's immediately something to work with
 
     forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("#include")]
-    workspace_preamble = [Expr(:using, Expr(:(.), :Markdown))]
 
-    function move_vars(from_index::Integer, to_index::Integer, to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
+    function move_vars(old_index::Integer, new_index::Integer, to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
         
-        old_workspace = get_workspace(from_index)
-        new_workspace = get_workspace(to_index)
-        Core.eval(new_workspace, Meta.parse("import ..workspace$(from_index)"))
+        old_workspace = get_workspace(old_index)
+        old_workspace_name = Symbol("workspace", old_index)
+        new_workspace = get_workspace(new_index)
+        new_workspace_name = Symbol("workspace", new_index)
+        Core.eval(new_workspace, :(import ..($(old_workspace_name))))
+        
         for mu in module_usings
             # modules are 'cached'
             # there seems to be little overhead for this, but this should be tested
             Core.eval(new_workspace, mu)
         end
-
-        for expr in workspace_preamble
-            Core.eval(new_workspace, expr)
-        end
         
         for symbol in names(old_workspace, all=true, imported=true)
-            if !(symbol in forbiddenmoves) && symbol != Symbol("workspace",from_index - 1) && symbol != Symbol("workspace",from_index)
+            if !(symbol in forbiddenmoves) && symbol != Symbol("workspace",old_index - 1) && symbol != Symbol("workspace",old_index)
                 if symbol in to_delete
-                    Core.eval(old_workspace, Meta.parse("$symbol = nothing"))
+                    Core.eval(old_workspace, :($(symbol) = nothing))
                 else
-                    Core.eval(new_workspace, Meta.parse("$symbol = workspace$(from_index).$symbol"))
+                    Core.eval(new_workspace, :($(symbol) = $(old_workspace_name).$(symbol)))
                 end
             end
         end
@@ -47,9 +49,9 @@ module ModuleManager
 
     function delete_vars(to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
         if !isempty(to_delete)
-            from = workspace_count
+            old_index = workspace_count
             make_workspace()
-            move_vars(from, from+1, to_delete, module_usings)
+            move_vars(old_index, old_index+1, to_delete, module_usings)
         end
     end
 end

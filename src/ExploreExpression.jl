@@ -46,7 +46,7 @@ function extractfunctionarguments(funcdef::Expr)::Set{Symbol}
         if isa(a, Symbol)
             push!(argnames, a)
         elseif isa(a, Expr)
-            if a.head == :parameters
+            if a.head == :parameters || a.head == :tuple  # second is for ((a,b),(c,d)) -> a*b*c*d stuff
                 push!(argnames, extractfunctionarguments(a)...)
             elseif a.head == :kw || a.head == :(=) # first is for unnamed function arguments, second is for lambdas
                 push!(argnames, a.args[1])
@@ -283,8 +283,9 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
     else
         # fallback, includes:
-        # begin, block, 
-
+        # begin, block, do, 
+        # (and hopefully much more!)
+        
         # Does not create scope (probably)
 
         for a in ex.args

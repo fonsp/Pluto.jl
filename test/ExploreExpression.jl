@@ -37,6 +37,7 @@ end
     @test testee(:(a += 1), [:a, :(+)], [:a])
     @test testee(:(a[1] += 1), [:a, :(+)], [])
     @test testee(:(x = let a = 1; a += b end), [:(+), :b], [:x])
+    @test testee(:(minimum(x) do (a,b); a+b end), [:(+), :x, :minimum], [])
 end
 @testset "Multiple expressions" begin
     @test testee(:(a, b = 1, 2), [], [:a, :b])
@@ -47,6 +48,7 @@ end
 @testset "Functions" begin
     @test testee(:(f = x->x * y), [:y, :*], [:f])
     @test testee(:(f = (x,y)->x * y), [:*], [:f])
+    @test testee(:((((a,b),c),(d,e))-> a * b * c * d * e * f), [:*, :f], [])
     @test testee(:(f = (x,y=a+1)->x * y), [:*], [:f])
     @test testee(:(function g() r = 2; r end), [], [:g])
     @test testee(:(function f(x, y=1; r, s=3+3) r+s+x * y * z end), [:z, :+, :*], [:f])

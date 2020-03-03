@@ -7,6 +7,6 @@ version = "0.2.0"
 [deps]
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 Pages = "7c165e09-dada-5b64-9fdc-39b801c58527"
-Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
