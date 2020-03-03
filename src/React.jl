@@ -20,10 +20,9 @@ module ModuleManager
     end
     make_workspace() # so that there's immediately something to work with
 
-    forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("#include")]
+    forbiddenmove(sym::Symbol) = sym == :eval || sym == :include || string(sym)[1] == '#'
 
     function move_vars(old_index::Integer, new_index::Integer, to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
-        
         old_workspace = get_workspace(old_index)
         old_workspace_name = Symbol("workspace", old_index)
         new_workspace = get_workspace(new_index)
@@ -37,7 +36,7 @@ module ModuleManager
         end
         
         for symbol in names(old_workspace, all=true, imported=true)
-            if !(symbol in forbiddenmoves) && symbol != Symbol("workspace",old_index - 1) && symbol != Symbol("workspace",old_index)
+            if !forbiddenmove(symbol) && symbol != Symbol("workspace",old_index - 1) && symbol != Symbol("workspace",old_index)
                 if symbol in to_delete
                     Core.eval(old_workspace, :($(symbol) = nothing))
                 else

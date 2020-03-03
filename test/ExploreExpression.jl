@@ -12,7 +12,7 @@ function testee(expr, ref, def)
         println("FAILED TEST")
         println(expr)
         println()
-        dump(expr)
+        dump(expr, maxdepth=20)
         println()
         @show expected
         @show result
@@ -26,7 +26,9 @@ end
     @test testee(:(a), [:a], [])
     @test testee(:(1 + 1), [:+], [])
     @test testee(:(x = 3), [], [:x])
+    @test testee(:(x = x), [:x], [:x])
     @test testee(:(x = 1 + y), [:+, :y], [:x])
+    @test testee(:(x = +(a...)), [:+, :a], [:x])
     @test testee(:(x = let r = 1; r + r end), [:+], [:x])
     @test testee(:(begin let r = 1; r + r end; r = 2 end), [:+], [:r])
     @test testee(:(1:3), [:(:)], [])
@@ -38,6 +40,13 @@ end
     @test testee(:(a[1] += 1), [:a, :(+)], [])
     @test testee(:(x = let a = 1; a += b end), [:(+), :b], [:x])
     @test testee(:(minimum(x) do (a,b); a+b end), [:(+), :x, :minimum], [])
+    @test testee(:(for k in 1:n; k+s; end), [:n, :s, :+, :(:)], [])
+    @test testee(:(for k in 1:2, r in 3:4; global z = k+r; end), [:+, :(:)], [:z])
+    @test testee(:([sqrt(s) for s in 1:n]), [:sqrt, :n, :(:)], [])
+    @test testee(:([s+j+r+m for s in 1:3 for j in 4:5 for (r,l) in [(1,2)]]), [:+, :m, :(:)], [])
+    # @test testee(:([a for a in a]), [:a], [])
+    # @test testee(:(a = [a for a in a]), [:a], [:a])
+    
 end
 @testset "Multiple expressions" begin
     @test testee(:(a, b = 1, 2), [], [:a, :b])
@@ -54,6 +63,7 @@ end
     @test testee(:(function f(x, y=1; r, s=3+3) r+s+x * y * z end), [:z, :+, :*], [:f])
     @test testee(:(function f(x, y=a; r, s=b) r+s+x * y * z end), [:z, :+, :*], [:f])
     @test testee(:(function f(x) x * y * z end), [:y, :z, :*], [:f])
+    # @test testee(:(function f(x::T; k = 1) where T return x+1 end), [:+], [:f])
 end
 @testset "Global exposure" begin
     @test testee(:(let global a, b = 1, 2 end), [], [:a, :b])

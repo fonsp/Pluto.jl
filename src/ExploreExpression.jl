@@ -152,7 +152,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         operator = Symbol(string(ex.head)[1:end-1])
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore(expanded_expr, symstate, scstate)
-    elseif ex.head == :let
+    elseif ex.head == :let || ex.head == :for
         # Creates local scope
 
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
@@ -165,6 +165,14 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         end
 
         return symstate, scstate
+    elseif ex.head == :generator
+        # Creates local scope
+
+        # In a `generator`, a single expression is followed by the iterator assignments.
+        # In a `for`, this expression comes at the end.
+
+        # TODO: this is not the normal form of a `for`.
+        return explore(Expr(:for, ex.args[2:end]..., ex.args[1]), symstate, scstate)
     elseif ex.head == :function
         # Creates local scope
 
