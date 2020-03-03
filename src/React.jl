@@ -52,10 +52,8 @@ end
 
 "Run a cell and all the cells that depend on it"
 function run_reactive!(notebook::Notebook, cell::Cell)
-    if cell.parsedcode === nothing
-        cell.parsedcode = Meta.parse(cell.code, raise=false)
-        cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
-    end
+    cell.parsedcode = Meta.parse(cell.code, raise=false)
+    cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
 
     old_modified = cell.modified_symbols
     symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
