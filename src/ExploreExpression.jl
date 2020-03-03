@@ -64,41 +64,29 @@ end
 # Possible leaf: value
 # Like: a = 1
 # 1 is a value (Int64)
-function explore(value, symstate::SymbolsState, scstate::ScopeState)::Tuple{SymbolsState,ScopeState}
+function explore!(value, scopestate::ScopeState)::SymbolsState
     # includes: LineNumberNode, Int64, String, 
-    return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
+    return SymbolsState(Set{Symbol}(), Set{Symbol}())
 end
 
 # Possible leaf: symbol
 # Like a = x
 # x is a symbol
-# We handle the assignment separately, and explore(:a, ...) will not be called.
+# We handle the assignment separately, and explore!(:a, ...) will not be called.
 # Therefore, this method only handles _references_, which are added to the symbolstate, depending on the scopestate.
-function explore(sym::Symbol, symstate::SymbolsState, scstate::ScopeState)::Tuple{SymbolsState,ScopeState}
-    return if !(sym in scstate.hiddenglobals)
-        SymbolsState(Set([sym]), Set{Symbol}()), scstate
+function explore!(sym::Symbol, scopestate::ScopeState)::SymbolsState
+    return if !(sym in scopestate.hiddenglobals)
+        SymbolsState(Set([sym]), Set{Symbol}())
     else
-        SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
+        SymbolsState(Set{Symbol}(), Set{Symbol}())
     end
 end
 
 # General recursive method. Is never a leaf.
-function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{SymbolsState,ScopeState}
-    if ex.head == :call
-        # Does not create scope
-
-        # The ScopeState can me modified during a call.
-        # Therefore, we go by its arguments one by one, and pass on any modifications to the scope state.
-
-        for a in ex.args
-            innersymstate, newscopestate = explore(a, symstate, scstate)
-
-            scstate = newscopestate
-            symstate = symstate ∪ innersymstate
-        end
-
-        return symstate, scstate
-    elseif ex.head == :(=)
+# Modifies the `scopestate`.
+function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
+    symstate = SymbolsState(Set{Symbol}(), Set{Symbol}())
+    if ex.head == :(=)
         # Does not create scope
 
         assignees = if isa(ex.args[1], Symbol)
@@ -123,48 +111,46 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         val = ex.args[2]
 
         global_assignees = filter(assignees) do assignee
-            scstate.inglobalscope || assignee in scstate.exposedglobals
+            scopestate.inglobalscope || assignee in scopestate.exposedglobals
         end
         
         # If we are _not_ assigning a global variable
         for assignee in setdiff(assignees, global_assignees)
             # Then this symbol hides any global definition with that name
-            scstate.hiddenglobals = union(scstate.hiddenglobals, [assignee])
+            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
         end
 
-        innersymstate, newscstate = explore(val, symstate, scstate)
+        innersymstate = explore!(val, scopestate)
 
-        scstate = newscstate
         symstate = symstate ∪ innersymstate
 
         for assignee in global_assignees
-            scstate.hiddenglobals = union(scstate.hiddenglobals, [assignee])
+            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
             symstate.assignments = union(symstate.assignments, [assignee])
         end
 
-        return symstate, scstate
+        return symstate
     elseif ex.head in modifiers
         # We change: a[1] += 123
         # to:        a[1] = a[1] + 123
         # We transform the modifier back to its operator
         # for when users redefine the + function
 
-        operator = Symbol(string(ex.head)[1:end-1])
+        operator = Symbol(string(ex.head)[1:end - 1])
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
-        return explore(expanded_expr, symstate, scstate)
+        return explore!(expanded_expr, scopestate)
     elseif ex.head == :let || ex.head == :for
         # Creates local scope
 
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scstate)
+        innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
         for a in ex.args
-            innersymstate, innerscopestate = explore(a, symstate, innerscopestate)
-
+            innersymstate = explore!(a, innerscopestate)
             symstate = symstate ∪ innersymstate
         end
 
-        return symstate, scstate
+        return symstate
     elseif ex.head == :generator
         # Creates local scope
 
@@ -172,32 +158,31 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         # In a `for`, this expression comes at the end.
 
         # TODO: this is not the normal form of a `for`.
-        return explore(Expr(:for, ex.args[2:end]..., ex.args[1]), symstate, scstate)
+        return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :function
         # Creates local scope
 
         funcname = assignee = ex.args[1].args[1]
         funcargs = ex.args[1]
 
-        assigning_global = scstate.inglobalscope || assignee in scstate.exposedglobals
+        assigning_global = scopestate.inglobalscope || assignee in scopestate.exposedglobals
         
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scstate)
+        innerscopestate = deepcopy(scopestate)
         innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcargs))
         innerscopestate.inglobalscope = false
         for a in ex.args[2:end]
-            innersymstate, innerscopestate = explore(a, symstate, innerscopestate)
-
+            innersymstate = explore!(a, innerscopestate)
             symstate = symstate ∪ innersymstate
         end
         
         if assigning_global
-            scstate.hiddenglobals = union(scstate.hiddenglobals, [assignee])
+            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
             symstate.assignments = union(symstate.assignments, [assignee])
         end
 
-        return symstate, scstate
+        return symstate
     elseif ex.head == :(->)
         # Creates local scope
 
@@ -205,16 +190,15 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scstate)
+        innerscopestate = deepcopy(scopestate)
         innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcargs))
         innerscopestate.inglobalscope = false
         for a in ex.args[2:end]
-            innersymstate, innerscopestate = explore(a, symstate, innerscopestate)
-
+            innersymstate = explore!(a, innerscopestate)
             symstate = symstate ∪ innersymstate
         end
 
-        return symstate, scstate
+        return symstate
     elseif ex.head == :global
         # Does not create scope
 
@@ -228,18 +212,18 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         globalisee = ex.args[1]
 
         if isa(globalisee, Symbol)
-            scstate.exposedglobals = union(scstate.exposedglobals, [globalisee])
+            scopestate.exposedglobals = union(scopestate.exposedglobals, [globalisee])
             # symstate.assignments = union(symstate.assignments, [globalisee])
         elseif isa(globalisee, Expr)
-            innerscopestate = deepcopy(scstate)
+            innerscopestate = deepcopy(scopestate)
             innerscopestate.inglobalscope = true
-            innersymstate, innerscopestate = explore(globalisee, symstate, innerscopestate)
+            innersymstate = explore!(globalisee, innerscopestate)
             symstate = symstate ∪ innersymstate
         else
             @error "unknow global use"
         end
         
-        return symstate, scstate
+        return symstate
     elseif ex.head == :tuple
         # Does not create scope
         
@@ -256,72 +240,68 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         recursers = ex.args
 
         # We have a tuple assignment if one of the tuple elements is an assignment expression:
-        indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
+        indexoffirstassignment = findfirst(a->isa(a, Expr) && a.head == :(=), ex.args)
         if indexoffirstassignment !== nothing
             recursers = ex.args[indexoffirstassignment:end]
 
-            exposed = filter(ex.args[1:indexoffirstassignment-1]) do a::Symbol
-                (scstate.inglobalscope || a in scstate.exposedglobals) && !(a in scstate.hiddenglobals)
+            exposed = filter(ex.args[1:indexoffirstassignment - 1]) do a::Symbol
+                (scopestate.inglobalscope || a in scopestate.exposedglobals) && !(a in scopestate.hiddenglobals)
             end
             
-            scstate.exposedglobals = union(scstate.exposedglobals, exposed)
+            scopestate.exposedglobals = union(scopestate.exposedglobals, exposed)
             symstate.assignments = union(symstate.assignments, exposed)
         end
 
         for a in recursers
-            innersymstate, innerscopestate = explore(a, symstate, scstate)
-
-            scstate = innerscopestate
+            innersymstate = explore!(a, scopestate)
             symstate = symstate ∪ innersymstate
         end
         
-        return symstate, scstate
+        return symstate
     elseif ex.head == :using || ex.head == :import
-        if scstate.inglobalscope
+        if scopestate.inglobalscope
             imports = if ex.args[1].head == :(:)
                 ex.args[1].args[2:end]
             else
                 ex.args
             end
 
-            packagenames = map(e -> e.args[1], imports)
+            packagenames = map(e->e.args[1], imports)
 
-            return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames)), scstate
+            return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames))
         else
-            return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
+            return SymbolsState(Set{Symbol}(), Set{Symbol}())
         end
     elseif ex.head == :macrocall && isa(ex.args[1], Symbol) && ex.args[1] == Symbol("@md_str")
         # Does not create scope
         # The Markdown macro treats things differently, so we must too
 
-        parsed_markdown_str = Meta.parse("\"\"\"$(ex.args[3])\"\"\"", raise=false)
-        innersymstate, innerscopestate = explore(parsed_markdown_str, symstate, scstate)
+        parsed_markdown_str = Meta.parse("\"\"\"$(ex.args[3])\"\"\"", raise = false)
+        innersymstate = explore!(parsed_markdown_str, scopestate)
 
         symstate = innersymstate ∪ SymbolsState(Set{Symbol}([Symbol("@md_str")]), Set{Symbol}())
-        scstate = innerscopestate
+        
 
-        return symstate, scstate
+        return symstate
     else
         # fallback, includes:
-        # begin, block, do, 
+        # begin, block, do, call, 
         # (and hopefully much more!)
         
         # Does not create scope (probably)
 
         for a in ex.args
-            innersymstate, innerscopestate = explore(a, symstate, scstate)
-
-            scstate = innerscopestate
+            innersymstate = explore!(a, scopestate)
             symstate = symstate ∪ innersymstate
         end
 
-        return symstate, scstate
+        return symstate
     end
 end
 
 
 function compute_symbolreferences(ex)
-    explore(ex, SymbolsState(Set{Symbol}(), Set{Symbol}()), ScopeState(true, Set{Symbol}(), Set{Symbol}()))[1]
+    explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}()))
 end
 
 # TODO: this can be done during the `explore` recursion
@@ -338,4 +318,4 @@ function compute_usings(ex)::Set{Expr}
     end
 end
 
-end
+    end
