@@ -16,7 +16,8 @@ module ModuleManager
     end
     make_workspace() # so that there's immediately something to work with
 
-    forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("include")]
+    forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("#include")]
+    workspace_preamble = [Expr(:using, Expr(:(.), :Markdown))]
 
     function move_vars(from_index::Integer, to_index::Integer, to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
         
@@ -27,6 +28,10 @@ module ModuleManager
             # modules are 'cached'
             # there seems to be little overhead for this, but this should be tested
             Core.eval(new_workspace, mu)
+        end
+
+        for expr in workspace_preamble
+            Core.eval(new_workspace, expr)
         end
         
         for symbol in names(old_workspace, all=true, imported=true)

@@ -21,11 +21,11 @@ end
 function samplenotebook()
     cells = Cell[]
 
-    push!(cells, createcell_fromcode("100*x + y"))
-    push!(cells, createcell_fromcode("x = 1 + 1"))
-    push!(cells, createcell_fromcode("y = x * 2"))
+    push!(cells, createcell_fromcode("100*a + b"))
+    push!(cells, createcell_fromcode("a = 1 + 1"))
+    push!(cells, createcell_fromcode("b = a * 2"))
     push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
-    push!(cells, createcell_fromcode("using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\""))
+    push!(cells, createcell_fromcode("md\"# Cześć!\nMy name is **baba** and I like \$maths\$ _(no LaTeX support yet!)_\n\n### The spectacle before us was indeed sublime.\nApparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds. \""))
 
     Notebook("test.jl", cells)
 end
