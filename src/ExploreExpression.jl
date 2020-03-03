@@ -287,8 +287,20 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
             packagenames = map(e -> e.args[1], imports)
 
             return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames)), scstate
+        else
+            return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
         end
-        return SymbolsState(Set{Symbol}(), Set{Symbol}()), scstate
+    elseif ex.head == :macrocall && isa(ex.args[1], Symbol) && ex.args[1] == Symbol("@md_str")
+        # Does not create scope
+        # The Markdown macro treats things differently, so we must too
+
+        parsed_markdown_str = Meta.parse("\"\"\"$(ex.args[3])\"\"\"", raise=false)
+        innersymstate, innerscopestate = explore(parsed_markdown_str, symstate, scstate)
+
+        symstate = innersymstate ∪ SymbolsState(Set{Symbol}([Symbol("@md_str")]), Set{Symbol}())
+        scstate = innerscopestate
+
+        return symstate, scstate
     else
         # fallback, includes:
         # begin, block, do, 
