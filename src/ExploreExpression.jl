@@ -135,6 +135,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         symstate = symstate ∪ innersymstate
 
         for assignee in global_assignees
+            scstate.hiddenglobals = union(scstate.hiddenglobals, [assignee])
             symstate.assignments = union(symstate.assignments, [assignee])
         end
 
@@ -172,6 +173,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         end
         
         if assigning_global
+            scstate.hiddenglobals = union(scstate.hiddenglobals, [assignee])
             symstate.assignments = union(symstate.assignments, [assignee])
         end
 
@@ -207,7 +209,7 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
 
         if isa(globalisee, Symbol)
             scstate.exposedglobals = union(scstate.exposedglobals, [globalisee])
-            symstate.assignments = union(symstate.assignments, [globalisee])
+            # symstate.assignments = union(symstate.assignments, [globalisee])
         elseif isa(globalisee, Expr)
             innerscopestate = deepcopy(scstate)
             innerscopestate.inglobalscope = true

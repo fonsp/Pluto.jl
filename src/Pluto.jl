@@ -146,7 +146,7 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
     # DYNAMIC: Input from user
     # TODO: actions on the notebook are not thread safe
 
-    function handleChangeCell(uuid, newcode)
+    function handle_changecell(uuid, newcode)
         # i.e. Ctrl+Enter was pressed on this cell
         # we update our `Notebook` and start execution
 
@@ -161,8 +161,8 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
         end
 
         # TODO: this should be done async, so that the HTTP server can return a list of dependent cells immediately.
-        # we could pass `pendingclientupdates` to `run_reactive`, and handle cell updates there
-        to_update = run_reactive(notebook, cell)
+        # we could pass `pendingclientupdates` to `run_reactive!`, and handle cell updates there
+        to_update = run_reactive!(notebook, cell)
         for cell in to_update
             put!(pendingclientupdates, notebookupdate_cell_output(cell))
         end
@@ -191,7 +191,7 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
 
         # Before deleting the cell, we change its code to the empty string and run it
         # This will delete any definitions of that cell
-        changecell_succes = handleChangeCell(uuid, "")
+        changecell_succes = handle_changecell(uuid, "")
         if !changecell_succes
             HTTP.Response(404, JSON.json("Cell not found!"))
         end
@@ -236,7 +236,7 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
         uuid = UUID(bodyobject["uuid"])
         newcode = bodyobject["code"]
 
-        success = handleChangeCell(uuid, newcode)
+        success = handle_changecell(uuid, newcode)
         if success
             HTTP.Response(200, JSON.json("OK!"))
         else

@@ -38,6 +38,7 @@ end
 @testset "Multiple expressions" begin
     @test testee(:(a, b = 1, 2), [], [:a, :b])
     @test testee(:((k = 2; 123)), [], [:k])
+    @test testee(:((a = 1; b = a + 1)), [:+], [:a, :b])
     @test testee(:(let k = 2; 123 end), [], [])
 end
 @testset "Functions" begin
@@ -53,6 +54,7 @@ end
     @test testee(:(let global a, b = 1, 2 end), [], [:a, :b])
     @test testee(:(let global k = 3; 123 end), [], [:k])
     @test testee(:(let global k; k = 2123 end), [], [:k])
+    @test testee(:(let global a; b = 1 end), [], [])
     @test testee(:(function f(x) global k = x end), [], [:k, :f])
     @test testee(:((begin x = 1 end, y)), [:y], [:x])
 end

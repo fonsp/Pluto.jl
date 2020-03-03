@@ -45,7 +45,7 @@ end
 
 
 "Run a cell and all the cells that depend on it"
-function run_reactive(notebook::Notebook, cell::Cell)
+function run_reactive!(notebook::Notebook, cell::Cell)
     if cell.parsedcode === nothing
         cell.parsedcode = Meta.parse(cell.code, raise=false)
     end
@@ -59,19 +59,29 @@ function run_reactive(notebook::Notebook, cell::Cell)
     remodified = length(modifiers) > 1 ? modifiers : []
 
     dependency_info = dependent_cells.([notebook], union(modifiers, [cell]))
-    will_update = union([d[1] for d in dependency_info]...)
-    cyclic = union([d[2] for d in dependency_info]...)
+    will_update = union((d[1] for d in dependency_info)...)
+    cyclic = union((d[2] for d in dependency_info)...)
 
-    union([c.modified_symbols for c in will_update]...) |>
-    ModuleManager.delete_vars
+    union((c.modified_symbols for c in will_update)...) |>
+        ModuleManager.delete_vars
 
     for to_run in will_update
         if to_run in remodified
-            show_error(to_run, "Multiple cells modify the same variable")
+            modified_multiple = let
+                other_modifiers = setdiff(modifiers, [to_run])
+                union((to_run.modified_symbols ∩ c.modified_symbols for c in other_modifiers)...)
+            end
+            relay_error!(to_run, "Multiple definitions for $(join(modified_multiple, ", ", " and "))")
         elseif to_run in cyclic
-            show_error(to_run, "Cyclic reference")
+            modified_cyclic = let
+                referenced_during_cycle = union((c.referenced_symbols for c in cyclic)...)
+                modified_during_cycle = union((c.modified_symbols for c in cyclic)...)
+                
+                referenced_during_cycle ∩ modified_during_cycle
+            end
+            relay_error!(to_run, "Cyclic references: $(join(modified_cyclic, ", ", " and "))")
         else
-            run_single(to_run)
+            run_single!(to_run)
         end
     end
 
@@ -79,18 +89,18 @@ function run_reactive(notebook::Notebook, cell::Cell)
 end
 
 
-function run_single(cell::Cell)
+function run_single!(cell::Cell)
     if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
         # Don't run this cell. We set its output directly and stop the method prematurely.
-        show_error(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
+        relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
         return
     end
 
     try
-        show_output(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))
+        relay_output!(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))
         # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
     catch err
-        show_error(cell, err)
+        relay_error!(cell, err)
     end
 end
 
