@@ -18,11 +18,17 @@ module ModuleManager
 
     forbiddenmoves = [:eval, :include, Symbol("#eval"), Symbol("include")]
 
-    function move_vars(from_index::Integer, to_index::Integer, to_delete::Set{Symbol}=Set{Symbol}())
+    function move_vars(from_index::Integer, to_index::Integer, to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
+        
         old_workspace = get_workspace(from_index)
         new_workspace = get_workspace(to_index)
         Core.eval(new_workspace, Meta.parse("import ..workspace$(from_index)"))
-
+        for mu in module_usings
+            # modules are 'cached'
+            # there seems to be little overhead for this, but this should be tested
+            Core.eval(new_workspace, mu)
+        end
+        
         for symbol in names(old_workspace, all=true, imported=true)
             if !(symbol in forbiddenmoves) && symbol != Symbol("workspace",from_index - 1) && symbol != Symbol("workspace",from_index)
                 if symbol in to_delete
@@ -34,11 +40,11 @@ module ModuleManager
         end
     end
 
-    function delete_vars(to_delete::Set{Symbol}=Set{Symbol}())
+    function delete_vars(to_delete::Set{Symbol}=Set{Symbol}(), module_usings::Set{Expr}=Set{Expr}())
         if !isempty(to_delete)
             from = workspace_count
             make_workspace()
-            move_vars(from, from+1, to_delete)
+            move_vars(from, from+1, to_delete, module_usings)
         end
     end
 end
@@ -48,12 +54,18 @@ end
 function run_reactive!(notebook::Notebook, cell::Cell)
     if cell.parsedcode === nothing
         cell.parsedcode = Meta.parse(cell.code, raise=false)
+        cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
     end
 
+    old_modified = cell.modified_symbols
     symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
-    all_modified = union(cell.modified_symbols, symstate.assignments)
+    all_modified = old_modified ∪ symstate.assignments
+
+    # During the upcoming search, we will temporarily use `all_modified` instead of `symstate.assignments`
+    # as this cell's set of assignments. This way, any variables that were deleted by this cell change
+    # will be deleted, and the cells that depend on the deleted variable will be run again. (Leading to errors.)
+    cell.modified_symbols = all_modified
     cell.referenced_symbols = symstate.references
-    cell.modified_symbols = symstate.assignments
 
     modifiers = where_modified(notebook, all_modified)
     remodified = length(modifiers) > 1 ? modifiers : []
@@ -62,8 +74,12 @@ function run_reactive!(notebook::Notebook, cell::Cell)
     will_update = union((d[1] for d in dependency_info)...)
     cyclic = union((d[2] for d in dependency_info)...)
 
-    union((c.modified_symbols for c in will_update)...) |>
-        ModuleManager.delete_vars
+    module_usings = union((c.module_usings for c in notebook.cells)...)
+    to_delete = union(old_modified, (c.modified_symbols for c in will_update)...)
+    
+    ModuleManager.delete_vars(to_delete, module_usings)
+
+    cell.modified_symbols = symstate.assignments
 
     for to_run in will_update
         if to_run in remodified
@@ -90,11 +106,11 @@ end
 
 
 function run_single!(cell::Cell)
-    if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
-        # Don't run this cell. We set its output directly and stop the method prematurely.
-        relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
-        return
-    end
+    # if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
+    #     # Don't run this cell. We set its output directly and stop the method prematurely.
+    #     relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
+    #     return
+    # end
 
     try
         relay_output!(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))

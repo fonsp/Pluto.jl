@@ -1,5 +1,5 @@
 module ExploreExpression
-export compute_symbolreferences, SymbolsState
+export compute_symbolreferences, compute_usings, SymbolsState
 
 import Base: union, ==
 
@@ -115,6 +115,9 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
             elseif ex.args[1].head == :(.)
                 # TODO: what is the desired behaviour here?
                 []
+            else
+                @warn "unknow use of =. Assignee is unrecognised."
+                []
             end
         end
         val = ex.args[2]
@@ -140,6 +143,15 @@ function explore(ex::Expr, symstate::SymbolsState, scstate::ScopeState)::Tuple{S
         end
 
         return symstate, scstate
+    elseif ex.head in modifiers
+        # We change: a[1] += 123
+        # to:        a[1] = a[1] + 123
+        # We transform the modifier back to its operator
+        # for when users redefine the + function
+
+        operator = Symbol(string(ex.head)[1:end-1])
+        expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
+        return explore(expanded_expr, symstate, scstate)
     elseif ex.head == :let
         # Creates local scope
 
@@ -289,6 +301,20 @@ end
 
 function compute_symbolreferences(ex)
     explore(ex, SymbolsState(Set{Symbol}(), Set{Symbol}()), ScopeState(true, Set{Symbol}(), Set{Symbol}()))[1]
+end
+
+# TODO: this can be done during the `explore` recursion
+"Get the set of `using Module` expressions that are contained in this expression."
+function compute_usings(ex)::Set{Expr}
+    if isa(ex, Expr)
+        if ex.head == :using
+            Set{Expr}([ex])
+        else
+            union(compute_usings.(ex.args)...)
+        end
+    else
+        Set{Expr}()
+    end
 end
 
 end

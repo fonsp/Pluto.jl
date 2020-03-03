@@ -34,6 +34,9 @@ end
     @test testee(:(a[1:3,4] = b[5]), [:b], [])
     @test testee(:(a.property), [:a], [])
     @test testee(:(a.property = 1), [], [])
+    @test testee(:(a += 1), [:a, :(+)], [:a])
+    @test testee(:(a[1] += 1), [:a, :(+)], [])
+    @test testee(:(x = let a = 1; a += b end), [:(+), :b], [:x])
 end
 @testset "Multiple expressions" begin
     @test testee(:(a, b = 1, 2), [], [:a, :b])
@@ -57,6 +60,7 @@ end
     @test testee(:(let global a; b = 1 end), [], [])
     @test testee(:(function f(x) global k = x end), [], [:k, :f])
     @test testee(:((begin x = 1 end, y)), [:y], [:x])
+    @test testee(:(x = let global a += 1 end), [:(+), :a], [:x, :a])
 end
 @testset "import/using" begin
     @test testee(:(using Plots), [], [:Plots])

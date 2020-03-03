@@ -11,6 +11,7 @@ mutable struct Cell
     errormessage::Any
     modified_symbols::Set{Symbol}
     referenced_symbols::Set{Symbol}
+    module_usings::Set{Expr}
 end
 
 "Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
@@ -18,7 +19,7 @@ function serialize(cell::Cell)
     Dict(:uuid => string(cell.uuid), :code => cell.code)# , :output => cell.output)
 end
 
-createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}())
+createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
 
 function relay_output!(cell::Cell, output::Any)
     cell.output = output
