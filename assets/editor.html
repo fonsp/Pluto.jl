@@ -12,14 +12,10 @@
     <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/master/LICENSE" />
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="Pluto.jl notebook" />
-    <link href="https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Roboto+Slab:100,200,300,400,500,600,700,800,900&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Merriweather:300,300i,400,400i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,latin-ext,vietnamese" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,300i,400,400i,600,600i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese" rel="stylesheet">
-
 
     <style>
+        @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
+
         /* GENERAL PAGE LAYOUT */
 
         body {
@@ -87,16 +83,21 @@
         /* HEADER */
 
         header {
-            letter-spacing: 2px;
             background: hsla(0, 100%, 100%, 80%);
             width: 100%;
             height: 70px;
             overflow: hidden;
-            color: black;
             /* white-space: nowrap; */
             /*font-weight: normal;*/
-            font-family: 'Ubuntu Mono', monospace;
             border-bottom: solid 1px rgba(0, 0, 0, .1);
+        }
+
+        header h1,
+        header h2,
+        header {
+            color: black;
+            letter-spacing: 2px;
+            font-family: 'Ubuntu Mono', monospace !important;
         }
 
         #logocontainer {
@@ -259,6 +260,28 @@
             display: none;
         }
 
+        confirmationdialog {
+            position: absolute;
+            display: none;
+            background: white;
+        }
+
+        confirmationdialog>span#question::after {
+            content: "Delete cell? ";
+        }
+
+        confirmationdialog>span#optionsep::after {
+            content: " / ";
+        }
+
+        confirmationdialog>button#yes>span::after {
+            content: "yes";
+        }
+
+        confirmationdialog>button#no>span::after {
+            content: "no";
+        }
+
         footer {
             width: 100%;
             height: 30px;
@@ -304,6 +327,12 @@
         <notebook>
         </notebook>
         <dropruler></dropruler>
+        <confirmationdialog>
+            <span id="question"></span>
+            <button id="yes"><span></span></button>
+            <span id="optionsep"></span>
+            <button id="no"><span></span></button>
+        </confirmationdialog>
         <template id="celltemplate">
             <cell>
                 <clickshoulder draggable="true"></clickshoulder>
@@ -338,6 +367,22 @@
                     }, startDisconnectedBanner)
                 }, 1000)
             }
+
+
+            // CONFIRMATION DIALOG
+
+            // window.confirmationdialog = document.querySelector("confirmationdialog")
+
+            // function showConfirmationDialog(targetElement, succesCallback){    
+            //     confirmationdialog.style.top = mouseEvent.pageY + "px"
+            //     confirmationdialog.style.left = mouseEvent.pageX + "px"
+            //     confirmationdialog.style.display = "block"
+                
+            // }
+
+            // document.onclick = (e) => {
+            //     showConfirmationDialog(e, 1)
+            // }
 
             window.localCells = {}
             window.codeMirrors = {}
@@ -828,7 +873,20 @@
                 last = createLocalCell(2, "0", "y = x * 2")
                 updateLocalCellOutput(last, "text/plain", "y = x * 2", "")
                 last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
-                updateLocalCellOutput(last, "text/html", "<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>", "")
+                updateLocalCellOutput(last, "text/html", `<div class="markdown"><h1>Cześć!</h1>
+<p>My name is <strong>baba</strong> and I like $maths$</p>
+<p><em>(Markdown -&gt; HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)</em></p>
+<h1>Very intersesting indeed</h1>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Vivamus in massa justo. Curabitur non dictum magna, sed cursus ante. Suspendisse Δs ante vitae urna euismod α-porta. Lorem ipsum dolor sit Δ-amet, consectetur adipiscing elit. Vestibulum scelerisque interdum felis sit ΔΣΑΣΔ amet ornare. Nulla massa mauris, hendrerit a ante sit amet, posuere Σ-ultricies urna. Nunc molestie vel ipsum eget interdum. Sed porta fringilla odio vitae iaculis. Mauris purus sem, dictum iaculis lectus id, elementum rutrum mauris. Nulla in sollicitudin urna. Duis sit amet ligula α+(β-ψ) sagittis, gravida leo non, blandit ex. Vestibulum feugiat facilisis lacus ut maximus. Praesent quis justo arcu. Fusce sagittis vitae sem a aliquet.</p>
+<h2>Hmmm very difficult</h2>
+<p>Apparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds.</p>
+<h3>ornare sit amet</h3>
+<p>Suspendisse vulputate eu nisl ut aliquet. Integer blandit in nulla vitae egestas.</p>
+<h2>ornare sit amet</h2>
+<p>Curabitur imperdiet purus sit amet dolor tincidunt feugiat. Fusce dapibus enim ac facilisis laoreet. Vestibulum ut semper ex. Maecenas egestas libero efficitur mi pellentesque facilisis. In congue vel mi sed viverra. In sollicitudin urna sodales nibh tempor luctus. Proin sit amet nunc accumsan sem suscipit sodales.</p>
+<h4>imperdiet</h4>
+<p>Fusce sit amet justo eu ex finibus cursus. Maecenas ut accumsan eros. Nam iaculis sem vitae ultrices mollis. Ut convallis eu nibh at varius. Suspendisse auctor, mauris a tincidunt facilisis, ex massa pulvinar ligula, in vulputate odio ipsum a elit. Praesent vel magna feugiat, tincidunt lacus at, eleifend nulla. Nullam bibendum ultricies metus quis euismod. Nam rutrum euismod iaculis. Aenean consequat nibh non semper pellentesque. Integer finibus, magna at congue convallis, ipsum purus malesuada erat, in aliquam diam ex viverra sem. Maecenas volutpat a massa eget maximus. Proin gravida erat quam, nec iaculis lacus eleifend vel. Etiam fringilla justo et neque sollicitudin, ac blandit nulla sagittis. Quisque ullamcorper volutpat metus vel egestas. Praesent sagittis laoreet congue. Donec sed diam eget metus malesuada efficitur eu ac dolor.</p>
+</div>`, "")
                 last = createLocalCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
                 updateLocalCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
 
@@ -839,7 +897,6 @@
             }
         });
     </script>
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/dot/1.1.3/doT.min.js" integrity="sha256-0Mj4wysSsxKrjqVsgnOgOeRZbPreFi/T3+zb+cyR7Jw=" crossorigin="anonymous"></script>-->
 </body>
 
 </html>

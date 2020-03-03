@@ -1,7 +1,23 @@
-body {
+@import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese');
+@import url('https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+
+
+celloutput {
     /* background-color: #ffffff; */
-    font-family: 'Open Sans', serif;
+    /* font-family: 'Open Sans', serif; */
+    
+    /* font-family: 'Roboto Slab';
+    font-weight: 300;
+    letter-spacing: .4px; */
+    
+    /* font-family: 'Open Sans';
+    font-weight: 400; */
+    
+    font-family: 'Alegreya Sans', sans-serif;
+    font-size:17px;
     font-weight: 400;
+
     color: hsl(0, 0%, 25%);
 }
 
@@ -10,37 +26,37 @@ body.swoosh {
 
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-    font-family: 'Roboto Slab', serif;
+celloutput h1,
+celloutput h2,
+celloutput h3,
+celloutput h4,
+celloutput h5,
+celloutput h6 {
+    font-family: 'Vollkorn', serif;
+    font-weight: 700;
     color: hsl(0, 0%, 12%);
 }
-h1:first-child,
-h2:first-child,
-h3:first-child,
-h4:first-child,
-h5:first-child,
-h6:first-child {
+celloutput h1:first-child,
+celloutput h2:first-child,
+celloutput h3:first-child,
+celloutput h4:first-child,
+celloutput h5:first-child,
+celloutput h6:first-child {
     margin-block-start: 0px;
 }
 
-p {
+celloutput p {
     margin-block-start: 8px;
-}
-
-p {
     margin-block-end: 20px;
+    word-spacing: .9px;
+    line-height: 25px;
 }
 
-p:first-child {
+celloutput p:first-child {
     margin-block-start: 0px;
 }
 
-p:last-child {
+celloutput p:last-child {
     margin-block-end: 0px;
 }
 
@@ -49,6 +65,12 @@ p:last-child {
 
 
 /* MAIN */
+
+main {
+    max-width: 700px;
+    padding-right: 6px;
+    padding-left: 20px;
+}
 
 cell {
     margin-top:20px;
@@ -92,8 +114,11 @@ code {
     width: auto;
 }
 
-cell > button, cellinput > button {
+cell > button, cellinput > button, confirmationdialog > button {
     margin: 0px;
+    padding: 1px;
+    opacity: 50%;
+
     border: none;
     background: none;
     cursor: pointer;
@@ -102,15 +127,8 @@ cell > button, cellinput > button {
     position: absolute;
     z-index: 3; /* CodeMirror is 2 */
 }
-cell > button.addcell {
-    /* width: 100%; */
-    font-family: 'Roboto Mono', monospace;
-    /* font-style: italic; */
-    height:20px;
-    left: -11px;
-}
 
-@media (any-pointer: fine), (any-pointer: caorse){
+@media (any-pointer: fine) {
     cell > button, cellinput > button {
         opacity: 0%;
         /* to make it feel smooth: */
@@ -120,29 +138,80 @@ cell > button.addcell {
     cell:hover > button, cell:hover > cellinput > button {
         opacity: 25%;
     }
+
+    cell > button:hover, cell > cellinput > button:hover {
+        opacity: 100%;
+        /* to make it feel snappy: */
+        transition: opacity .05s ease-in-out;
+    }    
+}
+
+@media (any-pointer: coarse) {
+    cell > button, cellinput > button {
+        opacity: 0%;
+        /* to make it feel smooth: */
+        transition: opacity .25s ease-in-out;
+    }
+
+    cell:focus-within > button, cell:focus-within > cellinput > button {
+        opacity: 25%;
+    }
+
+    cell > button:focus-within, cell > cellinput > button:focus-within {
+        opacity: 100%;
+        /* to make it feel snappy: */
+        transition: opacity .05s ease-in-out;
+    }
     
 }
-cell > button:hover, cell > cellinput > button:hover {
-    opacity: 100%;
-    /* to make it feel snappy: */
-    transition: opacity .05s ease-in-out;
+
+/* ionicons */
+cell > button > span::after, cellinput > button > span::after {
+    display: block;
+    content: " " !important;
+    background-size: 17px 17px;
+    height: 17px;
+    width: 17px;
+}
+
+
+cell > button.addcell {
+    /* width: 100%; */
+    /* font-family: 'Roboto Mono', monospace; */
+    /* font-style: italic; */
+    /* height:20px; */
+    left: -12px;
 }
 
 cell > button.addcell.before {
     margin-top: -20px !important;
 }
-
-cell > button > span {
-    /* background: rgba(0,0,0,.1); */
+cell > button.addcell > span::after {
+    /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-circle-outline.svg"); */
+    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-outline.svg");
 }
 
 cellinput > button.runcell {
-    font-weight: 500;
     right: 0px;
+    padding: 3px;
 }
 
+cellinput > button.runcell > span::after {
+    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/caret-forward-circle-outline.svg");
+}
+
+
 cellinput > button.deletecell {
+    /* top: 3px; */
+    /* left: -26px; */
     right: 20px;
+    padding: 3px;
+}
+
+cellinput > button.deletecell > span::after {
+    
+    /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/trash-outline.svg"); */
+    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/close-circle-outline.svg");
 }
 
 trafficlight {
@@ -151,11 +220,21 @@ trafficlight {
     transition: background .15s ease-in-out;
 }
 
-cell:hover > trafficlight {
-    background: rgba(0,0,0,.1);
-    transition: background .05s ease-in-out;
-
+@media (any-pointer: fine) {
+    cell:hover > trafficlight {
+        background: rgba(0,0,0,.1);
+        transition: background .05s ease-in-out;
+    
+    }   
 }
+@media (any-pointer: coarse) {
+    cell:focus-within > trafficlight {
+        background: rgba(0,0,0,.1);
+        transition: background .05s ease-in-out;
+    
+    }
+}
+
 
 cell.running > trafficlight {
     background: repeating-linear-gradient(
@@ -199,6 +278,38 @@ cell.error > cellinput > .CodeMirror {
     border-bottom-left-radius: 0px;
 }
 
+confirmationdialog {
+    position: absolute;
+    background: white;
+    /* border: 2px solid #4a08083b; */
+    border-radius: 6px;
+    margin-left: -180px;
+    margin-top: -18px;
+    padding: 6px;
+    font-size: 12px;
+    z-index: 10;
+}
+
+confirmationdialog > button {
+    position: relative;
+    color: block;
+    opacity: 100%;
+    font-size: inherit;
+    color: black;
+}
+
+confirmationdialog span {
+    font-family: 'Roboto Mono', monospace;
+}
+
+
+confirmationdialog>button#yes>span::after {
+    color: darkred;
+}
+
+confirmationdialog>button#no>span::after {
+    /* text-decoration: underline; */
+}
 
 
 @keyframes 🌈 {
