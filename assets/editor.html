@@ -14,7 +14,9 @@
     <meta name="description" content="Pluto.jl notebook" />
 
     <style>
+        /* TODO: these are only for the header */
         @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
+        @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 
         /* GENERAL PAGE LAYOUT */
 
@@ -67,6 +69,10 @@
             margin-block-start: .5em;
         }
 
+        celloutput img {
+            max-width: 100%;
+        }
+
         html,
         body {
             height: 100%;
@@ -85,7 +91,7 @@
         header {
             background: hsla(0, 100%, 100%, 80%);
             width: 100%;
-            height: 70px;
+            min-height: 70px;
             overflow: hidden;
             /* white-space: nowrap; */
             /*font-weight: normal;*/
@@ -97,28 +103,20 @@
         header {
             color: black;
             letter-spacing: 2px;
-            font-family: 'Ubuntu Mono', monospace !important;
+            font-family: 'Roboto Mono', monospace !important;
         }
 
         #logocontainer {
             margin: 0 auto;
             max-width: 960px;
-            padding-top: 14px;
+            padding-top: 17px;
             padding-left: 20px;
             padding-bottom: 0px;
         }
 
         #logocontainer img {
-            margin-bottom: -9px;
-            margin-right: 15px;
-            filter: invert(100%);
-            -webkit-filter: invert(100%);
-            /* Alttext: */
-            color: black;
-            /* should be black beacuse we are reversing its color */
-            font-family: 'Courgette', sans-serif;
-            font-weight: bold !important;
-            font-style: normal;
+            height: 39px;
+            margin-bottom: -11px;
         }
 
         #logocontainer h1 {
@@ -126,6 +124,7 @@
             font-size: 30px;
             display: inline;
             border-bottom: none;
+            margin-right: 50px;
         }
 
         #logocontainer h2 {
@@ -140,7 +139,8 @@
         #printernametitle {
             opacity: .6;
             font-style: normal;
-            font-size: 25px;
+            font-size: 20px;
+            font-weight: 400;
         }
 
         header.disconnected {
@@ -317,7 +317,7 @@
     <header>
         <div id="logocontainer">
             <h1>
-                Pluto<span>.jl</span></h1>
+                <img src="https://fonsp.com/img/plutologo1.svg" alt="Pluto.jl" /></h1>
             <h2>
                 <span id="printernametitle">/editor</span></h2>
         </div>
@@ -357,7 +357,7 @@
     <script>
         document.addEventListener("DOMContentLoaded", () => {
             notebookName = "test_notebook.jl"
-            document.querySelector("#printernametitle").innerText = "/" + notebookName;
+            document.querySelector("#printernametitle").innerText = notebookName;
 
             function startDisconnectedBanner() {
                 document.querySelector("header").classList.add("disconnected")
@@ -377,7 +377,7 @@
             //     confirmationdialog.style.top = mouseEvent.pageY + "px"
             //     confirmationdialog.style.left = mouseEvent.pageX + "px"
             //     confirmationdialog.style.display = "block"
-                
+
             // }
 
             // document.onclick = (e) => {
@@ -870,7 +870,26 @@
                 updateLocalCellOutput(last, "text/plain", "100*x + y", "")
                 last = createLocalCell(1, "0", "x = 1 + 1")
                 updateLocalCellOutput(last, "text/plain", "x = 1 + 1", "")
-                last = createLocalCell(2, "0", "y = x * 2")
+                last = createLocalCell(2, "0", `function meshgrid(x, dims)
+	# This is a more general version of the 3D function:
+
+	# xx = repeat(x,1,N,N)
+	# yy = repeat(x,N,1,N)
+	# zz = repeat(x,N,N,1)
+	# return xx,yy,zz
+
+	N = length(x)
+
+	grid_for_dim_k = function(k)
+		# We will reshape x to be a multi-dimensional array of dimensions:
+		x_reshaper = [i==k ? N : 1 for i in 1:dims]
+
+		# And then repeat this matrix in all other dimensions:
+		repeat_counts = [i==k ? 1 : N for i in 1:dims]
+		return repeat(reshape(x, x_reshaper...), repeat_counts...)
+	end
+	return Tuple(grid_for_dim_k(k) for k in 1:dims)
+end`)
                 updateLocalCellOutput(last, "text/plain", "y = x * 2", "")
                 last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
                 updateLocalCellOutput(last, "text/html", `<div class="markdown"><h1>Cześć!</h1>
@@ -888,7 +907,17 @@
 <p>Fusce sit amet justo eu ex finibus cursus. Maecenas ut accumsan eros. Nam iaculis sem vitae ultrices mollis. Ut convallis eu nibh at varius. Suspendisse auctor, mauris a tincidunt facilisis, ex massa pulvinar ligula, in vulputate odio ipsum a elit. Praesent vel magna feugiat, tincidunt lacus at, eleifend nulla. Nullam bibendum ultricies metus quis euismod. Nam rutrum euismod iaculis. Aenean consequat nibh non semper pellentesque. Integer finibus, magna at congue convallis, ipsum purus malesuada erat, in aliquam diam ex viverra sem. Maecenas volutpat a massa eget maximus. Proin gravida erat quam, nec iaculis lacus eleifend vel. Etiam fringilla justo et neque sollicitudin, ac blandit nulla sagittis. Quisque ullamcorper volutpat metus vel egestas. Praesent sagittis laoreet congue. Donec sed diam eget metus malesuada efficitur eu ac dolor.</p>
 </div>`, "")
                 last = createLocalCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
-                updateLocalCellOutput(last, "text/html", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"", "")
+                updateLocalCellOutput(last, "text/html", `<div class="markdown"><h1>Cześć!</h1>
+<p>My name is <strong>baba</strong> and I like $maths$ <em>(no LaTeX support yet!)</em></p>
+<p>It is the ninth-largest and tenth-most-massive known object directly orbiting the Sun. It is the largest known trans-Neptunian object by volume but is less massive than Eris. Like other Kuiper belt objects, Pluto is primarily made of ice and rock and is relatively small—about one-sixth the mass of the Moon and one-third its volume. It has a moderately eccentric and inclined orbit during which it ranges from 30 to 49 astronomical units or AU (4.4–7.4 billion km) from the Sun. This means that Pluto periodically comes closer to the Sun than Neptune, but a stable orbital resonance with Neptune prevents them from colliding. Light from the Sun takes about 5.5 hours to reach Pluto at its average distance (39.5 AU).</p>
+<h3>The spectacle before us was indeed sublime.</h3>
+<p>Apparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds. </p>
+<p><img src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Pluto-01_Stern_03_Pluto_Color_TXT.jpg" alt="Pluto"> <em>Die NASA Sonde New Horizons machte dieses hochaufgelöste Foto von Pluto mit erweitertem Farbspektrum am 14. Juli 2015. Das Bild entstand aus einer Kombination von Blau-, Rot- und Infrarotaufnahmen, die mit der Ralph/Multispectral Visual Imaging Camera (MVIC) aufgenommen wurden.</em></p>
+<h3>Historia pojęcia</h3>
+<p>Οι πλανήτες θεωρούνταν από τον Πτολεμαίο ότι περιφέρονται γύρω από τη Γη με φερόμενες και επικυκλικές κινήσεις. Παρόλο που η ιδέα της περιφοράς γύρω από τον Ήλιο είχε προταθεί πολλές φορές (με παλαιότερη γνωστή διατύπωση από τον Αρίσταρχο το Σάμιο), χρειάστηκε να φθάσει ο 17ος αιώνας, με την υποστήριξη των πρώτων τηλεσκοπικών αστρονομικών παρατηρήσεων, που πραγματοποιήθηκαν από το Γαλιλαίο Γαλιλέι, για να τεκμηριωθεί η ηλιοκεντρική θεωρία. </p>
+<p>De stjer dy't it deunst by de Ierde stiet, is de sinne (of Sol, yn wittenskiplike nomenklatuer), dy't ús sinnestelsel beljochtet en fan enerzjy foarsjocht. Alle libbene wêzens op 'e Ierde besteane úteinlik fan sinneljocht, dat troch planten yn it proses fotosynteze ta iten makke wurdt en as sadanich de hiele itenskeatling fan it Ierdske ekosysteem ûnderstipet. In grut tal oare stjerren is nachts by ûnbewolkt waar mei it bleate each sichtber oan 'e himel, mar wurdt oerdeis wei yn it ljocht fan 'e sinne. De neiste fan dy oare stjerren is Proxima Centauri, dy't op 39,9 triljoen km (of 4,2 ljochtjier) ôfstân fan 'e Ierde stiet. As men reizgje soe mei de faasje dy't in romtefear yn in baan om 'e Ierde berikt (8 km de sekonde of krapoan 30.000 km de oere), soe men der 150.000 jier oer dwaan om Proxima Centauri te berikken.</p>
+<p>各个文明对星座的划分方法与行星轨迹密切相关：太阳在黄道上一年运行一圈，太阴在黄道上一个月运行一圈。西方文明中，太阳的轨迹把黄道分作十二段，每月一段，每段一个星座组成黄道十二宫。中国文明中，太阳的轨迹把黄道分作四段，每个季度一段，即天空的四象青龙白虎朱雀玄武；而太阴的轨迹把黄道分作28段，每天一段，即天空的28个星宿；然后结合太阳和太阴的划分，四象=28宿，每一象被分作七宿，这七宿分别对应阴阳金木水火土七大行星，组成一个星期七天，因此每个月被四象分成四个星期。</p>
+</div>`, "")
 
             }
 

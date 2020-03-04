@@ -182,7 +182,6 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
 
     Endpoint("/addcell", POST) do request::HTTP.Request
         bodyobject = JSON.parse(String(request.body))
-        display(bodyobject)
         new_index = bodyobject["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
         new_cell = createcell_fromcode("")
@@ -295,8 +294,6 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
     end
 
     Endpoint("/getcell", GET) do request::HTTP.Request
-        println(request)
-
         bodyobject = JSON.parse(String(request.body))
         uuid = UUID(bodyobject["uuid"])
         
