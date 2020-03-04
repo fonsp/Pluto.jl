@@ -103,6 +103,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             elseif ex.args[1].head == :(.)
                 # TODO: what is the desired behaviour here?
                 []
+            elseif ex.args[1].head == :call
+                # f(x, y) = x + y
+                # Rewrite to:
+                # function f(x, y) x + y end
+                return explore!(Expr(:function, ex.args...), scopestate)
             else
                 @warn "unknow use of =. Assignee is unrecognised."
                 []

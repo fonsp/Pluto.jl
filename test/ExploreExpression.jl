@@ -61,6 +61,7 @@ end
     @testset "Functions" begin
         @test testee(:(f = x->x * y), [:y, :*], [:f])
         @test testee(:(f = (x, y)->x * y), [:*], [:f])
+        @test testee(:(f(x, y = a + 1) = x * y * z), [:*, :z], [:f])
         @test testee(:((((a, b), c), (d, e))->a * b * c * d * e * f), [:*, :f], [])
         @test testee(:(f = (x, y = a + 1)->x * y), [:*], [:f])
         @test testee(:(function g() r = 2; r end), [], [:g])
