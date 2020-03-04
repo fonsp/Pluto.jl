@@ -1,4 +1,4 @@
-<h1><img alt="Pluto.jl" src="http://fonsp.com/img/plutologo1.svg" height=100></h1>
+<h1><img alt="Pluto.jl" src="assets/logo.svg" height=100></h1>
 
 Lightweight ***reactive*** notebooks for Julia ⚡ - welcome to Pluto!
 
@@ -7,7 +7,7 @@ _**Explore models and share results** in a notebook that is_
 - **_reactive_** - when changing a function or variable, Pluto reactively updates all affected cells.
 - **_modern_** - responsive, intuitive user experience; beautiful exported documents; custom themes.
 
-<img alt="reactivity screencap" src="http://fonsp.com/img/saturnreactive.gif" height=300>
+<img alt="reactivity screencap" src="demo/reactivity.gif" height=300>
 
 ## Input
 
@@ -16,11 +16,11 @@ The central idea is that Pluto notebooks will be ***reactive***, just like [Obse
 ## Output
 Cell output is simple: one cell outputs one variable, which is displayed using the richest available formatter. We believe that this limitation actually [_makes programming easier_](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0)!
 
-<img alt="formatting screenshot" src="http://fonsp.com/img/saturnformatting.png" height=400>
+<img alt="formatting screenshot" src="demo/formatting.png" height=400>
 
 Plotting is supported out-of-the-box!
 
-<img alt="plotting screenshot" src="http://fonsp.com/img/saturnplotting.png" height=600>
+<img alt="plotting screenshot" src="demo/plotting.png" height=600>
 
 ## Installation
 
