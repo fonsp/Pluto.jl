@@ -4,7 +4,7 @@ import Pluto: Notebook, run_reactive!, createcell_fromcode
 
 @testset "Reactivity" begin
 @testset "Basic" begin
-    notebook = Notebook("test.jl", [
+    notebook = Notebook(joinpath(tempdir(),"test.jl"), [
         createcell_fromcode("x = 1"),
         createcell_fromcode("y = x")
     ])
@@ -17,7 +17,7 @@ import Pluto: Notebook, run_reactive!, createcell_fromcode
 end
 
 @testset "Cyclic" begin
-    notebook = Notebook("test.jl", [
+    notebook = Notebook(joinpath(tempdir(),"test.jl"), [
         createcell_fromcode("x = y"),
         createcell_fromcode("y = x")
     ])
@@ -28,7 +28,7 @@ end
 end
 
 @testset "Variable deletion" begin
-    notebook = Notebook("test.jl", [
+    notebook = Notebook(joinpath(tempdir(),"test.jl"), [
         createcell_fromcode("x = 1"),
         createcell_fromcode("y = x")
     ])
