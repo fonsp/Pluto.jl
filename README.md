@@ -7,7 +7,7 @@ _**Explore models and share results** in a notebook that is_
 - **_lightweight_** - Pluto is written in pure Julia and is an installable package.
 - **_modern_** - responsive, intuitive user experience; beautiful exported documents; custom themes.
 
-<img alt="reactivity screencap" src="demo/reactivity.gif" max-height=300>
+<img alt="reactivity screencap" src="demo/reactivity.gif" max-height=640>
 
 
 ## Input
@@ -20,10 +20,6 @@ The central idea is that Pluto notebooks are ***reactive***, just like [Observab
 Cell output is simple: one cell outputs one variable, which is displayed using the richest available formatter. We believe that this limitation actually [_makes programming easier_](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0)!
 
 <img alt="formatting screenshot" src="demo/formatting.png" max-height=600>
-
-Plotting is supported out-of-the-box!
-
-<img alt="plotting screenshot" src="demo/plotting.png" max-height=600>
 
 Your notebooks are saved as pure Julia files, which you can then import as if you had been programming in a regular editor all along.
 
