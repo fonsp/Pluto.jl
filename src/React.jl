@@ -136,6 +136,8 @@ function dependent_cells(notebook::Notebook, root::Cell)
     function dfs(cell::Cell)
         if cell in exits
             return
+        elseif length(entries) > 0 && entries[end] == cell
+            return # a cell referencing itself is legal
         elseif cell in entries
             currently_entered = setdiff(entries, exits)
             detected_cycle = currently_entered[findfirst(currently_entered .== [cell]):end]

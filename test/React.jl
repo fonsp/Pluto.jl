@@ -42,4 +42,24 @@ end
     @test notebook.cells[2].output == nothing
     @test occursin("x not defined", notebook.cells[2].errormessage)
 end
+
+@testset "Recursive function is not considered cyclic" begin
+    notebook = Notebook(joinpath(tempdir(),"test.jl"), [
+        createcell_fromcode("factorial(n) = n * factorial(n-1)")
+    ])
+    run_reactive!(notebook, notebook.cells[1])
+    @test !isempty(methods(notebook.cells[1].output))
+    @test notebook.cells[1].errormessage == nothing
+end
+
+@testset "Variable cannot reference its previous value" begin
+    notebook = Notebook(joinpath(tempdir(),"test.jl"), [
+        createcell_fromcode("x = 3")
+    ])
+    run_reactive!(notebook, notebook.cells[1])
+    notebook.cells[1].code = "x = x + 1"
+    run_reactive!(notebook, notebook.cells[1])
+    @test notebook.cells[1].output == nothing
+    @test occursin("UndefVarError", notebook.cells[1].errormessage)
+end
 end
