@@ -316,7 +316,7 @@ function compute_usings(ex)::Set{Expr}
         if ex.head == :using
             Set{Expr}([ex])
         else
-            union(compute_usings.(ex.args)...)
+            union(Set{Expr}(), compute_usings.(ex.args)...)
         end
     else
         Set{Expr}()

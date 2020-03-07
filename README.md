@@ -1,4 +1,4 @@
-<h1><img alt="Pluto.jl" src="assets/logo.svg" max-height=100></h1>
+<h1><img alt="Pluto.jl" src="assets/logo.svg" width=300 height=74 ></h1>
 
 Lightweight ***reactive*** notebooks for Julia ⚡ - welcome to Pluto!
 
@@ -7,7 +7,7 @@ _**Explore models and share results** in a notebook that is_
 - **_lightweight_** - Pluto is written in pure Julia and is an installable package.
 - **_modern_** - responsive, intuitive user experience; beautiful exported documents; custom themes.
 
-<img alt="reactivity screencap" src="demo/reactivity.gif" max-height=640>
+<img alt="reactivity screencap" src="demo/reactivity.gif" >
 
 
 ## Input
@@ -19,7 +19,7 @@ The central idea is that Pluto notebooks are ***reactive***, just like [Observab
 
 Cell output is simple: one cell outputs one variable, which is displayed using the richest available formatter. We believe that this limitation actually [_makes programming easier_](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0)!
 
-<img alt="formatting screenshot" src="demo/formatting.png" max-height=600>
+<img alt="formatting screenshot" src="demo/formatting.png" >
 
 Your notebooks are saved as pure Julia files, which you can then import as if you had been programming in a regular editor all along.
 

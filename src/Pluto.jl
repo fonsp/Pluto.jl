@@ -152,13 +152,13 @@ function serve_notebook(port::Int64 = 8000, launchbrowser = false)
         for f in files
             urlpath = relpath(path, packagerootdir)
             if Sys.iswindows()
-                urlpath = replace(path, "\\" => "/")
+                urlpath = replace(urlpath, "\\" => "/")
             end
             if !endswith(urlpath, "/")
                 urlpath = urlpath * "/"
             end
 
-            @show (joinpath(path, f), "/" * urlpath * f)
+            # @show (joinpath(path, f), "/" * urlpath * f)
             Endpoint(servefile(joinpath(path, f)), "/" * urlpath * f, GET)
         end
     end

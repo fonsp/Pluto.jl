@@ -81,6 +81,7 @@
         main {
             min-height: calc(100% - 73px - 60px);
             margin: 0 auto;
+            margin-top: 100px;
             max-width: 960px;
             align-content: center;
             padding: 8px;
@@ -89,6 +90,9 @@
         /* HEADER */
 
         header {
+            position: absolute;
+            top: 0px;
+            z-index: 20;
             background: hsla(0, 100%, 100%, 80%);
             width: 100%;
             min-height: 70px;
@@ -144,7 +148,10 @@
         }
 
         header.disconnected {
-            background-color: rgba(255, 100, 0, .3);
+            background-color: rgba(255, 169, 114, 0.56);
+            position: fixed;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .disconnected>#logocontainer:after {
@@ -361,12 +368,17 @@
 
             function startDisconnectedBanner() {
                 document.querySelector("header").classList.add("disconnected")
+                document.querySelector("meta[name=theme-color]").content = "#DEAF91"
+                
                 setTimeout(() => {
                     ping(() => {
                         document.querySelector("header").classList.remove("disconnected")
+                        document.querySelector("meta[name=theme-color]").content = "#fff"
                     }, startDisconnectedBanner)
                 }, 1000)
             }
+
+            window.startDisconnectedBanner = startDisconnectedBanner
 
 
             // CONFIRMATION DIALOG
@@ -477,6 +489,10 @@
 
                 moveLocalCell(newCellNode, newIndex)
 
+                editor = createCodeMirrorInsideCell(newCellNode, code)
+                editor.focus()
+                //updateLocalCellOutput(newCellNode, mime, output, errormessage)
+
                 // EVENT LISTENERS FOR CLICKY THINGS
 
                 // newCellNode.querySelector("clickshoulder").onclick = (e) => {
@@ -493,6 +509,7 @@
                         // Do not fold if a link was clicked.
                         if (e.target.tagName != "A") {
                             newCellNode.classList.toggle("code-folded")
+                            editor.refresh()
                         }
                     }
                     // You may not fold code if the output is empty (it would be confusing)
@@ -515,9 +532,6 @@
                     requestChangeRemoteCell(newCellNode.id)
                 }
 
-                editor = createCodeMirrorInsideCell(newCellNode, code)
-                editor.focus()
-                //updateLocalCellOutput(newCellNode, mime, output, errormessage)
                 return newCellNode
             }
 
@@ -677,15 +691,7 @@
                     console.warn("Failed to get updates!")
                     console.log(response)
 
-                    document.querySelector("header").classList.add("disconnected")
-
-
-                    setTimeout(() => {
-                        ping(() => {
-                            document.querySelector("header").classList.remove("disconnected")
-                            runUpdateLoop()
-                        }, onFailure)
-                    }, 1000)
+                    startDisconnectedBanner()
                 }
 
                 fetch("/nextcellupdate", {
