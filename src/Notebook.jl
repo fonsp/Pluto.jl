@@ -1,5 +1,6 @@
 include("./Cell.jl")
 
+import Pkg
 
 mutable struct Notebook
     path::String
@@ -36,7 +37,8 @@ end
 
 function save_notebook(io, notebook)
     write(io, "### A Pluto.jl notebook ###\n")
-    write(io, "\n")
+    version_str = Pkg.TOML.parsefile(joinpath(packagerootdir, "Project.toml"))["version"]
+    write(io, "# v" * version_str * "\n")
 
     # TODO: order cells
     cells_ordered = notebook.cells
@@ -63,10 +65,18 @@ save_notebook(notebook) = save_notebook(notebook.path, notebook)
 
 function load_notebook(io, path)
     firstline = String(readline(io))
-
+    
     if firstline != "### A Pluto.jl notebook ###"
-        @warn "File is not a Pluto.jl notebook"
+        @error "File is not a Pluto.jl notebook"
     end
+
+    version_str = readline(io)[4:end]
+    my_version_str = Pkg.TOML.parsefile(joinpath(packagerootdir, "Project.toml"))["version"]
+    if version_str != my_version_str
+        @warn "Loading a notebook saved with Pluto v$(version_str). This is Pluto v$(my_version_str)."
+    end
+
+    
     collected_cells = Dict()
     
     # ignore first bits of file
