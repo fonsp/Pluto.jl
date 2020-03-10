@@ -1,12 +1,16 @@
 module Pluto
 export Notebook, prints
 
-using Pages
+include("./Cell.jl")
+include("./Notebook.jl")
+include("./ExploreExpression.jl")
+include("./React.jl")
+
 using JSON
 using UUIDs
 using HTTP
+using Sockets
 import Base: show
-include("./React.jl")
 
 
 const packagerootdir = normpath(joinpath(@__DIR__, ".."))
@@ -17,13 +21,43 @@ const packagerootdir = normpath(joinpath(@__DIR__, ".."))
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 
 
-struct NotebookUpdateMessage
+mutable struct Client
+    id::Symbol
+    stream::Any
+    connected_notebook::Union{Notebook,Nothing}
+end
+
+Client(id::Symbol, stream) = Client(id, stream, nothing)
+
+struct UpdateMessage
     type::Symbol
     message::Any
+    notebook::Union{Notebook,Nothing}
+    cell::Union{Cell,Nothing}
+    initiator::Union{Client,Nothing}
+end
+
+UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, nothing)
+UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, nothing)
+
+
+function serialize_message(message::UpdateMessage)
+    to_send = Dict(:type => message.type, :message => message.message)
+    if message.notebook !== nothing
+        to_send[:notebookID] = string(message.notebook.uuid)
+    end
+    if message.cell !== nothing
+        to_send[:cellID] = string(message.cell.uuid)
+    end
+    if message.initiator !== nothing
+        to_send[:initiatorID] = string(message.initiator.id)
+    end
+
+    JSON.json(to_send)
 end
 
 
-function notebookupdate_cell_output(cell::Cell)
+function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::Cell)
     # TODO: Here we could do even richer formatting
     # interactive Arrays!
     # use Weave.jl? that would be sw€€t
@@ -42,39 +76,47 @@ function notebookupdate_cell_output(cell::Cell)
         payload = ""
     end
 
-    return NotebookUpdateMessage(:update_output, 
-        Dict(:uuid => string(cell.uuid),
-             :mime => mime,
+    return UpdateMessage(:cell_output, 
+            Dict(:mime => mime,
              :output => payload,
              :errormessage => cell.errormessage,
-            ))
+            ),
+            notebook, cell, initiator)
 end
 
-function notebookupdate_cell_added(cell::Cell, new_index::Integer)
-    return NotebookUpdateMessage(:cell_added, 
-        Dict(:uuid => string(cell.uuid),
-             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
-            ))
+function clientupdate_cell_input(initiator::Client, notebook::Notebook, cell::Cell)
+    return UpdateMessage(:cell_input, 
+        Dict(:code => cell.code), notebook, cell, initiator)
 end
 
-function notebookupdate_cell_deleted(cell::Cell)
-    return NotebookUpdateMessage(:cell_deleted, 
-        Dict(:uuid => string(cell.uuid),
-            ))
+function clientupdate_cell_added(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
+    return UpdateMessage(:cell_added, 
+        Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
+            ), notebook, cell, initiator)
 end
 
-function notebookupdate_cell_moved(cell::Cell, new_index::Integer)
-    return NotebookUpdateMessage(:cell_moved, 
-        Dict(:uuid => string(cell.uuid),
-             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
-            ))
+function clientupdate_cell_deleted(initiator::Client, notebook::Notebook, cell::Cell)
+    return UpdateMessage(:cell_deleted, 
+        Dict(), notebook, cell, initiator)
 end
 
-function notebookupdate_cell_dependecies(cell::Cell, dependentcells)
-    return NotebookUpdateMessage(:cell_dependecies, 
-        Dict(:uuid => string(cell.uuid),
-             :depenentcells => [string(c.uuid) for c in dependentcells],
-            ))
+function clientupdate_cell_moved(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
+    return UpdateMessage(:cell_moved, 
+        Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
+            ), notebook, cell, initiator)
+end
+
+function clientupdate_cell_dependecies(initiator::Client, notebook::Notebook, cell::Cell, dependentcells)
+    return UpdateMessage(:cell_dependecies, 
+        Dict(:depenentcells => [string(c.uuid) for c in dependentcells],
+            ), notebook, cell, initiator)
+end
+
+function clientupdate_notebook_entry(initiator::Client, notebook::Notebook)
+    return UpdateMessage(:notebook_entry,
+        Dict(:uuid => notebook.uuid,
+            :path => notebook.path,
+        ), notebook)
 end
 
 
@@ -101,7 +143,7 @@ end
 
 
 struct RawDisplayString
- s::String
+    s::String
 end
 
 function show(io::IO, z::RawDisplayString)
@@ -114,239 +156,327 @@ prints(x) = RawDisplayString(repr("text/plain", x; context = iocontext))
 
 #### SERVER ####
 
+# STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
+# index.html also contains the CSS and JS
+
+"Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
+function mime_fromfilename(filename)
+    # This bad boy is from: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+    mimepairs = Dict(".aac" => "audio/aac", ".bin" => "application/octet-stream", ".bmp" => "image/bmp", ".css" => "text/css", ".csv" => "text/csv", ".eot" => "application/vnd.ms-fontobject", ".gz" => "application/gzip", ".gif" => "image/gif", ".htm" => "text/html", ".html" => "text/html", ".ico" => "image/vnd.microsoft.icon", ".jpeg" => "image/jpeg", ".jpg" => "image/jpeg", ".js" => "text/javascript", ".json" => "application/json", ".jsonld" => "application/ld+json", ".mjs" => "text/javascript", ".mp3" => "audio/mpeg", ".mpeg" => "video/mpeg", ".oga" => "audio/ogg", ".ogv" => "video/ogg", ".ogx" => "application/ogg", ".opus" => "audio/opus", ".otf" => "font/otf", ".png" => "image/png", ".pdf" => "application/pdf", ".rtf" => "application/rtf", ".sh" => "application/x-sh", ".svg" => "image/svg+xml", ".tar" => "application/x-tar", ".tif" => "image/tiff", ".tiff" => "image/tiff", ".ttf" => "font/ttf", ".txt" => "text/plain", ".wav" => "audio/wav", ".weba" => "audio/webm", ".webm" => "video/webm", ".webp" => "image/webp", ".woff" => "font/woff", ".woff2" => "font/woff2", ".xhtml" => "application/xhtml+xml", ".xml" => "application/xml", ".xul" => "application/vnd.mozilla.xul+xml", ".zip" => "application/zip")
+    file_extension = getkey(mimepairs, '.' * split(filename, '.')[end], ".txt")
+    MIME(mimepairs[file_extension])
+end
+
+function assetresponse(path)
+    try
+        @assert isfile(path)
+        response = HTTP.Response(200, read(path, String))
+        push!(response.headers, "Content-Type" => string(mime_fromfilename(path)))
+        return response
+    catch e
+        HTTP.Response(404, "Not found!: $(e)")
+    end
+end
+
+function serveonefile(path)
+    return request::HTTP.Request->assetresponse(normpath(path))
+end
+
+function serveasset(req::HTTP.Request)
+    reqURI = HTTP.URI(req.target)
+    
+    filepath = joinpath(packagerootdir, relpath(reqURI.path, "/"))
+    assetresponse(filepath)
+end
+
+const PLUTOROUTER = HTTP.Router()
+
+HTTP.@register(PLUTOROUTER, "GET", "/", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/index", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
+
+HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serveonefile(joinpath(packagerootdir, "assets", "favicon.ico")))
+
+HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serveasset)
+
+HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
+
+function handle_changecell(initiator, notebook, cell, newcode)
+    # i.e. Ctrl+Enter was pressed on this cell
+    # we update our `Notebook` and start execution
+
+    # don't reparse when code is identical (?)
+    if cell.code != newcode
+        cell.code = newcode
+        cell.parsedcode = nothing
+    end
+
+    put!(notebook.pendingclientupdates, clientupdate_cell_input(initiator, notebook, cell))
+
+    # TODO: this should be done async, so that the HTTP server can return a list of dependent cells immediately.
+    # we could pass `notebook.pendingclientupdates` to `run_reactive!`, and handle cell updates there
+    @time to_update = run_reactive!(notebook, cell)
+    for cell in to_update
+        put!(notebook.pendingclientupdates, clientupdate_cell_output(initiator, notebook, cell))
+    end
+    
+    # TODO: evaluation async
+end
+
+
+# These will hold all 'response handlers': functions that respond to a WebSocket request from the client
+# There are three levels:
+
+responses = Dict{Symbol,Function}()
+addresponse(f::Function, endpoint::Symbol) = responses[endpoint] = f
+
+# DYNAMIC: Input from user
+# TODO: actions on the notebook are not thread safe
+addresponse(:addcell) do (initiator, body, notebook)
+    new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
+
+    new_cell = createcell_fromcode("")
+
+    insert!(notebook.cells, new_index, new_cell)
+
+    put!(notebook.pendingclientupdates, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
+    nothing
+end
+
+addresponse(:deletecell) do (initiator, body, notebook, cell)    
+    to_delete = cell
+
+    changecell_succes = handle_changecell(initiator, notebook, to_delete, "")
+    
+    filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
+
+    put!(notebook.pendingclientupdates, clientupdate_cell_deleted(initiator, notebook, to_delete))
+    nothing
+end
+
+addresponse(:movecell) do (initiator, body, notebook, cell)
+    to_move = cell
+
+    # Indexing works as if a new cell is added.
+    # e.g. if the third cell (at julia-index 3) of [0, 1, 2, 3, 4]
+    # is moved to the end, that would be new julia-index 6
+
+    new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
+    old_index = findfirst(isequal(to_move), notebook.cells)
+
+    # Because our cells run in _topological_ order, we don't need to reevaluate anything.
+    if new_index < old_index
+        deleteat!(notebook.cells, old_index)
+        insert!(notebook.cells, new_index, to_move)
+    elseif new_index > old_index + 1
+        insert!(notebook.cells, new_index, to_move)
+        deleteat!(notebook.cells, old_index)
+    end
+
+    put!(notebook.pendingclientupdates, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
+    nothing
+end
+
+addresponse(:changecell) do (initiator, body, notebook, cell)
+    newcode = body["code"]
+
+    handle_changecell(initiator, notebook, cell, newcode)
+    nothing
+end
+
+
+# DYNAMIC: Returning cell output to user
+
+# TODO:
+# addresponse(:getcell) do (initiator, body, notebook, cell)
+    
+# end
+
+addresponse(:getallcells) do (initiator, body, notebook)
+    # TODO: 
+    updates = []
+    for (i,cell) in enumerate(notebook.cells)
+        push!(updates, clientupdate_cell_added(initiator, notebook, cell, i))
+        push!(updates, clientupdate_cell_input(initiator, notebook, cell))
+        push!(updates, clientupdate_cell_output(initiator, notebook, cell))
+    end
+    # [clientupdate_cell_added(notebook, c, i) for (i, c) in enumerate(notebook.cells)]
+
+    updates
+end
+
+
 
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
-function serve_notebook(port::Int64 = 8000, launchbrowser = false)
-    # We use `Pages.jl` to serve the API
-    # docs are straightforward
-    # Eventually we might want to switch to pure `HTTP.jl` but it looked difficult :(    
+function run(port::Int64 = 1234, launchbrowser = false)
+    println("Starting notebook server...")
 
+    connectedclients = Dict{Symbol,Client}()
+    notebooks = Dict{UUID,Notebook}()
+    sn = samplenotebook()
+    notebooks[sn.uuid] = sn
 
-    # STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
-    # index.html also contains the CSS and JS
-
-    # TODO: crawl assets folder and serve all files
-
-    "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
-    function mime_fromfilename(filename)
-        # This bad boy is from: https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-        mimepairs = Dict(".aac" => "audio/aac", ".bin" => "application/octet-stream", ".bmp" => "image/bmp", ".css" => "text/css", ".csv" => "text/csv", ".eot" => "application/vnd.ms-fontobject", ".gz" => "application/gzip", ".gif" => "image/gif", ".htm" => "text/html", ".html" => "text/html", ".ico" => "image/vnd.microsoft.icon", ".jpeg" => "image/jpeg", ".jpg" => "image/jpeg", ".js" => "text/javascript", ".json" => "application/json", ".jsonld" => "application/ld+json", ".mjs" => "text/javascript", ".mp3" => "audio/mpeg", ".mpeg" => "video/mpeg", ".oga" => "audio/ogg", ".ogv" => "video/ogg", ".ogx" => "application/ogg", ".opus" => "audio/opus", ".otf" => "font/otf", ".png" => "image/png", ".pdf" => "application/pdf", ".rtf" => "application/rtf", ".sh" => "application/x-sh", ".svg" => "image/svg+xml", ".tar" => "application/x-tar", ".tif" => "image/tiff", ".tiff" => "image/tiff", ".ttf" => "font/ttf", ".txt" => "text/plain", ".wav" => "audio/wav", ".weba" => "audio/webm", ".webm" => "video/webm", ".webp" => "image/webp", ".woff" => "font/woff", ".woff2" => "font/woff2", ".xhtml" => "application/xhtml+xml", ".xml" => "application/xml", ".xul" => "application/vnd.mozilla.xul+xml", ".zip" => "application/zip")
-        file_extension = getkey(mimepairs, '.' * split(filename, '.')[end], ".txt")
-        MIME(mimepairs[file_extension])
-    end
-
-    function servefile(path)
-        return request::HTTP.Request->let 
-            response = HTTP.Response(200, read(path, String))
-            push!(response.headers, "Content-Type" => string(mime_fromfilename(path)))
-            response
+    addresponse(:getallnotebooks) do (initiator, body)
+        # TODO: 
+        updates = []
+        for n in notebooks
+            push!(updates, clientupdate_notebook_entry(n))
         end
+        updates
     end
 
-    Endpoint(servefile(joinpath(packagerootdir, "assets", "editor.html")), "/index.html", GET)
-    Endpoint(servefile(joinpath(packagerootdir, "assets", "editor.html")), "/index", GET)
-    Endpoint(servefile(joinpath(packagerootdir, "assets", "editor.html")), "/", GET)
+    @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true) do http::HTTP.Stream
+        # messy messy code so that we can use the websocket on the same port as the HTTP server
 
-    # Serve all files in the /assets folder. Only server files present when Pluto was started.
-    for (path, dirs, files) in walkdir(joinpath(packagerootdir, "assets"))
-        for f in files
-            urlpath = relpath(path, packagerootdir)
-            if Sys.iswindows()
-                urlpath = replace(urlpath, "\\" => "/")
-            end
-            if !endswith(urlpath, "/")
-                urlpath = urlpath * "/"
-            end
+        if HTTP.WebSockets.is_upgrade(http.message)
+            try
+            HTTP.WebSockets.upgrade(http) do clientstream
+                if !isopen(clientstream)
+                    return
+                end
+                while !eof(clientstream)
+                    try
+                        data = String(readavailable(clientstream))
+                        parentbody = JSON.parse(data)
 
-            # @show (joinpath(path, f), "/" * urlpath * f)
-            Endpoint(servefile(joinpath(path, f)), "/" * urlpath * f, GET)
-        end
-    end
+                        clientID = Symbol(parentbody["clientID"])
+                        client = Client(clientID, clientstream)
+                        connectedclients[clientID] = client
 
-    Endpoint("/ping", GET) do request::HTTP.Request
-        HTTP.Response(200, JSON.json("OK!"))
-    end
+                        @show [c.id for c in values(connectedclients)]
+                        
+                        type = Symbol(parentbody["type"])
 
-    notebook::Notebook = samplenotebook()
+                        if type == :disconnect
+                            delete!(connectedclients, clientID)
+                        elseif type == :connect
+
+                        else
+                            
+                            body = parentbody["body"]
     
-    # For long polling (see `/nextcellupdate`):
+                            args = []
+                            if haskey(parentbody, "notebookID")
+                                notebookID = Symbol(parentbody["notebookID"])
+                                notebook = get(notebooks, notebookID, nothing)
+                                notebook = sn
+                                if notebook === nothing
+                                    # TODO: returning a http 404 response is not what we want,
+                                    # we should send back a websocket message.
+                                    # does 404 close the socket?
+                                    @warn "Remote notebook not found locally!"
+                                    return
+                                    # return HTTP.Response(404, JSON.json("Notebook not found!")) 
+                                end
+                                client.connected_notebook = notebook
+                                push!(args, notebook)
+                            end
+    
+                            if haskey(parentbody, "cellID")
+                                cellID = UUID(parentbody["cellID"])
+                                cell = selectcell_byuuid(notebook, cellID)
+                                if cell === nothing
+                                    # TODO: idem
+                                    @warn "Remote cell not found locally!"
+                                    return
+                                    # return HTTP.Response(404, JSON.json("Cell not found!")) 
+                                end
+                                push!(args, cell)
+                            end
+                            
+                            if haskey(responses, type)
+                                responsefunc = responses[type]
+                                @show type
+                                response = responsefunc((client, body, args...))
+                                if response !== nothing
+                                    # TODO: return
+                                    @show length(response)
+                                    for m in response
+                                        put!(notebook.pendingclientupdates, m)
+                                    end
 
-    # buffer must contain all undisplayed outputs
-    pendingclientupdates = Channel(128)
-    # buffer size is max. number of concurrent/messed up connections
-    longpollers = Channel{Nothing}(32)
-    # unbuffered
-    longpollerclosing = Channel{Nothing}(0)
+                                end
+                            else
+                                @show type
+                            end
+                        end
+                    catch e
+                        # TODO: idem
+                        showerror(stderr, e)
+                        # return HTTP.Response(400, JSON.json("Invalid message! $(e)"))
+                    end
+                    nothing
+                end
+                nothing
+                HTTP.Response(200, "OK")
+            end
+            catch e
+                display("HTTP upgrade crashed again ughhhhh")
+            end
+            nothing
+            HTTP.Response(200, "OK")
 
-
-    # DYNAMIC: Input from user
-    # TODO: actions on the notebook are not thread safe
-
-    function handle_changecell(uuid, newcode)
-        # i.e. Ctrl+Enter was pressed on this cell
-        # we update our `Notebook` and start execution
-
-        cell = selectcell_byuuid(notebook, uuid)
-        if cell === nothing
-            return false
-        end
-        # don't reparse when code is identical (?)
-        if cell.code != newcode
-            cell.code = newcode
-            cell.parsedcode = nothing
-        end
-
-        # TODO: this should be done async, so that the HTTP server can return a list of dependent cells immediately.
-        # we could pass `pendingclientupdates` to `run_reactive!`, and handle cell updates there
-        @time to_update = run_reactive!(notebook, cell)
-        for cell in to_update
-            put!(pendingclientupdates, notebookupdate_cell_output(cell))
-        end
-        
-        # TODO: evaluation async
-        return true
-    end
-
-    Endpoint("/addcell", POST) do request::HTTP.Request
-        bodyobject = JSON.parse(String(request.body))
-        new_index = bodyobject["index"] + 1 # 0-based index (js) to 1-based index (julia)
-
-        new_cell = createcell_fromcode("")
-
-        insert!(notebook.cells, new_index, new_cell)
-
-        put!(pendingclientupdates, notebookupdate_cell_added(new_cell, new_index))
-        
-        HTTP.Response(200, JSON.json("OK!"))
-    end
-
-    Endpoint("/deletecell", DELETE) do request::HTTP.Request
-        bodyobject = JSON.parse(String(request.body))
-        uuid = UUID(bodyobject["uuid"])
-
-        # Before deleting the cell, we change its code to the empty string and run it
-        # This will delete any definitions of that cell
-        changecell_succes = handle_changecell(uuid, "")
-        if !changecell_succes
-            HTTP.Response(404, JSON.json("Cell not found!"))
-        end
-
-        to_delete = selectcell_byuuid(notebook, uuid)
-        
-        filter!(cell->cell.uuid ≠ uuid, notebook.cells)
-
-        put!(pendingclientupdates, notebookupdate_cell_deleted(to_delete))
-
-        HTTP.Response(200, JSON.json("OK!"))
-    end
-
-    Endpoint("/movecell", PUT) do request::HTTP.Request
-        bodyobject = JSON.parse(String(request.body))
-        uuid = UUID(bodyobject["uuid"])
-        to_move = selectcell_byuuid(notebook, uuid)
-
-        # Indexing works as if a new cell is added.
-        # e.g. if the third cell (at julia-index 3) of [0, 1, 2, 3, 4]
-        # is moved to the end, that would be new julia-index 6
-
-        new_index = bodyobject["index"] + 1 # 0-based index (js) to 1-based index (julia)
-        old_index = findfirst(isequal(to_move), notebook.cells)
-
-        # Because our cells run in _topological_ order, we don't need to reevaluate anything.
-        if new_index < old_index
-            deleteat!(notebook.cells, old_index)
-            insert!(notebook.cells, new_index, to_move)
-        elseif new_index > old_index + 1
-            insert!(notebook.cells, new_index, to_move)
-            deleteat!(notebook.cells, old_index)
-        end
-
-        put!(pendingclientupdates, notebookupdate_cell_moved(to_move, new_index))
-
-        HTTP.Response(200, JSON.json("OK!"))
-    end
-
-    Endpoint("/changecell", PUT) do request::HTTP.Request
-        bodyobject = JSON.parse(String(request.body))
-        uuid = UUID(bodyobject["uuid"])
-        newcode = bodyobject["code"]
-
-        success = handle_changecell(uuid, newcode)
-        if success
-            HTTP.Response(200, JSON.json("OK!"))
         else
-            HTTP.Response(404, JSON.json("Cell not found!"))
-        end
-    end
-
+            request::HTTP.Request = http.message
+            request.body = read(http)
+            closeread(http)
     
-    # DYNAMIC: Returning cell output to user
-
-    # This is done using so-called "HTTP long polling": the server stalls for every request, until an update needs to be sent, and then responds with that update.
-    # (Hacky solution that powers millions of printis around the globe)
-    # TODO: change to WebSockets implementation, is built into Pages.jl?
-    Endpoint("/nextcellupdate", GET) do request::HTTP.Request
-        # This method became a bit complicated - it needs to close old requests when a new one came in.
-        # otherwise it would be one line:
-        # JSON.json(take!(pendingclientupdates))
-        
-        # println("nextcellupdate")
-        # @show isready(pendingclientupdates), isready(longpollers)
-
-        # while there are other long poll requests
-        while isready(longpollers)
-            # stop the next poller
-            put!(pendingclientupdates, "STOP")
-            # and remove it from the list (this must be done by me, not the other poller, because i am running the while loop)
-            take!(longpollers)
-            # wait for it to close...
-            take!(longpollerclosing)
+            request_body = IOBuffer(HTTP.payload(request))
+            if eof(request_body)
+                # no request body
+                response_body = HTTP.handle(PLUTOROUTER, request)
+            else
+                # there's a body, so pass it on to the handler we dispatch to
+                response_body = HTTP.handle(PLUTOROUTER, request, JSON.parse(request_body))
+            end
+    
+            request.response::HTTP.Response = response_body
+            request.response.request = request
+            try
+                startwrite(http)
+                write(http, request.response.body)
+            catch e
+                if isa(e, HTTP.IOError)
+                    @warn "Attempted to write to a closed stream at $(request.target)"
+                else
+                    rethrow(e)
+                end
+            end
         end
-
-        # register on the list of long pollers
-        put!(longpollers, nothing)
-        # and start polling (this call is blocking)
-        nextUpdate = take!(pendingclientupdates)
-        # we now have the next update
-        if nextUpdate == "STOP"
-            # TODO: the stream might be closed, we should handle this more gracefully
-            put!(longpollerclosing, nothing)
-            return HTTP.Messages.Response(0)
-        end
-        
-        # remove ourself from the list
-        take!(longpollers)
-
-        JSON.json(nextUpdate)
     end
 
-    Endpoint("/getcell", GET) do request::HTTP.Request
-        bodyobject = JSON.parse(String(request.body))
-        uuid = UUID(bodyobject["uuid"])
-        
-        cell = selectcell_byuuid(notebook, uuid)
-        if cell === nothing
-            return HTTP.Response(404, JSON.json("Cell not found!"))
+    for notebook in values(notebooks)
+        @async while true
+            next_to_send = take!(notebook.pendingclientupdates)
+
+            # println("something to send!")
+
+            to_delete = Set{Client}()
+
+            for client in values(connectedclients)
+                if isopen(client.stream)
+                    if client.connected_notebook.uuid == notebook.uuid || true
+                        println("Sending to $(client.id)")
+                        write(client.stream, serialize_message(next_to_send))
+                    end
+                else
+                    # println("Client $(client.id) disconnected.")
+                    push!(to_delete, client)
+                end
+            end
+
+            for c in to_delete
+                delete!(connectedclients, c.id)
+            end
         end
-        
-        JSON.json(serialize(cell))
     end
 
-    Endpoint("/getallcells", GET) do request::HTTP.Request
-        # TOOD: when reloading, the old client will get the first update
-        # to solve this, it might be better to move this for loop to the client:
-        for cell in notebook.cells
-            put!(pendingclientupdates, notebookupdate_cell_output(cell))
-        end
-        JSON.json(serialize.(notebook.cells))
-    end
-
-    println("Serving notebook...")
     println("Go to http://localhost:$(port)/ to start programming! ⚙")
+    launchbrowser && @error "Not implemented yet"
 
-    launchbrowser && Pages.launch("http://localhost:$(port)/")
+    # create blocking call:
+    take!(Channel(0))
 
-    Pages.start(port)
 end
 
 end

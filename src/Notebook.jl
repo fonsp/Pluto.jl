@@ -1,4 +1,4 @@
-include("./Cell.jl")
+using UUIDs
 
 import Pkg
 
@@ -7,7 +7,14 @@ mutable struct Notebook
 
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
+
+    uuid::UUID
+    # buffer must contain all undisplayed outputs
+    pendingclientupdates::Channel
 end
+
+Notebook(path::String, cells::Array{Cell, 1}, uuid) = Notebook(path, cells, uuid, Channel(128))
+Notebook(path::String, cells::Array{Cell, 1}) = Notebook(path, cells, uuid4(), Channel(128))
 
 function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
     cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)
@@ -32,7 +39,7 @@ function samplenotebook()
     push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
     push!(cells, createcell_fromcode("md\"# Cześć!\nMy name is **baba** and I like \$maths\$ _(no LaTeX support yet!)_\n\n### The spectacle before us was indeed sublime.\nApparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds. \""))
 
-    Notebook(joinpath(tempdir(), "test.jl"), cells)
+    Notebook(joinpath(tempdir(), "test.jl"), cells, uuid4())
 end
 
 function save_notebook(io, notebook)
@@ -112,7 +119,7 @@ function load_notebook(io, path)
         end
     end
 
-    Notebook(path, ordered_cells)
+    Notebook(path, ordered_cells, uuid4())
 end
 
 function load_notebook(path::String)

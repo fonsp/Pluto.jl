@@ -1,7 +1,3 @@
-include("./Notebook.jl")
-include("./ExploreExpression.jl")
-
-
 module ModuleManager
     "These expressions get executed whenever a new workspace is created."
     workspace_preamble = [Expr(:using, Expr(:(.), :Markdown))]
