@@ -212,10 +212,6 @@
 
         /* In ascending order of severity: */
 
-        cell.running>trafficlight {
-            background: yellow;
-        }
-
         cell.dependent>trafficlight {
             background: lightblue;
         }
@@ -226,6 +222,10 @@
 
         cell.error>trafficlight {
             background: red;
+        }
+
+        cell.running>trafficlight {
+            background: yellow;
         }
 
         clickshoulder {

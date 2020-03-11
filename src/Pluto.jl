@@ -1,5 +1,8 @@
+
 module Pluto
 export Notebook, prints
+
+println("Loading Pluto...")
 
 include("./Cell.jl")
 include("./Notebook.jl")
@@ -25,9 +28,10 @@ mutable struct Client
     id::Symbol
     stream::Any
     connected_notebook::Union{Notebook,Nothing}
+    pendingupdates::Channel
 end
 
-Client(id::Symbol, stream) = Client(id, stream, nothing)
+Client(id::Symbol, stream) = Client(id, stream, nothing, Channel(128))
 
 struct UpdateMessage
     type::Symbol
@@ -216,7 +220,7 @@ function handle_changecell(initiator, notebook, cell, newcode)
         cell.parsedcode = nothing
     end
 
-    put!(notebook.pendingclientupdates, clientupdate_cell_input(initiator, notebook, cell))
+    putnotebookupdates(notebook, clientupdate_cell_input(initiator, notebook, cell))
 
     @time to_update = run_reactive!(initiator, notebook, cell)
     
@@ -239,7 +243,7 @@ addresponse(:addcell) do (initiator, body, notebook)
 
     insert!(notebook.cells, new_index, new_cell)
 
-    put!(notebook.pendingclientupdates, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
+    putnotebookupdates(notebook, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
     nothing
 end
 
@@ -250,7 +254,7 @@ addresponse(:deletecell) do (initiator, body, notebook, cell)
     
     filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
 
-    put!(notebook.pendingclientupdates, clientupdate_cell_deleted(initiator, notebook, to_delete))
+    putnotebookupdates(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
     nothing
 end
 
@@ -273,7 +277,7 @@ addresponse(:movecell) do (initiator, body, notebook, cell)
         deleteat!(notebook.cells, old_index)
     end
 
-    put!(notebook.pendingclientupdates, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
+    putnotebookupdates(notebook, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
     nothing
 end
 
@@ -320,11 +324,67 @@ addresponse(:getallnotebooks) do (initiator, body)
     updates
 end
 
+
+function putnotebookupdates(notebook, messages...)
+    listeners = filter(c->c.connected_notebook.uuid == notebook.uuid, collect(values(connectedclients)))
+    if isempty(listeners)
+        @info "no clients connected to this notebook!"
+    else
+        for next_to_send in messages, client in listeners
+            put!(client.pendingupdates, next_to_send)
+        end
+    end
+    flushallclients(listeners)
+    listeners
+end
+
+flushtoken = Channel{Nothing}(1)
+put!(flushtoken, nothing)
+
+function flushclient(client)
+    # take!(flushtoken)
+    # println("$(client.id) requesting update")
+    didsomething = false
+    while isready(client.pendingupdates)
+        didsomething = true
+        next_to_send = take!(client.pendingupdates)
+        
+        if isopen(client.stream)
+            write(client.stream, serialize_message(next_to_send))
+        else
+            println("Client $(client.id) stream closed.")
+            return false
+        end
+    end
+    # put!(flushtoken, nothing)
+    # !didsomething && println("$(client.id) had no updates")
+    true
+end
+
+function flushallclients(subset)
+    disconnected = Set{Symbol}()
+    for client in subset
+        stillconnected = flushclient(client)
+        if !stillconnected
+            push!(disconnected, client.id)
+        end
+    end
+    for to_deleteID in disconnected
+        delete!(connectedclients, to_deleteID)
+    end
+end
+
+function flushallclients()
+    flushallclients(values(connectedclients))
+end
+
+# function startflushloopclientasync(client)
+#     global t = @task flushloopclient(client)
+#     schedule(t)
+# end
+
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
 function run(port::Int64 = 1234, launchbrowser = false)
-    println("Starting notebook server...")
-
-
 
     @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
@@ -343,8 +403,6 @@ function run(port::Int64 = 1234, launchbrowser = false)
                         clientID = Symbol(parentbody["clientID"])
                         client = Client(clientID, clientstream)
                         connectedclients[clientID] = client
-
-                        @show [c.id for c in values(connectedclients)]
                         
                         type = Symbol(parentbody["type"])
 
@@ -366,8 +424,7 @@ function run(port::Int64 = 1234, launchbrowser = false)
                                     # we should send back a websocket message.
                                     # does 404 close the socket?
                                     @warn "Remote notebook not found locally!"
-                                    return
-                                    # return HTTP.Response(404, JSON.json("Notebook not found!")) 
+                                    return HTTP.Response(200, "OK")
                                 end
                                 client.connected_notebook = notebook
                                 push!(args, notebook)
@@ -377,42 +434,34 @@ function run(port::Int64 = 1234, launchbrowser = false)
                                 cellID = UUID(parentbody["cellID"])
                                 cell = selectcell_byuuid(notebook, cellID)
                                 if cell === nothing
-                                    # TODO: idem
                                     @warn "Remote cell not found locally!"
-                                    return
-                                    # return HTTP.Response(404, JSON.json("Cell not found!")) 
+                                    return HTTP.Response(200, "OK") 
                                 end
                                 push!(args, cell)
                             end
                             
                             if haskey(responses, type)
                                 responsefunc = responses[type]
-                                @show type
                                 response = responsefunc((client, body, args...))
                                 if response !== nothing
-                                    # TODO: return
-                                    @show length(response)
-                                    for m in response
-                                        put!(notebook.pendingclientupdates, m)
-                                    end
-
+                                    putnotebookupdates(notebook, response...)
                                 end
                             else
-                                @show type
+                                @warn "Don't know how to respond to $(type)"
                             end
                         end
                     catch e
                         # TODO: idem
-                        showerror(stderr, e)
-                        # return HTTP.Response(400, JSON.json("Invalid message! $(e)"))
+                        if !isa(e, HTTP.WebSockets.WebSocketError) && !isa(e, InexactError)
+                            @warn "Reading WebSocket client stream failed for unknown reason:" e
+                        end
                     end
                     nothing
                 end
-                nothing
                 HTTP.Response(200, "OK")
             end
             catch e
-                display("HTTP upgrade crashed again ughhhhh")
+                @info "HTTP upgrade failed, should be fine" e
             end
             nothing
             HTTP.Response(200, "OK")
@@ -446,38 +495,30 @@ function run(port::Int64 = 1234, launchbrowser = false)
         end
     end
 
-    for notebook in values(notebooks)
-        @async while true
-            next_to_send = take!(notebook.pendingclientupdates)
-
-            # println("something to send!")
-
-            to_delete = Set{Client}()
-
-            for client in values(connectedclients)
-                if isopen(client.stream)
-                    if client.connected_notebook.uuid == notebook.uuid || true
-                        # println("Sending to $(client.id)")
-                        write(client.stream, serialize_message(next_to_send))
-                    end
-                else
-                    # println("Client $(client.id) disconnected.")
-                    push!(to_delete, client)
-                end
-            end
-
-            for c in to_delete
-                delete!(connectedclients, c.id)
-            end
-        end
-    end
+    # for notebook in values(notebooks)
+    #    # TODO: this needs to be done when notebooks are added, not here
+    #    println("starting flush $(notebook.uuid)")
+    #    @async flushloopnotebook(notebook.uuid, connectedclients) 
+    # end
 
     println("Go to http://localhost:$(port)/ to start programming! ⚙")
     launchbrowser && @error "Not implemented yet"
 
+    
     # create blocking call:
-    take!(Channel(0))
-
+    try
+        # take!(Channel(0))
+        while true
+            sleep(typemax(UInt64))
+            # yield()
+        end
+    catch e
+        if isa(e, InterruptException)
+            println("\nClosing Pluto... Bye! 🎈")
+        else
+            rethrow(e)
+        end
+    end
 end
 
 end

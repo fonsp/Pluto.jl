@@ -12,7 +12,20 @@ module ModuleManager
         new_workspace_name = Symbol("workspace", workspace_count)
         workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
         
+        # We suppress this warning:
+        # Expr(:module, true, :workspace1, Expr(:block, #= Symbol("/mnt/c/dev/julia/Pluto.jl/src/React.jl"):13 =#, #= Symbol("/mnt/c/dev/julia/Pluto.jl/src/React.jl"):13 =#, Expr(:using, Expr(:., :Markdown))))
+        # ** incremental compilation may be broken for this module **
+
+        # TODO: a more elegant way?
+        # TODO: check for other warnings
+        original_stderr = stderr
+        (rd, wr) = redirect_stderr();
+
         Core.eval(Main, workspace_creation)
+
+        redirect_stderr(original_stderr)
+        close(wr)
+        close(rd)
     end
     make_workspace() # so that there's immediately something to work with
 
@@ -83,10 +96,10 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
     cell.modified_symbols = symstate.assignments
 
     for to_run in will_update
-        put!(notebook.pendingclientupdates, clientupdate_cell_running(initiator, notebook, to_run))
+        putnotebookupdates(notebook, clientupdate_cell_running(initiator, notebook, to_run))
     end
     # 😴 small nap to allow the pending updates to be sent by the other task
-    sleep(0.005)
+    # sleep(0.005)
 
     for to_run in will_update
         if to_run in remodified
@@ -106,8 +119,8 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
         else
             run_single!(to_run)
         end
-        put!(notebook.pendingclientupdates, clientupdate_cell_output(initiator, notebook, to_run))
-        sleep(0.001)
+        putnotebookupdates(notebook, clientupdate_cell_output(initiator, notebook, to_run))
+        # sleep(0.001)
     end
 
     return will_update
