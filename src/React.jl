@@ -4,7 +4,7 @@ module ModuleManager
     
     workspace_count = 0
 
-    get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
+    get_workspace(id=workspace_count) = Core.eval(Main, Symbol("workspace", id))
 
     function make_workspace()
         global workspace_count += 1
@@ -12,7 +12,7 @@ module ModuleManager
         new_workspace_name = Symbol("workspace", workspace_count)
         workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
         
-        Core.eval(ModuleManager, workspace_creation)
+        Core.eval(Main, workspace_creation)
     end
     make_workspace() # so that there's immediately something to work with
 
@@ -53,9 +53,8 @@ module ModuleManager
     end
 end
 
-
 "Run a cell and all the cells that depend on it"
-function run_reactive!(notebook::Notebook, cell::Cell)
+function run_reactive!(initiator, notebook::Notebook, cell::Cell)
     cell.parsedcode = Meta.parse(cell.code, raise=false)
     cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
 
@@ -84,6 +83,12 @@ function run_reactive!(notebook::Notebook, cell::Cell)
     cell.modified_symbols = symstate.assignments
 
     for to_run in will_update
+        put!(notebook.pendingclientupdates, clientupdate_cell_running(initiator, notebook, to_run))
+    end
+    # 😴 small nap to allow the pending updates to be sent by the other task
+    sleep(0.005)
+
+    for to_run in will_update
         if to_run in remodified
             modified_multiple = let
                 other_modifiers = setdiff(modifiers, [to_run])
@@ -101,6 +106,8 @@ function run_reactive!(notebook::Notebook, cell::Cell)
         else
             run_single!(to_run)
         end
+        put!(notebook.pendingclientupdates, clientupdate_cell_output(initiator, notebook, to_run))
+        sleep(0.001)
     end
 
     return will_update

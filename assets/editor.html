@@ -10,7 +10,7 @@
     </script>
     <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
     <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/master/LICENSE" />
-    <meta name="theme-color" content="#fff" />
+    <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="Pluto.jl notebook" />
 
     <style>
@@ -482,7 +482,20 @@
                 // position from jumping back to (0,0).
                 if(oldVal == "" || !byMe) {
                     console.log(byMe)
-                    window.codeMirrors[uuid].setValue(code)
+                    var editor = window.codeMirrors[uuid]
+                    var cellNode = window.localCells[uuid]
+                    editor.setValue(code)
+
+                    // Silly code to make codemirror visible, then refresh, then make invisible again (if the code was hidden)
+                    var disp = cellNode.querySelector("cellinput").style.display;
+                    cellNode.querySelector("cellinput").style.display = "inline";
+                    var trick = cellNode.querySelector("cellinput").offsetHeight;
+                    editor.refresh()
+                    
+                    
+                    cellNode.querySelector("cellinput").style.display = null
+                    
+                    // window.codeMirrors[uuid].refresh()
                 }
             }
 
@@ -533,7 +546,10 @@
                         // Do not fold if a link was clicked.
                         if (e.target.tagName != "A") {
                             newCellNode.classList.toggle("code-folded")
-                            editor.refresh()
+                            // Force redraw:
+                            if(newCellNode.classList.contains("code-folded")){
+                                editor.refresh()
+                            }
                         }
                     }
                     // You may not fold code if the output is empty (it would be confusing)
@@ -697,6 +713,10 @@
                         case "cell_output":
                             updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage)
                             break
+                        case "cell_input":
+                            // TODO: catch exception
+                            updateLocalCellInput(byMe, update.cellID, message.code)
+                            break
                         case "cell_added":
                             createLocalCell(message.index, update.cellID, "")
                             break
@@ -709,9 +729,9 @@
                             // TODO: catch exception
                             moveLocalCell(window.localCells[update.cellID], message.index)
                             break
-                        case "cell_input":
+                        case "cell_running":
                             // TODO: catch exception
-                            updateLocalCellInput(byMe, update.cellID, message.code)
+                            window.localCells[update.cellID].classList.add("running")
                             break
                         default:
                             console.error("Received unknown update type!")

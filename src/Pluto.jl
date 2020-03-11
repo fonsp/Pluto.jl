@@ -112,6 +112,11 @@ function clientupdate_cell_dependecies(initiator::Client, notebook::Notebook, ce
             ), notebook, cell, initiator)
 end
 
+function clientupdate_cell_running(initiator::Client, notebook::Notebook, cell::Cell)
+    return UpdateMessage(:cell_running, 
+        Dict(), notebook, cell, initiator)
+end
+
 function clientupdate_notebook_entry(initiator::Client, notebook::Notebook)
     return UpdateMessage(:notebook_entry,
         Dict(:uuid => notebook.uuid,
@@ -213,12 +218,7 @@ function handle_changecell(initiator, notebook, cell, newcode)
 
     put!(notebook.pendingclientupdates, clientupdate_cell_input(initiator, notebook, cell))
 
-    # TODO: this should be done async, so that the HTTP server can return a list of dependent cells immediately.
-    # we could pass `notebook.pendingclientupdates` to `run_reactive!`, and handle cell updates there
-    @time to_update = run_reactive!(notebook, cell)
-    for cell in to_update
-        put!(notebook.pendingclientupdates, clientupdate_cell_output(initiator, notebook, cell))
-    end
+    @time to_update = run_reactive!(initiator, notebook, cell)
     
     # TODO: evaluation async
 end
@@ -295,7 +295,7 @@ end
 addresponse(:getallcells) do (initiator, body, notebook)
     # TODO: 
     updates = []
-    for (i,cell) in enumerate(notebook.cells)
+    for (i, cell) in enumerate(notebook.cells)
         push!(updates, clientupdate_cell_added(initiator, notebook, cell, i))
         push!(updates, clientupdate_cell_input(initiator, notebook, cell))
         push!(updates, clientupdate_cell_output(initiator, notebook, cell))
@@ -306,24 +306,25 @@ addresponse(:getallcells) do (initiator, body, notebook)
 end
 
 
+connectedclients = Dict{Symbol,Client}()
+notebooks = Dict{UUID,Notebook}()
+sn = samplenotebook()
+notebooks[sn.uuid] = sn
+
+addresponse(:getallnotebooks) do (initiator, body)
+    # TODO: 
+    updates = []
+    for n in notebooks
+        push!(updates, clientupdate_notebook_entry(n))
+    end
+    updates
+end
 
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
 function run(port::Int64 = 1234, launchbrowser = false)
     println("Starting notebook server...")
 
-    connectedclients = Dict{Symbol,Client}()
-    notebooks = Dict{UUID,Notebook}()
-    sn = samplenotebook()
-    notebooks[sn.uuid] = sn
 
-    addresponse(:getallnotebooks) do (initiator, body)
-        # TODO: 
-        updates = []
-        for n in notebooks
-            push!(updates, clientupdate_notebook_entry(n))
-        end
-        updates
-    end
 
     @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
@@ -456,7 +457,7 @@ function run(port::Int64 = 1234, launchbrowser = false)
             for client in values(connectedclients)
                 if isopen(client.stream)
                     if client.connected_notebook.uuid == notebook.uuid || true
-                        println("Sending to $(client.id)")
+                        # println("Sending to $(client.id)")
                         write(client.stream, serialize_message(next_to_send))
                     end
                 else

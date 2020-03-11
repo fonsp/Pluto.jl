@@ -305,7 +305,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 end
 
 
-function compute_symbolreferences(ex)
+    function compute_symbolreferences(ex)
     explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}()))
 end
 
@@ -323,4 +323,16 @@ function compute_usings(ex)::Set{Expr}
     end
 end
 
+function is_pure_html(ex)::Bool
+    if !(isa(ex, Expr) && ex.head == :macrocall && (ex.args[1] == Symbol("@md_str") || ex.args[1] == Symbol("@html_str")) && isa(ex.args[3], String))
+        return false
     end
+    if ex.args[1] == Symbol("@md_str")
+        parsed_markdown_str = Meta.parse("\"\"\"$(ex.args[3])\"\"\"", raise = false)
+        isa(parsed_markdown_str, String)
+    else
+        true
+    end
+end
+
+end
