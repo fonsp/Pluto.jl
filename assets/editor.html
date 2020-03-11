@@ -22,6 +22,7 @@
 
         body {
             margin: 0px;
+            font-size: 17px;
         }
 
         /* more sensible defaults for html tags: */
@@ -102,14 +103,12 @@
             border-bottom: solid 1px rgba(0, 0, 0, .1);
         }
 
-        header h1,
-        header h2,
-        header {
+
+        header h1 {
             color: black;
             letter-spacing: 2px;
-            font-family: 'Roboto Mono', monospace !important;
         }
-
+        
         #logocontainer {
             margin: 0 auto;
             max-width: 960px;
@@ -117,23 +116,26 @@
             padding-left: 20px;
             padding-bottom: 0px;
         }
-
+        
         #logocontainer img {
             height: 39px;
             margin-bottom: -11px;
         }
-
+        
         #logocontainer h1 {
             font-weight: 700;
-            font-size: 30px;
+            font-size: 1.8em;
             display: inline;
             border-bottom: none;
             margin-right: 50px;
         }
-
+        
         #logocontainer h2 {
             display: inline;
             border-bottom: none;
+            font-family: 'Roboto Mono', monospace !important;
+            font-size: 1.1em;
+            letter-spacing: 1px;
         }
 
         #logocontainer h1>span {
@@ -143,7 +145,6 @@
         #printernametitle {
             opacity: .6;
             font-style: normal;
-            font-size: 20px;
             font-weight: 400;
         }
 
@@ -177,6 +178,7 @@
 
         code {
             font-family: monospace;
+            font-style: .75em;
         }
 
         cell.error>code {
@@ -300,7 +302,6 @@
             color: black;
             opacity: .6;
             font-weight: 700;
-            ;
         }
 
         #info {
@@ -309,10 +310,45 @@
             text-align: right;
             padding: 5px;
         }
+
+        @media print {
+            main {
+                margin-top: 20px;
+            }
+
+            body {
+                font-size: 14px;
+            }
+
+            header,
+            cell>button,
+            cellinput>button,
+            clickshoulder {
+                display: none !important;
+            }
+
+            celloutput img {
+                max-width: 80%;
+                display: block;
+                margin: 0 auto;
+                margin-block-end: 1em;
+            }
+
+            #info::before {
+                content: "Generated using";
+            }
+
+            footer {
+                position: static;
+                bottom: 0mm;
+                font-style: italic;
+                opacity: .5;
+            }
+        }
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-    <!-- <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/theme/paraiso-light.min.css" /> -->
-    <link rel="stylesheet" href="./light.css" />
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl/assets/light.min.css" /> -->
+    <link rel="stylesheet" href="light.css" />
     <link rel="stylesheet" href="/assets/light.css" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
@@ -320,7 +356,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/display/placeholder.min.js"></script>
 </head>
 
-<body>
+<body class="no-MαθJax">
     <header>
         <div id="logocontainer">
             <h1>
@@ -342,15 +378,15 @@
         </confirmationdialog>
         <template id="celltemplate">
             <cell>
-                <clickshoulder draggable="true"></clickshoulder>
+                <clickshoulder draggable="true" title="Drag to move. Click output to hide code."></clickshoulder>
                 <trafficlight></trafficlight>
-                <button class="addcell before"><span></span></button>
+                <button class="addcell before" title="Add cell"><span></span></button>
                 <celloutput tabindex="1"></celloutput>
                 <cellinput>
-                    <button class="deletecell"><span></span></button>
-                    <button class="runcell"><span></span></button>
+                    <button class="deletecell" title="Delete cell"><span></span></button>
+                    <button class="runcell" title="Run"><span></span></button>
                 </cellinput>
-                <button class="addcell after"><span></span></button>
+                <button class="addcell after" title="Add cell"><span></span></button>
             </cell>
         </template>
     </main>
@@ -369,10 +405,10 @@
             function startDisconnectedBanner() {
                 document.querySelector("header").classList.add("disconnected")
                 document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-                
+
                 setTimeout(() => {
                     ping(() => {
-                        if(psocket.readyState != WebSocket.OPEN){
+                        if (psocket.readyState != WebSocket.OPEN) {
                             startDisconnectedBanner()
                         } else {
                             document.querySelector("header").classList.remove("disconnected")
@@ -467,6 +503,9 @@
                             // might be wise to wait after adding scripts to head
                             //
                         }
+
+                        // convert LaTeX to svg
+                        MathJax.typeset()
                     } else {
                         cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
                         cellNode.querySelector("celloutput").querySelector("code").innerText = output
@@ -480,7 +519,7 @@
                 // This might be annoying if you change the cell after the submission,
                 // while the request is still running. This also prevents the codemirror cursor
                 // position from jumping back to (0,0).
-                if(oldVal == "" || !byMe) {
+                if (oldVal == "" || !byMe) {
                     console.log(byMe)
                     var editor = window.codeMirrors[uuid]
                     var cellNode = window.localCells[uuid]
@@ -491,10 +530,10 @@
                     cellNode.querySelector("cellinput").style.display = "inline";
                     var trick = cellNode.querySelector("cellinput").offsetHeight;
                     editor.refresh()
-                    
-                    
+
+
                     cellNode.querySelector("cellinput").style.display = null
-                    
+
                     // window.codeMirrors[uuid].refresh()
                 }
             }
@@ -547,7 +586,7 @@
                         if (e.target.tagName != "A") {
                             newCellNode.classList.toggle("code-folded")
                             // Force redraw:
-                            if(newCellNode.classList.contains("code-folded")){
+                            if (newCellNode.classList.contains("code-folded")) {
                                 editor.refresh()
                             }
                         }
@@ -617,26 +656,26 @@
                 window.localCells[uuid].classList.add("running")
                 newCode = window.codeMirrors[uuid].getValue()
 
-                send("changecell", {code: newCode}, uuid)
+                send("changecell", { code: newCode }, uuid)
             }
 
             // Indexing works as if a new cell is added.
             // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
             // is moved to the end, that would be new js-index = 5
             function requestMoveRemoteCell(uuid, newIndex) {
-                send("movecell", {index: newIndex}, uuid)
+                send("movecell", { index: newIndex }, uuid)
             }
 
             function requestNewRemoteCell(newIndex) {
-                send("addcell", {index: newIndex})
+                send("addcell", { index: newIndex })
             }
 
             function requestDeleteRemoteCell(uuid) {
                 send("deletecell", {}, uuid)
             }
-            
 
-            
+
+
             function ping(onSucces, onFailure) {
                 fetch("/ping", {
                     method: 'GET',
@@ -668,16 +707,16 @@
             var clientID = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
             var notebookID = "🎈"
 
-            function send(messageType, body, cellUUID=null){
+            function send(messageType, body, cellUUID = null) {
                 var toSend = {
                     type: messageType,
                     clientID: clientID,
                     body: body,
                 }
-                if(notebookID){
+                if (notebookID) {
                     toSend.notebookID = notebookID
                 }
-                if(cellUUID){
+                if (cellUUID) {
                     toSend.cellID = cellUUID
                 }
                 psocket.send(JSON.stringify(toSend))
@@ -700,7 +739,7 @@
 
 
 
-                    if(update.notebookID != notebookID){
+                    if (update.notebookID != notebookID) {
                         console.log("Update message not meant for this notebook")
                         // return
                     }
@@ -742,21 +781,21 @@
                 } catch (error) {
                     onFailure(error)
                 }
-                    
-                
+
+
             }
 
-            function startSocketConnection(onSucces){
+            function startSocketConnection(onSucces) {
                 psocket = new WebSocket("ws://" + document.location.host)
                 psocket.onmessage = handleMessage
                 psocket.onerror = (e) => {
                     console.error("SOCKET ERROR")
                     console.log(e)
 
-                    if(psocket.readyState != WebSocket.OPEN && psocket.readyState != WebSocket.CONNECTING){
+                    if (psocket.readyState != WebSocket.OPEN && psocket.readyState != WebSocket.CONNECTING) {
                         startDisconnectedBanner()
                         setTimeout(() => {
-                            if(psocket.readyState != WebSocket.OPEN){
+                            if (psocket.readyState != WebSocket.OPEN) {
                                 tryCloseSocketConnection()
 
                                 startSocketConnection(onSucces)
@@ -778,7 +817,7 @@
                 }
             }
 
-            function tryCloseSocketConnection(){
+            function tryCloseSocketConnection() {
                 psocket.close()
             }
 
@@ -791,7 +830,7 @@
                     getAllRemoteCells(console.warn, console.log)
                 })
             }, startDisconnectedBanner)
-            
+
 
 
             // TODO: reconnect with a delay if the last request went poorly
@@ -916,7 +955,7 @@ end`)
             if (document.location.protocol == "file:") {
                 window.fakeCells()
             }
-            
+
             if ("fonts" in document) {
                 document.fonts.ready.then(function () {
                     console.log("fonts loaded");
@@ -926,6 +965,26 @@ end`)
                 });
             }
         });
+    </script>
+
+    <script>
+        MathJax = {
+            options: {
+                ignoreHtmlClass: "no-MαθJax",
+                processHtmlClass: "tex",
+            },
+            startup: {
+                typeset: false,
+            },
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+            },
+            svg: {
+                fontCache: 'global',
+            },
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js">
     </script>
 </body>
 

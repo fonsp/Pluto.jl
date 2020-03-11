@@ -1,29 +1,22 @@
 @import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese');
 @import url('https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
-
-
 celloutput {
     /* background-color: #ffffff; */
     /* font-family: 'Open Sans', serif; */
-    
     /* font-family: 'Roboto Slab';
     font-weight: 300;
     letter-spacing: .4px; */
-    
     /* font-family: 'Open Sans';
     font-weight: 400; */
-    
     font-family: 'Alegreya Sans', sans-serif;
-    font-size:17px;
+    font-size: 1em;
     font-weight: 400;
-
     color: hsl(0, 0%, 25%);
 }
 
 body.swoosh {
     animation: 🌈 30s linear 0s infinite;
-
 }
 
 celloutput h1,
@@ -36,6 +29,7 @@ celloutput h6 {
     font-weight: 700;
     color: hsl(0, 0%, 12%);
 }
+
 celloutput h1:first-child,
 celloutput h2:first-child,
 celloutput h3:first-child,
@@ -48,8 +42,8 @@ celloutput h6:first-child {
 celloutput p {
     margin-block-start: 8px;
     margin-block-end: 20px;
-    word-spacing: .9px;
-    line-height: 25px;
+    word-spacing: 0.053em;
+    line-height: 1.5em;
 }
 
 celloutput p:first-child {
@@ -73,7 +67,7 @@ main {
 }
 
 cell {
-    margin-top:20px;
+    margin-top: 20px;
     position: relative;
 }
 
@@ -96,7 +90,6 @@ celloutput:focus {
 
 code {
     font-family: 'Roboto Mono', monospace;
-    font-size: 12px;
 }
 
 .errormessage {
@@ -106,67 +99,70 @@ code {
 
 .CodeMirror {
     font-family: 'Roboto Mono', monospace !important;
-    font-size: 13px;
+    font-size: .75em;
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
-    border: 1px solid rgba(0,0,0,.1);
+    border: 1px solid rgba(0, 0, 0, .1);
     /* border-top: none; */
     width: auto;
 }
 
-cell > button, cellinput > button, confirmationdialog > button {
+cell>button,
+cellinput>button,
+confirmationdialog>button {
     margin: 0px;
     padding: 1px;
     opacity: 50%;
-
     border: none;
     background: none;
     cursor: pointer;
     color: hsl(204, 86%, 35%);
     font-family: 'Segoe UI Emoji', 'Roboto Mono', monospace;
     position: absolute;
-    z-index: 3; /* CodeMirror is 2 */
+    z-index: 3;
+    /* CodeMirror is 2 */
 }
 
-@media (any-pointer: fine) {
-    cell > button, cellinput > button {
+@media screen and (any-pointer: fine) {
+    cell>button,
+    cellinput>button {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
-
-    cell:hover > button, cell:hover > cellinput > button {
+    cell:hover>button,
+    cell:hover>cellinput>button {
         opacity: 25%;
     }
-
-    cell > button:hover, cell > cellinput > button:hover {
+    cell>button:hover,
+    cell>cellinput>button:hover {
         opacity: 100%;
         /* to make it feel snappy: */
         transition: opacity .05s ease-in-out;
-    }    
+    }
 }
 
-@media (any-pointer: coarse) {
-    cell > button, cellinput > button {
+@media screen and (any-pointer: coarse) {
+    cell>button,
+    cellinput>button {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
-
-    cell:focus-within > button, cell:focus-within > cellinput > button {
+    cell:focus-within>button,
+    cell:focus-within>cellinput>button {
         opacity: 25%;
     }
-
-    cell > button:focus-within, cell > cellinput > button:focus-within {
+    cell>button:focus-within,
+    cell>cellinput>button:focus-within {
         opacity: 100%;
         /* to make it feel snappy: */
         transition: opacity .05s ease-in-out;
     }
-    
 }
 
-/* ionicons */
-cell > button > span::after, cellinput > button > span::after {
+cell>button>span::after,
+cellinput>button>span::after {
     display: block;
     content: " " !important;
     background-size: 17px 17px;
@@ -174,8 +170,7 @@ cell > button > span::after, cellinput > button > span::after {
     width: 17px;
 }
 
-
-cell > button.addcell {
+cell>button.addcell {
     /* width: 100%; */
     /* font-family: 'Roboto Mono', monospace; */
     /* font-style: italic; */
@@ -183,33 +178,32 @@ cell > button.addcell {
     left: -12px;
 }
 
-cell > button.addcell.before {
+cell>button.addcell.before {
     margin-top: -20px !important;
 }
-cell > button.addcell > span::after {
+
+cell>button.addcell>span::after {
     /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-circle-outline.svg"); */
     background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-outline.svg");
 }
 
-cellinput > button.runcell {
+cellinput>button.runcell {
     right: 0px;
     padding: 3px;
 }
 
-cellinput > button.runcell > span::after {
+cellinput>button.runcell>span::after {
     background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/caret-forward-circle-outline.svg");
 }
 
-
-cellinput > button.deletecell {
+cellinput>button.deletecell {
     /* top: 3px; */
     /* left: -26px; */
     right: 20px;
     padding: 3px;
 }
 
-cellinput > button.deletecell > span::after {
-    
+cellinput>button.deletecell>span::after {
     /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/trash-outline.svg"); */
     background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/close-circle-outline.svg");
 }
@@ -220,76 +214,70 @@ trafficlight {
     transition: background .15s ease-in-out;
 }
 
-@media (any-pointer: fine) {
-    cell:hover > trafficlight {
-        background: rgba(0,0,0,.1);
+@media screen and (any-pointer: fine) {
+    cell:hover>trafficlight {
+        background: rgba(0, 0, 0, .1);
         transition: background .05s ease-in-out;
-    
-    }   
-}
-@media (any-pointer: coarse) {
-    cell:focus-within > trafficlight {
-        background: rgba(0,0,0,.1);
-        transition: background .05s ease-in-out;
-    
     }
 }
 
+@media screen and (any-pointer: coarse) {
+    cell:focus-within>trafficlight {
+        background: rgba(0, 0, 0, .1);
+        transition: background .05s ease-in-out;
+    }
+}
 
-
-
-cell.dependent > trafficlight {
+cell.dependent>trafficlight {
     background: lightblue;
 }
 
-cell.warning > trafficlight {
+cell.warning>trafficlight {
     background: hsl(39, 100%, 75%);
 }
 
-cell.error > trafficlight {
+cell.error>trafficlight {
     background: hsl(0, 100%, 71%);
 }
 
-cell.running > trafficlight {
-    background: repeating-linear-gradient(
-        -45deg,
-        hsla(20, 20%, 80%, 1),
-        hsla(20, 20%, 80%, 1) 8px,
-        hsla(20, 20%, 80%, .1) 8px,
-        hsla(20, 20%, 80%, .1) 16px
-      );
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+cell.running>trafficlight {
+    background: repeating-linear-gradient( -45deg, hsla(20, 20%, 80%, 1), hsla(20, 20%, 80%, 1) 8px, hsla(20, 20%, 80%, .1) 8px, hsla(20, 20%, 80%, .1) 16px);
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
     animation: 2s linear 0s infinite running scrollbackground;
 }
 
-cell.running.error > trafficlight {
-    background: repeating-linear-gradient(
-        -45deg,
-        hsl(0, 100%, 71%),
-        hsl(0, 100%, 71%) 8px,
-        hsla(12, 71%, 47%, 0.33) 8px,
-        hsla(12, 71%, 47%, 0.33) 16px
-      );
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+cell.running.error>trafficlight {
+    background: repeating-linear-gradient( -45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
     animation: 2s linear 0s infinite running scrollbackground;
 }
 
 @keyframes scrollbackground {
-    0%{
+    0% {
         background-position-y: 0px;
     }
-    100%{
-        background-position-y: 22.62741699797px; /* 16 * sqrt(2) */
+    100% {
+        background-position-y: 22.62741699797px;
+        /* 16 * sqrt(2) */
     }
 }
 
-cell:hover > cellinput > .CodeMirror,
-cell.dependent > cellinput > .CodeMirror,
-cell.warning > cellinput > .CodeMirror,
-cell.error > cellinput > .CodeMirror {
+cell.dependent>cellinput>.CodeMirror,
+cell.warning>cellinput>.CodeMirror,
+cell.error>cellinput>.CodeMirror {
     border-left: none;
     padding-left: 1px;
     border-bottom-left-radius: 0px;
+}
+
+@media screen {
+    cell:hover>cellinput>.CodeMirror {
+        border-left: none;
+        padding-left: 1px;
+        border-bottom-left-radius: 0px;
+    }
 }
 
 confirmationdialog {
@@ -300,11 +288,11 @@ confirmationdialog {
     margin-left: -180px;
     margin-top: -18px;
     padding: 6px;
-    font-size: 12px;
+    font-size: .7em;
     z-index: 10;
 }
 
-confirmationdialog > button {
+confirmationdialog>button {
     position: relative;
     color: block;
     opacity: 100%;
@@ -316,7 +304,6 @@ confirmationdialog span {
     font-family: 'Roboto Mono', monospace;
 }
 
-
 confirmationdialog>button#yes>span::after {
     color: darkred;
 }
@@ -325,32 +312,27 @@ confirmationdialog>button#no>span::after {
     /* text-decoration: underline; */
 }
 
-
 @keyframes 🌈 {
     from {
         background-color: hsl(0, 100%, 98%);
     }
-
     10% {
         background-color: hsl(90, 100%, 98%);
     }
-
     50% {
         background-color: hsl(180, 100%, 98%);
     }
-
     75% {
         background-color: hsl(270, 100%, 98%);
     }
-
     100% {
         background-color: hsl(360, 100%, 98%);
     }
 }
 
 
-
 /* CODEMIRROR STYLE */
+
 
 /*
 Based on "Paraíso (Light)" by Jan T. Sott:
@@ -358,34 +340,119 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
 */
 
-.cm-s-default.CodeMirror { background: hsla(46, 100%, 98%, 1); color: #41323f; }
-.cm-s-default div.CodeMirror-selected { background: #b9b6b0; }
-.cm-s-default .CodeMirror-line::selection, .cm-s-default .CodeMirror-line > span::selection, .cm-s-default .CodeMirror-line > span > span::selection { background: #b9b6b0; }
-.cm-s-default .CodeMirror-line::-moz-selection, .cm-s-default .CodeMirror-line > span::-moz-selection, .cm-s-default .CodeMirror-line > span > span::-moz-selection { background: #b9b6b0; }
-.cm-s-default .CodeMirror-gutters { background:  hsl(46, 100%, 98%); border-right: solid 1px hsla(0, 0%, 0%, .0); }
-.cm-s-default .CodeMirror-guttermarker { color: black; }
-.cm-s-default .CodeMirror-guttermarker-subtle { color: #8d8687; }
-.cm-s-default .CodeMirror-linenumber { color: #8d8687; }
-.cm-s-default .CodeMirror-cursor { border-left: 1px solid #776e71; }
+.cm-s-default.CodeMirror {
+    background: hsla(46, 100%, 98%, 1);
+    color: #41323f;
+}
 
-.cm-s-default span.cm-comment { color: #e96ba8; font-style: italic;}
-.cm-s-default span.cm-atom { color: #815ba4; }
-.cm-s-default span.cm-number { color: #815ba4; }
+.cm-s-default div.CodeMirror-selected {
+    background: #b9b6b0;
+}
 
-.cm-s-default span.cm-property, .cm-s-default span.cm-attribute { color: #48b685; }
-.cm-s-default span.cm-keyword { color: #ef6155; }
-.cm-s-default span.cm-string { color: #ce7d0a; }
+.cm-s-default .CodeMirror-line::selection,
+.cm-s-default .CodeMirror-line>span::selection,
+.cm-s-default .CodeMirror-line>span>span::selection {
+    background: #b9b6b0;
+}
 
-.cm-s-default span.cm-variable { color: #5668a4; font-weight: 500;}
-.cm-s-default span.cm-builtin { color: #5e7ad3; font-weight: 500;}
-.cm-s-default span.cm-variable-2 { color: #06b6ef; }
-.cm-s-default span.cm-def { color: #f99b15; }
-.cm-s-default span.cm-bracket { color: #41323f; }
-.cm-s-default span.cm-tag { color: #ef6155; }
-.cm-s-default span.cm-link { color: #815ba4; }
-.cm-s-default span.cm-error { background: #ef6155; color: #776e71; }
+.cm-s-default .CodeMirror-line::-moz-selection,
+.cm-s-default .CodeMirror-line>span::-moz-selection,
+.cm-s-default .CodeMirror-line>span>span::-moz-selection {
+    background: #b9b6b0;
+}
 
-.cm-s-default .CodeMirror-activeline-background { background: #CFD1C4; }
-.cm-s-default .CodeMirror-matchingbracket { text-decoration: underline; color: white !important; }
+.cm-s-default .CodeMirror-gutters {
+    background: hsl(46, 100%, 98%);
+    border-right: solid 1px hsla(0, 0%, 0%, .0);
+}
 
-.cm-s-default.CodeMirror-empty { color: rgba(0,0,0,.2); font-style: italic;}
+.cm-s-default .CodeMirror-guttermarker {
+    color: black;
+}
+
+.cm-s-default .CodeMirror-guttermarker-subtle {
+    color: #8d8687;
+}
+
+.cm-s-default .CodeMirror-linenumber {
+    color: #8d8687;
+}
+
+.cm-s-default .CodeMirror-cursor {
+    border-left: 1px solid #776e71;
+}
+
+.cm-s-default span.cm-comment {
+    color: #e96ba8;
+    font-style: italic;
+}
+
+.cm-s-default span.cm-atom {
+    color: #815ba4;
+}
+
+.cm-s-default span.cm-number {
+    color: #815ba4;
+}
+
+.cm-s-default span.cm-property,
+.cm-s-default span.cm-attribute {
+    color: #48b685;
+}
+
+.cm-s-default span.cm-keyword {
+    color: #ef6155;
+}
+
+.cm-s-default span.cm-string {
+    color: #ce7d0a;
+}
+
+.cm-s-default span.cm-variable {
+    color: #5668a4;
+    font-weight: 500;
+}
+
+.cm-s-default span.cm-builtin {
+    color: #5e7ad3;
+    font-weight: 500;
+}
+
+.cm-s-default span.cm-variable-2 {
+    color: #06b6ef;
+}
+
+.cm-s-default span.cm-def {
+    color: #f99b15;
+}
+
+.cm-s-default span.cm-bracket {
+    color: #41323f;
+}
+
+.cm-s-default span.cm-tag {
+    color: #ef6155;
+}
+
+.cm-s-default span.cm-link {
+    color: #815ba4;
+}
+
+.cm-s-default span.cm-error {
+    background: #ef6155;
+    color: #776e71;
+}
+
+.cm-s-default .CodeMirror-activeline-background {
+    background: #CFD1C4;
+}
+
+.cm-s-default .CodeMirror-matchingbracket {
+    text-decoration: underline;
+    color: white !important;
+}
+
+.cm-s-default.CodeMirror-empty {
+    color: rgba(0, 0, 0, .2);
+    font-style: italic;
+}

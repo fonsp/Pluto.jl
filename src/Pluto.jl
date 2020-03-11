@@ -23,11 +23,27 @@ using JSON
 using UUIDs
 using HTTP
 using Sockets
+using Markdown
 import Base: show
+import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 
+# We add a method for the Markdown -> HTML conversion that takes a LaTeX chunk from the Markdown tree and adds our custom span
+function htmlinline(io::IO, x::LaTeX)
+    withtag(io, :span, :class => "tex") do
+        print(io, '$')
+        htmlesc(io, x.formula)
+        print(io, '$')
+    end
+end
 
-
-
+# This one for block equations: (double $$)
+function html(io::IO, x::LaTeX)
+    withtag(io, :p, :class => "tex") do
+        print(io, '$', '$')
+        htmlesc(io, x.formula)
+        print(io, '$', '$')
+    end
+end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
@@ -511,7 +527,7 @@ function run(port::Int64 = 1234, launchbrowser = false)
     # end
 
     println("Go to http://localhost:$(port)/ to start programming! ⚙")
-    
+
     launchbrowser && @warn "Not implemented yet"
 
     
