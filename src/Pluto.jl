@@ -2,7 +2,17 @@
 module Pluto
 export Notebook, prints
 
-println("Loading Pluto...")
+using Pkg
+
+const packagerootdir = normpath(joinpath(@__DIR__, ".."))
+const version_str = 'v' * Pkg.TOML.parsefile(joinpath(packagerootdir, "Project.toml"))["version"]
+
+@info """\n
+    Welcome to Pluto $(version_str)! ⚡
+
+    Let us know what you think:
+    https://github.com/fonsp/Pluto.jl
+\n"""
 
 include("./Cell.jl")
 include("./Notebook.jl")
@@ -16,7 +26,6 @@ using Sockets
 import Base: show
 
 
-const packagerootdir = normpath(joinpath(@__DIR__, ".."))
 
 
 
@@ -502,7 +511,8 @@ function run(port::Int64 = 1234, launchbrowser = false)
     # end
 
     println("Go to http://localhost:$(port)/ to start programming! ⚙")
-    launchbrowser && @error "Not implemented yet"
+    
+    launchbrowser && @warn "Not implemented yet"
 
     
     # create blocking call:

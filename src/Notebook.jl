@@ -45,8 +45,7 @@ end
 
 function save_notebook(io, notebook)
     write(io, "### A Pluto.jl notebook ###\n")
-    version_str = Pkg.TOML.parsefile(joinpath(packagerootdir, "Project.toml"))["version"]
-    write(io, "# v" * version_str * "\n")
+    write(io, "# " * version_str * "\n")
 
     # TODO: order cells
     cells_ordered = notebook.cells
@@ -78,10 +77,9 @@ function load_notebook(io, path)
         @error "File is not a Pluto.jl notebook"
     end
 
-    version_str = readline(io)[4:end]
-    my_version_str = Pkg.TOML.parsefile(joinpath(packagerootdir, "Project.toml"))["version"]
-    if version_str != my_version_str
-        @warn "Loading a notebook saved with Pluto v$(version_str). This is Pluto v$(my_version_str)."
+    file_version_str = readline(io)[3:end]
+    if file_version_str != version_str
+        @warn "Loading a notebook saved with Pluto $(file_version_str). This is Pluto $(version_str)."
     end
 
     
