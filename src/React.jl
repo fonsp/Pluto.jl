@@ -96,7 +96,7 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
     cell.modified_symbols = symstate.assignments
 
     for to_run in will_update
-        putnotebookupdates(notebook, clientupdate_cell_running(initiator, notebook, to_run))
+        putnotebookupdates!(notebook, clientupdate_cell_running(initiator, notebook, to_run))
     end
     # 😴 small nap to allow the pending updates to be sent by the other task
     # sleep(0.005)
@@ -119,7 +119,7 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
         else
             run_single!(to_run)
         end
-        putnotebookupdates(notebook, clientupdate_cell_output(initiator, notebook, to_run))
+        putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, to_run))
         # sleep(0.001)
     end
 

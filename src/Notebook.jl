@@ -31,6 +31,9 @@ _uuid_delimiter = "# ⋐⋑ "
 _order_delimited = "# ○ "
 _cell_appendix = "\n\n"
 
+emptynotebook(path) = Notebook(path, [createcell_fromcode("")], uuid4())
+emptynotebook() = emptynotebook(tempname() * ".jl")
+
 function samplenotebook()
     cells = Cell[]
 
@@ -39,7 +42,7 @@ function samplenotebook()
     push!(cells, createcell_fromcode("b = let\n\tx = a + a\n\tx*x\nend"))
     push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
     push!(cells, createcell_fromcode("""md"# Cześć!
-    My name is **baba** and I like \$\LaTeX\$ _support!_
+    My name is **baba** and I like \$\\LaTeX\$ _support!_
     
     \$\$\\begin{align}
     \\varphi &= \\sum_{i=1}^{\\infty} \\frac{\\left(\\sin{x_i}^2 + \\cos{x_i}^2\\right)}{i^2} \\\\
@@ -50,7 +53,7 @@ function samplenotebook()
     Apparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds."
     """))
 
-    Notebook(joinpath(tempdir(), "test.jl"), cells, uuid4())
+    Notebook(tempname() * ".jl", cells, uuid4())
 end
 
 function save_notebook(io, notebook)

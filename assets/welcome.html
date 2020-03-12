@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <title>⚡ Pluto.jl ⚡</title>
+    <meta charset="utf-8" />
+    <script>
+        console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
+    </script>
+    <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
+    <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/master/LICENSE" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="description" content="Pluto.jl notebook" />
+
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext');
+        @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+
+        #title {
+            /* position: absolute; */
+            /* left: 0; */
+            /* right: 0; */
+            margin-top: 34vh;
+            /* bottom: 0; */
+            /* margin: auto; */
+            display: block;
+            width: 100%;
+            text-align: center;
+        }
+
+        #title h1 {
+            font-style: italic;
+            font-size: 2em;
+            letter-spacing: .08em;
+            font-weight: 500;
+            font-family: 'Vollkorn', serif;
+            color: hsl(0, 0%, 26%);
+            margin: 0px;
+            border-bottom: solid 2px hsl(0, 0%, 88%);
+        }
+
+        #title img {
+            height: 1.2em;
+            margin-bottom: -.27em;
+            /* margin-right: -1.5em; */
+            margin-left: .1em;
+        }
+
+        .phantom {
+            opacity: 0%;
+            display: none;
+        }
+
+        body {
+            margin: 0px;
+        }
+
+        main {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: white;
+        }
+
+        ul {
+            padding-left: 0px;
+            width: 15em;
+            margin: 0 auto;
+            margin-top: 25vh;
+            text-align: left;
+            list-style: none;
+            font-family: 'Roboto Mono', monospace;
+            color: hsl(0, 0%, 60%);
+        }
+
+        li {
+            margin-bottom: .9em;
+        }
+
+        a {
+            color: inherit;
+            color: hsl(0, 0%, 30%);
+        }
+
+        input {
+            width: 70%;
+            font-family: inherit;
+            background: #ffffff;
+            border: 3px solid #d1d1d1;
+            border-radius: 6px;
+            padding: 3px;
+            margin-block-start: .7em;
+        }
+
+        button {
+            width: 20%;
+            font-family: inherit;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <div id="title">
+            <h1>welcome to <img src="/assets/logo.svg"><span class="phantom"> ot emoclew</span></h1>
+            <ul>
+                <li>Open a <a href="/sample">sample notebook</a></li>
+                <li>Create a <a href="/new">new notebook</a></li>
+                <li>Open from file:
+                    <form action="/open">
+                        <input type="text" placeholder="/path/to/file.jl" name="path">
+                        <button type="submit">Open</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </main>
+</body>
+
+</html>

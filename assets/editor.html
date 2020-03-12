@@ -14,9 +14,8 @@
     <meta name="description" content="Pluto.jl notebook" />
 
     <style>
-        /* TODO: these are only for the header */
         @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
-        @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+        @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 
         /* GENERAL PAGE LAYOUT */
 
@@ -74,13 +73,13 @@
             max-width: 100%;
         }
 
-        html,
+        /* html,
         body {
             height: 100%;
-        }
+        } */
 
         main {
-            min-height: calc(100% - 73px - 60px);
+            min-height: calc(100vh - 100px - 4em);
             margin: 0 auto;
             margin-top: 100px;
             max-width: 960px;
@@ -108,7 +107,7 @@
             color: black;
             letter-spacing: 2px;
         }
-        
+
         #logocontainer {
             margin: 0 auto;
             max-width: 960px;
@@ -116,12 +115,12 @@
             padding-left: 20px;
             padding-bottom: 0px;
         }
-        
+
         #logocontainer img {
             height: 39px;
             margin-bottom: -11px;
         }
-        
+
         #logocontainer h1 {
             font-weight: 700;
             font-size: 1.8em;
@@ -129,7 +128,7 @@
             border-bottom: none;
             margin-right: 50px;
         }
-        
+
         #logocontainer h2 {
             display: inline;
             border-bottom: none;
@@ -157,6 +156,7 @@
 
         .disconnected>#logocontainer:after {
             content: "NOT CONNECTED";
+            font-family: 'Roboto Mono';
             text-align: right;
             float: right;
             padding: 12px;
@@ -178,7 +178,7 @@
 
         code {
             font-family: monospace;
-            font-style: .75em;
+            font-size: .75em;
         }
 
         cell.error>code {
@@ -293,9 +293,10 @@
 
         footer {
             width: 100%;
-            height: 30px;
+            height: 2em;
+            margin-top: 2em;
             font-family: monospace;
-            margin-top: 30px;
+            font-size: .75em;
         }
 
         footer a {
@@ -362,7 +363,7 @@
             <h1>
                 <img src="/assets/logo.svg" alt="Pluto.jl" /></h1>
             <h2>
-                <span id="printernametitle">/editor</span></h2>
+                <span id="printernametitle">Loading...</span></h2>
         </div>
     </header>
 
@@ -399,8 +400,13 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            notebookName = "test_notebook.jl"
-            document.querySelector("#printernametitle").innerText = notebookName;
+            notebookID = (new URL(document.location.href)).search.split("uuid=")[1]
+            notebookName = notebookID
+
+            function updateLocalNotebookName(newName) {
+                notebookName = newName
+                document.querySelector("#printernametitle").innerText = newName;
+            }
 
             function startDisconnectedBanner() {
                 document.querySelector("header").classList.add("disconnected")
@@ -604,6 +610,9 @@
                     requestNewRemoteCell(indexOfLocalCell(newCellNode) + 1)
                 }
                 newCellNode.querySelector(".deletecell").onclick = (e) => {
+                    if (Object.keys(localCells).length <= 1) {
+                        requestNewRemoteCell(0)
+                    }
                     requestDeleteRemoteCell(newCellNode.id)
                 }
                 newCellNode.querySelector(".runcell").onclick = (e) => {
@@ -674,6 +683,19 @@
                 send("deletecell", {}, uuid)
             }
 
+            window.remoteNotebookList = null
+
+            function updateRemoteNotebooks(list) {
+                remoteNotebookList = list
+                list.forEach(nb => {
+                    console.log(nb)
+                    if (nb.uuid == notebookID) {
+                        updateLocalNotebookName(nb.path)
+                    }
+                })
+                console.log(list)
+            }
+
 
 
             function ping(onSucces, onFailure) {
@@ -699,13 +721,9 @@
 
 
 
-
-
-
             window.psocket = null
 
             var clientID = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
-            var notebookID = "🎈"
 
             function send(messageType, body, cellUUID = null) {
                 var toSend = {
@@ -731,17 +749,17 @@
                 }
 
                 console.log("update event received")
-                console.log(event)
+                // console.log(event)
                 try {
                     update = JSON.parse(event.data)
                     console.log("output deserialized")
                     console.log(update)
 
+                    forMe = !(("notebookID" in update) && (update.notebookID != notebookID))
 
-
-                    if (update.notebookID != notebookID) {
+                    if (!forMe) {
                         console.log("Update message not meant for this notebook")
-                        // return
+                        return
                     }
 
                     byMe = ("initiatorID" in update) && (update.initiatorID == clientID)
@@ -771,6 +789,10 @@
                         case "cell_running":
                             // TODO: catch exception
                             window.localCells[update.cellID].classList.add("running")
+                            break
+                        case "notebook_list":
+                            // TODO: catch exception
+                            updateRemoteNotebooks(message.notebooks)
                             break
                         default:
                             console.error("Received unknown update type!")
@@ -812,6 +834,7 @@
                 }
                 psocket.onopen = () => {
                     send("connect", {})
+                    send("getallnotebooks", {})
                     console.log("socket opened")
                     onSucces()
                 }

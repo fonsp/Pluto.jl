@@ -146,11 +146,11 @@ function clientupdate_cell_running(initiator::Client, notebook::Notebook, cell::
         Dict(), notebook, cell, initiator)
 end
 
-function clientupdate_notebook_entry(initiator::Client, notebook::Notebook)
-    return UpdateMessage(:notebook_entry,
-        Dict(:uuid => notebook.uuid,
+function clientupdate_notebook_list(initiator::Client, notebook_list)
+    return UpdateMessage(:notebook_list,
+        Dict(:notebooks => [Dict(:uuid => string(notebook.uuid),
             :path => notebook.path,
-        ), notebook)
+        ) for notebook in notebook_list]), nothing, nothing, initiator)
 end
 
 
@@ -225,9 +225,70 @@ end
 
 const PLUTOROUTER = HTTP.Router()
 
-HTTP.@register(PLUTOROUTER, "GET", "/", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
+function serve_editor(req::HTTP.Request)
+    p=HTTP.URI(req.target).path
+    b = String(req.body)
+    HTTP.Response(200, "Path: $(p) \n\n Body: $(b)")
+end
+
+function notebook_redirect(notebook)
+    response = HTTP.Response(302, "")
+    push!(response.headers, "Location" => "/edit?uuid=" * string(notebook.uuid))
+    return response
+end
+
+function serve_openfile(req::HTTP.Request)
+    uri=HTTP.URI(req.target)
+    query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
+
+    if length(query) > 5
+        path = query[6:end]
+
+        if(isfile(path))
+            try
+                for nb in values(notebooks)
+                    if realpath(nb.path) == realpath(path)
+                        return notebook_redirect(nb)
+                    end
+                end
+
+                nb = load_notebook(path)
+                save_notebook(nb)
+                notebooks[nb.uuid] = nb
+                return notebook_redirect(nb)
+                
+            catch e
+                return HTTP.Response(500, "Failed to load notebook:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
+            end
+            # return HTTP.Response(200, """<head><meta charset="utf-8" /></head><body>Path: $(path)</bodu>""")
+        else
+            return HTTP.Response(404, "Can't find a file here.\n\n<a href=\"/\">Go back</a>")
+        end
+    end
+    return HTTP.Response(400, "Bad query.\n\n<a href=\"/\">Go back</a>")
+end
+
+function serve_samplefile(req::HTTP.Request)
+    nb = samplenotebook()
+    save_notebook(nb)
+    notebooks[nb.uuid] = nb
+    return notebook_redirect(nb)
+end
+
+function serve_newfile(req::HTTP.Request)
+    nb = emptynotebook()
+    save_notebook(nb)
+    notebooks[nb.uuid] = nb
+    return notebook_redirect(nb)
+end
+
+HTTP.@register(PLUTOROUTER, "GET", "/", serveonefile(joinpath(packagerootdir, "assets", "welcome.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/edit", serveonefile(joinpath(packagerootdir, "assets", "editor.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_samplefile)
+HTTP.@register(PLUTOROUTER, "GET", "/new", serve_newfile)
+HTTP.@register(PLUTOROUTER, "GET", "/open", serve_openfile)
+HTTP.@register(PLUTOROUTER, "GET", "/index", serveonefile(joinpath(packagerootdir, "assets", "welcome.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(packagerootdir, "assets", "welcome.html")))
 
 HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serveonefile(joinpath(packagerootdir, "assets", "favicon.ico")))
 
@@ -245,11 +306,13 @@ function handle_changecell(initiator, notebook, cell, newcode)
         cell.parsedcode = nothing
     end
 
-    putnotebookupdates(notebook, clientupdate_cell_input(initiator, notebook, cell))
+    putnotebookupdates!(notebook, clientupdate_cell_input(initiator, notebook, cell))
 
+    # TODO: evaluation async
     @time to_update = run_reactive!(initiator, notebook, cell)
     
-    # TODO: evaluation async
+    # TODO: feedback to user about File IO
+    save_notebook(notebook)
 end
 
 
@@ -268,7 +331,7 @@ addresponse(:addcell) do (initiator, body, notebook)
 
     insert!(notebook.cells, new_index, new_cell)
 
-    putnotebookupdates(notebook, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
+    putnotebookupdates!(notebook, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
     nothing
 end
 
@@ -279,7 +342,7 @@ addresponse(:deletecell) do (initiator, body, notebook, cell)
     
     filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
 
-    putnotebookupdates(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
+    putnotebookupdates!(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
     nothing
 end
 
@@ -302,7 +365,7 @@ addresponse(:movecell) do (initiator, body, notebook, cell)
         deleteat!(notebook.cells, old_index)
     end
 
-    putnotebookupdates(notebook, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
+    putnotebookupdates!(notebook, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
     nothing
 end
 
@@ -337,20 +400,15 @@ end
 
 connectedclients = Dict{Symbol,Client}()
 notebooks = Dict{UUID,Notebook}()
-sn = samplenotebook()
-notebooks[sn.uuid] = sn
+# sn = samplenotebook()
+# notebooks[sn.uuid] = sn
 
 addresponse(:getallnotebooks) do (initiator, body)
-    # TODO: 
-    updates = []
-    for n in notebooks
-        push!(updates, clientupdate_notebook_entry(n))
-    end
-    updates
+    [clientupdate_notebook_list(initiator, values(notebooks))]
 end
 
 
-function putnotebookupdates(notebook, messages...)
+function putnotebookupdates!(notebook, messages...)
     listeners = filter(c->c.connected_notebook.uuid == notebook.uuid, collect(values(connectedclients)))
     if isempty(listeners)
         @info "no clients connected to this notebook!"
@@ -363,21 +421,41 @@ function putnotebookupdates(notebook, messages...)
     listeners
 end
 
-flushtoken = Channel{Nothing}(1)
-put!(flushtoken, nothing)
+
+function putplutoupdates!(notebook, messages...)
+    listeners = collect(values(connectedclients))
+    if isempty(listeners)
+        @info "no clients connected to pluto!"
+    else
+        for next_to_send in messages, client in listeners
+            put!(client.pendingupdates, next_to_send)
+        end
+    end
+    flushallclients(listeners)
+    listeners
+end
+
+
+# flushtoken = Channel{Nothing}(1)
+# put!(flushtoken, nothing)
 
 function flushclient(client)
     # take!(flushtoken)
     # println("$(client.id) requesting update")
     didsomething = false
     while isready(client.pendingupdates)
-        didsomething = true
         next_to_send = take!(client.pendingupdates)
+        didsomething = true
         
-        if isopen(client.stream)
-            write(client.stream, serialize_message(next_to_send))
-        else
-            println("Client $(client.id) stream closed.")
+        try
+            if isopen(client.stream)
+                write(client.stream, serialize_message(next_to_send))
+            else
+                @info "Client $(client.id) stream closed."
+                return false
+            end
+        catch e
+            @warn "Failed to write to WebSocket of $(client.id) " e
             return false
         end
     end
@@ -409,9 +487,9 @@ end
 # end
 
 "Will _synchronously_ run the notebook server. (i.e. blocking call)"
-function run(port::Int64 = 1234, launchbrowser = false)
-
-    @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true) do http::HTTP.Stream
+function run(port=1234, launchbrowser = false)
+    serversocket = Sockets.listen(UInt16(port))
+    @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
@@ -436,14 +514,12 @@ function run(port::Int64 = 1234, launchbrowser = false)
                         elseif type == :connect
 
                         else
-                            
                             body = parentbody["body"]
     
                             args = []
                             if haskey(parentbody, "notebookID")
-                                notebookID = Symbol(parentbody["notebookID"])
+                                notebookID = UUID(parentbody["notebookID"])
                                 notebook = get(notebooks, notebookID, nothing)
-                                notebook = sn
                                 if notebook === nothing
                                     # TODO: returning a http 404 response is not what we want,
                                     # we should send back a websocket message.
@@ -469,7 +545,7 @@ function run(port::Int64 = 1234, launchbrowser = false)
                                 responsefunc = responses[type]
                                 response = responsefunc((client, body, args...))
                                 if response !== nothing
-                                    putnotebookupdates(notebook, response...)
+                                    putplutoupdates!(notebook, response...)
                                 end
                             else
                                 @warn "Don't know how to respond to $(type)"
@@ -480,12 +556,18 @@ function run(port::Int64 = 1234, launchbrowser = false)
                         if !isa(e, HTTP.WebSockets.WebSocketError) && !isa(e, InexactError)
                             @warn "Reading WebSocket client stream failed for unknown reason:" e
                         end
+                        if isa(e, InterruptException)
+                            rethrow(e)
+                        end
                     end
                     nothing
                 end
                 HTTP.Response(200, "OK")
             end
             catch e
+                if isa(e, InterruptException)
+                    rethrow(e)
+                end
                 @info "HTTP upgrade failed, should be fine" e
             end
             nothing
@@ -526,8 +608,12 @@ function run(port::Int64 = 1234, launchbrowser = false)
     #    @async flushloopnotebook(notebook.uuid, connectedclients) 
     # end
 
-    println("Go to http://localhost:$(port)/ to start programming! ⚙")
-
+    println("Go to http://localhost:$(port)/ to start writing! ⚙")
+    println()
+    controlkey = Sys.isapple() ? "Command" : "Ctrl"
+    println("Press $controlkey+C to stop Pluto")
+    println()
+    
     launchbrowser && @warn "Not implemented yet"
 
     
@@ -541,6 +627,7 @@ function run(port::Int64 = 1234, launchbrowser = false)
     catch e
         if isa(e, InterruptException)
             println("\nClosing Pluto... Bye! 🎈")
+            close(serversocket)
         else
             rethrow(e)
         end
