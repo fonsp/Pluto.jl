@@ -85,7 +85,6 @@ function serialize_message(message::UpdateMessage)
     JSON.json(to_send)
 end
 
-
 function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::Cell)
     # TODO: Here we could do even richer formatting
     # interactive Arrays!
@@ -95,11 +94,11 @@ function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::C
     # text/plain always matches
     mimes = ["text/html", "text/plain"]
     
-    mime = first(filter(m->showable(m, cell.output), mimes))
+    mime = first(filter(m->Base.invokelatest(showable, m, cell.output), mimes))
 
     # TODO: limit output!
 
-    payload = repr(mime, cell.output; context = iocontext)
+    payload = Base.invokelatest(repr, mime, cell.output; context = iocontext)
 
     if cell.output === nothing
         payload = ""
@@ -593,7 +592,7 @@ function run(port=1234, launchbrowser = false)
                 startwrite(http)
                 write(http, request.response.body)
             catch e
-                if isa(e, HTTP.IOError)
+                if isa(e, HTTP.IOError) || isa(e, ArgumentError)
                     @warn "Attempted to write to a closed stream at $(request.target)"
                 else
                     rethrow(e)

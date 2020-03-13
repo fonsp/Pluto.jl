@@ -32,3 +32,8 @@ function relay_error!(cell::Cell, message::String)
 end
 
 relay_error!(cell::Cell, err::Exception) = relay_error!(cell, sprint(showerror, err))
+function relay_error!(cell::Cell, err::Exception, backtrace::Array{Base.StackTraces.StackFrame,1})
+    until = findfirst(sf -> sf.func == :run_single!, backtrace)
+    backtrace_trimmed = until === nothing ? backtrace : backtrace[1:until-1]
+    relay_error!(cell, sprint(showerror, err, backtrace_trimmed))
+end

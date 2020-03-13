@@ -1,10 +1,10 @@
 module ModuleManager
     "These expressions get executed whenever a new workspace is created."
-    workspace_preamble = [Expr(:using, Expr(:(.), :Markdown))]
+    workspace_preamble = [:(using Markdown), :(ENV["GKSwstype"] = "nul")]
     
     workspace_count = 0
 
-    get_workspace(id=workspace_count) = Core.eval(Main, Symbol("workspace", id))
+    get_workspace(id=workspace_count) = Core.eval(ModuleManager, Symbol("workspace", id))
 
     function make_workspace()
         global workspace_count += 1
@@ -21,7 +21,7 @@ module ModuleManager
         original_stderr = stderr
         (rd, wr) = redirect_stderr();
 
-        Core.eval(Main, workspace_creation)
+        Core.eval(ModuleManager, workspace_creation)
 
         redirect_stderr(original_stderr)
         close(wr)
@@ -138,7 +138,8 @@ function run_single!(cell::Cell)
         relay_output!(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))
         # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
     catch err
-        relay_error!(cell, err)
+        bt = stacktrace(catch_backtrace())
+        relay_error!(cell, err, bt)
     end
 end
 
