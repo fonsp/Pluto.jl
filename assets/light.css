@@ -107,6 +107,7 @@ code {
     width: auto;
 }
 
+preamble>button,
 cell>button,
 cellinput>button,
 confirmationdialog>button {
@@ -116,11 +117,26 @@ confirmationdialog>button {
     border: none;
     background: none;
     cursor: pointer;
-    color: hsl(204, 86%, 35%);
+    /* color: hsl(204, 86%, 35%); */
+    color: black;
     font-family: 'Segoe UI Emoji', 'Roboto Mono', monospace;
     position: absolute;
     z-index: 3;
     /* CodeMirror is 2 */
+}
+
+preamble>button {
+    right: 0px;
+}
+preamble>button>span::after{
+    background-size: 17px 17px;
+    display: block;
+    content: "Run all" !important;
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/refresh-circle-outline.svg);
+    background-repeat: no-repeat;
+    background-position-x: right;
+    background-position-y: 1px;
+    padding-right: 20px;
 }
 
 @media screen and (any-pointer: fine) {
@@ -134,6 +150,7 @@ confirmationdialog>button {
     cell:hover>cellinput>button {
         opacity: 25%;
     }
+    preamble>button:hover,
     cell>button:hover,
     cell>cellinput>button:hover {
         opacity: 100%;
