@@ -7,22 +7,22 @@ _**Explore models and share results** in a notebook that is_
 - **_lightweight_** - Pluto is written in pure Julia and is an installable package.
 - **_modern_** - responsive, intuitive user experience; beautiful exported documents; custom themes.
 
-<img alt="reactivity screencap" src="demo/reactivity.gif" >
+<img alt="reactivity screencap" src="demo/plutodemo.gif" >
 
 
 ## Input
 
 The central idea is that Pluto notebooks are ***reactive***, just like [Observable notebooks](https://observablehq.com/@observablehq/observables-not-javascript), but using Julia instead of JavaScript. Cells can be placed in any order - our intelligent AST parser figures out the dependencies between them and takes care of execution. When you change a variable, Pluto automatically re-runs the cells that refer to it.
 
+Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather a _one-to-one corresponce_ between variables and code. In a Pluto notebook, the value of a variable _always_ corresponds to the code that defines it.
 
 ## Output
 
 Cell output is simple: one cell outputs one variable, which is displayed using the richest available formatter. We believe that this limitation actually [_makes programming easier_](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0)!
 
-<img alt="formatting screenshot" src="demo/formatting.png" >
+Your notebooks are saved as pure Julia files, which you can then import as if you had been programming in a regular editor all along. You can also export your notebook with output as attractive HTML and PDF documents. By reordering cells and hiding code, you have full control over how you tell your story.
 
-Your notebooks are saved as pure Julia files, which you can then import as if you had been programming in a regular editor all along.
-
+<img alt="formatting screenshot" src="demo/formatting.png" width="50%">
 
 ## Installation
 
@@ -36,10 +36,12 @@ julia> using Pkg; Pkg.add(PackageSpec(url="https://github.com/fonsp/Pluto.jl"))
 To run the notebook server:
 ```julia
 julia> using Pluto
-julia> Pluto.serve_notebook(1234)
+julia> Pluto.run(1234)
 ```
 
 Then go to [`http://localhost:1234/`](http://localhost:1234/) to start coding!
+
+<img alt="plotting screencap" src="demo/plutoODE.gif" >
 
 ## Note
 
