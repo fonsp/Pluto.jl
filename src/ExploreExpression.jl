@@ -29,7 +29,27 @@ function union(a::ScopeState, b::ScopeState)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    return a.references == b.references && a.assignments == b.assignments
+    a.references == b.references && a.assignments == b.assignments
+end
+
+function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
+    (scopestate.inglobalscope || assignee in scopestate.exposedglobals) && !(assignee in scopestate.hiddenglobals)
+end
+
+function get_global_assignees(assignee_exprs, scopestate::ScopeState)
+    global_assignees = Set{Symbol}()
+    for ae in assignee_exprs
+        if isa(ae, Symbol)
+            will_assign_global(ae, scopestate) && push!(global_assignees, ae)
+        else
+            if ae.head == :(::)
+                will_assign_global(ae.args[1], scopestate) && push!(global_assignees, ae.args[1])
+            else
+                @warn "Unknown assignee expression"
+            end
+        end
+    end
+    global_assignees
 end
 
 # We handle a list of function arguments separately.
@@ -46,10 +66,12 @@ function extractfunctionarguments(funcdef::Expr)::Set{Symbol}
         if isa(a, Symbol)
             push!(argnames, a)
         elseif isa(a, Expr)
-            if a.head == :parameters || a.head == :tuple  # second is for ((a,b),(c,d)) -> a*b*c*d stuff
+            if a.head == :(::)
+                push!(argnames, a.args[1])
+            elseif a.head == :parameters || a.head == :tuple  # second is for ((a,b),(c,d)) -> a*b*c*d stuff
                 push!(argnames, extractfunctionarguments(a)...)
             elseif a.head == :kw || a.head == :(=) # first is for unnamed function arguments, second is for lambdas
-                push!(argnames, a.args[1])
+                push!(argnames, extractfunctionarguments(a.args[1])...)
             end
         end
     end
@@ -96,6 +118,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             if ex.args[1].head == :tuple
                 # (x, y) = (1, 23)
                 ex.args[1].args
+            elseif ex.args[1].head == :(::)
+                # TODO: type is referenced
+                [ex.args[1].args[1]]
             elseif ex.args[1].head == :ref
                 # TODO: what is the desired behaviour here?
                 # right now, it registers no reference, and no assignment
@@ -115,9 +140,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         end
         val = ex.args[2]
 
-        global_assignees = filter(assignees) do assignee
-            scopestate.inglobalscope || assignee in scopestate.exposedglobals
-        end
+        global_assignees = get_global_assignees(assignees, scopestate)
         
         # If we are _not_ assigning a global variable
         for assignee in setdiff(assignees, global_assignees)
@@ -144,7 +167,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         operator = Symbol(string(ex.head)[1:end - 1])
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
-    elseif ex.head == :let || ex.head == :for
+    elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
 
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
@@ -156,6 +179,21 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         end
 
         return symstate
+    elseif ex.head == :struct
+        # Creates local scope
+
+        structname = assignee = if isa(ex.args[2], Symbol)
+            ex.args[2]
+        else
+            # We have:   struct a <: b
+            ex.args[2].args[1]
+            # TODO: record reactive reference to type
+        end
+        structfields = ex.args[3].args
+
+        equiv_func = Expr(:function, Expr(:call, structname, structfields...), Expr(:block, nothing))
+
+        return explore!(equiv_func, scopestate)
     elseif ex.head == :generator
         # Creates local scope
 
@@ -167,36 +205,40 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :function
         # Creates local scope
 
-        funcname = assignee = ex.args[1].args[1]
-        funcargs = ex.args[1]
+        funcroot = if ex.args[1].head == :(::)
+            # TODO: record reactive reference to type
+            ex.args[1].args[1]
+        else
+            ex.args[1]
+        end
 
-        assigning_global = scopestate.inglobalscope || assignee in scopestate.exposedglobals
-        
+        funcname = assignee = funcroot.args[1]
+
+        # is either [funcname] or []
+        global_assignees = get_global_assignees([funcname], scopestate)
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
         innerscopestate = deepcopy(scopestate)
-        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcargs))
+        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
         innerscopestate.inglobalscope = false
         for a in ex.args[2:end]
             innersymstate = explore!(a, innerscopestate)
             symstate = symstate ∪ innersymstate
         end
         
-        if assigning_global
-            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
-            symstate.assignments = union(symstate.assignments, [assignee])
-        end
+        scopestate.hiddenglobals = union(scopestate.hiddenglobals, global_assignees)
+        symstate.assignments = union(symstate.assignments, global_assignees)
 
         return symstate
     elseif ex.head == :(->)
         # Creates local scope
 
-        funcargs = ex.args[1]
+        funcroot = ex.args[1]
         
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
         innerscopestate = deepcopy(scopestate)
-        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcargs))
+        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
         innerscopestate.inglobalscope = false
         for a in ex.args[2:end]
             innersymstate = explore!(a, innerscopestate)
@@ -212,13 +254,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # global x = 1;
         # global x += 1;
 
-        # `globalised` is everything that comes after `global`
+        # where x can also be a tuple:
+        # global a,b = 1,2
 
         globalisee = ex.args[1]
 
         if isa(globalisee, Symbol)
             scopestate.exposedglobals = union(scopestate.exposedglobals, [globalisee])
-            # symstate.assignments = union(symstate.assignments, [globalisee])
         elseif isa(globalisee, Expr)
             innerscopestate = deepcopy(scopestate)
             innerscopestate.inglobalscope = true
@@ -228,6 +270,24 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             @error "unknow global use"
         end
         
+        return symstate
+    elseif ex.head == :local
+        # Does not create scope
+
+        # Logic similar to :global
+        localisee = ex.args[1]
+
+        if isa(localisee, Symbol)
+            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [localisee])
+        elseif isa(localisee, Expr)
+            innerscopestate = deepcopy(scopestate)
+            innerscopestate.inglobalscope = false
+            innersymstate = explore!(localisee, innerscopestate)
+            symstate = symstate ∪ innersymstate
+        else
+            @error "unknow local use"
+        end
+
         return symstate
     elseif ex.head == :tuple
         # Does not create scope
@@ -249,10 +309,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         if indexoffirstassignment !== nothing
             recursers = ex.args[indexoffirstassignment:end]
 
-            exposed = filter(ex.args[1:indexoffirstassignment - 1]) do a::Symbol
-                (scopestate.inglobalscope || a in scopestate.exposedglobals) && !(a in scopestate.hiddenglobals)
-            end
-            
+            exposed = get_global_assignees(ex.args[1:indexoffirstassignment - 1], scopestate)
+
             scopestate.exposedglobals = union(scopestate.exposedglobals, exposed)
             symstate.assignments = union(symstate.assignments, exposed)
         end

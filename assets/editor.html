@@ -22,6 +22,7 @@
         body {
             margin: 0px;
             font-size: 17px;
+            overflow-anchor: none;
         }
 
         /* more sensible defaults for html tags: */
@@ -182,7 +183,6 @@
             min-height: 25px;
             padding-left: 10px;
             padding-right: 10px;
-            overflow: auto;
         }
 
         code {
@@ -495,8 +495,9 @@
             }
 
             function updateLocalCellOutput(cellNode, mime, output, errormessage) {
-                console.log(mime)
                 cellNode.classList.remove("running")
+
+                oldHeight = cellNode.querySelector("celloutput").scrollHeight
 
                 if (errormessage) {
                     cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
@@ -537,6 +538,13 @@
                         cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
                         cellNode.querySelector("celloutput").querySelector("code").innerText = output
                     }
+                }
+
+                newHeight = cellNode.querySelector("celloutput").scrollHeight
+
+                focusedCell = document.querySelector("cell:focus-within")
+                if(focusedCell == cellNode){
+                    window.scrollBy(0, newHeight - oldHeight)
                 }
             }
 
@@ -776,11 +784,9 @@
                     startDisconnectedBanner()
                 }
 
-                console.log("update event received")
-                // console.log(event)
+                console.log("update received:")
                 try {
                     update = JSON.parse(event.data)
-                    console.log("output deserialized")
                     console.log(update)
 
                     forMe = !(("notebookID" in update) && (update.notebookID != notebookID))
