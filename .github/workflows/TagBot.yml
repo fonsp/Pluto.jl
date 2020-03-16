@@ -1,16 +1,18 @@
-# This is a basic workflow to help you get started with Actions
+# This GitHub action checks daily whether a new version of this package
+# has been registred in the official registry.
+# If so, it creates a new _release_:
+# https://github.com/fonsp/Pluto.jl/releases
 
 name: TagBot
 
 # Controls when the action will run. Triggers the workflow on push or pull request 
 # events but only for the master branch
 on:
-  push:
-    branches: [ master ]
+  schedule:
+    - cron: 0 * * * *
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
   TagBot:
     runs-on: [ubuntu-latest]
     steps:
