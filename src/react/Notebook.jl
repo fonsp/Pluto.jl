@@ -1,7 +1,5 @@
 using UUIDs
 
-import Pkg
-
 mutable struct Notebook
     path::String
 
@@ -58,7 +56,7 @@ end
 
 function save_notebook(io, notebook)
     write(io, "### A Pluto.jl notebook ###\n")
-    write(io, "# " * version_str * "\n")
+    write(io, "# " * VERSION_STR * "\n")
 
     # TODO: order cells
     cells_ordered = notebook.cells
@@ -90,9 +88,9 @@ function load_notebook(io, path)
         @error "File is not a Pluto.jl notebook"
     end
 
-    file_version_str = readline(io)[3:end]
-    if file_version_str != version_str
-        @warn "Loading a notebook saved with Pluto $(file_version_str). This is Pluto $(version_str)."
+    file_VERSION_STR = readline(io)[3:end]
+    if file_VERSION_STR != VERSION_STR
+        @warn "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(VERSION_STR)."
     end
 
     
