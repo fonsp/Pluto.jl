@@ -190,7 +190,7 @@ function run(port = 1234, launchbrowser = false)
         else
             request::HTTP.Request = http.message
             request.body = read(http)
-            closeread(http)
+            HTTP.closeread(http)
     
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
@@ -204,7 +204,7 @@ function run(port = 1234, launchbrowser = false)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
-                startwrite(http)
+                HTTP.startwrite(http)
                 write(http, request.response.body)
             catch e
                 if isa(e, HTTP.IOError) || isa(e, ArgumentError)
