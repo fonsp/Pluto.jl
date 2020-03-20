@@ -65,14 +65,21 @@ function run_single!(cell::Cell)
     #     relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
     #     return
     # end
-
+    workspace = ModuleManager.get_workspace()
+    starttime = time_ns()
     try
-        relay_output!(cell, Core.eval(ModuleManager.get_workspace(), cell.parsedcode))
+        starttime = time_ns()
+        output = Core.eval(workspace, cell.parsedcode)
+        cell.runtime = time_ns() - starttime
+
+        relay_output!(cell, output)
         # TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
     catch err
+        cell.runtime = time_ns() - starttime
         bt = stacktrace(catch_backtrace())
         relay_error!(cell, err, bt)
     end
+
 end
 
 

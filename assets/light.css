@@ -110,6 +110,7 @@ code {
 preamble>button,
 cell>button,
 cellinput>button,
+runarea>button,
 confirmationdialog>button {
     margin: 0px;
     padding: 1px;
@@ -132,7 +133,7 @@ preamble>button>span::after{
     background-size: 17px 17px;
     display: block;
     content: "Run all" !important;
-    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/refresh-circle-outline.svg);
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/refresh-outline.svg);
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
@@ -141,18 +142,24 @@ preamble>button>span::after{
 
 @media screen and (any-pointer: fine) {
     cell>button,
-    cellinput>button {
+    cellinput>button,
+    runarea>button,
+    cell>runarea {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
+    
     cell:hover>button,
-    cell:hover>cellinput>button {
+    cell:hover>cellinput>button,
+    cell:hover>runarea>button {
         opacity: 25%;
     }
     preamble>button:hover,
     cell>button:hover,
-    cell>cellinput>button:hover {
+    cell>cellinput>button:hover,
+    cell>runarea:hover>button,
+    cell:hover>runarea {
         opacity: 100%;
         /* to make it feel snappy: */
         transition: opacity .05s ease-in-out;
@@ -161,17 +168,23 @@ preamble>button>span::after{
 
 @media screen and (any-pointer: coarse) {
     cell>button,
-    cellinput>button {
+    cellinput>button,
+    runarea>button,
+    cell>runarea {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
     cell:focus-within>button,
-    cell:focus-within>cellinput>button {
+    cell:focus-within>cellinput>button,
+    cell:focus-within>runarea>button,
+    cell:focus-within>runarea {
         opacity: 25%;
     }
     cell>button:focus-within,
-    cell>cellinput>button:focus-within {
+    cell>cellinput>button:focus-within
+    cell>runarea>button:focus-within,
+    cell>runarea {
         opacity: 100%;
         /* to make it feel snappy: */
         transition: opacity .05s ease-in-out;
@@ -179,7 +192,8 @@ preamble>button>span::after{
 }
 
 cell>button>span::after,
-cellinput>button>span::after {
+cellinput>button>span::after,
+runarea>button>span::after {
     display: block;
     content: " " !important;
     background-size: 17px 17px;
@@ -200,29 +214,59 @@ cell>button.addcell.before {
 }
 
 cell>button.addcell>span::after {
-    /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-circle-outline.svg"); */
-    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/add-outline.svg");
+    /* background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/add-circle-outline.svg); */
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/add-outline.svg);
 }
 
-cellinput>button.runcell {
+runarea {
+    margin-right: 3px;
+    display: block;
+    height: 18px;
+    position: absolute;
     right: 0px;
-    padding: 3px;
+    min-width: 75px;
+    background-color: hsl(0, 0%, 97%);
+    /* border: 2px solid hsla(0, 0%, 0%, 0.1); */
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    border-top: none;
 }
 
-cellinput>button.runcell>span::after {
-    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/caret-forward-circle-outline.svg");
+runarea>span{
+    font-family: 'Roboto Mono';
+    font-size: .6em;
+    display: inline-block;
+    position: absolute;
+    top: 2px;
+    right: 24px;
+    font-style: italic;
+    color: hsl(353, 5%, 64%);
+    width: 45px;
+    text-align: center;
+}
+
+runarea>button.runcell {
+    top: -1px;
+    right: 1px;
+}
+
+runarea>button.runcell>span::after {
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/caret-forward-circle-outline.svg);
+}
+
+cell.running>runarea>button.runcell>span::after {
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/ellipsis-horizontal-circle-outline.svg);
 }
 
 cellinput>button.deletecell {
     /* top: 3px; */
     /* left: -26px; */
-    right: 20px;
-    padding: 3px;
+    right: 0px;
+    padding: 5px;
 }
 
 cellinput>button.deletecell>span::after {
-    /* background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/trash-outline.svg"); */
-    background-image: url("https://unpkg.com/ionicons@5.0.0/dist/svg/close-circle-outline.svg");
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/close-circle-outline.svg);
 }
 
 trafficlight {

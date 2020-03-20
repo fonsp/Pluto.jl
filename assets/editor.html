@@ -273,6 +273,10 @@
             content: "▶";
         }
 
+        cell.code-folded>runarea {
+            display:none;
+        }
+
         dropruler {
             position: absolute;
             left: 0px;
@@ -402,8 +406,11 @@
                 <celloutput tabindex="1"></celloutput>
                 <cellinput>
                     <button class="deletecell" title="Delete cell"><span></span></button>
-                    <button class="runcell" title="Run"><span></span></button>
                 </cellinput>
+                <runarea>
+                    <span clas="runtime">---</span>
+                    <button class="runcell" title="Run"><span></span></button>
+                </runarea>
                 <button class="addcell after" title="Add cell"><span></span></button>
             </cell>
         </template>
@@ -494,8 +501,30 @@
                 return editor
             }
 
-            function updateLocalCellOutput(cellNode, mime, output, errormessage) {
+            function prettytime(time_ns){
+                if(time_ns == null){
+                    return cellTemplate.querySelector("runarea>span").innerText
+                    // i.e.
+                    // return "---"
+                }
+                const prefices = ["n", "μ", "m", ""]
+                var i = 0
+                while(i < prefices.length && time_ns >= 1000.0){
+                    i += 1
+                    time_ns /= 1000
+                }
+                var roundedtime
+                if(time_ns >= 100.0){
+                    roundedtime = Math.round(time_ns)
+                } else {
+                    roundedtime = Math.round(time_ns * 10) / 10
+                }
+                return roundedtime + '\xa0' + prefices[i] + "s"
+            }
+
+            function updateLocalCellOutput(cellNode, mime, output, errormessage, runtime) {
                 cellNode.classList.remove("running")
+                cellNode.querySelector("runarea>span").innerText = prettytime(runtime)
 
                 oldHeight = cellNode.querySelector("celloutput").scrollHeight
 
@@ -802,7 +831,7 @@
 
                     switch (update.type) {
                         case "cell_output":
-                            updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage)
+                            updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
                             break
                         case "cell_input":
                             // TODO: catch exception
@@ -959,9 +988,9 @@
             window.fakeCells = () => {
                 var last;
                 last = createLocalCell(0, "0", "100*x + y")
-                updateLocalCellOutput(last, "text/plain", "100*x + y", "")
+                updateLocalCellOutput(last, "text/plain", "100*x + y", "", 1e6)
                 last = createLocalCell(1, "0", "x = 1 + 1")
-                updateLocalCellOutput(last, "text/plain", "x = 1 + 1", "")
+                updateLocalCellOutput(last, "text/plain", "x = 1 + 1", "", 1e6)
                 last = createLocalCell(2, "0", `function meshgrid(x, dims)
 	# This is a more general version of the 3D function:
 
@@ -982,8 +1011,8 @@
 	end
 	return Tuple(grid_for_dim_k(k) for k in 1:dims)
 end`)
-                updateLocalCellOutput(last, "text/plain", "y = x * 2", "")
-                last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"")
+                updateLocalCellOutput(last, "text/plain", "y = x * 2", "", 1e6)
+                last = createLocalCell(3, "0", "html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\"", 1e6)
                 updateLocalCellOutput(last, "text/html", `<div class="markdown"><h1>Cześć!</h1>
 <p>My name is <strong>baba</strong> and I like $maths$</p>
 <p><em>(Markdown -&gt; HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)</em></p>
@@ -997,7 +1026,7 @@ end`)
 <p>Curabitur imperdiet purus sit amet dolor tincidunt feugiat. Fusce dapibus enim ac facilisis laoreet. Vestibulum ut semper ex. Maecenas egestas libero efficitur mi pellentesque facilisis. In congue vel mi sed viverra. In sollicitudin urna sodales nibh tempor luctus. Proin sit amet nunc accumsan sem suscipit sodales.</p>
 <h4>imperdiet</h4>
 <p>Fusce sit amet justo eu ex finibus cursus. Maecenas ut accumsan eros. Nam iaculis sem vitae ultrices mollis. Ut convallis eu nibh at varius. Suspendisse auctor, mauris a tincidunt facilisis, ex massa pulvinar ligula, in vulputate odio ipsum a elit. Praesent vel magna feugiat, tincidunt lacus at, eleifend nulla. Nullam bibendum ultricies metus quis euismod. Nam rutrum euismod iaculis. Aenean consequat nibh non semper pellentesque. Integer finibus, magna at congue convallis, ipsum purus malesuada erat, in aliquam diam ex viverra sem. Maecenas volutpat a massa eget maximus. Proin gravida erat quam, nec iaculis lacus eleifend vel. Etiam fringilla justo et neque sollicitudin, ac blandit nulla sagittis. Quisque ullamcorper volutpat metus vel egestas. Praesent sagittis laoreet congue. Donec sed diam eget metus malesuada efficitur eu ac dolor.</p>
-</div>`, "")
+</div>`, "", 1e6)
                 last = createLocalCell(4, "0", "using Markdown; md\"# Cześć!\nMy name is **baba** and I like \$maths\$\n\n_(Markdown -> HTML is for free, for LaTeX we need to pre-/post-process the HTML, and import a latex-js lib)_\"")
                 updateLocalCellOutput(last, "text/html", `<div class="markdown"><h1>Cześć!</h1>
 <p>My name is <strong>baba</strong> and I like $maths$ <em>(no LaTeX support yet!)</em></p>
@@ -1009,7 +1038,7 @@ end`)
 <p>Οι πλανήτες θεωρούνταν από τον Πτολεμαίο ότι περιφέρονται γύρω από τη Γη με φερόμενες και επικυκλικές κινήσεις. Παρόλο που η ιδέα της περιφοράς γύρω από τον Ήλιο είχε προταθεί πολλές φορές (με παλαιότερη γνωστή διατύπωση από τον Αρίσταρχο το Σάμιο), χρειάστηκε να φθάσει ο 17ος αιώνας, με την υποστήριξη των πρώτων τηλεσκοπικών αστρονομικών παρατηρήσεων, που πραγματοποιήθηκαν από το Γαλιλαίο Γαλιλέι, για να τεκμηριωθεί η ηλιοκεντρική θεωρία. </p>
 <p>De stjer dy't it deunst by de Ierde stiet, is de sinne (of Sol, yn wittenskiplike nomenklatuer), dy't ús sinnestelsel beljochtet en fan enerzjy foarsjocht. Alle libbene wêzens op 'e Ierde besteane úteinlik fan sinneljocht, dat troch planten yn it proses fotosynteze ta iten makke wurdt en as sadanich de hiele itenskeatling fan it Ierdske ekosysteem ûnderstipet. In grut tal oare stjerren is nachts by ûnbewolkt waar mei it bleate each sichtber oan 'e himel, mar wurdt oerdeis wei yn it ljocht fan 'e sinne. De neiste fan dy oare stjerren is Proxima Centauri, dy't op 39,9 triljoen km (of 4,2 ljochtjier) ôfstân fan 'e Ierde stiet. As men reizgje soe mei de faasje dy't in romtefear yn in baan om 'e Ierde berikt (8 km de sekonde of krapoan 30.000 km de oere), soe men der 150.000 jier oer dwaan om Proxima Centauri te berikken.</p>
 <p>各个文明对星座的划分方法与行星轨迹密切相关：太阳在黄道上一年运行一圈，太阴在黄道上一个月运行一圈。西方文明中，太阳的轨迹把黄道分作十二段，每月一段，每段一个星座组成黄道十二宫。中国文明中，太阳的轨迹把黄道分作四段，每个季度一段，即天空的四象青龙白虎朱雀玄武；而太阴的轨迹把黄道分作28段，每天一段，即天空的28个星宿；然后结合太阳和太阴的划分，四象=28宿，每一象被分作七宿，这七宿分别对应阴阳金木水火土七大行星，组成一个星期七天，因此每个月被四象分成四个星期。</p>
-</div>`, "")
+</div>`, "", 1e5)
 
             }
 

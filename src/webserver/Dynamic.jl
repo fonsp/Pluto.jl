@@ -35,6 +35,7 @@ function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::C
             Dict(:mime => mime,
              :output => payload,
              :errormessage => cell.errormessage,
+             :runtime => cell.runtime,
             ),
             notebook, cell, initiator)
 end

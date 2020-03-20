@@ -8,6 +8,7 @@ mutable struct Cell
     code::String
     parsedcode::Any
     output::Any
+    runtime::Union{Missing,UInt64}
     errormessage::Any
     modified_symbols::Set{Symbol}
     referenced_symbols::Set{Symbol}
@@ -19,7 +20,7 @@ function serialize(cell::Cell)
     Dict(:uuid => string(cell.uuid), :code => cell.code)# , :output => cell.output)
 end
 
-createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
+createcell_fromcode(code::String) = Cell(uuid1(), code, nothing, nothing, missing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
 
 function relay_output!(cell::Cell, output::Any)
     cell.output = output
