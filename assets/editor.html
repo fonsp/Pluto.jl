@@ -223,9 +223,6 @@
 
         /* In ascending order of severity: */
 
-        cell.dependent>trafficlight {
-            background: lightblue;
-        }
 
         cell.warning>trafficlight {
             background: orange;
@@ -239,6 +236,9 @@
             background: yellow;
         }
 
+        cell.dependent>trafficlight {
+            background: lightblue;
+        }
         clickshoulder {
             position: absolute;
             top: 0px;
@@ -489,6 +489,8 @@
                     // theme: "paraiso-light",
                     viewportMargin: Infinity,
                     placeholder: "Enter cell code...",
+                    indentWithTabs: true,
+                    indentUnit: 4,
                 });
 
                 window.codeMirrors[cellNode.id] = editor
@@ -497,6 +499,15 @@
                 editor.setOption("extraKeys", {
                     "Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id)
                 });
+
+                editor.on("change", (cm, change) =>{
+                    // TODO: optimise
+                    if(cm.getValue() != cellNode.remoteCode){
+                        cellNode.classList.add("codediffers")
+                    } else {
+                        cellNode.classList.remove("codediffers")
+                    }
+                })
 
                 return editor
             }
@@ -578,15 +589,16 @@
             }
 
             function updateLocalCellInput(byMe, uuid, code) {
-                oldVal = window.codeMirrors[uuid].getValue()
+                var editor = window.codeMirrors[uuid]
+                var cellNode = window.localCells[uuid]
+                cellNode.remoteCode = code
+                oldVal = editor.getValue()
                 // We don't want to update the cell's input if we sent the update.
                 // This might be annoying if you change the cell after the submission,
                 // while the request is still running. This also prevents the codemirror cursor
                 // position from jumping back to (0,0).
                 if (oldVal == "" || !byMe) {
                     console.log(byMe)
-                    var editor = window.codeMirrors[uuid]
-                    var cellNode = window.localCells[uuid]
                     editor.setValue(code)
 
                     // Silly code to make codemirror visible, then refresh, then make invisible again (if the code was hidden)
@@ -599,6 +611,9 @@
                     cellNode.querySelector("cellinput").style.display = null
 
                     // window.codeMirrors[uuid].refresh()
+                    cellNode.classList.remove("codediffers")
+                } else if (oldVal == code){
+                    cellNode.classList.remove("codediffers")
                 }
             }
 
@@ -624,6 +639,7 @@
                 }
                 var newCellNode = cellTemplate.cloneNode(true)
                 newCellNode.id = uuid
+                newCellNode.remoteCode = code
 
                 window.localCells[uuid] = newCellNode
 

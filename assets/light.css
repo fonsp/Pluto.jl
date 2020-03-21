@@ -402,7 +402,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 .cm-s-default.CodeMirror {
-    background: hsla(46, 100%, 98%, 1);
+    background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
 
@@ -423,8 +423,12 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 .cm-s-default .CodeMirror-gutters {
-    background: hsl(46, 100%, 98%);
+    background: hsla(46, 90%, 98%, 1);
     border-right: solid 1px hsla(0, 0%, 0%, .0);
+}
+
+cell.codediffers .cm-s-default .CodeMirror-gutters {
+    background: hsla(46, 90%, 94%, 1);
 }
 
 .cm-s-default .CodeMirror-guttermarker {
