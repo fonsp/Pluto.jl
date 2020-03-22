@@ -14,7 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.title = cuteName
     }
 
-    remoteNotebookList = null
+    window.remoteNotebookList = null
 
     function updateRemoteNotebooks(list) {
         remoteNotebookList = list

@@ -45,7 +45,7 @@ class PlutoConnection {
             clientID: this.clientID,
             body: body,
         }
-        if (notebookID) {
+        if (this.notebookID) {
             toSend.notebookID = this.notebookID
         }
         if (cellUUID) {

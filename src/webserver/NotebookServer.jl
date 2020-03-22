@@ -17,7 +17,10 @@ notebooks = Dict{UUID,Notebook}()
 
 
 function putnotebookupdates!(notebook, messages...)
-    listeners = filter(c->c.connected_notebook.uuid == notebook.uuid, collect(values(connectedclients)))
+    listeners = filter(collect(values(connectedclients))) do c
+        c.connected_notebook !== nothing &&
+        c.connected_notebook.uuid == notebook.uuid
+    end
     if isempty(listeners)
         @info "no clients connected to this notebook!"
     else
@@ -30,7 +33,7 @@ function putnotebookupdates!(notebook, messages...)
 end
 
 
-function putplutoupdates!(notebook, messages...)
+function putplutoupdates!(messages...)
     listeners = collect(values(connectedclients))
     if isempty(listeners)
         @info "no clients connected to pluto!"
@@ -159,9 +162,9 @@ function run(port = 1234, launchbrowser = false)
                                 if haskey(responses, messagetype)
                                     responsefunc = responses[messagetype]
                                     response = responsefunc((client, body, args...))
-                                    if response !== nothing
-                                        putplutoupdates!(notebook, response...)
-                                    end
+                                    # if response !== nothing
+                                    #     putplutoupdates!(response...)
+                                    # end
                                 else
                                     @warn "Message of type $(messagetype) not recognised"
                                 end
@@ -175,7 +178,8 @@ function run(port = 1234, launchbrowser = false)
                                 # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471
                                 # TODO: remove this switch
                             else
-                                @warn "Reading WebSocket client stream failed for unknown reason:" e
+                                bt = stacktrace(catch_backtrace())
+                                @warn "Reading WebSocket client stream failed for unknown reason:" e bt
                             end
                         end
                     end

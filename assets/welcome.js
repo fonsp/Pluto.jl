@@ -1,0 +1,60 @@
+document.addEventListener("DOMContentLoaded", () => {
+    
+    /* REMOTE NOTEBOOK LIST */
+
+    window.remoteNotebookList = null
+
+    function updateRemoteNotebooks(list) {
+        remoteNotebookList = list
+        
+        var listEl = document.querySelector("ul.running")
+        listEl.innerHTML = ""
+        document.body.classList.add("nosessions")
+        list.forEach(nb => {
+            document.body.classList.remove("nosessions")
+            var a = document.createElement("a")
+            a.href = "/edit?uuid=" + nb.uuid
+            a.innerText = nb.shortpath
+            
+            var li = document.createElement("li")
+            li.appendChild(a)
+
+            listEl.appendChild(li)
+        })
+        console.log(list)
+    }
+
+    /* SERVER CONNECTION */
+
+    function onUpdate(update, byMe) {
+        var message = update.message
+
+        switch (update.type) {
+            case "notebook_list":
+                // TODO: catch exception
+                updateRemoteNotebooks(message.notebooks)
+                break
+            default:
+                console.error("Received unknown update type!")
+                break
+        }
+    }
+
+    function onEstablishConnection(){
+        // on socket success
+        // TODO: we should when exactly this happens
+        document.body.classList.remove("loading")
+    }
+
+    function onConnect() {
+        console.info("connected")
+    }
+
+    function onDisconnect() {
+        console.info("disconnected")
+    }
+
+    window.client = new PlutoConnection(onUpdate, onEstablishConnection, onConnect, onDisconnect)
+    client.initialize()
+});
+

@@ -54,24 +54,34 @@
 
         body {
             margin: 0px;
-        }
-
-        main {
             position: absolute;
             width: 100%;
             height: 100%;
             background: white;
         }
 
-        ul {
-            padding-left: 0px;
+        main {
+
             width: 15em;
             margin: 0 auto;
-            margin-top: 25vh;
+            margin-top: 20vh;
+
             text-align: left;
-            list-style: none;
             font-family: 'Roboto Mono', monospace;
             color: hsl(0, 0%, 60%);
+        }
+
+        p {
+            color: hsl(0, 0%, 30%);
+        }
+
+        ul {
+            padding-left: .5em;
+            list-style: none;
+        }
+
+        ul.running {
+            margin-bottom: 10em;
         }
 
         li {
@@ -97,14 +107,20 @@
             width: 20%;
             font-family: inherit;
         }
+
+        body.loading .running,
+        body.nosessions .running{
+            display: none;
+        }
     </style>
 </head>
 
-<body>
-    <main>
-        <div id="title">
-            <h1>welcome to <img src="/assets/logo.svg"><span class="phantom"> ot emoclew</span></h1>
-            <ul>
+<body class="loading nosessions">
+    <div id="title">
+        <h1>welcome to <img src="/assets/logo.svg"><span class="phantom"> ot emoclew</span></h1>
+            <main>
+            <p class="new">New session:</p>
+            <ul class="new">
                 <li>Open a <a href="/sample">sample notebook</a></li>
                 <li>Create a <a href="/new">new notebook</a></li>
                 <li>Open from file:
@@ -114,8 +130,14 @@
                     </form>
                 </li>
             </ul>
-        </div>
-    </main>
+            <br class="running" />
+            <p class="running">Running sessions:</p>
+            <ul class="running"></ul>
+        </main>
+    </div>
+
+    <script src="/assets/client.js"></script>
+    <script src="/assets/welcome.js"></script>
 </body>
 
 </html>

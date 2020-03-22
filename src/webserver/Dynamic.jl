@@ -73,11 +73,84 @@ function clientupdate_cell_running(initiator::Client, notebook::Notebook, cell::
         Dict(), notebook, cell, initiator)
 end
 
+"To be used in `make_distinct!`"
+mutable struct NotebookPath
+    uuid
+    path_split
+    current_path
+    current_depth
+end
+
+function count_occurances(vals)
+    counts = Dict()
+    for v in vals
+        old = get(counts, v, 0)
+        counts[v] = old + 1
+    end
+    counts
+end
+
+"""For internal use. Takes a Set of `NotebookPath`s and gives each a short path (e.g. `to/file.jl` from `/path/to/file.jl`), with the guarantee that all final short paths will be distinct.
+
+For example, the set 
+
+`/a/b/c.jl`, `/a/P/c.jl`, `/Q/b/c.jl`, '/a/b/R.jl'
+
+will become
+
+`/a/b/c.jl`, `P/c.jl`, `/Q/b/c.jl`, 'R.jl'"""
+function make_distinct!(notebookpaths::Set{NotebookPath})
+    counts = count_occurances(np.current_path for np in notebookpaths)
+    for (current_path, count) in counts
+        if count == 1 && !isempty(current_path)
+            # done!
+        else
+            # these need to be made distinct by extending their paths
+            
+            not_yet_distinct = filter(notebookpaths) do np
+                np.current_path == current_path
+            end
+            
+            for np in not_yet_distinct
+                np.current_depth += 1
+                np.current_path = joinpath(np.path_split[end-np.current_depth : end]...)
+                if np.current_depth == length(np.path_split) - 1
+                    delete!(not_yet_distinct, np)
+                    if !Sys.iswindows()
+                        np.current_path = '/' * np.current_path
+                    end
+                end
+            end
+
+            make_distinct!(not_yet_distinct)
+        end
+    end
+end
+
 function clientupdate_notebook_list(initiator::Client, notebook_list)
+    short_paths = Dict()
+
+    notebookpaths = map(notebook_list) do notebook
+        pathsep = Sys.iswindows() ? '\\' : '/'
+        path_split = split(notebook.path, pathsep)
+        if path_split[1] == ""
+            path_split = path_split[2:end]
+        end
+        NotebookPath(notebook.uuid, path_split, "", -1)
+    end
+
+    make_distinct!(Set(notebookpaths))
+
+    short_paths = Dict(map(notebookpaths) do np
+        np.uuid => np.current_path
+    end...)
+
     return UpdateMessage(:notebook_list,
-        Dict(:notebooks => [Dict(:uuid => string(notebook.uuid),
-            :path => notebook.path,
-        ) for notebook in notebook_list]), nothing, nothing, initiator)
+        Dict(:notebooks => [Dict(
+                :uuid => string(notebook.uuid),
+                :path => notebook.path,
+                :shortpath => short_paths[notebook.uuid]
+                ) for notebook in notebook_list]), nothing, nothing, initiator)
 end
 
 
@@ -173,9 +246,11 @@ addresponse(:getallcells) do (initiator, body, notebook)
     end
     # [clientupdate_cell_added(notebook, c, i) for (i, c) in enumerate(notebook.cells)]
 
-    updates
+    putnotebookupdates!(notebook, updates...)
+    nothing
 end
 
 addresponse(:getallnotebooks) do (initiator, body)
-    [clientupdate_notebook_list(initiator, values(notebooks))]
+    putplutoupdates!(clientupdate_notebook_list(initiator, values(notebooks)))
+    nothing
 end
