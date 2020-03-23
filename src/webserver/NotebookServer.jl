@@ -66,8 +66,9 @@ function flushclient(client)
                     return false
                 end
             end
-        catch e
-            @warn "Failed to write to WebSocket of $(client.id) " e
+        catch ex
+            bt = stacktrace(catch_backtrace())
+            @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
             return false
         end
     end
@@ -171,26 +172,29 @@ function run(port = 1234, launchbrowser = false)
                                     @warn "Message of type $(messagetype) not recognised"
                                 end
                             end
-                        catch e
-                            if e isa InterruptException
-                                rethrow(e)
-                            elseif e isa HTTP.WebSockets.WebSocketError
+                        catch ex
+                            if ex isa InterruptException
+                                rethrow(ex)
+                            elseif ex isa HTTP.WebSockets.WebSocketError
                                 # that's fine!
-                            elseif e isa InexactError
+                            elseif ex isa InexactError
                                 # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471
                                 # TODO: remove this switch
                             else
                                 bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" e bt
+                                @warn "Reading WebSocket client stream failed for unknown reason:" exception=(ex,bt)
                             end
                         end
                     end
                 end
-            catch e
-                if e isa InterruptException
-                    rethrow(e)
+            catch ex
+                if ex isa InterruptException
+                    rethrow(ex)
+                elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
+                    # that's fine!
                 else
-                    @info "HTTP upgrade failed, should be fine" e
+                    bt = stacktrace(catch_backtrace())
+                    @warn "HTTP upgrade failed for unknown reason" exception=(ex,bt)
                 end
             end
         else

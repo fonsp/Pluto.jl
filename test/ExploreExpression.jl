@@ -66,6 +66,8 @@ end
         @test testee(:(x = let r = 1; r + r end), [:+], [:x])
         @test testee(:(begin let r = 1; r + r end; r = 2 end), [:+], [:r])
         @test testee(:(a, b = 1, 2), [], [:a, :b])
+        @test testee(:((a, b) = 1, 2), [], [:a, :b])
+        @test testee(:((a[1], b.r) = (1, 2)), [], [])
         @test testee(:((k = 2; 123)), [], [:k])
         @test testee(:((a = 1; b = a + 1)), [:+], [:a, :b])
         @test testee(:(let k = 2; 123 end), [], [])

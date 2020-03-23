@@ -21,6 +21,19 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test notebook.cells[1].output == notebook.cells[2].output
     end
 
+    @testset "Bad code" begin
+        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+            createcell_fromcode("a"),
+            createcell_fromcode("1 = 2")
+        ])
+        fakeclient.connected_notebook = notebook
+
+        @test_nowarn run_reactive!(fakeclient, notebook, notebook.cells[1])
+        @test_nowarn run_reactive!(fakeclient, notebook, notebook.cells[2])
+        @test notebook.cells[1].errormessage !== nothing
+        @test notebook.cells[2].errormessage !== nothing
+    end
+
     @testset "Cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
             createcell_fromcode("x = y"),

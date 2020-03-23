@@ -45,7 +45,7 @@ function get_global_assignees(assignee_exprs, scopestate::ScopeState)
             if ae.head == :(::)
                 will_assign_global(ae.args[1], scopestate) && push!(global_assignees, ae.args[1])
             else
-                @warn "Unknown assignee expression"
+                @warn "Unknown assignee expression" ae
             end
         end
     end
@@ -117,7 +117,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         elseif isa(ex.args[1], Expr)
             if ex.args[1].head == :tuple
                 # (x, y) = (1, 23)
-                ex.args[1].args
+                filter(s -> s isa Symbol, ex.args[1].args)
             elseif ex.args[1].head == :(::)
                 # TODO: type is referenced
                 [ex.args[1].args[1]]
@@ -134,9 +134,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 # function f(x, y) x + y end
                 return explore!(Expr(:function, ex.args...), scopestate)
             else
-                @warn "unknow use of =. Assignee is unrecognised."
+                @warn "unknow use of =. Assignee is unrecognised." ex.args[1]
                 []
             end
+        else
+            # When you assign to a datatype like Int, String, or anything bad like that
+            # e.g. 1 = 2
+            # This is parsable code, so we have to treat it
+            []
         end
         val = ex.args[2]
 
@@ -363,7 +368,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 end
 
 
-    function compute_symbolreferences(ex)
+function compute_symbolreferences(ex)
     explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}()))
 end
 
