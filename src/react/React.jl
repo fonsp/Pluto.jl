@@ -23,7 +23,7 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
     module_usings = union((c.module_usings for c in notebook.cells)...)
     to_delete = union(old_modified, (c.modified_symbols for c in will_update)...)
     
-    ModuleManager.delete_vars(to_delete, module_usings)
+    ModuleManager.delete_vars(notebook, to_delete, module_usings)
 
     cell.modified_symbols = symstate.assignments
 
@@ -49,23 +49,22 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
             end
             relay_error!(to_run, "Cyclic references: $(join(modified_cyclic, ", ", " and "))")
         else
-            run_single!(to_run)
+            run_single!(initiator, notebook, to_run)
         end
         putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, to_run))
-        # sleep(0.001)
     end
 
     return will_update
 end
 
 
-function run_single!(cell::Cell)
+function run_single!(initiator, notebook::Notebook, cell::Cell)
     # if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
     #     # Don't run this cell. We set its output directly and stop the method prematurely.
     #     relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
     #     return
     # end
-    workspace = ModuleManager.get_workspace()
+    workspace = ModuleManager.get_workspace(notebook)
     starttime = time_ns()
     try
         starttime = time_ns()

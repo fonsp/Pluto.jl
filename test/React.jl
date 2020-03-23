@@ -1,15 +1,18 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode
-
+import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, ModuleManager
 
 @testset "Reactivity" begin
     fakeclient = Client(:fake, nothing)
+    Pluto.connectedclients[fakeclient.id] = fakeclient
+
     @testset "Basic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("y = x")
-    ])
+            createcell_fromcode("x = 1"),
+            createcell_fromcode("y = x")
+        ])
+        fakeclient.connected_notebook = notebook
+
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         run_reactive!(fakeclient, notebook, notebook.cells[2])
         @test notebook.cells[1].output == notebook.cells[2].output
@@ -20,9 +23,11 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode
 
     @testset "Cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = y"),
-        createcell_fromcode("y = x")
-    ])
+            createcell_fromcode("x = y"),
+            createcell_fromcode("y = x")
+        ])
+        fakeclient.connected_notebook = notebook
+
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         run_reactive!(fakeclient, notebook, notebook.cells[2])
         @test occursin("Cyclic reference", notebook.cells[1].errormessage)
@@ -31,9 +36,11 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode
 
     @testset "Variable deletion" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("y = x")
-    ])
+            createcell_fromcode("x = 1"),
+            createcell_fromcode("y = x")
+        ])
+        fakeclient.connected_notebook = notebook
+
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         run_reactive!(fakeclient, notebook, notebook.cells[2])
         @test notebook.cells[1].output == notebook.cells[2].output
@@ -47,8 +54,10 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode
 
     @testset "Recursive function is not considered cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("factorial(n) = n * factorial(n-1)")
-    ])
+            createcell_fromcode("factorial(n) = n * factorial(n-1)")
+        ])
+        fakeclient.connected_notebook = notebook
+
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         @test !isempty(methods(notebook.cells[1].output))
         @test notebook.cells[1].errormessage == nothing
@@ -56,8 +65,10 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode
 
     @testset "Variable cannot reference its previous value" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 3")
-    ])
+            createcell_fromcode("x = 3")
+        ])
+        fakeclient.connected_notebook = notebook
+
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         notebook.cells[1].code = "x = x + 1"
         run_reactive!(fakeclient, notebook, notebook.cells[1])

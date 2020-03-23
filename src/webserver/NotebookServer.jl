@@ -58,11 +58,13 @@ function flushclient(client)
         didsomething = true
         
         try
-            if isopen(client.stream)
-                write(client.stream, serialize_message(next_to_send))
-            else
-                @info "Client $(client.id) stream closed."
-                return false
+            if client.stream !== nothing
+                if isopen(client.stream)
+                    write(client.stream, serialize_message(next_to_send))
+                else
+                    @info "Client $(client.id) stream closed."
+                    return false
+                end
             end
         catch e
             @warn "Failed to write to WebSocket of $(client.id) " e

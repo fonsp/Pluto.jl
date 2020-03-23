@@ -28,9 +28,10 @@ Your notebooks are saved as pure Julia files, which you can then import as if yo
 
 _(To developers: follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/dev_instructions.md) to start working on the package.)_
 
-To add the package:
+After [installing julia](https://julialang.org/), add the package:
 ```julia
-julia> using Pkg; Pkg.add(PackageSpec(url="https://github.com/fonsp/Pluto.jl"))
+julia> ]
+(v1.0) pkg> add Pluto
 ```
 
 To run the notebook server:

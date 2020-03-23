@@ -110,7 +110,7 @@ function load_notebook(io, path)
             # Change windows line endings to linux; remove the cell appendix.
             code_normalised = replace(code, "\r\n" => "\n")[1:end - ncodeunits(_cell_appendix)]
 
-            read_cell = Cell(uuid, code_normalised, nothing, nothing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
+            read_cell = Cell(uuid, code_normalised, nothing, nothing, missing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
 
             collected_cells[uuid] = read_cell
         end
