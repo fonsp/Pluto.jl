@@ -165,11 +165,9 @@ document.addEventListener("DOMContentLoaded", () => {
         // while the request is still running. This also prevents the codemirror cursor
         // position from jumping back to (0,0).
         if (oldVal == "" || !byMe) {
-            console.log(byMe)
             editor.setValue(code)
 
             // Silly code to make codemirror visible, then refresh, then make invisible again (if the code was hidden)
-            cellNode.querySelector("cellinput").style.display;
             cellNode.querySelector("cellinput").style.display = "inline";
             cellNode.querySelector("cellinput").offsetHeight;
             editor.refresh()
@@ -217,13 +215,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (e.target.tagName != "A") {
                     newCellNode.classList.toggle("code-folded")
                     // Force redraw:
-                    if (newCellNode.classList.contains("code-folded")) {
+                    if (!newCellNode.classList.contains("code-folded")) {
                         editor.refresh()
                     }
                 }
             }
             // You may not fold code if the output is empty (it would be confusing)
-            if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerText == "") {
+            if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerHTML === "<pre><code></code></pre>") {
                 newCellNode.classList.remove("code-folded")
             }
         }

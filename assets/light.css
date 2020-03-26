@@ -82,10 +82,15 @@ celloutput {
     /* border: 1px solid rgba(0, 0, 0, .1); */
     /* border-top-left-radius: 4px; */
     /* border-top-right-radius: 4px; */
+    overflow-x: auto;
 }
 
 celloutput:focus {
     outline: none;
+}
+
+celloutput > pre {
+    margin: 0px;
 }
 
 code {

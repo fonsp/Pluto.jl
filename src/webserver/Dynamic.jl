@@ -11,8 +11,7 @@ end
 UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, nothing)
 UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, nothing)
 
-
-function serialize_message(message::UpdateMessage)
+function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
         to_send[:notebookID] = string(message.notebook.uuid)
@@ -24,7 +23,11 @@ function serialize_message(message::UpdateMessage)
         to_send[:initiatorID] = string(message.initiator.id)
     end
 
-    JSON.json(to_send)
+    JSON.print(io, to_send)
+end
+
+function serialize_message(message::UpdateMessage)
+    sprint(serialize_message_to_stream, message)
 end
 
 

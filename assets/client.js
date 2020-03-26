@@ -63,10 +63,8 @@ class PlutoConnection {
             this.waitForOnline()
         }
     
-        console.log("update received:")
         try {
             var update = JSON.parse(event.data)
-            console.log(update)
     
             var forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
     
