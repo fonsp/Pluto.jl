@@ -1,4 +1,4 @@
 include("./ExploreExpression.jl")
 include("./React.jl")
-include("./ModuleManager.jl")
+include("./WorkspaceManager.jl")
 include("./Notebook.jl")

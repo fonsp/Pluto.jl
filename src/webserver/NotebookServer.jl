@@ -190,6 +190,8 @@ function run(port = 1234, launchbrowser = false)
             catch ex
                 if ex isa InterruptException
                     rethrow(ex)
+                elseif ex isa Base.IOError
+                    # that's fine!
                 elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
                     # that's fine!
                 else

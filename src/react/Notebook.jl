@@ -2,18 +2,20 @@ using UUIDs
 
 mutable struct Notebook
     path::String
-
+    
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
-
+    
     uuid::UUID
+    combined_funcdefs::Union{Nothing,Dict{Symbol, SymbolsState}}
+
     # buffer must contain all undisplayed outputs
     pendingupdates::Channel
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(path::String, cells::Array{Cell,1}, uuid) = Notebook(path, cells, uuid, Channel(128))
-Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid4(), Channel(128))
+Notebook(path::String, cells::Array{Cell,1}, uuid) = Notebook(path, cells, uuid, nothing, Channel(128))
+Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid4(), nothing, Channel(128))
 
 function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
     cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)
@@ -29,7 +31,7 @@ _uuid_delimiter = "# ⋐⋑ "
 _order_delimited = "# ○ "
 _cell_appendix = "\n\n"
 
-emptynotebook(path) = Notebook(path, [createcell_fromcode("")], uuid4())
+emptynotebook(path) = Notebook(path, [createcell_fromcode("")])
 emptynotebook() = emptynotebook(tempname() * ".jl")
 
 function samplenotebook()
@@ -51,7 +53,7 @@ function samplenotebook()
     Apparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds."
     """))
 
-    Notebook(tempname() * ".jl", cells, uuid4())
+    Notebook(tempname() * ".jl", cells)
 end
 
 function save_notebook(io, notebook)
@@ -110,7 +112,7 @@ function load_notebook(io, path)
             # Change windows line endings to linux; remove the cell appendix.
             code_normalised = replace(code, "\r\n" => "\n")[1:end - ncodeunits(_cell_appendix)]
 
-            read_cell = Cell(uuid, code_normalised, nothing, nothing, missing, nothing, Set{Symbol}(), Set{Symbol}(), Set{Expr}())
+            read_cell = Cell(uuid, code_normalised)
 
             collected_cells[uuid] = read_cell
         end
@@ -129,7 +131,7 @@ function load_notebook(io, path)
         end
     end
 
-    Notebook(path, ordered_cells, uuid4())
+    Notebook(path, ordered_cells)
 end
 
 function load_notebook(path::String)

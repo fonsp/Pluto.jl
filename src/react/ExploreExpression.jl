@@ -11,7 +11,13 @@ const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<
 mutable struct SymbolsState
     references::Set{Symbol}
     assignments::Set{Symbol}
+    funccalls::Set{Symbol}
+    funcdefs::Dict{Symbol,SymbolsState}
 end
+
+SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{Symbol,SymbolsState}())
+SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
+SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
 
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints"
 mutable struct ScopeState
@@ -20,8 +26,19 @@ mutable struct ScopeState
     hiddenglobals::Set{Symbol}
 end
 
+function union(a::Dict{Symbol,SymbolsState}, b::Dict{Symbol,SymbolsState})
+    c = Dict{Symbol,SymbolsState}()
+    for (k, v) in a
+        c[k] = v
+    end
+    for (k, v) in b
+        c[k] = v
+    end
+    c
+end
+
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments)
+    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs)
 end
 
 function union(a::ScopeState, b::ScopeState)
@@ -29,14 +46,14 @@ function union(a::ScopeState, b::ScopeState)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    a.references == b.references && a.assignments == b.assignments
+    a.references == b.references && a.assignments == b.assignments&& a.funccalls == b.funccalls && a.funcdefs == b.funcdefs 
 end
 
 function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
     (scopestate.inglobalscope || assignee in scopestate.exposedglobals) && !(assignee in scopestate.hiddenglobals)
 end
 
-function get_global_assignees(assignee_exprs, scopestate::ScopeState)
+function get_global_assignees(assignee_exprs, scopestate::ScopeState)::Set{Symbol}
     global_assignees = Set{Symbol}()
     for ae in assignee_exprs
         if isa(ae, Symbol)
@@ -88,7 +105,7 @@ end
 # 1 is a value (Int64)
 function explore!(value, scopestate::ScopeState)::SymbolsState
     # includes: LineNumberNode, Int64, String, 
-    return SymbolsState(Set{Symbol}(), Set{Symbol}())
+    return SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{Symbol}(), Dict{Symbol,SymbolsState}())
 end
 
 # Possible leaf: symbol
@@ -98,16 +115,16 @@ end
 # Therefore, this method only handles _references_, which are added to the symbolstate, depending on the scopestate.
 function explore!(sym::Symbol, scopestate::ScopeState)::SymbolsState
     return if !(sym in scopestate.hiddenglobals)
-        SymbolsState(Set([sym]), Set{Symbol}())
+        SymbolsState(Set([sym]), Set{Symbol}(), Set{Symbol}(), Dict{Symbol,SymbolsState}())
     else
-        SymbolsState(Set{Symbol}(), Set{Symbol}())
+        SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{Symbol}(), Dict{Symbol,SymbolsState}())
     end
 end
 
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
-    symstate = SymbolsState(Set{Symbol}(), Set{Symbol}())
+    symstate = SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{Symbol}(), Dict{Symbol,SymbolsState}())
     if ex.head == :(=)
         # Does not create scope
 
@@ -117,7 +134,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         elseif isa(ex.args[1], Expr)
             if ex.args[1].head == :tuple
                 # (x, y) = (1, 23)
-                filter(s -> s isa Symbol, ex.args[1].args)
+                filter(s->s isa Symbol, ex.args[1].args)
             elseif ex.args[1].head == :(::)
                 # TODO: type is referenced
                 [ex.args[1].args[1]]
@@ -223,14 +240,29 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         global_assignees = get_global_assignees([funcname], scopestate)
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
+
         innerscopestate = deepcopy(scopestate)
         innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
         innerscopestate.inglobalscope = false
-        for a in ex.args[2:end]
-            innersymstate = explore!(a, innerscopestate)
+
+        innersymstate = explore!(Expr(:block, ex.args[2:end]...), innerscopestate)
+
+        if funcname in global_assignees
+            symstate.funcdefs[funcname] = innersymstate
+        else
+            # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
+            
+            # let
+            #     function f(x)
+            #         global z = x + a
+            #     end
+            #     f(2)
+            # end
+
+            # so we insert the function's inner symbol state here, as if it was a `let` block.
             symstate = symstate ∪ innersymstate
         end
-        
+
         scopestate.hiddenglobals = union(scopestate.hiddenglobals, global_assignees)
         symstate.assignments = union(symstate.assignments, global_assignees)
 
@@ -238,19 +270,21 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :(->)
         # Creates local scope
 
+        tempname = Symbol("anon",rand(UInt64))
+
+        # We will rewrite this to a normal function definition, with a temporary name
         funcroot = ex.args[1]
-        
-        
-        # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scopestate)
-        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
-        innerscopestate.inglobalscope = false
-        for a in ex.args[2:end]
-            innersymstate = explore!(a, innerscopestate)
-            symstate = symstate ∪ innersymstate
+        args_ex = if funcroot isa Symbol || (funcroot isa Expr && funcroot.head == :(::))
+            [funcroot]
+        elseif funcroot.head == :tuple
+            funcroot.args
+        else
+            @error "Unknown lambda type"
         end
 
-        return symstate
+        equiv_func = Expr(:function, Expr(:call, tempname, args_ex...), ex.args[2])
+
+        return explore!(equiv_func, scopestate)
     elseif ex.head == :global
         # Does not create scope
 
@@ -351,6 +385,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
 
         return symstate
+    elseif ex.head == :call && ex.args[1] isa Symbol
+        # Does not create scope
+
+        # We change the `call` to a `block` and recurse again (hitting the fallback below).
+        # In particular, this adds the called function as a reference, which is what we want.
+        symstate = explore!(Expr(:block, ex.args...), scopestate)
+        push!(symstate.funccalls, ex.args[1])
+        return symstate
     else
         # fallback, includes:
         # begin, block, do, call, 
@@ -368,7 +410,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 end
 
 
-function compute_symbolreferences(ex)
+function compute_symbolreferences(ex)::SymbolsState
     explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}()))
 end
 
