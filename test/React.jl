@@ -153,7 +153,7 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test occursin("UndefVarError", notebook.cells[6].errormessage)
         
         run_reactive!(fakeclient, notebook, notebook.cells[8])
-        @test_broken notebook.cells[6].errormessage == nothing
+        @test notebook.cells[6].errormessage == nothing
         @test notebook.cells[7].errormessage == nothing
         @test notebook.cells[8].errormessage == nothing
 

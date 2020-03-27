@@ -1,17 +1,19 @@
 function run_single!(initiator, notebook::Notebook, cell::Cell)
-	# if isa(cell.parsedcode, Expr) && cell.parsedcode.head == :using
-	#	 # Don't run this cell. We set its output directly and stop the method prematurely.
-	#	 relay_error!(cell, "Use `import` instead of `using`.\nSupport for `using` will be added soon.")
-	#	 return
-	# end
 	workspace = ModuleManager.get_workspace(notebook)
 	starttime = time_ns()
 	try
+		# deleted_refs = setdiff(cell.resolved_symstate.references, cell.resolved_symstate.assignments) ∩ workspace.deleted_vars
+		deleted_refs = cell.resolved_symstate.references ∩ workspace.deleted_vars
+		if !isempty(deleted_refs)
+			deleted_refs |> first |> UndefVarError |> throw
+		end
 		starttime = time_ns()
-		output = Core.eval(workspace, cell.parsedcode)
+		output = Core.eval(workspace.workspace_module, cell.parsedcode)
 		cell.runtime = time_ns() - starttime
 
 		relay_output!(cell, output)
+
+		ModuleManager.undelete_vars(notebook, cell.resolved_symstate.assignments)
 		# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 	catch err
 		cell.runtime = time_ns() - starttime
@@ -60,18 +62,6 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
                 c.resolved_symstate = notebook.combined_funcdefs[func] ∪ c.resolved_symstate
             end
         end
-        
-        # We also include the functions defined in this cell, to make sure that the function definition is re-evaluated when it uses a global variable that changed. e.g.
-        
-        # y = 1
-        # f(x) = x + y
-        
-        # In a REPL, this is not necessary: `y` is evaluated when the function is called, not when it is defined. However, it is necessary in our case because we move to a new workspace for most evaluations, so the same `y` is no longer available to `f`.
-        for func in keys(c.resolved_symstate.funcdefs)
-            if haskey(notebook.combined_funcdefs, func)
-                c.resolved_symstate.references = notebook.combined_funcdefs[func].references ∪ c.resolved_symstate.references
-            end
-        end
     end
 
     new_resolved_symstate = cell.resolved_symstate
@@ -99,13 +89,10 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
 	module_usings = union((c.module_usings for c in notebook.cells)...)
     to_delete = union(
         old_resolved_symstate.assignments, 
-        (c.resolved_symstate.assignments for c in will_update)..., 
-        keys(old_resolved_symstate.funcdefs),
-        (keys(c.resolved_symstate.funcdefs) for c in will_update)..., 
+        (c.resolved_symstate.assignments for c in will_update)...
     )
 	
-	ModuleManager.delete_vars(notebook, to_delete, module_usings)
-
+	ModuleManager.delete_vars(notebook, to_delete)
 
 	for to_run in will_update
 		if to_run in reassigned
