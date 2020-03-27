@@ -13,9 +13,10 @@ const VERSION_STR = 'v' * Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.tom
     https://github.com/fonsp/Pluto.jl
 \n"""
 
+include("./react/ExploreExpression.jl")
+using .ExploreExpression
 include("./react/Cell.jl")
 include("./react/Notebook.jl")
-include("./react/ExploreExpression.jl")
 include("./react/ModuleManager.jl")
 include("./react/React.jl")
 

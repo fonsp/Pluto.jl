@@ -65,12 +65,17 @@ module ModuleManager
         
         for symbol in names(old_workspace, all=true, imported=true)
             if !forbiddenmove(symbol) && symbol != Symbol("workspace",old_index - 1) && symbol != Symbol("workspace",old_index)
-                if symbol in to_delete
-                    try
-                        Core.eval(old_workspace, :($(symbol) = nothing))
-                    catch; end # sometimes impossible, eg. when $symbol was constant
-                else
-                    Core.eval(new_workspace, :($(symbol) = $(old_workspace_name).$(symbol)))
+                # Running a function definition like
+                # function f(x) global w = x end
+                # will actually add `w` to the list of `names`, even though it is not yet defined:
+                if isdefined(old_workspace, symbol)
+                    if symbol in to_delete
+                        try
+                            Core.eval(old_workspace, :($(symbol) = nothing))
+                        catch; end # sometimes impossible, eg. when $symbol was constant
+                    else
+                        Core.eval(new_workspace, :($(symbol) = $(old_workspace_name).$(symbol)))
+                    end
                 end
             end
         end
