@@ -1,4 +1,4 @@
-module ModuleManager
+module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Notebook
 
@@ -32,7 +32,7 @@ function make_workspace(notebook::Notebook)
     original_stderr = stderr
     (rd, wr) = redirect_stderr();
 
-    m = Core.eval(ModuleManager, workspace_creation)
+    m = Core.eval(WorkspaceManager, workspace_creation)
 
     redirect_stderr(original_stderr)
     close(wr)

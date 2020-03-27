@@ -17,7 +17,7 @@ include("./react/ExploreExpression.jl")
 using .ExploreExpression
 include("./react/Cell.jl")
 include("./react/Notebook.jl")
-include("./react/ModuleManager.jl")
+include("./react/WorkspaceManager.jl")
 include("./react/React.jl")
 
 include("./webserver/NotebookServer.jl")

@@ -1,5 +1,5 @@
 function run_single!(initiator, notebook::Notebook, cell::Cell)
-	workspace = ModuleManager.get_workspace(notebook)
+	workspace = WorkspaceManager.get_workspace(notebook)
 	starttime = time_ns()
 	try
 		# deleted_refs = setdiff(cell.resolved_symstate.references, cell.resolved_symstate.assignments) ∩ workspace.deleted_vars
@@ -13,7 +13,7 @@ function run_single!(initiator, notebook::Notebook, cell::Cell)
 
 		relay_output!(cell, output)
 
-		ModuleManager.undelete_vars(notebook, cell.resolved_symstate.assignments)
+		WorkspaceManager.undelete_vars(notebook, cell.resolved_symstate.assignments)
 		# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 	catch err
 		cell.runtime = time_ns() - starttime
@@ -92,7 +92,7 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
         (c.resolved_symstate.assignments for c in will_update)...
     )
 	
-	ModuleManager.delete_vars(notebook, to_delete)
+	WorkspaceManager.delete_vars(notebook, to_delete)
 
 	for to_run in will_update
 		if to_run in reassigned

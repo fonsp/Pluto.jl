@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, ModuleManager
+import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, WorkspaceManager
 
 @testset "Reactivity" begin
     fakeclient = Client(:fake, nothing)
@@ -111,6 +111,41 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test notebook.cells[1].output == nothing
         @test occursin("UndefVarError", notebook.cells[1].errormessage)
     end
+
+#     @testset "Multiple dispatch" begin
+#         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+#             createcell_fromcode(
+# """begin
+#     function f(x)
+#         x
+#     end
+#     function f(x,s)
+#         s
+#     end
+# end"""
+#             )
+#             createcell_fromcode(
+# """function g(x)
+#     x
+# end"""
+#             )
+#             createcell_fromcode(
+# """function g(x,s)
+#     s
+# end"""
+#             )
+#             createcell_fromcode("function f(x) x end")
+#         ])
+#         fakeclient.connected_notebook = notebook
+
+#         run_reactive!(fakeclient, notebook, notebook.cells[1])
+#         run_reactive!(fakeclient, notebook, notebook.cells[1])
+#         notebook.cells[1].code = "x = x + 1"
+#         run_reactive!(fakeclient, notebook, notebook.cells[1])
+#         @test notebook.cells[1].output == nothing
+#         @test occursin("UndefVarError", notebook.cells[1].errormessage)
+#     end
+
     @testset "Immutable globals" begin
         # We currently have a slightly relaxed version of immutable globals:
         # globals can only be mutated/assigned _in a single cell_.
