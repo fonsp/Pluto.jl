@@ -99,7 +99,9 @@ responses = Dict{Symbol,Function}()
 addresponse(f::Function, endpoint::Symbol) = responses[endpoint] = f
 
 
-"Will _synchronously_ run the notebook server. (i.e. blocking call)"
+"""Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
+
+This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
 function run(port = 1234, launchbrowser = false)
     serversocket = Sockets.listen(UInt16(port))
     @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
@@ -131,6 +133,7 @@ function run(port = 1234, launchbrowser = false)
 
                             if messagetype == :disconnect
                                 delete!(connectedclients, client.id)
+                                close(clientstream)
                             elseif messagetype == :connect
                                 # nothing more to do
                             else

@@ -52,7 +52,6 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 function delete_funcs(notebook::Notebook, to_delete::Set{Symbol})
-    # TODO: treat methods separately
     ws = get_workspace(notebook)
     for funcname in to_delete
         try
@@ -69,7 +68,6 @@ function delete_funcs(notebook::Notebook, to_delete::Set{Symbol})
 end
 
 function delete_vars(notebook::Notebook, to_delete::Set{Symbol})
-    # TODO: treat methods separately
     ws = get_workspace(notebook)
     ws.deleted_vars = ws.deleted_vars ∪ to_delete
 end

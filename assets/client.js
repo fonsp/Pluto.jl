@@ -8,7 +8,6 @@ class PlutoConnection {
             },
             redirect: 'follow',
             referrerPolicy: 'no-referrer',
-            //body: "hiiiii"
         }).then((response) => {
             return response.json()
         }).then((response) => {
@@ -21,6 +20,7 @@ class PlutoConnection {
     }
 
     waitForOnline() {
+        this.currentlyConnected = false
         this.onDisconnect()
 
         setTimeout(() => {
@@ -28,7 +28,8 @@ class PlutoConnection {
                 if (this.psocket.readyState != WebSocket.OPEN) {
                     this.waitForOnline()
                 } else {
-                    this.onConnect()
+                    this.currentlyConnected = true
+                    this.onReconnect()
                 }
             }, () => {
                 this.waitForOnline()
@@ -111,6 +112,7 @@ class PlutoConnection {
         this.psocket.onopen = () => {
             this.send("connect", {})
             this.send("getallnotebooks", {})
+            this.currentlyConnected = true
             console.log("socket opened")
             onSucces()
         }
@@ -126,14 +128,23 @@ class PlutoConnection {
             this.startSocketConnection(() => {
                 this.onEstablishConnection()
             })
-        }, this.onDisconnect)
+        }, () => {
+            this.currentlyConnected = true
+            this.onDisconnect()
+        })
     }
     
-    constructor(onUpdate, onEstablishConnection, onConnect, onDisconnect){
+    constructor(onUpdate, onEstablishConnection, onReconnect, onDisconnect){
         this.onUpdate = onUpdate
         this.onEstablishConnection = onEstablishConnection
-        this.onConnect = onConnect
+        this.onReconnect = onReconnect
         this.onDisconnect = onDisconnect
+
+        this.currentlyConnected = false
+
+        window.addEventListener("unload", e => {
+            this.send("disconnect", {})
+        })
     }
     
     // TODO: reconnect with a delay if the last request went poorly

@@ -1,5 +1,9 @@
 import JSON
 
+# JSON.jl doesn't define a serialization method for MIME objects, so we add one ourselves:
+import JSON: lower
+JSON.lower(m::MIME) = string(m)
+
 struct UpdateMessage
     type::Symbol
     message::Any

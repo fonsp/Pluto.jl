@@ -363,17 +363,27 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 3000)
     }
 
-    function onConnect() {
+    function onReconnect() {
         document.body.classList.remove("disconnected")
         document.querySelector("meta[name=theme-color]").content = "#fff"
+        for (var uuid in window.codeMirrors) {
+            window.codeMirrors[uuid].options.disableInput = false
+        }
     }
 
     function onDisconnect() {
         document.body.classList.add("disconnected")
         document.querySelector("meta[name=theme-color]").content = "#DEAF91"
+        setTimeout(() => {
+            if(!client.currentlyConnected){
+                for (var uuid in window.codeMirrors) {
+                    window.codeMirrors[uuid].options.disableInput = true
+                }
+            }
+        }, 5000)
     }
 
-    window.client = new PlutoConnection(onUpdate, onEstablishConnection, onConnect, onDisconnect)
+    window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
     client.notebookID = notebookID
     client.initialize()
 
