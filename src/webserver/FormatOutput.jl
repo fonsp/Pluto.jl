@@ -24,23 +24,24 @@ end
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 
-function format_output(val::Any)
-    # TODO: Here we could do even richer formatting
-    # interactive Arrays!
-    # use Weave.jl? that would be sw€€t
+"""Format `val` using the richest possible output, return formatted string and used MIME type.
 
+Currently, the MIME type is one of `text/html` or `text/plain`, the former being richest."""
+function format_output(val::Any)::Tuple{String, MIME}
     # in order of coolness
     # text/plain always matches
     mime = let
-        mimes = ["text/html", "text/plain"]
+        mimes = [MIME("text/html"), MIME("text/plain")]
         first(filter(m->Base.invokelatest(showable, m, val), mimes))
     end
     
     if val === nothing
         "", mime
     else
-
-        # TODO: limit output!
-        Base.invokelatest(repr, mime, val; context = iocontext), mime
+        try
+            Base.invokelatest(repr, mime, val; context = iocontext), mime
+        catch ex
+            Base.invokelatest(repr, mime, ex; context = iocontext), mime
+        end
     end
 end
