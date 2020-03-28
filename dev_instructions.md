@@ -36,4 +36,3 @@ the `Project.toml` will update, exit using `Ctrl+D` and go back to the normal en
 ```
 (v1.0) pkg> resolve
 ```
-you can then re-import `Revise` (needs to be first) and `Pluto`.
