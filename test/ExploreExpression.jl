@@ -95,6 +95,7 @@ end
         @test testee(:((a = 1; b = a + 1)), [:+], [:a, :b], [:+], [])
         @test testee(:((a = b = 1)), [], [:a, :b], [], [])
         @test testee(:(let k = 2; 123 end), [], [], [], [])
+        @test testee(:(let k() = 2 end), [], [], [], [])
 
         @test_nowarn testee(:(a::Int64, b::String = 1, "2"), [:Int64, :String], [:a, :b], [], [], false)
     end

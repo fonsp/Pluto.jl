@@ -51,6 +51,23 @@ function get_workspace(notebook::Notebook)::Workspace
     end
 end
 
+function delete_funcs(notebook::Notebook, to_delete::Set{Symbol})
+    # TODO: treat methods separately
+    ws = get_workspace(notebook)
+    for funcname in to_delete
+        try
+            func = Core.eval(ws.workspace_module, funcname)
+            for m in methods(func).ms
+                Base.delete_method(m)
+            end
+        catch ex
+            if !(ex isa UndefVarError)
+                rethrow(ex)
+            end
+        end
+    end
+end
+
 function delete_vars(notebook::Notebook, to_delete::Set{Symbol})
     # TODO: treat methods separately
     ws = get_workspace(notebook)

@@ -87,12 +87,17 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
     end
     
 	module_usings = union((c.module_usings for c in notebook.cells)...)
-    to_delete = union(
+    to_delete_vars = union(
         old_resolved_symstate.assignments, 
         (c.resolved_symstate.assignments for c in will_update)...
+	)
+	to_delete_funcs = union(
+        keys(old_resolved_symstate.funcdefs), 
+        (keys(c.resolved_symstate.funcdefs) for c in will_update)...
     )
 	
-	WorkspaceManager.delete_vars(notebook, to_delete)
+	WorkspaceManager.delete_vars(notebook, to_delete_vars)
+	WorkspaceManager.delete_funcs(notebook, to_delete_funcs)
 
 	for to_run in will_update
 		if to_run in reassigned
