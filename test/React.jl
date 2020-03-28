@@ -37,6 +37,7 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test notebook.cells[4].output == 4
     end
 
+    # https://github.com/fonsp/Pluto.jl/issues/32
     @testset "Bad code" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
             createcell_fromcode("a"),
@@ -72,6 +73,13 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test notebook.cells[1].errormessage == nothing
         @test notebook.cells[2].errormessage == nothing
         
+        # https://github.com/fonsp/Pluto.jl/issues/26
+        notebook.cells[1].code = "x = 1"
+        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        notebook.cells[2].code = "x"
+        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        @test notebook.cells[1].errormessage == nothing
+        @test notebook.cells[2].errormessage == nothing
 
         run_reactive!(fakeclient, notebook, notebook.cells[3])
         run_reactive!(fakeclient, notebook, notebook.cells[4])
@@ -83,7 +91,6 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
         @test notebook.cells[3].errormessage == nothing
         @test notebook.cells[4].errormessage == nothing
         
-
         run_reactive!(fakeclient, notebook, notebook.cells[5])
         run_reactive!(fakeclient, notebook, notebook.cells[6])
         @test occursin("Multiple", notebook.cells[5].errormessage)
