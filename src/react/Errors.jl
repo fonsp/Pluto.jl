@@ -3,13 +3,32 @@ import Base: showerror
 
 abstract type ReactivityError <: Exception end
 
+
 struct CircularReferenceError <: ReactivityError
 	syms::Set{Symbol}
 end
 
+function CircularReferenceError(cycle::Array{Cell, 1})
+	referenced_during_cycle = union((c.resolved_symstate.references for c in cycle)...)
+	assigned_during_cycle = union((c.resolved_symstate.assignments for c in cycle)...)
+	
+	CircularReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
+end
+
+CircularReferenceError(cycle::Set{Cell}) = collect(cycle) |> CircularReferenceError
+
+
 struct MultipleDefinitionsError <: ReactivityError
 	syms::Set{Symbol}
 end
+
+function MultipleDefinitionsError(cell::Cell, all_definers)
+	competitors = setdiff(all_definers, [cell])
+	union((cell.resolved_symstate.assignments ∩ c.resolved_symstate.assignments for c in competitors)...) |>
+	MultipleDefinitionsError
+end
+
+
 
 function showerror(io::IO, cre::CircularReferenceError)
 	print(io, "Circular references among $(join(cre.syms, ", ", " and ")).")

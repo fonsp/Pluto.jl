@@ -80,30 +80,17 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
 	WorkspaceManager.delete_funcs(workspace, to_delete_funcs)
 
 	for to_run in will_update
-		assigned_multiple = if to_run in reassigned
-			other_modifiers = setdiff(competing_modifiers, [to_run])
-			union((to_run.resolved_symstate.assignments ∩ c.resolved_symstate.assignments for c in other_modifiers)...)
-		else
-			[]
-		end
-
-		assigned_cyclic = if to_run in cyclic
-			referenced_during_cycle = union((c.resolved_symstate.references for c in cyclic)...)
-			assigned_during_cycle = union((c.resolved_symstate.assignments for c in cyclic)...)
-			
-			referenced_during_cycle ∩ assigned_during_cycle
-		else
-			[]
-		end
+		multidef_error = if to_run in reassigned MultipleDefinitionsError(to_run, reassigned) else nothing end
+		cyclic_error = if to_run in cyclic CircularReferenceError(cyclic) else nothing end
 
 		deleted_refs = let
 			to_run.resolved_symstate.references ∩ workspace.deleted_vars
 		end
 
-		if length(assigned_multiple) > 0
-			relay_reactivity_error!(to_run, assigned_multiple |> MultipleDefinitionsError)
-		elseif length(assigned_cyclic) > 1
-			relay_reactivity_error!(to_run, assigned_cyclic |> CircularReferenceError)
+		if multidef_error != nothing
+			relay_reactivity_error!(to_run, multidef_error)
+		elseif cyclic_error != nothing
+			relay_reactivity_error!(to_run, cyclic_error)
 		elseif length(deleted_refs) > 0
 			relay_reactivity_error!(to_run, deleted_refs |> first |> UndefVarError)
 		else
