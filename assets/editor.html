@@ -18,10 +18,12 @@
         @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 
         /* GENERAL PAGE LAYOUT */
+        html{
+            font-size: 17px;
+        }
 
         body {
             margin: 0px;
-            font-size: 17px;
             overflow-anchor: none;
         }
 
@@ -35,39 +37,39 @@
         h5,
         h6 {
             font-family: sans-serif;
-            margin-block-start: 1em;
-            margin-block-end: 0em;
+            margin-block-start: 1rem;
+            margin-block-end: 0rem;
         }
 
         h1 {
-            font-size: 2.2em;
+            font-size: 2.2rem;
             border-bottom: 3px solid rgba(0, 0, 0, .15);
         }
 
         h2 {
-            font-size: 1.8em;
+            font-size: 1.8rem;
             border-bottom: 2px dotted rgba(0, 0, 0, .15);
         }
 
         h3 {
-            font-size: 1.6em;
+            font-size: 1.6rem;
             /* border-bottom: 2px dotted rgba(0,0,0,.15); */
         }
 
         h4 {
-            font-size: 1.4em;
+            font-size: 1.4rem;
         }
 
         h5 {
-            font-size: 1.2em;
+            font-size: 1.2rem;
         }
 
         h6 {
-            font-size: 1em;
+            font-size: 1rem;
         }
 
         p {
-            margin-block-start: .5em;
+            margin-block-start: .5rem;
         }
 
         celloutput img {
@@ -82,10 +84,9 @@
         main {
             margin: 0 auto;
             margin-top: 100px;
-            min-height: calc(100vh - 100px - 4em);
+            min-height: calc(100vh - 100px - 3.5rem - 4rem);
             max-width: 960px;
             align-content: center;
-            padding: 8px;
         }
 
         /* HEADER */
@@ -124,7 +125,7 @@
 
         #logocontainer h1 {
             font-weight: 700;
-            font-size: 1.8em;
+            font-size: 1.8rem;
             display: inline;
             border-bottom: none;
             margin-right: 50px;
@@ -134,7 +135,7 @@
             display: inline;
             border-bottom: none;
             font-family: 'Roboto Mono', monospace !important;
-            font-size: 0.8em;
+            font-size: 0.8rem;
             letter-spacing: 1px;
         }
 
@@ -187,7 +188,7 @@
 
         code {
             font-family: monospace;
-            font-size: .75em;
+            font-size: .75rem;
         }
 
         cell.error>code {
@@ -311,10 +312,26 @@
 
         footer {
             width: 100%;
-            height: 2em;
-            margin-top: 2em;
-            font-family: monospace;
-            font-size: .75em;
+            height: 3.5rem;
+            margin-top: 4rem;
+            font-family: "Roboto Mono";
+            font-size: .75rem;
+        }
+
+        footer form{
+            height: 1.5rem;
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+        }
+
+        footer form > *{
+            flex: 0 0 auto;
+            margin-left: .5rem;
+        }
+
+        footer form label {
+            align-self: center;
         }
 
         footer a {
@@ -323,11 +340,29 @@
             font-weight: 700;
         }
 
+        footer input {
+            border: 2px solid #818181;
+            font-family: "Roboto Mono";
+            
+            border-radius: 3px;
+            padding: 3px;
+        }
+
+        footer button{
+            background: #896c6c;
+            border-radius: 3px;
+            color: white;
+            border: none;
+            font-family: "Roboto Mono";
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
         #info {
             max-width: 9400px;
             margin: 0 auto;
             text-align: right;
-            padding: 5px;
+            padding: 1rem;
         }
 
         @media print {
@@ -351,7 +386,7 @@
                 max-width: 80%;
                 display: block;
                 margin: 0 auto;
-                margin-block-end: 1em;
+                margin-block-end: 1rem;
             }
 
             #info::before {
@@ -359,10 +394,7 @@
             }
 
             footer {
-                position: static;
-                bottom: 0mm;
-                font-style: italic;
-                opacity: .5;
+                display: none;
             }
         }
     </style>
@@ -374,6 +406,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/display/placeholder.min.js"></script>
+
+    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
 </head>
 
 <body class="loading no-MαθJax">
@@ -419,12 +455,17 @@
 
     <footer>
         <div id="info">
-            <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a>, by <a href="https://github.com/fonsp" rel="author">fonsp</a> and <a href="https://github.com/malyvsen" rel="author">malyvsen</a>
+            <form id="feedback" action="#" method="post">
+                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
+                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback...">
+                <button>Send</button>
+            </form>
         </div>
     </footer>
 
     <script src="/assets/client.js"></script>
     <script src="/assets/editor.js"></script>
+    <script src="/assets/feedback.js"></script>
 
     <script>
         MathJax = {
