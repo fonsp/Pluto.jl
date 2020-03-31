@@ -20,6 +20,8 @@ include("./react/Cell.jl")
 include("./react/Notebook.jl")
 include("./react/WorkspaceManager.jl")
 include("./react/React.jl")
+include("./react/Errors.jl")
+include("./react/Run.jl")
 
 include("./webserver/NotebookServer.jl")
 include("./webserver/Static.jl")

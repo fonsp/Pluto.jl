@@ -7,7 +7,7 @@ import Base: union, ==
 const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
 
 
-"SymbolsState trickels _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root"
+"SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root"
 mutable struct SymbolsState
     references::Set{Symbol}
     assignments::Set{Symbol}
