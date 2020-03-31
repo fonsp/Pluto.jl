@@ -4,18 +4,18 @@ import Base: showerror
 abstract type ReactivityError <: Exception end
 
 
-struct CircularReferenceError <: ReactivityError
+struct CyclicReferenceError <: ReactivityError
 	syms::Set{Symbol}
 end
 
-function CircularReferenceError(cycle::Array{Cell, 1})
-	referenced_during_cycle = union((c.resolved_symstate.references for c in cycle)...)
-	assigned_during_cycle = union((c.resolved_symstate.assignments for c in cycle)...)
+function CyclicReferenceError(cycle::Array{Cell, 1})
+	referenced_during_cycle = union((c.symstate.references for c in cycle)...)
+	assigned_during_cycle = union((c.symstate.assignments for c in cycle)...)
 	
-	CircularReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
+	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
 end
 
-CircularReferenceError(cycle::Set{Cell}) = collect(cycle) |> CircularReferenceError
+CyclicReferenceError(cycle::Set{Cell}) = collect(cycle) |> CyclicReferenceError
 
 
 struct MultipleDefinitionsError <: ReactivityError
@@ -24,14 +24,14 @@ end
 
 function MultipleDefinitionsError(cell::Cell, all_definers)
 	competitors = setdiff(all_definers, [cell])
-	union((cell.resolved_symstate.assignments ∩ c.resolved_symstate.assignments for c in competitors)...) |>
+	union((cell.symstate.assignments ∩ c.symstate.assignments for c in competitors)...) |>
 	MultipleDefinitionsError
 end
 
 
-
-function showerror(io::IO, cre::CircularReferenceError)
-	print(io, "Circular references among $(join(cre.syms, ", ", " and ")).")
+# TODO: handle case when cells are in cycle, but variables aren't
+function showerror(io::IO, cre::CyclicReferenceError)
+	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")).")
 end
 
 function showerror(io::IO, mde::MultipleDefinitionsError)

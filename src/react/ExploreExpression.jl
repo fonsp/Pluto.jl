@@ -12,7 +12,7 @@ mutable struct SymbolsState
     references::Set{Symbol}
     assignments::Set{Symbol}
     funccalls::Set{Symbol}
-    funcdefs::Dict{Symbol,SymbolsState}
+    funcdefs::Dict{Symbol, SymbolsState}
 end
 
 SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{Symbol,SymbolsState}())

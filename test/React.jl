@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, WorkspaceManager
+import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode, WorkspaceManager
 
 @testset "Reactivity $(method.name.name)" for method in [WorkspaceManager.ModuleWorkspace, WorkspaceManager.ProcessWorkspace]
     WorkspaceManager.set_default_workspace_method(method)
@@ -117,7 +117,7 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
 
     end
 
-    @testset "Circular" begin
+    @testset "Cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
         createcell_fromcode("x = y"),
         createcell_fromcode("y = x")
@@ -126,8 +126,8 @@ import Pluto: Notebook, Client, run_reactive!,fakeclient,  createcell_fromcode, 
 
         run_reactive!(fakeclient, notebook, notebook.cells[1])
         run_reactive!(fakeclient, notebook, notebook.cells[2])
-        @test occursin("Circular reference", notebook.cells[1].error_repr)
-        @test occursin("Circular reference", notebook.cells[2].error_repr)
+        @test occursin("Cyclic reference", notebook.cells[1].error_repr)
+        @test occursin("Cyclic reference", notebook.cells[2].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
 

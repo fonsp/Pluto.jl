@@ -1,36 +1,47 @@
 "Information about the cells to run in a reactive call, including cycles etc."
-struct CellGraph
-	to_run::Array{Cell, 1} # those cells can be run
-	cyclic::Array{Cell, 2} # cyclic[1] are members of the first cycle; cycles may overlap
-	multidef::Array{Cell, 2} # like cyclic, but for multiple definitions of the same symbol
-	unrunnable::Array{Cell, 1} # cells which depend on cyclic/multidef cells
+struct CellTopology
+	"Cells which can be run, in order"
+	runnable::Array{Cell, 1}
+	errors::Dict{Cell, ReactivityError}
 end
 
-"Cells to be evaluated in a single reactive run, in order - including the given cell."
-function dependent_cells(notebook::Notebook, root::Cell)
+"Cells to be evaluated in a single reactive run, in order - including the roots."
+function dependent_cells(notebook::Notebook, roots::Set{Cell})
 	entries = Cell[]
 	exits = Cell[]
-	cyclic = Set{Cell}()
+	errors = Dict{Cell, ReactivityError}()
 
 	function dfs(cell::Cell)
-		if cell in exits
+		if cell in keys(errors)
+			return
+		elseif cell in exits
 			return
 		elseif length(entries) > 0 && entries[end] == cell
 			return # a cell referencing itself is legal
 		elseif cell in entries
-			currently_entered = setdiff(entries, exits)
-			detected_cycle = currently_entered[findfirst(currently_entered .== [cell]):end]
-			cyclic = union(cyclic, detected_cycle)
+			currently_in = setdiff(entries, exits)
+			cycle = currently_in[findfirst(currently_in .== [cell]):end]
+			for cell in cycle
+				errors[cell] = CyclicReferenceError(cycle)
+			end
 			return
 		end
 
 		push!(entries, cell)
-		dfs.(where_referenced(notebook, cell.resolved_symstate.assignments))
+		assigners = where_assigned(notebook, cell.symstate.assignments)
+		if length(assigners) > 1
+			for cell in assigners
+				errors[cell] = MultipleDefinitionsError(cell, assigners)
+			end
+		end
+		referencers = where_referenced(notebook, cell.symstate.assignments)
+		dfs.(setdiff(union(assigners, referencers), [cell]))
 		push!(exits, cell)
 	end
 
-	dfs(root)
-	return reverse(exits), cyclic
+	dfs.(roots)
+	ordered = reverse(exits)
+	CellTopology(setdiff(ordered, keys(errors)), errors)
 end
 
 function disjoint(a::Set, b::Set)
@@ -40,10 +51,10 @@ end
 "Cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
 function where_referenced(notebook::Notebook, symbols::Set{Symbol})
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, cell.resolved_symstate.references)
+		if !disjoint(symbols, cell.symstate.references)
 			return true
 		end
-        for func in cell.resolved_funccalls
+        for func in cell.symstate.funccalls
             if haskey(notebook.combined_funcdefs, func)
                 if !disjoint(symbols, notebook.combined_funcdefs[func].references)
                     return true
@@ -57,10 +68,10 @@ end
 "Cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
 function where_assigned(notebook::Notebook, symbols::Set{Symbol})
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, cell.resolved_symstate.assignments)
+		if !disjoint(symbols, cell.symstate.assignments)
 			return true
 		end
-        for func in cell.resolved_funccalls
+        for func in cell.symstate.funccalls
             if haskey(notebook.combined_funcdefs, func)
                 if !disjoint(symbols, notebook.combined_funcdefs[func].assignments)
                     return true
@@ -71,13 +82,13 @@ function where_assigned(notebook::Notebook, symbols::Set{Symbol})
 	end
 end
 
-"Cells that modify any of the given symbols. Recurses down functions calls, but not down cells."
+"Cells that call any of the given symbols. Recurses down functions calls, but not down cells."
 function where_called(notebook::Notebook, symbols::Set{Symbol})
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, cell.resolved_symstate.funccalls)
+		if !disjoint(symbols, cell.symstate.funccalls)
 			return true
 		end
-        for func in cell.resolved_funccalls
+        for func in cell.symstate.funccalls
             if haskey(notebook.combined_funcdefs, func)
                 if !disjoint(symbols, notebook.combined_funcdefs[func].funccalls)
                     return true
@@ -101,6 +112,24 @@ function update_funcdefs!(notebook::Notebook)
 			end
 		end
 	end
+end
+
+"Find all variables a cell references, including those referenced through function calls"
+function all_references(notebook::Notebook, cell::Cell)
+	calls = all_recursed_calls!(notebook, cell.symstate)
+	filter!(calls) do call
+		call in keys(notebook.combined_funcdefs)
+	end
+	return union(cell.symstate.references, (notebook.combined_funcdefs[func].references for func in calls)...)
+end
+
+"Find all variables a cell assigns to, including mutable globals assigned through function calls"
+function all_assignments(notebook::Notebook, cell::Cell)
+	calls = all_recursed_calls!(notebook, cell.symstate)
+	filter!(calls) do call
+		call in keys(notebook.combined_funcdefs)
+	end
+	return union(cell.symstate.assignments, (notebook.combined_funcdefs[func].assignments for func in calls)...)
 end
 
 function all_recursed_calls!(notebook::Notebook, symstate::SymbolsState, found::Set{Symbol}=Set{Symbol}())

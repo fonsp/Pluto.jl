@@ -1,109 +1,61 @@
-"Run a cell and all the cells that depend on it"
-function run_reactive!(initiator, notebook::Notebook, cell::Cell)
-	# This guarantees that we are the only run_reactive! that is running cells right now:
+"Run some cells and all the cells that depend on them"
+function run_reactive!(initiator, notebook::Notebook, cells::Set{Cell})
+	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
+	to_delete_vars = Set{Symbol}()
+	to_delete_funcs = Set{Symbol}()
+
+	# save the old topology - we'll delete variables from it and update its cells
+	old_topology = dependent_cells(notebook, cells)
+	to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in old_topology.runnable)...)
+	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in old_topology.runnable)...)
+
+	# update the cache using the new code and compute the new topology
+	for cell in cells
+		cell.parsedcode = Meta.parse(cell.code, raise=false)
+		cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
+		cell.symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
+		cell.symstate.references = all_references(notebook, cell) # account for globals referenced in function calls
+		cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
+	end
+	update_funcdefs!(notebook)
+	new_topology = dependent_cells(notebook, cells)
+	to_run = setdiff(union(new_topology.runnable, old_topology.runnable, keys(old_topology.errors)), keys(new_topology.errors)) # TODO: think if old error cell order matters
+
+	# change the bar on the sides of cells to "running"
+	for cell in to_run
+		putnotebookupdates!(notebook, clientupdate_cell_running(initiator, notebook, cell))
+	end
+	for (cell, error) in new_topology.errors
+		relay_reactivity_error!(cell, error)
+	end
+	
+	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
+    to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in new_topology.runnable)...)
+	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in new_topology.runnable)...)
+	
 	workspace = WorkspaceManager.get_workspace(notebook)
-
-	cell.parsedcode = Meta.parse(cell.code, raise=false)
-	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
-
-    old_resolved_symstate = cell.resolved_symstate
-    old_symstate = cell.symstate
-	new_symstate = cell.symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
-
-	# Recompute function definitions list
-	# A function can have multiple definitions, each with its own SymbolsState
-	# These are combined into a single SymbolsState for each function name.
-    update_funcdefs!(notebook)
-
-	# Unfortunately, this means that you lose reactivity in situations like:
-
-	# f(x) = global z = x; z+2
-	# g = f
-	# g(5)
-	# z
-
-	# TODO: function calls are also references!
-
-	oldnew_direct_callers = where_called(notebook, keys(new_symstate.funcdefs) ∪ keys(old_symstate.funcdefs))
-	
-	# Next, we need to update the cached list of resolved symstates for this cell.
-    
-	# We also need to update any cells that call a function that is/was assigned by this cell.
-	for c in Set((cell, oldnew_direct_callers...))
-        # "Resolved" means that recursive function calls are followed.
-        c.resolved_funccalls = all_recursed_calls!(notebook, c.symstate)
-        
-        # "Resolved" means that the `SymbolsState`s of all (recursively) called functions are included.
-        c.resolved_symstate = c.symstate
-        for func in c.resolved_funccalls
-            if haskey(notebook.combined_funcdefs, func)
-                c.resolved_symstate = notebook.combined_funcdefs[func] ∪ c.resolved_symstate
-            end
-        end
-    end
-
-    new_resolved_symstate = cell.resolved_symstate
-    new_assigned = cell.resolved_symstate.assignments
-    all_assigned = old_resolved_symstate.assignments ∪ new_resolved_symstate.assignments
-    
-    
-	competing_modifiers = where_assigned(notebook, all_assigned)
-    reassigned = length(competing_modifiers) > 1 ? competing_modifiers : []
-    
-    # During the upcoming search, we will temporarily use `all_assigned` instead of `new_resolved_symstate.assignments as this cell's set of assignments. This way, any variables that were deleted by this cell change will be deleted, and the cells that depend on the deleted variable will be run again. (Leading to errors. 👍)
-    cell.resolved_symstate.assignments = all_assigned
-    
-	dependency_info = dependent_cells.([notebook], union(competing_modifiers, [cell]))
-	will_update = union((d[1] for d in dependency_info)...)
-    cyclic = union((d[2] for d in dependency_info)...)
-    
-    # we reset the temporary assignment:
-    cell.resolved_symstate.assignments = new_assigned
-
-	for to_run in will_update
-		putnotebookupdates!(notebook, clientupdate_cell_running(initiator, notebook, to_run))
-    end
-    
-	module_usings = union((c.module_usings for c in notebook.cells)...)
-    to_delete_vars = union(
-        old_resolved_symstate.assignments, 
-        (c.resolved_symstate.assignments for c in will_update)...
-	)
-	to_delete_funcs = union(
-        keys(old_resolved_symstate.funcdefs), 
-        (keys(c.resolved_symstate.funcdefs) for c in will_update)...
-    )
-	
 	WorkspaceManager.delete_vars(workspace, to_delete_vars)
 	WorkspaceManager.delete_funcs(workspace, to_delete_funcs)
 
-	for to_run in will_update
-		multidef_error = if to_run in reassigned MultipleDefinitionsError(to_run, reassigned) else nothing end
-		cyclic_error = if to_run in cyclic CircularReferenceError(cyclic) else nothing end
-
-		deleted_refs = let
-			to_run.resolved_symstate.references ∩ workspace.deleted_vars
-		end
-
-		if multidef_error != nothing
-			relay_reactivity_error!(to_run, multidef_error)
-		elseif cyclic_error != nothing
-			relay_reactivity_error!(to_run, cyclic_error)
-		elseif length(deleted_refs) > 0
-			relay_reactivity_error!(to_run, deleted_refs |> first |> UndefVarError)
+	for cell in to_run
+		deleted_refs = cell.symstate.references ∩ workspace.deleted_vars
+		if length(deleted_refs) > 0
+			relay_reactivity_error!(cell, deleted_refs |> first |> UndefVarError)
 		else
-			run_single!(initiator, notebook, to_run)
+			run_single!(initiator, notebook, cell)
 		end
 		
-		putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, to_run))
+		putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, cell))
 	end
 
+	# allow other run_reactive! calls to be executed
 	put!(notebook.executetoken, token)
-
-	return will_update
+	return new_topology
 end
+
+run_reactive!(initiator, notebook::Notebook, cell::Cell) = run_reactive!(initiator, notebook, Set{Cell}([cell]))
 
 "Run a single cell non-reactively"
 function run_single!(initiator, notebook::Notebook, cell::Cell)
@@ -119,7 +71,7 @@ function run_single!(initiator, notebook::Notebook, cell::Cell)
 		cell.output_repr = output[1]
 		cell.error_repr = nothing
 		cell.repr_mime = output[2]
-		WorkspaceManager.undelete_vars(notebook, cell.resolved_symstate.assignments)
+		WorkspaceManager.undelete_vars(notebook, cell.symstate.assignments)
 	end
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end

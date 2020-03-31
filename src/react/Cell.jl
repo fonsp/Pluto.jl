@@ -11,12 +11,10 @@ mutable struct Cell
     repr_mime::MIME
     runtime::Union{Missing,UInt64}
     symstate::SymbolsState
-    resolved_funccalls::Set{Symbol}
-    resolved_symstate::SymbolsState
     module_usings::Set{Expr}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, nothing, nothing, MIME("text/plain"), missing, SymbolsState(), Set{Symbol}(), SymbolsState(), Set{Expr}())
+Cell(uuid, code) = Cell(uuid, code, nothing, nothing, nothing, MIME("text/plain"), missing, SymbolsState(), Set{Expr}())
 
 "Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
 function serialize(cell::Cell)
