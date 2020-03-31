@@ -1,30 +1,57 @@
+import Base: showerror
+
+abstract type ReactivityError <: Exception end
+
+struct CircularReferenceError <: ReactivityError
+	syms::Set{Symbol}
+end
+
+struct MultipleDefinitionsError <: ReactivityError
+	syms::Set{Symbol}
+end
+
+function showerror(io::IO, cre::CircularReferenceError)
+	print(io, "Circular references among $(join(cre.syms, ", ", " and ")).")
+end
+
+function showerror(io::IO, mde::MultipleDefinitionsError)
+	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\nCombine all definitions into a single reactive cell using a `begin` ... `end` block.") # TODO: hint about mutable globals
+end
+
+
+"Sends `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_fetch_in_workspace` - this function is for Reactivity errors."
+function relay_reactivity_error!(cell::Cell, error::Exception)
+	cell.output_repr = nothing
+	cell.error_repr, cell.repr_mime = format_output(error)
+end
+
+
 function run_single!(initiator, notebook::Notebook, cell::Cell)
-	workspace = WorkspaceManager.get_workspace(notebook)
 	starttime = time_ns()
-	try
-		# deleted_refs = setdiff(cell.resolved_symstate.references, cell.resolved_symstate.assignments) ∩ workspace.deleted_vars
-		deleted_refs = cell.resolved_symstate.references ∩ workspace.deleted_vars
-		if !isempty(deleted_refs)
-			deleted_refs |> first |> UndefVarError |> throw
-		end
-		starttime = time_ns()
-		output = Core.eval(workspace.workspace_module, cell.parsedcode)
-		cell.runtime = time_ns() - starttime
+	output, errored = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
+	cell.runtime = time_ns() - starttime
 
-		relay_output!(cell, output)
-
+	if errored
+		cell.output_repr = nothing
+		cell.error_repr = output[1]
+		cell.repr_mime = output[2]
+	else
+		cell.output_repr = output[1]
+		cell.error_repr = nothing
+		cell.repr_mime = output[2]
 		WorkspaceManager.undelete_vars(notebook, cell.resolved_symstate.assignments)
-		# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
-	catch err
-		cell.runtime = time_ns() - starttime
-		bt = stacktrace(catch_backtrace())
-		relay_error!(cell, err, bt)
 	end
+	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 
 end
 
 "Run a cell and all the cells that depend on it"
 function run_reactive!(initiator, notebook::Notebook, cell::Cell)
+	# This guarantees that we are the only run_reactive! that is running cells right now:
+	token = take!(notebook.executetoken)
+
+	workspace = WorkspaceManager.get_workspace(notebook)
+
 	cell.parsedcode = Meta.parse(cell.code, raise=false)
 	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
 
@@ -96,29 +123,44 @@ function run_reactive!(initiator, notebook::Notebook, cell::Cell)
         (keys(c.resolved_symstate.funcdefs) for c in will_update)...
     )
 	
-	WorkspaceManager.delete_vars(notebook, to_delete_vars)
-	WorkspaceManager.delete_funcs(notebook, to_delete_funcs)
+	WorkspaceManager.delete_vars(workspace, to_delete_vars)
+	WorkspaceManager.delete_funcs(workspace, to_delete_funcs)
 
 	for to_run in will_update
-		if to_run in reassigned
-			assigned_multiple = let
-				other_modifiers = setdiff(competing_modifiers, [to_run])
-				union((to_run.resolved_symstate.assignments ∩ c.resolved_symstate.assignments for c in other_modifiers)...)
-			end
-			relay_error!(to_run, "Multiple definitions for $(join(assigned_multiple, ", ", " and "))")
-		elseif to_run in cyclic
-			assigned_cyclic = let
-				referenced_during_cycle = union((c.resolved_symstate.references for c in cyclic)...)
-				assigned_during_cycle = union((c.resolved_symstate.assignments for c in cyclic)...)
-				
-				referenced_during_cycle ∩ assigned_during_cycle
-			end
-			relay_error!(to_run, "Cyclic references: $(join(assigned_cyclic, ", ", " and "))")
+		assigned_multiple = if to_run in reassigned
+			other_modifiers = setdiff(competing_modifiers, [to_run])
+			union((to_run.resolved_symstate.assignments ∩ c.resolved_symstate.assignments for c in other_modifiers)...)
+		else
+			[]
+		end
+
+		assigned_cyclic = if to_run in cyclic
+			referenced_during_cycle = union((c.resolved_symstate.references for c in cyclic)...)
+			assigned_during_cycle = union((c.resolved_symstate.assignments for c in cyclic)...)
+			
+			referenced_during_cycle ∩ assigned_during_cycle
+		else
+			[]
+		end
+
+		deleted_refs = let
+			to_run.resolved_symstate.references ∩ workspace.deleted_vars
+		end
+
+		if length(assigned_multiple) > 0
+			relay_reactivity_error!(to_run, assigned_multiple |> MultipleDefinitionsError)
+		elseif length(assigned_cyclic) > 1
+			relay_reactivity_error!(to_run, assigned_cyclic |> CircularReferenceError)
+		elseif length(deleted_refs) > 0
+			relay_reactivity_error!(to_run, deleted_refs |> first |> UndefVarError)
 		else
 			run_single!(initiator, notebook, to_run)
 		end
+		
 		putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, to_run))
 	end
+
+	put!(notebook.executetoken, token)
 
 	return will_update
 end

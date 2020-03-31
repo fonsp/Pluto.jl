@@ -36,12 +36,12 @@ end
 
 
 function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::Cell)
-    payload, mime = format_output(cell.output)
+    payload, mime = cell.output_repr, cell.repr_mime
 
     return UpdateMessage(:cell_output, 
             Dict(:mime => mime,
              :output => payload,
-             :errormessage => cell.errormessage,
+             :errormessage => cell.error_repr,
              :runtime => cell.runtime,
             ),
             notebook, cell, initiator)

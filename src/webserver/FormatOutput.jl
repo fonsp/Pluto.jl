@@ -1,3 +1,5 @@
+# will be executed on workspace process
+
 using Markdown
 import Base: show
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
@@ -44,4 +46,25 @@ function format_output(val::Any)::Tuple{String, MIME}
             Base.invokelatest(repr, mime, ex; context = iocontext), mime
         end
     end
+end
+
+function format_output(val::CapturedException)::Tuple{String, MIME}
+    # in order of coolness
+    # text/plain always matches
+    mime = MIME("text/html")
+
+    bt = val.processed_bt
+
+    until = findfirst(b -> b[1].func == :eval, reverse(bt))
+    bt = until === nothing ? bt : bt[1:(length(bt) - until)]
+
+    sprint(showerror, val.ex, bt), mime
+end
+
+function format_output(ex::Exception)::Tuple{String, MIME}
+    # in order of coolness
+    # text/plain always matches
+    mime = MIME("text/html")
+
+    sprint(showerror, ex), mime
 end

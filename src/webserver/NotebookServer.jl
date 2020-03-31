@@ -167,10 +167,7 @@ function run(port = 1234, launchbrowser = false)
                                 
                                 if haskey(responses, messagetype)
                                     responsefunc = responses[messagetype]
-                                    response = responsefunc((client, body, args...))
-                                    # if response !== nothing
-                                    #     putplutoupdates!(response...)
-                                    # end
+                                    responsefunc((client, body, args...))
                                 else
                                     @warn "Message of type $(messagetype) not recognised"
                                 end
@@ -249,6 +246,9 @@ function run(port = 1234, launchbrowser = false)
         if isa(e, InterruptException)
             println("\nClosing Pluto... Bye! 🎈")
             close(serversocket)
+            for (uuid, ws) in WorkspaceManager.workspaces
+                WorkspaceManager.unmake_workspace(ws)
+            end
         else
             rethrow(e)
         end

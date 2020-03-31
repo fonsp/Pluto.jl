@@ -14,6 +14,7 @@ const VERSION_STR = 'v' * Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.tom
 \n"""
 
 include("./react/ExploreExpression.jl")
+include("./webserver/FormatOutput.jl")
 using .ExploreExpression
 include("./react/Cell.jl")
 include("./react/Notebook.jl")
@@ -22,7 +23,6 @@ include("./react/React.jl")
 
 include("./webserver/NotebookServer.jl")
 include("./webserver/Static.jl")
-include("./webserver/FormatOutput.jl")
 include("./webserver/Dynamic.jl")
 
 end

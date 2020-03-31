@@ -11,11 +11,17 @@ mutable struct Notebook
 
     # buffer must contain all undisplayed outputs
     pendingupdates::Channel
+
+    executetoken::Channel
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(path::String, cells::Array{Cell,1}, uuid) = Notebook(path, cells, uuid, nothing, Channel(128))
-Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid4(), nothing, Channel(128))
+Notebook(path::String, cells::Array{Cell,1}, uuid) = let
+    et = Channel{Nothing}(1)
+    put!(et, nothing)
+    Notebook(path, cells, uuid, nothing, Channel(128), et)
+end
+Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 
 function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
     cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)
