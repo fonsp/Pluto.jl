@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: samplenotebook, Notebook ,createcell_fromcode, load_notebook, save_notebook
+import Pluto: samplenotebook, Notebook ,Cell, load_notebook, save_notebook
 
 function notebook_inputs_equal(nbA, nbB)
     x = normpath(nbA.path) == normpath(nbB.path)
@@ -22,8 +22,8 @@ end
 @testset "Notebook File I/O" begin
     notebookA = samplenotebook()
     notebookB = Notebook(joinpath(tempdir(), "é🧡💛.jl"), [
-        createcell_fromcode("z = y"),
-        createcell_fromcode("y = 1")
+        Cell("z = y"),
+        Cell("y = 1")
     ])
 
     @testset "I/O" begin
@@ -50,8 +50,8 @@ end
     end
     @testset "Bad code" begin
         nb = Notebook(joinpath(tempdir(), "é🧡💛.jl"), [
-            createcell_fromcode("z = y"),
-            createcell_fromcode("y = z")
+            Cell("z = y"),
+            Cell("y = z")
         ])
         @test let
             file_contents = sprint(save_notebook, nb)

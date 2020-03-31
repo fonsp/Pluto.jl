@@ -3,7 +3,7 @@
 using Markdown
 import Base: show
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
-
+import Distributed
 
 # We add a method for the Markdown -> HTML conversion that takes a LaTeX chunk from the Markdown tree and adds our custom span
 function htmlinline(io::IO, x::LaTeX)
@@ -14,7 +14,7 @@ function htmlinline(io::IO, x::LaTeX)
     end
 end
 
-# This one for block equations: (double $$)
+# this one for block equations: (double $$)
 function html(io::IO, x::LaTeX)
     withtag(io, :p, :class => "tex") do
         print(io, '$', '$')
@@ -48,23 +48,35 @@ function format_output(val::Any)::Tuple{String, MIME}
     end
 end
 
-function format_output(val::CapturedException)::Tuple{String, MIME}
-    # in order of coolness
-    # text/plain always matches
-    mime = MIME("text/html")
-
-    bt = val.processed_bt
-
-    until = findfirst(b -> b[1].func == :eval, reverse(bt))
-    bt = until === nothing ? bt : bt[1:(length(bt) - until)]
-
-    sprint(showerror, val.ex, bt), mime
+function format_output(ex::Exception, bt::Array{Any, 1})::Tuple{String, MIME}
+    sprint(showerror, ex, bt), MIME("text/plain")
 end
 
 function format_output(ex::Exception)::Tuple{String, MIME}
-    # in order of coolness
-    # text/plain always matches
-    mime = MIME("text/html")
+    sprint(showerror, ex), MIME("text/plain")
+end
 
-    sprint(showerror, ex), mime
+function format_output(val::CapturedException)::Tuple{String, MIME}
+
+    ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+
+    bt = try
+        new_bt = val.processed_bt
+        # If this is a ModuleWorkspace, then that's everything starting from the last `eval`.
+        # For a ProcessWorkspace, it's everything starting from the 2nd to last `eval`.
+        howdeep = Distributed.myid() == 1 ? 1 : 2
+
+        for _ in 1:howdeep
+            until = findfirst(b -> b[1].func == :eval, reverse(new_bt))
+            new_bt = until === nothing ? new_bt : new_bt[1:(length(new_bt) - until)]
+        end
+
+        # We don't include the deepest item of the stacktrace, since it is always
+        # `top-level scope at none:0`
+        new_bt[1:end-1]
+    catch ex
+        val.processed_bt
+    end
+
+    format_output(val.ex, bt)
 end

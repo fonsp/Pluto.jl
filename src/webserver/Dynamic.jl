@@ -173,13 +173,12 @@ function handle_changecell(initiator, notebook, cell, newcode)
         cell.parsedcode = nothing
     end
 
-    putnotebookupdates!(notebook, clientupdate_cell_input(initiator, notebook, cell))
-
-    # TODO: evaluation async
-    @time to_update = run_reactive!(initiator, notebook, cell)
-    
     # TODO: feedback to user about File IO
     save_notebook(notebook)
+    
+    putnotebookupdates!(notebook, clientupdate_cell_input(initiator, notebook, cell))
+
+    to_update = run_reactive_async!(initiator, notebook, cell)
 end
 
 
@@ -188,7 +187,7 @@ end
 addresponse(:addcell) do (initiator, body, notebook)
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
-    new_cell = createcell_fromcode("")
+    new_cell = Cell("")
 
     insert!(notebook.cells, new_index, new_cell)
 
@@ -237,6 +236,9 @@ addresponse(:changecell) do (initiator, body, notebook, cell)
     nothing
 end
 
+addresponse(:runall) do (initiator, body, notebook)
+    to_update = run_reactive_async!(initiator, notebook, notebook.cells)
+end
 
 # TODO:
 # addresponse(:getcell) do (initiator, body, notebook, cell)

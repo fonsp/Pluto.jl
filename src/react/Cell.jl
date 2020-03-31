@@ -1,6 +1,8 @@
-using UUIDs
+import UUIDs: UUID
+import .ExploreExpression: SymbolsState
+import JSON: lower
 
-"The building block of `Notebook`s. Contains both code and output."
+"The building block of `Notebook`s. Contains code, output and reactivity data."
 mutable struct Cell
     "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     uuid::UUID
@@ -11,16 +13,8 @@ mutable struct Cell
     repr_mime::MIME
     runtime::Union{Missing,UInt64}
     symstate::SymbolsState
-    resolved_funccalls::Set{Symbol}
-    resolved_symstate::SymbolsState
     module_usings::Set{Expr}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, nothing, nothing, MIME("text/plain"), missing, SymbolsState(), Set{Symbol}(), SymbolsState(), Set{Expr}())
-
-"Turn a `Cell` into an object that can be serialized using `JSON.json`, to be sent to the client."
-function serialize(cell::Cell)
-    Dict(:uuid => string(cell.uuid), :code => cell.code)
-end
-
-createcell_fromcode(code::String) = Cell(uuid1(), code)
+Cell(uuid, code) = Cell(uuid, code, nothing, nothing, nothing, MIME("text/plain"), missing, SymbolsState(), Set{Expr}())
+Cell(code) = Cell(uuid1(), code)

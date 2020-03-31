@@ -16,21 +16,23 @@ mutable struct ProcessWorkspace <: AbstractWorkspace
     deleted_vars::Set{Symbol}
 end
 
+default_workspace_method = ProcessWorkspace
+
+"The workspace method to be used for all future workspace creations. ModuleWorkspace` is lightest, `ProcessWorkspace` can always terminate."
+function set_default_workspace_method(method)
+    global default_workspace_method = method
+end
+
+
 "These expressions get executed whenever a new workspace is created."
 workspace_preamble = [:(using Markdown), :(ENV["GKSwstype"] = "nul")]
 
 moduleworkspace_count = 0
 workspaces = Dict{UUID, AbstractWorkspace}()
 
-default_workspace_method = Ref(ProcessWorkspace)
-
-"The workspace method to be used for all future workspace creations. ModuleWorkspace` is lightest, `ProcessWorkspace` can always terminate."
-function set_default_workspace_method(method)
-    default_workspace_method[] = method
-end
 
 "Create a workspace for the notebook using the `default_workspace_method`."
-make_workspace(notebook::Notebook)::AbstractWorkspace = make_workspace(notebook, Val(default_workspace_method[]))
+make_workspace(notebook::Notebook)::AbstractWorkspace = make_workspace(notebook, Val(default_workspace_method))
 
 function make_workspace(notebook::Notebook, ::Val{ModuleWorkspace})::ModuleWorkspace
     global moduleworkspace_count += 1

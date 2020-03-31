@@ -9,12 +9,12 @@
 
 
         notebookA = Notebook(joinpath(tempdir(), "test.jl"), [
-            createcell_fromcode("x = 3")
+            Cell("x = 3")
         ])
         fakeclientA.connected_notebook = notebookA
 
         notebookB = Notebook(joinpath(tempdir(), "test.jl"), [
-            createcell_fromcode("x")
+            Cell("x")
         ])
         fakeclientB.connected_notebook = notebookB
 

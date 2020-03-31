@@ -7,7 +7,7 @@ mutable struct Notebook
     cells::Array{Cell,1}
     
     uuid::UUID
-    combined_funcdefs::Union{Nothing,Dict{Symbol, SymbolsState}}
+    combined_funcdefs::Dict{Symbol, SymbolsState}
 
     # buffer must contain all undisplayed outputs
     pendingupdates::Channel
@@ -19,7 +19,7 @@ end
 Notebook(path::String, cells::Array{Cell,1}, uuid) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
-    Notebook(path, cells, uuid, nothing, Channel(128), et)
+    Notebook(path, cells, uuid, Dict{Symbol, SymbolsState}(), Channel(128), et)
 end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 
@@ -37,17 +37,17 @@ _uuid_delimiter = "# ⋐⋑ "
 _order_delimited = "# ○ "
 _cell_appendix = "\n\n"
 
-emptynotebook(path) = Notebook(path, [createcell_fromcode("")])
+emptynotebook(path) = Notebook(path, [Cell("")])
 emptynotebook() = emptynotebook(tempname() * ".jl")
 
 function samplenotebook()
     cells = Cell[]
 
-    push!(cells, createcell_fromcode("100*a + b"))
-    push!(cells, createcell_fromcode("a = 1"))
-    push!(cells, createcell_fromcode("b = let\n\tx = a + a\n\tx*x\nend"))
-    push!(cells, createcell_fromcode("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
-    push!(cells, createcell_fromcode("""md"# Cześć!
+    push!(cells, Cell("100*a + b"))
+    push!(cells, Cell("a = 1"))
+    push!(cells, Cell("b = let\n\tx = a + a\n\tx*x\nend"))
+    push!(cells, Cell("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
+    push!(cells, Cell("""md"# Cześć!
     My name is **baba** and I like \$\\LaTeX\$ _support!_
     
     \$\$\\begin{align}
@@ -64,7 +64,7 @@ end
 
 function save_notebook(io, notebook)
     write(io, "### A Pluto.jl notebook ###\n")
-    write(io, "# " * VERSION_STR * "\n")
+    write(io, "# " * PLUTO_VERSION_STR * "\n")
 
     # TODO: order cells
     cells_ordered = notebook.cells
@@ -97,8 +97,8 @@ function load_notebook(io, path)
     end
 
     file_VERSION_STR = readline(io)[3:end]
-    if file_VERSION_STR != VERSION_STR
-        @warn "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(VERSION_STR)."
+    if file_VERSION_STR != PLUTO_VERSION_STR
+        @warn "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
     
