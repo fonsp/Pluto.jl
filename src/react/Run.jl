@@ -1,15 +1,17 @@
-"Run some cells and all the cells that depend on them"
-function run_reactive!(initiator, notebook::Notebook, cells::Set{Cell})
+"Run given cells and all the cells that depend on them."
+function run_reactive!(initiator, notebook::Notebook, cells::Array{Cell, 1})
 	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
 	to_delete_vars = Set{Symbol}()
 	to_delete_funcs = Set{Symbol}()
 
-	# save the old topology - we'll delete variables from it and update its cells
+	# save the old topology - we'll delete variables assigned from it and re-evalutate its cells
 	old_topology = dependent_cells(notebook, cells)
-	to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in old_topology.runnable)...)
-	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in old_topology.runnable)...)
+	
+	old_runnable = old_topology.runnable
+	to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in old_runnable)...)
+	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in old_runnable)...)
 
 	# update the cache using the new code and compute the new topology
 	for cell in cells
@@ -20,20 +22,26 @@ function run_reactive!(initiator, notebook::Notebook, cells::Set{Cell})
 		cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
 	end
 	update_funcdefs!(notebook)
-	new_topology = dependent_cells(notebook, cells)
-	to_run = setdiff(union(new_topology.runnable, old_topology.runnable, keys(old_topology.errors)), keys(new_topology.errors)) # TODO: think if old error cell order matters
+
+	new_topology = dependent_cells(notebook, union(cells, keys(old_topology.errable)))
+	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable)) # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "running"
 	for cell in to_run
 		putnotebookupdates!(notebook, clientupdate_cell_running(initiator, notebook, cell))
 	end
-	for (cell, error) in new_topology.errors
+	for (cell, error) in new_topology.errable
 		relay_reactivity_error!(cell, error)
 	end
 	
 	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-    to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in new_topology.runnable)...)
-	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in new_topology.runnable)...)
+	new_runnable = new_topology.runnable
+    to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in new_runnable)...)
+	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in new_runnable)...)
+	
+	new_errable = keys(new_topology.errable)
+	to_delete_vars = union(to_delete_vars, (errable.symstate.assignments for errable in new_errable)...)
+	to_delete_funcs = union(to_delete_funcs, (Set(keys(errable.symstate.funcdefs)) for errable in new_errable)...)
 	
 	workspace = WorkspaceManager.get_workspace(notebook)
 	WorkspaceManager.delete_vars(workspace, to_delete_vars)
@@ -55,9 +63,24 @@ function run_reactive!(initiator, notebook::Notebook, cells::Set{Cell})
 	return new_topology
 end
 
-run_reactive!(initiator, notebook::Notebook, cell::Cell) = run_reactive!(initiator, notebook, Set{Cell}([cell]))
 
-"Run a single cell non-reactively"
+"See `run_reactive`."
+function run_reactive_async!(initiator, notebook::Notebook, cells::Array{Cell, 1})
+	@async begin
+		# because this is being run async, we need to catch exceptions manually
+		try
+			run_reactive!(initiator, notebook, cells)
+		catch ex
+			bt = stacktrace(catch_backtrace())
+			showerror(stderr, ex, bt)
+		end
+	end
+end
+
+run_reactive!(initiator, notebook::Notebook, cell::Cell) = run_reactive!(initiator, notebook, [cell])
+run_reactive_async!(initiator, notebook::Notebook, cell::Cell) = run_reactive_async!(initiator, notebook, [cell])
+
+"Run a single cell non-reactively."
 function run_single!(initiator, notebook::Notebook, cell::Cell)
 	starttime = time_ns()
 	output, errored = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)

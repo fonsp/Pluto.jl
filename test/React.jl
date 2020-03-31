@@ -1,21 +1,19 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode, WorkspaceManager
+import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 
 @testset "Reactivity $(method.name.name)" for method in [WorkspaceManager.ModuleWorkspace, WorkspaceManager.ProcessWorkspace]
     WorkspaceManager.set_default_workspace_method(method)
-
-    @test WorkspaceManager.default_workspace_method[] == method
 
     fakeclient = Client(:fake, nothing)
     Pluto.connectedclients[fakeclient.id] = fakeclient
 
     @testset "Basic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("y = x"),
-        createcell_fromcode("f(x) = x + y"),
-        createcell_fromcode("f(4)"),
+        Cell("x = 1"),
+        Cell("y = x"),
+        Cell("f(x) = x + y"),
+        Cell("f(4)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -49,8 +47,8 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
 # https://github.com/fonsp/Pluto.jl/issues/32
     @testset "Bad code" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("a"),
-        createcell_fromcode("1 = 2")
+        Cell("a"),
+        Cell("1 = 2")
     ])
         fakeclient.connected_notebook = notebook
 
@@ -60,17 +58,16 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test notebook.cells[2].error_repr !== nothing
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Mutliple assignments" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("x = 2"),
-        createcell_fromcode("f(x) = 3"),
-        createcell_fromcode("f(x) = 4"),
-        createcell_fromcode("g(x) = 5"),
-        createcell_fromcode("g = 6"),
+        Cell("x = 1"),
+        Cell("x = 2"),
+        Cell("f(x) = 3"),
+        Cell("f(x) = 4"),
+        Cell("g(x) = 5"),
+        Cell("g = 6"),
     ])
         fakeclient.connected_notebook = notebook
     
@@ -114,13 +111,12 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
     # @test_broken !occursin("redefinition of constant", notebook.cells[6].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = y"),
-        createcell_fromcode("y = x")
+        Cell("x = y"),
+        Cell("y = x")
     ])
         fakeclient.connected_notebook = notebook
 
@@ -130,13 +126,12 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test occursin("Cyclic reference", notebook.cells[2].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Variable deletion" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("y = x")
+        Cell("x = 1"),
+        Cell("y = x")
     ])
         fakeclient.connected_notebook = notebook
 
@@ -151,14 +146,13 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test occursin("x not defined", notebook.cells[2].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Recursive function is not considered cyclic" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("f(n) = n * f(n-1)"),
-        createcell_fromcode("g(n) = h(n-1)"),
-        createcell_fromcode("h(n) = g(n-1)"),
+        Cell("f(n) = n * f(n-1)"),
+        Cell("g(n) = h(n-1)"),
+        Cell("h(n) = g(n-1)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -172,12 +166,11 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test notebook.cells[3].error_repr == nothing
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Variable cannot reference its previous value" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 3")
+        Cell("x = 3")
     ])
         fakeclient.connected_notebook = notebook
 
@@ -188,21 +181,20 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test occursin("UndefVarError", notebook.cells[1].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
     @testset "Changing functions" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("y = 1"),
-        createcell_fromcode("f(x) = x + y"),
-        createcell_fromcode("f(3)"),
+        Cell("y = 1"),
+        Cell("f(x) = x + y"),
+        Cell("f(3)"),
 
-        createcell_fromcode("g(a,b) = a+b"),
-        createcell_fromcode("g(5,6)"),
+        Cell("g(a,b) = a+b"),
+        Cell("g(5,6)"),
 
-        createcell_fromcode("h(x::Int64) = x"),
-        createcell_fromcode("h(7)"),
-        createcell_fromcode("h(8.0)"),
+        Cell("h(x::Int64) = x"),
+        Cell("h(7)"),
+        Cell("h(8.0)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -251,12 +243,11 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test notebook.cells[8].error_repr == nothing
 
         WorkspaceManager.unmake_workspace(notebook)
-
     end
 
 #     @testset "Multiple dispatch" begin
 #         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-#             createcell_fromcode(
+#             Cell(
 # """begin
 #     function f(x)
 #         x
@@ -266,17 +257,17 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
 #     end
 # end"""
 #             )
-#             createcell_fromcode(
+#             Cell(
 # """function g(x)
 #     x
 # end"""
 #             )
-#             createcell_fromcode(
+#             Cell(
 # """function g(x,s)
 #     s
 # end"""
 #             )
-#             createcell_fromcode("function f(x) x end")
+#             Cell("function f(x) x end")
 #         ])
 #         fakeclient.connected_notebook = notebook
 
@@ -292,15 +283,15 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
     # We currently have a slightly relaxed version of immutable globals:
     # globals can only be mutated/assigned _in a single cell_.
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
-        createcell_fromcode("x = 1"),
-        createcell_fromcode("x = 2"),
-        createcell_fromcode("y = -3; y = 3"),
-        createcell_fromcode("z = 4"),
-        createcell_fromcode("let global z = 5 end"),
-        createcell_fromcode("w"),
-        createcell_fromcode("function f(x) global w = x end"),
-        createcell_fromcode("f(-8); f(8)"),
-        createcell_fromcode("f(9)"),
+        Cell("x = 1"),
+        Cell("x = 2"),
+        Cell("y = -3; y = 3"),
+        Cell("z = 4"),
+        Cell("let global z = 5 end"),
+        Cell("w"),
+        Cell("function f(x) global w = x end"),
+        Cell("f(-8); f(8)"),
+        Cell("f(9)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -341,6 +332,56 @@ import Pluto: Notebook, Client, run_reactive!, fakeclient,  createcell_fromcode,
         @test occursin("Multiple definitions for w", notebook.cells[9].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
+    end
 
+    @testset "Run all" begin
+        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        Cell("x = []"),
+        Cell("push!(x,2); b = a + 2"),
+        Cell("push!(x,3); c = b + a"),
+        Cell("push!(x,4); a = 1"),
+        Cell("push!(x,5); a + b +c"),
+
+        Cell("push!(x,6); a = 1"),
+
+        Cell("push!(x,7); n = m"),
+        Cell("push!(x,8); m = n"),
+        Cell("push!(x,9); n = 1"),
+
+        Cell("push!(x,10)"),
+        Cell("push!(x,11)"),
+        Cell("push!(x,12)"),
+        Cell("push!(x,13)"),
+        Cell("push!(x,14)"),
+
+        Cell("join(x, '-')")
+    ])
+        fakeclient.connected_notebook = notebook
+
+        run_reactive!(fakeclient, notebook, notebook.cells[1])
+
+        @testset "Basic" begin
+            run_reactive!(fakeclient, notebook, notebook.cells[2:5])
+
+            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            @test notebook.cells[15].output_repr == "\"4-2-3-5\""
+        end
+        
+        @testset "Errors" begin
+            run_reactive!(fakeclient, notebook, notebook.cells[6:9])
+
+            # should all err, no change to `x`
+            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            @test notebook.cells[15].output_repr == "\"4-2-3-5\""
+        end
+
+        @testset "Maintain order when possible" begin
+            run_reactive!(fakeclient, notebook, notebook.cells[10:14])
+
+            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            @test notebook.cells[15].output_repr == "\"4-2-3-5-10-11-12-13-14\""
+        end
+
+        WorkspaceManager.unmake_workspace(notebook)
     end
 end
