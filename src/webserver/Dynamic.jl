@@ -4,17 +4,6 @@ import JSON
 import JSON: lower
 JSON.lower(m::MIME) = string(m)
 
-struct UpdateMessage
-    type::Symbol
-    message::Any
-    notebook::Union{Notebook,Nothing}
-    cell::Union{Cell,Nothing}
-    initiator::Union{Client,Nothing}
-end
-
-UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, nothing)
-UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, nothing)
-
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
@@ -35,52 +24,9 @@ function serialize_message(message::UpdateMessage)
 end
 
 
-function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::Cell)
-    payload, mime = cell.output_repr, cell.repr_mime
 
-    return UpdateMessage(:cell_output, 
-            Dict(:mime => mime,
-             :output => payload,
-             :errormessage => cell.error_repr,
-             :runtime => cell.runtime,
-            ),
-            notebook, cell, initiator)
-end
 
-function clientupdate_cell_input(initiator::Client, notebook::Notebook, cell::Cell)
-    return UpdateMessage(:cell_input, 
-        Dict(:code => cell.code), notebook, cell, initiator)
-end
-
-function clientupdate_cell_added(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
-    return UpdateMessage(:cell_added, 
-        Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
-            ), notebook, cell, initiator)
-end
-
-function clientupdate_cell_deleted(initiator::Client, notebook::Notebook, cell::Cell)
-    return UpdateMessage(:cell_deleted, 
-        Dict(), notebook, cell, initiator)
-end
-
-function clientupdate_cell_moved(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
-    return UpdateMessage(:cell_moved, 
-        Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
-            ), notebook, cell, initiator)
-end
-
-function clientupdate_cell_dependecies(initiator::Client, notebook::Notebook, cell::Cell, dependentcells)
-    return UpdateMessage(:cell_dependecies, 
-        Dict(:depenentcells => [string(c.uuid) for c in dependentcells],
-            ), notebook, cell, initiator)
-end
-
-function clientupdate_cell_running(initiator::Client, notebook::Notebook, cell::Cell)
-    return UpdateMessage(:cell_running, 
-        Dict(), notebook, cell, initiator)
-end
-
-"To be used in `make_distinct!`"
+"To be used in `make_paths_distinct!`"
 mutable struct NotebookPath
     uuid
     path_split
@@ -106,7 +52,7 @@ For example, the set
 will become
 
 `/a/b/c.jl`, `P/c.jl`, `/Q/b/c.jl`, 'R.jl'"""
-function make_distinct!(notebookpaths::Set{NotebookPath})
+function make_paths_distinct!(notebookpaths::Set{NotebookPath})
     counts = count_occurances(np.current_path for np in notebookpaths)
     for (current_path, count) in counts
         if count == 1 && !isempty(current_path)
@@ -129,7 +75,7 @@ function make_distinct!(notebookpaths::Set{NotebookPath})
                 end
             end
 
-            make_distinct!(not_yet_distinct)
+            make_paths_distinct!(not_yet_distinct)
         end
     end
 end
@@ -146,7 +92,7 @@ function clientupdate_notebook_list(initiator::Client, notebook_list)
         NotebookPath(notebook.uuid, path_split, "", -1)
     end
 
-    make_distinct!(Set(notebookpaths))
+    make_paths_distinct!(Set(notebookpaths))
 
     short_paths = Dict(map(notebookpaths) do np
         np.uuid => np.current_path
@@ -161,9 +107,7 @@ function clientupdate_notebook_list(initiator::Client, notebook_list)
 end
 
 
-
-
-function handle_changecell(initiator, notebook, cell, newcode)
+function handle_changecell(initiator::Client, notebook, cell, newcode)
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -178,13 +122,13 @@ function handle_changecell(initiator, notebook, cell, newcode)
     
     putnotebookupdates!(notebook, clientupdate_cell_input(initiator, notebook, cell))
 
-    to_update = run_reactive_async!(initiator, notebook, cell)
+    run_reactive_async!(initiator, notebook, cell)
 end
 
 
 
 # TODO: actions on the notebook are not thread safe
-addresponse(:addcell) do (initiator, body, notebook)
+responses[:addcell] = (initiator::Client, body, notebook::Notebook) -> begin
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
@@ -195,7 +139,7 @@ addresponse(:addcell) do (initiator, body, notebook)
     nothing
 end
 
-addresponse(:deletecell) do (initiator, body, notebook, cell)    
+responses[:deletecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
     to_delete = cell
 
     changecell_succes = handle_changecell(initiator, notebook, to_delete, "")
@@ -206,7 +150,7 @@ addresponse(:deletecell) do (initiator, body, notebook, cell)
     nothing
 end
 
-addresponse(:movecell) do (initiator, body, notebook, cell)
+responses[:movecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
     to_move = cell
 
     # Indexing works as if a new cell is added.
@@ -229,23 +173,23 @@ addresponse(:movecell) do (initiator, body, notebook, cell)
     nothing
 end
 
-addresponse(:changecell) do (initiator, body, notebook, cell)
+responses[:changecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
     newcode = body["code"]
 
     handle_changecell(initiator, notebook, cell, newcode)
     nothing
 end
 
-addresponse(:runall) do (initiator, body, notebook)
+responses[:runall] = (initiator::Client, body, notebook::Notebook) -> begin
     to_update = run_reactive_async!(initiator, notebook, notebook.cells)
 end
 
 # TODO:
-# addresponse(:getcell) do (initiator, body, notebook, cell)
+# responses[:getcell] = (initiator, body, notebook::Notebook, cell::Cell) -> begin
     
 # end
 
-addresponse(:getallcells) do (initiator, body, notebook)
+responses[:getallcells] = (initiator::Client, body, notebook::Notebook) -> begin
     # TODO: 
     updates = []
     for (i, cell) in enumerate(notebook.cells)
@@ -259,7 +203,7 @@ addresponse(:getallcells) do (initiator, body, notebook)
     nothing
 end
 
-addresponse(:getallnotebooks) do (initiator, body)
+responses[:getallnotebooks] = (initiator::Client, body, notebook=nothing) -> begin
     putplutoupdates!(clientupdate_notebook_list(initiator, values(notebooks)))
     nothing
 end

@@ -69,7 +69,7 @@ function make_workspace(notebook::Notebook, ::Val{ProcessWorkspace})::ProcessWor
 
     eval_in_workspace.([workspace], workspace_preamble)
     # TODO: we could also import Pluto
-    eval_in_workspace(workspace, :(include($(joinpath(PKG_ROOT_DIR, "src", "webserver", "FormatOutput.jl")))))
+    eval_in_workspace(workspace, :(include($(joinpath(PKG_ROOT_DIR, "src", "notebookserver", "FormatOutput.jl")))))
 
     workspace
 end

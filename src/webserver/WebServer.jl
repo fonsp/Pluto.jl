@@ -3,15 +3,6 @@ import UUIDs: UUID
 import HTTP
 import Sockets
 
-mutable struct Client
-    id::Symbol
-    stream::Any
-    connected_notebook::Union{Notebook,Nothing}
-    pendingupdates::Channel
-end
-
-Client(id::Symbol, stream) = Client(id, stream, nothing, Channel(128))
-
 connectedclients = Dict{Symbol,Client}()
 notebooks = Dict{UUID,Notebook}()
 
@@ -96,7 +87,6 @@ end
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 responses = Dict{Symbol,Function}()
-addresponse(f::Function, endpoint::Symbol) = responses[endpoint] = f
 
 
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
@@ -167,7 +157,12 @@ function run(port = 1234, launchbrowser = false)
                                 
                                 if haskey(responses, messagetype)
                                     responsefunc = responses[messagetype]
-                                    responsefunc((client, body, args...))
+                                    try
+                                    responsefunc(client, body, args...)
+                                    catch ex
+                                        @warn "Response function to message of type $(messagetype) failed"
+                                        rethrow(ex)
+                                    end
                                 else
                                     @warn "Message of type $(messagetype) not recognised"
                                 end

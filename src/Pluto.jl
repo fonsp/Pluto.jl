@@ -16,16 +16,19 @@ const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 
 include("./react/ExploreExpression.jl")
 using .ExploreExpression
-include("./webserver/FormatOutput.jl")
 
-include("./react/Cell.jl")
-include("./react/Notebook.jl")
+include("./notebookserver/FormatOutput.jl")
+include("./notebookserver/Cell.jl")
+include("./notebookserver/Notebook.jl")
+include("./notebookserver/Client.jl")
+
+
 include("./react/WorkspaceManager.jl")
 include("./react/Errors.jl")
 include("./react/React.jl")
 include("./react/Run.jl")
 
-include("./webserver/NotebookServer.jl")
+include("./webserver/WebServer.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 
