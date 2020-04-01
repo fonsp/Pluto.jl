@@ -37,6 +37,12 @@ function putplutoupdates!(messages...)
     listeners
 end
 
+function putclientupdates!(client::Client, messages...)
+    for next_to_send in messages
+        put!(client.pendingupdates, next_to_send)
+    end
+    flushclient(client)
+end
 
 # flushtoken = Channel{Nothing}(1)
 # put!(flushtoken, nothing)

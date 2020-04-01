@@ -148,7 +148,7 @@ responses[:deletecell] = (initiator::Client, body, notebook::Notebook, cell::Cel
     # we wait async, to make sure that the web server remains responsive
     @async begin
         wait(runtask)
-        
+
         filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
     end
@@ -201,7 +201,7 @@ responses[:getallcells] = (initiator::Client, body, notebook::Notebook) -> begin
     end
     # [clientupdate_cell_added(notebook, c, i) for (i, c) in enumerate(notebook.cells)]
 
-    putnotebookupdates!(notebook, updates...)
+    putclientupdates!(initiator, updates...)
 end
 
 responses[:getallnotebooks] = (initiator::Client, body, notebook=nothing) -> begin

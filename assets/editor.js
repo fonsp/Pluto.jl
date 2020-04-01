@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     /* REMOTE NOTEBOOK LIST */
-    
+
     notebookID = (new URL(document.location.href)).search.split("uuid=")[1]
     notebookName = notebookID
 
@@ -356,7 +356,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function onEstablishConnection(){
+    function onEstablishConnection() {
         // on socket success
         // getAllRemoteNotebooks()
         getAllRemoteCells(console.warn, console.log)
@@ -378,7 +378,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.classList.add("disconnected")
         document.querySelector("meta[name=theme-color]").content = "#DEAF91"
         setTimeout(() => {
-            if(!client.currentlyConnected){
+            if (!client.currentlyConnected) {
                 for (var uuid in window.codeMirrors) {
                     window.codeMirrors[uuid].options.disableInput = true
                 }
@@ -452,5 +452,48 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    /* UNICODE */
+
+    const te = new TextEncoder()
+    const td = new TextDecoder()
+
+    function length_utf8(str, startindex_utf16=0, endindex_utf16=undefined) {
+        return te.encode(str.substring(startindex_utf16, endindex_utf16)).length
+    }
+
+    function splice_utf8(original, startindex_utf8, endindex_utf8, replacement) {
+        // JS uses UTF-16 for internal representation of strings, e.g.
+        // "e".length == 1, "é".length == 1, "🐶".length == 2
+
+        // Julia uses UTF-8, e.g.
+        // ncodeunits("e") == 1, ncodeunits("é") == 2, ncodeunits("🐶") == 4
+        //     length("e") == 1,     length("é") == 1,     length("🐶") == 1
+
+        // Completion results from julia will give the 'splice indices': "where should the completed keyword be inserted?"
+        // we need to splice into javascript string, so we convert to a UTF-8 byte array, then splice, then back to the string.
+
+        const original_enc = te.encode(original)
+        const replacement_enc = te.encode(replacement)
+
+        const result_enc = new Uint8Array(original_enc.length + replacement_enc.length - (endindex_utf8 - startindex_utf8))
+
+        result_enc.set(
+            original_enc.slice(0, startindex_utf8),
+            0,
+        )
+        result_enc.set(
+            replacement_enc,
+            startindex_utf8,
+        )
+        result_enc.set(
+            original_enc.slice(endindex_utf8),
+            startindex_utf8 + replacement_enc.length
+        )
+
+        return td.decode(result_enc)
+    }
+
+    console.assert(splice_utf8("e é 🐶 is a dog", 5, 9, "hannes ❤") == "e é hannes ❤ is a dog")
 });
 

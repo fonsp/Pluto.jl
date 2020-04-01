@@ -31,5 +31,6 @@ include("./react/Run.jl")
 include("./webserver/WebServer.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
+include("./webserver/Completions.jl")
 
 end
