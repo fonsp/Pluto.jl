@@ -48,6 +48,7 @@ function flushclient(client)
         next_to_send = take!(client.pendingupdates)
         didsomething = true
         
+        token = take!(client.stream_accesstoken)
         try
             if client.stream !== nothing
                 if isopen(client.stream)
@@ -62,6 +63,7 @@ function flushclient(client)
             @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
             return false
         end
+        put!(client.stream_accesstoken, token)
     end
     # put!(flushtoken, nothing)
     true

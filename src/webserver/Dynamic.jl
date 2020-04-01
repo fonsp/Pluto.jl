@@ -107,7 +107,7 @@ function clientupdate_notebook_list(initiator::Client, notebook_list)
 end
 
 
-function handle_changecell(initiator::Client, notebook, cell, newcode)
+function handle_changecell(initiator::Client, notebook, cell, newcode)::Task
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -136,18 +136,22 @@ responses[:addcell] = (initiator::Client, body, notebook::Notebook) -> begin
     insert!(notebook.cells, new_index, new_cell)
 
     putnotebookupdates!(notebook, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
-    nothing
 end
 
 responses[:deletecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
     to_delete = cell
 
-    changecell_succes = handle_changecell(initiator, notebook, to_delete, "")
+    # replace the cell's code with "" and do a reactive run
+    runtask = handle_changecell(initiator, notebook, to_delete, "")
     
-    filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
-
-    putnotebookupdates!(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
-    nothing
+    # wait for the reactive run to finish, then delete the cells
+    # we wait async, to make sure that the web server remains responsive
+    @async begin
+        wait(runtask)
+        
+        filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
+        putnotebookupdates!(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
+    end
 end
 
 responses[:movecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
@@ -170,14 +174,12 @@ responses[:movecell] = (initiator::Client, body, notebook::Notebook, cell::Cell)
     end
 
     putnotebookupdates!(notebook, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
-    nothing
 end
 
 responses[:changecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
     newcode = body["code"]
 
     handle_changecell(initiator, notebook, cell, newcode)
-    nothing
 end
 
 responses[:runall] = (initiator::Client, body, notebook::Notebook) -> begin
@@ -200,10 +202,8 @@ responses[:getallcells] = (initiator::Client, body, notebook::Notebook) -> begin
     # [clientupdate_cell_added(notebook, c, i) for (i, c) in enumerate(notebook.cells)]
 
     putnotebookupdates!(notebook, updates...)
-    nothing
 end
 
 responses[:getallnotebooks] = (initiator::Client, body, notebook=nothing) -> begin
     putplutoupdates!(clientupdate_notebook_list(initiator, values(notebooks)))
-    nothing
 end

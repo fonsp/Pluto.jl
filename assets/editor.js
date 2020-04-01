@@ -294,6 +294,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function requestRunAllRemoteCells() {
+        for (var uuid in window.localCells) {
+            window.localCells[uuid].classList.add("running")
+        }
         client.send("runall", {})
     }
 

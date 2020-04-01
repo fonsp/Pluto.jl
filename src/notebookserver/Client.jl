@@ -1,11 +1,16 @@
 mutable struct Client
     id::Symbol
     stream::Any
+    stream_accesstoken::Channel{Nothing}
     connected_notebook::Union{Notebook,Nothing}
     pendingupdates::Channel
 end
 
-Client(id::Symbol, stream) = Client(id, stream, nothing, Channel(128))
+Client(id::Symbol, stream) = let
+    at = Channel{Nothing}(1)
+    put!(at, nothing)
+    Client(id, stream, at, nothing, Channel(128))
+end
 
 
 struct UpdateMessage

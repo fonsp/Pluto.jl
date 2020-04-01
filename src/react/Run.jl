@@ -65,7 +65,7 @@ end
 
 
 "See `run_reactive`."
-function run_reactive_async!(initiator, notebook::Notebook, cells::Array{Cell, 1})
+function run_reactive_async!(initiator, notebook::Notebook, cells::Array{Cell, 1})::Task
 	@async begin
 		# because this is being run async, we need to catch exceptions manually
 		try
