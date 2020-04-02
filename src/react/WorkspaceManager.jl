@@ -178,7 +178,7 @@ function eval_fetch_in_workspace(workspace::ModuleWorkspace, expr)::NamedTuple{(
         CapturedException(ex, bt)
     end
     
-    format_output(ans), isa(ans, CapturedException)
+    (output_formatted=format_output(ans), errored=isa(ans, CapturedException), interrupted=false)
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."

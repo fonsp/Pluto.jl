@@ -33,7 +33,7 @@ function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
 end
 
 # We use a creative delimiter to avoid accidental use in code
-_uuid_delimiter = "# ⋐⋑ "
+_uuid_delimiter = "# ╔═╡ "
 _order_delimited = "# ○ "
 _cell_appendix = "\n\n"
 
@@ -66,8 +66,17 @@ function save_notebook(io, notebook)
     write(io, "### A Pluto.jl notebook ###\n")
     write(io, "# " * PLUTO_VERSION_STR * "\n")
 
-    # TODO: order cells
-    cells_ordered = notebook.cells
+    # TODO: this can be optimised by caching the topological order:
+    # maintain cache with ordered UUIDs
+    # whenever a run_reactive is done, move the found cells **up** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
+
+    # we first move cells to the front if they call an import
+    # MergeSort because it is a stable sort: leaves cells in order if they are in the same category
+    prelim_order = sort(notebook.cells, alg=MergeSort, by=(c -> !isempty(c.module_usings)))
+    # the next call took 2ms for a small-medium sized notebook: (so not too bad)
+    celltopology = dependent_cells(notebook, prelim_order)
+
+    cells_ordered = union(celltopology.runnable, keys(celltopology.errable))
 
     for c in cells_ordered
         write(io, _uuid_delimiter * string(c.uuid) * "\n")

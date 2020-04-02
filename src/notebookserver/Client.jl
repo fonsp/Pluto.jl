@@ -9,7 +9,7 @@ end
 Client(id::Symbol, stream) = let
     at = Channel{Nothing}(1)
     put!(at, nothing)
-    Client(id, stream, at, nothing, Channel(128))
+    Client(id, stream, at, nothing, Channel(1024))
 end
 
 

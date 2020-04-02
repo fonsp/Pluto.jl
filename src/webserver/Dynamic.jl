@@ -192,15 +192,13 @@ end
 # end
 
 responses[:getallcells] = (initiator::Client, body, notebook::Notebook) -> begin
-    # TODO: 
+    # TODO: the client's update channel might get full
     updates = []
     for (i, cell) in enumerate(notebook.cells)
         push!(updates, clientupdate_cell_added(initiator, notebook, cell, i))
         push!(updates, clientupdate_cell_input(initiator, notebook, cell))
         push!(updates, clientupdate_cell_output(initiator, notebook, cell))
     end
-    # [clientupdate_cell_added(notebook, c, i) for (i, c) in enumerate(notebook.cells)]
-
     putclientupdates!(initiator, updates...)
 end
 
