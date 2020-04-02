@@ -6,8 +6,8 @@ import Sockets
 connectedclients = Dict{Symbol,Client}()
 notebooks = Dict{UUID,Notebook}()
 
-
-function putnotebookupdates!(notebook, messages...)
+"Send `messages` to all clients connected to the `notebook`."
+function putnotebookupdates!(notebook::Notebook, messages::UpdateMessage...)
     listeners = filter(collect(values(connectedclients))) do c
         c.connected_notebook !== nothing &&
         c.connected_notebook.uuid == notebook.uuid
@@ -23,8 +23,8 @@ function putnotebookupdates!(notebook, messages...)
     listeners
 end
 
-
-function putplutoupdates!(messages...)
+"Send `messages` to all connected clients."
+function putplutoupdates!(messages::UpdateMessage...)
     listeners = collect(values(connectedclients))
     if isempty(listeners)
         @info "no clients connected to pluto!"
@@ -37,17 +37,23 @@ function putplutoupdates!(messages...)
     listeners
 end
 
-function putclientupdates!(client::Client, messages...)
+"Send `messages` to a `client`."
+function putclientupdates!(client::Client, messages::UpdateMessage...)
     for next_to_send in messages
         put!(client.pendingupdates, next_to_send)
     end
     flushclient(client)
 end
 
+"Send `messages` to the `Client` who initiated."
+function putclientupdates!(initiator::Initiator, messages::UpdateMessage...)
+    putclientupdates!(connectedclients[initiator.clientID], messages...)
+end
+
 # flushtoken = Channel{Nothing}(1)
 # put!(flushtoken, nothing)
 
-function flushclient(client)
+function flushclient(client::Client)
     # take!(flushtoken)
     didsomething = false
     while isready(client.pendingupdates)
@@ -75,7 +81,7 @@ function flushclient(client)
     true
 end
 
-function flushallclients(subset)
+function flushallclients(subset::Union{Set{Client}, AbstractArray{Client}})
     disconnected = Set{Symbol}()
     for client in subset
         stillconnected = flushclient(client)
@@ -128,12 +134,11 @@ function run(port = 1234, launchbrowser = false)
                             connectedclients[client.id] = client
                             
                             messagetype = Symbol(parentbody["type"])
+                            requestID = Symbol(parentbody["requestID"])
 
                             if messagetype == :disconnect
                                 delete!(connectedclients, client.id)
                                 close(clientstream)
-                            elseif messagetype == :connect
-                                # nothing more to do
                             else
                                 body = parentbody["body"]
         
@@ -144,11 +149,11 @@ function run(port = 1234, launchbrowser = false)
                                         get(notebooks, notebookID, nothing)
                                     end
                                     if notebook === nothing
-                                        @warn "Remote notebook not found locally!"
-                                        return
+                                        messagetype === :connect || @warn "Remote notebook not found locally!"
+                                    else
+                                        client.connected_notebook = notebook
+                                        push!(args, notebook)
                                     end
-                                    client.connected_notebook = notebook
-                                    push!(args, notebook)
                                 end
         
                                 if haskey(parentbody, "cellID")
@@ -158,15 +163,15 @@ function run(port = 1234, launchbrowser = false)
                                     end
                                     if cell === nothing
                                         @warn "Remote cell not found locally!"
-                                        return
+                                    else
+                                        push!(args, cell)
                                     end
-                                    push!(args, cell)
                                 end
                                 
                                 if haskey(responses, messagetype)
                                     responsefunc = responses[messagetype]
                                     try
-                                    responsefunc(client, body, args...)
+                                        responsefunc(body, args..., initiator=Initiator(client.id, requestID))
                                     catch ex
                                         @warn "Response function to message of type $(messagetype) failed"
                                         rethrow(ex)

@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 break
             default:
                 console.error("Received unknown update type!")
+                console.error(update)
                 break
         }
     }
@@ -43,10 +44,11 @@ document.addEventListener("DOMContentLoaded", () => {
     function onEstablishConnection(){
         // on socket success
         // TODO: we should when exactly this happens
+        client.send("getallnotebooks", {})
         document.body.classList.remove("loading")
     }
 
-    function onConnect() {
+    function onReconnect() {
         console.info("connected")
     }
 
@@ -54,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
         console.info("disconnected")
     }
 
-    window.client = new PlutoConnection(onUpdate, onEstablishConnection, onConnect, onDisconnect)
+    window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
     client.initialize()
 });
 

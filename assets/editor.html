@@ -157,7 +157,7 @@
         }
 
         body.disconnected>header>#logocontainer:after {
-            content: "NOT CONNECTED";
+            content: "DISCONNECTED";
             font-family: 'Roboto Mono';
             text-align: right;
             float: right;
@@ -400,7 +400,6 @@
     </style>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
     <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl/assets/light.min.css" /> -->
-    <link rel="stylesheet" href="light.css" />
     <link rel="stylesheet" href="/assets/light.css" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
@@ -436,7 +435,7 @@
             <button id="no"><span></span></button>
         </confirmationdialog> -->
         <template id="celltemplate">
-            <cell>
+            <cell class="output-notinsync">
                 <clickshoulder draggable="true" title="Drag to move. Click output to hide code."></clickshoulder>
                 <trafficlight></trafficlight>
                 <button class="addcell before" title="Add cell"><span></span></button>

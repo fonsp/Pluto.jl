@@ -20,25 +20,25 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         @test !haskey(WorkspaceManager.workspaces, notebook.uuid)
         @test WorkspaceManager.get_workspace(notebook) isa method
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         notebook.cells[1].code = "x = 12"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
 
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[3].error_repr == nothing
     
-        run_reactive!(fakeclient, notebook, notebook.cells[4])
+        run_reactive!(notebook, notebook.cells[4])
         @test notebook.cells[4].output_repr == "16"
 
         notebook.cells[1].code = "x = 912"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[4].output_repr == "916"
 
         notebook.cells[3].code = "f(x) = x"
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[4].output_repr == "4"
 
         WorkspaceManager.unmake_workspace(notebook)
@@ -52,8 +52,8 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        @test_nowarn run_reactive!(fakeclient, notebook, notebook.cells[1])
-        @test_nowarn run_reactive!(fakeclient, notebook, notebook.cells[2])
+        @test_nowarn run_reactive!(notebook, notebook.cells[1])
+        @test_nowarn run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].error_repr !== nothing
         @test notebook.cells[2].error_repr !== nothing
 
@@ -72,41 +72,41 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         fakeclient.connected_notebook = notebook
     
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test occursin("Multiple", notebook.cells[1].error_repr)
         @test occursin("Multiple", notebook.cells[2].error_repr)
     
         notebook.cells[1].code = ""
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[1].error_repr == nothing
         @test notebook.cells[2].error_repr == nothing
     
     # https://github.com/fonsp/Pluto.jl/issues/26
         notebook.cells[1].code = "x = 1"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         notebook.cells[2].code = "x"
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].error_repr == nothing
         @test notebook.cells[2].error_repr == nothing
 
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
-        run_reactive!(fakeclient, notebook, notebook.cells[4])
+        run_reactive!(notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[4])
         @test occursin("Multiple", notebook.cells[3].error_repr)
         @test occursin("Multiple", notebook.cells[4].error_repr)
     
         notebook.cells[3].code = ""
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[3].error_repr == nothing
         @test notebook.cells[4].error_repr == nothing
     
-        run_reactive!(fakeclient, notebook, notebook.cells[5])
-        run_reactive!(fakeclient, notebook, notebook.cells[6])
+        run_reactive!(notebook, notebook.cells[5])
+        run_reactive!(notebook, notebook.cells[6])
         @test occursin("Multiple", notebook.cells[5].error_repr)
         @test occursin("Multiple", notebook.cells[6].error_repr)
     
         notebook.cells[5].code = ""
-        run_reactive!(fakeclient, notebook, notebook.cells[5])
+        run_reactive!(notebook, notebook.cells[5])
         @test notebook.cells[5].error_repr == nothing
     # @test_broken !occursin("redefinition of constant", notebook.cells[6].error_repr)
 
@@ -120,8 +120,8 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test occursin("Cyclic reference", notebook.cells[1].error_repr)
         @test occursin("Cyclic reference", notebook.cells[2].error_repr)
 
@@ -135,11 +135,11 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         notebook.cells[1].code = ""
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == ""
         @test notebook.cells[1].error_repr == nothing
         @test notebook.cells[2].output_repr == nothing
@@ -156,12 +156,12 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test startswith(notebook.cells[1].output_repr, "f (generic function with ")
         @test notebook.cells[1].error_repr == nothing
 
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[2].error_repr == nothing
         @test notebook.cells[3].error_repr == nothing
 
@@ -174,9 +174,9 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         notebook.cells[1].code = "x = x + 1"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == nothing
         @test occursin("UndefVarError", notebook.cells[1].error_repr)
 
@@ -198,46 +198,46 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[2].error_repr == nothing
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[3].output_repr == "4"
 
         notebook.cells[1].code = "y = 2"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[3].output_repr == "5"
         @test notebook.cells[2].error_repr == nothing
 
         notebook.cells[1].code = "y"
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
         @test occursin("UndefVarError", notebook.cells[1].error_repr)
         @test notebook.cells[2].error_repr == nothing
         @test occursin("UndefVarError", notebook.cells[3].error_repr)
 
-        run_reactive!(fakeclient, notebook, notebook.cells[4])
-        run_reactive!(fakeclient, notebook, notebook.cells[5])
+        run_reactive!(notebook, notebook.cells[4])
+        run_reactive!(notebook, notebook.cells[5])
         @test notebook.cells[5].output_repr == "11"
 
         notebook.cells[4].code = "g(a) = a+a"
-        run_reactive!(fakeclient, notebook, notebook.cells[4])
+        run_reactive!(notebook, notebook.cells[4])
         @test notebook.cells[4].error_repr == nothing
         @test notebook.cells[5].error_repr != nothing
 
         notebook.cells[5].code = "g(5)"
-        run_reactive!(fakeclient, notebook, notebook.cells[5])
+        run_reactive!(notebook, notebook.cells[5])
         @test notebook.cells[5].output_repr == "10"
 
-        run_reactive!(fakeclient, notebook, notebook.cells[6])
-        run_reactive!(fakeclient, notebook, notebook.cells[7])
-        run_reactive!(fakeclient, notebook, notebook.cells[8])
+        run_reactive!(notebook, notebook.cells[6])
+        run_reactive!(notebook, notebook.cells[7])
+        run_reactive!(notebook, notebook.cells[8])
         @test notebook.cells[6].error_repr == nothing
         @test notebook.cells[7].error_repr == nothing
         @test notebook.cells[8].error_repr != nothing
     
         notebook.cells[6].code = "h(x::Float64) = 2.0 * x"
-        run_reactive!(fakeclient, notebook, notebook.cells[6])
+        run_reactive!(notebook, notebook.cells[6])
         @test notebook.cells[6].error_repr == nothing
         @test notebook.cells[7].error_repr != nothing
         @test notebook.cells[8].error_repr == nothing
@@ -271,10 +271,10 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 #         ])
 #         fakeclient.connected_notebook = notebook
 
-#         run_reactive!(fakeclient, notebook, notebook.cells[1])
-#         run_reactive!(fakeclient, notebook, notebook.cells[1])
+#         run_reactive!(notebook, notebook.cells[1])
+#         run_reactive!(notebook, notebook.cells[1])
 #         notebook.cells[1].code = "x = x + 1"
-#         run_reactive!(fakeclient, notebook, notebook.cells[1])
+#         run_reactive!(notebook, notebook.cells[1])
 #         @test notebook.cells[1].output_repr == nothing
 #         @test occursin("UndefVarError", notebook.cells[1].error_repr)
 #     end
@@ -295,8 +295,8 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].output_repr == nothing
         @test notebook.cells[2].output_repr == nothing
         @test occursin("Multiple definitions for x", notebook.cells[1].error_repr)
@@ -304,28 +304,28 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     
         notebook.cells[2].code = "x + 1"
 
-        run_reactive!(fakeclient, notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].output_repr == "1"
         @test notebook.cells[2].output_repr == "2"
     
-        run_reactive!(fakeclient, notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[3].output_repr == "3"
 
-        run_reactive!(fakeclient, notebook, notebook.cells[4])
-        run_reactive!(fakeclient, notebook, notebook.cells[5])
+        run_reactive!(notebook, notebook.cells[4])
+        run_reactive!(notebook, notebook.cells[5])
         @test occursin("Multiple definitions for z", notebook.cells[4].error_repr)
         @test occursin("Multiple definitions for z", notebook.cells[5].error_repr)
     
-        run_reactive!(fakeclient, notebook, notebook.cells[6])
-        run_reactive!(fakeclient, notebook, notebook.cells[7])
+        run_reactive!(notebook, notebook.cells[6])
+        run_reactive!(notebook, notebook.cells[7])
         @test occursin("UndefVarError", notebook.cells[6].error_repr)
     
-        run_reactive!(fakeclient, notebook, notebook.cells[8])
+        run_reactive!(notebook, notebook.cells[8])
         @test notebook.cells[6].error_repr == nothing
         @test notebook.cells[7].error_repr == nothing
         @test notebook.cells[8].error_repr == nothing
 
-        run_reactive!(fakeclient, notebook, notebook.cells[9])
+        run_reactive!(notebook, notebook.cells[9])
         @test occursin("UndefVarError", notebook.cells[6].error_repr)
         @test notebook.cells[7].error_repr == nothing
         @test occursin("Multiple definitions for w", notebook.cells[8].error_repr)
@@ -358,27 +358,27 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        run_reactive!(fakeclient, notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[1])
 
         @testset "Basic" begin
-            run_reactive!(fakeclient, notebook, notebook.cells[2:5])
+            run_reactive!(notebook, notebook.cells[2:5])
 
-            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            run_reactive!(notebook, notebook.cells[15])
             @test notebook.cells[15].output_repr == "\"4-2-3-5\""
         end
         
         @testset "Errors" begin
-            run_reactive!(fakeclient, notebook, notebook.cells[6:9])
+            run_reactive!(notebook, notebook.cells[6:9])
 
             # should all err, no change to `x`
-            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            run_reactive!(notebook, notebook.cells[15])
             @test notebook.cells[15].output_repr == "\"4-2-3-5\""
         end
 
         @testset "Maintain order when possible" begin
-            run_reactive!(fakeclient, notebook, notebook.cells[10:14])
+            run_reactive!(notebook, notebook.cells[10:14])
 
-            run_reactive!(fakeclient, notebook, notebook.cells[15])
+            run_reactive!(notebook, notebook.cells[15])
             @test notebook.cells[15].output_repr == "\"4-2-3-5-10-11-12-13-14\""
         end
 

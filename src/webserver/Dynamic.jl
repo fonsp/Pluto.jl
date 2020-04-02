@@ -3,17 +3,19 @@ import JSON
 # JSON.jl doesn't define a serialization method for MIME objects, so we add one ourselves:
 import JSON: lower
 JSON.lower(m::MIME) = string(m)
+JSON.lower(u::UUID) = string(u)
 
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
-        to_send[:notebookID] = string(message.notebook.uuid)
+        to_send[:notebookID] = message.notebook.uuid
     end
     if message.cell !== nothing
-        to_send[:cellID] = string(message.cell.uuid)
+        to_send[:cellID] = message.cell.uuid
     end
-    if message.initiator !== nothing
-        to_send[:initiatorID] = string(message.initiator.id)
+    if message.initiator !== missing
+        to_send[:initiatorID] = message.initiator.clientID
+        to_send[:requestID] = message.initiator.requestID
     end
 
     JSON.print(io, to_send)
@@ -80,34 +82,8 @@ function make_paths_distinct!(notebookpaths::Set{NotebookPath})
     end
 end
 
-function clientupdate_notebook_list(initiator::Client, notebook_list)
-    short_paths = Dict()
 
-    notebookpaths = map(notebook_list) do notebook
-        pathsep = Sys.iswindows() ? '\\' : '/'
-        path_split = split(notebook.path, pathsep)
-        if path_split[1] == ""
-            path_split = path_split[2:end]
-        end
-        NotebookPath(notebook.uuid, path_split, "", -1)
-    end
-
-    make_paths_distinct!(Set(notebookpaths))
-
-    short_paths = Dict(map(notebookpaths) do np
-        np.uuid => np.current_path
-    end...)
-
-    return UpdateMessage(:notebook_list,
-        Dict(:notebooks => [Dict(
-                :uuid => string(notebook.uuid),
-                :path => notebook.path,
-                :shortpath => short_paths[notebook.uuid]
-                ) for notebook in notebook_list]), nothing, nothing, initiator)
-end
-
-
-function handle_changecell(initiator::Client, notebook, cell, newcode)::Task
+function handle_changecell(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)::Task
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -120,29 +96,33 @@ function handle_changecell(initiator::Client, notebook, cell, newcode)::Task
     # TODO: feedback to user about File IO
     save_notebook(notebook)
     
-    putnotebookupdates!(notebook, clientupdate_cell_input(initiator, notebook, cell))
+    putnotebookupdates!(notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
 
-    run_reactive_async!(initiator, notebook, cell)
+    run_reactive_async!(notebook, cell)
 end
 
 
+responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
+    putclientupdates!(initiator, UpdateMessage(:👋, Dict(), nothing, nothing, initiator))
+end
+
 
 # TODO: actions on the notebook are not thread safe
-responses[:addcell] = (initiator::Client, body, notebook::Notebook) -> begin
+responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
 
     insert!(notebook.cells, new_index, new_cell)
 
-    putnotebookupdates!(notebook, clientupdate_cell_added(initiator, notebook, new_cell, new_index))
+    putnotebookupdates!(notebook, clientupdate_cell_added(notebook, new_cell, new_index, initiator=initiator))
 end
 
-responses[:deletecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
+responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
-    runtask = handle_changecell(initiator, notebook, to_delete, "")
+    runtask = handle_changecell(notebook, to_delete, "", initiator=initiator)
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
@@ -150,11 +130,11 @@ responses[:deletecell] = (initiator::Client, body, notebook::Notebook, cell::Cel
         wait(runtask)
 
         filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
-        putnotebookupdates!(notebook, clientupdate_cell_deleted(initiator, notebook, to_delete))
+        putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
     end
 end
 
-responses[:movecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
+responses[:movecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     to_move = cell
 
     # Indexing works as if a new cell is added.
@@ -173,40 +153,65 @@ responses[:movecell] = (initiator::Client, body, notebook::Notebook, cell::Cell)
         deleteat!(notebook.cells, old_index)
     end
 
-    putnotebookupdates!(notebook, clientupdate_cell_moved(initiator, notebook, to_move, new_index))
+    putnotebookupdates!(notebook, clientupdate_cell_moved(notebook, to_move, new_index, initiator=initiator))
 end
 
-responses[:changecell] = (initiator::Client, body, notebook::Notebook, cell::Cell) -> begin
+responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     newcode = body["code"]
 
-    handle_changecell(initiator, notebook, cell, newcode)
+    handle_changecell(notebook, cell, newcode, initiator=initiator)
 end
 
-responses[:runall] = (initiator::Client, body, notebook::Notebook) -> begin
-    to_update = run_reactive_async!(initiator, notebook, notebook.cells)
+responses[:runall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+    to_update = run_reactive_async!(notebook, notebook.cells)
 end
 
-# TODO:
-# responses[:getcell] = (initiator, body, notebook::Notebook, cell::Cell) -> begin
-    
-# end
+responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+    putclientupdates!(initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
+end
 
-responses[:getallcells] = (initiator::Client, body, notebook::Notebook) -> begin
+responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+    putclientupdates!(initiator, clientupdate_cell_output(notebook, cell, initiator=initiator))
+end
+
+responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     # TODO: the client's update channel might get full
-    updates = []
-    for (i, cell) in enumerate(notebook.cells)
-        push!(updates, clientupdate_cell_added(initiator, notebook, cell, i))
-        push!(updates, clientupdate_cell_input(initiator, notebook, cell))
-        push!(updates, clientupdate_cell_output(initiator, notebook, cell))
+    update = UpdateMessage(:cell_list,
+        Dict(:cells => [Dict(
+                :uuid => string(cell.uuid),
+                ) for cell in notebook.cells]), nothing, nothing, initiator)
+    
+    putclientupdates!(initiator, update)
+end
+
+responses[:getallnotebooks] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
+    short_paths = Dict()
+
+    notebookpaths = map(values(notebooks)) do notebook
+        pathsep = Sys.iswindows() ? '\\' : '/'
+        path_split = split(notebook.path, pathsep)
+        if path_split[1] == ""
+            path_split = path_split[2:end]
+        end
+        NotebookPath(notebook.uuid, path_split, "", -1)
     end
-    putclientupdates!(initiator, updates...)
+
+    make_paths_distinct!(Set(notebookpaths))
+
+    short_paths = Dict(map(notebookpaths) do np
+        np.uuid => np.current_path
+    end...)
+
+    update = UpdateMessage(:notebook_list,
+        Dict(:notebooks => [Dict(
+                :uuid => string(notebook.uuid),
+                :path => notebook.path,
+                :shortpath => short_paths[notebook.uuid]
+                ) for notebook in values(notebooks)]), nothing, nothing, initiator)
+    putplutoupdates!(update)
 end
 
-responses[:getallnotebooks] = (initiator::Client, body, notebook=nothing) -> begin
-    putplutoupdates!(clientupdate_notebook_list(initiator, values(notebooks)))
-end
-
-responses[:interruptall] = (initiator::Client, body, notebook::Notebook) -> begin
-    success = WorkspaceManager.kill_workspace(initiator, notebook)
+responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+    success = WorkspaceManager.kill_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end

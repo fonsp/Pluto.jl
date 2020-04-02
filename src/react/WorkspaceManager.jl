@@ -204,16 +204,16 @@ function eval_in_workspace(workspace::ModuleWorkspace, expr)
 end
 
 # "Interrupt (Ctrl+C) a workspace, return whether succesful."
-# function interrupt_workspace(initiator, notebook::Notebook)::Bool
-#     interrupt_workspace(initiator, WorkspaceManager.get_workspace(notebook))
+# function interrupt_workspace(notebook::Notebook)::Bool
+#     interrupt_workspace(WorkspaceManager.get_workspace(notebook))
 # end
 
-# function interrupt_workspace(initiator, workspace::ModuleWorkspace)
+# function interrupt_workspace(workspace::ModuleWorkspace)
 #     @warn "Unfortunately, a `ModuleWorkspace` can't be interrupted. Use a `ProcessWorkspace` instead."
 #     false
 # end
 
-# function interrupt_workspace(initiator, workspace::ProcessWorkspace)
+# function interrupt_workspace(workspace::ProcessWorkspace)
 #     if Sys.iswindows()
 #         @warn "Unfortunately, stopping cells is currently not supported on Windows.
 #         Maybe the Windows Subsystem for Linux is right for you:
@@ -226,16 +226,16 @@ end
 # end
 
 "Force interrupt (SIGINT) a workspace, return whether succesful"
-function kill_workspace(initiator, notebook::Notebook)::Bool
-    kill_workspace(initiator, WorkspaceManager.get_workspace(notebook))
+function kill_workspace(notebook::Notebook)::Bool
+    kill_workspace(WorkspaceManager.get_workspace(notebook))
 end
 
-function kill_workspace(initiator, workspace::ModuleWorkspace)
+function kill_workspace(workspace::ModuleWorkspace)
     @warn "Unfortunately, a `ModuleWorkspace` can't be interrupted. Use a `ProcessWorkspace` instead."
     false
 end
 
-function kill_workspace(initiator, workspace::ProcessWorkspace)
+function kill_workspace(workspace::ProcessWorkspace)
     if Sys.iswindows()
         @warn "Unfortunately, stopping cells is currently not supported on Windows :(
         Maybe the Windows Subsystem for Linux is right for you:

@@ -1,5 +1,5 @@
 "Run given cells and all the cells that depend on them."
-function run_reactive!(initiator, notebook::Notebook, cells::Array{Cell, 1})
+function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
@@ -28,7 +28,7 @@ function run_reactive!(initiator, notebook::Notebook, cells::Array{Cell, 1})
 
 	# change the bar on the sides of cells to "running"
 	for cell in to_run
-		putnotebookupdates!(notebook, clientupdate_cell_running(initiator, notebook, cell))
+		putnotebookupdates!(notebook, clientupdate_cell_running(notebook, cell))
 	end
 	for (cell, error) in new_topology.errable
 		relay_reactivity_error!(cell, error)
@@ -56,10 +56,10 @@ function run_reactive!(initiator, notebook::Notebook, cells::Array{Cell, 1})
 			if length(deleted_refs) > 0
 				relay_reactivity_error!(cell, deleted_refs |> first |> UndefVarError)
 			else
-				any_interrupted |= run_single!(initiator, notebook, cell)
+				any_interrupted |= run_single!(notebook, cell)
 			end
 		end
-		putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, cell))
+		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 
 	# allow other run_reactive! calls to be executed
@@ -69,11 +69,11 @@ end
 
 
 "See `run_reactive`."
-function run_reactive_async!(initiator, notebook::Notebook, cells::Array{Cell, 1})::Task
+function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1})::Task
 	@async begin
 		# because this is being run async, we need to catch exceptions manually
 		try
-			run_reactive!(initiator, notebook, cells)
+			run_reactive!(notebook, cells)
 		catch ex
 			bt = stacktrace(catch_backtrace())
 			showerror(stderr, ex, bt)
@@ -81,11 +81,11 @@ function run_reactive_async!(initiator, notebook::Notebook, cells::Array{Cell, 1
 	end
 end
 
-run_reactive!(initiator, notebook::Notebook, cell::Cell) = run_reactive!(initiator, notebook, [cell])
-run_reactive_async!(initiator, notebook::Notebook, cell::Cell) = run_reactive_async!(initiator, notebook, [cell])
+run_reactive!(notebook::Notebook, cell::Cell) = run_reactive!(notebook, [cell])
+run_reactive_async!(notebook::Notebook, cell::Cell) = run_reactive_async!(notebook, [cell])
 
 "Run a single cell non-reactively, return whether the run was Interrupted."
-function run_single!(initiator, notebook::Notebook, cell::Cell)::Bool
+function run_single!(notebook::Notebook, cell::Cell)::Bool
 	starttime = time_ns()
 	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
 	cell.runtime = time_ns() - starttime

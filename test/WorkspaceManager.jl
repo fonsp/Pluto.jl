@@ -18,8 +18,8 @@
         ])
         fakeclientB.connected_notebook = notebookB
 
-        @test_nowarn run_reactive!(fakeclientA, notebookA, notebookA.cells[1])
-        @test_nowarn run_reactive!(fakeclientB, notebookB, notebookB.cells[1])
+        @test_nowarn run_reactive!(notebookA, notebookA.cells[1])
+        @test_nowarn run_reactive!(notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].error_repr !== nothing
     end

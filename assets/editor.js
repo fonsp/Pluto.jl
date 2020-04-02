@@ -17,6 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.remoteNotebookList = null
 
     function updateRemoteNotebooks(list) {
+        console.log(list)
         remoteNotebookList = list
         list.forEach(nb => {
             console.log(nb)
@@ -68,14 +69,14 @@ document.addEventListener("DOMContentLoaded", () => {
             "Shift-Enter": () => {
                 console.log("asdf")
                 requestNewRemoteCell(indexOfLocalCell(cellNode) + 1)
-                if(cellNode.classList.contains("codediffers")){
+                if (cellNode.classList.contains("codediffers")) {
                     requestChangeRemoteCell(cellNode.id)
                 }
             },
             "Ctrl-Delete": () => {
                 requestDeleteRemoteCell(cellNode.id)
                 const nextCell = cellNode.nextSibling
-                if(nextCell){
+                if (nextCell) {
                     codeMirrors[nextCell.id].focus()
                 }
             },
@@ -160,6 +161,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 cellNode.querySelector("celloutput").querySelector("code").innerText = output
             }
         }
+
+        cellNode.classList.remove("output-notinsync")
 
         newHeight = cellNode.querySelector("celloutput").scrollHeight
 
@@ -253,8 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
             requestDeleteRemoteCell(newCellNode.id)
         }
         newCellNode.querySelector(".runcell").onclick = (e) => {
-            if(newCellNode.classList.contains("running"))
-            {
+            if (newCellNode.classList.contains("running")) {
                 newCellNode.classList.add("error")
                 requestInterruptRemote()
             } else {
@@ -300,12 +302,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* REQUEST FUNCTIONS FOR REMOTE CHANGES */
 
-    function getAllRemoteCells(onFailure, onSucces) {
-        deleteAllLocalCells()
-
-        client.send("getallcells", {})
-    }
-
     function requestChangeRemoteCell(uuid) {
         window.localCells[uuid].classList.add("running")
         newCode = window.codeMirrors[uuid].getValue()
@@ -343,6 +339,7 @@ document.addEventListener("DOMContentLoaded", () => {
     /* SERVER CONNECTION */
 
     function onUpdate(update, byMe) {
+        console.log("asdfff")
         var message = update.message
 
         switch (update.type) {
@@ -375,19 +372,33 @@ document.addEventListener("DOMContentLoaded", () => {
                 break
             default:
                 console.error("Received unknown update type!")
-                alert("Something went wrong 🙈\n Try refreshing the page")
+                console.log(update)
+                alert("Something went wrong 🙈\n Try clearing your cache and refreshing the page")
                 break
         }
     }
 
     function onEstablishConnection() {
         // on socket success
-        // getAllRemoteNotebooks()
-        getAllRemoteCells(console.warn, console.log)
+        client.send("getallnotebooks", {})
+        
+        client.sendreceive("getallcells", {}).then(update => {
+            update.message.cells.forEach((cell, index) => {
+                const cellNode = createLocalCell(index, cell.uuid, "")
+                client.sendreceive("getinput", {}, cell.uuid).then(update => {
+                    updateLocalCellInput(true, cell.uuid, update.message.code)
+                })
+                client.sendreceive("getoutput", {}, cell.uuid).then(update => {
+                    const message = update.message
+                    updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
+                })
+            })
+        }).catch(console.error)
         // TODO: we should when exactly this happens
         setTimeout(() => {
             document.body.classList.remove("loading")
         }, 3000)
+
     }
 
     function onReconnect() {
@@ -482,7 +493,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const te = new TextEncoder()
     const td = new TextDecoder()
 
-    function length_utf8(str, startindex_utf16=0, endindex_utf16=undefined) {
+    function length_utf8(str, startindex_utf16 = 0, endindex_utf16 = undefined) {
         return te.encode(str.substring(startindex_utf16, endindex_utf16)).length
     }
 
@@ -522,12 +533,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* MORE SHORTKEYS */
     document.addEventListener("keydown", (e) => {
-        switch(e.keyCode){
+        switch (e.keyCode) {
             case 191: // ? or /
-                if(!e.ctrlKey){
+                if (!e.ctrlKey) {
                     break
                 }
-                // fall into:
+            // fall into:
             case 112: // F1
                 // TODO: show help    
                 alert("Shortcuts 🎹\n\nCtrl+Enter:   run cell\nShift+Enter:   run cell and add cell below\nCtrl+Delete:   delete cell")

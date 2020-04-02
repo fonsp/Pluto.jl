@@ -8,7 +8,7 @@ responses[:completepath] = (initiator::Client, body, notebook=nothing) -> begin
     completions, loc, found = complete_path(query, pos)
 
     start_utf8 = loc.start
-    stop_utf8 = nextind(query, loc.stop) - 1 # advance one unicode char, go back one byte
+    stop_utf8 = nextind(query, loc.stop) # advance one unicode char, js uses exclusive upper bound
 
     msg = UpdateMessage(:completion_result, 
         Dict(

@@ -38,12 +38,21 @@ class PlutoConnection {
     }
     
     psocket = null
-    clientID = Math.random().toString(36).replace(/[^a-z]+/g, '').substr(0, 5);
+
+    getUniqueShortID() {
+        return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+    }
+    clientID = this.getUniqueShortID()
+
+    sentRequests = {}
     
-    send(messageType, body, cellUUID = null) {
+    send(messageType, body, cellUUID = undefined, createPromise=false) {
+        const requestID = this.getUniqueShortID()
+
         var toSend = {
             type: messageType,
             clientID: this.clientID,
+            requestID: requestID,
             body: body,
         }
         if (this.notebookID) {
@@ -52,7 +61,27 @@ class PlutoConnection {
         if (cellUUID) {
             toSend.cellID = cellUUID
         }
+
+        var p = undefined
+
+        if(createPromise){
+            var resolve, reject;
+
+            p = new Promise((res, rej) => {
+                resolve = res
+                reject = rej
+            })
+
+            this.sentRequests[requestID] = resolve
+        }
+
         this.psocket.send(JSON.stringify(toSend))
+
+        return p
+    }
+
+    sendreceive(messageType, body, cellUUID = undefined) {
+        return this.send(messageType, body, cellUUID, true)
     }
     
     handleMessage(event) {
@@ -65,16 +94,25 @@ class PlutoConnection {
         }
     
         try {
-            var update = JSON.parse(event.data)
+            const update = JSON.parse(event.data)
+            console.log(update)
     
-            var forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
-    
+            const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
                 console.log("Update message not meant for this notebook")
                 return
             }
-    
-            var byMe = ("initiatorID" in update) && (update.initiatorID == this.clientID)
+            const byMe = ("initiatorID" in update) && (update.initiatorID == this.clientID)
+            const requestID = update.requestID
+
+            if(byMe && requestID) {
+                const request = this.sentRequests[requestID]
+                if(request){
+                    request(update)
+                    delete this.sentRequests[requestID]
+                    return
+                }
+            }
 
             this.onUpdate(update, byMe)
         } catch (error) {
@@ -110,11 +148,11 @@ class PlutoConnection {
             // startSocketConnection(onSucces)
         }
         this.psocket.onopen = () => {
-            this.send("connect", {})
-            this.send("getallnotebooks", {})
-            this.currentlyConnected = true
-            console.log("socket opened")
-            onSucces()
+            this.sendreceive("connect", {}).then(u => {
+                this.currentlyConnected = true
+                console.log("socket opened")
+                onSucces()
+            })
         }
     }
     
@@ -129,7 +167,8 @@ class PlutoConnection {
                 this.onEstablishConnection()
             })
         }, () => {
-            this.currentlyConnected = true
+            // on failure
+            this.currentlyConnected = false
             this.onDisconnect()
         })
     }
@@ -145,6 +184,25 @@ class PlutoConnection {
         window.addEventListener("unload", e => {
             this.send("disconnect", {})
         })
+    }
+
+    plutoVersionIsLatest(onResult, onError=undefined){
+        if(!this.versionInfo){
+            onError(new Error("Remote version info not yet acquired."))
+        }
+        fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+            method: 'GET',
+            cache: 'no-cache',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            redirect: 'follow',
+            referrerPolicy: 'no-referrer',
+        }).then((response) => {
+            return response.json()
+        }).then((response) => {
+            onResult(response[0].tag_name, this.versionInfo.plutoVersionStr)
+        }).catch(undefined)
     }
     
     // TODO: reconnect with a delay if the last request went poorly

@@ -432,6 +432,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     border-right: solid 1px hsla(0, 0%, 0%, .0);
 }
 
+cell.output-notinsync .cm-s-default .CodeMirror-gutters,
 cell.codediffers .cm-s-default .CodeMirror-gutters {
     background: hsla(46, 90%, 94%, 1);
 }

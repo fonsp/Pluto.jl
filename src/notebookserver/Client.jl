@@ -12,20 +12,25 @@ Client(id::Symbol, stream) = let
     Client(id, stream, at, nothing, Channel(1024))
 end
 
+struct Initiator
+    clientID::Symbol
+    requestID::Symbol
+end
+
 
 struct UpdateMessage
     type::Symbol
     message::Any
     notebook::Union{Notebook,Nothing}
     cell::Union{Cell,Nothing}
-    initiator::Union{Client,Nothing}
+    initiator::Union{Initiator,Missing}
 end
 
-UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, nothing)
-UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, nothing)
+UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, missing)
+UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, missing)
 
 
-function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::Cell)
+function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     payload, mime = cell.output_repr, cell.repr_mime
 
     return UpdateMessage(:cell_output, 
@@ -37,35 +42,29 @@ function clientupdate_cell_output(initiator::Client, notebook::Notebook, cell::C
             notebook, cell, initiator)
 end
 
-function clientupdate_cell_input(initiator::Client, notebook::Notebook, cell::Cell)
+function clientupdate_cell_input(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_input, 
         Dict(:code => cell.code), notebook, cell, initiator)
 end
 
-function clientupdate_cell_added(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
+function clientupdate_cell_added(notebook::Notebook, cell::Cell, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_added, 
         Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
             ), notebook, cell, initiator)
 end
 
-function clientupdate_cell_deleted(initiator::Client, notebook::Notebook, cell::Cell)
+function clientupdate_cell_deleted(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_deleted, 
         Dict(), notebook, cell, initiator)
 end
 
-function clientupdate_cell_moved(initiator::Client, notebook::Notebook, cell::Cell, new_index::Integer)
+function clientupdate_cell_moved(notebook::Notebook, cell::Cell, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_moved, 
         Dict(:index => new_index - 1, # 1-based index (julia) to 0-based index (js)
             ), notebook, cell, initiator)
 end
 
-function clientupdate_cell_dependecies(initiator::Client, notebook::Notebook, cell::Cell, dependentcells)
-    return UpdateMessage(:cell_dependecies, 
-        Dict(:depenentcells => [string(c.uuid) for c in dependentcells],
-            ), notebook, cell, initiator)
-end
-
-function clientupdate_cell_running(initiator::Client, notebook::Notebook, cell::Cell)
+function clientupdate_cell_running(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_running, 
         Dict(), notebook, cell, initiator)
 end
