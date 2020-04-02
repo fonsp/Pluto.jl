@@ -207,3 +207,8 @@ end
 responses[:getallnotebooks] = (initiator::Client, body, notebook=nothing) -> begin
     putplutoupdates!(clientupdate_notebook_list(initiator, values(notebooks)))
 end
+
+responses[:interruptall] = (initiator::Client, body, notebook::Notebook) -> begin
+    success = WorkspaceManager.kill_workspace(initiator, notebook)
+    # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
+end

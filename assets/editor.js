@@ -239,7 +239,13 @@ document.addEventListener("DOMContentLoaded", () => {
             requestDeleteRemoteCell(newCellNode.id)
         }
         newCellNode.querySelector(".runcell").onclick = (e) => {
-            requestChangeRemoteCell(newCellNode.id)
+            if(newCellNode.classList.contains("running"))
+            {
+                newCellNode.classList.add("error")
+                requestInterruptRemote()
+            } else {
+                requestChangeRemoteCell(newCellNode.id)
+            }
         }
 
         return newCellNode
@@ -298,6 +304,10 @@ document.addEventListener("DOMContentLoaded", () => {
             window.localCells[uuid].classList.add("running")
         }
         client.send("runall", {})
+    }
+
+    function requestInterruptRemote() {
+        client.send("interruptall", {})
     }
 
     // Indexing works as if a new cell is added.

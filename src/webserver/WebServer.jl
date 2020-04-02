@@ -247,7 +247,7 @@ function run(port = 1234, launchbrowser = false)
         end
     catch e
         if isa(e, InterruptException)
-            println("\nClosing Pluto... Bye! 🎈")
+            println("\nClosing Pluto... Have a nice day! 🎈")
             close(serversocket)
             for (uuid, ws) in WorkspaceManager.workspaces
                 WorkspaceManager.unmake_workspace(ws)

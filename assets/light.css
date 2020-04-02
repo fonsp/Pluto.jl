@@ -260,7 +260,7 @@ runarea>button.runcell>span::after {
 }
 
 cell.running>runarea>button.runcell>span::after {
-    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/ellipsis-horizontal-circle-outline.svg);
+    background-image: url(https://unpkg.com/ionicons@5.0.0/dist/svg/stop-circle-outline.svg);
 }
 
 cellinput>button.deletecell {

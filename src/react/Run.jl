@@ -47,14 +47,18 @@ function run_reactive!(initiator, notebook::Notebook, cells::Array{Cell, 1})
 	WorkspaceManager.delete_vars(workspace, to_delete_vars)
 	WorkspaceManager.delete_funcs(workspace, to_delete_funcs)
 
+	local any_interrupted = false
 	for cell in to_run
-		deleted_refs = cell.symstate.references ∩ workspace.deleted_vars
-		if length(deleted_refs) > 0
-			relay_reactivity_error!(cell, deleted_refs |> first |> UndefVarError)
+		if any_interrupted
+			relay_reactivity_error!(cell, InterruptException())
 		else
-			run_single!(initiator, notebook, cell)
+			deleted_refs = cell.symstate.references ∩ workspace.deleted_vars
+			if length(deleted_refs) > 0
+				relay_reactivity_error!(cell, deleted_refs |> first |> UndefVarError)
+			else
+				any_interrupted |= run_single!(initiator, notebook, cell)
+			end
 		end
-		
 		putnotebookupdates!(notebook, clientupdate_cell_output(initiator, notebook, cell))
 	end
 
@@ -80,21 +84,23 @@ end
 run_reactive!(initiator, notebook::Notebook, cell::Cell) = run_reactive!(initiator, notebook, [cell])
 run_reactive_async!(initiator, notebook::Notebook, cell::Cell) = run_reactive_async!(initiator, notebook, [cell])
 
-"Run a single cell non-reactively."
-function run_single!(initiator, notebook::Notebook, cell::Cell)
+"Run a single cell non-reactively, return whether the run was Interrupted."
+function run_single!(initiator, notebook::Notebook, cell::Cell)::Bool
 	starttime = time_ns()
-	output, errored = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
+	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
 	cell.runtime = time_ns() - starttime
 
-	if errored
+	if run.errored
 		cell.output_repr = nothing
-		cell.error_repr = output[1]
-		cell.repr_mime = output[2]
+		cell.error_repr = run.output_formatted[1]
+		cell.repr_mime = run.output_formatted[2]
 	else
-		cell.output_repr = output[1]
+		cell.output_repr = run.output_formatted[1]
 		cell.error_repr = nothing
-		cell.repr_mime = output[2]
+		cell.repr_mime = run.output_formatted[2]
 		WorkspaceManager.undelete_vars(notebook, cell.symstate.assignments)
 	end
+
+	return run.interrupted
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
