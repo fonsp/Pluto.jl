@@ -50,4 +50,6 @@ This package is still in its early days - go to the [issue tracker](https://gith
 
 Let us know what you think! 😊
 
+<img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" >
+
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
