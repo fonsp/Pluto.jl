@@ -32,6 +32,7 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 	end
 	for (cell, error) in new_topology.errable
 		relay_reactivity_error!(cell, error)
+		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 	
 	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
