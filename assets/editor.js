@@ -64,7 +64,21 @@ document.addEventListener("DOMContentLoaded", () => {
         //editor.setOption("readOnly", true);
 
         editor.setOption("extraKeys", {
-            "Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id)
+            "Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id),
+            "Shift-Enter": () => {
+                console.log("asdf")
+                requestNewRemoteCell(indexOfLocalCell(cellNode) + 1)
+                if(cellNode.classList.contains("codediffers")){
+                    requestChangeRemoteCell(cellNode.id)
+                }
+            },
+            "Ctrl-Delete": () => {
+                requestDeleteRemoteCell(cellNode.id)
+                const nextCell = cellNode.nextSibling
+                if(nextCell){
+                    codeMirrors[nextCell.id].focus()
+                }
+            },
         });
 
         editor.on("change", (cm, change) => {
@@ -505,5 +519,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     console.assert(splice_utf8("e é 🐶 is a dog", 5, 9, "hannes ❤") == "e é hannes ❤ is a dog")
+
+    /* MORE SHORTKEYS */
+    document.addEventListener("keydown", (e) => {
+        switch(e.keyCode){
+            case 191: // ? or /
+                if(!e.ctrlKey){
+                    break
+                }
+                // fall into:
+            case 112: // F1
+                // TODO: show help    
+                alert("Shortcuts 🎹\n\nCtrl+Enter:   run cell\nShift+Enter:   run cell and add cell below\nCtrl+Delete:   delete cell")
+
+                e.preventDefault()
+                break
+        }
+    })
 });
 
