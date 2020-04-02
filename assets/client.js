@@ -95,7 +95,6 @@ class PlutoConnection {
     
         try {
             const update = JSON.parse(event.data)
-            console.log(update)
     
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
@@ -186,11 +185,8 @@ class PlutoConnection {
         })
     }
 
-    plutoVersionIsLatest(onResult, onError=undefined){
-        if(!this.versionInfo){
-            onError(new Error("Remote version info not yet acquired."))
-        }
-        fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+    fetchPlutoVersions(){
+        const githubPromise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
             method: 'GET',
             cache: 'no-cache',
             headers: {
@@ -201,8 +197,14 @@ class PlutoConnection {
         }).then((response) => {
             return response.json()
         }).then((response) => {
-            onResult(response[0].tag_name, this.versionInfo.plutoVersionStr)
-        }).catch(undefined)
+            return response[0].tag_name
+        }).catch(e => null)
+
+        const plutoPromise = this.sendreceive("getversion", {}).then(u => {
+            return u.message.pluto
+        })
+
+        return Promise.all([githubPromise, plutoPromise])
     }
     
     // TODO: reconnect with a delay if the last request went poorly

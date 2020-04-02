@@ -17,10 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
     window.remoteNotebookList = null
 
     function updateRemoteNotebooks(list) {
-        console.log(list)
         remoteNotebookList = list
         list.forEach(nb => {
-            console.log(nb)
             if (nb.uuid == notebookID) {
                 updateLocalNotebookName(nb.path)
             }
@@ -339,7 +337,6 @@ document.addEventListener("DOMContentLoaded", () => {
     /* SERVER CONNECTION */
 
     function onUpdate(update, byMe) {
-        console.log("asdfff")
         var message = update.message
 
         switch (update.type) {
@@ -383,21 +380,43 @@ document.addEventListener("DOMContentLoaded", () => {
         client.send("getallnotebooks", {})
         
         client.sendreceive("getallcells", {}).then(update => {
+            const promises = []
+
             update.message.cells.forEach((cell, index) => {
                 const cellNode = createLocalCell(index, cell.uuid, "")
-                client.sendreceive("getinput", {}, cell.uuid).then(update => {
-                    updateLocalCellInput(true, cell.uuid, update.message.code)
-                })
-                client.sendreceive("getoutput", {}, cell.uuid).then(update => {
-                    const message = update.message
-                    updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
-                })
+                promises.push(
+                        client.sendreceive("getinput", {}, cell.uuid).then(update => {
+                        updateLocalCellInput(true, cell.uuid, update.message.code)
+                    })
+                )
+                promises.push(
+                    client.sendreceive("getoutput", {}, cell.uuid).then(update => {
+                        const message = update.message
+                        updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
+                    })
+                )
+            })
+
+            Promise.all(promises).then(() => {
+                document.body.classList.remove("loading")
             })
         }).catch(console.error)
-        // TODO: we should when exactly this happens
-        setTimeout(() => {
-            document.body.classList.remove("loading")
-        }, 3000)
+
+        client.fetchPlutoVersions().then(versions => {
+            const remote = versions[0]
+            const local = versions[1]
+
+            console.log(local)
+            if(remote != local){
+                var rs = remote.split(".")
+                var ls = local.split(".")
+
+                // while we are in alpha, we also notify for patch updates.
+                if(rs[0] != ls[0] || rs[1] != ls[1] || true){
+                    alert("A new version of Pluto.jl is available! 🎉\n\n    You have " + local + ", the latest is " + remote + ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia.")
+                }
+            }
+        })
 
     }
 

@@ -106,6 +106,13 @@ responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missi
     putclientupdates!(initiator, UpdateMessage(:👋, Dict(), nothing, nothing, initiator))
 end
 
+responses[:getversion] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
+    putclientupdates!(initiator, UpdateMessage(:versioninfo, Dict(
+        :pluto => PLUTO_VERSION_STR,
+        :julia => JULIA_VERSION_STR,
+    ), nothing, nothing, initiator))
+end
+
 
 # TODO: actions on the notebook are not thread safe
 responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
