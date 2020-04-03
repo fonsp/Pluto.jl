@@ -3,23 +3,16 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
-	to_delete_vars = Set{Symbol}()
-	to_delete_funcs = Set{Symbol}()
-
 	# save the old topology - we'll delete variables assigned from it and re-evalutate its cells
 	old_topology = dependent_cells(notebook, cells)
 	
 	old_runnable = old_topology.runnable
-	to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in old_runnable)...)
-	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in old_runnable)...)
+	to_delete_vars = union(Set{Symbol}(), (runnable.symstate.assignments for runnable in old_runnable)...)
+	to_delete_funcs = union(Set{Symbol}(), (Set(keys(runnable.symstate.funcdefs)) for runnable in old_runnable)...)
 
 	# update the cache using the new code and compute the new topology
 	for cell in cells
-		cell.parsedcode = Meta.parse(cell.code, raise=false)
-		cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
-		cell.symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
-		cell.symstate.references = all_references(notebook, cell) # account for globals referenced in function calls
-		cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
+		update_cache!(notebook, cell)
 	end
 	update_funcdefs!(notebook)
 
@@ -104,4 +97,13 @@ function run_single!(notebook::Notebook, cell::Cell)::Bool
 
 	return run.interrupted
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
+end
+
+"Update a single cell's cache - parsed code etc"
+function update_cache!(notebook::Notebook, cell::Cell)
+	cell.parsedcode = Meta.parse(cell.code, raise=false)
+	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
+	cell.symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
+	cell.symstate.references = all_references(notebook, cell) # account for globals referenced in function calls
+	cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
 end
