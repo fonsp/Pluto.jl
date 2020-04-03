@@ -192,30 +192,26 @@ responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,
 end
 
 responses[:getallnotebooks] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    short_paths = Dict()
+    putplutoupdates!(clientupdate_notebook_list(notebooks, initiator=initiator))
+end
 
-    notebookpaths = map(values(notebooks)) do notebook
-        pathsep = Sys.iswindows() ? '\\' : '/'
-        path_split = split(notebook.path, pathsep)
-        if path_split[1] == ""
-            path_split = path_split[2:end]
+responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+    newpath = body["path"]
+    result = try
+        if isfile(newpath)
+            (success=false,message="File already exists")
+        else
+            move_notebook(notebook, newpath)
+            putplutoupdates!(clientupdate_notebook_list(notebooks, initiator=initiator))
+            (success=true, message="")
         end
-        NotebookPath(notebook.uuid, path_split, "", -1)
+    catch ex
+        showerror(stderr, stacktrace(backtrace()))
+        (success=false, message=sprint(showerror, ex))
     end
 
-    make_paths_distinct!(Set(notebookpaths))
-
-    short_paths = Dict(map(notebookpaths) do np
-        np.uuid => np.current_path
-    end...)
-
-    update = UpdateMessage(:notebook_list,
-        Dict(:notebooks => [Dict(
-                :uuid => string(notebook.uuid),
-                :path => notebook.path,
-                :shortpath => short_paths[notebook.uuid]
-                ) for notebook in values(notebooks)]), nothing, nothing, initiator)
-    putplutoupdates!(update)
+    update = UpdateMessage(:move_notebook_result, result)
+    putclientupdates!(initiator, update)
 end
 
 responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin

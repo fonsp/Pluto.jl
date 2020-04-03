@@ -76,6 +76,7 @@ function make_workspace(notebook::Notebook, ::Val{ProcessWorkspace})::ProcessWor
     eval_in_workspace.([workspace], workspace_preamble)
     # TODO: we could also import Pluto
     eval_in_workspace(workspace, :(include($(joinpath(PKG_ROOT_DIR, "src", "notebookserver", "FormatOutput.jl")))))
+    eval_in_workspace(workspace, :(import REPL.REPLCompletions: completions, complete_path, completion_text))
     # For Windows?
     eval_in_workspace(workspace, :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)))
 
@@ -107,6 +108,7 @@ function unmake_workspace(workspace::ModuleWorkspace)
     end
 end
 
+"Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(notebook::Notebook)::AbstractWorkspace
     if haskey(workspaces, notebook.uuid)
         workspaces[notebook.uuid]

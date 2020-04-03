@@ -57,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
             placeholder: "Enter cell code...",
             indentWithTabs: true,
             indentUnit: 4,
+            hintOptions: { hint: juliahints },
         });
 
         window.codeMirrors[cellNode.id] = editor
@@ -65,11 +66,8 @@ document.addEventListener("DOMContentLoaded", () => {
         editor.setOption("extraKeys", {
             "Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id),
             "Shift-Enter": () => {
-                console.log("asdf")
                 requestNewRemoteCell(indexOfLocalCell(cellNode) + 1)
-                if (cellNode.classList.contains("codediffers")) {
-                    requestChangeRemoteCell(cellNode.id)
-                }
+                requestChangeRemoteCell(cellNode.id)
             },
             "Ctrl-Delete": () => {
                 requestDeleteRemoteCell(cellNode.id)
@@ -78,6 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     codeMirrors[nextCell.id].focus()
                 }
             },
+            "Shift-Tab": "indentLess",
+            "Tab": onTabKey,
         });
 
         editor.on("change", (cm, change) => {
@@ -380,14 +380,14 @@ document.addEventListener("DOMContentLoaded", () => {
     function onEstablishConnection() {
         // on socket success
         client.send("getallnotebooks", {})
-        
+
         client.sendreceive("getallcells", {}).then(update => {
             const promises = []
 
             update.message.cells.forEach((cell, index) => {
                 const cellNode = createLocalCell(index, cell.uuid, "")
                 promises.push(
-                        client.sendreceive("getinput", {}, cell.uuid).then(update => {
+                    client.sendreceive("getinput", {}, cell.uuid).then(update => {
                         updateLocalCellInput(true, cell.uuid, update.message.code)
                     })
                 )
@@ -409,12 +409,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const local = versions[1]
 
             console.log(local)
-            if(remote != local){
+            if (remote != local) {
                 var rs = remote.split(".")
                 var ls = local.split(".")
 
                 // while we are in alpha, we also notify for patch updates.
-                if(rs[0] != ls[0] || rs[1] != ls[1] || true){
+                if (rs[0] != ls[0] || rs[1] != ls[1] || true) {
                     alert("A new version of Pluto.jl is available! 🎉\n\n    You have " + local + ", the latest is " + remote + ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia.")
                 }
             }
@@ -514,11 +514,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const te = new TextEncoder()
     const td = new TextDecoder()
 
-    function length_utf8(str, startindex_utf16 = 0, endindex_utf16 = undefined) {
+    function lengthUtf8(str, startindex_utf16 = 0, endindex_utf16 = undefined) {
         return te.encode(str.substring(startindex_utf16, endindex_utf16)).length
     }
 
-    function splice_utf8(original, startindex_utf8, endindex_utf8, replacement) {
+    function utf8index_to_ut16index(str, index_utf8) {
+        return td.decode(te.encode(str).slice(0, index_utf8)).length
+    }
+
+    function spliceUtf8(original, startindex_utf8, endindex_utf8, replacement) {
         // JS uses UTF-16 for internal representation of strings, e.g.
         // "e".length == 1, "é".length == 1, "🐶".length == 2
 
@@ -550,7 +554,40 @@ document.addEventListener("DOMContentLoaded", () => {
         return td.decode(result_enc)
     }
 
-    console.assert(splice_utf8("e é 🐶 is a dog", 5, 9, "hannes ❤") == "e é hannes ❤ is a dog")
+    console.assert(spliceUtf8("e é 🐶 is a dog", 5, 9, "hannes ❤") == "e é hannes ❤ is a dog")
+
+    /* AUTOCOMPLETE */
+
+    const noAutocomplete = " \t\r\n([])+-=/,:;'\"!#$%^&*~`<>|"
+
+    function onTabKey(cm) {
+        const cursor = cm.getCursor()
+        const oldLine = cm.getLine(cursor.line)
+
+        if(cm.somethingSelected()){
+            cm.indentSelection()
+        } else if (cursor.ch > 0 && noAutocomplete.indexOf(oldLine[cursor.ch - 1]) == -1) {
+            cm.showHint()
+        } else {
+            cm.replaceSelection('\t')
+        }
+    }
+
+    function juliahints(cm, option) {
+        const cursor = cm.getCursor()
+        const oldLine = cm.getLine(cursor.line)
+        const oldLineSliced = oldLine.slice(0, cursor.ch)
+
+        return client.sendreceive("complete", {
+            query: oldLineSliced,
+        }).then(update => {
+            return {
+                list: update.message.results,
+                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.start)),
+                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.stop)),
+            }
+        })
+    }
 
     /* MORE SHORTKEYS */
     document.addEventListener("keydown", (e) => {

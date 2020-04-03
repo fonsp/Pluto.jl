@@ -62,7 +62,7 @@ function samplenotebook()
     Notebook(tempname() * ".jl", cells)
 end
 
-function save_notebook(io, notebook)
+function save_notebook(io, notebook::Notebook)
     write(io, "### A Pluto.jl notebook ###\n")
     write(io, "# " * PLUTO_VERSION_STR * "\n")
 
@@ -90,13 +90,13 @@ function save_notebook(io, notebook)
     end
 end
 
-function save_notebook(path::String, notebook)
+function save_notebook(notebook::Notebook, path::String)
     open(path, "w") do io
         save_notebook(io, notebook)
     end
 end
 
-save_notebook(notebook) = save_notebook(notebook.path, notebook)
+save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
 function load_notebook(io, path)
     firstline = String(readline(io))
@@ -153,4 +153,14 @@ function load_notebook(path::String)
     open(path, "r") do io
         load_notebook(io, path)
     end
+end
+
+function move_notebook(notebook::Notebook, newpath::String)
+    # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
+    oldpath = notebook.path
+    save_notebook(notebook, oldpath)
+    save_notebook(notebook, newpath)
+    @assert read(notebook.path, String) == read(newpath, String)
+    notebook.path = newpath
+    rm(oldpath)
 end
