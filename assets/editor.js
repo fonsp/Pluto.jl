@@ -330,6 +330,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function requestDeleteRemoteCell(uuid) {
+        window.localCells[uuid].classList.add("running")
+        window.codeMirrors[uuid].setValue("")
         client.send("deletecell", {}, uuid)
     }
 

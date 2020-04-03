@@ -242,11 +242,14 @@ function kill_workspace(workspace::ProcessWorkspace)
         https://docs.microsoft.com/en-us/windows/wsl"
         return false
     end
-    # You can force kill a julia process by pressing Ctrl+C four times 🙃
+    # You can force kill a julia process by pressing Ctrl+C five times 🙃
     # But this is not very consistent, so we will just keep pressing Ctrl+C until the workspace isn't running anymore.
     # TODO: this will also kill "pending" evaluations, and any evaluations started within 100ms of the kill. A global "evaluation count" would fix this.
     # TODO: listen for the final words of the remote process on stdout/stderr:
-    
+    if isready(workspace.dowork_token)
+        @info "Tried to stop idle workspace - ignoring."
+        return true
+    end
     @info "Sending interrupt to process $(workspace.workspace_pid)"
     Distributed.interrupt(workspace.workspace_pid)
 
@@ -263,12 +266,12 @@ function kill_workspace(workspace::ProcessWorkspace)
 
     println("Still running... starting sequence")
     while !isready(workspace.dowork_token)    
-        print(" 🔥 ")
-        for _ in 1:1
+        for _ in 1:5
+            print(" 🔥 ")
             Distributed.interrupt(workspace.workspace_pid)
-            sleep(0.001)
+            sleep(0.2)
         end
-        sleep(0.2)
+        sleep(1.5)
     end
     println()
     println("Cell interrupted!")
