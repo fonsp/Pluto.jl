@@ -56,6 +56,14 @@ celloutput p:last-child {
 
 
 /* HEADER */
+header {
+    transition: background-color .5s ease-in-out;
+    background-color: white;
+}
+
+body.loading header {
+    background-color: hsla(290, 10%, 59%, 0.14);
+}
 
 
 /* MAIN */

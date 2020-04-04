@@ -400,7 +400,13 @@ document.addEventListener("DOMContentLoaded", () => {
             })
 
             Promise.all(promises).then(() => {
-                document.body.classList.remove("loading")
+                // We do a code completion request to trigger starting the workpsace
+                client.sendreceive("complete", {
+                    query: "nothinginparticular"
+                }).then(() => {
+                    document.body.classList.remove("loading")
+                    console.info("Workspace initialized")
+                })
             })
         }).catch(console.error)
 

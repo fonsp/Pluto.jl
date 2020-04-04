@@ -150,9 +150,26 @@ function load_notebook(io, path)
 end
 
 function load_notebook(path::String)
-    open(path, "r") do io
-        load_notebook(io, path)
+    backupPath = path
+    while isfile(backupPath)
+        backupPath = backupPath * ".backup"
     end
+    cp(path, backupPath)
+
+    local loaded
+    open(path, "r") do io
+        loaded = load_notebook(io, path)
+    end
+
+    save_notebook(loaded)
+
+    if only_versions_differ(path, backupPath)
+        rm(backupPath)
+    else
+        @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backupPath
+    end
+
+    loaded
 end
 
 function move_notebook(notebook::Notebook, newpath::String)
@@ -160,7 +177,11 @@ function move_notebook(notebook::Notebook, newpath::String)
     oldpath = notebook.path
     save_notebook(notebook, oldpath)
     save_notebook(notebook, newpath)
-    @assert read(notebook.path, String) == read(newpath, String)
+    @assert only_versions_differ(oldpath, newpath)
     notebook.path = newpath
     rm(oldpath)
+end
+
+function only_versions_differ(pathA::AbstractString, pathB::AbstractString)
+    readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end

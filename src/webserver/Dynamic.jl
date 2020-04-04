@@ -103,7 +103,7 @@ end
 
 
 responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, UpdateMessage(:👋, Dict(), nothing, nothing, initiator))
+    putclientupdates!(initiator, UpdateMessage(:👋, Dict(:notebookExists => (notebook != nothing)), nothing, nothing, initiator))
 end
 
 responses[:getversion] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin

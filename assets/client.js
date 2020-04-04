@@ -148,6 +148,11 @@ class PlutoConnection {
         }
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then(u => {
+                if(this.notebookID && !u.message.notebookExists){
+                    // https://github.com/fonsp/Pluto.jl/issues/55
+                    document.location.href = "/"
+                    return
+                }
                 this.currentlyConnected = true
                 console.log("socket opened")
                 onSucces()
