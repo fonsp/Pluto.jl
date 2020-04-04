@@ -84,7 +84,11 @@ function extractfunctionarguments(funcdef::Expr)::Set{Symbol}
             push!(argnames, a)
         elseif isa(a, Expr)
             if a.head == :(::)
-                push!(argnames, a.args[1])
+                if length(a.args) == 2
+                    push!(argnames, a.args[1])
+                else
+                    # f(..., ::JustAType, ...)
+                end
             elseif a.head == :parameters || a.head == :tuple  # second is for ((a,b),(c,d)) -> a*b*c*d stuff
                 push!(argnames, extractfunctionarguments(a)...)
             elseif a.head == :kw || a.head == :(=) # first is for unnamed function arguments, second is for lambdas

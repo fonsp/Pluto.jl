@@ -103,7 +103,13 @@ end
 function update_cache!(notebook::Notebook, cell::Cell)
 	cell.parsedcode = Meta.parse(cell.code, raise=false)
 	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
-	cell.symstate = ExploreExpression.compute_symbolreferences(cell.parsedcode)
+	cell.symstate = try
+		ExploreExpression.compute_symbolreferences(cell.parsedcode)
+	catch ex
+		@error "Expression explorer failed on: " cell.code
+		showerror(stderr, ex, stacktrace(backtrace()))
+		SymbolsState()
+	end
 	cell.symstate.references = all_references(notebook, cell) # account for globals referenced in function calls
 	cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
 end

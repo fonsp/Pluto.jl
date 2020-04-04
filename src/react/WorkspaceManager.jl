@@ -79,6 +79,7 @@ function make_workspace(notebook::Notebook, ::Val{ProcessWorkspace})::ProcessWor
     eval_in_workspace(workspace, :(import REPL.REPLCompletions: completions, complete_path, completion_text))
     # For Windows?
     eval_in_workspace(workspace, :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)))
+    eval_in_workspace(workspace, :(show, showable, showerror, repr, string)) # https://github.com/JuliaLang/julia/issues/18181
 
     # so that we NEVER break the workspace with an interrupt 🤕
     @async eval_in_workspace(workspace, 

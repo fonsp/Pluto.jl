@@ -134,8 +134,9 @@ end
         @test testee(:(func(b)), [:func, :b], [], [:func], [])
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
             
-        @test_nowarn testee(:(function f(y::Int64 = a)::String string(y) end), [:Int64, :String, :string], [:f], [], [], false)
-        @test_nowarn testee(:(function f(x::T; k = 1) where T return x + 1 end), [:+], [:f], [], [], false)
+        @test_nowarn testee(:(function f(y::Int64 = a)::String string(y) end), [], [], [], [], false)
+        @test_nowarn testee(:(function f(x::T; k = 1) where T return x + 1 end), [], [], [], [], false)
+        @test_nowarn testee(:(function f(::MIME"text/html") 1 end), [], [], [], [], false)
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])

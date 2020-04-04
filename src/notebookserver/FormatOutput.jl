@@ -1,7 +1,6 @@
 # will be executed on workspace process
 
 using Markdown
-import Base: show
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 
