@@ -50,17 +50,8 @@ This package is still in its early days - go to the [issue tracker](https://gith
 
 Let us know what you think! 😊
 
-<img alt="plotting screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" >
+<img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" >
 
-## FAQ
-
-### What's the deal with reactivity?
-Programming is hard sometimes. Even more so when you need to keep track not only of your code, but also of your session's hidden state. Pluto gives you confidence that the code you see exactly matches the variables you're working with, eliminating bugs before you even knew you had them.
-
-### Okay, but doesn't this impede performance?
-Au contraire! Pluto automatically figures out the dependencies for you and re-runs _only the affected cells_, meaning that you don't have to press "run all below" as you would in a non-reactive notebook. If you're expecting a cell update to take long, you can always abstain from runing your cells until you get everything right - and then our smart "run all" button will know which cells you _actually_ want to run.
-
-### Why is it so cool to have cells in any order?
-Nobody wants their code getting in the way of their ideas. Pluto lets you organize your code into sections in any way you like, without a nasty cell full of `import`s and `using`s at the beginning of your beautiful work.
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
