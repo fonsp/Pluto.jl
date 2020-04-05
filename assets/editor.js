@@ -69,7 +69,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 requestNewRemoteCell(indexOfLocalCell(cellNode) + 1)
                 requestChangeRemoteCell(cellNode.id)
             },
-            "Ctrl-Delete": () => {
+            "Ctrl-Shift-Delete": () => {
                 requestDeleteRemoteCell(cellNode.id)
                 const nextCell = cellNode.nextSibling
                 if (nextCell) {
@@ -125,7 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
             cellNode.classList.add("error")
         } else {
             cellNode.classList.remove("error")
-            if (mime == "text/html") {
+            if (mime == "text/html" || mime == "image/svg+xml") {
                 // from https://stackoverflow.com/a/26716182
 
                 cellNode.querySelector("celloutput").innerHTML = output
@@ -605,7 +605,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // fall into:
             case 112: // F1
                 // TODO: show help    
-                alert("Shortcuts 🎹\n\nCtrl+Enter:   run cell\nShift+Enter:   run cell and add cell below\nCtrl+Delete:   delete cell")
+                alert("Shortcuts 🎹\n\nCtrl+Enter:   run cell\nShift+Enter:   run cell and add cell below\nCtrl+Shift+Delete:   delete cell")
 
                 e.preventDefault()
                 break

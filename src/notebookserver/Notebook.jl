@@ -22,6 +22,7 @@ Notebook(path::String, cells::Array{Cell,1}, uuid) = let
     Notebook(path, cells, uuid, Dict{Symbol, SymbolsState}(), Channel(128), et)
 end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
+Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
 
 function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
     cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)

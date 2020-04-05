@@ -2,14 +2,23 @@ using Test
 using Pluto
 import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 
-@testset "Reactivity $(method.name.name)" for method in [WorkspaceManager.ModuleWorkspace, WorkspaceManager.ProcessWorkspace]
+to_test = [WorkspaceManager.ModuleWorkspace]
+if Sys.iswindows()
+    println("Can't test ProcessWorkspace on Windows")
+else
+    push!(to_test, WorkspaceManager.ProcessWorkspace)
+end
+@testset "Reactivity $(method.name.name)" for method in to_test
+
     WorkspaceManager.set_default_workspace_method(method)
 
     fakeclient = Client(:fake, nothing)
     Pluto.connectedclients[fakeclient.id] = fakeclient
 
+    
+
     @testset "Basic" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = 1"),
         Cell("y = x"),
         Cell("f(x) = x + y"),
@@ -66,7 +75,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 
 # https://github.com/fonsp/Pluto.jl/issues/32
     @testset "Bad code" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("a"),
         Cell("1 = 2")
     ])
@@ -81,7 +90,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Mutliple assignments" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = 1"),
         Cell("x = 2"),
         Cell("f(x) = 3"),
@@ -134,7 +143,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Cyclic" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = y"),
         Cell("y = x")
     ])
@@ -149,7 +158,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Variable deletion" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = 1"),
         Cell("y = x")
     ])
@@ -169,7 +178,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Recursion" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("f(n) = n * f(n-1)"),
 
         Cell("k = 1"),
@@ -203,7 +212,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Variable cannot reference its previous value" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = 3")
     ])
         fakeclient.connected_notebook = notebook
@@ -218,7 +227,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Changing functions" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("y = 1"),
         Cell("f(x) = x + y"),
         Cell("f(3)"),
@@ -280,7 +289,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
 #     @testset "Multiple dispatch" begin
-#         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+#         notebook = Notebook([
 #             Cell(
 # """begin
 #     function f(x)
@@ -314,7 +323,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 #     end
 
     @testset "Functional programming" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
             Cell("a = 1"),
             Cell("map(2:2) do val; (global a = val; 2*val) end |> last"),
 
@@ -363,7 +372,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     @testset "Immutable globals" begin
     # We currently have a slightly relaxed version of immutable globals:
     # globals can only be mutated/assigned _in a single cell_.
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = 1"),
         Cell("x = 2"),
         Cell("y = -3; y = 3"),
@@ -420,7 +429,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 
     @testset "Run all" begin
-        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebook = Notebook([
         Cell("x = []"),
         Cell("push!(x,2); b = a + 2"),
         Cell("push!(x,3); c = b + a"),
@@ -501,3 +510,5 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         WorkspaceManager.unmake_workspace(notebook)
     end
 end
+
+WorkspaceManager.reset_default_workspace_method()

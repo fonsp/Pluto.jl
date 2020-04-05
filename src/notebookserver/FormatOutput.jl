@@ -3,6 +3,7 @@
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
+import Base64
 
 # We add a method for the Markdown -> HTML conversion that takes a LaTeX chunk from the Markdown tree and adds our custom span
 function htmlinline(io::IO, x::LaTeX)
@@ -32,7 +33,7 @@ function format_output(val::Any)::Tuple{String, MIME}
     # in order of coolness
     # text/plain always matches
     mime = let
-        mimes = [MIME("text/html"), MIME("text/plain")]
+        mimes = [MIME("text/html"), MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("text/plain")]
         first(filter(m->Base.invokelatest(showable, m, val), mimes))
     end
     
@@ -40,7 +41,13 @@ function format_output(val::Any)::Tuple{String, MIME}
         "", mime
     else
         try
-            Base.invokelatest(repr, mime, val; context = iocontext), mime
+            result = Base.invokelatest(repr, mime, val; context = iocontext)
+            # MIME rewrites for types other than text/plain or text/html
+            if mime ∈ [MIME("image/png"), MIME("image/jpg")]
+                result = "<img src=\"data:$(mime);base64,$(Base64.base64encode(result))\" />"
+                mime = MIME("text/html")
+            end
+            result, mime
         catch ex
             "Failed to show value: \n" * sprint(showerror, ex, stacktrace(backtrace())), MIME("text/plain")
         end

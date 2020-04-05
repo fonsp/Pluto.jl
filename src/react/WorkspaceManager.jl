@@ -23,12 +23,18 @@ ProcessWorkspace(workspace_pid::Int64) = let
     ProcessWorkspace(workspace_pid, t, Set{Symbol}())
 end
 
-default_workspace_method = ProcessWorkspace
+default_workspace_method = nothing
 
 "The workspace method to be used for all future workspace creations. ModuleWorkspace` is lightest, `ProcessWorkspace` can always terminate."
 function set_default_workspace_method(method::Type{<:AbstractWorkspace})
     global default_workspace_method = method
 end
+
+function reset_default_workspace_method()
+    global default_workspace_method = Sys.iswindows() ? ModuleWorkspace : ProcessWorkspace
+end
+
+reset_default_workspace_method()
 
 "These expressions get executed whenever a new workspace is created."
 workspace_preamble = [:(using Markdown), :(ENV["GKSwstype"] = "nul")]
@@ -234,7 +240,13 @@ function kill_workspace(notebook::Notebook)::Bool
 end
 
 function kill_workspace(workspace::ModuleWorkspace)
-    @warn "Unfortunately, a `ModuleWorkspace` can't be interrupted. Use a `ProcessWorkspace` instead."
+    if Sys.iswindows()
+        @warn "Unfortunately, stopping cells is currently not supported on Windows :(
+        Maybe the Windows Subsystem for Linux is right for you:
+        https://docs.microsoft.com/en-us/windows/wsl"
+    else
+        @warn "Unfortunately, a `ModuleWorkspace` can't be interrupted. Use a `ProcessWorkspace` instead."
+    end
     false
 end
 
