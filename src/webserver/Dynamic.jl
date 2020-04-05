@@ -138,6 +138,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
 
         filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
+        save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
 end
 

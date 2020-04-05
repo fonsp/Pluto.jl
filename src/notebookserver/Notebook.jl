@@ -98,7 +98,7 @@ end
 
 save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
-function load_notebook(io, path)
+function load_notebook_nobackup(io, path)
     firstline = String(readline(io))
     
     if firstline != "### A Pluto.jl notebook ###"
@@ -149,6 +149,14 @@ function load_notebook(io, path)
     Notebook(path, ordered_cells)
 end
 
+function load_notebook_nobackup(path::String)
+    local loaded
+    open(path, "r") do io
+        loaded = load_notebook_nobackup(io, path)
+    end
+    loaded
+end
+
 function load_notebook(path::String)
     backupPath = path
     while isfile(backupPath)
@@ -156,14 +164,11 @@ function load_notebook(path::String)
     end
     cp(path, backupPath)
 
-    local loaded
-    open(path, "r") do io
-        loaded = load_notebook(io, path)
-    end
+    loaded = load_notebook_nobackup(path)
 
     save_notebook(loaded)
 
-    if only_versions_differ(path, backupPath)
+    if only_versions_or_lineorder_differ(path, backupPath)
         rm(backupPath)
     else
         @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backupPath
@@ -180,6 +185,13 @@ function move_notebook(notebook::Notebook, newpath::String)
     @assert only_versions_differ(oldpath, newpath)
     notebook.path = newpath
     rm(oldpath)
+end
+
+"Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
+
+If a notebook has not yet had all of its cells run, we can't deduce the topological cell order."
+function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)
+    Set(readlines(pathA)[3:end]) == Set(readlines(pathB)[3:end])
 end
 
 function only_versions_differ(pathA::AbstractString, pathB::AbstractString)

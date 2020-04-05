@@ -42,7 +42,7 @@ function format_output(val::Any)::Tuple{String, MIME}
         try
             Base.invokelatest(repr, mime, val; context = iocontext), mime
         catch ex
-            Base.invokelatest(repr, mime, ex; context = iocontext), mime
+            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(backtrace())), MIME("text/plain")
         end
     end
 end
