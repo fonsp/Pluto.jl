@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fonsvdplas@gmail.com>", "Mikołaj Bochenski <iceflamecode@gmail.com>"]
-version = "0.5.11"
+version = "0.5.12"
 
 [deps]
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"

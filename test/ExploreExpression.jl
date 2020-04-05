@@ -112,6 +112,9 @@ end
         @test testee(:(function f(x) x = x / 3; x end), [], [:f], [], [
             :f => ([:/], [], [:/])
         ])
+        @test testee(:(function f(x) a end; function f(x, y) b end), [], [:f], [], [
+            :f => ([:a, :b], [], [])
+        ])
         @test testee(:(f(x, y = a + 1) = x * y * z), [], [:f], [], [
             :f => ([:*, :z], [], [:*])
         ])

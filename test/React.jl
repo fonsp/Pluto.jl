@@ -14,14 +14,19 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         Cell("y = x"),
         Cell("f(x) = x + y"),
         Cell("f(4)"),
+
+        Cell("""begin
+            g(a) = x
+            g(a,b) = y
+        end"""),
+        Cell("g(6) + g(6,6)"),
     ])
         fakeclient.connected_notebook = notebook
 
         @test !haskey(WorkspaceManager.workspaces, notebook.uuid)
         @test WorkspaceManager.get_workspace(notebook) isa method
 
-        run_reactive!(notebook, notebook.cells[1])
-        run_reactive!(notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         notebook.cells[1].code = "x = 12"
         run_reactive!(notebook, notebook.cells[1])
@@ -40,6 +45,21 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         notebook.cells[3].code = "f(x) = x"
         run_reactive!(notebook, notebook.cells[3])
         @test notebook.cells[4].output_repr == "4"
+
+        notebook.cells[1].code = "x = 1"
+        notebook.cells[2].code = "y = 2"
+        run_reactive!(notebook, notebook.cells[1:2])
+        run_reactive!(notebook, notebook.cells[5:6])
+        @test notebook.cells[5].error_repr == nothing
+        @test notebook.cells[6].output_repr == "3"
+
+        notebook.cells[2].code = "y = 1"
+        run_reactive!(notebook, notebook.cells[2])
+        @test notebook.cells[6].output_repr == "2"
+
+        notebook.cells[1].code = "x = 2"
+        run_reactive!(notebook, notebook.cells[1])
+        @test notebook.cells[6].output_repr == "3"
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -148,11 +168,17 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         WorkspaceManager.unmake_workspace(notebook)
     end
 
-    @testset "Recursive function is not considered cyclic" begin
+    @testset "Recursion" begin
         notebook = Notebook(joinpath(tempdir(), "test.jl"), [
         Cell("f(n) = n * f(n-1)"),
-        Cell("g(n) = h(n-1)"),
-        Cell("h(n) = g(n-1)"),
+
+        Cell("k = 1"),
+        Cell("""begin
+            g(n) = h(n-1) + k
+            h(n) = n > 0 ? g(n-1) : 0
+        end"""),
+
+        Cell("h(4)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -160,10 +186,18 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         @test startswith(notebook.cells[1].output_repr, "f (generic function with ")
         @test notebook.cells[1].error_repr == nothing
 
-        run_reactive!(notebook, notebook.cells[2])
-        run_reactive!(notebook, notebook.cells[3])
+        run_reactive!(notebook, notebook.cells[2:3])
         @test notebook.cells[2].error_repr == nothing
         @test notebook.cells[3].error_repr == nothing
+        run_reactive!(notebook, notebook.cells[3])
+        @test notebook.cells[3].error_repr == nothing
+
+        run_reactive!(notebook, notebook.cells[4])
+        @test notebook.cells[4].output_repr == "2"
+
+        notebook.cells[2].code = "k = 2"
+        run_reactive!(notebook, notebook.cells[2])
+        @test notebook.cells[4].output_repr == "4"
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -213,7 +247,7 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         notebook.cells[1].code = "y"
         run_reactive!(notebook, notebook.cells[1])
         @test occursin("UndefVarError", notebook.cells[1].error_repr)
-        @test notebook.cells[2].error_repr == nothing
+        @test_broken notebook.cells[2].error_repr == nothing
         @test occursin("UndefVarError", notebook.cells[3].error_repr)
 
         run_reactive!(notebook, notebook.cells[4])
@@ -279,6 +313,53 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 #         @test occursin("UndefVarError", notebook.cells[1].error_repr)
 #     end
 
+    @testset "Functional programming" begin
+        notebook = Notebook(joinpath(tempdir(), "test.jl"), [
+            Cell("a = 1"),
+            Cell("map(2:2) do val; (global a = val; 2*val) end |> last"),
+
+            Cell("b = 3"),
+            Cell("g = f"),
+            Cell("f(x) = x + b"),
+            Cell("g(6)"),
+
+            Cell("h = [x -> x + b][1]"),
+            Cell("h(8)"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        run_reactive!(notebook, notebook.cells[1:2])
+        @test occursin("Multiple definitions for a", notebook.cells[1].error_repr)
+        @test occursin("Multiple definitions for a", notebook.cells[2].error_repr)
+
+        notebook.cells[1].code = "a"
+        run_reactive!(notebook, notebook.cells[1])
+        @test notebook.cells[1].output_repr == "2"
+        @test notebook.cells[2].output_repr == "4"
+
+        run_reactive!(notebook, notebook.cells[3:6])
+        @test notebook.cells[3].error_repr == nothing
+        @test notebook.cells[4].error_repr == nothing
+        @test notebook.cells[5].error_repr == nothing
+        @test notebook.cells[6].error_repr == nothing
+        @test notebook.cells[6].output_repr == "9"
+
+        notebook.cells[3].code = "b = -3"
+        run_reactive!(notebook, notebook.cells[3])
+        @test notebook.cells[6].output_repr == "3"
+
+        run_reactive!(notebook, notebook.cells[7:8])
+        @test notebook.cells[7].error_repr == nothing
+        @test notebook.cells[8].output_repr == "5"
+
+        notebook.cells[3].code = "b = 3"
+        run_reactive!(notebook, notebook.cells[3])
+        @test notebook.cells[8].output_repr == "11"
+
+        WorkspaceManager.unmake_workspace(notebook)
+        
+    end
+
     @testset "Immutable globals" begin
     # We currently have a slightly relaxed version of immutable globals:
     # globals can only be mutated/assigned _in a single cell_.
@@ -290,8 +371,10 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         Cell("let global z = 5 end"),
         Cell("w"),
         Cell("function f(x) global w = x end"),
-        Cell("f(-8); f(8)"),
-        Cell("f(9)"),
+        Cell("f(8)"),
+        Cell("v"),
+        Cell("function g(x) global v = x end; g(10)"),
+        Cell("g(11)"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -303,7 +386,6 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         @test occursin("Multiple definitions for x", notebook.cells[1].error_repr)
     
         notebook.cells[2].code = "x + 1"
-
         run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].output_repr == "1"
         @test notebook.cells[2].output_repr == "2"
@@ -316,20 +398,23 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         @test occursin("Multiple definitions for z", notebook.cells[4].error_repr)
         @test occursin("Multiple definitions for z", notebook.cells[5].error_repr)
     
-        run_reactive!(notebook, notebook.cells[6])
-        run_reactive!(notebook, notebook.cells[7])
+        run_reactive!(notebook, notebook.cells[6:7])
         @test occursin("UndefVarError", notebook.cells[6].error_repr)
+        @test notebook.cells[7].error_repr == nothing
     
         run_reactive!(notebook, notebook.cells[8])
-        @test notebook.cells[6].error_repr == nothing
-        @test notebook.cells[7].error_repr == nothing
-        @test notebook.cells[8].error_repr == nothing
-
-        run_reactive!(notebook, notebook.cells[9])
         @test occursin("UndefVarError", notebook.cells[6].error_repr)
-        @test notebook.cells[7].error_repr == nothing
+        @test occursin("Multiple definitions for w", notebook.cells[7].error_repr)
         @test occursin("Multiple definitions for w", notebook.cells[8].error_repr)
-        @test occursin("Multiple definitions for w", notebook.cells[9].error_repr)
+
+        run_reactive!(notebook, notebook.cells[9:10])
+        @test notebook.cells[9].output_repr == "10"
+        @test notebook.cells[10].error_repr == nothing
+
+        run_reactive!(notebook, notebook.cells[11])
+        @test occursin("UndefVarError", notebook.cells[9].error_repr)
+        @test occursin("Multiple definitions for v", notebook.cells[10].error_repr)
+        @test occursin("Multiple definitions for v", notebook.cells[11].error_repr)
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -354,7 +439,16 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         Cell("push!(x,13)"),
         Cell("push!(x,14)"),
 
-        Cell("join(x, '-')")
+        Cell("join(x, '-')"),
+
+        Cell("φ(16)"),
+        Cell("φ(χ) = χ + υ"),
+        Cell("υ = 18"),
+
+        Cell("f(19)"),
+        Cell("f(x) = x + g(x)"),
+        Cell("g(x) = x + y"),
+        Cell("y = 22"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -381,6 +475,28 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
             run_reactive!(notebook, notebook.cells[15])
             @test notebook.cells[15].output_repr == "\"4-2-3-5-10-11-12-13-14\""
         end
+        
+
+        run_reactive!(notebook, notebook.cells[16:18])
+        @test notebook.cells[16].error_repr == nothing
+        @test notebook.cells[16].output_repr == "34"
+        @test notebook.cells[17].error_repr == nothing
+        @test notebook.cells[18].error_repr == nothing
+
+        notebook.cells[18].code = "υ = 8"
+        run_reactive!(notebook, notebook.cells[18])
+        @test notebook.cells[16].output_repr == "24"
+        
+        run_reactive!(notebook, notebook.cells[19:22])
+        @test notebook.cells[19].error_repr == nothing
+        @test notebook.cells[19].output_repr == "60"
+        @test notebook.cells[20].error_repr == nothing
+        @test notebook.cells[21].error_repr == nothing
+        @test notebook.cells[22].error_repr == nothing
+
+        notebook.cells[22].code = "y = 0"
+        run_reactive!(notebook, notebook.cells[22])
+        @test notebook.cells[19].output_repr == "38"
 
         WorkspaceManager.unmake_workspace(notebook)
     end

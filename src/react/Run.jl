@@ -12,9 +12,13 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 
 	# update the cache using the new code and compute the new topology
 	for cell in cells
-		update_cache!(notebook, cell)
+		start_cache!(notebook, cell)
 	end
 	update_funcdefs!(notebook)
+	for cell in cells
+		finish_cache!(notebook, cell)
+	end
+
 
 	new_topology = dependent_cells(notebook, union(cells, keys(old_topology.errable)))
 	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable)) # TODO: think if old error cell order matters
@@ -100,7 +104,7 @@ function run_single!(notebook::Notebook, cell::Cell)::Bool
 end
 
 "Update a single cell's cache - parsed code etc"
-function update_cache!(notebook::Notebook, cell::Cell)
+function start_cache!(notebook::Notebook, cell::Cell)
 	cell.parsedcode = Meta.parse(cell.code, raise=false)
 	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
 	cell.symstate = try
@@ -108,8 +112,17 @@ function update_cache!(notebook::Notebook, cell::Cell)
 	catch ex
 		@error "Expression explorer failed on: " cell.code
 		showerror(stderr, ex, stacktrace(backtrace()))
-		SymbolsState()
+		ExploreExpression.SymbolsState()
 	end
-	cell.symstate.references = all_references(notebook, cell) # account for globals referenced in function calls
-	cell.symstate.assignments = all_assignments(notebook, cell) # account for globals assigned to in function calls
+end
+
+"Account for globals referenced in function calls by including `SymbolsState`s from called functions in the cell itself."
+function finish_cache!(notebook::Notebook, cell::Cell)
+	calls = all_recursed_calls!(notebook, cell.symstate)
+	calls = union(calls, keys(cell.symstate.funcdefs)) # _assume_ that all defined functions are called inside the cell. 
+	filter!(calls) do call
+		call in keys(notebook.combined_funcdefs)
+	end
+	cell.symstate.references = union(cell.symstate.references, (notebook.combined_funcdefs[func].references for func in calls)...)
+	cell.symstate.assignments = union(cell.symstate.assignments, (notebook.combined_funcdefs[func].assignments for func in calls)...)
 end

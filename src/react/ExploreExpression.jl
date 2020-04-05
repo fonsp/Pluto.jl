@@ -24,15 +24,21 @@ mutable struct ScopeState
     inglobalscope::Bool
     exposedglobals::Set{Symbol}
     hiddenglobals::Set{Symbol}
+    definedfuncs::Set{Symbol}
 end
 
 function union(a::Dict{Symbol,SymbolsState}, b::Dict{Symbol,SymbolsState})
+    # TODO: optimise: reuse `a` as `c`
     c = Dict{Symbol,SymbolsState}()
     for (k, v) in a
         c[k] = v
     end
     for (k, v) in b
-        c[k] = v
+        if haskey(c, k)
+            c[k] = c[k] ∪ v
+        else
+            c[k] = v
+        end
     end
     c
 end
@@ -50,7 +56,7 @@ function ==(a::SymbolsState, b::SymbolsState)
 end
 
 function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
-    (scopestate.inglobalscope || assignee in scopestate.exposedglobals) && !(assignee in scopestate.hiddenglobals)
+    (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) && (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
 end
 
 function get_global_assignees(assignee_exprs, scopestate::ScopeState)::Set{Symbol}
@@ -199,12 +205,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
         innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
-        for a in ex.args
-            innersymstate = explore!(a, innerscopestate)
-            symstate = symstate ∪ innersymstate
-        end
 
-        return symstate
+        return mapfoldl(a -> explore!(a, innerscopestate), ∪, ex.args, init=symstate)
     elseif ex.head == :struct
         # Creates local scope
 
@@ -238,21 +240,28 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             ex.args[1]
         end
 
-        funcname = assignee = funcroot.args[1]
+        # is either `f` (Symbol) or `f::String` (Expression)
+        funcname_expr = assignee = funcroot.args[1]
 
         # is either [funcname] or []
-        global_assignees = get_global_assignees([funcname], scopestate)
+        global_assignees = get_global_assignees([funcname_expr], scopestate)
+
         
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-
+        
         innerscopestate = deepcopy(scopestate)
         innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
         innerscopestate.inglobalscope = false
-
+        
         innersymstate = explore!(Expr(:block, ex.args[2:end]...), innerscopestate)
+        
+        if !isempty(global_assignees)
+            funcname = first(global_assignees)
 
-        if funcname in global_assignees
             symstate.funcdefs[funcname] = innersymstate
+            push!(scopestate.hiddenglobals, funcname)
+            push!(scopestate.definedfuncs, funcname)
+            push!(symstate.assignments, funcname)
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
             
@@ -266,9 +275,6 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # so we insert the function's inner symbol state here, as if it was a `let` block.
             symstate = symstate ∪ innersymstate
         end
-
-        scopestate.hiddenglobals = union(scopestate.hiddenglobals, global_assignees)
-        symstate.assignments = union(symstate.assignments, global_assignees)
 
         return symstate
     elseif ex.head == :(->)
@@ -358,12 +364,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             symstate.assignments = union(symstate.assignments, exposed)
         end
 
-        for a in recursers
-            innersymstate = explore!(a, scopestate)
-            symstate = symstate ∪ innersymstate
-        end
-        
-        return symstate
+        return mapfoldl(a -> explore!(a, scopestate), ∪, recursers, init=symstate)
     elseif ex.head == :using || ex.head == :import
         if scopestate.inglobalscope
             imports = if ex.args[1].head == :(:)
@@ -404,18 +405,24 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         # Does not create scope (probably)
 
-        for a in ex.args
-            innersymstate = explore!(a, scopestate)
-            symstate = symstate ∪ innersymstate
-        end
-
-        return symstate
+        return mapfoldl(a -> explore!(a, scopestate), ∪, ex.args, init=symstate)
     end
 end
 
 
 function compute_symbolreferences(ex)::SymbolsState
-    explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}()))
+    symstate = explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}(), Set{Symbol}()))
+
+    # We do something special to account for recursive functions:
+    # If a function `f` calls a function `g`, and both are defined inside this cell, the reference to `g` inside the symstate of `f` will be deleted.
+    # the motivitation is that normally, an assignment (or function definition) will add that symbol to a list of 'hidden globals' - any future references to that symbol will be ignored. i.e. the _local definition hides a global_.
+    # In the case of functions, you can reference functions and variables that do not yet exist, and so they won't be in the list of hidden symbols when the function definition is analysed. 
+    # Of course, our method will fail if a referenced function is defined both inside the cell **and** in another cell. However, this will lead to a MultipleDefinitionError before anything bad happens.
+    for (func, inner_symstate) in symstate.funcdefs
+        inner_symstate.references = setdiff(inner_symstate.references, keys(symstate.funcdefs))
+        inner_symstate.funccalls = setdiff(inner_symstate.funccalls, keys(symstate.funcdefs))
+    end
+    symstate
 end
 
 # TODO: this can be done during the `explore` recursion
