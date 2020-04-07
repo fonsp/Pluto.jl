@@ -2,15 +2,15 @@ using Test
 using Pluto
 import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 
-to_test = [WorkspaceManager.ModuleWorkspace]
-if Sys.iswindows()
-    println("Can't test ProcessWorkspace on Windows")
-else
-    push!(to_test, WorkspaceManager.ProcessWorkspace)
-end
-@testset "Reactivity $(method.name.name)" for method in to_test
+# to_test = [WorkspaceManager.ModuleWorkspace]
+# if Sys.iswindows()
+#     println("Can't test ProcessWorkspace on Windows")
+# else
+#     push!(to_test, WorkspaceManager.ProcessWorkspace)
+# end
+@testset "Reactivity" begin
 
-    WorkspaceManager.set_default_workspace_method(method)
+    # WorkspaceManager.set_default_workspace_method(method)
 
     fakeclient = Client(:fake, nothing)
     Pluto.connectedclients[fakeclient.id] = fakeclient
@@ -33,7 +33,7 @@ end
         fakeclient.connected_notebook = notebook
 
         @test !haskey(WorkspaceManager.workspaces, notebook.uuid)
-        @test WorkspaceManager.get_workspace(notebook) isa method
+        # @test WorkspaceManager.get_workspace(notebook) isa method
 
         run_reactive!(notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
@@ -46,6 +46,7 @@ end
     
         run_reactive!(notebook, notebook.cells[4])
         @test notebook.cells[4].output_repr == "16"
+        @test notebook.cells[4].error_repr == nothing
 
         notebook.cells[1].code = "x = 912"
         run_reactive!(notebook, notebook.cells[1])
@@ -238,6 +239,9 @@ end
         Cell("h(x::Int64) = x"),
         Cell("h(7)"),
         Cell("h(8.0)"),
+
+        Cell("p(x) = 9"),
+        Cell("p isa Function"),
     ])
         fakeclient.connected_notebook = notebook
 
@@ -256,7 +260,7 @@ end
         notebook.cells[1].code = "y"
         run_reactive!(notebook, notebook.cells[1])
         @test occursin("UndefVarError", notebook.cells[1].error_repr)
-        @test_broken notebook.cells[2].error_repr == nothing
+        @test notebook.cells[2].error_repr == nothing
         @test occursin("UndefVarError", notebook.cells[3].error_repr)
 
         run_reactive!(notebook, notebook.cells[4])
@@ -284,6 +288,24 @@ end
         @test notebook.cells[6].error_repr == nothing
         @test notebook.cells[7].error_repr != nothing
         @test notebook.cells[8].error_repr == nothing
+
+        run_reactive!(notebook, notebook.cells[9:10])
+        @test notebook.cells[9].error_repr == nothing
+        @test notebook.cells[10].output_repr == "true"
+
+        notebook.cells[9].code = "p = p"
+        run_reactive!(notebook, notebook.cells[9])
+        @test occursin("UndefVarError", notebook.cells[9].error_repr)
+
+        notebook.cells[9].code = "p = 9"
+        run_reactive!(notebook, notebook.cells[9])
+        @test notebook.cells[9].error_repr == nothing
+        @test notebook.cells[10].output_repr == "false"
+        
+        notebook.cells[9].code = "p(x) = 9"
+        run_reactive!(notebook, notebook.cells[9])
+        @test notebook.cells[9].error_repr == nothing
+        @test notebook.cells[10].output_repr == "true"
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -431,16 +453,16 @@ end
     @testset "Run all" begin
         notebook = Notebook([
         Cell("x = []"),
-        Cell("push!(x,2); b = a + 2"),
-        Cell("push!(x,3); c = b + a"),
-        Cell("push!(x,4); a = 1"),
-        Cell("push!(x,5); a + b +c"),
+        Cell("b = a + 2; push!(x,2)"),
+        Cell("c = b + a; push!(x,3)"),
+        Cell("a = 1; push!(x,4)"),
+        Cell("a + b +c; push!(x,5)"),
 
-        Cell("push!(x,6); a = 1"),
+        Cell("a = 1; push!(x,6)"),
 
-        Cell("push!(x,7); n = m"),
-        Cell("push!(x,8); m = n"),
-        Cell("push!(x,9); n = 1"),
+        Cell("n = m; push!(x,7)"),
+        Cell("m = n; push!(x,8)"),
+        Cell("n = 1; push!(x,9)"),
 
         Cell("push!(x,10)"),
         Cell("push!(x,11)"),
@@ -511,4 +533,4 @@ end
     end
 end
 
-WorkspaceManager.reset_default_workspace_method()
+# WorkspaceManager.reset_default_workspace_method()

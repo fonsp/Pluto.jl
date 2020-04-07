@@ -43,19 +43,13 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 	
 	workspace = WorkspaceManager.get_workspace(notebook)
 	WorkspaceManager.delete_vars(workspace, to_delete_vars)
-	WorkspaceManager.delete_funcs(workspace, to_delete_funcs)
 
 	local any_interrupted = false
 	for cell in to_run
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			deleted_refs = cell.symstate.references ∩ workspace.deleted_vars
-			if length(deleted_refs) > 0
-				relay_reactivity_error!(cell, deleted_refs |> first |> UndefVarError)
-			else
-				any_interrupted |= run_single!(notebook, cell)
-			end
+			any_interrupted |= run_single!(notebook, cell)
 		end
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
@@ -96,7 +90,6 @@ function run_single!(notebook::Notebook, cell::Cell)::Bool
 		cell.output_repr = run.output_formatted[1]
 		cell.error_repr = nothing
 		cell.repr_mime = run.output_formatted[2]
-		WorkspaceManager.undelete_vars(notebook, cell.symstate.assignments)
 	end
 
 	return run.interrupted
