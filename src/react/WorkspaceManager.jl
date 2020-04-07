@@ -31,7 +31,6 @@ reset_default_distributed()
 
 "These expressions get executed whenever a new workspace is created."
 workspace_preamble = [
-    :(import ..PlutoFormatter),
     :(using Markdown), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string), # https://github.com/JuliaLang/julia/issues/18181
@@ -50,13 +49,20 @@ workspaces = Dict{UUID,Workspace}()
 "Create a workspace for the notebook, optionally in a separate process."
 function make_workspace(notebook::Notebook, new_process = default_distributed)::Workspace
     pid = if new_process
-        create_workspaceprocess(notebook)
+        create_workspaceprocess()
     else
-        Distributed.myid()
+        pid = Distributed.myid()
+        # for some reason the PlutoFormatter might not be available in Main unless we include the file
+        # (even though this is the main process)
+        if !Distributed.remotecall_eval(Main, pid, :(isdefined(Main, :PlutoFormatter) && PlutoFormatter isa Module))
+            Distributed.remotecall_eval(Main, [pid], :(include($(joinpath(PKG_ROOT_DIR, "src", "notebookserver", "FormatOutput.jl")))))
+        end
+        pid
     end
 
+    
     module_name = create_emptyworkspacemodule(pid)
-
+    
     workspace = Workspace(pid, module_name)
     workspaces[notebook.uuid] = workspace
     return workspace
@@ -70,11 +76,11 @@ function create_emptyworkspacemodule(pid::Integer)
     workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
     
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
-
+    
     new_workspace_name
 end
 
-function create_workspaceprocess(notebook::Notebook)::Integer
+function create_workspaceprocess()::Integer
     pid = Distributed.addprocs(1) |> first
 
     for expr in process_preamble
@@ -107,7 +113,9 @@ function unmake_workspace(workspace::Workspace)
     # end
     
     # TODO: verify that nothing is running
-    Distributed.rmprocs([workspace.workspace_pid])
+    if workspace.workspace_pid != Distributed.myid()
+        Distributed.rmprocs([workspace.workspace_pid])
+    end
     put!(workspace.dowork_token, token)
 end
 
@@ -162,9 +170,7 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    fetcher = :(Core.eval($(workspace.module_name), 
-        :((output_formatted = PlutoFormatter.format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false))
-    ))
+    fetcher = :((output_formatted = PlutoFormatter.format_output(ans), errored = isa(ans, CapturedException), interrupted = false))
 
     try
         result = Distributed.remotecall_eval(Main, workspace.workspace_pid, fetcher)
@@ -317,13 +323,12 @@ function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspa
 
         Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
-        old_names = names(old_workspace, all=true, imported=false)
+        old_names = names(old_workspace, all=true, imported=true)
         vars_to_move = if $invert_vars_set
             setdiff(old_names, $vars_to_move)
         else
             $vars_to_move
         end
-
 
         for symbol in old_names
             if symbol in vars_to_move
@@ -332,8 +337,8 @@ function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspa
                     try
                         val = Core.eval(old_workspace, symbol)
 
-                        # Expose the variable in the scope of `new_workspace` by creating a new reference
-                        Core.eval(new_workspace, :($(symbol) = $(old_workspace_name).$(symbol)))
+                        # Expose the variable in the scope of `new_workspace`
+                        Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
                     catch ex
                         @warn "Failed to move variable $(symbol) to new workspace:"
                         showerror(stderr, ex, stacktrace(backtrace()))
@@ -345,23 +350,16 @@ function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspa
                 # free memory for other variables
                 # & delete methods created in the old module:
                 # for example, the old module might extend an imported function: 
-                # `import Base: show; show(io::IO, x::Tuple) = print(io, "🌷")`
+                # `import Base: show; show(io::IO, x::Flower) = print(io, "🌷")`
                 # when you delete/change this cell, you want this extension to disappear.
-
                 if isdefined(old_workspace, symbol)
-                    val = try
-                        Core.eval(old_workspace, symbol)
-                    catch ex
-                        @warn "Failed to retrieve old value of $(symbol):"
-                        showerror(stderr, ex, stacktrace(backtrace()))
-                        return
-                    end
+                    val = Core.eval(old_workspace, symbol)
 
                     if val isa Function
                         try
                             ms = methods(val).ms
 
-                            Base.delete_method.(filter(m -> nameof(m.module) == old_workspace_name, ms))
+                            Base.delete_method.(filter(m -> startswith(nameof(m.module) |> string, "workspace"), ms))
                         catch ex
                             @warn "Failed to delete methods for $(symbol)"
                             showerror(stderr, ex, stacktrace(backtrace()))

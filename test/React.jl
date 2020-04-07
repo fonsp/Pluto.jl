@@ -8,16 +8,17 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 # else
 #     push!(to_test, WorkspaceManager.ProcessWorkspace)
 # end
+WorkspaceManager.set_default_distributed(false)
+
 @testset "Reactivity" begin
-
-    # WorkspaceManager.set_default_workspace_method(method)
-
     fakeclient = Client(:fake, nothing)
     Pluto.connectedclients[fakeclient.id] = fakeclient
 
     
 
-    @testset "Basic" begin
+    @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
+        WorkspaceManager.set_default_distributed(parallel)
+
         notebook = Notebook([
         Cell("x = 1"),
         Cell("y = x"),
@@ -74,6 +75,9 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         WorkspaceManager.unmake_workspace(notebook)
     end
 
+    WorkspaceManager.set_default_distributed(false)
+
+
 # https://github.com/fonsp/Pluto.jl/issues/32
     @testset "Bad code" begin
         notebook = Notebook([
@@ -82,8 +86,8 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     ])
         fakeclient.connected_notebook = notebook
 
-        @test_nowarn run_reactive!(notebook, notebook.cells[1])
-        @test_nowarn run_reactive!(notebook, notebook.cells[2])
+        run_reactive!(notebook, notebook.cells[1])
+        run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[1].error_repr !== nothing
         @test notebook.cells[2].error_repr !== nothing
 
@@ -227,23 +231,59 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         WorkspaceManager.unmake_workspace(notebook)
     end
 
+    notebook = Notebook([
+    Cell("y = 1"),
+    Cell("f(x) = x + y"),
+    Cell("f(3)"),
+
+    Cell("g(a,b) = a+b"),
+    Cell("g(5,6)"),
+
+    Cell("h(x::Int64) = x"),
+    Cell("h(7)"),
+    Cell("h(8.0)"),
+
+    Cell("p(x) = 9"),
+    Cell("p isa Function"),
+
+    Cell("module Something
+        export a
+        a(x::String) = \"🐟\"
+    end"),
+    Cell("using .Something"),
+    Cell("a(x::Int64) = x"),
+    Cell("a(\"i am a \")"),
+    Cell("a(15)"),
+    
+    Cell("module Different
+        export b
+        b(x::String) = \"🐟\"
+    end"),
+    Cell("import .Different: b"),
+    Cell("b(x::Int64) = x"),
+    Cell("b(\"i am a \")"),
+    Cell("b(20)"),
+    
+    Cell("module Wow
+        export c
+        c(x::String) = \"🐟\"
+    end"),
+    Cell("begin
+        import .Wow: c
+        c(x::Int64) = x
+    end"),
+    Cell("c(\"i am a \")"),
+    Cell("c(24)"),
+
+    Cell("(25,:fish)"),
+    Cell("begin
+        import Base: show
+        show(io::IO, x::Tuple) = write(io, \"🐟\")
+    end"),
+])
+    fakeclient.connected_notebook = notebook
+
     @testset "Changing functions" begin
-        notebook = Notebook([
-        Cell("y = 1"),
-        Cell("f(x) = x + y"),
-        Cell("f(3)"),
-
-        Cell("g(a,b) = a+b"),
-        Cell("g(5,6)"),
-
-        Cell("h(x::Int64) = x"),
-        Cell("h(7)"),
-        Cell("h(8.0)"),
-
-        Cell("p(x) = 9"),
-        Cell("p isa Function"),
-    ])
-        fakeclient.connected_notebook = notebook
 
         run_reactive!(notebook, notebook.cells[2])
         @test notebook.cells[2].error_repr == nothing
@@ -306,43 +346,51 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         run_reactive!(notebook, notebook.cells[9])
         @test notebook.cells[9].error_repr == nothing
         @test notebook.cells[10].output_repr == "true"
-
-        WorkspaceManager.unmake_workspace(notebook)
     end
 
-#     @testset "Multiple dispatch" begin
-#         notebook = Notebook([
-#             Cell(
-# """begin
-#     function f(x)
-#         x
-#     end
-#     function f(x,s)
-#         s
-#     end
-# end"""
-#             )
-#             Cell(
-# """function g(x)
-#     x
-# end"""
-#             )
-#             Cell(
-# """function g(x,s)
-#     s
-# end"""
-#             )
-#             Cell("function f(x) x end")
-#         ])
-#         fakeclient.connected_notebook = notebook
+    @testset "Extending imported functions" begin
+        run_reactive!(notebook, notebook.cells[11:15])
+        @test notebook.cells[11].error_repr == nothing
+        @test notebook.cells[12].error_repr == nothing
+        @test notebook.cells[13].error_repr == nothing
+        @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
+        @test notebook.cells[15].output_repr == "15"
 
-#         run_reactive!(notebook, notebook.cells[1])
-#         run_reactive!(notebook, notebook.cells[1])
-#         notebook.cells[1].code = "x = x + 1"
-#         run_reactive!(notebook, notebook.cells[1])
-#         @test notebook.cells[1].output_repr == nothing
-#         @test occursin("UndefVarError", notebook.cells[1].error_repr)
-#     end
+        run_reactive!(notebook, notebook.cells[16:20])
+        @test notebook.cells[16].error_repr == nothing
+        @test occursin("Multiple", notebook.cells[17].error_repr)
+        @test occursin("Multiple", notebook.cells[18].error_repr)
+        @test occursin("UndefVarError", notebook.cells[19].error_repr)
+        @test occursin("UndefVarError", notebook.cells[20].error_repr)
+
+        run_reactive!(notebook, notebook.cells[21:24])
+        @test notebook.cells[21].error_repr == nothing
+        @test notebook.cells[22].error_repr == nothing
+        @test notebook.cells[23].error_repr == nothing
+        @test notebook.cells[23].output_repr == "\"🐟\""
+        @test notebook.cells[24].output_repr == "24"
+
+        notebook.cells[22].code = "import .Wow: c"
+        run_reactive!(notebook, notebook.cells[22])
+        @test notebook.cells[22].error_repr == nothing
+        @test notebook.cells[23].output_repr == "\"🐟\""
+        @test notebook.cells[24].error_repr != nothing # the extension should no longer exist
+
+        # https://github.com/fonsp/Pluto.jl/issues/59
+        run_reactive!(notebook, notebook.cells[25])
+        @test notebook.cells[25].output_repr == "(25, :fish)"
+        run_reactive!(notebook, notebook.cells[26])
+        @test_broken notebook.cells[25].output_repr == "🐟"
+        run_reactive!(notebook, notebook.cells[25])
+        @test notebook.cells[25].output_repr == "🐟"
+
+        notebook.cells[26].code = ""
+        run_reactive!(notebook, notebook.cells[26])
+        run_reactive!(notebook, notebook.cells[25])
+        @test_broken notebook.cells[25].output_repr == "(25, :fish)"
+
+    end
+    WorkspaceManager.unmake_workspace(notebook)
 
     @testset "Functional programming" begin
         notebook = Notebook([
@@ -533,4 +581,4 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
     end
 end
 
-# WorkspaceManager.reset_default_workspace_method()
+WorkspaceManager.reset_default_distributed()

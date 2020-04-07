@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: samplenotebook, Notebook ,Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!
+import Pluto: samplenotebook, Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
 
 function notebook_inputs_equal(nbA, nbB)
     x = normpath(nbA.path) == normpath(nbB.path)
@@ -31,6 +31,12 @@ end
         Cell("w = v"),
         Cell("u = t"),
     ])
+    for nb in [notebookA, notebookB]
+        client = Client(Symbol("client", rand(UInt16)), nothing)
+        client.connected_notebook = nb
+        Pluto.connectedclients[client.id] = client
+    end
+
 
     @testset "I/O" begin
         @test let
@@ -74,6 +80,7 @@ end
         save_notebook(notebookB)
         notebookC = load_notebook(notebookB.path)
         @test !isfile(backup_path)
+        WorkspaceManager.unmake_workspace(notebookB)
     end
 
     # TODO: tests for things mentioned in https://github.com/fonsp/Pluto.jl/issues/9

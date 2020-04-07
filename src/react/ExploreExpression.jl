@@ -134,7 +134,6 @@ end
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
-    symstate = SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{Symbol}(), Dict{Symbol,SymbolsState}())
     if ex.head == :(=)
         # Does not create scope
 
@@ -182,7 +181,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         innersymstate = explore!(val, scopestate)
 
-        symstate = symstate ∪ innersymstate
+        symstate = innersymstate
 
         for assignee in global_assignees
             scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
@@ -206,7 +205,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
 
-        return mapfoldl(a -> explore!(a, innerscopestate), ∪, ex.args, init=symstate)
+        return mapfoldl(a -> explore!(a, innerscopestate), ∪, ex.args, init=SymbolsState())
     elseif ex.head == :struct
         # Creates local scope
 
@@ -231,6 +230,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # TODO: this is not the normal form of a `for`.
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :function
+        symstate = SymbolsState()
         # Creates local scope
 
         funcroot = if ex.args[1].head == :(::)
@@ -273,7 +273,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # end
 
             # so we insert the function's inner symbol state here, as if it was a `let` block.
-            symstate = symstate ∪ innersymstate
+            symstate = innersymstate
         end
 
         return symstate
@@ -296,6 +296,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return explore!(equiv_func, scopestate)
     elseif ex.head == :global
+        symstate = SymbolsState()
         # Does not create scope
 
         # We have one of:
@@ -314,13 +315,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             innerscopestate = deepcopy(scopestate)
             innerscopestate.inglobalscope = true
             innersymstate = explore!(globalisee, innerscopestate)
-            symstate = symstate ∪ innersymstate
+            symstate = innersymstate
         else
             @error "unknow global use"
         end
         
         return symstate
     elseif ex.head == :local
+        symstate = SymbolsState()
         # Does not create scope
 
         # Logic similar to :global
@@ -332,7 +334,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             innerscopestate = deepcopy(scopestate)
             innerscopestate.inglobalscope = false
             innersymstate = explore!(localisee, innerscopestate)
-            symstate = symstate ∪ innersymstate
+            symstate = innersymstate
         else
             @error "unknow local use"
         end
@@ -340,6 +342,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return symstate
     elseif ex.head == :tuple
         # Does not create scope
+        symstate = SymbolsState()
         
         # Is something like:
         # a,b,c = 1,2,3
@@ -361,7 +364,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             exposed = get_global_assignees(ex.args[1:indexoffirstassignment - 1], scopestate)
 
             scopestate.exposedglobals = union(scopestate.exposedglobals, exposed)
-            symstate.assignments = union(symstate.assignments, exposed)
+            symstate.assignments = exposed
         end
 
         return mapfoldl(a -> explore!(a, scopestate), ∪, recursers, init=symstate)
@@ -385,11 +388,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         parsed_markdown_str = Meta.parse("\"\"\"$(ex.args[3])\"\"\"", raise = false)
         innersymstate = explore!(parsed_markdown_str, scopestate)
-
-        symstate = innersymstate ∪ SymbolsState(Set{Symbol}([Symbol("@md_str")]), Set{Symbol}())
-        
-
+        push!(innersymstate.references, Symbol("@md_str"))
+        symstate = innersymstate
         return symstate
+    elseif ex.head == :module
+        # We completely ignore the contents
+
+        return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
     elseif ex.head == :call && ex.args[1] isa Symbol
         # Does not create scope
 
@@ -405,7 +410,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         # Does not create scope (probably)
 
-        return mapfoldl(a -> explore!(a, scopestate), ∪, ex.args, init=symstate)
+        return mapfoldl(a -> explore!(a, scopestate), ∪, ex.args, init=SymbolsState())
     end
 end
 
