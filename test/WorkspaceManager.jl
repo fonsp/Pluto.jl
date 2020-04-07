@@ -1,4 +1,6 @@
-@testset "Module manager" begin
+import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
+
+@testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin

@@ -20,11 +20,14 @@ responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, 
     putclientupdates!(initiator, msg)
 end
 
-function completion_fetcher(query, pos, mod)
-    :(let 
-        results, loc, found = completions($query, $pos, $mod)
-        (completion_text.(results), loc, found)
-    end)
+function completion_fetcher(query, pos, module_name)
+    quote
+        let
+            mod = Core.eval(Main, $(module_name |> QuoteNode))
+            results, loc, found = completions($query, $pos, mod)
+            (completion_text.(results), loc, found)
+        end
+    end
 end
 
 responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
@@ -33,17 +36,13 @@ responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
 
     workspace = WorkspaceManager.get_workspace(notebook)
 
-    results_text, loc, found = if workspace isa WorkspaceManager.ModuleWorkspace
-        eval(completion_fetcher(query, pos, workspace.workspace_module))
-    elseif workspace isa WorkspaceManager.ProcessWorkspace
-        if isready(workspace.dowork_token)
-            # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
-            # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-            Distributed.remotecall_eval(Main, workspace.workspace_pid, completion_fetcher(query, pos, Main))
-        else
-            # We can at least autocomplete general julia things:
-            eval(completion_fetcher(query, pos, Main))
-        end
+    results_text, loc, found = if isready(workspace.dowork_token)
+        # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
+        # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
+        Distributed.remotecall_eval(Main, workspace.workspace_pid, completion_fetcher(query, pos, workspace.module_name))
+    else
+        # We can at least autocomplete general julia things:
+        eval(completion_fetcher(query, pos, :Main))
     end
 
     start_utf8 = loc.start

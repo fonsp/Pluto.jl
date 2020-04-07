@@ -66,6 +66,8 @@ end
             ])
 
         @test_nowarn testee(:(struct a <: b; c; d::Int64; end), [:b, :Int64], [:a], [], [], false)
+        @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
+
     end
     @testset "Modifiers" begin
         @test testee(:(a = a + 1), [:a, :(+)], [:a], [:+], [])
@@ -165,6 +167,8 @@ end
         @test testee(:(using JSON, UUIDs), [], [:JSON, :UUIDs], [], [])
         @test testee(:(import Pluto), [], [:Pluto], [], [])
         @test testee(:(import Pluto: wow, wowie), [], [:wow, :wowie], [], [])
+        @test testee(:(import .Pluto: wow), [], [:wow], [], [])
+        @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [Symbol("@time")], [:a], [], [])

@@ -1,5 +1,8 @@
 # will be executed on workspace process
 
+module PlutoFormatter
+
+using Base
 using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
@@ -85,4 +88,6 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
     end
 
     format_output(val.ex, bt)
+end
+
 end
