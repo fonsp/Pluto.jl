@@ -18,7 +18,7 @@ end
 
 "Should future workspaces be created on a separate process (`true`) or on the same one (`false`)?
 
-Only workspaces on a separate process can be stopped during exectuion. Windows currently only supports `true` only partially: you can't stop cells on Windows."
+Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows."
 function set_default_distributed(val::Bool)
     global default_distributed = val
 end
