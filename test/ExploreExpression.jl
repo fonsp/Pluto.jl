@@ -95,6 +95,7 @@ end
         @test testee(:((a[1], b.r) = (1, 2)), [], [], [], [])
         @test testee(:((k = 2; 123)), [], [:k], [], [])
         @test testee(:((a = 1; b = a + 1)), [:+], [:a, :b], [:+], [])
+        @test testee(Meta.parse("a = 1; b = a + 1"), [:+], [:a, :b], [:+], [])
         @test testee(:((a = b = 1)), [], [:a, :b], [], [])
         @test testee(:(let k = 2; 123 end), [], [], [], [])
         @test testee(:(let k() = 2 end), [], [], [], [])

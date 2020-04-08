@@ -129,19 +129,43 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted),Tuple{Tuple{String,MIME},Bool,Bool}}
+function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted),Tuple{Tuple{String,MIME},Bool,Bool}}
+function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    # nasty fix:
+    if expr isa Expr && expr.head == :toplevel
+        expr.head = :block
+    end
+
+    timed_expr = if expr isa Expr && expr.head === :module
+        # Modules can only be defined at top level, so we need another eval. (i think)
+        # This adds extra runtime, so we don't time.
+        quote
+            (eval($(expr |> QuoteNode)), missing)
+        end
+    else
+        # For normal expressions:
+        # similar to @time source code
+        quote
+            local elapsed_ns = time_ns()
+            local result = ( $(expr) )
+            elapsed_ns = time_ns() - elapsed_ns
+            (result, elapsed_ns)
+        end
+    end
+    
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
-    wrapped = :(ans = try
-        # We want to eval `expr` in the global scope, try introduced a local scope.
-        Core.eval($(workspace.module_name), $(expr |> QuoteNode))
-    catch ex
-        bt = stacktrace(catch_backtrace())
-        CapturedException(ex, bt)
-    end)
+    wrapped = quote
+        ans, runtime = try
+            # We eval `expr` in the global scope of the workspace module:
+            Core.eval($(workspace.module_name), $(timed_expr |> QuoteNode))
+        catch ex
+            bt = stacktrace(catch_backtrace())
+            CapturedException(ex, bt), missing
+        end
+    end
 
     # run the code 🏃‍♀️
     # we use [pid] instead of pid to prevent fetching output
@@ -170,14 +194,9 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    fetcher = :((output_formatted = PlutoFormatter.format_output(ans), errored = isa(ans, CapturedException), interrupted = false))
+    fetcher = :((output_formatted = PlutoFormatter.format_output(ans), errored = isa(ans, CapturedException), interrupted = false, runtime = runtime))
 
-    try
-        result = Distributed.remotecall_eval(Main, workspace.workspace_pid, fetcher)
-        return result
-    catch ex
-        rethrow(ex)
-    end
+    return Distributed.remotecall_eval(Main, workspace.workspace_pid, fetcher)
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -374,15 +393,21 @@ function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspa
                 end
             end
         end
+
+
     end
 
     Distributed.remotecall_eval(Main, [workspace.workspace_pid], deleter)
+
+    for expr in module_imports_to_move
+        Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(Core.eval($(new_workspace_name), $(expr |> QuoteNode))))
+    end
 end
 
 
 "Fake deleting variables by adding them to the workspace's blacklist."
 function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
-    delete_vars(get_workspace(notebook), to_delete)
+    delete_vars(get_workspace(notebook), to_delete, module_imports_to_move)
 end
 
 function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())

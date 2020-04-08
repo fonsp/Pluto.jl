@@ -280,6 +280,9 @@ WorkspaceManager.set_default_distributed(false)
         import Base: show
         show(io::IO, x::Tuple) = write(io, \"🐟\")
     end"),
+
+    Cell("using Dates"),
+    Cell("year(DateTime(28))")
 ])
     fakeclient.connected_notebook = notebook
 
@@ -388,7 +391,18 @@ WorkspaceManager.set_default_distributed(false)
         run_reactive!(notebook, notebook.cells[26])
         run_reactive!(notebook, notebook.cells[25])
         @test_broken notebook.cells[25].output_repr == "(25, :fish)"
+    end
 
+    @testset "Using external libraries" begin
+        run_reactive!(notebook, notebook.cells[27:28])
+        @test notebook.cells[27].error_repr == nothing
+        @test notebook.cells[28].output_repr == "28"
+        run_reactive!(notebook, notebook.cells[28])
+        @test notebook.cells[28].output_repr == "28"
+
+        notebook.cells[27].code = ""
+        run_reactive!(notebook, notebook.cells[27:28])
+        @test occursin("UndefVarError", notebook.cells[28].error_repr)
     end
     WorkspaceManager.unmake_workspace(notebook)
 

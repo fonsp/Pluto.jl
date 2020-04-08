@@ -28,18 +28,29 @@ function MultipleDefinitionsError(cell::Cell, all_definers)
 	MultipleDefinitionsError
 end
 
+struct MultipleExpressionsError <: ReactivityError
+end
+
+# Also update identically name variables in `editor.js`.
+hint1 = "Combine all definitions into a single reactive cell using a `begin ... end` block."
+hint2 = "Wrap all code in a `begin ... end` block."
 
 # TODO: handle case when cells are in cycle, but variables aren't
 function showerror(io::IO, cre::CyclicReferenceError)
-	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")).")
+	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")).\n$hint1")
 end
 
 function showerror(io::IO, mde::MultipleDefinitionsError)
-	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\nCombine all definitions into a single reactive cell using a `begin` ... `end` block.") # TODO: hint about mutable globals
+	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\n$hint1") # TODO: hint about mutable globals
+end
+
+function showerror(io::IO, mee::MultipleExpressionsError)
+	print(io, "Multiple expressions in one cell.\n$hint2")
 end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_fetch_in_workspace` - this function is for Reactivity errors."
 function relay_reactivity_error!(cell::Cell, error::Exception)
 	cell.output_repr = nothing
+	cell.runtime = missing
 	cell.error_repr, cell.repr_mime = PlutoFormatter.format_output(error)
 end

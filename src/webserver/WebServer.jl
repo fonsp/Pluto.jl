@@ -252,7 +252,7 @@ function run(port = 1234, launchbrowser = false)
         end
     catch e
         if isa(e, InterruptException)
-            println("\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+            println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
             close(serversocket)
             for (uuid, ws) in WorkspaceManager.workspaces
                 WorkspaceManager.unmake_workspace(ws)

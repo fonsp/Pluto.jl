@@ -41,8 +41,8 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
 	to_delete_vars = union(to_delete_vars, (errable.symstate.assignments for errable in new_errable)...)
 	to_delete_funcs = union(to_delete_funcs, (Set(keys(errable.symstate.funcdefs)) for errable in new_errable)...)
 	
-	workspace = WorkspaceManager.get_workspace(notebook)
-	WorkspaceManager.delete_vars(workspace, to_delete_vars)
+	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
+	WorkspaceManager.delete_vars(notebook, to_delete_vars, to_reimport)
 
 	local any_interrupted = false
 	for cell in to_run
@@ -78,9 +78,8 @@ run_reactive_async!(notebook::Notebook, cell::Cell) = run_reactive_async!(notebo
 
 "Run a single cell non-reactively, return whether the run was Interrupted."
 function run_single!(notebook::Notebook, cell::Cell)::Bool
-	starttime = time_ns()
 	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
-	cell.runtime = time_ns() - starttime
+	cell.runtime = run.runtime
 
 	if run.errored
 		cell.output_repr = nothing
