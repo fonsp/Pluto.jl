@@ -597,55 +597,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* ERROR HINTS */
 
-    const hint1 = "Combine all definitions into a single reactive cell using a `begin ... end` block."
-    const hint2 = "Wrap all code in a `begin ... end` block."
-
-    const hint1_interactive = "<a href=\"#\" onclick=\"errorHint1(event)\">" + hint1 + "</a>"
-    const hint2_interactive = "<a href=\"#\" onclick=\"errorHint2(event)\">" + hint2 + "</a>"
-
-    function getOthers(e){
-        const cellNode = e.target.parentElement.parentElement.parentElement.parentElement
-        const myError = e.target.parentElement.innerHTML
-        var others = []
-        for (var uuid in window.localCells) {
-            const c = window.localCells[uuid]
-            if(c.classList.contains("error") && c.querySelector("celloutput>pre>code").innerHTML == myError) {
-                others.push(uuid)
-            }
-        }
-        return others
-    }
-    window.errorHint1 = (e) => {
-        combineCells(getOthers(e))
-    }
+    const errorRewrites = [
+        {
+            from: "syntax: extra token after end of expression",
+            to: "Multiple expressions in one cell.\n<a href=\"#\" onclick=\"errorHint(event)\">Wrap all code in a `begin ... end` block.</a>",
+        },
+    ]
     
-    window.errorHint2 = (e) => {
+    function rewrittenError(old_raw) {
+        var new_raw = old_raw;
+        errorRewrites.forEach(rw => {
+            new_raw = new_raw.replace(rw.from, rw.to)
+        })
+        return new_raw
+    }
+
+    window.errorHint = (e) => {
         const cellNode = e.target.parentElement.parentElement.parentElement.parentElement
         wrapInBlock(window.codeMirrors[cellNode.id], "begin")
         requestChangeRemoteCell(cellNode.id)
-    }
-
-    function rewrittenError(old_raw) {
-        return old_raw//.replace(hint1, hint1_interactive)
-                      .replace(hint2, hint2_interactive)
-    }
-
-    function combineCells(uuids){
-        selectedCellNodes = uuids.map(u => localCells[u])
-        selectedCodeMirrors = uuids.map(u => codeMirrors[u])
-
-        client.sendreceive("addcell", {
-            index: indexOfLocalCell(selectedCellNodes[0]),
-        }).then(update => {
-            const combinedCode = selectedCodeMirrors.map(cm => cm.getValue()).join("\n\n")
-            createLocalCell(update.message.index, update.cellID, combinedCode)
-            wrapInBlock(codeMirrors[update.cellID], "begin")
-
-            requestChangeRemoteCell(update.cellID, true).then( u=> {
-                uuids.map(requestDeleteRemoteCell)
-            })
-
-        })
     }
 
     function wrapInBlock(cm, block="begin") {

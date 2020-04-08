@@ -28,9 +28,6 @@ function MultipleDefinitionsError(cell::Cell, all_definers)
 	MultipleDefinitionsError
 end
 
-struct MultipleExpressionsError <: ReactivityError
-end
-
 # Also update identically name variables in `editor.js`.
 hint1 = "Combine all definitions into a single reactive cell using a `begin ... end` block."
 hint2 = "Wrap all code in a `begin ... end` block."
@@ -42,10 +39,6 @@ end
 
 function showerror(io::IO, mde::MultipleDefinitionsError)
 	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\n$hint1") # TODO: hint about mutable globals
-end
-
-function showerror(io::IO, mee::MultipleExpressionsError)
-	print(io, "Multiple expressions in one cell.\n$hint2")
 end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_fetch_in_workspace` - this function is for Reactivity errors."

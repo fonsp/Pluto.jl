@@ -54,6 +54,11 @@ celloutput p:last-child {
     margin-block-end: 0px;
 }
 
+celloutput>pre>code>a {
+    color: inherit;
+    font-weight: 500;
+}
+
 
 /* HEADER */
 header {
