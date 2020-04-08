@@ -397,11 +397,11 @@ function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspa
 
     end
 
-    Distributed.remotecall_eval(Main, [workspace.workspace_pid], deleter)
-
     for expr in module_imports_to_move
-        Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(Core.eval($(new_workspace_name), $(expr |> QuoteNode))))
+        Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(try Core.eval($(new_workspace_name), $(expr |> QuoteNode)) catch; end))
     end
+
+    Distributed.remotecall_eval(Main, [workspace.workspace_pid], deleter)
 end
 
 

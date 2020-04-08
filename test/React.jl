@@ -359,6 +359,12 @@ WorkspaceManager.set_default_distributed(false)
         @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output_repr == "15"
 
+        
+        run_reactive!(notebook, notebook.cells[13:15])
+        @test notebook.cells[13].error_repr == nothing
+        @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
+        @test notebook.cells[15].output_repr == "15"
+
         run_reactive!(notebook, notebook.cells[16:20])
         @test notebook.cells[16].error_repr == nothing
         @test occursin("Multiple", notebook.cells[17].error_repr)
