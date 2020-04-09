@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mode: "julia",
             lineWrapping: true,
             lineNumberFormatter: function (i) {
-                return "⋅"
+                return "⋅"+i
             },
             // theme: "paraiso-light",
             viewportMargin: Infinity,
@@ -205,8 +205,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 cellNode.querySelector("celloutput").querySelector("code").innerText = output
             }
         }
-
-        cellNode.classList.remove("output-notinsync")
+        if(output == null && errormessage == null){
+            cellNode.classList.add("output-notinsync")
+        } else {
+            cellNode.classList.remove("output-notinsync")
+        }
 
         newHeight = cellNode.querySelector("celloutput").scrollHeight
 
@@ -265,7 +268,6 @@ document.addEventListener("DOMContentLoaded", () => {
         moveLocalCell(newCellNode, newIndex)
 
         editor = createCodeMirrorInsideCell(newCellNode, code)
-        editor.focus()
 
         // EVENT LISTENERS FOR CLICKY THINGS
 
@@ -396,7 +398,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateLocalCellInput(byMe, update.cellID, message.code)
                 break
             case "cell_added":
-                createLocalCell(message.index, update.cellID, "")
+                createLocalCell(message.index, update.cellID, "").focus()
                 break
             case "cell_deleted":
                 // TODO: catch exception

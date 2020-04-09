@@ -437,6 +437,22 @@ cell.codediffers .cm-s-default .CodeMirror-gutters {
     color: #8d8687;
 }
 
+.cm-s-default .CodeMirror-linenumber {
+    font-size: 0px;
+}
+
+.cm-s-default .CodeMirror-linenumber::first-letter {
+    font-size: .75rem;
+}
+
+.cm-s-default .CodeMirror-linenumber:hover {
+    font-size: .75rem;
+}
+
+.cm-s-default .CodeMirror-linenumber:hover::first-letter {
+    font-size: 0px;
+}
+
 .cm-s-default .CodeMirror-cursor {
     border-left: 1px solid #776e71;
 }

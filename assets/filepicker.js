@@ -5,7 +5,7 @@ function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
         lineWrapping: false,
         theme: "plutoheader",
         viewportMargin: Infinity,
-        placeholder: "Enter new path...",
+        placeholder: "Enter path...",
         indentWithTabs: true,
         indentUnit: 4,
         hintOptions: {
