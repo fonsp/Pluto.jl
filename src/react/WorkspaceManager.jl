@@ -55,7 +55,9 @@ function make_workspace(notebook::Notebook, new_process = default_distributed)::
         # for some reason the PlutoFormatter might not be available in Main unless we include the file
         # (even though this is the main process)
         if !Distributed.remotecall_eval(Main, pid, :(isdefined(Main, :PlutoFormatter) && PlutoFormatter isa Module))
-            Distributed.remotecall_eval(Main, [pid], :(include($(joinpath(PKG_ROOT_DIR, "src", "notebookserver", "FormatOutput.jl")))))
+            for expr in process_preamble
+                Distributed.remotecall_eval(Main, [pid], expr)
+            end
         end
         pid
     end

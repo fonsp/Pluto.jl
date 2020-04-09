@@ -1,6 +1,10 @@
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Distributed
 
+function format_path_completion(completion)
+    replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
+end
+
 responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
     path = body["query"]
     pos = lastindex(path)
@@ -34,7 +38,7 @@ responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => map(r -> replace(completion_text(r), "\\ " => " "), results)
+            :results => format_path_completion.(results)
             ), notebook, nothing, initiator)
 
     putclientupdates!(initiator, msg)

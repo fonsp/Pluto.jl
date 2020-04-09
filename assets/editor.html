@@ -187,8 +187,8 @@
         filepicker button {
             height: calc(1rem + 4px + 4px + 4px);
             cursor: pointer;
-            border-top-left-radius: 0;
-            border-bottom-left-radius: 0;
+            border-top-left-radius: 0 !important;
+            border-bottom-left-radius: 0 !important;
         }
 
         #logocontainer:after { 
@@ -243,14 +243,17 @@
             -webkit-backdrop-filter: blur(10px);
         }
 
+        #logocontainer:after {
+            font-family: 'Roboto Mono';
+            padding: 10px;
+        }
+
         body.disconnected>header>#logocontainer:after {
             content: "DISCONNECTED";
-            font-family: 'Roboto Mono';
         }
 
         body.loading>header>#logocontainer:after {
             content: "Loading...";
-            font-family: 'Roboto Mono';
         }
 
         /* MAIN */
