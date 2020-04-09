@@ -14,6 +14,13 @@
     <meta name="description" content="Pluto.jl notebook" />
     
     <script src="/assets/client.js"></script>
+    <script src="/assets/filepicker.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.css"></script>
+
     <style>
         @import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext');
         @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
@@ -94,7 +101,7 @@
             color: hsl(0, 0%, 30%);
         }
 
-        input {
+        /* input {
             width: 70%;
             font-family: inherit;
             background: #ffffff;
@@ -102,11 +109,78 @@
             border-radius: 6px;
             padding: 3px;
             margin-block-start: .7em;
+        } */
+        filepicker {
+            display: flex;
+            flex-direction: row;
+            margin-top: .3rem;
+        }
+        filepicker .CodeMirror {
+            height: calc(1rem + 4px + 4px);
+            display: inline-block;
+            width: 100%;
+            opacity: .6;
+            font-style: normal;
+            font-weight: 500;
+            font-family: 'Roboto Mono', monospace !important;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            background: none;
+            border: 2px solid #818181;
+            border-radius: 3px;
+
+            border-right: none;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        filepicker .CodeMirror-scroll {
+            overflow: hidden !important;
+        }
+
+        
+        filepicker button{
+            background: #6c8489;
+            border-radius: 3px;
+            border: 2px solid #6c8489;
+            
+            color: white;
+            /* border: none; */
+            font-family: "Roboto Mono";
+            font-weight: 600;
+            font-size: .75rem;
+        }
+        filepicker button {
+            height: calc(1rem + 4px + 4px + 4px);
+            cursor: pointer;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
         }
 
         button {
             width: 20%;
             font-family: inherit;
+        }
+
+        li.file.new.CodeMirror-hint:before {
+            content: "👉 ";
+        }
+
+        li.file.CodeMirror-hint:before {
+            content: "📄 ";
+        }
+
+        li.dir.CodeMirror-hint:before {
+            content: "📁 ";
+        }
+
+        ul.CodeMirror-hints {
+            padding: 0;
+        }
+
+        ul.CodeMirror-hints {
+            font-family: 'Roboto Mono', monospace !important;
+            font-size: .75em;
         }
 
         body.loading .running,
@@ -125,10 +199,15 @@
                 <li>Open a <a href="/sample">sample notebook</a></li>
                 <li>Create a <a href="/new">new notebook</a></li>
                 <li>Open from file:
-                    <form action="/open">
+                    <!-- <form action="/open">
                         <input type="text" placeholder="/path/to/file.jl" name="path">
                         <button type="submit">Open</button>
-                    </form>
+                    </form> -->
+                    
+                <filepicker>
+
+                    <button>Open</button>
+                </filepicker>
                 </li>
             </ul>
             <br class="running" />

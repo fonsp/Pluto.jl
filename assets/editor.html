@@ -14,6 +14,7 @@
     <meta name="description" content="Pluto.jl notebook" />
 
     <script src="/assets/client.js"></script>
+    <script src="/assets/filepicker.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
         @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
@@ -95,7 +96,7 @@
         header {
             position: absolute;
             top: 0px;
-            z-index: 20;
+            z-index: 5;
             background: hsla(0, 100%, 100%, 80%);
             width: 100%;
             min-height: 60px;
@@ -114,9 +115,22 @@
         #logocontainer {
             margin: 0 auto;
             max-width: 960px;
-            padding-top: 10px;
             padding-left: 20px;
             padding-bottom: 0px;
+            flex-wrap: wrap;
+            min-height: 60px;
+            display: flex;
+            flex-direction: row;
+        }
+
+        #logocontainer>* {
+            flex: 0 0 auto;
+            align-self: center;
+            margin: 10px 0px;
+        }
+
+        #logocontainer>a {
+            margin-right: 2rem;
         }
 
         #logocontainer img {
@@ -135,20 +149,92 @@
         #logocontainer h2 {
             display: inline;
             border-bottom: none;
-            font-family: 'Roboto Mono', monospace !important;
-            font-size: 0.8rem;
-            letter-spacing: 1px;
         }
 
         #logocontainer h1>span {
             font-weight: 400;
         }
 
-        #printernametitle {
+        filepicker {
+            display: flex;
+            flex-direction: row;
+        }
+
+        filepicker .CodeMirror {
+            height: calc(1rem + 4px + 4px);
+            max-width: calc(100vw - 60px - 20px - 20px);
+            display: inline-block;
+            min-width: 10rem;
             opacity: .6;
             font-style: normal;
             font-weight: 500;
+            font-family: 'Roboto Mono', monospace !important;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+            background: none;
+            border: 2px solid #818181;
+            border-radius: 3px;
+
+            border-right: none;
+            border-top-right-radius: 0;
+            border-bottom-right-radius: 0;
         }
+
+        filepicker .CodeMirror-scroll {
+            overflow: hidden !important;
+        }
+
+        filepicker button {
+            height: calc(1rem + 4px + 4px + 4px);
+            cursor: pointer;
+            border-top-left-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        #logocontainer:after { 
+            margin-left: auto;
+            align-self: center;
+        }
+
+        li.file.new.CodeMirror-hint:before {
+            content: "👉 ";
+        }
+
+        li.file.CodeMirror-hint:before {
+            content: "📄 ";
+        }
+
+        li.dir.CodeMirror-hint:before {
+            content: "📁 ";
+        }
+
+        @media screen and (any-pointer: fine) {
+            #logocontainer .CodeMirror {
+                border: 2px solid transparent;
+                border-right: none;
+                transition: border .15s ease-in-out;
+            }
+
+            #logocontainer button {
+                opacity: 0.0;
+                transition: opacity .15s ease-in-out;
+            }
+
+            header:hover #logocontainer .CodeMirror,
+            header:focus-within #logocontainer .CodeMirror {
+                border: 2px solid #818181;
+                border-right: none;
+            }
+
+            header:hover #logocontainer button,
+            header:focus-within #logocontainer button {
+                opacity: 1.0;
+            }
+
+            
+        }
+
+        
 
         body.disconnected>header {
             background-color: rgba(255, 169, 114, 0.56);
@@ -160,9 +246,11 @@
         body.disconnected>header>#logocontainer:after {
             content: "DISCONNECTED";
             font-family: 'Roboto Mono';
-            text-align: right;
-            float: right;
-            padding: 12px;
+        }
+
+        body.loading>header>#logocontainer:after {
+            content: "Loading...";
+            font-family: 'Roboto Mono';
         }
 
         /* MAIN */
@@ -196,17 +284,17 @@
             color: darkred;
         }
 
-        .CodeMirror {
+        cellinput .CodeMirror {
             height: auto !important;
             width: 100%;
             z-index: 2;
         }
 
-        .CodeMirror-scroll {
+        cellinput .CodeMirror-scroll {
             min-height: 0px;
         }
 
-        .CodeMirror-empty {
+        cellinput .CodeMirror-empty {
             color: rgba(0, 0, 0, .15);
         }
 
@@ -349,14 +437,17 @@
             padding: 3px;
         }
 
+        header button,
         footer button{
             background: #896c6c;
             border-radius: 3px;
+            border: 2px solid #896c6c;
+
             color: white;
-            border: none;
+            /* border: none; */
             font-family: "Roboto Mono";
             font-weight: 600;
-            font-size: 1rem;
+            font-size: .75rem;
         }
 
         #info {
@@ -397,17 +488,14 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl/assets/light.min.css" /> -->
-    <link rel="stylesheet" href="/assets/light.css" />
-
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.js"></script>
-    <!-- <script src="/assets/show-hint.js"></script> -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.css"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/anyword-hint.min.js"></script>
-
+    
+    <link rel="stylesheet" href="/assets/light.css" />
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
@@ -418,8 +506,10 @@
         <div id="logocontainer">
             <a href="/"><h1>
                 <img src="/assets/logo.svg" alt="Pluto.jl" /></h1></a>
-            <h2>
-                <span id="printernametitle">Loading...</span></h2>
+                <filepicker>
+
+                    <button>Rename</button>
+                </filepicker>
         </div>
     </header>
 

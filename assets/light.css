@@ -366,38 +366,6 @@ cell.error>cellinput>.CodeMirror {
     }
 }
 
-confirmationdialog {
-    position: absolute;
-    background: white;
-    /* border: 2px solid #4a08083b; */
-    border-radius: 6px;
-    margin-left: -180px;
-    margin-top: -18px;
-    padding: 6px;
-    font-size: .7em;
-    z-index: 10;
-}
-
-confirmationdialog>button {
-    position: relative;
-    color: block;
-    opacity: 100%;
-    font-size: inherit;
-    color: black;
-}
-
-confirmationdialog span {
-    font-family: 'Roboto Mono', monospace;
-}
-
-confirmationdialog>button#yes>span::after {
-    color: darkred;
-}
-
-confirmationdialog>button#no>span::after {
-    /* text-decoration: underline; */
-}
-
 @keyframes 🌈 {
     from {
         background-color: hsl(0, 100%, 98%);

@@ -200,18 +200,18 @@ responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initi
     newpath = body["path"]
     result = try
         if isfile(newpath)
-            (success=false,message="File already exists")
+            (success=false,reason="File exists already - you need to delete the old file manually.")
         else
             move_notebook(notebook, newpath)
-            putplutoupdates!(clientupdate_notebook_list(notebooks, initiator=initiator))
-            (success=true, message="")
+            putplutoupdates!(clientupdate_notebook_list(notebooks))
+            (success=true, reason="")
         end
     catch ex
         showerror(stderr, stacktrace(backtrace()))
-        (success=false, message=sprint(showerror, ex))
+        (success=false, reason=sprint(showerror, ex))
     end
 
-    update = UpdateMessage(:move_notebook_result, result)
+    update = UpdateMessage(:move_notebook_result, result, notebook, nothing, initiator)
     putclientupdates!(initiator, update)
 end
 

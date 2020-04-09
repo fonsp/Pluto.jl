@@ -2,14 +2,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* REMOTE NOTEBOOK LIST */
 
-    notebookID = (new URL(document.location.href)).search.split("uuid=")[1]
-    notebookName = notebookID
+    const notebookID = (new URL(document.location.href)).search.split("uuid=")[1]
+    var notebookPath = "unknown"
 
-    function updateLocalNotebookName(newName) {
-        notebookName = newName
-        document.querySelector("#printernametitle").innerText = newName;
+    function updateLocalNotebookPath(newPath) {
+        notebookPath = newPath
+        window.filePickerCodeMirror.setValue(newPath)
 
-        fileName = newName.split("/").pop().split("\\").pop()
+        fileName = newPath.split("/").pop().split("\\").pop()
         cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
         document.title = cuteName
     }
@@ -17,13 +17,12 @@ document.addEventListener("DOMContentLoaded", () => {
     window.remoteNotebookList = null
 
     function updateRemoteNotebooks(list) {
-        remoteNotebookList = list
+        window.remoteNotebookList = list
         list.forEach(nb => {
             if (nb.uuid == notebookID) {
-                updateLocalNotebookName(nb.path)
+                updateLocalNotebookPath(nb.path)
             }
         })
-        console.log(list)
     }
 
     /* DOM THINGIES */
@@ -35,6 +34,53 @@ document.addEventListener("DOMContentLoaded", () => {
     cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
     notebookNode = document.querySelector("notebook")
     window.notebookNode = notebookNode
+
+    /* FILE PICKER */
+
+    const submitFileButton = document.querySelector("header>#logocontainer>filepicker>button")
+    submitFileButton.addEventListener("click", submitFileChange)
+
+    function submitFileChange() {
+        const oldPath = notebookPath
+        const newPath = window.filePickerCodeMirror.getValue()
+        if (oldPath == newPath) {
+            return
+        }
+        if (confirm("Are you sure? Will move from\n\n" + oldPath + "\n\nto\n\n" + newPath)) {
+            document.body.classList.add("loading")
+            client.sendreceive("movenotebookfile", {
+                path: newPath,
+            }).then(u => {
+                updateLocalNotebookPath(notebookPath)
+                document.body.classList.remove("loading")
+
+                if (u.message.success) {
+                    document.activeElement.blur()
+                } else {
+                    updateLocalNotebookPath(oldPath)
+                    alert("Failed to move file:\n\n" + u.message.reason)
+                }
+            })
+        } else {
+            updateLocalNotebookPath(oldPath)
+        }
+    }
+
+    window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
+        document.querySelector("header>#logocontainer>filepicker").insertBefore(
+            elt,
+            submitFileButton)
+    }, submitFileChange, () => updateLocalNotebookPath(notebookPath), true)
+
+    window.filePickerCodeMirror.on("blur", (cm, e) => {
+        // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
+        // debounce:
+        setTimeout(() => {
+            if (!editor.hasFocus()) {
+                reset()
+            }
+        }, 250)
+    })
 
     /* RESPONSE FUNCTIONS TO REMOTE CHANGES */
 
@@ -515,53 +561,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    /* UNICODE */
-
-    const te = new TextEncoder()
-    const td = new TextDecoder()
-
-    function lengthUtf8(str, startindex_utf16 = 0, endindex_utf16 = undefined) {
-        return te.encode(str.substring(startindex_utf16, endindex_utf16)).length
-    }
-
-    function utf8index_to_ut16index(str, index_utf8) {
-        return td.decode(te.encode(str).slice(0, index_utf8)).length
-    }
-
-    function spliceUtf8(original, startindex_utf8, endindex_utf8, replacement) {
-        // JS uses UTF-16 for internal representation of strings, e.g.
-        // "e".length == 1, "é".length == 1, "🐶".length == 2
-
-        // Julia uses UTF-8, e.g.
-        // ncodeunits("e") == 1, ncodeunits("é") == 2, ncodeunits("🐶") == 4
-        //     length("e") == 1,     length("é") == 1,     length("🐶") == 1
-
-        // Completion results from julia will give the 'splice indices': "where should the completed keyword be inserted?"
-        // we need to splice into javascript string, so we convert to a UTF-8 byte array, then splice, then back to the string.
-
-        const original_enc = te.encode(original)
-        const replacement_enc = te.encode(replacement)
-
-        const result_enc = new Uint8Array(original_enc.length + replacement_enc.length - (endindex_utf8 - startindex_utf8))
-
-        result_enc.set(
-            original_enc.slice(0, startindex_utf8),
-            0,
-        )
-        result_enc.set(
-            replacement_enc,
-            startindex_utf8,
-        )
-        result_enc.set(
-            original_enc.slice(endindex_utf8),
-            startindex_utf8 + replacement_enc.length
-        )
-
-        return td.decode(result_enc)
-    }
-
-    console.assert(spliceUtf8("e é 🐶 is a dog", 5, 9, "hannes ❤") == "e é hannes ❤ is a dog")
-
     /* AUTOCOMPLETE */
 
     const noAutocomplete = " \t\r\n([])+-=/,:;'\"!#$%^&*~`<>|"
@@ -570,12 +569,14 @@ document.addEventListener("DOMContentLoaded", () => {
         const cursor = cm.getCursor()
         const oldLine = cm.getLine(cursor.line)
 
-        if(cm.somethingSelected()){
+        if (cm.somethingSelected()) {
             cm.indentSelection()
-        } else if (cursor.ch > 0 && noAutocomplete.indexOf(oldLine[cursor.ch - 1]) == -1) {
-            cm.showHint()
         } else {
-            cm.replaceSelection('\t')
+            if (cursor.ch > 0 && noAutocomplete.indexOf(oldLine[cursor.ch - 1]) == -1) {
+                cm.showHint()
+            } else {
+                cm.replaceSelection('\t')
+            }
         }
     }
 

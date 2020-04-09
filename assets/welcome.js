@@ -24,6 +24,24 @@ document.addEventListener("DOMContentLoaded", () => {
         console.log(list)
     }
 
+    /* FILE PICKER */
+
+    const openFileButton = document.querySelector("filepicker>button")
+    openFileButton.addEventListener("click", openFile)
+
+    function openFile(){
+        const path = window.filePickerCodeMirror.getValue()
+        window.location.href = "/open?path=" + encodeURIComponent(path)
+    }
+
+    window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
+        document.querySelector("filepicker").insertBefore(
+            elt,
+            openFileButton)
+        }, openFile, () => updateLocalNotebookPath(notebookPath), false)
+
+    
+
     /* SERVER CONNECTION */
 
     function onUpdate(update, byMe) {

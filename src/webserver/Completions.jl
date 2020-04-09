@@ -2,19 +2,39 @@ import REPL.REPLCompletions: completions, complete_path, completion_text
 import Distributed
 
 responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    query = body["query"]
-    pos = lastindex(query)
+    path = body["query"]
+    pos = lastindex(path)
 
-    results, loc, found = complete_path(query, pos)
+    results, loc, found = complete_path(path, pos)
 
-    start_utf8 = loc.start
-    stop_utf8 = nextind(query, loc.stop) # advance one unicode char, js uses exclusive upper bound
+    start_utf8 = let
+        # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
+        # https://github.com/JuliaLang/julia/blob/c54f80c785a3107ae411267427bbca05f5362b0b/stdlib/REPL/src/REPLCompletions.jl#L270
+
+        # we don't use prefixes, so we need to reverse this.
+
+        # this is from the Julia source code:
+        # https://github.com/JuliaLang/julia/blob/c54f80c785a3107ae411267427bbca05f5362b0b/stdlib/REPL/src/REPLCompletions.jl#L195-L204
+        if Base.Sys.isunix() && occursin(r"^~(?:/|$)", path)
+            # if the path is just "~", don't consider the expanded username as a prefix
+            if path == "~"
+                dir, prefix = homedir(), ""
+            else
+                dir, prefix = splitdir(homedir() * path[2:end])
+            end
+        else
+            dir, prefix = splitdir(path)
+        end
+
+        loc.start + count(isequal(' '), prefix)
+    end
+    stop_utf8 = nextind(path, pos) # advance one unicode char, js uses exclusive upper bound
 
     msg = UpdateMessage(:completion_result, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => completion_text.(results)
+            :results => map(r -> replace(completion_text(r), "\\ " => " "), results)
             ), notebook, nothing, initiator)
 
     putclientupdates!(initiator, msg)
