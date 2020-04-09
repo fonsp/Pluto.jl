@@ -203,7 +203,7 @@ class PlutoConnection {
             return response.json()
         }).then((response) => {
             return response[0].tag_name
-        }).catch(e => null)
+        })
 
         const plutoPromise = this.sendreceive("getversion", {}).then(u => {
             return u.message.pluto
@@ -218,4 +218,14 @@ class PlutoConnection {
     
     // TODO: check cell order every now and then?
     // or do ___maths___ to make sure that it never gets messed up
+}
+
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', { scope: "/" }).then(function (registration) {
+        // Registration was successful
+        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }, function (err) {
+        // registration failed :(
+        console.log('ServiceWorker registration failed: ', err);
+    });
 }

@@ -96,6 +96,8 @@ HTTP.@register(PLUTOROUTER, "GET", "/", serveonefile(joinpath(PKG_ROOT_DIR, "ass
 HTTP.@register(PLUTOROUTER, "GET", "/index", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
 HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
 
+HTTP.@register(PLUTOROUTER, "GET", "/sw.js", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "sw.js")))
+
 HTTP.@register(PLUTOROUTER, "GET", "/edit", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
 HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_samplefile)
 HTTP.@register(PLUTOROUTER, "GET", "/new", serve_newfile)
