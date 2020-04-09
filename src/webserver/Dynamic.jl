@@ -83,7 +83,7 @@ function make_paths_distinct!(notebookpaths::Set{NotebookPath})
 end
 
 
-function handle_changecell(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)::Task
+function change_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -97,8 +97,6 @@ function handle_changecell(notebook, cell, newcode; initiator::Union{Initiator, 
     save_notebook(notebook)
     
     putnotebookupdates!(notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
-
-    run_reactive_async!(notebook, cell)
 end
 
 
@@ -129,7 +127,8 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
-    runtask = handle_changecell(notebook, to_delete, "", initiator=initiator)
+    change_cellinput!(notebook, to_delete, "", initiator=initiator)
+    runtask = run_reactive_async!(notebook, cell)
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
@@ -167,15 +166,24 @@ end
 responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     newcode = body["code"]
 
-    handle_changecell(notebook, cell, newcode, initiator=initiator)
+    change_cellinput!(notebook, cell, newcode, initiator=initiator)
+    run_reactive_async!(notebook, cell)
+end
+
+responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+    run_reactive_async!(notebook, cell)
 end
 
 responses[:runall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    to_update = run_reactive_async!(notebook, notebook.cells)
+    run_reactive_async!(notebook, notebook.cells)
 end
 
 responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     putclientupdates!(initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
+end
+
+responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+    change_cellinput!(notebook, cell, body["code"], initiator=initiator)
 end
 
 responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin

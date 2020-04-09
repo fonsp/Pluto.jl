@@ -1,5 +1,5 @@
 "Run given cells and all the cells that depend on them."
-function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})
+function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})::CellTopology
 	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
@@ -73,8 +73,8 @@ function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1})::Task
 	end
 end
 
-run_reactive!(notebook::Notebook, cell::Cell) = run_reactive!(notebook, [cell])
-run_reactive_async!(notebook::Notebook, cell::Cell) = run_reactive_async!(notebook, [cell])
+run_reactive!(notebook::Notebook, cell::Cell) = run_reactive!(notebook, [cell])::CellTopology
+run_reactive_async!(notebook::Notebook, cell::Cell) = run_reactive_async!(notebook, [cell])::Task
 
 "Run a single cell non-reactively, return whether the run was Interrupted."
 function run_single!(notebook::Notebook, cell::Cell)::Bool

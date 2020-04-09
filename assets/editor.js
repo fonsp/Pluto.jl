@@ -356,10 +356,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function requestRunAllRemoteCells() {
+        const promises = []
+
         for (var uuid in window.localCells) {
             window.localCells[uuid].classList.add("running")
+            promises.push(
+                client.sendreceive("setinput", {
+                    code: window.codeMirrors[uuid].getValue()
+                }, uuid).then(u => {
+                    updateLocalCellInput(true, u.cellID, u.message.code)
+                })
+            )
+
         }
-        client.send("runall", {})
+        Promise.all(promises).then(() => {
+            client.send("runall", {})
+        }).catch(console.error)
     }
 
     function requestInterruptRemote() {
@@ -643,5 +655,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 break
         }
     })
+
+    /* CHANGES THAT YOU MADE MIGHT NOT BE SAVED */
+
+    window.addEventListener('beforeunload', (event) => {
+        const firstUnsaved = document.querySelector("notebook>cell.codediffers")
+        if (firstUnsaved) {
+            window.codeMirrors[firstUnsaved.id].focus()
+            event.preventDefault();
+            event.returnValue = '';
+        }
+    });
 });
 
