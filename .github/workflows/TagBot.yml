@@ -9,7 +9,7 @@ name: TagBot
 # events but only for the master branch
 on:
   schedule:
-    - cron: 0 * * * *
+    - cron: '*/15 * * * *'
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
