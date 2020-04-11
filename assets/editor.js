@@ -662,7 +662,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         doc.classList.add("loading")
-        console.log("requesting " + query)
         client.sendreceive("docs", {query: query}).then(u => {
             if(u.message.status == "⌛"){
                 updateDocTimer = setTimeout(() => {

@@ -18,13 +18,13 @@ const JULIA_VERSION_STR = 'v' * string(VERSION)
 include("./react/ExploreExpression.jl")
 using .ExploreExpression
 
-include("./notebookserver/FormatOutput.jl")
 include("./notebookserver/Cell.jl")
 include("./notebookserver/Notebook.jl")
 include("./notebookserver/Client.jl")
 
-
+include("./runner/PlutoRunner.jl")
 include("./react/WorkspaceManager.jl")
+
 include("./react/Errors.jl")
 include("./react/React.jl")
 include("./react/Run.jl")
@@ -32,6 +32,6 @@ include("./react/Run.jl")
 include("./webserver/WebServer.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
-include("./webserver/Completions.jl")
+include("./webserver/REPLish.jl")
 
 end

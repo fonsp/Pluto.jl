@@ -45,16 +45,6 @@ responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, 
     putclientupdates!(initiator, msg)
 end
 
-function completion_fetcher(query, pos, module_name)
-    quote
-        let
-            mod = Core.eval(Main, $(module_name |> QuoteNode))
-            results, loc, found = completions($query, $pos, mod)
-            (completion_text.(results), loc, found)
-        end
-    end
-end
-
 responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     query = body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
@@ -64,10 +54,10 @@ responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
     results_text, loc, found = if isready(workspace.dowork_token)
         # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
         # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-        Distributed.remotecall_eval(Main, workspace.workspace_pid, completion_fetcher(query, pos, workspace.module_name))
+        Distributed.remotecall_eval(Main, workspace.workspace_pid, :(PlutoRunner.completion_fetcher($query, $pos)))
     else
         # We can at least autocomplete general julia things:
-        eval(completion_fetcher(query, pos, :Main))
+        PlutoRunner.completion_fetcher(query, pos, Main)
     end
 
     start_utf8 = loc.start
@@ -83,37 +73,21 @@ responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
     putclientupdates!(initiator, msg)
 end
 
-function doc_fetcher(query, module_name)
-    quote
-        let
-            mod = Core.eval(Main, $(module_name |> QuoteNode))
-            sym = $(query |> QuoteNode)
-            if isdefined(mod, sym)
-                (Docs.doc(Core.eval(mod, sym)), :👍)
-            else
-                (nothing, :👎)
-            end
-        end
-    end
-end
-
 responses[:docs] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    query = Symbol(body["query"])
+    query = body["query"]
 
-
-    doc, status = if haskey(Docs.keywords, query)
-        (Docs.formatdoc(Docs.keywords[query]), :👍)
+    doc_html, status = if haskey(Docs.keywords, query |> Symbol)
+        doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
+        (repr(MIME("text/html"), doc_md), :👍)
     else
         workspace = WorkspaceManager.get_workspace(notebook)
 
         if isready(workspace.dowork_token)
-            Distributed.remotecall_eval(Main, workspace.workspace_pid, doc_fetcher(query, workspace.module_name))
+            Distributed.remotecall_eval(Main, workspace.workspace_pid, :(PlutoRunner.doc_fetcher($query)))
         else
             (nothing, :⌛)
         end
     end
-
-    doc_html = doc === nothing ? nothing : repr(MIME("text/html"), doc)
 
     msg = UpdateMessage(:doc_result, 
         Dict(

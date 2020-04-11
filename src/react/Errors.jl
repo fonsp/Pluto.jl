@@ -45,5 +45,5 @@ end
 function relay_reactivity_error!(cell::Cell, error::Exception)
 	cell.output_repr = nothing
 	cell.runtime = missing
-	cell.error_repr, cell.repr_mime = PlutoFormatter.format_output(error)
+	cell.error_repr, cell.repr_mime = PlutoRunner.format_output(error)
 end

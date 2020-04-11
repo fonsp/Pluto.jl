@@ -1,7 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Notebook, PKG_ROOT_DIR
-import ..PlutoFormatter
+import ..PlutoRunner
 import Distributed
 
 mutable struct Workspace
@@ -38,8 +38,7 @@ workspace_preamble = [
 
 process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(joinpath(PKG_ROOT_DIR, "src", "notebookserver", "FormatOutput.jl")))),
-    :(import REPL.REPLCompletions: completions, complete_path, completion_text),
+    :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
 ]
 
 moduleworkspace_count = 0
@@ -52,16 +51,15 @@ function make_workspace(notebook::Notebook, new_process = default_distributed)::
         create_workspaceprocess()
     else
         pid = Distributed.myid()
-        # for some reason the PlutoFormatter might not be available in Main unless we include the file
+        # for some reason the PlutoRunner might not be available in Main unless we include the file
         # (even though this is the main process)
-        if !Distributed.remotecall_eval(Main, pid, :(isdefined(Main, :PlutoFormatter) && PlutoFormatter isa Module))
+        if !Distributed.remotecall_eval(Main, pid, :(isdefined(Main, :PlutoRunner) && PlutoRunner isa Module))
             for expr in process_preamble
                 Distributed.remotecall_eval(Main, [pid], expr)
             end
         end
         pid
     end
-
     
     module_name = create_emptyworkspacemodule(pid)
     
@@ -78,6 +76,7 @@ function create_emptyworkspacemodule(pid::Integer)
     workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
     
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
+    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
     
     new_workspace_name
 end
@@ -105,15 +104,7 @@ unmake_workspace(notebook::Notebook) = unmake_workspace(get_workspace(notebook))
 
 function unmake_workspace(workspace::Workspace)
     token = take!(workspace.dowork_token)
-    # TODO: test
 
-    # TODO
-    # for s in names(workspace.workspace_module)
-    #     try
-    #         Core.eval(workspace.workspace_module, :($s = nothing))
-    #     catch end
-    # end
-    
     # TODO: verify that nothing is running
     if workspace.workspace_pid != Distributed.myid()
         Distributed.rmprocs([workspace.workspace_pid])
@@ -187,18 +178,16 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
             @assert ex.pid == workspace.workspace_pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoFormatter.format_output(InterruptException()), errored = true, interrupted = true)
+            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoFormatter.format_output(exs), errored = true, interrupted = true)
+            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true)
         end
     end
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    fetcher = :((output_formatted = PlutoFormatter.format_output(ans), errored = isa(ans, CapturedException), interrupted = false, runtime = runtime))
-
-    return Distributed.remotecall_eval(Main, workspace.workspace_pid, fetcher)
+    return Distributed.remotecall_eval(Main, workspace.workspace_pid, :(PlutoRunner.fetch_formatted_ans()))
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -293,121 +282,7 @@ function kill_workspace(workspace::Workspace)
     true
 end
 
-
-# "Delete all methods of the functions from the workspace."
-# function delete_funcs(notebook::Notebook, to_delete::Set{Symbol})
-#     delete_funcs(get_workspace(notebook), to_delete)
-# end
-
-# function delete_funcs(workspace::ModuleWorkspace, to_delete::Set{Symbol})
-#     for funcname in to_delete
-#         try
-#             func = Core.eval(workspace.workspace_module, funcname)
-#             for m in methods(func).ms
-#                 Base.delete_method(m)
-#             end
-#         catch ex
-#             if !(ex isa UndefVarError)
-#                 rethrow(ex)
-#             end
-#         end
-#     end
-# end
-
-# function delete_funcs(workspace::ProcessWorkspace, to_delete::Set{Symbol})
-#     isempty(to_delete) && return
-#     e = :(for funcname in $to_delete
-#         try
-#             func = Core.eval(Main, funcname)
-#             for m in methods(func).ms
-#                 Base.delete_method(m)
-#             end
-#         catch ex
-#             if !(ex isa UndefVarError)
-#                 rethrow(ex)
-#             end
-#         end
-#     end)
-#     eval_in_workspace(workspace, e)
-# end
-
-function move_vars(notebook::Notebook, old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_move::Set{Symbol}=Set{Symbol}(), module_imports_to_move::Set{Expr}=Set{Expr}(); invert_vars_set=false)
-    move_vars(get_workspace(notebook), old_workspace_name, new_workspace_name, vars_to_move, module_imports_to_move, invert_vars_set=invert_vars_set)
-end
-
-function move_vars(workspace::Workspace, old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_move::Set{Symbol}=Set{Symbol}(), module_imports_to_move::Set{Expr}=Set{Expr}(); invert_vars_set=false)
-    deleter = quote
-        old_workspace_name = $(old_workspace_name |> QuoteNode)
-        new_workspace_name = $(new_workspace_name |> QuoteNode)
-        old_workspace = Core.eval(Main, old_workspace_name)
-        new_workspace = Core.eval(Main, new_workspace_name)
-
-        Core.eval(new_workspace, :(import ..($(old_workspace_name))))
-
-        old_names = names(old_workspace, all=true, imported=true)
-        vars_to_move = if $invert_vars_set
-            setdiff(old_names, $vars_to_move)
-        else
-            $vars_to_move
-        end
-
-        for symbol in old_names
-            if symbol in vars_to_move
-                # var will not be redefined in the new workspace, move it over
-                if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
-                    try
-                        val = Core.eval(old_workspace, symbol)
-
-                        # Expose the variable in the scope of `new_workspace`
-                        Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
-                    catch ex
-                        @warn "Failed to move variable $(symbol) to new workspace:"
-                        showerror(stderr, ex, stacktrace(backtrace()))
-                    end
-                end
-            else
-                # var will be redefined - unreference the value so that GC can snoop it
-
-                # free memory for other variables
-                # & delete methods created in the old module:
-                # for example, the old module might extend an imported function: 
-                # `import Base: show; show(io::IO, x::Flower) = print(io, "🌷")`
-                # when you delete/change this cell, you want this extension to disappear.
-                if isdefined(old_workspace, symbol)
-                    val = Core.eval(old_workspace, symbol)
-
-                    if val isa Function
-                        try
-                            ms = methods(val).ms
-
-                            Base.delete_method.(filter(m -> startswith(nameof(m.module) |> string, "workspace"), ms))
-                        catch ex
-                            @warn "Failed to delete methods for $(symbol)"
-                            showerror(stderr, ex, stacktrace(backtrace()))
-                        end
-                    end
-
-                    try
-                        # it could be that `symbol ∈ vars_to_move`, but the _value_ has already been moved to the new reference in `new_module`.
-                        # so clearing the value of this reference does not affect the reference in `new_workspace`.
-                        Core.eval(old_workspace, :($(symbol) = nothing))
-                    catch; end # sometimes impossible, eg. when $symbol was constant
-                end
-            end
-        end
-
-
-    end
-
-    for expr in module_imports_to_move
-        Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(try Core.eval($(new_workspace_name), $(expr |> QuoteNode)) catch; end))
-    end
-
-    Distributed.remotecall_eval(Main, [workspace.workspace_pid], deleter)
-end
-
-
-"Fake deleting variables by adding them to the workspace's blacklist."
+"Fake deleting variables by moving to a new module without re-importing them."
 function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
     delete_vars(get_workspace(notebook), to_delete, module_imports_to_move)
 end
@@ -417,8 +292,9 @@ function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_import
     new_workspace_name = create_emptyworkspacemodule(workspace.workspace_pid)
 
     workspace.module_name = new_workspace_name
+    Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
 
-    move_vars(workspace, old_workspace_name, new_workspace_name, to_delete, module_imports_to_move; invert_vars_set=true)
+    Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $module_imports_to_move; invert_vars_set=true)))
 end
 
 
