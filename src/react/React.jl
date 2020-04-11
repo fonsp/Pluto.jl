@@ -102,21 +102,13 @@ end
 
 "Return all variables that a cell references, including those referenced through function calls."
 function all_references(notebook::Notebook, cell::Cell)::Set{Symbol}
-	calls = all_recursed_calls!(notebook, cell.symstate)
-	filter!(calls) do call
-		call in keys(notebook.combined_funcdefs)
-	end
-	return union(cell.symstate.references, (notebook.combined_funcdefs[func].references for func in calls)...)
+	return cell.symstate.references
 end
 
 "Return all variables that a cell assigns to, including mutable globals assigned through function calls."
 function all_assignments(notebook::Notebook, cell::Cell)::Set{Symbol}
-	calls = all_recursed_calls!(notebook, cell.symstate)
-	filter!(calls) do call
-		call in keys(notebook.combined_funcdefs)
-	end
-	return union(cell.symstate.assignments, (notebook.combined_funcdefs[func].assignments for func in calls)...)
-end
+	return cell.symstate.assignments
+end 
 
 "Return all functions called by a cell, and all functions called by those functions, et cetera."
 function all_recursed_calls!(notebook::Notebook, symstate::SymbolsState, found::Set{Symbol}=Set{Symbol}())::Set{Symbol}

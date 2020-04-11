@@ -135,6 +135,14 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         })
 
+        editor.on("cursorActivity", (cm) => {
+            const token = cm.getTokenAt(cm.getCursor())
+
+            if(token.type != null && token.type != "string"){
+                updateDocQuery(token.string)
+            }
+        });
+
         return editor
     }
 
@@ -252,7 +260,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function createLocalCell(newIndex, uuid, code) {
+    function createLocalCell(newIndex, uuid, code, focus=true) {
         if (uuid in window.localCells) {
             console.warn("Tried to add cell with existing UUID. Canceled.")
             console.log(uuid)
@@ -268,6 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
         moveLocalCell(newCellNode, newIndex)
 
         editor = createCodeMirrorInsideCell(newCellNode, code)
+        focus && editor.focus()
 
         // EVENT LISTENERS FOR CLICKY THINGS
 
@@ -410,7 +419,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 updateLocalCellInput(byMe, update.cellID, message.code)
                 break
             case "cell_added":
-                createLocalCell(message.index, update.cellID, "").focus()
+                createLocalCell(message.index, update.cellID, "", true)
                 break
             case "cell_deleted":
                 // TODO: catch exception
@@ -445,7 +454,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const promises = []
 
             update.message.cells.forEach((cell, index) => {
-                const cellNode = createLocalCell(index, cell.uuid, "")
+                const cellNode = createLocalCell(index, cell.uuid, "", false)
                 promises.push(
                     client.sendreceive("getinput", {}, cell.uuid).then(update => {
                         updateLocalCellInput(true, cell.uuid, update.message.code)
@@ -609,6 +618,69 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         })
     }
+
+    /* LIVE DOCS */
+
+    window.desiredDocQuery = ""
+    window.displayedDocQuery = "nothing yet"
+    window.doc = document.querySelector("helpbox")
+
+    doc.querySelector("header").addEventListener("click", (e) => {
+        doc.classList.toggle("hidden")
+        updateDocQuery(window.desiredDocQuery)
+    })
+
+    var updateDocTimer = undefined
+
+    function updateDocQuery(query=undefined){
+        if(doc.classList.contains("hidden")){
+            doc.querySelector("header").innerText = "Live docs"
+            doc.querySelector("section").innerHTML = "Start typing code to learn more!"
+            window.displayedDocQuery = "the intro page 🍭"
+            return
+        }
+        if(!/[^\s]/.test(query)){
+            // only whitespace
+            return
+        }
+
+        if(query == undefined){
+            query = window.desiredDocQuery
+        }
+        if(query == displayedDocQuery){
+            return
+        }
+
+        window.desiredDocQuery = query
+
+        
+        if(doc.classList.contains("loading")){
+            updateDocTimer = setTimeout(() => {
+                updateDocQuery()
+            }, 1000)
+            return
+        }
+
+        doc.classList.add("loading")
+        console.log("requesting " + query)
+        client.sendreceive("docs", {query: query}).then(u => {
+            if(u.message.status == "⌛"){
+                updateDocTimer = setTimeout(() => {
+                    doc.classList.remove("loading")
+                    updateDocQuery()
+                }, 1000)
+                return
+            }
+            doc.classList.remove("loading")
+            window.displayedDocQuery = query
+            if(u.message.status == "👍"){
+                doc.querySelector("header").innerText = query
+                doc.querySelector("section").innerHTML = u.message.doc
+            }
+        })
+    }
+
+    updateDocQuery()
 
     /* ERROR HINTS */
 

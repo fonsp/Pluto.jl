@@ -1,5 +1,6 @@
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Distributed
+using Markdown
 
 function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
@@ -77,6 +78,47 @@ responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
             :results => results_text
+            ), notebook, nothing, initiator)
+
+    putclientupdates!(initiator, msg)
+end
+
+function doc_fetcher(query, module_name)
+    quote
+        let
+            mod = Core.eval(Main, $(module_name |> QuoteNode))
+            sym = $(query |> QuoteNode)
+            if isdefined(mod, sym)
+                (Docs.doc(Core.eval(mod, sym)), :👍)
+            else
+                (nothing, :👎)
+            end
+        end
+    end
+end
+
+responses[:docs] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+    query = Symbol(body["query"])
+
+
+    doc, status = if haskey(Docs.keywords, query)
+        (Docs.formatdoc(Docs.keywords[query]), :👍)
+    else
+        workspace = WorkspaceManager.get_workspace(notebook)
+
+        if isready(workspace.dowork_token)
+            Distributed.remotecall_eval(Main, workspace.workspace_pid, doc_fetcher(query, workspace.module_name))
+        else
+            (nothing, :⌛)
+        end
+    end
+
+    doc_html = doc === nothing ? nothing : repr(MIME("text/html"), doc)
+
+    msg = UpdateMessage(:doc_result, 
+        Dict(
+            :status => status,
+            :doc => doc_html,
             ), notebook, nothing, initiator)
 
     putclientupdates!(initiator, msg)

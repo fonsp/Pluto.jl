@@ -86,6 +86,7 @@
         main {
             margin: 0 auto;
             margin-top: 100px;
+            margin-bottom: 4rem;
             min-height: calc(100vh - 100px - 3.5rem - 4rem);
             max-width: 960px;
             align-content: center;
@@ -93,7 +94,7 @@
 
         /* HEADER */
 
-        header {
+        body>header {
             position: absolute;
             top: 0px;
             z-index: 5;
@@ -107,7 +108,7 @@
         }
 
 
-        header h1 {
+        body>header h1 {
             color: black;
             letter-spacing: 2px;
         }
@@ -220,14 +221,14 @@
                 transition: opacity .15s ease-in-out;
             }
 
-            header:hover #logocontainer .CodeMirror,
-            header:focus-within #logocontainer .CodeMirror {
+            body>header:hover #logocontainer .CodeMirror,
+            body>header:focus-within #logocontainer .CodeMirror {
                 border: 2px solid #818181;
                 border-right: none;
             }
 
-            header:hover #logocontainer button,
-            header:focus-within #logocontainer button {
+            body>header:hover #logocontainer button,
+            body>header:focus-within #logocontainer button {
                 opacity: 1.0;
             }
 
@@ -402,12 +403,108 @@
             content: "no";
         }
 
+        #helpbox-wrapper {
+            display: none;
+        }
+
+        @media screen and (min-width: 1050px){
+            
+            #helpbox-wrapper {
+                display: block;
+                position: sticky;
+                bottom: 0px;
+                height: 0px;
+                z-index: 5;
+            }
+
+            helpbox {
+                bottom: 0px;
+                right: 20px;
+                position: absolute;
+                display: flex;
+                flex-direction: column;
+                width: 300px;
+                height: 400px;
+                /* overflow: hidden; */
+                
+                background-color: white;
+                /* border: 2px solid darkgray; */
+                border-right: none;
+                border-bottom: none;
+                border-top-left-radius: 9px;
+                box-shadow: 0 0 11px 0px #00000010;
+                font-family: "Alegreya Sans", sans-serif;
+            }
+            
+            helpbox>header {
+                background-color: #eef1f7;
+                color: hsl(230, 14%, 11%);
+                padding: 15px;
+                font-family: "Roboto Mono", monospace;
+                font-weight: 600;
+                cursor: pointer;
+                /* border-top: 4px solid #8a8a8a; */
+            }
+            
+            helpbox>section {
+                height: 100%;
+                overflow: auto;
+                padding: 10px;
+            }
+
+            helpbox>section h1,
+            helpbox>section h2,
+            helpbox>section h3,
+            helpbox>section h4,
+            helpbox>section h5,
+            helpbox>section h6 {
+                font-family: inherit;
+                border-bottom: none;
+                font-size: 1rem;
+            }
+            
+            helpbox>section h1 {
+                font-size: 1.3rem;
+            }
+            
+            helpbox.hidden {
+                height: initial;
+            }
+
+            helpbox.hidden>section {
+                display: none;
+            }
+
+            helpbox>header::before{
+                content: "📖 ";
+            }
+
+            /* helpbox.loading>header::before{
+                content: "⌛ ";
+            } */
+
+            helpbox.hidden>header::before{
+                content: "📚 ";
+            }
+
+
+        }
+
+        @media screen and (min-width: 1050px) and (max-width: 1400px){
+            main {
+                margin-right: 350px;
+            }
+        }
+
+
         footer {
             width: 100%;
             height: 3.5rem;
-            margin-top: 4rem;
             font-family: "Roboto Mono";
             font-size: .75rem;
+            background-color: #d7dcd3;
+            color: #333333;
+            z-index: 7;
         }
 
         footer form{
@@ -440,7 +537,7 @@
             padding: 3px;
         }
 
-        header button,
+        body>header button,
         footer button{
             background: #896c6c;
             border-radius: 3px;
@@ -469,7 +566,7 @@
                 font-size: 14px;
             }
 
-            header,
+            body>header,
             preamble>button,
             cell>button,
             cellinput>button,
@@ -492,12 +589,12 @@
         }
     </style>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/mode/julia/julia.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/display/placeholder.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.52.0/addon/hint/show-hint.min.css"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/lib/codemirror.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/mode/julia/julia.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/display/placeholder.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.css"></script>
     
     <link rel="stylesheet" href="/assets/light.css" />
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
@@ -547,6 +644,13 @@
             </cell>
         </template>
     </main>
+    <div id="helpbox-wrapper">
+        <helpbox class="hidden">
+            <header></header>
+            <section></section>
+        </helpbox>
+
+    </div>
 
     <footer>
         <div id="info">

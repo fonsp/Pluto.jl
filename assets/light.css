@@ -61,12 +61,12 @@ celloutput>pre>code>a {
 
 
 /* HEADER */
-header {
+body>header {
     transition: background-color .5s ease-in-out;
     background-color: white;
 }
 
-body.loading header {
+body.loading>header {
     background-color: hsla(290, 10%, 59%, 0.14);
 }
 
