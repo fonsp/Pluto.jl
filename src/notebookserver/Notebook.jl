@@ -35,8 +35,8 @@ end
 
 # We use a creative delimiter to avoid accidental use in code
 const _uuid_delimiter = "# ╔═╡ "
-const _order_delimiter = "# ○ "
-const _order_delimiter_folded = "# c "
+const _order_delimiter = "# ╠═"
+const _order_delimiter_folded = "# ╟─"
 const _cell_appendix = "\n\n"
 
 emptynotebook(path) = Notebook(path, [Cell("")])
@@ -139,15 +139,13 @@ function load_notebook_nobackup(io, path)
     ordered_cells = Cell[]
     while !eof(io)
         uuid_str = String(readline(io))
-        o, c = startswith(uuid_str, _order_delimiter), startswith(uuid_str, _order_delimiter_folded)
-        if o || c
+        o, c = startswith(uuid_str, _order_delimiter), 
+        if length(uuid_str) >= 36
             uuid = let
-                # Because we support Unicode, this is not just `length(_order_delimiter) + 1`.
-                uuid_index = ncodeunits(_order_delimiter) + 1
-                UUID(uuid_str[uuid_index:end])
+                UUID(uuid_str[end-35:end])
             end
             next_cell = collected_cells[uuid]
-            next_cell.code_folded = c
+            next_cell.code_folded = startswith(uuid_str, _order_delimiter_folded)
             push!(ordered_cells, next_cell)
         end
     end
@@ -164,9 +162,11 @@ function load_notebook_nobackup(path::String)
 end
 
 function load_notebook(path::String)
+    local backupNum = 1
     backupPath = path
     while isfile(backupPath)
-        backupPath = backupPath * ".backup"
+        backupPath = path * ".backup" * string(backupNum)
+        backupNum += 1
     end
     cp(path, backupPath)
 
