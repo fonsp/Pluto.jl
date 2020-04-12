@@ -281,21 +281,18 @@ document.addEventListener("DOMContentLoaded", () => {
         // EVENT LISTENERS FOR CLICKY THINGS
 
         newCellNode.querySelector("celloutput").onclick = (e) => {
-            // Do not fold if the click event was fired because the user selects text in the output.
-            if (window.getSelection().isCollapsed) {
-                // Do not fold if a link was clicked.
+            var newFolded = newCellNode.classList.contains("code-folded")
+            if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerHTML === "<pre><code></code></pre>") {
+                // You may not fold code if the output is empty (it would be confusing)
+                newFolded = false
+            } else if (window.getSelection().isCollapsed) {
+                // Do not fold if the click event was fired because the user selects text in the output.
                 if (e.target.tagName != "A") {
-                    newCellNode.classList.toggle("code-folded")
-                    // Force redraw:
-                    if (!newCellNode.classList.contains("code-folded")) {
-                        editor.refresh()
-                    }
+                    // Do not fold if a link was clicked.
+                    newFolded = !newFolded
                 }
             }
-            // You may not fold code if the output is empty (it would be confusing)
-            if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerHTML === "<pre><code></code></pre>") {
-                newCellNode.classList.remove("code-folded")
-            }
+            requestCodeFoldRemoteCell(uuid, newFolded)
         }
 
         newCellNode.querySelector(".addcell.before").onclick = (e) => {
@@ -320,6 +317,16 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         return newCellNode
+    }
+
+    function foldLocalCell(cellNode, newFolded) {
+        if(newFolded) {
+            cellNode.classList.add("code-folded")
+        } else {
+            cellNode.classList.remove("code-folded")
+            // Force redraw:
+            editor.refresh()
+        }
     }
 
     function deleteLocalCell(cellNode) {
@@ -404,6 +411,10 @@ document.addEventListener("DOMContentLoaded", () => {
         client.send("deletecell", {}, uuid)
     }
 
+    function requestCodeFoldRemoteCell(uuid, newFolded) {
+        client.send("foldcell", { folded: newFolded }, uuid)
+    }
+
 
     /* SERVER CONNECTION */
 
@@ -433,6 +444,9 @@ document.addEventListener("DOMContentLoaded", () => {
             case "cell_running":
                 // TODO: catch exception
                 window.localCells[update.cellID].classList.add("running")
+                break
+            case "cell_folded":
+                foldLocalCell(window.localCells[update.cellID], message.folded)
                 break
             case "notebook_list":
                 // TODO: catch exception

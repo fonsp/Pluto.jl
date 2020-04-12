@@ -69,6 +69,11 @@ function clientupdate_cell_running(notebook::Notebook, cell::Cell; initiator::Un
         Dict(), notebook, cell, initiator)
 end
 
+function clientupdate_cell_folded(notebook::Notebook, cell::Cell, folded::Bool; initiator::Union{Initiator,Missing}=missing)
+    return UpdateMessage(:cell_folded, 
+        Dict(:folded => folded), notebook, cell, initiator)
+end
+
 function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Missing}=missing)
 
     short_paths = Dict()

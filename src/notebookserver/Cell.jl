@@ -7,14 +7,17 @@ mutable struct Cell
     "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     uuid::UUID
     code::String
-    parsedcode::Any
+    
     output_repr::Union{String, Nothing}
     error_repr::Union{String, Nothing}
     repr_mime::MIME
     runtime::Union{Missing,UInt64}
+    code_folded::Bool
+    
+    parsedcode::Any
     symstate::SymbolsState
     module_usings::Set{Expr}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, nothing, nothing, MIME("text/plain"), missing, SymbolsState(), Set{Expr}())
+Cell(uuid, code) = Cell(uuid, code, nothing, nothing, MIME("text/plain"), missing, false, nothing, SymbolsState(), Set{Expr}())
 Cell(code) = Cell(uuid1(), code)

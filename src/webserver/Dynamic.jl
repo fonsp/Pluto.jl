@@ -170,6 +170,14 @@ responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     run_reactive_async!(notebook, cell)
 end
 
+responses[:foldcell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+    newfolded = body["folded"]
+    cell.code_folded = newfolded
+    save_notebook(notebook)
+
+    putnotebookupdates!(notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
+end
+
 responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     run_reactive_async!(notebook, cell)
 end

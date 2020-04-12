@@ -34,9 +34,10 @@ function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
 end
 
 # We use a creative delimiter to avoid accidental use in code
-_uuid_delimiter = "# ╔═╡ "
-_order_delimited = "# ○ "
-_cell_appendix = "\n\n"
+const _uuid_delimiter = "# ╔═╡ "
+const _order_delimiter = "# ○ "
+const _order_delimiter_folded = "# c "
+const _cell_appendix = "\n\n"
 
 emptynotebook(path) = Notebook(path, [Cell("")])
 emptynotebook() = emptynotebook(tempname() * ".jl")
@@ -87,7 +88,8 @@ function save_notebook(io, notebook::Notebook)
 
     write(io, _uuid_delimiter * "Cell order:" * "\n")
     for c in notebook.cells
-        write(io, _order_delimited * string(c.uuid) * "\n")
+        delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
+        write(io, delim * string(c.uuid) * "\n")
     end
 end
 
@@ -137,13 +139,16 @@ function load_notebook_nobackup(io, path)
     ordered_cells = Cell[]
     while !eof(io)
         uuid_str = String(readline(io))
-        if startswith(uuid_str, _order_delimited)
+        o, c = startswith(uuid_str, _order_delimiter), startswith(uuid_str, _order_delimiter_folded)
+        if o || c
             uuid = let
-                # Because we support Unicode, this is not just `length(_order_delimited) + 1`.
-                uuid_index = ncodeunits(_order_delimited) + 1
+                # Because we support Unicode, this is not just `length(_order_delimiter) + 1`.
+                uuid_index = ncodeunits(_order_delimiter) + 1
                 UUID(uuid_str[uuid_index:end])
             end
-            push!(ordered_cells, collected_cells[uuid])
+            next_cell = collected_cells[uuid]
+            next_cell.code_folded = c
+            push!(ordered_cells, next_cell)
         end
     end
 
