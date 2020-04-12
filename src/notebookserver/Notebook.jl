@@ -198,3 +198,13 @@ end
 function only_versions_differ(pathA::AbstractString, pathB::AbstractString)
     readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end
+
+function tryexpanduser(path)
+	try
+		expanduser(path)
+	catch ex
+		path
+	end
+end
+
+tamepath = normpath ∘ tryexpanduser

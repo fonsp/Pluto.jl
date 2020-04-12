@@ -76,8 +76,8 @@ document.addEventListener("DOMContentLoaded", () => {
         // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
         // debounce:
         setTimeout(() => {
-            if (!editor.hasFocus()) {
-                reset()
+            if (!cm.hasFocus()) {
+                updateLocalNotebookPath(notebookPath)
             }
         }, 250)
     })

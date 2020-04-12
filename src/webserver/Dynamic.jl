@@ -205,7 +205,7 @@ responses[:getallnotebooks] = (body, notebook=nothing; initiator::Union{Initiato
 end
 
 responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    newpath = body["path"]
+    newpath = tamepath(body["path"])
     result = try
         if isfile(newpath)
             (success=false,reason="File exists already - you need to delete the old file manually.")

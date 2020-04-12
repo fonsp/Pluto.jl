@@ -52,7 +52,7 @@ function serve_openfile(req::HTTP.Request)
     query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
 
     if length(query) > 5
-        path = query[6:end]
+        path = tamepath(query[6:end])
 
         if(isfile(path))
             try
