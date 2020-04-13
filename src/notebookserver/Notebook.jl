@@ -110,7 +110,7 @@ function load_notebook_nobackup(io, path)
 
     file_VERSION_STR = readline(io)[3:end]
     if file_VERSION_STR != PLUTO_VERSION_STR
-        @warn "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
+        # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
     

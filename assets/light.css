@@ -522,9 +522,15 @@ cell.codediffers .cm-s-default .CodeMirror-gutters {
     background: #CFD1C4;
 }
 
-.cm-s-default .CodeMirror-matchingbracket {
-    text-decoration: underline;
-    color: white !important;
+div.CodeMirror span.CodeMirror-matchingbracket {
+    color: unset;
+}
+
+cell:focus-within .cm-s-default .CodeMirror-matchingbracket {
+    color: black !important;
+    font-weight: 700;
+    background-color: #1b4bbb21;
+    border-radius: 2px;
 }
 
 .cm-s-default.CodeMirror-empty {

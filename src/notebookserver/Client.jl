@@ -44,7 +44,7 @@ end
 
 function clientupdate_cell_input(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     return UpdateMessage(:cell_input, 
-        Dict(:code => cell.code), notebook, cell, initiator)
+        Dict(:code => cell.code, :folded => cell.code_folded), notebook, cell, initiator)
 end
 
 function clientupdate_cell_added(notebook::Notebook, cell::Cell, new_index::Integer; initiator::Union{Initiator,Missing}=missing)

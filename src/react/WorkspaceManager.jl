@@ -178,10 +178,10 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
             @assert ex.pid == workspace.workspace_pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true)
+            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true)
+            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing)
         end
     end
 

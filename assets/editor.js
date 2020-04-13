@@ -104,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
             indentWithTabs: true,
             indentUnit: 4,
             hintOptions: { hint: juliahints },
+            matchBrackets: true,
         });
 
         window.codeMirrors[cellNode.id] = editor
@@ -227,9 +228,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function updateLocalCellInput(byMe, uuid, code) {
-        var editor = window.codeMirrors[uuid]
-        var cellNode = window.localCells[uuid]
+    function updateLocalCellInput(byMe, cellNode, code, folded) {
+        var editor = window.codeMirrors[cellNode.id]
         cellNode.remoteCode = code
         oldVal = editor.getValue()
         // We don't want to update the cell's input if we sent the update.
@@ -249,6 +249,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (oldVal == code) {
             cellNode.classList.remove("codediffers")
         }
+
+        foldLocalCell(cellNode, folded)
     }
 
     function indexOfLocalCell(cellNode) {
@@ -375,12 +377,13 @@ document.addEventListener("DOMContentLoaded", () => {
         const promises = []
 
         for (var uuid in window.localCells) {
-            window.localCells[uuid].classList.add("running")
+            const cellNode = window.localCells[uuid]
+            cellNode.classList.add("running")
             promises.push(
                 client.sendreceive("setinput", {
                     code: window.codeMirrors[uuid].getValue()
                 }, uuid).then(u => {
-                    updateLocalCellInput(true, u.cellID, u.message.code)
+                    updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
                 })
             )
 
@@ -425,28 +428,27 @@ document.addEventListener("DOMContentLoaded", () => {
             case "cell_output":
                 updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
                 break
-            case "cell_input":
-                // TODO: catch exception
-                updateLocalCellInput(byMe, update.cellID, message.code)
-                break
-            case "cell_added":
-                createLocalCell(message.index, update.cellID, "", true)
-                break
-            case "cell_deleted":
-                // TODO: catch exception
-                var toDelete = window.localCells[update.cellID]
-                deleteLocalCell(toDelete)
-                break
-            case "cell_moved":
-                // TODO: catch exception
-                moveLocalCell(window.localCells[update.cellID], message.index)
-                break
             case "cell_running":
                 // TODO: catch exception
                 window.localCells[update.cellID].classList.add("running")
                 break
             case "cell_folded":
                 foldLocalCell(window.localCells[update.cellID], message.folded)
+                break
+            case "cell_input":
+                // TODO: catch exception
+                updateLocalCellInput(byMe, window.localCells[update.cellID], message.code, message.folded)
+                break
+            case "cell_deleted":
+                // TODO: catch exception
+                deleteLocalCell(window.localCells[update.cellID])
+                break
+            case "cell_moved":
+                // TODO: catch exception
+                moveLocalCell(window.localCells[update.cellID], message.index)
+                break
+            case "cell_added":
+                createLocalCell(message.index, update.cellID, "", true)
                 break
             case "notebook_list":
                 // TODO: catch exception
@@ -470,14 +472,14 @@ document.addEventListener("DOMContentLoaded", () => {
             update.message.cells.forEach((cell, index) => {
                 const cellNode = createLocalCell(index, cell.uuid, "", false)
                 promises.push(
-                    client.sendreceive("getinput", {}, cell.uuid).then(update => {
-                        updateLocalCellInput(true, cell.uuid, update.message.code)
+                    client.sendreceive("getinput", {}, cell.uuid).then(u => {
+                        updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
                     })
                 )
                 promises.push(
-                    client.sendreceive("getoutput", {}, cell.uuid).then(update => {
-                        const message = update.message
-                        updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
+                    client.sendreceive("getoutput", {}, cell.uuid).then(u => {
+                        const message = u.message
+                        updateLocalCellOutput(cellNode, message.mime, message.output, message.errormessage, message.runtime)
                     })
                 )
             })
@@ -726,15 +728,38 @@ document.addEventListener("DOMContentLoaded", () => {
     /* MORE SHORTKEYS */
 
     document.addEventListener("keydown", (e) => {
+        console.log(e)
         switch (e.keyCode) {
+            case 81: // q
+                if(e.ctrlKey){
+                    if(document.querySelector("notebook>cell.running")){
+                        requestInterruptRemote()
+                    }
+                    e.preventDefault()
+                }
+                break
+            case 83: // s
+                if(e.ctrlKey){
+                    filePickerCodeMirror.focus()
+                    filePickerCodeMirror.setSelection({line:0, ch:0}, {line:Infinity, ch:Infinity})
+                    e.preventDefault()
+                }
+                break
             case 191: // ? or /
-                if (!e.ctrlKey) {
+                if (!(e.ctrlKey && e.shiftKey)) {
                     break
                 }
             // fall into:
             case 112: // F1
                 // TODO: show help    
-                alert("Shortcuts 🎹\n\nCtrl+Enter:   run cell\nShift+Enter:   run cell and add cell below\nCtrl+Shift+Delete:   delete cell")
+                alert(
+`Shortcuts 🎹
+
+Ctrl+Enter:   run cell
+Shift+Enter:   run cell and add cell below
+Ctrl+Shift+Delete:   delete cell
+Ctrl+Q:   interrupt notebook
+Ctrl+S:   rename notebook`)
 
                 e.preventDefault()
                 break
