@@ -235,3 +235,17 @@ responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator
     success = WorkspaceManager.kill_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
+
+responses[:PlutoUI_update] = (body, notebook; initiator=missing) -> begin
+    bound_sym = Symbol(body["sym"])
+    new_val = body["val"]
+    
+    function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
+        push!(to_delete_vars, bound_sym) # also delete the bound symbol
+        WorkspaceManager.delete_vars(notebook, to_delete_vars, to_reimport)
+        WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
+    end
+
+    to_reeval = where_referenced(notebook, Set{Symbol}([bound_sym]))
+    run_reactive!(notebook, to_reeval; deletion_hook=custom_deletion_hook)
+end

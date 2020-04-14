@@ -122,11 +122,11 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
     # nasty fix:
     if expr isa Expr && expr.head == :toplevel
         expr.head = :block
@@ -178,10 +178,10 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
             @assert ex.pid == workspace.workspace_pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
         end
     end
 
@@ -283,11 +283,11 @@ function kill_workspace(workspace::Workspace)
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
+function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
     delete_vars(get_workspace(notebook), to_delete, module_imports_to_move)
 end
 
-function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
+function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
     old_workspace_name = workspace.module_name
     new_workspace_name = create_emptyworkspacemodule(workspace.workspace_pid)
 

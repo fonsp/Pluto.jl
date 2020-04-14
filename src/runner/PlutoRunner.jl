@@ -19,8 +19,29 @@ function set_current_module(newname)
     global current_module = Core.eval(Main, newname)
 end
 
-function fetch_formatted_ans()::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    (output_formatted = format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime)
+import Base: push!
+push!(x::Set{Symbol}) = x
+
+declared_assignments = Set{Symbol}()
+declared_references = Set{Symbol}()
+
+function declare_assignments(symbols::Symbol...)
+    push!(declared_assignments, symbols...)
+end
+
+function declare_references(symbols::Symbol...)
+    push!(declared_references, symbols...)
+end
+
+function fetch_formatted_ans()::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
+    run = (output_formatted = format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime, declared_assignments=declared_assignments, declared_references=declared_references)
+    if !isempty(declared_assignments)
+        global declared_assignments = Set{Symbol}()
+    end
+    if !isempty(declared_references)
+        global declared_references = Set{Symbol}()
+    end
+    run
 end
 
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_move::Set{Symbol}=Set{Symbol}(), module_imports_to_move::Set{Expr}=Set{Expr}(); invert_vars_set=false)

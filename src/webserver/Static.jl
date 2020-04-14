@@ -33,6 +33,21 @@ function serveasset(req::HTTP.Request)
     assetresponse(filepath)
 end
 
+addons = Dict{String, String}()
+
+function serveaddon(req::HTTP.Request)
+    reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
+    filename = relpath(reqURI.path, "/addons/")
+
+    if haskey(addons, filename)
+        response = HTTP.Response(200, addons[filename])
+        push!(response.headers, "Content-Type" => string(mime_fromfilename(filename)))
+        response
+    else
+        HTTP.Response(404, "Addon $(filename) not found!")
+    end
+end
+
 const PLUTOROUTER = HTTP.Router()
 
 function serve_editor(req::HTTP.Request)
@@ -105,5 +120,6 @@ HTTP.@register(PLUTOROUTER, "GET", "/open", serve_openfile)
 
 HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "favicon.ico")))
 HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serveasset)
+HTTP.@register(PLUTOROUTER, "GET", "/addons/*", serveaddon)
 
 HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
