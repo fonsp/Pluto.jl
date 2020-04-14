@@ -3,8 +3,8 @@ import UUIDs: UUID
 import HTTP
 import Sockets
 
-connectedclients = Dict{Symbol,Client}()
-notebooks = Dict{UUID,Notebook}()
+const connectedclients = Dict{Symbol,Client}()
+const notebooks = Dict{UUID,Notebook}()
 
 "Send `messages` to all clients connected to the `notebook`."
 function putnotebookupdates!(notebook::Notebook, messages::UpdateMessage...)
@@ -254,6 +254,8 @@ function run(port = 1234, launchbrowser = false)
         if isa(e, InterruptException)
             println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
             close(serversocket)
+            # TODO: HTTP has a kill signal?
+            # TODO: put do_work tokens back 
             empty!(notebooks)
             empty!(connectedclients)
             for (uuid, ws) in WorkspaceManager.workspaces

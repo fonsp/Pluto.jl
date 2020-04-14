@@ -16,7 +16,7 @@ function assetresponse(path)
         @assert isfile(path)
         response = HTTP.Response(200, read(path, String))
         push!(response.headers, "Content-Type" => string(mime_fromfilename(path)))
-        return response
+        response
     catch e
         HTTP.Response(404, "Not found!: $(e)")
     end
@@ -27,7 +27,7 @@ function serveonefile(path)
 end
 
 function serveasset(req::HTTP.Request)
-    reqURI = HTTP.URI(req.target)
+    reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
     
     filepath = joinpath(PKG_ROOT_DIR, relpath(reqURI.path, "/"))
     assetresponse(filepath)

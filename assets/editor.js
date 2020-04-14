@@ -172,22 +172,26 @@ document.addEventListener("DOMContentLoaded", () => {
         cellNode.classList.remove("running")
         cellNode.querySelector("runarea>span").innerText = prettytime(runtime)
 
-        oldHeight = cellNode.querySelector("celloutput").scrollHeight
+        const outputNode = cellNode.querySelector("celloutput")
+
+        oldHeight = outputNode.scrollHeight
 
         if (errormessage) {
-            cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
-            cellNode.querySelector("celloutput").querySelector("code").innerHTML = rewrittenError(errormessage)
+            outputNode.innerHTML = "<pre><code></code></pre>"
+            outputNode.querySelector("code").innerHTML = rewrittenError(errormessage)
             cellNode.classList.add("error")
         } else {
             cellNode.classList.remove("error")
             if (mime == "text/html" || mime == "image/svg+xml") {
+
+                // if(outputNode.innerHTML != output){
+                // }
+                outputNode.innerHTML = output
+
                 // from https://stackoverflow.com/a/26716182
-
-                cellNode.querySelector("celloutput").innerHTML = output
-
                 // to execute all scripts in the output html:
                 try {
-                    var scripts = Array.prototype.slice.call(cellNode.querySelector("celloutput").getElementsByTagName("script"))
+                    var scripts = Array.prototype.slice.call(outputNode.getElementsByTagName("script"))
                     for (var i = 0; i < scripts.length; i++) {
                         if (scripts[i].src != "") {
                             if (!Array.prototype.map.call(document.head.querySelectorAll("script"), s => s.src).includes(scripts[i])) {
@@ -206,21 +210,22 @@ document.addEventListener("DOMContentLoaded", () => {
                     // might be wise to wait after adding scripts to head
                     //
                 }
-
+                
                 // convert LaTeX to svg
                 MathJax.typeset()
             } else {
-                cellNode.querySelector("celloutput").innerHTML = "<pre><code></code></pre>"
-                cellNode.querySelector("celloutput").querySelector("code").innerText = output
+                outputNode.innerHTML = "<pre><code></code></pre>"
+                outputNode.querySelector("code").innerText = output
             }
         }
+        document.dispatchEvent(new CustomEvent("celloutputchanged", {detail: {cell: cellNode, mime: mime}}))
         if(output == null && errormessage == null){
             cellNode.classList.add("output-notinsync")
         } else {
             cellNode.classList.remove("output-notinsync")
         }
 
-        newHeight = cellNode.querySelector("celloutput").scrollHeight
+        newHeight = outputNode.scrollHeight
 
         focusedCell = document.querySelector("cell:focus-within")
         if (focusedCell == cellNode) {
@@ -289,7 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 newFolded = false
             } else if (window.getSelection().isCollapsed) {
                 // Do not fold if the click event was fired because the user selects text in the output.
-                if (e.target.tagName != "A") {
+                if (e.target.tagName != "A" && e.target.tagName != "INPUT") {
                     // Do not fold if a link was clicked.
                     newFolded = !newFolded
                 }
@@ -454,13 +459,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 // TODO: catch exception
                 updateRemoteNotebooks(message.notebooks)
                 break
+            case "eval":
+                (new Function(update.message.script))()
+                break
             default:
+                const custom = window.customPlutoListeners[update.type]
+                if(custom){
+                    custom(update)
+                    break
+                }
                 console.error("Received unknown update type!")
                 console.log(update)
                 alert("Something went wrong 🙈\n Try clearing your cache and refreshing the page")
                 break
         }
     }
+
+    window.customPlutoListeners = {}
 
     function onEstablishConnection() {
         // on socket success
@@ -728,7 +743,6 @@ document.addEventListener("DOMContentLoaded", () => {
     /* MORE SHORTKEYS */
 
     document.addEventListener("keydown", (e) => {
-        console.log(e)
         switch (e.keyCode) {
             case 81: // q
                 if(e.ctrlKey){

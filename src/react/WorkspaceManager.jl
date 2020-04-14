@@ -30,13 +30,13 @@ end
 reset_default_distributed()
 
 "These expressions get executed whenever a new workspace is created."
-workspace_preamble = [
+const workspace_preamble = [
     :(using Markdown), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
-process_preamble = [
+const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
     :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
 ]
@@ -68,7 +68,7 @@ function make_workspace(notebook::Notebook, new_process = default_distributed)::
     return workspace
 end
 
-function create_emptyworkspacemodule(pid::Integer)
+function create_emptyworkspacemodule(pid::Integer)::Symbol
     global moduleworkspace_count += 1
     id = moduleworkspace_count
     

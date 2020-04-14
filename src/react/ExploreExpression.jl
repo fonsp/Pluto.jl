@@ -1,7 +1,7 @@
 module ExploreExpression
 export compute_symbolreferences, compute_usings, SymbolsState
 
-import Base: union, ==
+import Base: union, ==, push!
 
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
 const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
@@ -28,7 +28,7 @@ mutable struct ScopeState
 end
 
 function union(a::Dict{Symbol,SymbolsState}, b::Dict{Symbol,SymbolsState})
-    # TODO: optimise: reuse `a` as `c`
+    # TODO: optimise: use union!
     c = Dict{Symbol,SymbolsState}()
     for (k, v) in a
         c[k] = v
@@ -54,6 +54,8 @@ end
 function ==(a::SymbolsState, b::SymbolsState)
     a.references == b.references && a.assignments == b.assignments&& a.funccalls == b.funccalls && a.funcdefs == b.funcdefs 
 end
+
+push!(x::Set) = x
 
 function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
     (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) && (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
@@ -173,20 +175,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         global_assignees = get_global_assignees(assignees, scopestate)
         
-        # If we are _not_ assigning a global variable
-        for assignee in setdiff(assignees, global_assignees)
-            # Then this symbol hides any global definition with that name
-            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
-        end
+        # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
+        push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
 
-        innersymstate = explore!(val, scopestate)
+        symstate = innersymstate = explore!(val, scopestate)
 
-        symstate = innersymstate
-
-        for assignee in global_assignees
-            scopestate.hiddenglobals = union(scopestate.hiddenglobals, [assignee])
-            symstate.assignments = union(symstate.assignments, [assignee])
-        end
+        push!(scopestate.hiddenglobals, global_assignees...)
+        push!(symstate.assignments, global_assignees...)
 
         return symstate
     elseif ex.head in modifiers
@@ -206,6 +201,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate.inglobalscope = false
 
         return mapfoldl(a -> explore!(a, innerscopestate), ∪, ex.args, init=SymbolsState())
+    elseif ex.head == :call && ex.args[1] isa Symbol
+        # Does not create scope
+
+        # We change the `call` to a `block` and recurse again (hitting the fallback below).
+        # In particular, this adds the called function as a reference, which is what we want.
+        symstate = explore!(Expr(:block, ex.args...), scopestate)
+        push!(symstate.funccalls, ex.args[1])
+        return symstate
     elseif ex.head == :struct
         # Creates local scope
 
@@ -246,11 +249,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # is either [funcname] or []
         global_assignees = get_global_assignees([funcname_expr], scopestate)
 
-        
         # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        
         innerscopestate = deepcopy(scopestate)
-        innerscopestate.hiddenglobals = union(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot))
+        push!(innerscopestate.hiddenglobals, extractfunctionarguments(funcroot)...)
         innerscopestate.inglobalscope = false
         
         innersymstate = explore!(Expr(:block, ex.args[2:end]...), innerscopestate)
@@ -382,7 +383,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         else
             return SymbolsState(Set{Symbol}(), Set{Symbol}())
         end
-    elseif ex.head == :macrocall && isa(ex.args[1], Symbol) && ex.args[1] == Symbol("@md_str")
+    elseif ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@md_str")
         # Does not create scope
         # The Markdown macro treats things differently, so we must too
 
@@ -395,14 +396,6 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # We completely ignore the contents
 
         return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
-    elseif ex.head == :call && ex.args[1] isa Symbol
-        # Does not create scope
-
-        # We change the `call` to a `block` and recurse again (hitting the fallback below).
-        # In particular, this adds the called function as a reference, which is what we want.
-        symstate = explore!(Expr(:block, ex.args...), scopestate)
-        push!(symstate.funccalls, ex.args[1])
-        return symstate
     else
         # fallback, includes:
         # begin, block, do, call, 
@@ -444,8 +437,9 @@ function compute_usings(ex)::Set{Expr}
     end
 end
 
-function is_pure_html(ex)::Bool
-    if !(isa(ex, Expr) && ex.head == :macrocall && (ex.args[1] == Symbol("@md_str") || ex.args[1] == Symbol("@html_str")) && isa(ex.args[3], String))
+
+function is_pure_html(ex::Expr)::Bool
+    if !(ex.head == :macrocall && (ex.args[1] == Symbol("@md_str") || ex.args[1] == Symbol("@html_str")) && isa(ex.args[3], String))
         return false
     end
     if ex.args[1] == Symbol("@md_str")
@@ -455,5 +449,8 @@ function is_pure_html(ex)::Bool
         true
     end
 end
+
+is_pure_html(ex::Nothing) = true
+is_pure_html(ex::Any) = false
 
 end

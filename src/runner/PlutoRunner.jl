@@ -12,7 +12,8 @@ import REPL.REPLCompletions: completions, complete_path, completion_text
 # WORKSPACE MANAGER
 ###
 
-current_module = missing
+"Will be set to the latest workspace module"
+current_module = Main
 
 function set_current_module(newname)
     global current_module = Core.eval(Main, newname)
@@ -112,7 +113,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
+const iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
 
@@ -180,12 +181,12 @@ end
 # REPL THINGS
 ###
 
-function completion_fetcher(query, pos, mod=current_module)
+function completion_fetcher(query, pos, mod::Module=current_module)
     results, loc, found = completions(query, pos, mod)
     (completion_text.(results), loc, found)
 end
 
-function doc_fetcher(query, mod=current_module)
+function doc_fetcher(query, mod::Module=current_module)
     try
         obj = Core.eval(mod, query |> Symbol)
         (repr(MIME("text/html"), Docs.doc(obj)), :👍)
