@@ -377,7 +377,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 ex.args
             end
 
-            packagenames = map(e->e.args[1], imports)
+            packagenames = map(e->e.args[end], imports)
 
             return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames))
         else
@@ -392,6 +392,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(innersymstate.references, Symbol("@md_str"))
         symstate = innersymstate
         return symstate
+    elseif (ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@bind")
+        && length(ex.args) == 4 && ex.args[3] isa Symbol)
+        
+        innersymstate = explore!(ex.args[4], scopestate)
+        push!(innersymstate.assignments, ex.args[3])
+        
+        return innersymstate
     elseif ex.head == :module
         # We completely ignore the contents
 

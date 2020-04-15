@@ -1,5 +1,8 @@
+import Base: push!
+push!(x::Set{Cell}) = x
+
 "Run given cells and all the cells that depend on them."
-function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})::CellTopology
+function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook::Function=WorkspaceManager.delete_vars)::CellTopology
 	# make sure that we're the only run_reactive! being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
@@ -8,7 +11,6 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})::CellTopology
 	
 	old_runnable = old_topology.runnable
 	to_delete_vars = union(Set{Symbol}(), (runnable.symstate.assignments for runnable in old_runnable)...)
-	to_delete_funcs = union(Set{Symbol}(), (Set(keys(runnable.symstate.funcdefs)) for runnable in old_runnable)...)
 
 	# update the cache using the new code and compute the new topology
 	for cell in cells
@@ -21,36 +23,39 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1})::CellTopology
 
 
 	new_topology = dependent_cells(notebook, union(cells, keys(old_topology.errable)))
-	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable)) # TODO: think if old error cell order matters
+	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable))::Array{Cell, 1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "running"
 	for cell in to_run
+		cell.running = true
 		putnotebookupdates!(notebook, clientupdate_cell_running(notebook, cell))
 	end
 	for (cell, error) in new_topology.errable
+		cell.running = false
 		relay_reactivity_error!(cell, error)
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 	
-	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
+	# delete new variables that will be defined by a cell
 	new_runnable = new_topology.runnable
-    to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in new_runnable)...)
-	to_delete_funcs = union(to_delete_funcs, (Set(keys(runnable.symstate.funcdefs)) for runnable in new_runnable)...)
+	to_delete_vars = union(to_delete_vars, (runnable.symstate.assignments for runnable in new_runnable)...)
 	
+	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
 	new_errable = keys(new_topology.errable)
 	to_delete_vars = union(to_delete_vars, (errable.symstate.assignments for errable in new_errable)...)
-	to_delete_funcs = union(to_delete_funcs, (Set(keys(errable.symstate.funcdefs)) for errable in new_errable)...)
 	
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
-	WorkspaceManager.delete_vars(notebook, to_delete_vars, to_reimport)
+	deletion_hook(notebook, to_delete_vars, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
 	local any_interrupted = false
-	for cell in to_run
+	for (i, cell) in enumerate(to_run)
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			any_interrupted |= run_single!(notebook, cell)
+			run = run_single!(notebook, cell)
+			any_interrupted |= run.interrupted
 		end
+		cell.running = false
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 
@@ -61,11 +66,11 @@ end
 
 
 "See `run_reactive`."
-function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1})::Task
+function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1}; kwargs...)::Task
 	@async begin
 		# because this is being run async, we need to catch exceptions manually
 		try
-			run_reactive!(notebook, cells)
+			run_reactive!(notebook, cells; kwargs...)
 		catch ex
 			bt = stacktrace(catch_backtrace())
 			showerror(stderr, ex, bt)
@@ -73,11 +78,11 @@ function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1})::Task
 	end
 end
 
-run_reactive!(notebook::Notebook, cell::Cell) = run_reactive!(notebook, [cell])::CellTopology
-run_reactive_async!(notebook::Notebook, cell::Cell) = run_reactive_async!(notebook, [cell])::Task
+run_reactive!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive!(notebook, [cell]; kwargs...)::CellTopology
+run_reactive_async!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive_async!(notebook, [cell]; kwargs...)::Task
 
-"Run a single cell non-reactively, return whether the run was Interrupted."
-function run_single!(notebook::Notebook, cell::Cell)::Bool
+"Run a single cell non-reactively, return run information."
+function run_single!(notebook::Notebook, cell::Cell)
 	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
 	cell.runtime = run.runtime
 
@@ -91,7 +96,7 @@ function run_single!(notebook::Notebook, cell::Cell)::Bool
 		cell.repr_mime = run.output_formatted[2]
 	end
 
-	return run.interrupted
+	return run
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
 

@@ -31,7 +31,7 @@ reset_default_distributed()
 
 "These expressions get executed whenever a new workspace is created."
 const workspace_preamble = [
-    :(using Markdown), 
+    :(using Markdown, Main.PlutoRunner), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string), # https://github.com/JuliaLang/julia/issues/18181
 ]
@@ -178,10 +178,10 @@ function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:outpu
             @assert ex.pid == workspace.workspace_pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
         end
     end
 
@@ -283,11 +283,11 @@ function kill_workspace(workspace::Workspace)
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
+function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
     delete_vars(get_workspace(notebook), to_delete, module_imports_to_move)
 end
 
-function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}())
+function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
     old_workspace_name = workspace.module_name
     new_workspace_name = create_emptyworkspacemodule(workspace.workspace_pid)
 

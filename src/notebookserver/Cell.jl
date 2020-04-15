@@ -13,11 +13,12 @@ mutable struct Cell
     repr_mime::MIME
     runtime::Union{Missing,UInt64}
     code_folded::Bool
+    running::Bool
     
     parsedcode::Any
     symstate::SymbolsState
     module_usings::Set{Expr}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, nothing, MIME("text/plain"), missing, false, nothing, SymbolsState(), Set{Expr}())
+Cell(uuid, code) = Cell(uuid, code, nothing, nothing, MIME("text/plain"), missing, false, false, nothing, SymbolsState(), Set{Expr}())
 Cell(code) = Cell(uuid1(), code)

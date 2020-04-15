@@ -8,6 +8,7 @@ import Distributed
 import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 
+export @bind
 ###
 # WORKSPACE MANAGER
 ###
@@ -194,5 +195,61 @@ function doc_fetcher(query, mod::Module=current_module)
         (nothing, :👎)
     end
 end
+
+###
+# BONDS
+###
+
+struct Bond
+    element::Any
+    defines::Symbol
+    Bond(element, defines::Symbol) = showable(MIME("text/html"), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+end
+
+import Base: show
+function show(io::IO, ::MIME"text/html", bond::Bond)
+    print(io, "<bond def=\"$(bond.defines)\">")
+    show(io, MIME("text/html"), bond.element)
+    print(io, "</bond>")
+end
+
+"""`@bind symbol element`
+
+Returns the HTML `element`, and uses its latest JavaScript value as the definition of `symbol`.
+
+# Example
+
+```julia
+@bind x html"<input type='range'>"
+```
+and in another cell:
+```julia
+x^2
+```
+
+The first cell will show a slider as the cell's output, ranging from 0 until 100.
+The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
+"""
+macro bind(def, element)
+	if def isa Symbol
+		quote
+			local el = $(esc(element))
+            global $(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+			PlutoRunner.Bond(el, $(Meta.quot(def)))
+		end
+	else
+		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+	end
+end
+
+"Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.peek` for custom UI objects gives bound variables a sensible value."
+const fake_bind = """macro bind(def, element)
+    quote
+        local el = \$(esc(element))
+        global \$(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+        el
+    end
+end
+"""
 
 end
