@@ -165,9 +165,11 @@ end
     end
     @testset "`import` & `using`" begin
         @test testee(:(using Plots), [], [:Plots], [], [])
+        @test testee(:(using Plots.ExploreExpression), [], [:ExploreExpression], [], [])
         @test testee(:(using JSON, UUIDs), [], [:JSON, :UUIDs], [], [])
         @test testee(:(import Pluto), [], [:Pluto], [], [])
         @test testee(:(import Pluto: wow, wowie), [], [:wow, :wowie], [], [])
+        @test testee(:(import Pluto.ExploreExpression.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
     end

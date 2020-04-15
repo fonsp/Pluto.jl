@@ -377,7 +377,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 ex.args
             end
 
-            packagenames = map(e->e.args[1], imports)
+            packagenames = map(e->e.args[end], imports)
 
             return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames))
         else

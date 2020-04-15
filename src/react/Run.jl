@@ -27,9 +27,11 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 
 	# change the bar on the sides of cells to "running"
 	for cell in to_run
+		cell.running = true
 		putnotebookupdates!(notebook, clientupdate_cell_running(notebook, cell))
 	end
 	for (cell, error) in new_topology.errable
+		cell.running = false
 		relay_reactivity_error!(cell, error)
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
@@ -53,6 +55,7 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 			run = run_single!(notebook, cell)
 			any_interrupted |= run.interrupted
 		end
+		cell.running = false
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 

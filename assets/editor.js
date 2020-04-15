@@ -168,25 +168,29 @@ document.addEventListener("DOMContentLoaded", () => {
         return roundedtime + '\xa0' + prefices[i] + "s"
     }
 
-    function updateLocalCellOutput(cellNode, mime, output, errormessage, runtime) {
-        cellNode.classList.remove("running")
-        cellNode.querySelector("runarea>span").innerText = prettytime(runtime)
+    function updateLocalCellOutput(cellNode, msg) {
+        if(msg.running){
+            cellNode.classList.add("running")
+        } else {
+            cellNode.classList.remove("running")
+        }
+        cellNode.querySelector("runarea>span").innerText = prettytime(msg.runtime)
 
         const outputNode = cellNode.querySelector("celloutput")
 
         oldHeight = outputNode.scrollHeight
 
-        if (errormessage) {
+        if (msg.errormessage) {
             outputNode.innerHTML = "<pre><code></code></pre>"
-            outputNode.querySelector("code").innerHTML = rewrittenError(errormessage)
+            outputNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
             cellNode.classList.add("error")
         } else {
             cellNode.classList.remove("error")
-            if (mime == "text/html" || mime == "image/svg+xml") {
+            if (msg.mime == "text/html" || msg.mime == "image/svg+xml") {
 
-                // if(outputNode.innerHTML != output){
+                // if(outputNode.innerHTML != msg.output){
                 // }
-                outputNode.innerHTML = output
+                outputNode.innerHTML = msg.output
 
                 // from https://stackoverflow.com/a/26716182
                 // to execute all scripts in the output html:
@@ -215,11 +219,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 MathJax.typeset()
             } else {
                 outputNode.innerHTML = "<pre><code></code></pre>"
-                outputNode.querySelector("code").innerText = output
+                outputNode.querySelector("code").innerText = msg.output
             }
         }
-        document.dispatchEvent(new CustomEvent("celloutputchanged", {detail: {cell: cellNode, mime: mime}}))
-        if(output == null && errormessage == null){
+        document.dispatchEvent(new CustomEvent("celloutputchanged", {detail: {cell: cellNode, mime: msg.mime}}))
+        if(msg.output == null && msg.errormessage == null){
             cellNode.classList.add("output-notinsync")
         } else {
             cellNode.classList.remove("output-notinsync")
@@ -299,7 +303,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 newFolded = false
             } else if (window.getSelection().isCollapsed) {
                 // Do not fold if the click event was fired because the user selects text in the output.
-                if (e.target.tagName != "A" && e.target.tagName != "INPUT") {
+                if (e.target.tagName != "A" && e.target.tagName != "INPUT" && e.target.tagName != "SELECT") {
                     // Do not fold if a link was clicked.
                     newFolded = !newFolded
                 }
@@ -376,8 +380,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* REQUEST FUNCTIONS FOR REMOTE CHANGES */
 
-    window.allCellsCompleted = true
-    window.allCellsCompletedPromise = new Promise(r => r()) // resolved
+    window.allCellsCompleted = true // will be set to false soon
+    window.allCellsCompletedPromise = null
 
     function refreshAllCompletionPromise(){
         if(allCellsCompleted){
@@ -389,6 +393,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     window.refreshAllCompletionPromise = refreshAllCompletionPromise
+    refreshAllCompletionPromise()
 
     function requestChangeRemoteCell(uuid, createPromise=false) {
         refreshAllCompletionPromise()
@@ -398,21 +403,25 @@ document.addEventListener("DOMContentLoaded", () => {
         return client.send("changecell", { code: newCode }, uuid, createPromise)
     }
 
-    function requestRunAllRemoteCells() {
+    function requestRunAllRemoteCells(setInputs=true) {
+        if(!window.allCellsCompleted){
+            return
+        }
         refreshAllCompletionPromise()
         const promises = []
 
         for (var uuid in window.localCells) {
             const cellNode = window.localCells[uuid]
             cellNode.classList.add("running")
-            promises.push(
-                client.sendreceive("setinput", {
-                    code: window.codeMirrors[uuid].getValue()
-                }, uuid).then(u => {
-                    updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
-                })
-            )
-
+            if(setInputs){
+                promises.push(
+                    client.sendreceive("setinput", {
+                        code: window.codeMirrors[uuid].getValue()
+                    }, uuid).then(u => {
+                        updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
+                    })
+                )
+            }
         }
         Promise.all(promises).then(() => {
             client.send("runall", {})
@@ -452,7 +461,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         switch (update.type) {
             case "cell_output":
-                updateLocalCellOutput(window.localCells[update.cellID], message.mime, message.output, message.errormessage, message.runtime)
+                updateLocalCellOutput(window.localCells[update.cellID], message)
                 break
             case "cell_running":
                 // TODO: catch exception
@@ -499,6 +508,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.customPlutoListeners = {}
 
     function onEstablishConnection() {
+        const runAll = client.plutoCONFIG["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
         // on socket success
         client.send("getallnotebooks", {})
 
@@ -507,6 +517,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             update.message.cells.forEach((cell, index) => {
                 const cellNode = createLocalCell(index, cell.uuid, "", false)
+                runAll && cellNode.classList.add("running")
                 promises.push(
                     client.sendreceive("getinput", {}, cell.uuid).then(u => {
                         updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
@@ -514,20 +525,27 @@ document.addEventListener("DOMContentLoaded", () => {
                 )
                 promises.push(
                     client.sendreceive("getoutput", {}, cell.uuid).then(u => {
-                        const message = u.message
-                        updateLocalCellOutput(cellNode, message.mime, message.output, message.errormessage, message.runtime)
+                        updateLocalCellOutput(cellNode, u.message)
                     })
                 )
             })
 
             Promise.all(promises).then(() => {
-                // We do a code completion request to trigger starting the workpsace
-                client.sendreceive("complete", {
-                    query: "nothinginparticular"
-                }).then(() => {
+                function happy() {
                     document.body.classList.remove("loading")
                     console.info("Workspace initialized")
-                })
+                }
+                if (runAll
+                    && !document.querySelector("notebook>cell.running")
+                    && document.querySelector("notebook>cell.output-notinsync")) {
+                    requestRunAllRemoteCells(false)
+                    window.allCellsCompletedPromise.then(happy)
+                } else {
+                    // We do a code completion request to trigger starting the workpsace
+                    client.sendreceive("complete", {
+                        query: "nothinginparticular"
+                    }).then(happy)
+                }
             })
         }).catch(console.error)
 
@@ -771,6 +789,14 @@ document.addEventListener("DOMContentLoaded", () => {
                         requestInterruptRemote()
                     }
                     e.preventDefault()
+                }
+                break
+            case 82: // r
+                if(e.ctrlKey){
+                    if(notebookPath != "unknown"){
+                        document.location.href = "/open?path=" + encodeURIComponent(notebookPath)
+                        e.preventDefault()
+                    }
                 }
                 break
             case 83: // s

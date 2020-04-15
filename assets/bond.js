@@ -24,8 +24,10 @@ document.addEventListener("celloutputchanged", (e) => {
     }
     const bondNodes = cellNode.querySelectorAll("bond")
 
-    bondNodes.forEach(bond => {
-        bond.generator = observablehq.Generators.input(bond.firstChild)
-        makeBond(bond)
+    bondNodes.forEach(bondNode => {
+        bondNode.generator = observablehq.Generators.input(bondNode.firstChild)
+        window.allCellsCompletedPromise.then(_ => {
+            makeBond(bondNode)
+        })
     })
 }, false)

@@ -67,7 +67,13 @@ end
 function save_notebook(io, notebook::Notebook)
     write(io, "### A Pluto.jl notebook ###\n")
     write(io, "# " * PLUTO_VERSION_STR * "\n")
-
+    # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
+    println(io, "")
+    println(io, "using Markdown")
+    # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
+    if any(occursin("@bind", c.code) for c in notebook.cells)
+        write(io, PlutoRunner.fake_bind)
+    end
     # TODO: this can be optimised by caching the topological order:
     # maintain cache with ordered UUIDs
     # whenever a run_reactive is done, move the found cells **up** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.

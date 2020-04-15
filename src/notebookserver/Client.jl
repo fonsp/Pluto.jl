@@ -1,15 +1,12 @@
 mutable struct Client
     id::Symbol
     stream::Any
-    stream_accesstoken::Channel{Nothing}
     connected_notebook::Union{Notebook,Nothing}
     pendingupdates::Channel
 end
 
 Client(id::Symbol, stream) = let
-    at = Channel{Nothing}(1)
-    put!(at, nothing)
-    Client(id, stream, at, nothing, Channel(1024))
+    Client(id, stream, nothing, Channel(1024))
 end
 
 struct Initiator
@@ -38,6 +35,7 @@ function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Uni
              :output => payload,
              :errormessage => cell.error_repr,
              :runtime => cell.runtime,
+             :running => cell.running,
             ),
             notebook, cell, initiator)
 end

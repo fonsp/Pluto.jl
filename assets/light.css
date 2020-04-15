@@ -350,6 +350,7 @@ cell.running.error>trafficlight {
     }
 }
 
+
 cell.dependent>cellinput>.CodeMirror,
 cell.warning>cellinput>.CodeMirror,
 cell.error>cellinput>.CodeMirror {
@@ -364,6 +365,24 @@ cell.error>cellinput>.CodeMirror {
         padding-left: 1px;
         border-bottom-left-radius: 0px;
     }
+}
+
+cell.output-notinsync>cellinput>.CodeMirror,
+cell.codediffers>cellinput>.CodeMirror {
+    border: 1px solid hsla(46, 70%, 37%, 0.68);
+    padding-left: 0px;
+}
+
+cell.output-notinsync>runarea,
+cell.codediffers>runarea {
+    opacity: 100%;
+    /* background: hsla(46, 70%, 37%, 0.35); */
+}
+cell.output-notinsync>runarea>button,
+cell.codediffers>runarea>button {
+    animation-name: 👀;
+    animation-duration: 4s;
+    animation-iteration-count: infinite;
 }
 
 @keyframes 🌈 {
@@ -381,6 +400,17 @@ cell.error>cellinput>.CodeMirror {
     }
     100% {
         background-color: hsl(360, 100%, 98%);
+    }
+}
+
+@keyframes 👀 {
+    0%, 80%, 100% {
+        transform: scale(1.0);
+        opacity: 50%;
+    }
+    90% {
+        transform: scale(1.2);
+        opacity: 100%;
     }
 }
 
@@ -422,7 +452,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 cell.output-notinsync .cm-s-default .CodeMirror-gutters,
 cell.codediffers .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 90%, 94%, 1);
+    background: hsla(46, 70%, 88%, 1);
 }
 
 .cm-s-default .CodeMirror-guttermarker {

@@ -7,22 +7,28 @@ const PKG_ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
+const CONFIG = Dict(
+    "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
+)
 
 @info """\n
-    Welcome to Pluto $(PLUTO_VERSION_STR)! ⚡
+    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
+    Start a notebook server using:
 
-    Let us know what you think:
-    https://github.com/fonsp/Pluto.jl
+  julia> Pluto.run(1234)
+
+    Have a look at the FAQ:
+    https://github.com/fonsp/Pluto.jl/wiki
 \n"""
 
 include("./react/ExploreExpression.jl")
+include("./runner/PlutoRunner.jl")
 using .ExploreExpression
 
 include("./notebookserver/Cell.jl")
 include("./notebookserver/Notebook.jl")
 include("./notebookserver/Client.jl")
 
-include("./runner/PlutoRunner.jl")
 include("./react/WorkspaceManager.jl")
 
 include("./react/Errors.jl")

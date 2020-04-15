@@ -50,17 +50,17 @@ function putclientupdates!(initiator::Initiator, messages::UpdateMessage...)
     putclientupdates!(connectedclients[initiator.clientID], messages...)
 end
 
-# flushtoken = Channel{Nothing}(1)
-# put!(flushtoken, nothing)
+# https://github.com/JuliaWeb/HTTP.jl/issues/382
+const flushtoken = Channel{Nothing}(1)
+put!(flushtoken, nothing)
 
 function flushclient(client::Client)
-    # take!(flushtoken)
     didsomething = false
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
         didsomething = true
         
-        token = take!(client.stream_accesstoken)
+        token = take!(flushtoken)
         try
             if client.stream !== nothing
                 if isopen(client.stream)
@@ -75,9 +75,8 @@ function flushclient(client::Client)
             @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
             return false
         end
-        put!(client.stream_accesstoken, token)
+        put!(flushtoken, token)
     end
-    # put!(flushtoken, nothing)
     true
 end
 
@@ -236,11 +235,13 @@ function run(port = 1234, launchbrowser = false)
         end
     end
 
-    println("Go to http://localhost:$(port)/ to start writing! ⚙")
+    println("Go to http://localhost:$(port)/ to start writing ~ have fun!")
     println()
     controlkey = Sys.isapple() ? "Command" : "Ctrl"
-    println("Press $controlkey+C to stop Pluto")
-    println()
+    if !Sys.iswindows()
+        println("Press $controlkey+C to stop Pluto")
+        println()
+    end
     
     launchbrowser && @warn "Not implemented yet"
 

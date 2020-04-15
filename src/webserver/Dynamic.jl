@@ -99,9 +99,11 @@ function change_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, 
     putnotebookupdates!(notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-
 responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, UpdateMessage(:👋, Dict(:notebookExists => (notebook != nothing)), nothing, nothing, initiator))
+    putclientupdates!(initiator, UpdateMessage(:👋, Dict(
+        :notebookExists => (notebook != nothing),
+        :CONFIG => CONFIG,
+    ), nothing, nothing, initiator))
 end
 
 responses[:getversion] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
