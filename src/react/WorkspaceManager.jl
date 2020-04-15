@@ -31,7 +31,7 @@ reset_default_distributed()
 
 "These expressions get executed whenever a new workspace is created."
 const workspace_preamble = [
-    :(using Markdown), 
+    :(using Markdown, Main.PlutoRunner), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string), # https://github.com/JuliaLang/julia/issues/18181
 ]
@@ -122,11 +122,11 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
+function eval_fetch_in_workspace(notebook::Notebook, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
+function eval_fetch_in_workspace(workspace::Workspace, expr)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     # nasty fix:
     if expr isa Expr && expr.head == :toplevel
         expr.head = :block

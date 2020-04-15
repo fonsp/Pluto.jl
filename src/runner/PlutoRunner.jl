@@ -8,6 +8,7 @@ import Distributed
 import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 
+export Bond, @bind
 ###
 # WORKSPACE MANAGER
 ###
@@ -19,29 +20,8 @@ function set_current_module(newname)
     global current_module = Core.eval(Main, newname)
 end
 
-import Base: push!
-push!(x::Set{Symbol}) = x
-
-declared_assignments = Set{Symbol}()
-declared_references = Set{Symbol}()
-
-function declare_assignments(symbols::Symbol...)
-    push!(declared_assignments, symbols...)
-end
-
-function declare_references(symbols::Symbol...)
-    push!(declared_references, symbols...)
-end
-
-function fetch_formatted_ans()::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime, :declared_assignments, :declared_references),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing},Set{Symbol},Set{Symbol}}}
-    run = (output_formatted = format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime, declared_assignments=declared_assignments, declared_references=declared_references)
-    if !isempty(declared_assignments)
-        global declared_assignments = Set{Symbol}()
-    end
-    if !isempty(declared_references)
-        global declared_references = Set{Symbol}()
-    end
-    run
+function fetch_formatted_ans()::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    (output_formatted = format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime)
 end
 
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_move::Set{Symbol}=Set{Symbol}(), module_imports_to_move::Set{Expr}=Set{Expr}(); invert_vars_set=false)
@@ -214,6 +194,35 @@ function doc_fetcher(query, mod::Module=current_module)
     catch ex
         (nothing, :👎)
     end
+end
+
+###
+# BONDS
+###
+
+struct Bond
+    element::Any
+    defines::Symbol
+    Bond(element, defines::Symbol) = showable(MIME("text/html"), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+end
+
+import Base: show
+function show(io::IO, ::MIME"text/html", bond::Bond)
+    print(io, "<bond def=\"$(bond.defines)\">")
+    show(io, MIME("text/html"), bond.element)
+    print(io, "</bond>")
+end
+
+macro bind(def, element)
+	if def isa Symbol
+		quote
+			local el = $(esc(element))
+            $(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+			PlutoRunner.Bond(el, $(Meta.quot(def)))
+		end
+	else
+		:(throw(ArgumentError("\nMacro example usage: \n\n\t@bind my_number PlutoUI.Slider(1:9)\n\n")))
+	end
 end
 
 end

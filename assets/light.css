@@ -526,7 +526,7 @@ div.CodeMirror span.CodeMirror-matchingbracket {
     color: unset;
 }
 
-cell:focus-within .cm-s-default .CodeMirror-matchingbracket {
+cellinput:focus-within .cm-s-default .CodeMirror-matchingbracket {
     color: black !important;
     font-weight: 700;
     background-color: #1b4bbb21;

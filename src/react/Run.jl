@@ -43,7 +43,7 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 	to_delete_vars = union(to_delete_vars, (errable.symstate.assignments for errable in new_errable)...)
 	
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
-	deletion_hook(notebook, to_delete_vars, to_reimport; to_run=to_run)
+	deletion_hook(notebook, to_delete_vars, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
@@ -54,18 +54,6 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 			any_interrupted |= run.interrupted
 		end
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
-		if !any_interrupted
-			if !isempty(run.declared_assignments) || !isempty(run.declared_references)
-				# the cell's symstate has been changed dynamically
-				push!(cell.symstate.assignments, run.declared_assignments...)
-				push!(cell.symstate.references, run.declared_references...)
-
-				# we restart run_reactive for the remaining cells - to take the newly discovered symstate into account
-				put!(notebook.executetoken, token)
-				remaining = setdiff(union(to_run[i+1:end], where_referenced(notebook, cell.symstate.assignments)), [cell])
-				return run_reactive!(notebook, remaining)
-			end
-		end
 	end
 
 	# allow other run_reactive! calls to be executed

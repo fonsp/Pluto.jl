@@ -231,6 +231,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (focusedCell == cellNode) {
             window.scrollBy(0, newHeight - oldHeight)
         }
+
+        if(!allCellsCompleted && !notebookNode.querySelector("notebook>cell.running")){
+            window.allCellsCompleted = true
+            window.allCellsCompletedPromise.resolver()
+        }
     }
 
     function updateLocalCellInput(byMe, cellNode, code, folded) {
@@ -371,7 +376,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* REQUEST FUNCTIONS FOR REMOTE CHANGES */
 
+    window.allCellsCompleted = true
+    window.allCellsCompletedPromise = new Promise(r => r()) // resolved
+
+    function refreshAllCompletionPromise(){
+        if(allCellsCompleted){
+            var resolver
+            window.allCellsCompletedPromise = new Promise(r => {resolver = r})
+            window.allCellsCompletedPromise.resolver = resolver
+            window.allCellsCompleted = false
+        }
+    }
+
+    window.refreshAllCompletionPromise = refreshAllCompletionPromise
+
     function requestChangeRemoteCell(uuid, createPromise=false) {
+        refreshAllCompletionPromise()
         window.localCells[uuid].classList.add("running")
         newCode = window.codeMirrors[uuid].getValue()
 
@@ -379,6 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function requestRunAllRemoteCells() {
+        refreshAllCompletionPromise()
         const promises = []
 
         for (var uuid in window.localCells) {
