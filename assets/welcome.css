@@ -1,0 +1,163 @@
+@import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+#title {
+    /* position: absolute; */
+    /* left: 0; */
+    /* right: 0; */
+    margin-top: 34vh;
+    /* bottom: 0; */
+    /* margin: auto; */
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+#title h1 {
+    font-style: italic;
+    font-size: 2em;
+    letter-spacing: .08em;
+    font-weight: 500;
+    font-family: 'Vollkorn', serif;
+    color: hsl(0, 0%, 26%);
+    margin: 0px;
+    border-bottom: solid 2px hsl(0, 0%, 88%);
+}
+
+#title img {
+    height: 1.2em;
+    margin-bottom: -.27em;
+    /* margin-right: -1.5em; */
+    margin-left: .1em;
+}
+
+.phantom {
+    opacity: 0%;
+    display: none;
+}
+
+body {
+    margin: 0px;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: white;
+}
+
+main {
+    width: 15em;
+    margin: 0 auto;
+    margin-top: 20vh;
+    text-align: left;
+    font-family: 'Roboto Mono', monospace;
+    color: hsl(0, 0%, 60%);
+}
+
+p {
+    color: hsl(0, 0%, 30%);
+}
+
+ul {
+    padding-left: .5em;
+    list-style: none;
+}
+
+ul.running {
+    margin-bottom: 10em;
+}
+
+li {
+    margin-bottom: .9em;
+}
+
+a {
+    color: inherit;
+    color: hsl(0, 0%, 30%);
+}
+
+
+/* input {
+            width: 70%;
+            font-family: inherit;
+            background: #ffffff;
+            border: 3px solid #d1d1d1;
+            border-radius: 6px;
+            padding: 3px;
+            margin-block-start: .7em;
+        } */
+
+filepicker {
+    display: flex;
+    flex-direction: row;
+    margin-top: .3rem;
+}
+
+filepicker .CodeMirror {
+    height: calc(1rem + 4px + 4px);
+    display: inline-block;
+    width: 100%;
+    opacity: .6;
+    font-style: normal;
+    font-weight: 500;
+    font-family: 'Roboto Mono', monospace !important;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    background: none;
+    border: 2px solid #818181;
+    border-radius: 3px;
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+filepicker .CodeMirror-scroll {
+    overflow: hidden !important;
+}
+
+filepicker button {
+    background: #6c8489;
+    border-radius: 3px;
+    border: 2px solid #6c8489;
+    color: white;
+    /* border: none; */
+    font-family: "Roboto Mono";
+    font-weight: 600;
+    font-size: .75rem;
+}
+
+filepicker button {
+    height: calc(1rem + 4px + 4px + 4px);
+    cursor: pointer;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+button {
+    width: 20%;
+    font-family: inherit;
+}
+
+li.file.new.CodeMirror-hint:before {
+    content: "👉 ";
+}
+
+li.file.CodeMirror-hint:before {
+    content: "📄 ";
+}
+
+li.dir.CodeMirror-hint:before {
+    content: "📁 ";
+}
+
+ul.CodeMirror-hints {
+    padding: 0;
+}
+
+ul.CodeMirror-hints {
+    font-family: 'Roboto Mono', monospace !important;
+    font-size: .75em;
+}
+
+body.loading .running,
+body.nosessions .running {
+    display: none;
+}

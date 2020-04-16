@@ -26,26 +26,11 @@ function serveonefile(path)
     return request::HTTP.Request->assetresponse(normpath(path))
 end
 
-function serveasset(req::HTTP.Request)
+function serve_asset(req::HTTP.Request)
     reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
     
     filepath = joinpath(PKG_ROOT_DIR, relpath(reqURI.path, "/"))
     assetresponse(filepath)
-end
-
-addons = Dict{String, String}()
-
-function serveaddon(req::HTTP.Request)
-    reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
-    filename = relpath(reqURI.path, "/addons/")
-
-    if haskey(addons, filename)
-        response = HTTP.Response(200, addons[filename])
-        push!(response.headers, "Content-Type" => string(mime_fromfilename(filename)))
-        response
-    else
-        HTTP.Response(404, "Addon $(filename) not found!")
-    end
 end
 
 const PLUTOROUTER = HTTP.Router()
@@ -60,6 +45,21 @@ function notebook_redirect(notebook)
     response = HTTP.Response(302, "")
     push!(response.headers, "Location" => "/edit?uuid=" * string(notebook.uuid))
     return response
+end
+
+function serve_sample(req::HTTP.Request)
+    uri=HTTP.URI(req.target)
+
+    path = split(uri.path, "sample/")[2]
+    try
+        nb = load_notebook_nobackup(joinpath(PKG_ROOT_DIR, "sample", path))
+        nb.path = tempname() * ".jl"
+        save_notebook(nb)
+        notebooks[nb.uuid] = nb
+        return notebook_redirect(nb)
+    catch e
+        return HTTP.Response(500, "Failed to load sample:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
+    end
 end
 
 function serve_openfile(req::HTTP.Request)
@@ -93,13 +93,6 @@ function serve_openfile(req::HTTP.Request)
     return HTTP.Response(400, "Bad query.\n\n<a href=\"/\">Go back</a>")
 end
 
-function serve_samplefile(req::HTTP.Request)
-    nb = samplenotebook()
-    save_notebook(nb)
-    notebooks[nb.uuid] = nb
-    return notebook_redirect(nb)
-end
-
 function serve_newfile(req::HTTP.Request)
     nb = emptynotebook()
     save_notebook(nb)
@@ -113,13 +106,13 @@ HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(PKG_ROOT
 
 HTTP.@register(PLUTOROUTER, "GET", "/sw.js", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "sw.js")))
 
-HTTP.@register(PLUTOROUTER, "GET", "/edit", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_samplefile)
 HTTP.@register(PLUTOROUTER, "GET", "/new", serve_newfile)
 HTTP.@register(PLUTOROUTER, "GET", "/open", serve_openfile)
+HTTP.@register(PLUTOROUTER, "GET", "/edit", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/sample", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "sample.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/sample/*", serve_sample)
 
 HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "favicon.ico")))
-HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serveasset)
-HTTP.@register(PLUTOROUTER, "GET", "/addons/*", serveaddon)
+HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serve_asset)
 
 HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))

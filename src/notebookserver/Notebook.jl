@@ -9,7 +9,7 @@ mutable struct Notebook
     uuid::UUID
     combined_funcdefs::Dict{Symbol, SymbolsState}
 
-    # buffer must contain all undisplayed outputs
+    # buffer will contain all unfetched updates - must be big enough
     pendingupdates::Channel
 
     executetoken::Channel
@@ -19,7 +19,7 @@ end
 Notebook(path::String, cells::Array{Cell,1}, uuid) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
-    Notebook(path, cells, uuid, Dict{Symbol, SymbolsState}(), Channel(128), et)
+    Notebook(path, cells, uuid, Dict{Symbol, SymbolsState}(), Channel(1024), et)
 end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
@@ -41,28 +41,6 @@ const _cell_appendix = "\n\n"
 
 emptynotebook(path) = Notebook(path, [Cell("")])
 emptynotebook() = emptynotebook(tempname() * ".jl")
-
-function samplenotebook()
-    cells = Cell[]
-
-    push!(cells, Cell("100*a + b"))
-    push!(cells, Cell("a = 1"))
-    push!(cells, Cell("b = let\n\tx = a + a\n\tx*x\nend"))
-    push!(cells, Cell("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""))
-    push!(cells, Cell("""md"# Cześć!
-    My name is **baba** and I like \$\\LaTeX\$ _support!_
-    
-    \$\$\\begin{align}
-    \\varphi &= \\sum_{i=1}^{\\infty} \\frac{\\left(\\sin{x_i}^2 + \\cos{x_i}^2\\right)}{i^2} \\\\
-    b &= \\frac{1}{2}\\,\\log \\exp{\\varphi}
-    \\end{align}\$\$
-
-    ### The spectacle before us was indeed sublime.
-    Apparently we had reached a great height in the atmosphere, for the sky was a dead black, and the stars had ceased to twinkle. By the same illusion which lifts the horizon of the sea to the level of the spectator on a hillside, the sable cloud beneath was dished out, and the car seemed to float in the middle of an immense dark sphere, whose upper half was strewn with silver. Looking down into the dark gulf below, I could see a ruddy light streaming through a rift in the clouds."
-    """))
-
-    Notebook(tempname() * ".jl", cells)
-end
 
 function save_notebook(io, notebook::Notebook)
     write(io, "### A Pluto.jl notebook ###\n")

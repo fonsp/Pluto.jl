@@ -20,39 +20,24 @@
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/display/placeholder.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/lib/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.css"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.css">
 
     <link rel="stylesheet" href="/assets/welcome.css">
 
 </head>
 
-<body class="loading nosessions">
+<body>
     <div id="title">
         <h1>welcome to <img src="/assets/logo.svg"><span class="phantom"> ot emoclew</span></h1>
             <main>
-            <p class="new">New session:</p>
+            <p class="new">Samples:</p>
             <ul class="new">
-                <li>Open a <a href="/sample">sample notebook</a></li>
-                <li>Create a <a href="/new">new notebook</a></li>
-                <li>Open from file:
-                    <!-- <form action="/open">
-                        <input type="text" placeholder="/path/to/file.jl" name="path">
-                        <button type="submit">Open</button>
-                    </form> -->
-                    
-                <filepicker>
-
-                    <button>Open</button>
-                </filepicker>
-                </li>
+                <li>1. <a href="/sample/basic.jl">Welcome</a></li>
+                <li>2. <a href="/sample/ui.jl">Interactivity</a></li>
+                <li>&#160&#160&#160<i>More to come...</i></li>
             </ul>
-            <br class="running" />
-            <p class="running">Running sessions:</p>
-            <ul class="running"></ul>
         </main>
     </div>
-
-    <script src="/assets/welcome.js"></script>
 </body>
 
 </html>
