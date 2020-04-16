@@ -3,6 +3,13 @@ import UUIDs: UUID
 import HTTP
 import Sockets
 
+import Base: endswith
+function endswith(vec::Vector{T}, suffix::Vector{T}) where T
+    local liv = lastindex(vec)
+    local lis = lastindex(suffix)
+    liv >= lis && (view(vec, (liv-lis + 1):liv) == suffix)
+end
+
 const connectedclients = Dict{Symbol,Client}()
 const notebooks = Dict{UUID,Notebook}()
 
@@ -101,6 +108,8 @@ end
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 responses = Dict{Symbol,Function}()
 
+const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
+const MSG_DELIM_BYTES = codeunits(MSG_DELIM) |> Vector{UInt8}
 
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
 
@@ -121,64 +130,14 @@ function run(port = 1234, launchbrowser = false)
                         # It is formatted and JSON-encoded by send(...) in editor.html
                         try
                             parentbody = let
-                                data = String(readavailable(clientstream))
-                                JSON.parse(data)
-                            end
-
-                            client = let
-                                clientID = Symbol(parentbody["clientID"])
-                                Client(clientID, clientstream)
-                            end
-                            # add to our list of connected clients
-                            connectedclients[client.id] = client
-                            
-                            messagetype = Symbol(parentbody["type"])
-                            requestID = Symbol(parentbody["requestID"])
-
-                            if messagetype == :disconnect
-                                delete!(connectedclients, client.id)
-                                close(clientstream)
-                            else
-                                body = parentbody["body"]
-        
-                                args = []
-                                if haskey(parentbody, "notebookID")
-                                    notebook = let
-                                        notebookID = UUID(parentbody["notebookID"])
-                                        get(notebooks, notebookID, nothing)
-                                    end
-                                    if notebook === nothing
-                                        messagetype === :connect || @warn "Remote notebook not found locally!"
-                                    else
-                                        client.connected_notebook = notebook
-                                        push!(args, notebook)
-                                    end
+                                # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
+                                data = UInt8[]
+                                while !endswith(data, MSG_DELIM_BYTES)
+                                    push!(data, readavailable(clientstream)...)
                                 end
-        
-                                if haskey(parentbody, "cellID")
-                                    cell = let
-                                        cellID = UUID(parentbody["cellID"])
-                                        selectcell_byuuid(notebook, cellID)
-                                    end
-                                    if cell === nothing
-                                        @warn "Remote cell not found locally!"
-                                    else
-                                        push!(args, cell)
-                                    end
-                                end
-                                
-                                if haskey(responses, messagetype)
-                                    responsefunc = responses[messagetype]
-                                    try
-                                        responsefunc(body, args..., initiator=Initiator(client.id, requestID))
-                                    catch ex
-                                        @warn "Response function to message of type $(messagetype) failed"
-                                        rethrow(ex)
-                                    end
-                                else
-                                    @warn "Message of type $(messagetype) not recognised"
-                                end
+                                JSON.parse(String(view(data, 1:(lastindex(data)-length(MSG_DELIM_BYTES)))))
                             end
+                            process_ws_message(parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException
                                 rethrow(ex)
@@ -237,11 +196,8 @@ function run(port = 1234, launchbrowser = false)
 
     println("Go to http://localhost:$(port)/ to start writing ~ have fun!")
     println()
-    controlkey = Sys.isapple() ? "Command" : "Ctrl"
-    if !Sys.iswindows()
-        println("Press $controlkey+C to stop Pluto")
-        println()
-    end
+    println("Press Ctrl+C in this terminal to stop Pluto")
+    println()
     
     launchbrowser && @warn "Not implemented yet"
 
@@ -264,6 +220,63 @@ function run(port = 1234, launchbrowser = false)
             end
         else
             rethrow(e)
+        end
+    end
+end
+
+function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
+    client = let
+        clientID = Symbol(parentbody["clientID"])
+        Client(clientID, clientstream)
+    end
+    # add to our list of connected clients
+    connectedclients[client.id] = client
+    
+    messagetype = Symbol(parentbody["type"])
+    requestID = Symbol(parentbody["requestID"])
+
+    if messagetype == :disconnect
+        delete!(connectedclients, client.id)
+        close(clientstream)
+    else
+        body = parentbody["body"]
+
+        args = []
+        if haskey(parentbody, "notebookID")
+            notebook = let
+                notebookID = UUID(parentbody["notebookID"])
+                get(notebooks, notebookID, nothing)
+            end
+            if notebook === nothing
+                messagetype === :connect || @warn "Remote notebook not found locally!"
+            else
+                client.connected_notebook = notebook
+                push!(args, notebook)
+            end
+        end
+
+        if haskey(parentbody, "cellID")
+            cell = let
+                cellID = UUID(parentbody["cellID"])
+                selectcell_byuuid(notebook, cellID)
+            end
+            if cell === nothing
+                @warn "Remote cell not found locally!"
+            else
+                push!(args, cell)
+            end
+        end
+        
+        if haskey(responses, messagetype)
+            responsefunc = responses[messagetype]
+            try
+                responsefunc(body, args..., initiator=Initiator(client.id, requestID))
+            catch ex
+                @warn "Response function to message of type $(messagetype) failed"
+                rethrow(ex)
+            end
+        else
+            @warn "Message of type $(messagetype) not recognised"
         end
     end
 end

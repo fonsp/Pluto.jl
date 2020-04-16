@@ -45,6 +45,8 @@ class PlutoConnection {
     clientID = this.getUniqueShortID()
 
     sentRequests = {}
+
+    MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
     
     send(messageType, body, cellUUID = undefined, createPromise=false) {
         const requestID = this.getUniqueShortID()
@@ -75,7 +77,7 @@ class PlutoConnection {
             this.sentRequests[requestID] = resolve
         }
 
-        this.psocket.send(JSON.stringify(toSend))
+        this.psocket.send(JSON.stringify(toSend) + this.MSG_DELIM)
 
         return p
     }

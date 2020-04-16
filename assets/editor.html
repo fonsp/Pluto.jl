@@ -609,7 +609,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.50.0/addon/hint/show-hint.min.css"></script>
     
     <link rel="stylesheet" href="/assets/light.css" />
-    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
+    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
 </head>
@@ -633,12 +633,6 @@
         <notebook>
         </notebook>
         <dropruler></dropruler>
-        <!-- <confirmationdialog>
-            <span id="question"></span>
-            <button id="yes"><span></span></button>
-            <span id="optionsep"></span>
-            <button id="no"><span></span></button>
-        </confirmationdialog> -->
         <template id="celltemplate">
             <cell class="output-notinsync">
                 <clickshoulder draggable="true" title="Drag to move. Click output to hide code."></clickshoulder>
