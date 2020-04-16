@@ -36,17 +36,10 @@ class PlutoConnection {
             })
         }, 1000)
     }
-    
-    psocket = null
 
     getUniqueShortID() {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
-    clientID = this.getUniqueShortID()
-
-    sentRequests = {}
-
-    MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
     
     send(messageType, body, cellUUID = undefined, createPromise=false) {
         const requestID = this.getUniqueShortID()
@@ -187,6 +180,10 @@ class PlutoConnection {
         this.onDisconnect = onDisconnect
 
         this.currentlyConnected = false
+        this.psocket = null
+        this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
+        this.clientID = this.getUniqueShortID()
+        this.sentRequests = {}
 
         window.addEventListener("unload", e => {
             this.send("disconnect", {})

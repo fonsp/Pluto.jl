@@ -243,12 +243,14 @@ responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
     new_val = body["val"]
     putnotebookupdates!(notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
     
-    function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
-        push!(to_delete_vars, bound_sym) # also delete the bound symbol
-        WorkspaceManager.delete_vars(notebook, to_delete_vars, to_reimport)
-        WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
+    if !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
+        function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
+            push!(to_delete_vars, bound_sym) # also delete the bound symbol
+            WorkspaceManager.delete_vars(notebook, to_delete_vars, to_reimport)
+            WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
+        end
+        to_reeval = where_referenced(notebook, Set{Symbol}([bound_sym]))
+        run_reactive_async!(notebook, to_reeval; deletion_hook=custom_deletion_hook)
     end
 
-    to_reeval = where_referenced(notebook, Set{Symbol}([bound_sym]))
-    run_reactive_async!(notebook, to_reeval; deletion_hook=custom_deletion_hook)
 end

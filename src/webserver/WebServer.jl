@@ -74,12 +74,14 @@ function flushclient(client::Client)
                     write(client.stream, serialize_message(next_to_send))
                 else
                     @info "Client $(client.id) stream closed."
+                    put!(flushtoken, token)
                     return false
                 end
             end
         catch ex
             bt = stacktrace(catch_backtrace())
             @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
+            put!(flushtoken, token)
             return false
         end
         put!(flushtoken, token)
@@ -109,7 +111,6 @@ end
 responses = Dict{Symbol,Function}()
 
 const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
-const MSG_DELIM_BYTES = codeunits(MSG_DELIM) |> Vector{UInt8}
 
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
 
@@ -131,11 +132,11 @@ function run(port = 1234, launchbrowser = false)
                         try
                             parentbody = let
                                 # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
-                                data = UInt8[]
-                                while !endswith(data, MSG_DELIM_BYTES)
-                                    push!(data, readavailable(clientstream)...)
+                                data = ""
+                                while !endswith(data, MSG_DELIM)
+                                    data = data * String(readavailable(clientstream))
                                 end
-                                JSON.parse(String(view(data, 1:(lastindex(data)-length(MSG_DELIM_BYTES)))))
+                                JSON.parse(SubString(data, 1:(lastindex(data)-length(MSG_DELIM))))
                             end
                             process_ws_message(parentbody, clientstream)
                         catch ex

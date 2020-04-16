@@ -1,14 +1,15 @@
 observablehq.Library()
 
 function makeBond(bondNode) {
+    if(bondNode.getRootNode() != document){
+        return
+    }
     bondNode.generator.next().value.then(val => {
-        console.log("New val: "+val)
         window.refreshAllCompletionPromise()
         window.client.sendreceive("bond_set", {
             sym: bondNode.getAttribute("def"),
             val: val,
         }).then(u => {
-            // TODO: wait for all cells to finish running, maybe make this an event
         })
         window.allCellsCompletedPromise.then(_ => {
             makeBond(bondNode)
@@ -25,7 +26,7 @@ document.addEventListener("celloutputchanged", (e) => {
     const bondNodes = cellNode.querySelectorAll("bond")
 
     bondNodes.forEach(bondNode => {
-        bondNode.generator = observablehq.Generators.input(bondNode.firstChild)
+        bondNode.generator = observablehq.Generators.input(bondNode.firstElementChild)
         window.allCellsCompletedPromise.then(_ => {
             makeBond(bondNode)
         })

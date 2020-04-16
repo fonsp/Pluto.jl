@@ -204,7 +204,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                 document.head.appendChild(tag)
                             }
                         } else {
-                            eval(scripts[i].innerHTML)
+                            var result = Function(scripts[i].innerHTML).bind(outputNode)()
+                            if(!scripts[i].previousElementSibling && !scripts[i].nextElementSibling){
+                                if(result && result.nodeType === Node.ELEMENT_NODE){
+                                    scripts[i].parentElement.insertBefore(result, scripts[i])
+                                }
+                            }
                         }
                     }
                 } catch (err) {
