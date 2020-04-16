@@ -492,6 +492,9 @@ document.addEventListener("DOMContentLoaded", () => {
             case "eval":
                 (new Function(update.message.script))()
                 break
+            case "bond_update":
+                // TODO
+                break
             default:
                 const custom = window.customPlutoListeners[update.type]
                 if(custom){
