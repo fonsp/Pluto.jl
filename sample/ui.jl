@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.6.3
+# v0.6.4
 
 using Markdown
 macro bind(def, element)
@@ -74,14 +74,6 @@ md"""
 
 # ╔═╡ ede8009e-7f15-11ea-192a-a5c6135a9dcf
 (a,b,c,d,e,f)
-
-# ╔═╡ 1ee0569c-7f61-11ea-1ae1-fdaf701bf291
-filter(ENV) do (k, v)
-	startswith(k, "GKS")
-end
-
-# ╔═╡ bf16218c-7f61-11ea-24dc-37be1c91fdb6
-haskey(ENV, "GKS_FONTPATH")
 
 # ╔═╡ e2168b4c-7f32-11ea-355c-cf5932419a70
 md"""**You can also use JavaScript to write more complicated input objects.** The `input` event can be triggered on any object using
@@ -169,6 +161,33 @@ In fact, **_any package_ can add bindable values to their objects**. For example
 
 A package _does not need to add `Pluto.jl` as a dependency to so_: only the `Base.show(io, MIME("text/html"), obj)` function needs to be extended to contain a `<script>` that triggers the `input` event with a value. (It's up to the package creator _when_ and _what_.) This _does not affect_ how the object is displayed outside of Pluto.jl: uncaught events are ignored by your browser."""
 
+# ╔═╡ 36ca3050-7f36-11ea-3caf-cb10e945ca99
+md"""## Tips
+
+#### Wrap large code blocks
+If you have a large block of code that depends on a bound variable `t`, it will be faster to wrap that code inside a function `f(my_t)` (which depends on `my_t` instead of `t`), and then _call_ that function from another cell, with `t` as parameter.
+
+This way, only the Julia code "`f(t)`" needs to be lowered and re-evaluated, instead of the entire code block."""
+
+# ╔═╡ 03701e62-7f37-11ea-3b9a-d9d5ae2344e6
+md"""#### Separate definition and reference
+
+If you put a bond and a reference to the same variable together, it will keep evaluating in a loop.
+
+So **do not** write
+```julia
+md""\"$(@bind r html"<input type='range'>")  $(r^2)""\"
+```
+
+Instead, create two cells:
+```julia
+md""\"$(@bind r html"<input type='range'>")""\"
+```
+```julia
+r^2
+```
+"""
+
 # ╔═╡ 55783466-7eb1-11ea-32d8-a97311229e93
 md""
 
@@ -221,33 +240,6 @@ _If you want to make a cool new UI, go to [observablehq.com/@observablehq/introd
 # ╔═╡ dddb9f34-7f37-11ea-0abb-272ef1123d6f
 md""
 
-# ╔═╡ 36ca3050-7f36-11ea-3caf-cb10e945ca99
-md"""## Tips
-
-#### Wrap large code blocks
-If you have a large block of code that depends on a bound variable `t`, it will be faster to wrap that code inside a function `f(my_t)` (which depends on `my_t` instead of `t`), and then _call_ that function from another cell, with `t` as parameter.
-
-This way, only the Julia code "`f(t)`" needs to be lowered and re-evaluated, instead of the entire code block."""
-
-# ╔═╡ 03701e62-7f37-11ea-3b9a-d9d5ae2344e6
-md"""#### Separate definition and reference
-
-If you put a bond and a reference to the same variable together, it will keep evaluating in a loop.
-
-So **do not** write
-```julia
-md""\"$(@bind r html"<input type='range'>")  $(r^2)""\"
-```
-
-Instead, create two cells:
-```julia
-md""\"$(@bind r html"<input type='range'>")""\"
-```
-```julia
-r^2
-```
-"""
-
 # ╔═╡ 23db0e90-7f35-11ea-1c05-115773b44afa
 md""
 
@@ -267,8 +259,6 @@ md"That's it for now! Let us know what you think using the feedback button below
 # ╟─5301eb68-7f14-11ea-3ff6-1f075bf73955
 # ╟─c7203996-7f14-11ea-00a3-8192ccc54bd6
 # ╠═ede8009e-7f15-11ea-192a-a5c6135a9dcf
-# ╠═1ee0569c-7f61-11ea-1ae1-fdaf701bf291
-# ╠═bf16218c-7f61-11ea-24dc-37be1c91fdb6
 # ╟─e2168b4c-7f32-11ea-355c-cf5932419a70
 # ╟─7f4b0e1e-7f16-11ea-02d3-7955921a70bd
 # ╠═5876b98e-7f32-11ea-1748-0bb47823cde1
@@ -276,12 +266,12 @@ md"That's it for now! Let us know what you think using the feedback button below
 # ╟─d774fafa-7f34-11ea-290d-37805806e14b
 # ╟─8db857f8-7eae-11ea-3e53-058a953f2232
 # ╟─d5b3be4a-7f52-11ea-2fc7-a5835808207d
+# ╟─36ca3050-7f36-11ea-3caf-cb10e945ca99
+# ╟─03701e62-7f37-11ea-3b9a-d9d5ae2344e6
 # ╟─55783466-7eb1-11ea-32d8-a97311229e93
 # ╟─582769e6-7eb1-11ea-077d-d9b4a3226aac
 # ╟─8f829274-7eb1-11ea-3888-13c00b3ba70f
 # ╟─ced18648-7eb2-11ea-2052-07795685f0da
 # ╟─dddb9f34-7f37-11ea-0abb-272ef1123d6f
-# ╟─36ca3050-7f36-11ea-3caf-cb10e945ca99
-# ╟─03701e62-7f37-11ea-3b9a-d9d5ae2344e6
 # ╟─23db0e90-7f35-11ea-1c05-115773b44afa
 # ╟─f7555734-7f34-11ea-069a-6bb67e201bdc
