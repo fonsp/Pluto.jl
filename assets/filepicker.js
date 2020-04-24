@@ -30,7 +30,6 @@ function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
 
     editor.on("change", (cm, change) => {
         requestPathCompletions(cm)
-        cm.scrollIntoView()
     })
 
     return editor

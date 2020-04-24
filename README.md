@@ -24,15 +24,23 @@ Your notebooks are saved as pure Julia files, which you can then import as if yo
 
 <img alt="formatting screenshot" src="demo/formatting.png" width="50%">
 
-## Installation
+## Let's do it!
 
-_(To developers: follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/dev_instructions.md) to start working on the package.)_
+### Ingredients
+For one tasty notebook 🥞 you will need:
+- **Julia** v1.0 or above
+- **Linux**, **macOS** or **Windows**, _Linux and macOS will work best_
+- Mozilla **Firefox** or Google **Chrome**, be sure to get the **latest** version
 
-After [installing julia](https://julialang.org/), add the package:
+### Installation
+
+Run Julia and add the package:
 ```julia
 julia> ]
 (v1.0) pkg> add Pluto
 ```
+
+_Adding the first package to Julia can take up to 30 minutes - hang in there!_
 
 To run the notebook server:
 ```julia
@@ -42,13 +50,22 @@ julia> Pluto.run(1234)
 
 Then go to [`http://localhost:1234/`](http://localhost:1234/) to start coding!
 
+**Work remotely**:
+You can also run Pluto _on a server_, and use the browser on your own computer as user interface. For this, you need to set up an _SSH tunnel_. First, log in to your server using SSH and start a Pluto server. Then open a local terminal on your own computer and type:
+
+```bash
+ssh user@ipaddress -LN 1234:localhost:1234
+```
+with `user` and `ipaddress` filled in accordingly. You can then go to [`http://localhost:1234/`](http://localhost:1234/) on your own computer to get started! For more info and instructions for Windows, see [this guide](https://medium.com/@apbetahouse45/how-to-run-jupyter-notebooks-on-remote-server-part-1-ssh-a2be0232c533).
+
+**To developers**:
+Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/dev_instructions.md) to start working on the package.
+
 <img alt="plotting screencap" src="demo/plutoODE.gif" >
 
 ## Note
 
-This package is still in its early days - go to the [issue tracker](https://github.com/fonsp/Pluto.jl/issues) to see what's up!
-
-Let us know what you think! 😊
+We are happy to say that **Pluto.jl is in a stable state**, and we look forward to hearing what you think! 😊
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" >
 
