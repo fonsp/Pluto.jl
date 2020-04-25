@@ -43,7 +43,7 @@ celloutput p {
     margin-block-start: 8px;
     margin-block-end: 20px;
     word-spacing: 0.053em;
-    line-height: 1.5em;
+    line-height: 1.45em;
 }
 
 celloutput p:first-child {
@@ -76,7 +76,7 @@ body.loading>header {
 main {
     max-width: 700px;
     padding-right: 6px;
-    padding-left: 20px;
+    padding-left: 25px;
 }
 
 cell {
@@ -136,7 +136,7 @@ preamble>button,
 cell>button,
 cellinput>button,
 runarea>button,
-confirmationdialog>button {
+clickshoulder>button {
     margin: 0px;
     padding: 1px;
     opacity: 50%;
@@ -158,7 +158,7 @@ preamble>button>span::after{
     background-size: 17px 17px;
     display: block;
     content: "Run all" !important;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/refresh-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-skip-forward-circle-outline.svg);
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
@@ -169,21 +169,24 @@ preamble>button>span::after{
     cell>button,
     cellinput>button,
     runarea>button,
+    clickshoulder>button,
     cell>runarea {
         opacity: 0%;
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
-    
+
     cell:hover>button,
     cell:hover>cellinput>button,
-    cell:hover>runarea>button {
+    cell:hover>runarea>button,
+    cell:hover>clickshoulder>button {
         opacity: 25%;
     }
     preamble>button:hover,
     cell>button:hover,
     cell>cellinput>button:hover,
-    cell>runarea:hover>button,
+    cell>runarea>button:hover,
+    cell>clickshoulder>button:hover,
     cell:hover>runarea {
         opacity: 100%;
         /* to make it feel snappy: */
@@ -195,6 +198,7 @@ preamble>button>span::after{
     cell>button,
     cellinput>button,
     runarea>button,
+    clickshoulder>button,
     cell>runarea {
         opacity: 0%;
         /* to make it feel smooth: */
@@ -203,12 +207,14 @@ preamble>button>span::after{
     cell:focus-within>button,
     cell:focus-within>cellinput>button,
     cell:focus-within>runarea>button,
-    cell:focus-within>runarea {
+    cell:focus-within>runarea,
+    cell:focus-within>clickshoulder>button {
         opacity: 25%;
     }
     cell>button:focus-within,
     cell>cellinput>button:focus-within
     cell>runarea>button:focus-within,
+    cell>clickshoulder>button:focus-within,
     cell>runarea {
         opacity: 100%;
         /* to make it feel snappy: */
@@ -218,7 +224,8 @@ preamble>button>span::after{
 
 cell>button>span::after,
 cellinput>button>span::after,
-runarea>button>span::after {
+runarea>button>span::after,
+clickshoulder>button>span::after {
     display: block;
     content: " " !important;
     background-size: 17px 17px;
@@ -241,6 +248,29 @@ cell>button.addcell.before {
 cell>button.addcell>span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
+}
+
+cell>clickshoulder>button>span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-outline.svg);
+}
+
+cell.code-folded>clickshoulder>button>span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-off-outline.svg);
+}
+
+clickshoulder {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: flex-start;
+}
+
+clickshoulder > button {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 3px;
+    margin: 3px;
+    margin-right: 5px;
 }
 
 runarea {

@@ -301,17 +301,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // EVENT LISTENERS FOR CLICKY THINGS
 
-        newCellNode.querySelector("celloutput").onclick = (e) => {
+        newCellNode.querySelector(".codefoldcell").onclick = (e) => {
             var newFolded = newCellNode.classList.contains("code-folded")
             if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerHTML === "<pre><code></code></pre>") {
                 // You may not fold code if the output is empty (it would be confusing)
                 newFolded = false
-            } else if (window.getSelection().isCollapsed) {
-                // Do not fold if the click event was fired because the user selects text in the output.
-                if (e.target.tagName != "A" && e.target.tagName != "INPUT" && e.target.tagName != "SELECT") {
-                    // Do not fold if a link was clicked.
-                    newFolded = !newFolded
-                }
+            } else {
+                newFolded = !newFolded
             }
             requestCodeFoldRemoteCell(uuid, newFolded)
         }
@@ -618,10 +614,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     dropruler = document.querySelector("dropruler")
 
-    document.ondragover = (e) => {
-        e.preventDefault();
-    }
-
     var dropPositions = []
     var dropee = null
     document.ondragstart = (e) => {
@@ -633,20 +625,24 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         dropPositions.push(notebookNode.lastChild.offsetTop + notebookNode.lastChild.scrollHeight)
     }
-    // Called continuously during drag
-    document.ondrag = (e) => {
+    document.ondragover = (e) => {
+        // Called continuously during drag
         dist = dropPositions.map(p => Math.abs(p - e.pageY))
         dropIndex = argmin(dist)
-
+        
         dropruler.style.top = dropPositions[dropIndex] + "px";
         dropruler.style.display = "block";
-        console.log(dropIndex)
+        e.preventDefault()
+    }
+    document.ondragend = (e) => {
+        // Called after drag, also when dropped outside of the browser or when ESC is pressed
+        dropruler.style.display = "none";
     }
     document.ondrop = (e) => {
+        // Called when drag-dropped somewhere on the page
         dist = dropPositions.map(p => Math.abs(p - e.pageY))
         dropIndex = argmin(dist)
 
-        dropruler.style.display = "none";
 
         requestMoveRemoteCell(dropee.id, dropIndex)
     }

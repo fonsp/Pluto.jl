@@ -635,7 +635,9 @@
         <dropruler></dropruler>
         <template id="celltemplate">
             <cell class="output-notinsync">
-                <clickshoulder draggable="true" title="Drag to move. Click output to hide code."></clickshoulder>
+                <clickshoulder draggable="true" title="Drag to move cell">
+                    <button class="codefoldcell" title="Show/hide code"><span></span></button>
+                </clickshoulder>
                 <trafficlight></trafficlight>
                 <button class="addcell before" title="Add cell"><span></span></button>
                 <celloutput tabindex="1"></celloutput>
