@@ -55,7 +55,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
                 catch ex
                     @warn "Failed to move variable $(symbol) to new workspace:"
-                    showerror(stderr, ex, stacktrace(backtrace()))
+                    showerror(stderr, ex, stacktrace(catch_backtrace()))
                 end
             end
         else
@@ -63,7 +63,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 
             # free memory for other variables
             # & delete methods created in the old module:
-            # for example, the old module might extend an imported function: 
+            # for example, the old module might extend an imported function:
             # `import Base: show; show(io::IO, x::Flower) = print(io, "🌷")`
             # when you delete/change this cell, you want this extension to disappear.
             if isdefined(old_workspace, symbol)
@@ -76,7 +76,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                         Base.delete_method.(filter(m -> startswith(nameof(m.module) |> string, "workspace"), ms))
                     catch ex
                         @warn "Failed to delete methods for $(symbol)"
-                        showerror(stderr, ex, stacktrace(backtrace()))
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
                     end
                 end
 
@@ -126,7 +126,7 @@ function format_output(val::Any)::Tuple{String, MIME}
         mimes = [MIME("text/html"), MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("text/plain")]
         first(filter(m->Base.invokelatest(showable, m, val), mimes))
     end
-    
+
     if val === nothing
         "", mime
     else
@@ -139,7 +139,7 @@ function format_output(val::Any)::Tuple{String, MIME}
             end
             result, mime
         catch ex
-            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(backtrace())), MIME("text/plain")
+            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(catch_backtrace())), MIME("text/plain")
         end
     end
 end

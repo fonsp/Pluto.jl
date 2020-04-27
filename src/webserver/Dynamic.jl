@@ -225,7 +225,7 @@ responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initi
             (success=true, reason="")
         end
     catch ex
-        showerror(stderr, stacktrace(backtrace()))
+        showerror(stderr, stacktrace(catch_backtrace()))
         (success=false, reason=sprint(showerror, ex))
     end
 
