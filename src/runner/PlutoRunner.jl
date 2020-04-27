@@ -55,7 +55,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
                 catch ex
                     @warn "Failed to move variable $(symbol) to new workspace:"
-                    showerror(stderr, ex, stacktrace(backtrace()))
+                    showerror(stderr, ex, stacktrace(catch_backtrace()))
                 end
             end
         else
@@ -76,7 +76,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                         Base.delete_method.(filter(m -> startswith(nameof(m.module) |> string, "workspace"), ms))
                     catch ex
                         @warn "Failed to delete methods for $(symbol)"
-                        showerror(stderr, ex, stacktrace(backtrace()))
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
                     end
                 end
 
