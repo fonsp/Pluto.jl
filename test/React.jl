@@ -281,8 +281,12 @@ WorkspaceManager.set_default_distributed(false)
         show(io::IO, x::Tuple) = write(io, \"🐟\")
     end"),
 
+    Cell("Base.isodd(n::Integer) = \"🎈\""),
+    Cell("Base.isodd(28)"),
+    Cell("isodd(29)"),
+
     Cell("using Dates"),
-    Cell("year(DateTime(28))")
+    Cell("year(DateTime(31))"),
 ])
     fakeclient.connected_notebook = notebook
 
@@ -354,7 +358,7 @@ WorkspaceManager.set_default_distributed(false)
     @testset "Extending imported functions" begin
         run_reactive!(notebook, notebook.cells[11:15])
         @test_broken notebook.cells[11].error_repr == nothing
-        @test_broken notebook.cells[12].error_repr == nothing
+        @test_broken notebook.cells[12].error_repr == nothing # multiple definitions for `Something` should be okay?
         @test notebook.cells[13].error_repr == nothing
         @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output_repr == "15"
@@ -389,26 +393,44 @@ WorkspaceManager.set_default_distributed(false)
         run_reactive!(notebook, notebook.cells[25])
         @test notebook.cells[25].output_repr == "(25, :fish)"
         run_reactive!(notebook, notebook.cells[26])
-        @test_broken notebook.cells[25].output_repr == "🐟"
+        @test_broken notebook.cells[25].output_repr == "🐟" # cell's don't automatically call `show` again when a new overload is defined - that's a minor issue
         run_reactive!(notebook, notebook.cells[25])
         @test notebook.cells[25].output_repr == "🐟"
 
         notebook.cells[26].code = ""
         run_reactive!(notebook, notebook.cells[26])
         run_reactive!(notebook, notebook.cells[25])
-        @test_broken notebook.cells[25].output_repr == "(25, :fish)"
+        @test notebook.cells[25].output_repr == "(25, :fish)"
+
+        run_reactive!(notebook, notebook.cells[28:29])
+        @test notebook.cells[28].output_repr == "false"
+        @test notebook.cells[29].output_repr == "true"
+        run_reactive!(notebook, notebook.cells[27])
+        @test notebook.cells[28].output_repr == "\"🎈\""
+        @test_broken notebook.cells[29].output_repr == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        run_reactive!(notebook, notebook.cells[28:29])
+        @test notebook.cells[28].output_repr == "\"🎈\""
+        @test notebook.cells[29].output_repr == "\"🎈\""
+
+        notebook.cells[27].code = ""
+        run_reactive!(notebook, notebook.cells[27])
+        @test notebook.cells[28].output_repr == "false"
+        @test_broken notebook.cells[29].output_repr == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        run_reactive!(notebook, notebook.cells[28:29])
+        @test notebook.cells[28].output_repr == "false"
+        @test notebook.cells[29].output_repr == "true"
     end
 
     @testset "Using external libraries" begin
-        run_reactive!(notebook, notebook.cells[27:28])
-        @test notebook.cells[27].error_repr == nothing
-        @test notebook.cells[28].output_repr == "28"
-        run_reactive!(notebook, notebook.cells[28])
-        @test notebook.cells[28].output_repr == "28"
+        run_reactive!(notebook, notebook.cells[30:31])
+        @test notebook.cells[30].error_repr == nothing
+        @test notebook.cells[31].output_repr == "31"
+        run_reactive!(notebook, notebook.cells[31])
+        @test notebook.cells[31].output_repr == "31"
 
-        notebook.cells[27].code = ""
-        run_reactive!(notebook, notebook.cells[27:28])
-        @test occursin("UndefVarError", notebook.cells[28].error_repr)
+        notebook.cells[30].code = ""
+        run_reactive!(notebook, notebook.cells[30:31])
+        @test occursin("UndefVarError", notebook.cells[31].error_repr)
     end
     WorkspaceManager.unmake_workspace(notebook)
 

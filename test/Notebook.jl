@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: samplenotebook, Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
+import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
 
 function notebook_inputs_equal(nbA, nbB)
     x = normpath(nbA.path) == normpath(nbB.path)

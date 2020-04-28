@@ -1,4 +1,4 @@
-import UUIDs: UUID
+import UUIDs: UUID, uuid1
 import .ExploreExpression: SymbolsState
 import JSON: lower
 

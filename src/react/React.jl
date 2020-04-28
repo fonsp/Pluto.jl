@@ -86,18 +86,7 @@ end
 
 "Update the combined collection of function definitions, where multiple specialisations of a function are combined into a single `SymbolsState`."
 function update_funcdefs!(notebook::Notebook)
-	# TODO: optimise
-	combined = notebook.combined_funcdefs = Dict{Symbol, SymbolsState}()
-
-	for cell in notebook.cells
-		for (func, symstate) in cell.symstate.funcdefs
-			if haskey(combined, func)
-				combined[func] = symstate ∪ combined[func]
-			else
-				combined[func] = symstate
-			end
-		end
-	end
+	notebook.combined_funcdefs = union((c.symstate.funcdefs for c in notebook.cells)...)
 end
 
 "Return all variables that a cell references, including those referenced through function calls."
@@ -111,15 +100,15 @@ function all_assignments(notebook::Notebook, cell::Cell)::Set{Symbol}
 end 
 
 "Return all functions called by a cell, and all functions called by those functions, et cetera."
-function all_recursed_calls!(notebook::Notebook, symstate::SymbolsState, found::Set{Symbol}=Set{Symbol}())::Set{Symbol}
+function all_recursed_calls(notebook::Notebook, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
 	for func in symstate.funccalls
 		if func in found
 			# done
 		else
-            push!(found, func)
+			push!(found, func)
             if haskey(notebook.combined_funcdefs, func)
                 inner_symstate = notebook.combined_funcdefs[func]
-                all_recursed_calls!(notebook, inner_symstate, found)
+                all_recursed_calls(notebook, inner_symstate, found)
             end
 		end
 	end

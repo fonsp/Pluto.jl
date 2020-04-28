@@ -1,4 +1,4 @@
-using UUIDs
+import UUIDs: UUID, uuid1
 
 mutable struct Notebook
     path::String
@@ -7,7 +7,7 @@ mutable struct Notebook
     cells::Array{Cell,1}
     
     uuid::UUID
-    combined_funcdefs::Dict{Symbol, SymbolsState}
+    combined_funcdefs::Dict{Vector{Symbol}, SymbolsState}
 
     # buffer will contain all unfetched updates - must be big enough
     pendingupdates::Channel
@@ -19,7 +19,7 @@ end
 Notebook(path::String, cells::Array{Cell,1}, uuid) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
-    Notebook(path, cells, uuid, Dict{Symbol, SymbolsState}(), Channel(1024), et)
+    Notebook(path, cells, uuid, Dict{Vector{Symbol}, SymbolsState}(), Channel(1024), et)
 end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)

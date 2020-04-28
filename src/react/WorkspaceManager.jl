@@ -283,18 +283,18 @@ function kill_workspace(workspace::Workspace)
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
-    delete_vars(get_workspace(notebook), to_delete, module_imports_to_move)
+function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+    delete_vars(get_workspace(notebook), to_delete, funcs_to_delete, module_imports_to_move; kwargs...)
 end
 
-function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, module_imports_to_move::Set{Expr}=Set{Expr}(); kwargs...)
+function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
     old_workspace_name = workspace.module_name
     new_workspace_name = create_emptyworkspacemodule(workspace.workspace_pid)
 
     workspace.module_name = new_workspace_name
     Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
 
-    Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $module_imports_to_move; invert_vars_set=true)))
+    Distributed.remotecall_eval(Main, [workspace.workspace_pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
 
