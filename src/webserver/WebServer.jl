@@ -215,6 +215,9 @@ function run(port = 1234, launchbrowser = false)
             # TODO: HTTP has a kill signal?
             # TODO: put do_work tokens back 
             empty!(notebooks)
+            for client in values(connectedclients)
+                @async close(client.stream)
+            end
             empty!(connectedclients)
             for (uuid, ws) in WorkspaceManager.workspaces
                 WorkspaceManager.unmake_workspace(ws)

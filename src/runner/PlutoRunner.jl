@@ -165,7 +165,7 @@ function format_output(val::Any)::Tuple{String, MIME}
     # in order of coolness
     # text/plain always matches
     mime = let
-        mimes = [MIME("text/html"), MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("text/plain")]
+        mimes = [MIME("text/html"), MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("image/gif"), MIME("text/plain")]
         first(filter(m->Base.invokelatest(showable, m, val), mimes))
     end
 
@@ -175,9 +175,8 @@ function format_output(val::Any)::Tuple{String, MIME}
         try
             result = Base.invokelatest(repr, mime, val; context = iocontext)
             # MIME rewrites for types other than text/plain or text/html
-            if mime ∈ [MIME("image/png"), MIME("image/jpg")]
-                result = "<img src=\"data:$(mime);base64,$(Base64.base64encode(result))\" />"
-                mime = MIME("text/html")
+            if result isa Vector{UInt8}
+                result = ("data:" * string(mime) * ";base64,") * Base64.base64encode(result)
             end
             result, mime
         catch ex

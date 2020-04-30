@@ -80,7 +80,10 @@ function pathhints(cm, option) {
                         suggestedFileName = "notebook.jl"
                     }
 
-                    if(initLength != 3 && !results.includes(suggestedFileName)){
+                    if(initLength == 3){
+                        return null
+                    }
+                    if(!results.includes(suggestedFileName)){
                         styledResults.push({
                             text: suggestedFileName,
                             displayText: suggestedFileName + " (new)",

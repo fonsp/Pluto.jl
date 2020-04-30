@@ -96,7 +96,7 @@ document.addEventListener("DOMContentLoaded", () => {
             mode: "julia",
             lineWrapping: true,
             lineNumberFormatter: function (i) {
-                return "⋅"+i
+                return "⋅" + i
             },
             // theme: "paraiso-light",
             viewportMargin: Infinity,
@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", () => {
         editor.on("cursorActivity", (cm) => {
             const token = cm.getTokenAt(cm.getCursor())
 
-            if(token.type != null && token.type != "string"){
+            if (token.type != null && token.type != "string") {
                 updateDocQuery(token.string)
             }
         });
@@ -169,7 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateLocalCellOutput(cellNode, msg) {
-        if(msg.running){
+        if (msg.running) {
             cellNode.classList.add("running")
         } else {
             cellNode.classList.remove("running")
@@ -179,6 +179,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const outputNode = cellNode.querySelector("celloutput")
 
         oldHeight = outputNode.scrollHeight
+        oldScroll = window.scrollY
 
         if (msg.errormessage) {
             outputNode.innerHTML = "<pre><code></code></pre>"
@@ -188,11 +189,9 @@ document.addEventListener("DOMContentLoaded", () => {
             cellNode.classList.remove("error")
             if (msg.mime == "text/html" || msg.mime == "image/svg+xml") {
 
-                // if(outputNode.innerHTML != msg.output){
-                // }
                 outputNode.innerHTML = msg.output
 
-                // from https://stackoverflow.com/a/26716182
+                // based on https://stackoverflow.com/a/26716182
                 // to execute all scripts in the output html:
                 try {
                     var scripts = Array.prototype.slice.call(outputNode.getElementsByTagName("script"))
@@ -205,45 +204,62 @@ document.addEventListener("DOMContentLoaded", () => {
                             }
                         } else {
                             var result = Function(scripts[i].innerHTML).bind(outputNode)()
-                            if(!scripts[i].previousElementSibling && !scripts[i].nextElementSibling){
-                                if(result && result.nodeType === Node.ELEMENT_NODE){
+                            if (!scripts[i].previousElementSibling && !scripts[i].nextElementSibling) {
+                                if (result && result.nodeType === Node.ELEMENT_NODE) {
                                     scripts[i].parentElement.insertBefore(result, scripts[i])
                                 }
                             }
                         }
                     }
                 } catch (err) {
-                    console.log("Couldn't execute all scripts:")
-                    console.log(err)
+                    console.error("Couldn't execute all scripts:")
+                    console.error(err)
                     // TODO: relay to user
                     // might be wise to wait after adding scripts to head
-                    //
                 }
-                
+
                 // convert LaTeX to svg
                 MathJax.typeset()
+            } else if (msg.mime == "image/png" || msg.mime == "image/jpg" || msg.mime == "image/gif") {
+                var i = undefined
+                if (outputNode.children.length == 1 && outputNode.children[0].tagName == "IMG") {
+                    // https://github.com/fonsp/Pluto.jl/issues/95
+                    // images are loaded asynchronously and don't initiate with the final height.
+                    // we fix this by reusing the old image
+                    i = outputNode.children[0]
+                    new Array("width", "height", "alt", "sizes", "srcset").map(attr => i.removeAttribute(attr))
+                } else {
+                    i = document.createElement("img")
+                    outputNode.innerHTML = ""
+                    outputNode.appendChild(i)
+                }
+                i.src = msg.output
             } else {
                 outputNode.innerHTML = "<pre><code></code></pre>"
                 outputNode.querySelector("code").innerText = msg.output
             }
         }
-        document.dispatchEvent(new CustomEvent("celloutputchanged", {detail: {cell: cellNode, mime: msg.mime}}))
-        if(msg.output == null && msg.errormessage == null){
+        document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
+        if (msg.output == null && msg.errormessage == null) {
             cellNode.classList.add("output-notinsync")
         } else {
             cellNode.classList.remove("output-notinsync")
         }
 
         newHeight = outputNode.scrollHeight
+        newScroll = window.scrollY
 
-        focusedCell = document.querySelector("cell:focus-within")
-        if (focusedCell == cellNode) {
-            window.scrollBy(0, newHeight - oldHeight)
-        }
-
-        if(!allCellsCompleted && !notebookNode.querySelector("notebook>cell.running")){
+        if (!allCellsCompleted && !notebookNode.querySelector("notebook>cell.running")) {
             window.allCellsCompleted = true
             window.allCellsCompletedPromise.resolver()
+        }
+
+        if (document.body.classList.contains("loading")) {
+            return
+        }
+        const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
+        if (cellsAfterFocused.length == 0 || !Array.from(cellsAfterFocused).includes(cellNode)) {
+            window.scrollTo(window.scrollX, oldScroll + (newHeight - oldHeight))
         }
     }
 
@@ -281,7 +297,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function createLocalCell(newIndex, uuid, code, focus=true) {
+    function createLocalCell(newIndex, uuid, code, focus = true) {
         if (uuid in window.localCells) {
             console.warn("Tried to add cell with existing UUID. Canceled.")
             console.log(uuid)
@@ -337,7 +353,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function foldLocalCell(cellNode, newFolded) {
-        if(newFolded) {
+        if (newFolded) {
             cellNode.classList.add("code-folded")
         } else {
             cellNode.classList.remove("code-folded")
@@ -384,10 +400,10 @@ document.addEventListener("DOMContentLoaded", () => {
     window.allCellsCompleted = true // will be set to false soon
     window.allCellsCompletedPromise = null
 
-    function refreshAllCompletionPromise(){
-        if(allCellsCompleted){
+    function refreshAllCompletionPromise() {
+        if (allCellsCompleted) {
             var resolver
-            window.allCellsCompletedPromise = new Promise(r => {resolver = r})
+            window.allCellsCompletedPromise = new Promise(r => { resolver = r })
             window.allCellsCompletedPromise.resolver = resolver
             window.allCellsCompleted = false
         }
@@ -396,7 +412,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.refreshAllCompletionPromise = refreshAllCompletionPromise
     refreshAllCompletionPromise()
 
-    function requestChangeRemoteCell(uuid, createPromise=false) {
+    function requestChangeRemoteCell(uuid, createPromise = false) {
         refreshAllCompletionPromise()
         window.localCells[uuid].classList.add("running")
         newCode = window.codeMirrors[uuid].getValue()
@@ -404,8 +420,8 @@ document.addEventListener("DOMContentLoaded", () => {
         return client.send("changecell", { code: newCode }, uuid, createPromise)
     }
 
-    function requestRunAllRemoteCells(setInputs=true) {
-        if(!window.allCellsCompleted){
+    function requestRunAllRemoteCells(setInputs = true) {
+        if (!window.allCellsCompleted) {
             return
         }
         refreshAllCompletionPromise()
@@ -414,7 +430,7 @@ document.addEventListener("DOMContentLoaded", () => {
         for (var uuid in window.localCells) {
             const cellNode = window.localCells[uuid]
             cellNode.classList.add("running")
-            if(setInputs){
+            if (setInputs) {
                 promises.push(
                     client.sendreceive("setinput", {
                         code: window.codeMirrors[uuid].getValue()
@@ -498,7 +514,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 break
             default:
                 const custom = window.customPlutoListeners[update.type]
-                if(custom){
+                if (custom) {
                     custom(update)
                     break
                 }
@@ -617,7 +633,12 @@ document.addEventListener("DOMContentLoaded", () => {
     var dropPositions = []
     var dropee = null
     document.ondragstart = (e) => {
+        if (e.target.tagName != "CLICKSHOULDER") {
+            dropee = null
+            return
+        }
         dropee = e.target.parentElement
+        dropruler.style.display = "block"
 
         dropPositions = []
         for (var i = 0; i < notebookNode.children.length; i++) {
@@ -629,16 +650,18 @@ document.addEventListener("DOMContentLoaded", () => {
         // Called continuously during drag
         dist = dropPositions.map(p => Math.abs(p - e.pageY))
         dropIndex = argmin(dist)
-        
-        dropruler.style.top = dropPositions[dropIndex] + "px";
-        dropruler.style.display = "block";
+
+        dropruler.style.top = dropPositions[dropIndex] + "px"
         e.preventDefault()
     }
     document.ondragend = (e) => {
         // Called after drag, also when dropped outside of the browser or when ESC is pressed
-        dropruler.style.display = "none";
+        dropruler.style.display = "none"
     }
     document.ondrop = (e) => {
+        if (!dropee) {
+            return
+        }
         // Called when drag-dropped somewhere on the page
         dist = dropPositions.map(p => Math.abs(p - e.pageY))
         dropIndex = argmin(dist)
@@ -706,29 +729,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     var updateDocTimer = undefined
 
-    function updateDocQuery(query=undefined){
-        if(doc.classList.contains("hidden")){
+    function updateDocQuery(query = undefined) {
+        if (doc.classList.contains("hidden")) {
             doc.querySelector("header").innerText = "Live docs"
             doc.querySelector("section").innerHTML = "Start typing code to learn more!"
             window.displayedDocQuery = "the intro page 🍭"
             return
         }
-        if(!/[^\s]/.test(query)){
+        if (!/[^\s]/.test(query)) {
             // only whitespace
             return
         }
 
-        if(query == undefined){
+        if (query == undefined) {
             query = window.desiredDocQuery
         }
-        if(query == displayedDocQuery){
+        if (query == displayedDocQuery) {
             return
         }
 
         window.desiredDocQuery = query
 
-        
-        if(doc.classList.contains("loading")){
+
+        if (doc.classList.contains("loading")) {
             updateDocTimer = setTimeout(() => {
                 updateDocQuery()
             }, 1000)
@@ -736,8 +759,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         doc.classList.add("loading")
-        client.sendreceive("docs", {query: query}).then(u => {
-            if(u.message.status == "⌛"){
+        client.sendreceive("docs", { query: query }).then(u => {
+            if (u.message.status == "⌛") {
                 updateDocTimer = setTimeout(() => {
                     doc.classList.remove("loading")
                     updateDocQuery()
@@ -746,7 +769,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
             doc.classList.remove("loading")
             window.displayedDocQuery = query
-            if(u.message.status == "👍"){
+            if (u.message.status == "👍") {
                 doc.querySelector("header").innerText = query
                 doc.querySelector("section").innerHTML = u.message.doc
             }
@@ -763,7 +786,7 @@ document.addEventListener("DOMContentLoaded", () => {
             to: "Multiple expressions in one cell.\n<a href=\"#\" onclick=\"errorHint(event)\">Wrap all code in a `begin ... end` block.</a>",
         },
     ]
-    
+
     function rewrittenError(old_raw) {
         var new_raw = old_raw;
         errorRewrites.forEach(rw => {
@@ -778,7 +801,7 @@ document.addEventListener("DOMContentLoaded", () => {
         requestChangeRemoteCell(cellNode.id)
     }
 
-    function wrapInBlock(cm, block="begin") {
+    function wrapInBlock(cm, block = "begin") {
         const oldVal = cm.getValue()
         cm.setValue(block + "\n\t" + oldVal.replace(/\n/g, "\n\t") + '\n' + "end")
     }
@@ -788,25 +811,25 @@ document.addEventListener("DOMContentLoaded", () => {
     document.addEventListener("keydown", (e) => {
         switch (e.keyCode) {
             case 81: // q
-                if(e.ctrlKey){
-                    if(document.querySelector("notebook>cell.running")){
+                if (e.ctrlKey) {
+                    if (document.querySelector("notebook>cell.running")) {
                         requestInterruptRemote()
                     }
                     e.preventDefault()
                 }
                 break
             case 82: // r
-                if(e.ctrlKey){
-                    if(notebookPath != "unknown"){
+                if (e.ctrlKey) {
+                    if (notebookPath != "unknown") {
                         document.location.href = "/open?path=" + encodeURIComponent(notebookPath)
                         e.preventDefault()
                     }
                 }
                 break
             case 83: // s
-                if(e.ctrlKey){
+                if (e.ctrlKey) {
                     filePickerCodeMirror.focus()
-                    filePickerCodeMirror.setSelection({line:0, ch:0}, {line:Infinity, ch:Infinity})
+                    filePickerCodeMirror.setSelection({ line: 0, ch: 0 }, { line: Infinity, ch: Infinity })
                     e.preventDefault()
                 }
                 break
@@ -818,7 +841,7 @@ document.addEventListener("DOMContentLoaded", () => {
             case 112: // F1
                 // TODO: show help    
                 alert(
-`Shortcuts 🎹
+                    `Shortcuts 🎹
 
 Ctrl+Enter:   run cell
 Shift+Enter:   run cell and add cell below
