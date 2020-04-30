@@ -80,17 +80,7 @@ class PlutoConnection {
     }
     
     handleMessage(event) {
-        
-        var onFailure = (e) => {
-            console.warn("Failed to get updates!")
-            console.log(e)
-    
-            this.waitForOnline()
-        }
-    
-        try {
-            const update = JSON.parse(event.data)
-    
+        event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
                 console.log("Update message not meant for this notebook")
@@ -109,9 +99,12 @@ class PlutoConnection {
             }
 
             this.onUpdate(update, byMe)
-        } catch (error) {
-            onFailure(error)
-        }
+        }).catch((ex) => {
+            console.error("Failed to get updates!", ex)
+            console.log(event)
+    
+            this.waitForOnline()
+        })
     }
     
     startSocketConnection(onSucces) {
@@ -120,8 +113,7 @@ class PlutoConnection {
             this.handleMessage(e)
         }
         this.psocket.onerror = (e) => {
-            console.error("SOCKET ERROR")
-            console.log(e)
+            console.error("SOCKET ERROR", e)
     
             if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
                 this.waitForOnline()
@@ -139,7 +131,6 @@ class PlutoConnection {
             console.log(e)
     
             this.waitForOnline()
-            // startSocketConnection(onSucces)
         }
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then(u => {
@@ -157,7 +148,7 @@ class PlutoConnection {
     }
     
     tryCloseSocketConnection() {
-        this.psocket.close()
+        this.psocket.close(1000, "byebye")
     }
 
     initialize(){
@@ -185,14 +176,17 @@ class PlutoConnection {
         this.clientID = this.getUniqueShortID()
         this.sentRequests = {}
 
-        window.addEventListener("unload", e => {
-            this.send("disconnect", {})
+        window.addEventListener("beforeunload", e => {
+            //this.send("disconnect", {})
+            this.psocket.onclose = undefined
+            this.tryCloseSocketConnection()
         })
     }
 
     fetchPlutoVersions(){
         const githubPromise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
             method: 'GET',
+            mode: 'cors',
             cache: 'no-cache',
             headers: {
                 'Content-Type': 'application/json',

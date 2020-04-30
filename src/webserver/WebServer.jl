@@ -71,7 +71,8 @@ function flushclient(client::Client)
         try
             if client.stream !== nothing
                 if isopen(client.stream)
-                    write(client.stream, serialize_message(next_to_send))
+                    client.stream.frame_type = HTTP.WebSockets.WS_BINARY
+                    write(client.stream, serialize_message(next_to_send) |> codeunits)
                 else
                     @info "Client $(client.id) stream closed."
                     put!(flushtoken, token)
@@ -117,7 +118,7 @@ const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
 function run(port = 1234, launchbrowser = false)
     serversocket = Sockets.listen(UInt16(port))
-    @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
@@ -134,6 +135,14 @@ function run(port = 1234, launchbrowser = false)
                                 # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
                                 data = ""
                                 while !endswith(data, MSG_DELIM)
+                                    if(eof(clientstream))
+                                        if data == ""
+                                            return
+                                        end
+                                        @warn "Unexpected eof after" data
+                                        data = data * MSG_DELIM
+                                        break
+                                    end
                                     data = data * String(readavailable(clientstream))
                                 end
                                 JSON.parse(SubString(data, 1:(lastindex(data)-length(MSG_DELIM))))
@@ -186,9 +195,10 @@ function run(port = 1234, launchbrowser = false)
                 HTTP.startwrite(http)
                 write(http, request.response.body)
             catch e
-                if isa(e, HTTP.IOError) || isa(e, ArgumentError)
+                if isa(e, Base.IOError) || isa(e, ArgumentError)
                     @warn "Attempted to write to a closed stream at $(request.target)"
                 else
+                    @show e, typeof(e), fieldnames(e)
                     rethrow(e)
                 end
             end
@@ -205,9 +215,7 @@ function run(port = 1234, launchbrowser = false)
     
     # create blocking call:
     try
-        while true
-            sleep(typemax(UInt64))
-        end
+        wait(servertask)
     catch e
         if isa(e, InterruptException)
             println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")

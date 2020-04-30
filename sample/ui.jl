@@ -87,17 +87,18 @@ Try drawing a rectangle in the canvas below 👇 and notice that the `area` vari
 
 # ╔═╡ 7f4b0e1e-7f16-11ea-02d3-7955921a70bd
 @bind dims html"""
-<canvas id="drawboard" width="200" height="200"></canvas>
+<canvas width="200" height="200" style="position: relative"></canvas>
 
 <script>
-const canvas = document.querySelector("canvas#drawboard")
+// 🐸 `this` is the cell output wrapper - we use it to select elements 🐸 //
+const canvas = this.querySelector("canvas")
 const ctx = canvas.getContext("2d")
 
 var startX = 80
 var startY = 40
 
 function onmove(e){
-	// 🐸 This is how we send the value back to Julia 🐸 //
+	// 🐸 We send the value back to Julia 🐸 //
 	canvas.value = [e.layerX - startX, e.layerY - startY]
 	canvas.dispatchEvent(new CustomEvent("input"))
 
@@ -108,6 +109,7 @@ function onmove(e){
 }
 
 canvas.onmousedown = e => {
+	console.log(e)
 	startX = e.layerX
 	startY = e.layerY
 	canvas.onmousemove = onmove
@@ -116,9 +118,6 @@ canvas.onmousedown = e => {
 canvas.onmouseup = e => {
 	canvas.onmousemove = null
 }
-
-// To prevent this code block from showing and hiding
-canvas.onclick = e => e.stopPropagation()
 
 // Fire a fake mousemoveevent to show something
 onmove({layerX: 130, layerY: 160})

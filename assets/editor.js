@@ -194,25 +194,22 @@ document.addEventListener("DOMContentLoaded", () => {
                 // based on https://stackoverflow.com/a/26716182
                 // to execute all scripts in the output html:
                 try {
-                    var scripts = Array.prototype.slice.call(outputNode.getElementsByTagName("script"))
-                    for (var i = 0; i < scripts.length; i++) {
-                        if (scripts[i].src != "") {
-                            if (!Array.prototype.map.call(document.head.querySelectorAll("script"), s => s.src).includes(scripts[i])) {
-                                var tag = document.createElement("script")
-                                tag.src = scripts[i].src
+                    Array.from(outputNode.querySelectorAll("script")).map((script) => {
+                        if (script.src != "") {
+                            if (!Array.from(document.head.querySelectorAll("script")).map(s => s.src).includes(script)) {
+                                const tag = document.createElement("script")
+                                tag.src = script.src
                                 document.head.appendChild(tag)
                             }
                         } else {
-                            var result = Function(scripts[i].innerHTML).bind(outputNode)()
-                            if (!scripts[i].previousElementSibling && !scripts[i].nextElementSibling) {
-                                if (result && result.nodeType === Node.ELEMENT_NODE) {
-                                    scripts[i].parentElement.insertBefore(result, scripts[i])
-                                }
+                            const result = Function(script.innerHTML).bind(outputNode)()
+                            if (result && result.nodeType === Node.ELEMENT_NODE) {
+                                script.parentElement.insertBefore(result, script)
                             }
                         }
-                    }
+                    })
                 } catch (err) {
-                    console.error("Couldn't execute all scripts:")
+                    console.error("Couldn't execute script:")
                     console.error(err)
                     // TODO: relay to user
                     // might be wise to wait after adding scripts to head
