@@ -2,6 +2,7 @@
 # v0.6.4
 
 using Markdown
+
 # ╔═╡ b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e
 md"# The Basel problem
 

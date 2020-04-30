@@ -37,43 +37,42 @@ end
 const _uuid_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
-const _cell_appendix = "\n\n"
+const _cell_suffix = "\n\n"
 
 emptynotebook(path) = Notebook(path, [Cell("")])
 emptynotebook() = emptynotebook(tempname() * ".jl")
 
 function save_notebook(io, notebook::Notebook)
-    write(io, "### A Pluto.jl notebook ###\n")
-    write(io, "# " * PLUTO_VERSION_STR * "\n")
+    println(io, "### A Pluto.jl notebook ###")
+    println(io, "# ", PLUTO_VERSION_STR)
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
     println(io, "using Markdown")
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
     if any(occursin("@bind", c.code) for c in notebook.cells)
-        write(io, PlutoRunner.fake_bind)
+        println(io, PlutoRunner.fake_bind)
     end
+    println(io)
+
     # TODO: this can be optimised by caching the topological order:
     # maintain cache with ordered UUIDs
     # whenever a run_reactive is done, move the found cells **up** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
 
-    # we first move cells to the front if they call an import
-    # MergeSort because it is a stable sort: leaves cells in order if they are in the same category
-    prelim_order = sort(notebook.cells, alg=MergeSort, by=(c -> !isempty(c.module_usings)))
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
-    celltopology = dependent_cells(notebook, prelim_order)
+    celltopology = topological_order(notebook, notebook.cells)
 
     cells_ordered = union(celltopology.runnable, keys(celltopology.errable))
 
     for c in cells_ordered
-        write(io, _uuid_delimiter * string(c.uuid) * "\n")
-        write(io, c.code)
-        write(io, _cell_appendix)
+        println(io, _uuid_delimiter, string(c.uuid))
+        print(io, c.code)
+        print(io, _cell_suffix)
     end
 
-    write(io, _uuid_delimiter * "Cell order:" * "\n")
+    println(io, _uuid_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        write(io, delim * string(c.uuid) * "\n")
+        println(io, delim, string(c.uuid))
     end
 end
 
@@ -97,7 +96,6 @@ function load_notebook_nobackup(io, path)
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
-    
     collected_cells = Dict()
     
     # ignore first bits of file
@@ -112,7 +110,7 @@ function load_notebook_nobackup(io, path)
             uuid = UUID(uuid_str)
             code = String(readuntil(io, _uuid_delimiter))
             # Change windows line endings to linux; remove the cell appendix.
-            code_normalised = replace(code, "\r\n" => "\n")[1:end - ncodeunits(_cell_appendix)]
+            code_normalised = replace(code, "\r\n" => "\n")[1:end - ncodeunits(_cell_suffix)]
 
             read_cell = Cell(uuid, code_normalised)
 
@@ -155,8 +153,15 @@ function load_notebook(path::String)
     cp(path, backupPath)
 
     loaded = load_notebook_nobackup(path)
-
+    # Analyze cells so that the initial save is in topological order
+    update_caches!(loaded, loaded.cells)
     save_notebook(loaded)
+    # Clear symstates if autorun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
+    if CONFIG["PLUTO_RUN_NOTEBOOK_ON_LOAD"] != "true"
+        for cell in loaded.cells
+            cell.symstate = SymbolsState()
+        end
+    end
 
     if only_versions_or_lineorder_differ(path, backupPath)
         rm(backupPath)

@@ -7,7 +7,7 @@ struct CellTopology
 end
 
 "Return a `CellTopology` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function dependent_cells(notebook::Notebook, roots::Array{Cell, 1})::CellTopology
+function topological_order(notebook::Notebook, roots::Array{Cell, 1})::CellTopology
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell, ReactivityError}()
@@ -40,8 +40,13 @@ function dependent_cells(notebook::Notebook, roots::Array{Cell, 1})::CellTopolog
 		push!(exits, cell)
 	end
 
-	# reversing roots for a minor issue: mutually unrelated cells would otherwise be run in reverse order
-	dfs.(reverse(roots))
+	# When two cells 
+	# we first move cells to the front if they call an import
+    # we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
+    prelim_order_1 = sort(roots, alg=MergeSort, by=(c -> isempty(c.module_usings)))
+	# reversing because our search returns reversed order
+	prelim_order_2 = reverse(prelim_order_1)
+	dfs.(prelim_order_2)
 	ordered = reverse(exits)
 	CellTopology(setdiff(ordered, keys(errable)), errable)
 end
@@ -100,7 +105,7 @@ function all_assignments(notebook::Notebook, cell::Cell)::Set{Symbol}
 end 
 
 "Return all functions called by a cell, and all functions called by those functions, et cetera."
-function all_recursed_calls(notebook::Notebook, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
+function all_indirect_calls(notebook::Notebook, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
 	for func in symstate.funccalls
 		if func in found
 			# done
@@ -108,7 +113,7 @@ function all_recursed_calls(notebook::Notebook, symstate::SymbolsState, found::S
 			push!(found, func)
             if haskey(notebook.combined_funcdefs, func)
                 inner_symstate = notebook.combined_funcdefs[func]
-                all_recursed_calls(notebook, inner_symstate, found)
+                all_indirect_calls(notebook, inner_symstate, found)
             end
 		end
 	end

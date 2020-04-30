@@ -6,23 +6,16 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 	token = take!(notebook.executetoken)
 
 	# save the old topology - we'll delete variables assigned from it and re-evalutate its cells
-	old_topology = dependent_cells(notebook, cells)
+	old_topology = topological_order(notebook, cells)
 	
 	old_runnable = old_topology.runnable
 	to_delete_vars = union!(Set{Symbol}(), (runnable.symstate.assignments for runnable in old_runnable)...)
 	to_delete_funcs = union!(Set{Vector{Symbol}}(), (keys(runnable.symstate.funcdefs) for runnable in old_runnable)...)
 
 	# update the cache using the new code and compute the new topology
-	for cell in cells
-		start_cache!(notebook, cell)
-	end
-	update_funcdefs!(notebook)
-	for cell in cells
-		finish_cache!(notebook, cell)
-	end
+	update_caches!(notebook, cells)
 
-
-	new_topology = dependent_cells(notebook, union(cells, keys(old_topology.errable)))
+	new_topology = topological_order(notebook, union(cells, keys(old_topology.errable)))
 	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable))::Array{Cell, 1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "running"
@@ -102,6 +95,17 @@ function run_single!(notebook::Notebook, cell::Cell)
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
 
+"Parse and analyze code for the given `cells`; analyze (indirect) function calls."
+function update_caches!(notebook, cells)
+	for cell in cells
+		start_cache!(notebook, cell)
+	end
+	update_funcdefs!(notebook)
+	for cell in cells
+		finish_cache!(notebook, cell)
+	end
+end
+
 "Update a single cell's cache - parsed code etc"
 function start_cache!(notebook::Notebook, cell::Cell)
 	cell.parsedcode = Meta.parse(cell.code, raise=false)
@@ -117,7 +121,7 @@ end
 
 "Account for globals referenced in function calls by including `SymbolsState`s from called functions in the cell itself."
 function finish_cache!(notebook::Notebook, cell::Cell)
-	calls = all_recursed_calls(notebook, cell.symstate)
+	calls = all_indirect_calls(notebook, cell.symstate)
 	calls = union!(calls, keys(cell.symstate.funcdefs)) # _assume_ that all defined functions are called inside the cell to trigger eager reactivity.
 	filter!(in(keys(notebook.combined_funcdefs)), calls)
 

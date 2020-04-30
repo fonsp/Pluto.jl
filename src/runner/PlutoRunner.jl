@@ -291,7 +291,6 @@ const fake_bind = """macro bind(def, element)
         global \$(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
         el
     end
-end
-"""
+end"""
 
 end

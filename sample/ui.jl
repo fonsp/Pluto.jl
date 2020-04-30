@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.6.4
+# v0.7.7
 
 using Markdown
 macro bind(def, element)
@@ -9,6 +9,7 @@ macro bind(def, element)
         el
     end
 end
+
 # ╔═╡ db24490e-7eac-11ea-094e-9d3fc8f22784
 md"# Introducing _bound_ variables
 
