@@ -116,9 +116,10 @@ const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
 
 This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
-function run(port = 1234, launchbrowser = false)
-    serversocket = Sockets.listen(UInt16(port))
-    servertask = @async HTTP.serve(Sockets.localhost, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
+function run(host, port::Integer; launchbrowser::Bool = false)
+    hostIP = parse(Sockets.IPAddr, host)
+    serversocket = Sockets.listen(hostIP, UInt16(port))
+    servertask = @async HTTP.serve(hostIP, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
@@ -194,18 +195,20 @@ function run(port = 1234, launchbrowser = false)
             try
                 HTTP.startwrite(http)
                 write(http, request.response.body)
+                HTTP.closewrite(http)
             catch e
                 if isa(e, Base.IOError) || isa(e, ArgumentError)
-                    @warn "Attempted to write to a closed stream at $(request.target)"
+                    # @warn "Attempted to write to a closed stream at $(request.target)"
                 else
-                    @show e, typeof(e), fieldnames(e)
                     rethrow(e)
                 end
             end
         end
     end
 
-    println("Go to http://localhost:$(port)/ to start writing ~ have fun!")
+    hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
+    portPretty = Int(port)
+    println("Go to http://$(hostPretty):$(portPretty)/ to start writing ~ have fun!")
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
@@ -235,6 +238,8 @@ function run(port = 1234, launchbrowser = false)
         end
     end
 end
+
+run(port::Integer=1234; kwargs...) = run(Sockets.localhost, port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let
