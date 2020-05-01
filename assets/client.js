@@ -108,7 +108,8 @@ class PlutoConnection {
     }
     
     startSocketConnection(onSucces) {
-        this.psocket = new WebSocket('ws://' + document.location.host + document.location.pathname.replace("/edit", "/"))
+        
+        this.psocket = new WebSocket(document.location.protocol.replace("http","ws") + '//' + document.location.host + document.location.pathname.replace("/edit", "/"))
         this.psocket.onmessage = (e) => {
             this.handleMessage(e)
         }
