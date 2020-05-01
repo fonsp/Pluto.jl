@@ -239,7 +239,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     end
 end
 
-run(port::Integer=1234; kwargs...) = run(Sockets.localhost, port; kwargs...)
+run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let

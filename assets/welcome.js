@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
         list.forEach(nb => {
             document.body.classList.remove("nosessions")
             var a = document.createElement("a")
-            a.href = "/edit?uuid=" + nb.uuid
+            a.href = "edit?uuid=" + nb.uuid
             a.innerText = nb.shortpath
             
             var li = document.createElement("li")
@@ -31,7 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function openFile(){
         const path = window.filePickerCodeMirror.getValue()
-        window.location.href = "/open?path=" + encodeURIComponent(path)
+        window.location.href = "open?path=" + encodeURIComponent(path)
     }
 
     window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {

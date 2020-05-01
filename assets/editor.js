@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /* REMOTE NOTEBOOK LIST */
 
-    const notebookID = (new URL(document.location.href)).search.split("uuid=")[1]
+    const notebookID = document.location.search.split("uuid=")[1]
     var notebookPath = "unknown"
 
     function updateLocalNotebookPath(newPath) {
@@ -818,7 +818,7 @@ document.addEventListener("DOMContentLoaded", () => {
             case 82: // r
                 if (e.ctrlKey) {
                     if (notebookPath != "unknown") {
-                        document.location.href = "/open?path=" + encodeURIComponent(notebookPath)
+                        document.location.href = "open?path=" + encodeURIComponent(notebookPath)
                         e.preventDefault()
                     }
                 }
