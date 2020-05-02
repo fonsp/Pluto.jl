@@ -7,7 +7,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 - **_lightweight_** - Pluto is written in pure Julia and is easy to install
 - **_simple_** - no hidden workspace state; intuitive UI.
 
-<img alt="reactivity screencap" src="https://user-images.githubusercontent.com/6933510/80637310-152cb880-8a5f-11ea-8a92-fbd807b8f146.gif" >
+<img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
 
 
 ### Input
