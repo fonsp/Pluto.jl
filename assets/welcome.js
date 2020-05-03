@@ -1,12 +1,12 @@
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     /* REMOTE NOTEBOOK LIST */
 
     window.remoteNotebookList = null
 
     function updateRemoteNotebooks(list) {
         remoteNotebookList = list
-        
+
         var listEl = document.querySelector("ul.running")
         listEl.innerHTML = ""
         document.body.classList.add("nosessions")
@@ -15,7 +15,8 @@ document.addEventListener("DOMContentLoaded", () => {
             var a = document.createElement("a")
             a.href = "edit?uuid=" + nb.uuid
             a.innerText = nb.shortpath
-            
+            a.title = nb.path
+
             var li = document.createElement("li")
             li.appendChild(a)
 
@@ -29,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const openFileButton = document.querySelector("filepicker>button")
     openFileButton.addEventListener("click", openFile)
 
-    function openFile(){
+    function openFile() {
         const path = window.filePickerCodeMirror.getValue()
         window.location.href = "open?path=" + encodeURIComponent(path)
     }
@@ -38,9 +39,8 @@ document.addEventListener("DOMContentLoaded", () => {
         document.querySelector("filepicker").insertBefore(
             elt,
             openFileButton)
-        }, openFile, () => updateLocalNotebookPath(notebookPath), false)
+    }, openFile, () => updateLocalNotebookPath(notebookPath), false)
 
-    
 
     /* SERVER CONNECTION */
 
@@ -59,9 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    function onEstablishConnection(){
-        // on socket success
-        // TODO: we should when exactly this happens
+    function onEstablishConnection() {
         client.send("getallnotebooks", {})
         document.body.classList.remove("loading")
     }
