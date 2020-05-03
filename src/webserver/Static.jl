@@ -22,7 +22,7 @@ function assetresponse(path)
     end
 end
 
-function serveonefile(path)
+function serve_onefile(path)
     return request::HTTP.Request->assetresponse(normpath(path))
 end
 
@@ -35,15 +35,9 @@ end
 
 const PLUTOROUTER = HTTP.Router()
 
-function serve_editor(req::HTTP.Request)
-    p=HTTP.URI(req.target).path
-    b = String(req.body)
-    HTTP.Response(200, "Path: $(p) \n\n Body: $(b)")
-end
-
 function notebook_redirect(notebook)
     response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => "/edit?uuid=" * string(notebook.uuid))
+    push!(response.headers, "Location" => CONFIG["PLUTO_ROOT_URL"] * "edit?uuid=" * string(notebook.uuid))
     return response
 end
 
@@ -100,19 +94,19 @@ function serve_newfile(req::HTTP.Request)
     return notebook_redirect(nb)
 end
 
-HTTP.@register(PLUTOROUTER, "GET", "/", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index.html", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/index", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/index.html", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
 
-HTTP.@register(PLUTOROUTER, "GET", "/sw.js", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "sw.js")))
+HTTP.@register(PLUTOROUTER, "GET", "/sw.js", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "sw.js")))
 
 HTTP.@register(PLUTOROUTER, "GET", "/new", serve_newfile)
 HTTP.@register(PLUTOROUTER, "GET", "/open", serve_openfile)
-HTTP.@register(PLUTOROUTER, "GET", "/edit", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/sample", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "sample.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
+HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "sample.html")))
 HTTP.@register(PLUTOROUTER, "GET", "/sample/*", serve_sample)
 
-HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serveonefile(joinpath(PKG_ROOT_DIR, "assets", "favicon.ico")))
+HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "favicon.ico")))
 HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serve_asset)
 
 HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))

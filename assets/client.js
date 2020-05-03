@@ -1,6 +1,6 @@
 class PlutoConnection {
     ping(onSucces, onFailure) {
-        fetch("/ping", {
+        fetch("ping", {
             method: 'GET',
             cache: 'no-cache',
             headers: {
@@ -108,7 +108,8 @@ class PlutoConnection {
     }
     
     startSocketConnection(onSucces) {
-        this.psocket = new WebSocket("ws://" + document.location.host)
+        
+        this.psocket = new WebSocket(document.location.protocol.replace("http","ws") + '//' + document.location.host + document.location.pathname.replace("/edit", "/"))
         this.psocket.onmessage = (e) => {
             this.handleMessage(e)
         }
@@ -137,7 +138,7 @@ class PlutoConnection {
                 this.plutoCONFIG = u.message.CONFIG
                 if(this.notebookID && !u.message.notebookExists){
                     // https://github.com/fonsp/Pluto.jl/issues/55
-                    document.location.href = "/"
+                    document.location.href = "./"
                     return
                 }
                 this.currentlyConnected = true
@@ -215,7 +216,7 @@ class PlutoConnection {
 }
 
 if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js', { scope: "/" }).then(function (registration) {
+    navigator.serviceWorker.register('./sw.js', { scope: "./" }).then(function (registration) {
         // Registration was successful
         console.log('ServiceWorker registration successful with scope: ', registration.scope);
     }, function (err) {

@@ -206,9 +206,14 @@ function run(host, port::Integer; launchbrowser::Bool = false)
         end
     end
 
-    hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
-    portPretty = Int(port)
-    println("Go to http://$(hostPretty):$(portPretty)/ to start writing ~ have fun!")
+    address = if CONFIG["PLUTO_ROOT_URL"] == "/"
+        hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
+        portPretty = Int(port)
+        "http://$(hostPretty):$(portPretty)/"
+    else
+        CONFIG["PLUTO_ROOT_URL"]
+    end
+    println("Go to $address to start writing ~ have fun!")
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
@@ -239,7 +244,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     end
 end
 
-run(port::Integer=1234; kwargs...) = run(Sockets.localhost, port; kwargs...)
+run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let

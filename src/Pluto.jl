@@ -9,6 +9,7 @@ const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 const CONFIG = Dict(
     "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
+    "PLUTO_ROOT_URL" => "/",
 )
 
 @info """\n
