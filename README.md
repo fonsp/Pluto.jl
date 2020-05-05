@@ -13,7 +13,9 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 ### Input
 
 A Pluto notebook is made up of small blocks of Julia code (_cells_) and together they form a [***reactive*** notebook](https://medium.com/@mbostock/a-better-way-to-code-2b1d2876a3a0).
-When you change a variable, Pluto automatically re-runs the cells that refer to it. Cells can even be placed in arbitrary order - our intelligent syntax parser figures out the dependencies between them and takes care of execution.
+When you change a variable, Pluto automatically re-runs the cells that refer to it. Cells can even be placed in arbitrary order - intelligent syntax analysis figures out the dependencies between them and takes care of execution.
+
+Cells can contain _arbitrary_ Julia code, and you can use external libraries. There are no code rewrites or wrappers, Pluto just looks at your code once before evaluation.
 
 ### Output
 
@@ -24,7 +26,7 @@ Your notebooks are **saved as pure Julia files** ([sample](https://github.com/fo
 ## Dynamic environment
 
 Pluto offers an environment where changed code takes effect instantly and where deleted code leaves no trace.
-Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather a _one-to-one correspondence_ between variables and code. In a Pluto notebook, the value of a variable _always_ corresponds to the code that defines it — there is no hidden state. 
+Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather a _one-to-one correspondence_ between variables and code. In a Pluto notebook, a variable or function definition _always_ corresponds to the code that defines it — there is no hidden state. 
 
 ### Interactivity
 
@@ -100,7 +102,7 @@ We are happy to say that Pluto.jl runs smoothly for most users, and is **ready t
 
 That being said, the Pluto project is an ambition to [_rethink what a programming environment should be_](http://worrydream.com/#!/LearnableProgramming). We believe that scientific programming can be a lot simpler. Not by adding more buttons to a text editor — by giving space to creative thought, and automating the rest. 
 
-If you feel the same, give Pluto a try! We would love to hear your thoughts. 😊
+If you feel the same, give Pluto a try! We would love to hear your what you think. 😊
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" width="70%">
 

@@ -12,7 +12,13 @@
     text-align: center;
 }
 
-#title h1 {
+body.statistics #title {
+    margin-top: 10vh;
+    /* text-align: left; */
+}
+
+#title h1,
+#title h2 {
     font-style: italic;
     font-size: 2em;
     letter-spacing: .08em;
@@ -21,6 +27,10 @@
     color: hsl(0, 0%, 26%);
     margin: 0px;
     border-bottom: solid 2px hsl(0, 0%, 88%);
+}
+
+#title h2 {
+    font-size: 1.4em;
 }
 
 #title img {
@@ -47,9 +57,18 @@ main {
     width: 15em;
     margin: 0 auto;
     margin-top: 20vh;
+    margin-bottom: 10em;
     text-align: left;
     font-family: 'Roboto Mono', monospace;
     color: hsl(0, 0%, 60%);
+}
+
+body.statistics main {
+    width: unset;
+    max-width: 40em;
+    padding: .5em;
+    margin-top: 5vh;
+    font-size: 14px;
 }
 
 p {
@@ -59,10 +78,6 @@ p {
 ul {
     padding-left: .5em;
     list-style: none;
-}
-
-ul.running {
-    margin-bottom: 10em;
 }
 
 li {

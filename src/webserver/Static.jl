@@ -110,3 +110,4 @@ HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_RO
 HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serve_asset)
 
 HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
+HTTP.@register(PLUTOROUTER, "GET", "/statistics-info", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "statistics-info.html")))

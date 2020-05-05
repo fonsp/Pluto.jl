@@ -5,6 +5,8 @@ function makeBond(bondNode) {
         return
     }
     bondNode.generator.next().value.then(val => {
+        window.statistics.numBondSets++
+
         window.refreshAllCompletionPromise()
         window.client.sendreceive("bond_set", {
             sym: bondNode.getAttribute("def"),

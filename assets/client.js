@@ -176,6 +176,8 @@ class PlutoConnection {
         this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
         this.clientID = this.getUniqueShortID()
         this.sentRequests = {}
+        this.plutoVersion = "unknown"
+        this.juliaVersion = "unknown"
 
         window.addEventListener("beforeunload", e => {
             //this.send("disconnect", {})
@@ -201,7 +203,9 @@ class PlutoConnection {
         })
 
         const plutoPromise = this.sendreceive("getversion", {}).then(u => {
-            return u.message.pluto
+            this.plutoVersion = u.message.pluto
+            this.juliaVersion = u.message.julia
+            return this.plutoVersion
         })
 
         return Promise.all([githubPromise, plutoPromise])

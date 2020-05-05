@@ -61,6 +61,7 @@ celloutput>pre>code>a {
 
 
 /* HEADER */
+
 body>header {
     transition: background-color .5s ease-in-out;
     background-color: white;
@@ -102,7 +103,7 @@ celloutput:focus {
     outline: none;
 }
 
-celloutput > pre {
+celloutput>pre {
     margin: 0px;
 }
 
@@ -124,7 +125,8 @@ ul.CodeMirror-hints {
     font-family: 'Roboto Mono', monospace !important;
     font-size: .75em;
 }
-cellinput .CodeMirror{
+
+cellinput .CodeMirror {
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, .1);
@@ -154,7 +156,8 @@ clickshoulder>button {
 preamble>button {
     right: 0px;
 }
-preamble>button>span::after{
+
+preamble>button>span::after {
     background-size: 17px 17px;
     display: block;
     content: "Run all" !important;
@@ -175,7 +178,6 @@ preamble>button>span::after{
         /* to make it feel smooth: */
         transition: opacity .25s ease-in-out;
     }
-
     cell:hover>button,
     cell:hover>cellinput>button,
     cell:hover>runarea>button,
@@ -212,8 +214,7 @@ preamble>button>span::after{
         opacity: 25%;
     }
     cell>button:focus-within,
-    cell>cellinput>button:focus-within
-    cell>runarea>button:focus-within,
+    cell>cellinput>button:focus-within cell>runarea>button:focus-within,
     cell>clickshoulder>button:focus-within,
     cell>runarea {
         opacity: 100%;
@@ -265,7 +266,7 @@ clickshoulder {
     align-items: flex-start;
 }
 
-clickshoulder > button {
+clickshoulder>button {
     flex: 0 0 auto;
     position: sticky;
     top: 3px;
@@ -287,7 +288,7 @@ runarea {
     border-top: none;
 }
 
-runarea>span{
+runarea>span {
     font-family: 'Roboto Mono';
     font-size: .6em;
     display: inline-block;
@@ -380,7 +381,6 @@ cell.running.error>trafficlight {
     }
 }
 
-
 cell.dependent>cellinput>.CodeMirror,
 cell.warning>cellinput>.CodeMirror,
 cell.error>cellinput>.CodeMirror {
@@ -398,18 +398,19 @@ cell.error>cellinput>.CodeMirror {
 }
 
 cell.output-notinsync>cellinput>.CodeMirror,
-cell.codediffers>cellinput>.CodeMirror {
+cell.code-differs>cellinput>.CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     padding-left: 0px;
 }
 
 cell.output-notinsync>runarea,
-cell.codediffers>runarea {
+cell.code-differs>runarea {
     opacity: 100%;
     /* background: hsla(46, 70%, 37%, 0.35); */
 }
+
 cell.output-notinsync>runarea>button,
-cell.codediffers>runarea>button {
+cell.code-differs>runarea>button {
     animation-name: 👀;
     animation-duration: 4s;
     animation-iteration-count: infinite;
@@ -434,7 +435,9 @@ cell.codediffers>runarea>button {
 }
 
 @keyframes 👀 {
-    0%, 80%, 100% {
+    0%,
+    80%,
+    100% {
         transform: scale(1.0);
         opacity: 50%;
     }
@@ -481,7 +484,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 }
 
 cell.output-notinsync .cm-s-default .CodeMirror-gutters,
-cell.codediffers .cm-s-default .CodeMirror-gutters {
+cell.code-differs .cm-s-default .CodeMirror-gutters {
     background: hsla(46, 70%, 88%, 1);
 }
 

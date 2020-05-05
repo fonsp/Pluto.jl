@@ -2,7 +2,7 @@
 <html lang="en">
 
 <head>
-    <meta name="viewport" content="width=device-width, user-scalable=no" />
+    <meta name="viewport" content="width=device-width" />
     <title>⚡ Pluto.jl ⚡</title>
     <meta charset="utf-8" />
     <script>
@@ -14,16 +14,16 @@
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png">
-    <meta name="description" content="Pluto.jl notebook" />
+    <meta name="description" content="Pluto.jl notebooks" />
 
-    <script src="assets/client.js"></script>
-    <script src="assets/filepicker.js"></script>
+    <script src="assets/client.js" defer></script>
+    <script src="assets/filepicker.js" defer></script>
     <style>
         @import url('https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap');
         @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 
         /* GENERAL PAGE LAYOUT */
-        html{
+        html {
             font-size: 17px;
         }
 
@@ -195,7 +195,7 @@
             border-bottom-left-radius: 0 !important;
         }
 
-        #logocontainer:after { 
+        #logocontainer:after {
             margin-left: auto;
             align-self: center;
         }
@@ -235,10 +235,10 @@
                 opacity: 1.0;
             }
 
-            
+
         }
 
-        
+
 
         body.disconnected>header {
             background-color: rgba(255, 169, 114, 0.56);
@@ -308,9 +308,9 @@
         cell.code-folded>cellinput {
             display: none;
         }
-        
+
         cell.output-notinsync>cellinput,
-        cell.codediffers>cellinput {
+        cell.code-differs>cellinput {
             display: unset;
         }
 
@@ -379,9 +379,9 @@
         cell.code-folded>runarea {
             display: none;
         }
-        
+
         cell.output-notinsync>runarea,
-        cell.codediffers>runarea {
+        cell.code-differs>runarea {
             display: block;
         }
 
@@ -420,8 +420,8 @@
             display: none;
         }
 
-        @media screen and (min-width: 1050px){
-            
+        @media screen and (min-width: 1050px) {
+
             #helpbox-wrapper {
                 display: block;
                 position: sticky;
@@ -439,7 +439,7 @@
                 width: 300px;
                 height: 400px;
                 /* overflow: hidden; */
-                
+
                 background-color: white;
                 /* border: 2px solid darkgray; */
                 border-right: none;
@@ -448,7 +448,7 @@
                 box-shadow: 0 0 11px 0px #00000010;
                 font-family: "Alegreya Sans", sans-serif;
             }
-            
+
             helpbox>header {
                 background-color: #eef1f7;
                 color: hsl(230, 14%, 11%);
@@ -458,7 +458,7 @@
                 cursor: pointer;
                 /* border-top: 4px solid #8a8a8a; */
             }
-            
+
             helpbox>section {
                 height: 100%;
                 overflow: auto;
@@ -475,11 +475,11 @@
                 border-bottom: none;
                 font-size: 1rem;
             }
-            
+
             helpbox>section h1 {
                 font-size: 1.3rem;
             }
-            
+
             helpbox.hidden {
                 height: initial;
             }
@@ -488,7 +488,7 @@
                 display: none;
             }
 
-            helpbox>header::before{
+            helpbox>header::before {
                 content: "📖 ";
             }
 
@@ -496,14 +496,14 @@
                 content: "⌛ ";
             } */
 
-            helpbox.hidden>header::before{
+            helpbox.hidden>header::before {
                 content: "📚 ";
             }
 
 
         }
 
-        @media screen and (min-width: 1050px) and (max-width: 1400px){
+        @media screen and (min-width: 1050px) and (max-width: 1400px) {
             main {
                 margin-right: 350px;
             }
@@ -520,20 +520,25 @@
             z-index: 7;
         }
 
-        footer form{
+        footer form {
             height: 1.5rem;
             display: flex;
             flex-direction: row;
             justify-content: flex-end;
         }
 
-        footer form > *{
+        footer form>* {
             flex: 0 0 auto;
             margin-left: .5rem;
         }
 
+        footer form a,
         footer form label {
             align-self: center;
+        }
+
+        footer form>a {
+            margin-right: auto;
         }
 
         footer a {
@@ -542,16 +547,22 @@
             font-weight: 700;
         }
 
+        @media (max-width: 650px) {
+            footer form>label {
+                display: none;
+            }
+        }
+
         footer input {
             border: 2px solid #818181;
             font-family: "Roboto Mono";
-            
+
             border-radius: 3px;
             padding: 3px;
         }
 
         body>header button,
-        footer button{
+        footer button {
             background: #896c6c;
             border-radius: 3px;
             border: 2px solid #896c6c;
@@ -601,31 +612,33 @@
             }
         }
     </style>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/mode/julia/julia.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/display/placeholder.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/edit/matchbrackets.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/mode/julia/julia.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/display/placeholder.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/edit/matchbrackets.min.js" defer></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.css"></script>
-    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.css">
+
     <link rel="stylesheet" href="assets/light.css" />
-    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form. We might add telemetry in the future, and this will be an opt-in feature. -->
-    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js"></script>
+    <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback and statistics. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form and anonymous statistics. See /statistics-info for more details. -->
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js" defer></script>
+    <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js" defer></script>
 </head>
 
 <body class="loading no-MαθJax">
     <header>
         <div id="logocontainer">
-            <a href="./"><h1>
-                <img src="assets/logo.svg" alt="Pluto.jl" /></h1></a>
-                <filepicker>
+            <a href="./">
+                <h1>
+                    <img src="assets/logo.svg" alt="Pluto.jl" /></h1>
+            </a>
+            <filepicker>
 
-                    <button>Rename</button>
-                </filepicker>
+                <button>Rename</button>
+            </filepicker>
         </div>
     </header>
 
@@ -666,16 +679,17 @@
     <footer>
         <div id="info">
             <form id="feedback" action="#" method="post">
-                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
+                <a id="statistics-info" href="statistics-info">Statistics</a>
+                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback...">
                 <button>Send</button>
             </form>
         </div>
     </footer>
 
-    <script src="assets/editor.js"></script>
-    <script src="assets/bond.js"></script>
-    <script src="assets/feedback.js"></script>
+    <script src="assets/bond.js" defer></script>
+    <script src="assets/editor.js" defer></script>
+    <script src="assets/feedback.js" defer></script>
 
     <script>
         MathJax = {
