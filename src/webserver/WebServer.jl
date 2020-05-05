@@ -278,14 +278,12 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
         end
 
         if haskey(parentbody, "cellID")
-            cell = let
-                cellID = UUID(parentbody["cellID"])
-                selectcell_byuuid(notebook, cellID)
-            end
-            if cell === nothing
+            cellID = UUID(parentbody["cellID"])
+            index = cellindex_fromuuid(notebook, cellID)
+            if index === nothing
                 @warn "Remote cell not found locally!"
             else
-                push!(args, cell)
+                push!(args, notebook.cells[index])
             end
         end
         

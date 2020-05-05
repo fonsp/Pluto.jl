@@ -184,8 +184,10 @@ responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initia
     run_reactive_async!(notebook, cell)
 end
 
-responses[:runall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    run_reactive_async!(notebook, notebook.cells)
+responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+    indices = cellindex_fromuuid.([notebook], UUID.(body["cells"]))
+    cells = [notebook.cells[i] for i in indices if i !== nothing]
+    run_reactive_async!(notebook, cells)
 end
 
 responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin

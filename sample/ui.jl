@@ -109,7 +109,6 @@ function onmove(e){
 }
 
 canvas.onmousedown = e => {
-	console.log(e)
 	startX = e.layerX
 	startY = e.layerY
 	canvas.onmousemove = onmove

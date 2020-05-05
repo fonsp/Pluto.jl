@@ -267,8 +267,12 @@
             position: relative;
         }
 
-        body.loading>main>preamble>button {
-            opacity: 0%;
+        main>preamble>button {
+            display: none;
+        }
+        
+        body.code-differs>main>preamble>button {
+            display: block;
         }
 
         cell {
@@ -360,8 +364,8 @@
             pointer-events: none;
         }
 
-        button.runall>span::after {
-            content: "Run all ▶▶";
+        button.runallchanged>span::after {
+            content: "Submit all changes ▶▶";
         }
 
         button.addcell>span::after {
@@ -644,7 +648,7 @@
 
     <main>
         <preamble>
-            <button class="runall" title="Run all"><span></span></button>
+            <button class="runallchanged" title="Save and run all changed cells"><span></span></button>
         </preamble>
         <notebook>
         </notebook>

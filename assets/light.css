@@ -160,8 +160,8 @@ preamble>button {
 preamble>button>span::after {
     background-size: 17px 17px;
     display: block;
-    content: "Run all" !important;
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-skip-forward-circle-outline.svg);
+    content: "Submit all changes" !important;
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-circle-outline.svg);
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;

@@ -24,13 +24,8 @@ end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
 
-function selectcell_byuuid(notebook::Notebook, uuid::UUID)::Union{Cell,Nothing}
-    cellIndex = findfirst(c->c.uuid == uuid, notebook.cells)
-    if cellIndex === nothing
-        @warn "Requested non-existing cell with UUID $(uuid)\nTry refreshing the page in your browser."
-        return nothing
-    end
-    notebook.cells[cellIndex]
+function cellindex_fromuuid(notebook::Notebook, uuid::UUID)::Union{Int,Nothing}
+    findfirst(c->c.uuid == uuid, notebook.cells)
 end
 
 # We use a creative delimiter to avoid accidental use in code

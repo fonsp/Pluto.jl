@@ -102,7 +102,7 @@ We are happy to say that Pluto.jl runs smoothly for most users, and is **ready t
 
 That being said, the Pluto project is an ambition to [_rethink what a programming environment should be_](http://worrydream.com/#!/LearnableProgramming). We believe that scientific programming can be a lot simpler. Not by adding more buttons to a text editor — by giving space to creative thought, and automating the rest. 
 
-If you feel the same, give Pluto a try! We would love to hear your what you think. 😊
+If you feel the same, give Pluto a try! We would love to hear what you think. 😊
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" width="70%">
 

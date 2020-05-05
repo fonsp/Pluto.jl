@@ -27,8 +27,8 @@ function updateRemoteNotebooks(list) {
 
 /* DOM THINGIES */
 
-document.querySelector("preamble>button.runall").onclick = (e) => {
-    requestRunAllRemoteCells()
+document.querySelector("preamble>button.runallchanged").onclick = (e) => {
+    requestRunAllChangedRemoteCells()
 }
 
 cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
@@ -88,7 +88,7 @@ window.localCells = {}
 window.codeMirrors = {}
 
 function createCodeMirrorInsideCell(cellNode, code) {
-    var editor = CodeMirror((elt) => {
+    var cm = CodeMirror((elt) => {
         cellNode.querySelector("cellinput").appendChild(elt)
     }, {
         value: code,
@@ -107,10 +107,10 @@ function createCodeMirrorInsideCell(cellNode, code) {
         matchBrackets: true,
     });
 
-    window.codeMirrors[cellNode.id] = editor
-    //editor.setOption("readOnly", true);
+    window.codeMirrors[cellNode.id] = cm
+    //cm.setOption("readOnly", true);
 
-    editor.setOption("extraKeys", {
+    cm.setOption("extraKeys", {
         "Ctrl-Enter": () => requestChangeRemoteCell(cellNode.id),
         "Shift-Enter": () => {
             requestNewRemoteCell(indexOfLocalCell(cellNode) + 1)
@@ -127,16 +127,15 @@ function createCodeMirrorInsideCell(cellNode, code) {
         "Tab": onTabKey,
     });
 
-    editor.on("change", (cm, change) => {
+    cm.on("change", (cm, change) => {
         // TODO: optimise
-        if (cm.getValue() != cellNode.remoteCode) {
-            cellNode.classList.add("code-differs")
-        } else {
-            cellNode.classList.remove("code-differs")
-        }
+        const differs = cm.getValue() != cellNode.remoteCode
+
+        cellNode.classList.toggle("code-differs", differs)
+        updateAnyCodeDiffers()
     })
 
-    editor.on("cursorActivity", (cm) => {
+    cm.on("cursorActivity", (cm) => {
         const token = cm.getTokenAt(cm.getCursor())
 
         if (token.type != null && token.type != "string") {
@@ -144,7 +143,11 @@ function createCodeMirrorInsideCell(cellNode, code) {
         }
     });
 
-    return editor
+    return cm
+}
+
+function updateAnyCodeDiffers(hint=false) {
+    document.body.classList.toggle("code-differs", hint || (document.querySelector("notebook>cell.code-differs") != null))
 }
 
 function prettytime(time_ns) {
@@ -285,6 +288,7 @@ function updateLocalCellInput(byMe, cellNode, code, folded) {
         cellNode.classList.remove("code-differs")
     }
 
+    updateAnyCodeDiffers()
     foldLocalCell(cellNode, folded)
 }
 
@@ -422,29 +426,36 @@ function requestChangeRemoteCell(uuid, createPromise = false) {
     return client.send("changecell", { code: newCode }, uuid, createPromise)
 }
 
-function requestRunAllRemoteCells(setInputs = true) {
-    if (!window.allCellsCompleted) {
-        return
-    }
+function requestRunAllChangedRemoteCells() {
     refreshAllCompletionPromise()
-    const promises = []
 
-    for (var uuid in window.localCells) {
-        const cellNode = window.localCells[uuid]
+    const changed = Array.from(notebookNode.querySelectorAll("cell.code-differs"))
+    const promises = changed.map(cellNode => {
+        const uuid = cellNode.id
         cellNode.classList.add("running")
-        if (setInputs) {
-            promises.push(
-                client.sendreceive("setinput", {
-                    code: window.codeMirrors[uuid].getValue()
-                }, uuid).then(u => {
-                    updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
-                })
-            )
-        }
-    }
+        return client.sendreceive("setinput", {
+            code: window.codeMirrors[uuid].getValue()
+        }, uuid).then(u => {
+            updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
+        })
+    })
     Promise.all(promises).then(() => {
-        client.send("runall", {})
+        client.send("runmultiple", {
+            cells: changed.map(c => c.id)
+        })
     }).catch(console.error)
+}
+
+function requestRunAllRemoteCells() {
+    refreshAllCompletionPromise()
+
+    const uuids = Array.from(window.localCells).map(cellNode => {
+        cellNode.classList.add("running")
+        return cellNode.id
+    })
+    client.send("runmultiple", {
+        cells: uuids
+    })
 }
 
 function requestInterruptRemote() {
@@ -560,7 +571,7 @@ function onEstablishConnection() {
             if (runAll
                 && !document.querySelector("notebook>cell.running")
                 && document.querySelector("notebook>cell.output-notinsync")) {
-                requestRunAllRemoteCells(false)
+                requestRunAllRemoteCells()
                 window.allCellsCompletedPromise.then(happy)
             } else {
                 // We do a code completion request to trigger starting the workpsace
