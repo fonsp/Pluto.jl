@@ -93,6 +93,7 @@ cell:focus-within {
 
 celloutput {
     background-color: white;
+    align-items: baseline;
     /* border: 1px solid rgba(0, 0, 0, .1); */
     /* border-top-left-radius: 4px; */
     /* border-top-right-radius: 4px; */
@@ -103,12 +104,26 @@ celloutput:focus {
     outline: none;
 }
 
-celloutput>pre {
+celloutput>div>pre {
     margin: 0px;
+    display: flex;
 }
 
+celloutput>div>pre>code {
+    margin: 3px 0px;
+}
+
+celloutput>div>pre>code:empty {
+    margin: 0;
+}
+
+celloutput > assignee,
 code {
     font-family: 'Roboto Mono', monospace;
+}
+
+cell.hide-scrollbar > celloutput {
+    overflow-x: hidden;
 }
 
 .errormessage {
@@ -127,10 +142,10 @@ ul.CodeMirror-hints {
 }
 
 cellinput .CodeMirror {
-    border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, .1);
-    /* border-top: none; */
+    border-left: none;
+    transition: border .15s ease-in-out;
     width: auto;
 }
 
@@ -246,6 +261,11 @@ cell>button.addcell.before {
     margin-top: -20px !important;
 }
 
+cell>button.addcell.after {
+    bottom: 1px;
+    margin-bottom: -20px;
+}
+
 cell>button.addcell>span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
@@ -329,10 +349,14 @@ trafficlight {
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
     transition: background .15s ease-in-out;
+    background: rgba(0, 0, 0, .1);
 }
 
 @media screen and (any-pointer: fine) {
-    cell:hover>trafficlight {
+    cell.code-folded>trafficlight {
+        background: none;
+    }
+    cell.code-folded:hover>trafficlight {
         background: rgba(0, 0, 0, .1);
         transition: background .05s ease-in-out;
     }
@@ -345,27 +369,33 @@ trafficlight {
     }
 }
 
+
+cell.output-notinsync>trafficlight,
+cell.code-differs>trafficlight {
+    background: hsla(46, 70%, 37%, 0.68) !important;
+}
+
 cell.dependent>trafficlight {
-    background: lightblue;
+    background: lightblue !important;
 }
 
 cell.warning>trafficlight {
-    background: hsl(39, 100%, 75%);
+    background: hsl(39, 100%, 75%) !important;
 }
 
 cell.error>trafficlight {
-    background: hsl(0, 100%, 71%);
+    background: hsl(0, 100%, 71%) !important;
 }
 
 cell.running>trafficlight {
-    background: repeating-linear-gradient( -45deg, hsla(20, 20%, 80%, 1), hsla(20, 20%, 80%, 1) 8px, hsla(20, 20%, 80%, .1) 8px, hsla(20, 20%, 80%, .1) 16px);
+    background: repeating-linear-gradient( -45deg, hsla(20, 20%, 80%, 1), hsla(20, 20%, 80%, 1) 8px, hsla(20, 20%, 80%, .1) 8px, hsla(20, 20%, 80%, .1) 16px) !important;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     animation: 2s linear 0s infinite running scrollbackground;
 }
 
 cell.running.error>trafficlight {
-    background: repeating-linear-gradient( -45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
+    background: repeating-linear-gradient( -45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px) !important;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     animation: 2s linear 0s infinite running scrollbackground;
@@ -381,26 +411,10 @@ cell.running.error>trafficlight {
     }
 }
 
-cell.dependent>cellinput>.CodeMirror,
-cell.warning>cellinput>.CodeMirror,
-cell.error>cellinput>.CodeMirror {
-    border-left: none;
-    padding-left: 1px;
-    border-bottom-left-radius: 0px;
-}
-
-@media screen {
-    cell:hover>cellinput>.CodeMirror {
-        border-left: none;
-        padding-left: 1px;
-        border-bottom-left-radius: 0px;
-    }
-}
-
 cell.output-notinsync>cellinput>.CodeMirror,
 cell.code-differs>cellinput>.CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
-    padding-left: 0px;
+    border-left: none;
 }
 
 cell.output-notinsync>runarea,
@@ -500,19 +514,20 @@ cell.code-differs .cm-s-default .CodeMirror-gutters {
     color: #8d8687;
 }
 
-.cm-s-default .CodeMirror-linenumber {
-    font-size: 0px;
+.cm-s-default .CodeMirror-linenumber::before {
+    content: "⋅";
+    font-size: .75rem;
 }
 
-.cm-s-default .CodeMirror-linenumber::first-letter {
-    font-size: .75rem;
+.cm-s-default .CodeMirror-linenumber {
+    font-size: 0px;
 }
 
 .cm-s-default .CodeMirror-linenumber:hover {
     font-size: .75rem;
 }
 
-.cm-s-default .CodeMirror-linenumber:hover::first-letter {
+.cm-s-default .CodeMirror-linenumber:hover::before {
     font-size: 0px;
 }
 
@@ -546,6 +561,7 @@ cell.code-differs .cm-s-default .CodeMirror-gutters {
     color: #ce7d0a;
 }
 
+celloutput > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
     font-weight: 500;

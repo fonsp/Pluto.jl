@@ -119,6 +119,7 @@ responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator, Mis
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
+    new_cell.output_repr = "" # we 'run' the code and get this output
 
     insert!(notebook.cells, new_index, new_cell)
 

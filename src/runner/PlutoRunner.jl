@@ -7,6 +7,7 @@ import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
+import Base: show, istextmime
 
 export @bind
 ###
@@ -20,8 +21,9 @@ function set_current_module(newname)
     global current_module = getfield(Main, newname)
 end
 
-function fetch_formatted_ans()::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    (output_formatted = format_output(Main.ans), errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime)
+function fetch_formatted_ans(ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    output_formatted = ends_with_semicolon ? ("", MIME("text/plain")) : format_output(Main.ans)
+    (output_formatted = output_formatted, errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime)
 end
 
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
@@ -157,24 +159,22 @@ end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 const iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
+const imagemimes = [MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("image/bmp"), MIME("image/gif")]
+# in order of coolness
+# text/plain always matches
+const allmimes = [MIME("text/html"); imagemimes; MIME("text/plain")]
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
 
 Currently, the MIME type is one of `text/html` or `text/plain`, the former being richest."""
 function format_output(val::Any)::Tuple{String, MIME}
-    # in order of coolness
-    # text/plain always matches
-    mime = let
-        mimes = [MIME("text/html"), MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("image/gif"), MIME("text/plain")]
-        first(filter(m->Base.invokelatest(showable, m, val), mimes))
-    end
+    mime = first(filter(m->Base.invokelatest(showable, m, val), allmimes))
 
     if val === nothing
         "", mime
     else
         try
             result = Base.invokelatest(repr, mime, val; context = iocontext)
-            # MIME rewrites for types other than text/plain or text/html
             if result isa Vector{UInt8}
                 result = ("data:" * string(mime) * ";base64,") * Base64.base64encode(result)
             end
@@ -194,7 +194,6 @@ function format_output(ex::Exception)::Tuple{String, MIME}
 end
 
 function format_output(val::CapturedException)::Tuple{String, MIME}
-
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
 
     bt = try
@@ -216,6 +215,73 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
     end
 
     format_output(val.ex, bt)
+end
+
+tree_display_limit = 50
+
+function show_richest_textmime(io::IO, val::Any)
+    mime = first(filter(m->Base.invokelatest(showable, m, val), allmimes))
+
+    if mime in imagemimes
+        result = Base.invokelatest(repr, mime, val; context = iocontext)
+        print(io, "<img src=\"data:", string(mime), ";base64,", Base64.base64encode(result), "\">")
+    else
+        show(io, mime, val)
+    end
+end
+
+function show_array_row(io::IO, pair::Tuple)
+    i, el = pair
+    print(io, "<r><i>", i, "</i><e>")
+    show_richest_textmime(io, el)
+    print(io, "</e></r>")
+end
+
+function show_dict_row(io::IO, pair::Pair)
+    k, el = pair
+    print(io, "<r><k>")
+    show_richest_textmime(io, k)
+    print(io, "</k><e>")
+    show_richest_textmime(io, el)
+    print(io, "</e></r>")
+end
+
+function show(io::IO, ::MIME"text/html", x::Array{<:Any, 1})
+    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+    print(io, eltype(x))
+    print(io, "<jlarray>")
+    if length(x) <= tree_display_limit
+        show_array_row.([io], enumerate(x))
+    else
+        from_end = tree_display_limit > 20 ? 10 : 1
+        show_array_row.([io], enumerate(x[1:tree_display_limit-from_end]))
+        
+        print(io, "<r><more></more></r>")
+        
+        indices = 1+length(x)-from_end:length(x)
+        show_array_row.([io], zip(indices, x[indices]))
+    end
+    
+    print(io, "</jlarray>")
+    print(io, "</jltree>")
+end
+
+function show(io::IO, ::MIME"text/html", x::Dict{<:Any, <:Any})
+    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+    print(io, "Dict")
+    print(io, "<jldict>")
+    row_index = 1
+    for pair in x
+        show_dict_row(io, pair)
+        if row_index == tree_display_limit
+            print(io, "<r><more></more></r>")
+            break
+        end
+        row_index += 1
+    end
+    
+    print(io, "</jldict>")
+    print(io, "</jltree>")
 end
 
 

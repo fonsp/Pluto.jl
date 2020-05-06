@@ -95,10 +95,6 @@ function createCodeMirrorInsideCell(cellNode, code) {
         lineNumbers: true,
         mode: "julia",
         lineWrapping: true,
-        lineNumberFormatter: function (i) {
-            return "⋅" + i
-        },
-        // theme: "paraiso-light",
         viewportMargin: Infinity,
         placeholder: "Enter cell code...",
         indentWithTabs: true,
@@ -146,13 +142,13 @@ function createCodeMirrorInsideCell(cellNode, code) {
     return cm
 }
 
-function updateAnyCodeDiffers(hint=false) {
+function updateAnyCodeDiffers(hint = false) {
     document.body.classList.toggle("code-differs", hint || (document.querySelector("notebook>cell.code-differs") != null))
 }
 
 function prettytime(time_ns) {
     if (time_ns == null) {
-        return cellTemplate.querySelector("runarea>span").innerText
+        return cellTemplate.querySelector(":scope > runarea > span").innerText
         // i.e.
         // return "---"
     }
@@ -180,27 +176,43 @@ function updateLocalCellOutput(cellNode, msg) {
         cellNode.classList.remove("running")
     }
     cellNode.runtime = msg.runtime
-    cellNode.querySelector("runarea>span").innerText = prettytime(msg.runtime)
+    cellNode.querySelector(":scope > runarea > span").innerText = prettytime(msg.runtime)
 
-    const outputNode = cellNode.querySelector("celloutput")
+    const outputNode = cellNode.querySelector(":scope > celloutput")
+    const assigneeNode = outputNode.querySelector(":scope > assignee")
+    const containerNode = outputNode.querySelector(":scope > div")
 
     oldHeight = outputNode.scrollHeight
     oldScroll = window.scrollY
 
-    if (msg.errormessage) {
-        outputNode.innerHTML = "<pre><code></code></pre>"
-        outputNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
-        cellNode.classList.add("error")
-    } else {
-        cellNode.classList.remove("error")
-        if (msg.mime == "text/html" || msg.mime == "image/svg+xml") {
+    cellNode.classList.remove("hide-scrollbar")
+    cellNode.classList.remove("has-assignee")
+    cellNode.classList.remove("inline-output")
+    cellNode.classList.remove("error")
 
-            outputNode.innerHTML = msg.output
+    if (msg.errormessage) {
+        cellNode.classList.add("error")
+
+        containerNode.innerHTML = "<pre><code></code></pre>"
+        containerNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
+    } else {
+        cellNode.classList.toggle("has-assignee", msg.rootassignee != null)
+
+        assigneeNode.innerText = msg.rootassignee
+
+
+        if (msg.mime == "text/html" || msg.mime == "image/svg+xml") {
+            containerNode.innerHTML = msg.output
+
+            if (containerNode.firstElementChild && containerNode.firstElementChild.tagName == "JLTREE") {
+                cellNode.classList.add("inline-output")
+                cellNode.classList.add("hide-scrollbar")
+            }
 
             // based on https://stackoverflow.com/a/26716182
             // to execute all scripts in the output html:
             try {
-                Array.from(outputNode.querySelectorAll("script")).map((script) => {
+                Array.from(containerNode.querySelectorAll("script")).map((script) => {
                     if (script.src != "") {
                         if (!Array.from(document.head.querySelectorAll("script")).map(s => s.src).includes(script)) {
                             const tag = document.createElement("script")
@@ -208,7 +220,7 @@ function updateLocalCellOutput(cellNode, msg) {
                             document.head.appendChild(tag)
                         }
                     } else {
-                        const result = Function(script.innerHTML).bind(outputNode)()
+                        const result = Function(script.innerHTML).bind(containerNode)()
                         if (result && result.nodeType === Node.ELEMENT_NODE) {
                             script.parentElement.insertBefore(result, script)
                         }
@@ -225,21 +237,23 @@ function updateLocalCellOutput(cellNode, msg) {
             MathJax.typeset()
         } else if (msg.mime == "image/png" || msg.mime == "image/jpg" || msg.mime == "image/gif") {
             var i = undefined
-            if (outputNode.children.length == 1 && outputNode.children[0].tagName == "IMG") {
+            if (containerNode.children.length == 1 && containerNode.children[0].tagName == "IMG") {
                 // https://github.com/fonsp/Pluto.jl/issues/95
                 // images are loaded asynchronously and don't initiate with the final height.
                 // we fix this by reusing the old image
-                i = outputNode.children[0]
+                i = containerNode.children[0]
                 new Array("width", "height", "alt", "sizes", "srcset").map(attr => i.removeAttribute(attr))
             } else {
                 i = document.createElement("img")
-                outputNode.innerHTML = ""
-                outputNode.appendChild(i)
+                containerNode.innerHTML = ""
+                containerNode.appendChild(i)
             }
             i.src = msg.output
         } else {
-            outputNode.innerHTML = "<pre><code></code></pre>"
-            outputNode.querySelector("code").innerText = msg.output
+            cellNode.classList.add("inline-output")
+
+            containerNode.innerHTML = "<pre><code></code></pre>"
+            containerNode.querySelector("code").innerText = msg.output
         }
     }
     document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
@@ -252,7 +266,7 @@ function updateLocalCellOutput(cellNode, msg) {
     newHeight = outputNode.scrollHeight
     newScroll = window.scrollY
 
-    if (!allCellsCompleted && !notebookNode.querySelector("notebook>cell.running")) {
+    if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
         window.allCellsCompleted = true
         window.allCellsCompletedPromise.resolver()
     }
@@ -267,21 +281,22 @@ function updateLocalCellOutput(cellNode, msg) {
 }
 
 function updateLocalCellInput(byMe, cellNode, code, folded) {
-    var editor = window.codeMirrors[cellNode.id]
+    var cm = window.codeMirrors[cellNode.id]
     cellNode.remoteCode = code
-    oldVal = editor.getValue()
+    oldVal = cm.getValue()
     // We don't want to update the cell's input if we sent the update.
     // This might be annoying if you change the cell after the submission,
     // while the request is still running. This also prevents the codemirror cursor
     // position from jumping back to (0,0).
     if (oldVal == "" || !byMe) {
-        editor.setValue(code)
+        cm.setValue(code)
 
         // Silly code to make codemirror visible, then refresh, then make invisible again (if the code was hidden)
-        cellNode.querySelector("cellinput").style.display = "inline";
-        cellNode.querySelector("cellinput").offsetHeight;
-        editor.refresh()
-        cellNode.querySelector("cellinput").style.display = null
+        const inputNode = cellNode.querySelector("cellinput")
+        inputNode.style.display = "inline"
+        inputNode.offsetHeight
+        cm.refresh()
+        inputNode.style.display = null
 
         cellNode.classList.remove("code-differs")
     } else if (oldVal == code) {
@@ -321,30 +336,23 @@ function createLocalCell(newIndex, uuid, code, focus = true) {
 
     // EVENT LISTENERS FOR CLICKY THINGS
 
-    newCellNode.querySelector(".codefoldcell").onclick = (e) => {
-        var newFolded = newCellNode.classList.contains("code-folded")
-        if (!newCellNode.querySelector("celloutput").innerHTML || newCellNode.querySelector("celloutput").innerHTML === "<pre><code></code></pre>") {
-            // You may not fold code if the output is empty (it would be confusing)
-            newFolded = false
-        } else {
-            newFolded = !newFolded
-        }
-        requestCodeFoldRemoteCell(uuid, newFolded)
+    newCellNode.querySelector("button.codefoldcell").onclick = (e) => {
+        requestCodeFoldRemoteCell(uuid, !newCellNode.classList.contains("code-folded"))
     }
 
-    newCellNode.querySelector(".addcell.before").onclick = (e) => {
+    newCellNode.querySelector("button.addcell.before").onclick = (e) => {
         requestNewRemoteCell(indexOfLocalCell(newCellNode))
     }
-    newCellNode.querySelector(".addcell.after").onclick = (e) => {
+    newCellNode.querySelector("button.addcell.after").onclick = (e) => {
         requestNewRemoteCell(indexOfLocalCell(newCellNode) + 1)
     }
-    newCellNode.querySelector(".deletecell").onclick = (e) => {
+    newCellNode.querySelector("button.deletecell").onclick = (e) => {
         if (Object.keys(localCells).length <= 1) {
             requestNewRemoteCell(0)
         }
         requestDeleteRemoteCell(newCellNode.id)
     }
-    newCellNode.querySelector(".runcell").onclick = (e) => {
+    newCellNode.querySelector("button.runcell").onclick = (e) => {
         if (newCellNode.classList.contains("running")) {
             newCellNode.classList.add("error")
             requestInterruptRemote()
@@ -362,6 +370,7 @@ function foldLocalCell(cellNode, newFolded) {
     } else {
         cellNode.classList.remove("code-folded")
         // Force redraw:
+        cellNode.offsetHeight
         editor.refresh()
     }
 }
@@ -809,9 +818,10 @@ function rewrittenError(old_raw) {
 }
 
 function errorHint(e) {
-    const cellNode = e.target.parentElement.parentElement.parentElement.parentElement
+    const cellNode = e.target.parentElement.parentElement.parentElement.parentElement.parentElement
     wrapInBlock(window.codeMirrors[cellNode.id], "begin")
     requestChangeRemoteCell(cellNode.id)
+    e.preventDefault()
 }
 
 function wrapInBlock(cm, block = "begin") {

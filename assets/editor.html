@@ -270,22 +270,36 @@
         main>preamble>button {
             display: none;
         }
-        
+
         body.code-differs>main>preamble>button {
             display: block;
         }
 
         cell {
             display: block;
+            min-height: 28px;
         }
 
         celloutput {
             display: block;
-            min-height: 25px;
             padding-left: 10px;
             padding-right: 10px;
         }
 
+        celloutput>assignee::after {
+            content: "\a0=\a0";
+            opacity: .6;
+        }
+
+        celloutput>assignee:empty {
+            display: none;
+        }
+
+        cell.inline-output>celloutput {
+            display: flex;
+        }
+
+        celloutput>assignee,
         code {
             font-family: monospace;
             font-size: .75em;
@@ -299,6 +313,7 @@
             height: auto !important;
             width: 100%;
             z-index: 2;
+            min-height: calc(28px - 1px - 1px);
         }
 
         cellinput .CodeMirror-scroll {
@@ -627,6 +642,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.css">
 
     <link rel="stylesheet" href="assets/light.css" />
+    <link rel="stylesheet" href="assets/treeview.css" />
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback and statistics. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form and anonymous statistics. See /statistics-info for more details. -->
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js" defer></script>
@@ -636,8 +652,7 @@
     <header>
         <div id="logocontainer">
             <a href="./">
-                <h1>
-                    <img src="assets/logo.svg" alt="Pluto.jl" /></h1>
+                <h1><img src="assets/logo.svg" alt="Pluto.jl" /></h1>
             </a>
             <filepicker>
 
@@ -660,7 +675,10 @@
                 </clickshoulder>
                 <trafficlight></trafficlight>
                 <button class="addcell before" title="Add cell"><span></span></button>
-                <celloutput tabindex="1"></celloutput>
+                <celloutput tabindex="1">
+                    <assignee></assignee>
+                    <div></div>
+                </celloutput>
                 <cellinput>
                     <button class="deletecell" title="Delete cell"><span></span></button>
                 </cellinput>
@@ -694,6 +712,7 @@
     <script src="assets/bond.js" defer></script>
     <script src="assets/editor.js" defer></script>
     <script src="assets/feedback.js" defer></script>
+    <script src="assets/treeview.js" defer></script>
 
     <script>
         MathJax = {

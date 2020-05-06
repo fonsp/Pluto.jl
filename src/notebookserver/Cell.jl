@@ -8,8 +8,8 @@ mutable struct Cell
     uuid::UUID
     code::String
     
-    output_repr::Union{String, Nothing}
-    error_repr::Union{String, Nothing}
+    output_repr::Union{String,Nothing}
+    error_repr::Union{String,Nothing}
     repr_mime::MIME
     runtime::Union{Missing,UInt64}
     code_folded::Bool
@@ -18,7 +18,8 @@ mutable struct Cell
     parsedcode::Any
     symstate::SymbolsState
     module_usings::Set{Expr}
+    rootassignee::Union{Nothing,Symbol}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, nothing, MIME("text/plain"), missing, false, false, nothing, SymbolsState(), Set{Expr}())
+Cell(uuid, code) = Cell(uuid, code, nothing, nothing, MIME("text/plain"), missing, false, false, nothing, SymbolsState(), Set{Expr}(), nothing)
 Cell(code) = Cell(uuid1(), code)

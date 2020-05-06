@@ -1,3 +1,5 @@
+import REPL: ends_with_semicolon
+
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them."
@@ -78,7 +80,7 @@ run_reactive_async!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive_as
 
 "Run a single cell non-reactively, return run information."
 function run_single!(notebook::Notebook, cell::Cell)
-	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode)
+	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	if run.errored
@@ -110,6 +112,7 @@ end
 function start_cache!(notebook::Notebook, cell::Cell)
 	cell.parsedcode = Meta.parse(cell.code, raise=false)
 	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
+	cell.rootassignee = ExploreExpression.get_rootassignee(cell.parsedcode)
 	cell.symstate = try
 		ExploreExpression.compute_symbolreferences(cell.parsedcode)
 	catch ex

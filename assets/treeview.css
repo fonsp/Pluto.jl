@@ -1,0 +1,137 @@
+/*  */
+
+jltree {
+    font-family: "Roboto Mono", monospace;
+    font-size: .75rem;
+    color: hsl(0, 0%, 25%, .7);
+    white-space: pre;
+}
+jltree * {
+    cursor: auto;
+}
+jltree {
+    cursor: pointer;
+}
+
+jltree::before {
+    display: inline-block;
+    content: " ";
+    background-size: 1em 1em;
+    height: 1em;
+    width: 1em;
+    background-position-y: .2em;
+    opacity: .5;
+    cursor: pointer;
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-down-outline.svg);
+}
+
+jltree.collapsed jltree::before {
+    display: none;
+}
+
+jltree.collapsed::before {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-outline.svg);
+}
+
+jldict>r,
+jlarray>r {
+    display: block;
+}
+
+jltree.collapsed jldict>r,
+jltree.collapsed jlarray>r {
+    display: inline-block;
+}
+
+jldict>r>e,
+jlarray>r>e {
+    display: inline-flex;
+    color: hsl(0, 0%, 25%, 1);
+}
+
+jltree.collapsed r>i {
+    display: none;
+}
+
+
+/*  */
+
+jldict>r,
+jlarray>r {
+    margin-left: 1em;
+}
+
+jltree.collapsed jldict>r:first-child,
+jltree.collapsed jlarray>r:first-child {
+    margin-left: 0;
+}
+
+jlarray>r>i {
+    margin-right: 1em;
+    opacity: .5;
+    user-select: none;
+}
+
+
+/*  */
+
+jlarray::before {
+    content: "["
+}
+
+jlarray::after {
+    content: "]"
+}
+
+jldict::before {
+    content: "("
+}
+
+jldict::after {
+    content: ")"
+}
+
+
+/*  */
+
+jlarray>r>i::after {
+    content: ":";
+}
+
+jldict>r>k::after {
+    content: " => "
+}
+
+jltree.collapsed jldict>r::after,
+jltree.collapsed jlarray>r::after {
+    content: ",";
+}
+
+jltree.collapsed jldict>r:last-child::after,
+jltree.collapsed jlarray>r:last-child::after {
+    content: "";
+}
+
+jltree jldict>r>more::after,
+jltree jlarray>r>more::after {
+    content: "⁝";
+    margin-left: .2em;
+}
+
+jltree.collapsed jldict>r>more::after,
+jltree.collapsed jlarray>r>more::after {
+    content: "⋅⋅⋅";
+}
+
+
+/*  */
+
+jltree.collapsed img {
+    max-width: 4rem;
+    max-height: 4rem;
+}
+
+jltree img {
+    max-width: 8rem;
+    max-height: 8rem;
+}

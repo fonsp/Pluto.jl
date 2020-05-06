@@ -36,6 +36,7 @@ function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Uni
              :errormessage => cell.error_repr,
              :runtime => cell.runtime,
              :running => cell.running,
+             :rootassignee => cell.rootassignee,
             ),
             notebook, cell, initiator)
 end
