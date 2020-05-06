@@ -3,41 +3,6 @@ using Pluto
 import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
 import Random
 
-"Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB)
-    x = normpath(nbA.path) == normpath(nbB.path)
-
-    to_compare(cell) = (cell.uuid, cell.code)
-    y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
-    
-    x && y
-end
-
-"Whether the given .jl file can be run without an `UndefVarError`. While notebooks cells can be in arbitrary order, their order in the save file must be topological."
-function jl_is_runnable(path)
-    🔖 = Symbol("lab", hash(path))
-    🏡 = Core.eval(Main, :(module $(🔖) end))
-    try
-        Core.eval(🏡, :(include($path)))
-        true
-    catch ex
-        if ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
-            showerror(stderr, ex, stacktrace(catch_backtrace()))
-            false
-        else
-            true
-        end
-    end
-end
-
-"The converse of Julia's `Base.sprint`."
-function sread(f::Function, input::String, args...)
-    io = IOBuffer(input)
-    output = f(io, args...)
-    close(io)
-    return output
-end
-
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
     Notebook(tempname(), [
@@ -104,17 +69,6 @@ function bad_code_notebook()
         [[["""),
         Cell("using Aasdfdsf"),
     ])
-end
-
-function num_backups_in(dir::AbstractString)
-    count(readdir(dir)) do fn
-        occursin("backup", fn)
-    end
-end
-
-function mktemp()
-    Random.seed!(time_ns())
-    Base.mktemp()
 end
 
 @testset "Notebook File I/O" begin

@@ -82,8 +82,8 @@ Base.push!(x::Set) = x
 ###
 
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
-const _modifiers_original = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
-const modifiers = [_modifiers_original; [Symbol('.' * String(m)) for m in _modifiers_original]]
+const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
+const modifiers_dotprefixed = [Symbol('.' * String(m)) for m in modifiers]
 
 function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
     (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) && (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
@@ -190,14 +190,24 @@ function split_funcname(funcname_ex::QuoteNode)::Vector{Symbol}
 end
 
 function split_funcname(funcname_ex::Symbol)::Vector{Symbol}
-    [funcname_ex |> without_dotsuffix]
+    [funcname_ex |> without_dotprefix |> without_dotsuffix]
 end
 
-"Turn :(.+) into :(+)."
-function without_dotsuffix(funcname::Symbol)::Symbol
+"Turn :(.+) into :(+)"
+function without_dotprefix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[1] == '.'
         Symbol(fn_str[2:end])
+    else
+        funcname
+    end
+end
+
+"Turn :(sqrt.) into :(sqrt)"
+function without_dotsuffix(funcname::Symbol)::Symbol
+    fn_str = String(funcname)
+    if length(fn_str) > 0 && fn_str[end] == '.'
+        Symbol(fn_str[1:end-1])
     else
         funcname
     end
@@ -240,7 +250,7 @@ end
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
-    if ex.head == :(=) || ex.head == :(.=)
+    if ex.head == :(=)
         # Does not create scope
 
         
@@ -274,6 +284,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         operator = Symbol(string(ex.head)[1:end - 1])
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
+        return explore!(expanded_expr, scopestate)
+    elseif ex.head in modifiers_dotprefixed
+        # We change: a[1] .+= 123
+        # to:        a[1] .= a[1] + 123
+
+        operator = Symbol(string(ex.head)[2:end - 1])
+        expanded_expr = Expr(:(.=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
     elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
@@ -453,12 +470,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # (c = 1)
 
         # and explore those :)
-        
-        # recursers = ex.args
 
-        # We have a tuple assignment if one of the tuple elements is an assignment expression:
         indexoffirstassignment = findfirst(a->isa(a, Expr) && a.head == :(=), ex.args)
         if indexoffirstassignment !== nothing
+            # we have one of two cases, see next `if`
             indexofsecondassignment = findnext(a->isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment+1)
 
             if indexofsecondassignment !== nothing
@@ -468,6 +483,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 end
                 return explore!(Expr(:block, new_args...), scopestate)
             else
+                # we have a tuple assignment, e.g. `a, (b, c) = [1, [2, 3]]`
                 before = ex.args[1:indexoffirstassignment - 1]
                 after = ex.args[indexoffirstassignment + 1:end]
 
@@ -475,18 +491,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 symstate_outer = explore!(Expr(:(=), Expr(:tuple, before...), Expr(:block, after...)), scopestate)
 
                 return union!(symstate_middle, symstate_outer)
-                # recursers = ex.args[indexoffirstassignment:end]
-
-                # exposed = get_global_assignees(ex.args[1:indexoffirstassignment - 1], scopestate)
-
-                # scopestate.exposedglobals = union(scopestate.exposedglobals, exposed)
-                # symstate.assignments = exposed
             end
         else
             return explore!(Expr(:block, ex.args...), scopestate)
-            # return mapfoldl(a -> explore!(a, scopestate), ∪, recursers, init=symstate)
         end
     elseif ex.head == :(.) && ex.args[2] isa Expr && ex.args[2].head == :tuple
+        # pointwise function call, e.g. sqrt.(nums)
+        # we rewrite to a regular call
 
         return explore!(Expr(:call, ex.args[1], ex.args[2].args...), scopestate)
     elseif ex.head == :using || ex.head == :import
@@ -567,5 +578,15 @@ function compute_usings(ex::Any)::Set{Expr}
         Set{Expr}()
     end
 end
+
+function get_rootassignee(ex::Expr)::Union{Symbol, Nothing}
+    if ex.head == :(=) && ex.args[1] isa Symbol
+        ex.args[1]
+    else
+        nothing
+    end
+end
+
+get_rootassignee(ex::Any)::Union{Symbol, Nothing} = nothing
 
 end
