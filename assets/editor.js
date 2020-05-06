@@ -449,7 +449,7 @@ function requestRunAllChangedRemoteCells() {
 function requestRunAllRemoteCells() {
     refreshAllCompletionPromise()
 
-    const uuids = Array.from(window.localCells).map(cellNode => {
+    const uuids = Object.values(window.localCells).map(cellNode => {
         cellNode.classList.add("running")
         return cellNode.id
     })
