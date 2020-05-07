@@ -185,7 +185,6 @@ function updateLocalCellOutput(cellNode, msg) {
     oldHeight = outputNode.scrollHeight
     oldScroll = window.scrollY
 
-    cellNode.classList.remove("hide-scrollbar")
     cellNode.classList.remove("has-assignee")
     cellNode.classList.remove("inline-output")
     cellNode.classList.remove("error")
@@ -201,12 +200,11 @@ function updateLocalCellOutput(cellNode, msg) {
         assigneeNode.innerText = msg.rootassignee
 
 
-        if (msg.mime == "text/html" || msg.mime == "image/svg+xml") {
+        if (msg.mime == "text/html" || msg.mime == "image/svg+xml" || msg.mime == "application/vnd.pluto.tree+xml") {
             containerNode.innerHTML = msg.output
 
-            if (containerNode.firstElementChild && containerNode.firstElementChild.tagName == "JLTREE") {
+            if (msg.mime == "application/vnd.pluto.tree+xml") {
                 cellNode.classList.add("inline-output")
-                cellNode.classList.add("hide-scrollbar")
             }
 
             // based on https://stackoverflow.com/a/26716182

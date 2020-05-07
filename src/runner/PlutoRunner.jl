@@ -10,6 +10,7 @@ import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
 
 export @bind
+
 ###
 # WORKSPACE MANAGER
 ###
@@ -19,6 +20,7 @@ current_module = Main
 
 function set_current_module(newname)
     global current_module = getfield(Main, newname)
+    global iocontext = IOContext(iocontext, :module => current_module)
 end
 
 function fetch_formatted_ans(ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
@@ -158,27 +160,22 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
+iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 const imagemimes = [MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("image/bmp"), MIME("image/gif")]
 # in order of coolness
 # text/plain always matches
-const allmimes = [MIME("text/html"); imagemimes; MIME("text/plain")]
+const allmimes = [MIME("application/vnd.pluto.tree+xml"); MIME("text/html"); imagemimes; MIME("text/plain")]
+
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
 
 Currently, the MIME type is one of `text/html` or `text/plain`, the former being richest."""
 function format_output(val::Any)::Tuple{String, MIME}
-    mime = first(filter(m->Base.invokelatest(showable, m, val), allmimes))
-
     if val === nothing
-        "", mime
+        "", MIME("text/plain")
     else
         try
-            result = Base.invokelatest(repr, mime, val; context = iocontext)
-            if result isa Vector{UInt8}
-                result = ("data:" * string(mime) * ";base64,") * Base64.base64encode(result)
-            end
-            result, mime
+            sprint_withreturned(show_richest, val; context=iocontext)
         catch ex
             "Failed to show value: \n" * sprint(showerror, ex, stacktrace(catch_backtrace())), MIME("text/plain")
         end
@@ -217,36 +214,81 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
     format_output(val.ex, bt)
 end
 
-tree_display_limit = 50
-
-function show_richest_textmime(io::IO, val::Any)
-    mime = first(filter(m->Base.invokelatest(showable, m, val), allmimes))
-
-    if mime in imagemimes
-        result = Base.invokelatest(repr, mime, val; context = iocontext)
-        print(io, "<img src=\"data:", string(mime), ";base64,", Base64.base64encode(result), "\">")
+"Like `Base.sprint`, but return `(String, Any)` tuple containing function output as second entry."
+function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
+    s = IOBuffer(sizehint=sizehint)
+    val = if context !== nothing
+        f(IOContext(s, context), args...)
     else
-        show(io, mime, val)
+        f(s, args...)
+    end
+    String(resize!(s.data, s.size)), val
+end
+
+struct 🥔 end
+const struct_showmethod = which(show, (IO, 🥔))
+const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
+
+function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)
+    mime = first(filter(m->Base.invokelatest(showable, m, x), allmimes))
+    t = typeof(x)
+
+    if mime isa MIME"text/plain" && 
+        t isa DataType &&
+        which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
+        which(show, (IO, t)) === struct_showmethod
+        # we have a struct with no specialised show function
+        # we display it as an interactive tree
+        show_struct(io, x)
+        return MIME("application/vnd.pluto.tree+xml")
+    end
+
+    if istextmime(mime)
+        show(io, mime, x)
+        return mime
+    else
+        enc_pipe = Base64.Base64EncodePipe(io)
+        io_64 = IOContext(enc_pipe, iocontext)
+        if onlyhtml
+            print(io, "<img src=\"data:", string(mime), ";base64,")
+            show(io_64, mime, x)
+            close(enc_pipe)
+            print(io, "\">")
+            return MIME("text/html")
+        else
+            print(io, "data:", string(mime), ";base64,")
+            show(io_64, mime, x)
+            close(enc_pipe)
+            return mime
+        end
     end
 end
 
+###
+# TREE VIEWER
+###
+
+tree_display_limit = 50
+
 function show_array_row(io::IO, pair::Tuple)
     i, el = pair
-    print(io, "<r><i>", i, "</i><e>")
-    show_richest_textmime(io, el)
-    print(io, "</e></r>")
+    print(io, "<r><k>", i, "</k><v>")
+    show_richest(io, el; onlyhtml=true)
+    print(io, "</v></r>")
 end
 
 function show_dict_row(io::IO, pair::Pair)
     k, el = pair
     print(io, "<r><k>")
-    show_richest_textmime(io, k)
-    print(io, "</k><e>")
-    show_richest_textmime(io, el)
-    print(io, "</e></r>")
+    show_richest(io, k; onlyhtml=true)
+    print(io, "</k><v>")
+    show_richest(io, el; onlyhtml=true)
+    print(io, "</v></r>")
 end
 
-function show(io::IO, ::MIME"text/html", x::Array{<:Any, 1})
+istextmime(::MIME"application/vnd.pluto.tree+xml") = true
+
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
     print(io, eltype(x))
     print(io, "<jlarray>")
@@ -266,7 +308,7 @@ function show(io::IO, ::MIME"text/html", x::Array{<:Any, 1})
     print(io, "</jltree>")
 end
 
-function show(io::IO, ::MIME"text/html", x::Dict{<:Any, <:Any})
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any, <:Any})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
     print(io, "Dict")
     print(io, "<jldict>")
@@ -284,6 +326,35 @@ function show(io::IO, ::MIME"text/html", x::Dict{<:Any, <:Any})
     print(io, "</jltree>")
 end
 
+# Based on Julia source code, but HTML-ified
+function show_struct(io::IO, @nospecialize(x))
+    t = typeof(x)
+    nf = nfields(x)
+    nb = sizeof(x)
+    if nf != 0 || nb == 0
+        print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+        show(io, Base.inferencebarrier(t))
+        print(io, "<jlstruct>")
+        
+        if !Base.show_circular(io, x)
+            recur_io = IOContext(io, Pair{Symbol,Any}(:SHOWN_SET, x),
+                                 Pair{Symbol,Any}(:typeinfo, Any))
+            for i in 1:nf
+                f = fieldname(t, i)
+                if !isdefined(x, f)
+                    print(io, "<r>", Base.undef_ref_str, "</r>")
+                else
+                    show_array_row(recur_io, (f, getfield(x, i)))
+                end
+            end
+        end
+
+        print(io, "</jlstruct>")
+        print(io, "</jltree>")
+    else
+        Base.show_default(io, x)
+    end
+end
 
 ###
 # REPL THINGS

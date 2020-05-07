@@ -33,40 +33,36 @@ jltree.collapsed::before {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-outline.svg);
 }
 
-jldict>r,
-jlarray>r {
+jltree r {
     display: block;
 }
 
-jltree.collapsed jldict>r,
-jltree.collapsed jlarray>r {
+jltree.collapsed r {
     display: inline-block;
 }
 
-jldict>r>e,
-jlarray>r>e {
+jltree r>v {
     display: inline-flex;
     color: hsl(0, 0%, 25%, 1);
 }
 
-jltree.collapsed r>i {
+jltree.collapsed jlarray>r>k,
+jltree.collapsed jlstruct>r>k {
     display: none;
 }
 
 
 /*  */
 
-jldict>r,
-jlarray>r {
+jltree r {
     margin-left: 1em;
 }
 
-jltree.collapsed jldict>r:first-child,
-jltree.collapsed jlarray>r:first-child {
+jltree.collapsed r:first-child{
     margin-left: 0;
 }
 
-jlarray>r>i {
+jltree jlarray>r>k {
     margin-right: 1em;
     opacity: .5;
     user-select: none;
@@ -75,63 +71,67 @@ jlarray>r>i {
 
 /*  */
 
-jlarray::before {
+jltree jlarray::before {
     content: "["
 }
 
-jlarray::after {
+jltree jlarray::after {
     content: "]"
 }
 
-jldict::before {
+jltree jldict::before,
+jltree jlstruct::before {
     content: "("
 }
 
-jldict::after {
+jltree jldict::after,
+jltree jlstruct::after {
     content: ")"
 }
 
 
 /*  */
 
-jlarray>r>i::after {
+jltree jlarray>r>k::after {
     content: ":";
 }
 
-jldict>r>k::after {
+jltree jldict>r>k::after {
     content: " => "
 }
 
-jltree.collapsed jldict>r::after,
-jltree.collapsed jlarray>r::after {
+jltree jlstruct>r>k::after {
+    content: " = "
+}
+
+jltree.collapsed r::after {
     content: ",";
 }
 
-jltree.collapsed jldict>r:last-child::after,
-jltree.collapsed jlarray>r:last-child::after {
+jltree.collapsed r:last-child::after{
     content: "";
 }
 
-jltree jldict>r>more::after,
-jltree jlarray>r>more::after {
+jltree r>more::after {
     content: "⁝";
     margin-left: .2em;
 }
 
-jltree.collapsed jldict>r>more::after,
-jltree.collapsed jlarray>r>more::after {
+jltree.collapsed r>more::after {
     content: "⋅⋅⋅";
 }
 
 
 /*  */
 
-jltree.collapsed img {
+jltree.collapsed img,
+jltree.collapsed svg {
     max-width: 4rem;
     max-height: 4rem;
 }
 
-jltree img {
-    max-width: 8rem;
+jltree img,
+jltree svg {
+    max-width: 12rem;
     max-height: 8rem;
 }

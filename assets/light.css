@@ -85,23 +85,47 @@ cell {
     position: relative;
 }
 
-cell:focus-within {
-    /* box-shadow: 0px 0px 12px -4px rgba(0, 0, 0, 0.2); */
-    /* box-shadow: 0px 0px 12px -4px rgba(0, 0, 0, 0.8); */
-    /* border-left: 4px solid hsl(0, 0%, 0%); */
-}
-
 celloutput {
     background-color: white;
     align-items: baseline;
-    /* border: 1px solid rgba(0, 0, 0, .1); */
-    /* border-top-left-radius: 4px; */
-    /* border-top-right-radius: 4px; */
     overflow-x: auto;
 }
 
 celloutput:focus {
     outline: none;
+}
+
+celloutput>div {
+    overflow-x: auto;
+    /* FIREFOX */
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+}
+
+cell:hover>celloutput>div {
+    /* FIREFOX */
+    scrollbar-color: rgba(0, 0, 0, .15) rgba(0, 0, 0, .05);
+}
+
+celloutput>div::-webkit-scrollbar {
+    /* CHROME */
+    height: 6px;
+    background: transparent;
+}
+
+celloutput>div::-webkit-scrollbar-thumb {
+    /* CHROME */
+    background: transparent;
+}
+
+cell:hover>celloutput>div::-webkit-scrollbar {
+    /* CHROME */
+    background: rgba(0, 0, 0, .05);
+}
+
+cell:hover>celloutput>div::-webkit-scrollbar-thumb {
+    /* CHROME */
+    background: rgba(0, 0, 0, .15);
 }
 
 celloutput>div>pre {
@@ -117,13 +141,9 @@ celloutput>div>pre>code:empty {
     margin: 0;
 }
 
-celloutput > assignee,
+celloutput>assignee,
 code {
     font-family: 'Roboto Mono', monospace;
-}
-
-cell.hide-scrollbar > celloutput {
-    overflow-x: hidden;
 }
 
 .errormessage {
@@ -369,7 +389,6 @@ trafficlight {
     }
 }
 
-
 cell.output-notinsync>trafficlight,
 cell.code-differs>trafficlight {
     background: hsla(46, 70%, 37%, 0.68) !important;
@@ -561,7 +580,7 @@ cell.code-differs .cm-s-default .CodeMirror-gutters {
     color: #ce7d0a;
 }
 
-celloutput > assignee,
+celloutput>assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
     font-weight: 500;
