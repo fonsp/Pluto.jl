@@ -232,7 +232,12 @@ function updateLocalCellOutput(cellNode, msg) {
             }
 
             // convert LaTeX to svg
-            MathJax.typeset()
+            try{
+                MathJax.typeset()
+            } catch(err) {
+                console.info("Failed to typeset TeX:")
+                console.info(err)
+            }
         } else if (msg.mime == "image/png" || msg.mime == "image/jpg" || msg.mime == "image/gif") {
             var i = undefined
             if (containerNode.children.length == 1 && containerNode.children[0].tagName == "IMG") {
