@@ -103,12 +103,13 @@ function load_notebook_nobackup(io, path)
             break
         else
             uuid = UUID(uuid_str)
-            code = String(readuntil(io, _uuid_delimiter))
-            # Change windows line endings to linux; remove the cell appendix.
-            code_normalised = replace(code, "\r\n" => "\n")[1:end - ncodeunits(_cell_suffix)]
+            code_raw = String(readuntil(io, _uuid_delimiter))
+            # change Windows line endings to Linux
+            code_normalised = replace(code_raw, "\r\n" => "\n")
+            # remove the cell appendix
+            code = code_normalised[1 : prevind(code_normalised, end, length(_cell_suffix))]
 
-            read_cell = Cell(uuid, code_normalised)
-
+            read_cell = Cell(uuid, code)
             collected_cells[uuid] = read_cell
         end
     end

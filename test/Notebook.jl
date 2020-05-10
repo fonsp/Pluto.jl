@@ -8,6 +8,7 @@ function basic_notebook()
     Notebook(tempname(), [
         Cell("100*a + b"),
         Cell("a = 1"),
+        Cell("💩 = :💩"), # ends with 4-byte character
         Cell("b = let\n\tx = a + a\n\tx*x\nend"),
         Cell("html\"<h1>Hoi!</h1>\n<p>My name is <em>kiki</em></p>\""),
         Cell("""md"# Cześć!
