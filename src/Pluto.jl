@@ -4,10 +4,12 @@ export Notebook, Cell, run
 import Pkg
 
 const PKG_ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
+include_dependency(joinpath(PKG_ROOT_DIR, "Project.toml"))
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
-const CONFIG = Dict(
+const ENV_DEFAULTS = Dict(
+    "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
     "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
     "PLUTO_ROOT_URL" => "/",
 )

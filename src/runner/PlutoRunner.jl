@@ -229,14 +229,17 @@ struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
-function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)
-    mime = first(filter(m->Base.invokelatest(showable, m, x), allmimes))
+function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
+    mime = allmimes[findfirst(m -> Base.invokelatest(showable, m, x), allmimes)]
     t = typeof(x)
 
-    if mime isa MIME"text/plain" && 
+    isstruct = 
+        mime isa MIME"text/plain" && 
         t isa DataType &&
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
+    
+    if isstruct
         # we have a struct with no specialised show function
         # we display it as an interactive tree
         show_struct(io, x)

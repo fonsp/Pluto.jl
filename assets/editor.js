@@ -233,7 +233,7 @@ function updateLocalCellOutput(cellNode, msg) {
 
             // convert LaTeX to svg
             try{
-                MathJax.typeset()
+                MathJax.typeset([containerNode])
             } catch(err) {
                 console.info("Failed to typeset TeX:")
                 console.info(err)
@@ -553,7 +553,7 @@ function onUpdate(update, byMe) {
 window.customPlutoListeners = {}
 
 function onEstablishConnection() {
-    const runAll = client.plutoCONFIG["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
+    const runAll = client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
     // on socket success
     client.send("getallnotebooks", {})
 

@@ -10,6 +10,12 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     liv >= lis && (view(vec, (liv-lis + 1):liv) == suffix)
 end
 
+function set_ENV_defaults()
+    for pair in ENV_DEFAULTS
+        haskey(ENV, pair.first) || setindex!(ENV, pair.second, pair.first)
+    end
+end
+
 const connectedclients = Dict{Symbol,Client}()
 const notebooks = Dict{UUID,Notebook}()
 
@@ -117,6 +123,7 @@ const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 
 This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
 function run(host, port::Integer; launchbrowser::Bool = false)
+    set_ENV_defaults()
     hostIP = parse(Sockets.IPAddr, host)
     serversocket = Sockets.listen(hostIP, UInt16(port))
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
@@ -206,12 +213,12 @@ function run(host, port::Integer; launchbrowser::Bool = false)
         end
     end
 
-    address = if CONFIG["PLUTO_ROOT_URL"] == "/"
+    address = if ENV["PLUTO_ROOT_URL"] == "/"
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
     else
-        CONFIG["PLUTO_ROOT_URL"]
+        ENV["PLUTO_ROOT_URL"]
     end
     println("Go to $address to start writing ~ have fun!")
     println()

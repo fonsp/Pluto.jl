@@ -37,13 +37,12 @@ const PLUTOROUTER = HTTP.Router()
 
 function notebook_redirect(notebook)
     response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => CONFIG["PLUTO_ROOT_URL"] * "edit?uuid=" * string(notebook.uuid))
+    push!(response.headers, "Location" => ENV["PLUTO_ROOT_URL"] * "edit?uuid=" * string(notebook.uuid))
     return response
 end
 
 function serve_sample(req::HTTP.Request)
-    uri=HTTP.URI(req.target)
-
+    uri = HTTP.URI(req.target)
     path = split(uri.path, "sample/")[2]
     try
         nb = load_notebook_nobackup(joinpath(PKG_ROOT_DIR, "sample", path))
@@ -57,13 +56,12 @@ function serve_sample(req::HTTP.Request)
 end
 
 function serve_openfile(req::HTTP.Request)
-    uri=HTTP.URI(req.target)
+    uri = HTTP.URI(req.target)
     query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
 
     if length(query) > 5
         path = tamepath(query[6:end])
-
-        if(isfile(path))
+        if (isfile(path))
             try
                 for nb in values(notebooks)
                     if realpath(nb.path) == realpath(path)
@@ -75,11 +73,9 @@ function serve_openfile(req::HTTP.Request)
                 save_notebook(nb)
                 notebooks[nb.uuid] = nb
                 return notebook_redirect(nb)
-                
             catch e
                 return HTTP.Response(500, "Failed to load notebook:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
             end
-            # return HTTP.Response(200, """<head><meta charset="utf-8" /></head><body>Path: $(path)</bodu>""")
         else
             return HTTP.Response(404, "Can't find a file here.\n\n<a href=\"/\">Go back</a>")
         end

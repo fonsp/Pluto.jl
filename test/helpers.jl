@@ -1,5 +1,5 @@
+import Pluto
 import Pluto.ExploreExpression: SymbolsState, compute_symbolreferences
-
 
 "Calls `ExploreExpression.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
@@ -106,3 +106,5 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
+
+Pluto.set_ENV_defaults()

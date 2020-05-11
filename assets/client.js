@@ -135,7 +135,7 @@ class PlutoConnection {
         }
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then(u => {
-                this.plutoCONFIG = u.message.CONFIG
+                this.plutoENV = u.message.ENV
                 if(this.notebookID && !u.message.notebookExists){
                     // https://github.com/fonsp/Pluto.jl/issues/55
                     document.location.href = "./"

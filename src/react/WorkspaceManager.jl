@@ -16,19 +16,6 @@ Workspace(workspace_pid::Integer, module_name::Symbol) = let
     Workspace(workspace_pid, module_name, t)
 end
 
-"Should future workspaces be created on a separate process (`true`) or on the same one (`false`)?
-
-Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows."
-function set_default_distributed(val::Bool)
-    global default_distributed = val
-end
-
-function reset_default_distributed()
-    global default_distributed = Sys.iswindows() ? false : true
-end
-
-reset_default_distributed()
-
 "These expressions get executed whenever a new workspace is created."
 const workspace_preamble = [
     :(using Markdown, Main.PlutoRunner), 
@@ -45,8 +32,10 @@ moduleworkspace_count = 0
 workspaces = Dict{UUID,Workspace}()
 
 
-"Create a workspace for the notebook, optionally in a separate process."
-function make_workspace(notebook::Notebook, new_process = default_distributed)::Workspace
+"""Create a workspace for the notebook, optionally in a separate process.
+
+`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]`_"""
+function make_workspace(notebook::Notebook, new_process = (ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] == "true"))::Workspace
     pid = if new_process
         create_workspaceprocess()
     else
@@ -178,10 +167,10 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Any, ends_with_semi
             @assert ex.pid == workspace.workspace_pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
+            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing, declared_assignments=Set{Symbol}(), declared_references=Set{Symbol}())
+            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing)
         end
     end
 
@@ -243,7 +232,7 @@ function kill_workspace(workspace::Workspace)
         return false
     end
     if workspace.workspace_pid == Distributed.myid()
-        @warn "Cells in this workspace can't be stopped, because it is not running in a separate workspace. Use `set_default_distributed` to control whether future workspaces are generated in a separate process."
+        @warn """Cells in this workspace can't be stopped, because it is not running in a separate workspace. Use `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]` to control whether future workspaces are generated in a separate process."""
     end
 
     # You can force kill a julia process by pressing Ctrl+C five times 🙃

@@ -102,7 +102,7 @@ end
 responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
     putclientupdates!(initiator, UpdateMessage(:👋, Dict(
         :notebookExists => (notebook != nothing),
-        :CONFIG => CONFIG,
+        :ENV => filter(p -> startswith(p.first, "PLUTO"), ENV),
     ), nothing, nothing, initiator))
 end
 

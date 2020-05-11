@@ -1,14 +1,9 @@
 using Test
 using Pluto
 import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
+import Distributed
 
-# to_test = [WorkspaceManager.ModuleWorkspace]
-# if Sys.iswindows()
-#     println("Can't test ProcessWorkspace on Windows")
-# else
-#     push!(to_test, WorkspaceManager.ProcessWorkspace)
-# end
-WorkspaceManager.set_default_distributed(false)
+ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
 @testset "Reactivity" begin
     fakeclient = Client(:fake, nothing)
@@ -17,7 +12,7 @@ WorkspaceManager.set_default_distributed(false)
     
 
     @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
-        WorkspaceManager.set_default_distributed(parallel)
+        ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = string(parallel)
 
         notebook = Notebook([
         Cell("x = 1"),
@@ -30,11 +25,13 @@ WorkspaceManager.set_default_distributed(false)
             g(a,b) = y
         end"""),
         Cell("g(6) + g(6,6)"),
+
+        Cell("import Distributed"),
+        Cell("Distributed.myid()"),
     ])
         fakeclient.connected_notebook = notebook
 
         @test !haskey(WorkspaceManager.workspaces, notebook.uuid)
-        # @test WorkspaceManager.get_workspace(notebook) isa method
 
         run_reactive!(notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
@@ -72,10 +69,13 @@ WorkspaceManager.set_default_distributed(false)
         run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[6].output_repr == "3"
 
+        run_reactive!(notebook, notebook.cells[7:8])
+        @test xor(parallel, notebook.cells[8].output_repr == string(Distributed.myid()))
+
         WorkspaceManager.unmake_workspace(notebook)
     end
 
-    WorkspaceManager.set_default_distributed(false)
+    ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
 
 # https://github.com/fonsp/Pluto.jl/issues/32
@@ -623,4 +623,4 @@ WorkspaceManager.set_default_distributed(false)
     end
 end
 
-WorkspaceManager.reset_default_distributed()
+Pluto.set_ENV_defaults()

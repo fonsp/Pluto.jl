@@ -153,7 +153,7 @@ function load_notebook(path::String)
     update_caches!(loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if CONFIG["PLUTO_RUN_NOTEBOOK_ON_LOAD"] != "true"
+    if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] != "true"
         for cell in loaded.cells
             cell.symstate = SymbolsState()
         end
