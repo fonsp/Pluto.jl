@@ -8,14 +8,12 @@ struct CyclicReferenceError <: ReactivityError
 	syms::Set{Symbol}
 end
 
-function CyclicReferenceError(cycle::Array{Cell, 1})
+function CyclicReferenceError(cycle::Cell...)
 	referenced_during_cycle = union((c.symstate.references for c in cycle)...)
 	assigned_during_cycle = union((c.symstate.assignments for c in cycle)...)
 	
 	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
 end
-
-CyclicReferenceError(cycle::Set{Cell}) = collect(cycle) |> CyclicReferenceError
 
 
 struct MultipleDefinitionsError <: ReactivityError

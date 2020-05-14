@@ -14,6 +14,7 @@ const ENV_DEFAULTS = Dict(
     "PLUTO_ROOT_URL" => "/",
 )
 
+if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
@@ -23,6 +24,7 @@ const ENV_DEFAULTS = Dict(
     Have a look at the FAQ:
     https://github.com/fonsp/Pluto.jl/wiki
 \n"""
+end
 
 include("./react/ExploreExpression.jl")
 include("./runner/PlutoRunner.jl")

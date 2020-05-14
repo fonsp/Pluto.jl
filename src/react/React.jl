@@ -7,41 +7,44 @@ struct CellTopology
 end
 
 "Return a `CellTopology` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(notebook::Notebook, roots::Array{Cell, 1})::CellTopology
+function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_multiple_defs=false)::CellTopology
 	entries = Cell[]
 	exits = Cell[]
 	errable = Dict{Cell, ReactivityError}()
 
 	function dfs(cell::Cell)
-		if cell in keys(errable)
+		if cell in exits
 			return
-		elseif cell in exits
+		elseif haskey(errable, cell)
 			return
 		elseif length(entries) > 0 && entries[end] == cell
 			return # a cell referencing itself is legal
 		elseif cell in entries
 			currently_in = setdiff(entries, exits)
-			cycle = currently_in[findfirst(currently_in .== [cell]):end]
+			cycle = currently_in[findfirst(isequal(cell), currently_in):end]
 			for cell in cycle
-				errable[cell] = CyclicReferenceError(cycle)
+				errable[cell] = CyclicReferenceError(cycle...)
 			end
 			return
 		end
 
 		push!(entries, cell)
 		assigners = where_assigned(notebook, cell.symstate.assignments)
-		if length(assigners) > 1
-			for cell in assigners
-				errable[cell] = MultipleDefinitionsError(cell, assigners)
+		if !allow_multiple_defs && length(assigners) > 1
+			for c in assigners
+				errable[c] = MultipleDefinitionsError(c, assigners)
 			end
 		end
 		referencers = where_referenced(notebook, cell.symstate.assignments)
-		dfs.(setdiff(union(assigners, referencers), [cell]))
+		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
+			if c != cell
+				dfs(c)
+			end
+		end
 		push!(exits, cell)
 	end
 
-	# When two cells 
-	# we first move cells to the front if they call an import
+	# we first move cells to the front if they call `import` or `using`
     # we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
     prelim_order_1 = sort(roots, alg=MergeSort, by=(c -> isempty(c.module_usings)))
 	# reversing because our search returns reversed order

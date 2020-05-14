@@ -9,8 +9,6 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
     fakeclient = Client(:fake, nothing)
     Pluto.connectedclients[fakeclient.id] = fakeclient
 
-    
-
     @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
         ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = string(parallel)
 
@@ -142,9 +140,28 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         notebook.cells[5].code = ""
         run_reactive!(notebook, notebook.cells[5])
         @test notebook.cells[5].error_repr == nothing
-    # @test_broken !occursin("redefinition of constant", notebook.cells[6].error_repr)
+        @test notebook.cells[6].error_repr == nothing
 
         WorkspaceManager.unmake_workspace(notebook)
+    end
+
+    @testset "Mutliple assignments" begin
+        notebook = Notebook([
+        Cell("x = 1"),
+        Cell("z = 4 + y"),
+        Cell("y = x + 2"),
+        Cell("y = x + 3"),
+    ])
+        Pluto.update_caches!(notebook, notebook.cells)
+
+        let topology = Pluto.topological_order(notebook, notebook.cells[[1]])
+            @test topology.runnable == notebook.cells[[1,2]]
+            @test topology.errable |> keys == notebook.cells[[3,4]] |> Set
+        end
+        let topology = Pluto.topological_order(notebook, notebook.cells[[1]], allow_multiple_defs=true)
+            @test topology.runnable == notebook.cells[[1,3,4,2]] || topology.runnable == notebook.cells[[1,4,3,2]] # x first, y second and third, z last
+            @test topology.errable == Dict()
+        end
     end
 
     @testset "Cyclic" begin
@@ -540,7 +557,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         WorkspaceManager.unmake_workspace(notebook)
     end
 
-    @testset "Run all" begin
+    @testset "Run multiple" begin
         notebook = Notebook([
         Cell("x = []"),
         Cell("b = a + 2; push!(x,2)"),
