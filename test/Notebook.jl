@@ -77,17 +77,14 @@ end
     
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
-        for (rootpath, dirs, files) in walkdir(joinpath(Pluto.PKG_ROOT_DIR, "sample"))
-            for file in files
-                path = normpath(joinpath(rootpath, file))
+        for file in ["basic.jl", "ui.jl"]
+            path = normpath(joinpath(Pluto.PKG_ROOT_DIR, "sample", file))
 
-                @testset "$(file)" begin
-                    @test jl_is_runnable(path)
-                    nb = @test_nowarn load_notebook_nobackup(path)
-                    nb.path = tempname() * ".jl"
+            @testset "$(file)" begin
+                nb = @test_nowarn load_notebook_nobackup(path)
+                nb.path = tempname() * ".jl"
 
-                    push!(nbs, "sample " * file => nb)
-                end
+                push!(nbs, "sample " * file => nb)
             end
         end
     end

@@ -8,11 +8,13 @@ using Test
         @test testee(:(x = x), [:x], [:x], [], [])
         @test testee(:(x = 1 + y), [:y], [:x], [:+], [])
         @test testee(:(x = +(a...)), [:a], [:x], [:+], [])
-
-        @test_nowarn testee(:(x::Int64 = 3), [], [:x, :Int64], [], [], verbose=false)
+        @test testee(:(1:3), [], [], [:(:)], [])
     end
     @testset "Bad code" begin
         # @test_nowarn testee(:(begin end = 2), [:+], [], [:+], [], verbose=false)
+        @test_nowarn testee(:((a=b,c,d=123,)), [:b], [], [], [], verbose=false)
+        @test_nowarn testee(:((a=b,c[r]=2,d=123,)), [:b], [], [], [], verbose=false)
+
         @test_nowarn testee(:(function f(function g() end) end), [], [], [:+], [], verbose=false)
         @test_nowarn testee(:(function f() Base.sqrt(x::String) = 2; end), [], [], [:+], [], verbose=false)
         @test_nowarn testee(:(function f() global g(x) = x; end), [], [], [], [], verbose=false)
@@ -26,12 +28,33 @@ using Test
             :a => ([], [], [], [])
             ])
 
-        @test_nowarn testee(:(struct a <: b; c; d::Int64; end), [:b, :Int64], [:a], [], [], verbose=false)
-        @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
+            @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
+        end
+    @testset "Types" begin
+        @test testee(:(x::Foo = 3), [:Foo], [:x], [], [])
+        @test testee(:(x::Foo), [:x, :Foo], [], [], [])
+        @test testee(:(a::Foo, b::String = 1, "2"), [:Foo, :String], [:a, :b], [], [])
+        @test testee(:(Foo[]), [:Foo], [], [], [])
+        @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
+        @test testee(:(abstract type a end), [], [], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a <: b end), [], [], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a <: b{C} end), [], [], [], [:a => ([:b, :C], [], [], [])])
+        @test testee(:(abstract type a{T} end), [], [], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T,S} end), [], [], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T} <: b end), [], [], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T} <: b{T} end), [], [], [], [:a => ([:b], [], [], [])])
+        
+        @test testee(:(struct a <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a{T,S}; c::T; d::Foo; end), [], [], [], [:a => ([:Foo], [], [], [])])
+        @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a{T} <: b{T}; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a; c; a(x=y) = new(x,z); end), [], [], [], [:a => ([:y, :z], [], [:new], [])])
+        # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
         # https://github.com/JuliaLang/julia/blob/f449765943ba414bd57c3d1a44a73e5a0bb27534/base/docs/basedocs.jl#L239-L244
+        @test testee(:(a = a), [:a], [:a], [], [])
         @test testee(:(a = a + 1), [:a], [:a], [:+], [])
         @test testee(:(x = a = a + 1), [:a], [:a, :x], [:+], [])
         @test testee(:(f(x) = x), [], [], [], [:f => ([], [], [], [])])
@@ -46,8 +69,6 @@ using Test
     @testset "Tuples" begin
         @test testee(:((a,b,)), [:a,:b], [], [], [])
         @test testee(:((a=b,c=2,d=123,)), [:b], [], [], [])
-        @test_nowarn testee(:((a=b,c,d=123,)), [:b], [], [], [], verbose=false)
-        @test_nowarn testee(:((a=b,c[r]=2,d=123,)), [:b], [], [], [], verbose=false)
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])
@@ -57,7 +78,6 @@ using Test
         @test testee(:((x,y), a, (b,c) = z, e, (f,g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
         @test testee(:((x[i], y.r), a, (b,c) = z, e, (f,g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
         @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
-        
     end
     @testset "Dot operator" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
@@ -72,10 +92,16 @@ using Test
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
+        @test testee(:([sqrt(s+r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
 
-        @test_nowarn testee(:([a for a in a]), [:a], [], [], [], verbose=false)
-        @test_nowarn testee(:(a = [a for a in a]), [:a], [:a], [], [], verbose=false)
+        @test testee(:([a for a in a]), [:a], [], [], [])
+        @test testee(:(for a in a; a; end), [:a], [], [], [])
+        @test testee(:(let a = a; a; end), [:a], [], [], [])
+        @test testee(:(let a = a end), [:a], [], [], [])
+        @test testee(:(let a = b end), [:b], [], [], [])
+        @test testee(:(a = a), [:a], [:a], [], [])
+        @test testee(:(a = [a for a in a]), [:a], [:a], [], [])
     end
     @testset "Multiple expressions" begin
         @test testee(:(x = let r = 1; r + r end), [], [:x], [:+], [])
@@ -86,11 +112,12 @@ using Test
         @test testee(:((a = b = 1)), [], [:a, :b], [], [])
         @test testee(:(let k = 2; 123 end), [], [], [], [])
         @test testee(:(let k() = 2 end), [], [], [], [])
-
-        @test_nowarn testee(:(a::Int64, b::String = 1, "2"), [:Int64, :String], [:a, :b], [], [], verbose=false)
     end
     @testset "Functions" begin
         @test testee(:(function g() r = 2; r end), [], [], [], [
+            :g => ([], [], [], [])
+        ])
+        @test testee(:(function g end), [], [], [], [
             :g => ([], [], [], [])
         ])
         @test testee(:(function f() g(x) = x; end), [], [], [], [
@@ -109,7 +136,13 @@ using Test
             :f => ([:a, :b], [], [], [])
         ])
         @test testee(:(f(x, y = a + 1) = x * y * z), [], [], [], [
-            :f => ([:z], [], [:*], [])
+            :f => ([:z, :a], [], [:*, :+], [])
+        ])
+        @test testee(:(begin f() = 1; f end), [], [], [], [
+            :f => ([], [], [], [])
+        ])
+        @test testee(:(begin f() = 1; f() end), [], [], [], [
+            :f => ([], [], [], [])
         ])
         @test testee(:(begin
                 f(x) = (global a = √b)
@@ -130,7 +163,7 @@ using Test
             :anon => ([], [], [:*], [])
         ])
         @test testee(:(f = (x, y = a + 1)->x * y), [], [:f], [], [
-            :anon => ([], [], [:*], [])
+            :anon => ([:a], [], [:*, :+], [])
         ])
         @test testee(:((((a, b), c), (d, e))->a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
@@ -142,13 +175,21 @@ using Test
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
-            
-        @test_nowarn testee(:(function f(y::Int64 = a)::String string(y) end), [], [], [], [], verbose=false)
-        @test_nowarn testee(:(function f(x::T; k = 1) where T return x + 1 end), [], [], [], [], verbose=false)
-        @test_nowarn testee(:(function f(x::T; k = 1) where {T,S<:R} return x + 1 end), [:R], [:f], [], [
-            :f => ([], [], [], [])
-        ], verbose=false)
-        @test_nowarn testee(:(function f(::MIME"text/html") 1 end), [], [], [], [], verbose=false)
+    end
+    @testset "Functions & types" begin
+        @test testee(:(function f(y::Int64 = a)::String string(y) end), [], [], [], [
+            :f => ([:String, :Int64, :a], [], [:string], [])
+        ])
+        @test testee(:(function f(x::T; k = 1) where T return x + 1 end), [], [], [], [
+            :f => ([], [], [:+], [])
+        ])
+        @test testee(:(function f(x::T; k = 1) where {T,S<:R} return x + 1 end), [], [], [], [
+            :f => ([:R], [], [:+], [])
+        ])
+        @test testee(:(MIME"text/html"), [Symbol("@MIME_str")], [], [], [])
+        @test testee(:(function f(::MIME"text/html") 1 end), [], [], [], [
+            :f => ([Symbol("@MIME_str")], [], [], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
@@ -159,9 +200,11 @@ using Test
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local k = 3 end), [], [], [], [])
-        @test testee(:(begin local k += 3 end), [], [], [:+], [])
+        @test testee(:(begin local k = 3; k; b = 4 end), [], [:b], [], [])
+        @test testee(:(begin local k += 3 end), [], [], [:+], []) # does not reference global k
         @test testee(:(begin local k; k = 4 end), [], [], [], [])
         @test testee(:(begin local k; b = 5 end), [], [:b], [], [])
+        @test testee(:(begin local r[1] = 5 end), [:r], [], [], [])
         
         @test testee(:(function f(x) global k = x end), [], [], [], [
             :f => ([], [:k], [], [])
@@ -183,10 +226,14 @@ using Test
         @test testee(:(@time a = 2), [Symbol("@time")], [:a], [], [])
         @test testee(:(html"a $(b = c)"), [Symbol("@html_str")], [], [], [])
         @test testee(:(md"a $(b = c)"), [Symbol("@md_str"), :c], [:b], [], [])
+        @test testee(:(md"\* $r"), [Symbol("@md_str"), :r], [], [], [])
         @test testee(:(md"a \$(b = c)"), [Symbol("@md_str")], [], [], [])
     end
-    @testset "String interpolation" begin
+    @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
         @test testee(:("a $(b = c)"), [:c], [:b], [], [])
+        @test testee(:(ex = :(yayo)), [], [:ex], [], [])
+        @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
+        # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
     end
 end

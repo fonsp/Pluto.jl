@@ -45,23 +45,24 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
         dump(expr, maxdepth = 20)
         println()
         @show expected
-        @show result
+        resulted = result
+        @show resulted
         println()
     end
     return expected == result
 end
 
 function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+    new_expected_funccalls = map(expected_funccalls) do k
+        new_k = k isa Symbol ? [k] : k
+        return new_k
+    end |> Set
+    
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
         new_v = v isa SymbolsState ? v : easy_symstate(v...)
         return new_k => new_v
     end |> Dict
-
-    new_expected_funccalls = map(expected_funccalls) do k
-        new_k = k isa Symbol ? [k] : k
-        return new_k
-    end |> Set
 
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
 end
