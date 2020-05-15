@@ -139,6 +139,15 @@ function createCodeMirrorInsideCell(cellNode, code) {
         }
     });
 
+    cm.on("blur", (cm, e) => {
+        if (document.hasFocus()) {
+            cm.setSelection({ line: 0, ch: 0 })
+            if (!cellNode.classList.contains("code-differs") && cellNode.remoteCode == "") {
+                requestDeleteRemoteCell(cellNode.id)
+            }
+        }
+    })
+
     return cm
 }
 
@@ -232,9 +241,9 @@ function updateLocalCellOutput(cellNode, msg) {
             }
 
             // convert LaTeX to svg
-            try{
+            try {
                 MathJax.typeset([containerNode])
-            } catch(err) {
+            } catch (err) {
                 console.info("Failed to typeset TeX:")
                 console.info(err)
             }
@@ -253,10 +262,13 @@ function updateLocalCellOutput(cellNode, msg) {
             }
             i.src = msg.output
         } else {
-            cellNode.classList.add("inline-output")
-
-            containerNode.innerHTML = "<pre><code></code></pre>"
-            containerNode.querySelector("code").innerText = msg.output
+            if (msg.output) {
+                containerNode.innerHTML = "<pre><code></code></pre>"
+                cellNode.classList.add("inline-output")
+                containerNode.querySelector("code").innerText = msg.output
+            } else {
+                containerNode.innerHTML = ""
+            }
         }
     }
     document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
@@ -297,7 +309,7 @@ function updateLocalCellInput(byMe, cellNode, code, folded) {
         // Silly code to make codemirror visible, then refresh, then make invisible again (if the code was hidden)
         const inputNode = cellNode.querySelector("cellinput")
         inputNode.style.display = "inline"
-        inputNode.offsetHeight
+        inputNode.offsetTop
         cm.refresh()
         inputNode.style.display = null
 
@@ -339,7 +351,7 @@ function createLocalCell(newIndex, uuid, code, focus = true) {
 
     // EVENT LISTENERS FOR CLICKY THINGS
 
-    newCellNode.querySelector("button.codefoldcell").onclick = (e) => {
+    newCellNode.querySelector("button.foldcode").onclick = (e) => {
         requestCodeFoldRemoteCell(uuid, !newCellNode.classList.contains("code-folded"))
     }
 
@@ -373,7 +385,7 @@ function foldLocalCell(cellNode, newFolded) {
     } else {
         cellNode.classList.remove("code-folded")
         // Force redraw:
-        cellNode.offsetHeight
+        cellNode.offsetTop
         editor.refresh()
     }
 }
@@ -562,6 +574,7 @@ function onEstablishConnection() {
 
         update.message.cells.forEach((cell, index) => {
             const cellNode = createLocalCell(index, cell.uuid, "", false)
+            cellNode.classList.add("output-notinsync")
             runAll && cellNode.classList.add("running")
             promises.push(
                 client.sendreceive("getinput", {}, cell.uuid).then(u => {

@@ -49,11 +49,13 @@
         h1 {
             font-size: 2.2rem;
             border-bottom: 3px solid rgba(0, 0, 0, .15);
+            margin-bottom: .5rem;
         }
 
         h2 {
             font-size: 1.8rem;
             border-bottom: 2px dotted rgba(0, 0, 0, .15);
+            margin-bottom: .5rem;
         }
 
         h3 {
@@ -277,7 +279,7 @@
 
         cell {
             display: block;
-            min-height: 28px;
+            min-height: 1rem;
         }
 
         celloutput {
@@ -372,6 +374,7 @@
 
         clickshoulder:hover {
             background: rgba(0, 0, 0, .05);
+            background-clip: padding-box;
         }
 
         cell>button>span,
@@ -689,9 +692,9 @@
         </notebook>
         <dropruler></dropruler>
         <template id="celltemplate">
-            <cell class="output-notinsync">
+            <cell>
                 <clickshoulder draggable="true" title="Drag to move cell">
-                    <button class="codefoldcell" title="Show/hide code"><span></span></button>
+                    <button class="foldcode" title="Show/hide code"><span></span></button>
                 </clickshoulder>
                 <trafficlight></trafficlight>
                 <button class="addcell before" title="Add cell"><span></span></button>
@@ -728,7 +731,7 @@
             </form>
         </div>
     </footer>
-    
+
     <script src="assets/bond.js" defer></script>
     <script src="assets/editor.js" defer></script>
     <script src="assets/feedback.js" defer></script>

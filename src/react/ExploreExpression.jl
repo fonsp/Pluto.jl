@@ -586,9 +586,9 @@ function explore_funcdef!(ex::Symbol, scopestate::ScopeState)::Tuple{FuncName,Sy
     Symbol[ex |> without_dotprefix |> without_dotsuffix], SymbolsState()
 end
 
-# function explore_funcdef!(val::Any, scopestate::ScopeState)::Tuple{FuncName,SymbolsState}
-#     Symbol[], SymbolsState()
-# end
+function explore_funcdef!(::Any, ::ScopeState)::Tuple{FuncName,SymbolsState}
+    Symbol[], SymbolsState()
+end
 
 ###
 # UTILITY FUNCTIONS

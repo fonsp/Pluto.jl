@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese');
 @import url('https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
 @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+:root {
+    --cell-spacing: 17px;
+}
+
 celloutput {
     /* background-color: #ffffff; */
     /* font-family: 'Open Sans', serif; */
@@ -26,8 +30,15 @@ celloutput h4,
 celloutput h5,
 celloutput h6 {
     font-family: 'Vollkorn', serif;
-    font-weight: 700;
+    font-weight: 600;
     color: hsl(0, 0%, 12%);
+    margin-block-start: 1rem;
+}
+
+celloutput h1,
+celloutput h2 {
+    font-weight: 700;
+    margin-block-start: 2rem;
 }
 
 celloutput h1:first-child,
@@ -39,9 +50,14 @@ celloutput h6:first-child {
     margin-block-start: 0px;
 }
 
+celloutput h1:first-child,
+celloutput h2:first-child {
+    margin-block-start: calc(2rem - var(--cell-spacing));
+}
+
 celloutput p {
-    margin-block-start: 8px;
-    margin-block-end: 20px;
+    margin-block-start: 0px;
+    margin-block-end: var(--cell-spacing);
     word-spacing: 0.053em;
     line-height: 1.45em;
 }
@@ -81,7 +97,7 @@ main {
 }
 
 cell {
-    margin-top: 20px;
+    margin-top: var(--cell-spacing);
     position: relative;
 }
 
@@ -94,6 +110,21 @@ celloutput {
 celloutput:focus {
     outline: none;
 }
+
+
+/* cell.inline-output + cell.inline-output {
+    min-height: 0px;
+} */
+
+
+/* cell.inline-output + cell.inline-output > celloutput {
+    padding-top: 0px;
+} */
+
+
+/* cell.inline-output + cell.inline-output > button.addcell.before {
+    display: none;
+} */
 
 celloutput>div {
     overflow-x: auto;
@@ -128,18 +159,21 @@ cell:hover>celloutput>div::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, .15);
 }
 
-celloutput>div>pre {
+cell.inline-output>celloutput>div>pre {
     margin: 0px;
     display: flex;
 }
 
-celloutput>div>pre>code {
-    margin: 3px 0px;
+cell.inline-output>celloutput {
+    padding-top: 3px;
+    padding-bottom: 3px;
 }
 
-celloutput>div>pre>code:empty {
+
+/* cell.inline-output.code-folded>celloutput>div>pre>code,
+cell.inline-output>celloutput:onl {
     margin: 0;
-}
+} */
 
 celloutput>assignee,
 code {
@@ -278,12 +312,12 @@ cell>button.addcell {
 }
 
 cell>button.addcell.before {
-    margin-top: -20px !important;
+    margin-top: calc(-19px - 0.5 * (var(--cell-spacing) - 19px)) !important;
 }
 
 cell>button.addcell.after {
     bottom: 1px;
-    margin-bottom: -20px;
+    margin-bottom: calc(-20px - 0.5 * (var(--cell-spacing) - 19px));
 }
 
 cell>button.addcell>span::after {
@@ -306,18 +340,30 @@ clickshoulder {
     align-items: flex-start;
 }
 
+clickshoulder {
+    border-top: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, .0);
+    border-bottom: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, .0);
+    top: calc(0px - 0.5* var(--cell-spacing));
+    bottom: calc(0px - 0.5* var(--cell-spacing));
+}
+
 clickshoulder>button {
     flex: 0 0 auto;
     position: sticky;
-    top: 3px;
-    margin: 3px;
+    top: 0px;
+    margin-top: 5px;
     margin-right: 5px;
+    padding: 0px 1px;
+}
+
+cell.code-folded.inline-output>clickshoulder>button {
+    margin-top: 3px;
 }
 
 runarea {
     margin-right: 3px;
     display: block;
-    height: 18px;
+    height: 17px;
     position: absolute;
     right: 0px;
     min-width: 75px;
@@ -333,7 +379,7 @@ runarea>span {
     font-size: .6em;
     display: inline-block;
     position: absolute;
-    top: 2px;
+    top: 1px;
     right: 24px;
     font-style: italic;
     color: hsl(353, 5%, 64%);

@@ -45,6 +45,8 @@ using Test
         @test testee(:(abstract type a{T} <: b end), [], [], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T} <: b{T} end), [], [], [], [:a => ([:b], [], [], [])])
         
+        e = :(struct a end) # needs to be on its own line to create LineNumberNode
+        @test testee(e, [], [], [], [:a => ([], [], [], [])])
         @test testee(:(struct a <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
         @test testee(:(struct a{T,S}; c::T; d::Foo; end), [], [], [], [:a => ([:Foo], [], [], [])])
         @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
