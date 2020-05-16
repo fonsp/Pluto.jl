@@ -159,7 +159,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
             @test topology.errable |> keys == notebook.cells[[3,4]] |> Set
         end
         let topology = Pluto.topological_order(notebook, notebook.cells[[1]], allow_multiple_defs=true)
-            @test topology.runnable == notebook.cells[[1,3,4,2]] || topology.runnable == notebook.cells[[1,4,3,2]] # x first, y second and third, z last
+            @test topology.runnable == notebook.cells[[1,3,4,2]] # x first, y second and third, z last
+            # this also tests whether multiple defs run in page order
             @test topology.errable == Dict()
         end
     end
@@ -612,6 +613,11 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
             run_reactive!(notebook, notebook.cells[15])
             @test notebook.cells[15].output_repr == "\"4-2-3-5-10-11-12-13-14\""
+
+            run_reactive!(notebook, notebook.cells[1]) # resets `x`, only 10-14 should run, in order
+            @test notebook.cells[15].output_repr == "\"10-11-12-13-14\""
+            run_reactive!(notebook, notebook.cells[15])
+            @test notebook.cells[15].output_repr == "\"10-11-12-13-14\""
         end
         
 

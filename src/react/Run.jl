@@ -80,7 +80,7 @@ run_reactive_async!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive_as
 
 "Run a single cell non-reactively, return run information."
 function run_single!(notebook::Notebook, cell::Cell)
-	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, ends_with_semicolon(cell.code))
+	run = WorkspaceManager.eval_fetch_in_workspace(WorkspaceManager.get_workspace(notebook), cell.parsedcode, cell.uuid, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	if run.errored
@@ -108,9 +108,20 @@ function update_caches!(notebook, cells)
 	end
 end
 
+"Parse the code from `cell.code` into a Julia expression (`Expr`). Inserts custom filename."
+function parse_custom(notebook::Notebook, cell::Cell)
+	filename = notebook.path * "#==#" * string(cell.uuid)
+	ex = Base.parse_input_line(cell.code, filename=filename)
+	if (ex isa Expr) && (ex.head == :toplevel) && length(ex.args) > 2
+		Expr(:error, "extra token after end of expression")
+	else
+		ex
+	end
+end
+
 "Update a single cell's cache - parsed code etc"
 function start_cache!(notebook::Notebook, cell::Cell)
-	cell.parsedcode = Meta.parse(cell.code, raise=false)
+	cell.parsedcode = parse_custom(notebook, cell)
 	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
 	cell.rootassignee = ExploreExpression.get_rootassignee(cell.parsedcode)
 	cell.symstate = try

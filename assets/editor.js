@@ -2,11 +2,12 @@
 
 /* REMOTE NOTEBOOK LIST */
 
-const notebookID = document.location.search.split("uuid=")[1]
-var notebookPath = "unknown"
+var notebook = {
+    path: "unknown",
+    uuid: document.location.search.split("uuid=")[1],
+}
 
 function updateLocalNotebookPath(newPath) {
-    notebookPath = newPath
     window.filePickerCodeMirror.setValue(newPath)
 
     fileName = newPath.split("/").pop().split("\\").pop()
@@ -14,12 +15,13 @@ function updateLocalNotebookPath(newPath) {
     document.title = cuteName
 }
 
-window.remoteNotebookList = []
+var remoteNotebookList = []
 
 function updateRemoteNotebooks(list) {
-    window.remoteNotebookList = list
+    remoteNotebookList = list
     list.forEach(nb => {
-        if (nb.uuid == notebookID) {
+        if (nb.uuid == notebook.uuid) {
+            notebook = nb
             updateLocalNotebookPath(nb.path)
         }
     })
@@ -31,9 +33,8 @@ document.querySelector("preamble>button.runallchanged").onclick = (e) => {
     requestRunAllChangedRemoteCells()
 }
 
-cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
-notebookNode = document.querySelector("notebook")
-window.notebookNode = notebookNode
+const cellTemplate = document.querySelector("#celltemplate").content.firstElementChild
+const notebookNode = document.querySelector("notebook")
 
 /* FILE PICKER */
 
@@ -41,7 +42,7 @@ const submitFileButton = document.querySelector("header>#logocontainer>filepicke
 submitFileButton.addEventListener("click", submitFileChange)
 
 function submitFileChange() {
-    const oldPath = notebookPath
+    const oldPath = window.notebook.path
     const newPath = window.filePickerCodeMirror.getValue()
     if (oldPath == newPath) {
         return
@@ -51,7 +52,7 @@ function submitFileChange() {
         client.sendreceive("movenotebookfile", {
             path: newPath,
         }).then(u => {
-            updateLocalNotebookPath(notebookPath)
+            updateLocalNotebookPath(notebook.path)
             document.body.classList.remove("loading")
 
             if (u.message.success) {
@@ -70,14 +71,14 @@ window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
     document.querySelector("header>#logocontainer>filepicker").insertBefore(
         elt,
         submitFileButton)
-}, submitFileChange, () => updateLocalNotebookPath(notebookPath), true)
+}, submitFileChange, () => updateLocalNotebookPath(notebook.path), true)
 
 window.filePickerCodeMirror.on("blur", (cm, e) => {
     // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
     // debounce:
     setTimeout(() => {
         if (!cm.hasFocus()) {
-            updateLocalNotebookPath(notebookPath)
+            updateLocalNotebookPath(notebook.path)
         }
     }, 250)
 })
@@ -141,7 +142,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
 
     cm.on("blur", (cm, e) => {
         if (document.hasFocus()) {
-            cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, {scroll: false})
+            cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, { scroll: false })
             if (!cellNode.classList.contains("code-differs") && cellNode.remoteCode == "") {
                 requestDeleteRemoteCell(cellNode.id)
             }
@@ -201,8 +202,14 @@ function updateLocalCellOutput(cellNode, msg) {
     if (msg.errormessage) {
         cellNode.classList.add("error")
 
-        containerNode.innerHTML = "<pre><code></code></pre>"
-        containerNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
+        if (msg.mime == "text/plain") {
+            containerNode.innerHTML = "<pre><code></code></pre>"
+            containerNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
+        } else {
+            const render = render_error(JSON.parse(msg.errormessage), cellNode)
+            containerNode.innerHTML = ""
+            containerNode.appendChild(render)
+        }
     } else {
         cellNode.classList.toggle("has-assignee", msg.rootassignee != null)
 
@@ -646,7 +653,7 @@ function onDisconnect() {
 }
 
 window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
-client.notebookID = notebookID
+client.notebookID = notebook.uuid
 client.initialize()
 
 
@@ -816,7 +823,59 @@ function updateDocQuery(query = undefined) {
 
 updateDocQuery()
 
-/* ERROR HINTS */
+/* ERRORS */
+
+function render_filename(frame, ctx) {
+    const sep_index = frame.file.indexOf("#==#")
+    if (sep_index != -1) {
+        const uuid = frame.file.substr(sep_index + 4)
+        const a = DOM.element("a", { href: "#" + uuid + "#" + frame.line, onclick: "window.cellRedirect(event)" })
+        if(uuid == ctx.id){
+            a.innerText = "Local:" + frame.line
+        } else {
+            a.innerText = "Other:" + frame.line
+        }
+        return html`<em>${a}</em>`
+    } else {
+        return html`<em>${frame.file}:${frame.line}</em>`
+    }
+}
+
+function render_funccall(frame, ctx) {
+    const bracket_index = frame.call.indexOf("(")
+    if(bracket_index != -1){
+        return html`<mark><strong>${frame.call.substr(0,bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
+    } else {
+        return html`<mark><strong>${frame.call}</strong></mark>`
+    }
+}
+
+function render_error(state, ctx) {
+    return html`
+	<jlerror>
+		<header>
+			${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
+		</header>
+        <section style="display: ${state.stacktrace.length == 0 ? "none" : "potato"};">
+			<ol>
+			${state.stacktrace.map(frame => html`
+				<li>
+					${render_funccall(frame, ctx)}<span>@</span>${render_filename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
+				</li>`
+    )}
+			</ol>
+		</section>
+	</jltree>`
+}
+
+function cellRedirect(event) {
+    const url = new URL(event.target.href).hash
+    const uuid = url.substr(1, 36)
+    const line = url.substr(38)
+    window.codeMirrors[uuid].setSelection({ line: 0, ch: 0 }, { line: Infinity, ch: Infinity }, { scroll: true })
+    window.codeMirrors[uuid].focus()
+}
+
 
 const errorRewrites = [
     {
@@ -859,8 +918,8 @@ document.addEventListener("keydown", (e) => {
             break
         case 82: // r
             if (e.ctrlKey) {
-                if (notebookPath != "unknown") {
-                    document.location.href = "open?path=" + encodeURIComponent(notebookPath)
+                if (window.notebook) {
+                    document.location.href = "open?path=" + encodeURIComponent(notebook.path)
                     e.preventDefault()
                 }
             }

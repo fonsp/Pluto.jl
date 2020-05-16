@@ -20,7 +20,7 @@ end
 const workspace_preamble = [
     :(using Markdown, Main.PlutoRunner), 
     :(ENV["GKSwstype"] = "nul"), 
-    :(show, showable, showerror, repr, string), # https://github.com/JuliaLang/julia/issues/18181
+    :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
 const process_preamble = [
@@ -111,11 +111,11 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Any, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(notebook::Notebook, expr::Any, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr, ends_with_semicolon)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Any, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(workspace::Workspace, expr::Any, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     # nasty fix:
     if expr isa Expr && expr.head == :toplevel
         expr.head = :block
@@ -147,6 +147,7 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Any, ends_with_semi
             bt = stacktrace(catch_backtrace())
             CapturedException(ex, bt), missing
         end
+        setindex!(Main.PlutoRunner.cell_results, WeakRef(ans), $(cell_id))
     end
 
     # run the code 🏃‍♀️
@@ -176,7 +177,7 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Any, ends_with_semi
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    return Distributed.remotecall_eval(Main, workspace.workspace_pid, :(PlutoRunner.fetch_formatted_ans($ends_with_semicolon)))
+    return Distributed.remotecall_eval(Main, workspace.workspace_pid, :(PlutoRunner.fetch_formatted_result($cell_id, $ends_with_semicolon)))
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."

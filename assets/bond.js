@@ -1,4 +1,7 @@
 observablehq.Library()
+const html = observablehq.html()
+const DOM = observablehq.DOM
+
 
 function makeBond(bondNode) {
     if(bondNode.getRootNode() != document){

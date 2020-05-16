@@ -110,10 +110,11 @@ function storeStatisticsSample() {
 }
 
 resetStatistics()
-storeStatisticsSample()
 document.querySelector("footer a#statistics-info").addEventListener("click", storeStatisticsSample)
 
 setTimeout(() => {
+    storeStatisticsSample()
+
     firebase.initializeApp({
         apiKey: 'AIzaSyC0DqEcaM8AZ6cvApXuNcNU2RgZZOj7F68',
         authDomain: 'localhost',

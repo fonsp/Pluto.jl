@@ -1,16 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
 /*  */
 
 jltree {
     font-family: "Roboto Mono", monospace;
     font-size: .75rem;
+}
+jltree {
     color: hsl(0, 0%, 25%, .7);
     white-space: pre;
+    cursor: pointer;
 }
 jltree * {
     cursor: auto;
-}
-jltree {
-    cursor: pointer;
 }
 
 jltree::before {
@@ -134,4 +136,36 @@ jltree img,
 jltree svg {
     max-width: 12rem;
     max-height: 8rem;
+}
+
+/*  */
+
+jlerror {
+    font-size: .75rem;
+    font-family: "Space Mono", monospace;
+}
+
+jlerror>header {
+    color: #330000;
+}
+jlerror>header>p {
+    margin-block-end: .2em;
+}
+jlerror>header::first-line {
+    font-weight: bold;
+}
+jlerror>section>ol>li>mark {
+    background: #f3f2f1;
+    border-radius: 6px;
+}
+jlerror>section>ol>li>em>a {
+    background: #f5efd9;
+    border-radius: 4px;
+    padding: 1px 7px;
+    text-decoration: none;
+    border-left: 3px solid #9a7575;
+}
+jlerror>section>ol>li>span {
+    opacity: .8;
+    padding: 0px 1em;
 }

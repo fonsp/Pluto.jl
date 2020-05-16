@@ -70,9 +70,9 @@ celloutput p:last-child {
     margin-block-end: 0px;
 }
 
-celloutput>pre>code>a {
-    color: inherit;
-    font-weight: 500;
+a {
+    color: black;
+    font-weight: bold;
 }
 
 
@@ -159,9 +159,11 @@ cell:hover>celloutput>div::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, .15);
 }
 
-cell.error > celloutput > div > pre,
-cell.inline-output>celloutput>div>pre {
+celloutput pre {
     margin: 0px;
+    display: inline-block;
+}
+cell.inline-output>celloutput>div>pre {
     display: flex;
 }
 
@@ -179,11 +181,6 @@ cell.inline-output>celloutput:onl {
 celloutput>assignee,
 code {
     font-family: 'Roboto Mono', monospace;
-}
-
-.errormessage {
-    color: darkred;
-    font-weight: bold;
 }
 
 ul.CodeMirror-hints {

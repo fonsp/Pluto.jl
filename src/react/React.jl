@@ -35,7 +35,7 @@ function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_mult
 				errable[c] = MultipleDefinitionsError(c, assigners)
 			end
 		end
-		referencers = where_referenced(notebook, cell.symstate.assignments)
+		referencers = where_referenced(notebook, cell.symstate.assignments) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 			if c != cell
 				dfs(c)
@@ -48,7 +48,7 @@ function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_mult
     # we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
     prelim_order_1 = sort(roots, alg=MergeSort, by=(c -> isempty(c.module_usings)))
 	# reversing because our search returns reversed order
-	prelim_order_2 = reverse(prelim_order_1)
+	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
 	ordered = reverse(exits)
 	CellTopology(setdiff(ordered, keys(errable)), errable)

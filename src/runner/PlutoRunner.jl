@@ -8,6 +8,7 @@ import Distributed
 import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
+import UUIDs: UUID
 
 export @bind
 
@@ -23,9 +24,12 @@ function set_current_module(newname)
     global iocontext = IOContext(iocontext, :module => current_module)
 end
 
-function fetch_formatted_ans(ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    output_formatted = ends_with_semicolon ? ("", MIME("text/plain")) : format_output(Main.ans)
-    (output_formatted = output_formatted, errored = isa(Main.ans, CapturedException), interrupted = false, runtime = Main.runtime)
+cell_results = Dict{UUID, WeakRef}()
+
+function fetch_formatted_result(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    ans = cell_results[id].value
+    output_formatted = ends_with_semicolon ? ("", MIME"text/plain"()) : format_output(ans)
+    (output_formatted = output_formatted, errored = isa(ans, CapturedException), interrupted = false, runtime = Main.runtime)
 end
 
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
@@ -161,10 +165,10 @@ end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
-const imagemimes = [MIME("image/svg+xml"), MIME("image/png"), MIME("image/jpg"), MIME("image/bmp"), MIME("image/gif")]
+const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
-const allmimes = [MIME("application/vnd.pluto.tree+xml"); MIME("text/html"); imagemimes; MIME("text/plain")]
+const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/plain"()]
 
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
@@ -172,46 +176,71 @@ const allmimes = [MIME("application/vnd.pluto.tree+xml"); MIME("text/html"); ima
 Currently, the MIME type is one of `text/html` or `text/plain`, the former being richest."""
 function format_output(val::Any)::Tuple{String, MIME}
     if val === nothing
-        "", MIME("text/plain")
+        "", MIME"text/plain"()
     else
         try
             sprint_withreturned(show_richest, val; context=iocontext)
         catch ex
-            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(catch_backtrace())), MIME("text/plain")
+            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(catch_backtrace())), MIME"text/plain"()
         end
     end
 end
 
 function format_output(ex::Exception, bt::Array{Any, 1})::Tuple{String, MIME}
-    sprint(showerror, ex, bt), MIME("text/plain")
+    sprint(showerror, ex, bt), MIME"text/plain"()
 end
 
 function format_output(ex::Exception)::Tuple{String, MIME}
-    sprint(showerror, ex), MIME("text/plain")
+    sprint(showerror, ex), MIME"text/plain"()
 end
 
 function format_output(val::CapturedException)::Tuple{String, MIME}
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
+    # try
+        stack = [s for (s,_) in val.processed_bt]
 
-    bt = try
-        new_bt = val.processed_bt
-        # If this is a ModuleWorkspace, then that's everything starting from the last `eval`.
-        # For a ProcessWorkspace, it's everything starting from the 2nd to last `eval`.
-        howdeep = Distributed.myid() == 1 ? 1 : 2
-
-        for _ in 1:howdeep
-            until = findfirst(b -> b[1].func == :eval, reverse(new_bt))
-            new_bt = until === nothing ? new_bt : new_bt[1:(length(new_bt) - until)]
+        for _ in 1:2
+            until = findfirst(b -> b.func == :eval, reverse(stack))
+            stack = until === nothing ? stack : stack[1:(length(stack) - until)]
         end
 
         # We don't include the deepest item of the stacktrace, since it is always
         # `top-level scope at none:0`
-        new_bt[1:end-1]
-    catch ex
-        val.processed_bt
-    end
+        pretty = map(stack[1:end-1]) do s
+            Dict(
+                :call => pretty_stackcall(s, s.linfo),
+                :inlined => s.inlined,
+                :file => basename(String(s.file)),
+                :line => s.line,
+            )
+        end
+        sprint(json, Dict(:msg => sprint(showerror, val.ex), :stacktrace => pretty)), MIME"application/vnd.pluto.stacktrace+json"()
+    # catch ex
+    #     return format_output(val.ex, val.processed_bt)
+    # end
+end
 
-    format_output(val.ex, bt)
+istextmime(::MIME"application/vnd.pluto.stacktrace+json") = true
+
+# from the Julia source code:
+function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
+    if frame.func isa Symbol
+        String(frame.func)
+    else
+        repr(frame.func)
+    end
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Core.CodeInfo)
+    "top-level scope"
+end
+
+function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
+    if isa(linfo.def, Method)
+        sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
+    else
+        sprint(Base.show, linfo)
+    end
 end
 
 "Like `Base.sprint`, but return `(String, Any)` tuple containing function output as second entry."
@@ -230,7 +259,7 @@ const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
 function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
-    mime = allmimes[findfirst(m -> Base.invokelatest(showable, m, x), allmimes)]
+    mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
     t = typeof(x)
 
     isstruct = 
@@ -243,23 +272,25 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
         # we have a struct with no specialised show function
         # we display it as an interactive tree
         show_struct(io, x)
-        return MIME("application/vnd.pluto.tree+xml")
+        return MIME"application/vnd.pluto.tree+xml"()
     end
 
     if istextmime(mime)
+        onlyhtml && (mime isa MIME"text/plain") && print(io, "<pre>")
         show(io, mime, x)
+        onlyhtml && (mime isa MIME"text/plain") && print(io, "</pre>")
         return mime
     else
         enc_pipe = Base64.Base64EncodePipe(io)
         io_64 = IOContext(enc_pipe, iocontext)
         if onlyhtml
-            print(io, "<img src=\"data:", string(mime), ";base64,")
+            print(io, "<img src=\"data:", mime, ";base64,")
             show(io_64, mime, x)
             close(enc_pipe)
             print(io, "\">")
-            return MIME("text/html")
+            return MIME"text/html"()
         else
-            print(io, "data:", string(mime), ";base64,")
+            print(io, "data:", mime, ";base64,")
             show(io_64, mime, x)
             close(enc_pipe)
             return mime
@@ -360,6 +391,51 @@ function show_struct(io::IO, @nospecialize(x))
 end
 
 ###
+# JSON SERIALIZER
+###
+
+struct ReplacePipe <: IO
+	outstream::IO
+end
+function Base.write(rp::ReplacePipe, x::UInt8)
+	if x == '"'
+		write(rp.outstream, '\\')
+	end
+	write(rp.outstream, x)
+end
+function sanitize_pipe(func::Function, outstream::IO, args...)
+	func(ReplacePipe(outstream), args...)
+end
+
+
+function json(io, arr::Array)
+    write(io, '[')
+    len = length(arr)
+    for (i, val) in enumerate(arr)
+        json(io, val)
+        (i != len) && write(io, ',')
+    end
+    write(io, ']')
+end
+
+function json(io, d::Dict{Symbol, T}) where T
+    write(io, '{')
+    len = length(d)
+    for (i, val) in enumerate(d)
+        write(io, '"', val.first, '"', ':')
+        json(io, val.second)
+        (i != len) && write(io, ',')
+    end
+    write(io, '}')
+end
+
+function json(io, val::Any)
+    sanitize_pipe(show, io, val)
+end
+
+
+
+###
 # REPL THINGS
 ###
 
@@ -371,7 +447,7 @@ end
 function doc_fetcher(query, workspace::Module=current_module)
     try
         obj = getfield(workspace, Symbol(query))
-        (repr(MIME("text/html"), Docs.doc(obj)), :👍)
+        (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
     catch ex
         (nothing, :👎)
     end
@@ -384,13 +460,13 @@ end
 struct Bond
     element::Any
     defines::Symbol
-    Bond(element, defines::Symbol) = showable(MIME("text/html"), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
     print(io, "<bond def=\"$(bond.defines)\">")
-    show(io, MIME("text/html"), bond.element)
+    show(io, MIME"text/html"(), bond.element)
     print(io, "</bond>")
 end
 
