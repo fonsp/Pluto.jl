@@ -32,16 +32,16 @@ hint2 = "Wrap all code in a `begin ... end` block."
 
 # TODO: handle case when cells are in cycle, but variables aren't
 function showerror(io::IO, cre::CyclicReferenceError)
-	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")).\n$hint1")
+	print(io, "Cyclic references among $(join(cre.syms, ", ", " and ")):\n$hint1")
 end
 
 function showerror(io::IO, mde::MultipleDefinitionsError)
-	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")).\n$hint1") # TODO: hint about mutable globals
+	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")):\n$hint1") # TODO: hint about mutable globals
 end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_fetch_in_workspace` - this function is for Reactivity errors."
 function relay_reactivity_error!(cell::Cell, error::Exception)
 	cell.output_repr = nothing
 	cell.runtime = missing
-	cell.error_repr, cell.repr_mime = PlutoRunner.format_output(error)
+	cell.error_repr, cell.repr_mime = PlutoRunner.format_output(CapturedException(error, []))
 end

@@ -173,7 +173,7 @@ const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); ima
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
 
-Currently, the MIME type is one of `text/html` or `text/plain`, the former being richest."""
+See `PlutoRunner.allmimes` for the ordered list of supported MIME types."""
 function format_output(val::Any)::Tuple{String, MIME}
     if val === nothing
         "", MIME"text/plain"()
@@ -186,17 +186,9 @@ function format_output(val::Any)::Tuple{String, MIME}
     end
 end
 
-function format_output(ex::Exception, bt::Array{Any, 1})::Tuple{String, MIME}
-    sprint(showerror, ex, bt), MIME"text/plain"()
-end
-
-function format_output(ex::Exception)::Tuple{String, MIME}
-    sprint(showerror, ex), MIME"text/plain"()
-end
-
 function format_output(val::CapturedException)::Tuple{String, MIME}
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    # try
+    try
         stack = [s for (s,_) in val.processed_bt]
 
         for _ in 1:2
@@ -204,8 +196,6 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
             stack = until === nothing ? stack : stack[1:(length(stack) - until)]
         end
 
-        # We don't include the deepest item of the stacktrace, since it is always
-        # `top-level scope at none:0`
         pretty = map(stack[1:end-1]) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
@@ -215,12 +205,10 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
             )
         end
         sprint(json, Dict(:msg => sprint(showerror, val.ex), :stacktrace => pretty)), MIME"application/vnd.pluto.stacktrace+json"()
-    # catch ex
-    #     return format_output(val.ex, val.processed_bt)
-    # end
+    catch ex
+        sprint(showerror, val.ex, val.processed_bt), MIME"text/plain"()
+    end
 end
-
-istextmime(::MIME"application/vnd.pluto.stacktrace+json") = true
 
 # from the Julia source code:
 function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
@@ -236,7 +224,7 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.CodeInfo)
 end
 
 function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
-    if isa(linfo.def, Method)
+    if linfo.def isa Method
         sprint(Base.show_tuple_as_call, linfo.def.name, linfo.specTypes)
     else
         sprint(Base.show, linfo)
@@ -394,13 +382,16 @@ end
 # JSON SERIALIZER
 ###
 
+# We define a minimal JSON serializer here so that the notebook process does not need to depend on JSON.jl
+# Performance is about 0.5-1.0x JSON.jl
+
 struct ReplacePipe <: IO
 	outstream::IO
 end
 function Base.write(rp::ReplacePipe, x::UInt8)
-	if x == '"'
-		write(rp.outstream, '\\')
-	end
+	if x == '"' || x== '\\'
+        write(rp.outstream, '\\')
+    end
 	write(rp.outstream, x)
 end
 function sanitize_pipe(func::Function, outstream::IO, args...)

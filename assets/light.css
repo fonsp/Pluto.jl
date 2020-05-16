@@ -162,6 +162,7 @@ cell:hover>celloutput>div::-webkit-scrollbar-thumb {
 celloutput pre {
     margin: 0px;
     display: inline-block;
+    font-family: "Roboto Mono", monospace;
 }
 cell.inline-output>celloutput>div>pre {
     display: flex;
@@ -171,12 +172,6 @@ cell.inline-output>celloutput {
     padding-top: 3px;
     padding-bottom: 3px;
 }
-
-
-/* cell.inline-output.code-folded>celloutput>div>pre>code,
-cell.inline-output>celloutput:onl {
-    margin: 0;
-} */
 
 celloutput>assignee,
 code {

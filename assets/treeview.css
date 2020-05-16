@@ -151,12 +151,13 @@ jlerror>header {
 jlerror>header>p {
     margin-block-end: .2em;
 }
-jlerror>header::first-line {
+jlerror>header>p:first-child {
     font-weight: bold;
 }
 jlerror>section>ol>li>mark {
     background: #f3f2f1;
     border-radius: 6px;
+    font-family: "Roboto Mono", monospace;
 }
 jlerror>section>ol>li>em>a {
     background: #f5efd9;
