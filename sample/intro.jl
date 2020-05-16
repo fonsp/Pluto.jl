@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.8.4
+# v0.8.9
 
 using Markdown
 macro bind(def, element)
@@ -23,13 +23,13 @@ cat = "Ks*;lj"
 
 # ╔═╡ aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 if cat == "Ks*;lj"
-	md"Oh no! Someone messed with my pretty introduction. Go ahead and fix the code above!"
+	md"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	md"Well done, your cat is called $cat. This text gets updated every time you change the name. To see how the magic works, click on the 👁️ to the left of this text."
+	md"**Well done, your cat is called $cat now.** This text gets updated every time you change the name. To see how the magic works, click on the 👁️ to the left of this text."
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
-md"To edit any code, just click on it and press the ▶️ in the lower-right when you're done. You can also use `Ctrl+Enter` if you are in a hurry."
+md"To edit any code, just click on it. When you're done programming, press the ▶️ in the lower-right to run the code. You can also use `Ctrl+Enter` if you are in a hurry."
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
 md"I feel like our cat needs a friend. Let's call them $friend."
@@ -38,11 +38,11 @@ md"I feel like our cat needs a friend. Let's call them $friend."
 if !@isdefined friend
 	md"Uh oh, what is this? I forgot to add a cell defining our friend. Can you do it for me?"
 else
-	md"Well done! $cat and $friend are both happy with your performance."
+	md"**Well done!** $cat and $friend are both happy with your performance."
 end
 
 # ╔═╡ f112b662-9543-11ea-3dcb-2906a99b2188
-md"A cell is a container for code & output. To add one, click on the ➕ above or below another cell. You can do it wherever you like, Pluto knows in which order to run cells."
+md"A cell is a container for code & output. To add one, click on the ➕ above or below another cell. You can do it wherever you like. After you're done writing code in your cell, remember to run it!"
 
 # ╔═╡ e0642f42-9545-11ea-14ee-fde52cb54ccc
 md"## Feeding neighbors
@@ -55,16 +55,16 @@ neighbors = [cat, friend, "Smerfetka", "Latte"]
 md"Now, if you're like my grandma, you're feeding the entire neigborhood by yourself. Let's see how many cans of cat food you need to prepare."
 
 # ╔═╡ 270ac49e-9549-11ea-3ffd-71ddaee9f134
-md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs**, and then place your cursor on the code you need help with. It... usually works, we're polishing it right now!"
+md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs** in the lower right, and then place your cursor on the code you need help with. It... usually works, we're polishing it right now!"
 
 # ╔═╡ 745a4584-954a-11ea-028e-59011f268ec6
 cans_in_stock = "🥫🥫🥫🥫"
 
 # ╔═╡ 55ad7422-954e-11ea-0a33-a3b03febb56e
 if @isdefined cans_in_stock
-	md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can."
+	md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can. Remember to run it after making the change!"
 else
-	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to make `cans_in_stock` equal to `consumption` - Pluto will take care of updating everything."
+	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` - Pluto will take care of updating everything."
 end
 
 # ╔═╡ eac62fea-954e-11ea-2768-39ce6f4059ab
@@ -88,7 +88,7 @@ end
 md"To delete a cell like the one defining $scary_dog, click on the ❌ to the right of its code."
 
 # ╔═╡ fb4e471c-9551-11ea-1ab5-41bbd5de76b8
-md"Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is `$(tempdir())`, a special directory that gets _emptied_ when you restart your computer. To change the save location to something more permanent, scroll to the top - you'll see it next to the Pluto logo."
+md"Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is $(tempdir()), a special directory that gets _emptied_ when you restart your computer. To change the save location to something more permanent, scroll to the top - you'll see it next to the Pluto logo."
 
 # ╔═╡ 9d3af596-9554-11ea-21bd-bf427c91c424
 md"## ⚡ Pluto power ⚡
@@ -108,7 +108,11 @@ power_emoji = "⚡"
 power = repeat(power_emoji, power_level)
 
 # ╔═╡ 784b1774-9557-11ea-315e-d1ea277ce0fd
-md"Uh oh! Pluto doesn't support multiple expressions per cell. This is a conscious choice - this restriction helps you write less buggy code once you get used to it. To fix the code, you can either split the above cell, or wrap it in a `begin ... end` block. Both work."
+if !@isdefined power
+	md"Uh oh! Pluto doesn't support multiple expressions per cell. This is a conscious choice - this restriction helps you write less buggy code once you get used to it. To fix the code, you can either split the above cell, or wrap it in a `begin ... end` block. Both work."
+else
+	md"**Well done!** Your cats have powers now."
+end
 
 # ╔═╡ 5edadcd2-9554-11ea-1714-b5b7692c4797
 md"We're almost done! It's time to share your amazing story. Press `Ctrl+P` to \"print\" this page to pdf - or you can always share this notebook's save file. (The file is pure Julia, by the way, and it's runnable! You'll learn more about this in the advanced introduction.)"
@@ -134,7 +138,7 @@ confusing_function(text::String, array::Array) = repeat(text, length(array))
 consumption = confusing_function("🥫", neighbors)
 
 # ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
-md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood!"
+md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
 
 # ╔═╡ e11e1660-9549-11ea-22f6-8bb53dc045fe
 md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
