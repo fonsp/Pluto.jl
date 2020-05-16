@@ -141,7 +141,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
 
     cm.on("blur", (cm, e) => {
         if (document.hasFocus()) {
-            cm.setSelection({ line: 0, ch: 0 })
+            cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, {scroll: false})
             if (!cellNode.classList.contains("code-differs") && cellNode.remoteCode == "") {
                 requestDeleteRemoteCell(cellNode.id)
             }

@@ -39,7 +39,7 @@ In the example below, changing the parameter `A` and running the first cell will
 <br >
 
 ### HTML interaction
-Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an HTML object and a Julia variable**. Combined with reactivity, this is a very powerful feature!
+Lastly, here's _**one more feature**_: Pluto notebooks have a `@bind` macro to create a **live bond between an HTML object and a Julia variable**. Combined with reactivity, this is a very powerful tool!
 
 <img alt="@bind macro screencap" src="https://user-images.githubusercontent.com/6933510/80617037-e2c09280-8a41-11ea-9fb3-18bb2921dd9e.gif" width="70%">
 
@@ -71,7 +71,7 @@ julia> ]
 (v1.0) pkg> add Pluto
 ```
 
-_Adding the first package to Julia can take up to 30 minutes - hang in there!_
+_Using the package manager for the first time can take up to 15 minutes - hang in there!_
 
 To run the notebook server:
 ```julia

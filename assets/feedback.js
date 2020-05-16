@@ -134,13 +134,14 @@ setTimeout(() => {
             }), 5000)
             .then(function () {
                 message = "Submitted. Thank you for your feedback! 💕"
-                console.log(message);
-                alert(message);
+                console.log(message)
+                alert(message)
+                feedbackform.querySelector("#opinion").value = ""
             })
             .catch(function (error) {
                 message = "Whoops, failed to send feedback 😢\nWe would really like to hear from you! Please got to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
-                console.error(message);
-                console.error(error);
+                console.error(message)
+                console.error(error)
                 alert(message + error)
             })
 
