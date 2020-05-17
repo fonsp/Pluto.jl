@@ -144,7 +144,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
         if (document.hasFocus()) {
             cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, { scroll: false })
             if (!cellNode.classList.contains("code-differs") && cellNode.remoteCode == "") {
-                requestDeleteRemoteCell(cellNode.id)
+                // requestDeleteRemoteCell(cellNode.id)
             }
         }
     })
@@ -678,7 +678,7 @@ dropruler = document.querySelector("dropruler")
 var dropPositions = []
 var dropee = null
 document.ondragstart = (e) => {
-    if (e.target.tagName != "CLICKSHOULDER") {
+    if (e.target.tagName != "cellshoulder") {
         dropee = null
         return
     }
@@ -830,7 +830,7 @@ function render_filename(frame, ctx) {
     if (sep_index != -1) {
         const uuid = frame.file.substr(sep_index + 4)
         const a = DOM.element("a", { href: "#" + uuid + "#" + frame.line, onclick: "window.cellRedirect(event)" })
-        if(uuid == ctx.id){
+        if (uuid == ctx.id) {
             a.innerText = "Local:" + frame.line
         } else {
             a.innerText = "Other:" + frame.line
@@ -843,8 +843,8 @@ function render_filename(frame, ctx) {
 
 function render_funccall(frame, ctx) {
     const bracket_index = frame.call.indexOf("(")
-    if(bracket_index != -1){
-        return html`<mark><strong>${frame.call.substr(0,bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
+    if (bracket_index != -1) {
+        return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
     } else {
         return html`<mark><strong>${frame.call}</strong></mark>`
     }
@@ -852,27 +852,26 @@ function render_funccall(frame, ctx) {
 
 function render_error(state, ctx) {
     return html`
-	<jlerror>
-		<header>
-			${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
-		</header>
+    <jlerror>
+        <header>
+            ${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
+        </header>
         <section style="display: ${state.stacktrace.length == 0 ? "none" : "potato"};">
-			<ol>
-			${state.stacktrace.map(frame => html`
-				<li>
-					${render_funccall(frame, ctx)}<span>@</span>${render_filename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
-				</li>`
-    )}
-			</ol>
-		</section>
-	</jltree>`
+            <ol>
+            ${state.stacktrace.map(frame => html`
+                <li>
+                    ${render_funccall(frame, ctx)}<span>@</span>${render_filename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
+                </li>`)}
+            </ol>
+        </section>
+    </jltree>`
 }
 
 function cellRedirect(event) {
     const url = new URL(event.target.href).hash
     const uuid = url.substr(1, 36)
-    const line = url.substr(38)
-    window.codeMirrors[uuid].setSelection({ line: 0, ch: 0 }, { line: Infinity, ch: Infinity }, { scroll: true })
+    const line = (+url.substr(38)) - 1 // Julia index to JS
+    window.codeMirrors[uuid].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
     window.codeMirrors[uuid].focus()
 }
 
