@@ -28,8 +28,9 @@ cell_results = Dict{UUID, WeakRef}()
 
 function fetch_formatted_result(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     ans = cell_results[id].value
-    output_formatted = ends_with_semicolon ? ("", MIME"text/plain"()) : format_output(ans)
-    (output_formatted = output_formatted, errored = isa(ans, CapturedException), interrupted = false, runtime = Main.runtime)
+    errored = ans isa CapturedException
+    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
 end
 
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
@@ -83,7 +84,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
     try_delete_toplevel_methods.([old_workspace], funcs_to_delete)
 end
 
-"Return whether the `method` was defined inside this notebook or in external code."
+"Return whether the `method` was defined inside this notebook, and not in external code."
 isfromtoplevel(method::Method) = startswith(nameof(method.module) |> string, "workspace")
 
 function delete_toplevel_methods(f::Function)
@@ -196,7 +197,7 @@ function format_output(val::CapturedException)::Tuple{String, MIME}
             stack = until === nothing ? stack : stack[1:(length(stack) - until)]
         end
 
-        pretty = map(stack[1:end-1]) do s
+        pretty = map(stack[1:end]) do s
             Dict(
                 :call => pretty_stackcall(s, s.linfo),
                 :inlined => s.inlined,
@@ -355,7 +356,7 @@ function show_struct(io::IO, @nospecialize(x))
     nb = sizeof(x)
     if nf != 0 || nb == 0
         print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-        show(io, Base.inferencebarrier(t))
+        show(io, t)
         print(io, "<jlstruct>")
         
         if !Base.show_circular(io, x)

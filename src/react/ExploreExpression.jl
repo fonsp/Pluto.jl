@@ -508,7 +508,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
     else
         # fallback, includes:
-        # begin, block, do, call, 
+        # begin, block, do, toplevel
         # (and hopefully much more!)
         
         # Does not create scope (probably)
@@ -624,14 +624,24 @@ function compute_usings(ex::Any)::Set{Expr}
     end
 end
 
-function get_rootassignee(ex::Expr)::Union{Symbol,Nothing}
-    if ex.head == :(=) && ex.args[1] isa Symbol
+"Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
+function is_toplevel_expr(ex::Expr)::Bool
+    (ex.head == :toplevel) && (length(ex.args) == 2) && (ex.args[1] isa LineNumberNode)
+end
+
+is_toplevel_expr(::Any)::Bool = false
+
+"If the expression is a (simple) assignemnt at its root, return the assignee as `Symbol`, return `nothing` otherwise."
+function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
+    if is_toplevel_expr(ex) && recurse
+        get_rootassignee(ex.args[2], false)
+    elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
         nothing
     end
 end
 
-get_rootassignee(ex::Any)::Union{Symbol,Nothing} = nothing
+get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
 
 end

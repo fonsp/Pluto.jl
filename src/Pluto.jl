@@ -34,8 +34,8 @@ include("./notebookserver/Cell.jl")
 include("./notebookserver/Notebook.jl")
 include("./notebookserver/Client.jl")
 
+include("./react/Parse.jl")
 include("./react/WorkspaceManager.jl")
-
 include("./react/Errors.jl")
 include("./react/React.jl")
 include("./react/Run.jl")

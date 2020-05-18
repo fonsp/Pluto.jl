@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, PKG_ROOT_DIR
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExploreExpression, pluto_filename, trycatch_expr
 import ..PlutoRunner
 import Distributed
 
@@ -110,45 +110,15 @@ function get_workspace(notebook::Notebook)::Workspace
     end
 end
 
+
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Any, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    eval_fetch_in_workspace(get_workspace(notebook), expr, ends_with_semicolon)
+function eval_fetch_in_workspace(notebook::Notebook, expr::Any, cell::Cell, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    eval_fetch_in_workspace(get_workspace(notebook), expr, pluto_filename(notebook, cell), cell.uuid, ends_with_semicolon)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Any, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    # nasty fix:
-    if expr isa Expr && expr.head == :toplevel
-        expr.head = :block
-    end
-
-    timed_expr = if expr isa Expr && expr.head === :module
-        # Modules can only be defined at top level, so we need another eval. (i think)
-        # This adds extra runtime, so we don't time.
-        quote
-            (eval($(expr |> QuoteNode)), missing)
-        end
-    else
-        # For normal expressions:
-        # similar to @time source code
-        quote
-            local elapsed_ns = time_ns()
-            local result = ( $(expr) )
-            elapsed_ns = time_ns() - elapsed_ns
-            (result, elapsed_ns)
-        end
-    end
-    
+function eval_fetch_in_workspace(workspace::Workspace, expr::Any, filename::String, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
-    wrapped = quote
-        ans, runtime = try
-            # We eval `expr` in the global scope of the workspace module:
-            Core.eval($(workspace.module_name), $(timed_expr |> QuoteNode))
-        catch ex
-            bt = stacktrace(catch_backtrace())
-            CapturedException(ex, bt), missing
-        end
-        setindex!(Main.PlutoRunner.cell_results, WeakRef(ans), $(cell_id))
-    end
+    wrapped = trycatch_expr(expr, workspace.module_name, filename, cell_id)
 
     # run the code 🏃‍♀️
     # we use [pid] instead of pid to prevent fetching output
