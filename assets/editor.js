@@ -678,7 +678,7 @@ dropruler = document.querySelector("dropruler")
 var dropPositions = []
 var dropee = null
 document.ondragstart = (e) => {
-    if (e.target.tagName != "cellshoulder") {
+    if (e.target.tagName != "CELLSHOULDER") {
         dropee = null
         return
     }
@@ -710,7 +710,6 @@ document.ondrop = (e) => {
     // Called when drag-dropped somewhere on the page
     dist = dropPositions.map(p => Math.abs(p - e.pageY))
     dropIndex = argmin(dist)
-
 
     requestMoveRemoteCell(dropee.id, dropIndex)
 }
