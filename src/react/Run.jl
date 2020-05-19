@@ -4,7 +4,7 @@ Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them."
 function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook::Function=WorkspaceManager.delete_vars)::CellTopology
-	# make sure that we're the only run_reactive! being executed - like a semaphor
+	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	token = take!(notebook.executetoken)
 
 	# save the old topology - we'll delete variables assigned from it and re-evalutate its cells
@@ -56,7 +56,7 @@ function run_reactive!(notebook::Notebook, cells::Array{Cell, 1}; deletion_hook:
 		putnotebookupdates!(notebook, clientupdate_cell_output(notebook, cell))
 	end
 
-	# allow other run_reactive! calls to be executed
+	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken, token)
 	return new_topology
 end
@@ -65,7 +65,7 @@ end
 "See `run_reactive`."
 function run_reactive_async!(notebook::Notebook, cells::Array{Cell, 1}; kwargs...)::Task
 	@async begin
-		# because this is being run async, we need to catch exceptions manually
+		# because this is being run asynchronously, we need to catch exceptions manually
 		try
 			run_reactive!(notebook, cells; kwargs...)
 		catch ex
@@ -80,7 +80,7 @@ run_reactive_async!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive_as
 
 "Run a single cell non-reactively, return run information."
 function run_single!(notebook::Notebook, cell::Cell)
-	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell, ends_with_semicolon(cell.code))
+	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.uuid, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	if run.errored

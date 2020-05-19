@@ -1,4 +1,4 @@
-# Will be defined _inside_ the workspace.
+# Will be evaluated _inside_ the workspace.
 
 module PlutoRunner
 

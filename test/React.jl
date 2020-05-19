@@ -148,7 +148,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
             let
                 st = Pluto.JSON.parse(notebook.cells[12].error_repr)
                 @test length(st["stacktrace"]) == 4 # check in REPL
-                if Pluto._can_differentiate_with_expr
+                if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 1
                     @test occursin(notebook.cells[12].uuid |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
@@ -161,7 +161,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
             let
                 st = Pluto.JSON.parse(notebook.cells[13].error_repr)
                 @test length(st["stacktrace"]) == 4
-                if Pluto._can_differentiate_with_expr
+                if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 3
                     @test occursin(notebook.cells[13].uuid |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
@@ -175,7 +175,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 st = Pluto.JSON.parse(notebook.cells[15].error_repr)
                 @test length(st["stacktrace"]) == 5
 
-                if Pluto._can_differentiate_with_expr
+                if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 2
                     @test occursin(notebook.cells[14].uuid |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])

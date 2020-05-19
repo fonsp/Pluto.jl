@@ -97,16 +97,6 @@ function update_funcdefs!(notebook::Notebook)
 	notebook.combined_funcdefs = union((c.symstate.funcdefs for c in notebook.cells)...)
 end
 
-"Return all variables that a cell references, including those referenced through function calls."
-function all_references(notebook::Notebook, cell::Cell)::Set{Symbol}
-	return cell.symstate.references
-end
-
-"Return all variables that a cell assigns to, including mutable globals assigned through function calls."
-function all_assignments(notebook::Notebook, cell::Cell)::Set{Symbol}
-	return cell.symstate.assignments
-end 
-
 "Return all functions called by a cell, and all functions called by those functions, et cetera."
 function all_indirect_calls(notebook::Notebook, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
 	for func in symstate.funccalls

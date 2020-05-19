@@ -1,6 +1,6 @@
 import JSON
 
-# JSON.jl doesn't define a serialization method for MIME objects, so we add one ourselves:
+# JSON.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
 import JSON: lower
 JSON.lower(m::MIME) = string(m)
 JSON.lower(u::UUID) = string(u)

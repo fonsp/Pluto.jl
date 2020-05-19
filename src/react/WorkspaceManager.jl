@@ -4,6 +4,7 @@ import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExploreExpression, pluto_filename,
 import ..PlutoRunner
 import Distributed
 
+"Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 mutable struct Workspace
     workspace_pid::Integer
     module_name::Symbol
@@ -16,13 +17,14 @@ Workspace(workspace_pid::Integer, module_name::Symbol) = let
     Workspace(workspace_pid, module_name, t)
 end
 
-"These expressions get executed whenever a new workspace is created."
+"These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
     :(using Markdown, Main.PlutoRunner), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
+"These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
     :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
@@ -57,6 +59,7 @@ function make_workspace(notebook::Notebook, new_process = (ENV["PLUTO_WORKSPACE_
     return workspace
 end
 
+# TODO: move to PlutoRunner
 function create_emptyworkspacemodule(pid::Integer)::Symbol
     global moduleworkspace_count += 1
     id = moduleworkspace_count
@@ -111,21 +114,23 @@ function get_workspace(notebook::Notebook)::Workspace
 end
 
 
-"Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Any, cell::Cell, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
-    eval_fetch_in_workspace(get_workspace(notebook), expr, pluto_filename(notebook, cell), cell.uuid, ends_with_semicolon)
+"Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
+
+`expr` has to satisfy `ExploreExpression.is_toplevel_expr`."
+function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+    eval_fetch_in_workspace(get_workspace(notebook), expr, cell_id, ends_with_semicolon)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Any, filename::String, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
-    wrapped = trycatch_expr(expr, workspace.module_name, filename, cell_id)
+    wrapped = trycatch_expr(expr, workspace.module_name, cell_id)
 
     # run the code 🏃‍♀️
-    # we use [pid] instead of pid to prevent fetching output
-
-    # another try block to catch an InterruptException
+    
+    # a try block (on this process) to catch an InterruptException
     token = take!(workspace.dowork_token)
     try
+        # we use [pid] instead of pid to prevent fetching output
         Distributed.remotecall_eval(Main, [workspace.workspace_pid], wrapped)
         put!(workspace.dowork_token, token)
     catch exs
@@ -166,29 +171,6 @@ function eval_in_workspace(workspace::Workspace, expr)
     end
     nothing
 end
-
-
-# "Interrupt (Ctrl+C) a workspace, return whether succesful."
-# function interrupt_workspace(notebook::Notebook)::Bool
-#     interrupt_workspace(WorkspaceManager.get_workspace(notebook))
-# end
-
-# function interrupt_workspace(workspace::ModuleWorkspace)
-#     @warn "Unfortunately, a `ModuleWorkspace` can't be interrupted. Use a `ProcessWorkspace` instead."
-#     false
-# end
-
-# function interrupt_workspace(workspace::ProcessWorkspace)
-#     if Sys.iswindows()
-#         @warn "Unfortunately, stopping cells is currently not supported on Windows.
-#         Maybe the Windows Subsystem for Linux is right for you:
-#         https://docs.microsoft.com/en-us/windows/wsl"
-#         return false
-#     end
-#     println("Sending interrupt to $(workspace.workspace_pid)")
-#     Distributed.interrupt(workspace.workspace_pid)
-#     true
-# end
 
 "Force interrupt (SIGINT) a workspace, return whether succesful"
 function kill_workspace(notebook::Notebook)::Bool
