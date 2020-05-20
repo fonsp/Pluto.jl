@@ -557,6 +557,10 @@ trafficlight {
 
 /* in ascending order of severity: */
 
+cell.code-folded>trafficlight {
+    background: none;
+}
+
 @media screen and (any-pointer: fine) {
     cell:hover>trafficlight {
         background: rgba(0, 0, 0, .1);
@@ -569,10 +573,6 @@ trafficlight {
         background: rgba(0, 0, 0, .1);
         transition: background .05s ease-in-out;
     }
-}
-
-cell.code-folded>trafficlight {
-    background: none;
 }
 
 cell.output-notinsync>trafficlight,

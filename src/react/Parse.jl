@@ -25,7 +25,16 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
             ex
         end
     else
-        Meta.parse(rstrip(cell.code, ['\r', '\n', '\t', ' ']), raise=false)
+        # Meta.parse returns the "extra token..." like we want, but also in cases like "\n\nx = 1\n# comment", so we need to do the multiple expressions check ourselves after all
+        parsed1, next_ind1 = Meta.parse(cell.code, 1, raise=false)
+        parsed2, next_ind2 = Meta.parse(cell.code, next_ind1, raise=false)
+
+        if parsed2 === nothing
+            # only whitespace or comments after the first expression
+            parsed1
+        else
+            Expr(:error, "extra token after end of expression")
+        end
     end
 
     # 2.

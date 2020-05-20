@@ -231,6 +231,7 @@ function updateLocalCellOutput(cellNode, msg) {
             // to execute all scripts in the output html:
             try {
                 Array.from(containerNode.querySelectorAll("script")).map((script) => {
+                    containerNode.currentScript = script
                     if (script.src != "") {
                         if (!Array.from(document.head.querySelectorAll("script")).map(s => s.src).includes(script)) {
                             const tag = document.createElement("script")
@@ -810,6 +811,7 @@ function updateDocQuery(query = undefined) {
         if (u.message.status == "👍") {
             doc.querySelector("header").innerText = query
             doc.querySelector("section").innerHTML = u.message.doc
+            MathJax.typeset([doc.querySelector("section")])
         }
     })
 }
@@ -885,7 +887,7 @@ function rewrittenError(old_raw) {
 }
 
 function errorHint(e) {
-    const cellNode = e.target.parentElement.parentElement.parentElement.parentElement.parentElement
+    const cellNode = e.path.find(el => el.tagName == "CELL")
     wrapInBlock(window.codeMirrors[cellNode.id], "begin")
     requestChangeRemoteCell(cellNode.id)
     e.preventDefault()

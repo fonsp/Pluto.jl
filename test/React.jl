@@ -81,12 +81,13 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
     ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
     begin
+        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \$"
         notebook = Notebook([
         Cell("a\\"),
         Cell("1 = 2"),
         
         Cell("b = 3.0\nb = 3"),
-        Cell("\n\n\nc = 4\n\n"),
+        Cell("\n# uhm\n\nc = 4\n\n# wowie \n\n"),
         Cell("d = 5;"),
         Cell("e = 6; f = 6"),
         Cell("g = 7; h = 7;"),
@@ -97,8 +98,9 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         
         Cell("sqrt(-12)"),
         Cell("\n\nsqrt(-13)"),
-        Cell("function w(x)\n\tsqrt(x)\nend"),
+        Cell("\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend"),
         Cell("w(-15)"),
+        Cell("error(" * sprint(Base.print_quoted, escape_me) * ")")
     ])
         fakeclient.connected_notebook = notebook
 
@@ -142,7 +144,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         end
 
         @testset "Stack traces" begin
-            @test_nowarn run_reactive!(notebook, notebook.cells[12:15])
+            @test_nowarn run_reactive!(notebook, notebook.cells[12:16])
 
             @test occursin("DomainError", notebook.cells[12].error_repr)
             let
@@ -176,7 +178,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 @test length(st["stacktrace"]) == 5
 
                 if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 2
+                    @test st["stacktrace"][4]["line"] == 3
                     @test occursin(notebook.cells[14].uuid |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
 
@@ -186,6 +188,11 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 else
                     @test_broken false
                 end
+            end
+
+            let
+                st = Pluto.JSON.parse(notebook.cells[16].error_repr)
+                @test occursin(escape_me, st["msg"])
             end
 
         end

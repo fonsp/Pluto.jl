@@ -41,7 +41,7 @@ class PlutoConnection {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
 
-    send(messageType, body, cellID = undefined, notebookID = undefined, createPromise = false) {
+    send(messageType, body, cellID = undefined, createPromise = false) {
         const requestID = this.getUniqueShortID()
 
         var toSend = {
@@ -52,9 +52,6 @@ class PlutoConnection {
         }
         if (this.notebookID) {
             toSend.notebookID = this.notebookID
-        }
-        if (notebookID) {
-            toSend.notebookID = notebookID
         }
         if (cellID) {
             toSend.cellID = cellID
@@ -78,8 +75,8 @@ class PlutoConnection {
         return p
     }
 
-    sendreceive(messageType, body, cellID = undefined, notebookID = undefined) {
-        return this.send(messageType, body, cellID, notebookID, true)
+    sendreceive(messageType, body, cellID = undefined) {
+        return this.send(messageType, body, cellID, true)
     }
 
     handleMessage(event) {
