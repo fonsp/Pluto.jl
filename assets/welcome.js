@@ -105,8 +105,14 @@ function render_notebooklist(list) {
 
 /* RUN & SHUT DOWN IN BACKGROUND */
 
+// move up the dom tree until the tag is found
+function parentByTag(el, tag) {
+    return (!el || el.tagName == tag) ? el : parentByTag(el.parentElement, tag)
+}
+
 function onSessionClick(event) {
-    const li = event.path.find(el => el.tagName == "LI")
+    console.log
+    const li = parentByTag(event.target, "LI")
     if(li.classList.replace("running", "transitioning")) {
         if (confirm("Shut down notebook process?")) {
             client.send("shutdownworkspace", {

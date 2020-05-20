@@ -886,8 +886,13 @@ function rewrittenError(old_raw) {
     return new_raw
 }
 
+// move up the dom tree until the tag is found
+function parentByTag(el, tag) {
+    return (!el || el.tagName == tag) ? el : parentByTag(el.parentElement, tag)
+}
+
 function errorHint(e) {
-    const cellNode = e.path.find(el => el.tagName == "CELL")
+    const cellNode = parentByTag(e.target, "CELL")
     wrapInBlock(window.codeMirrors[cellNode.id], "begin")
     requestChangeRemoteCell(cellNode.id)
     e.preventDefault()
