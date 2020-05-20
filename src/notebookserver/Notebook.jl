@@ -79,7 +79,8 @@ end
 
 save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
-function load_notebook_nobackup(io, path)
+"Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
+function load_notebook_nobackup(io, path)::Notebook
     firstline = String(readline(io))
     
     if firstline != "### A Pluto.jl notebook ###"
@@ -131,7 +132,7 @@ function load_notebook_nobackup(io, path)
     Notebook(path, ordered_cells)
 end
 
-function load_notebook_nobackup(path::String)
+function load_notebook_nobackup(path::String)::Notebook
     local loaded
     open(path, "r") do io
         loaded = load_notebook_nobackup(io, path)
@@ -139,7 +140,8 @@ function load_notebook_nobackup(path::String)
     loaded
 end
 
-function load_notebook(path::String)
+"Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
+function load_notebook(path::String)::Notebook
     local backupNum = 1
     backupPath = path
     while isfile(backupPath)
@@ -152,7 +154,7 @@ function load_notebook(path::String)
     # Analyze cells so that the initial save is in topological order
     update_caches!(loaded, loaded.cells)
     save_notebook(loaded)
-    # Clear symstates if autorun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
+    # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] != "true"
         for cell in loaded.cells
             cell.symstate = SymbolsState()
@@ -181,11 +183,11 @@ end
 "Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
 
 If a notebook has not yet had all of its cells run, we can't deduce the topological cell order."
-function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)
+function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)::Bool
     Set(readlines(pathA)[3:end]) == Set(readlines(pathB)[3:end])
 end
 
-function only_versions_differ(pathA::AbstractString, pathB::AbstractString)
+function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
     readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end
 

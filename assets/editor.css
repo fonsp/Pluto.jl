@@ -616,14 +616,6 @@ cellinput>button>span {
     pointer-events: none;
 }
 
-button.addcell>span::after {
-    content: "+";
-}
-
-button.deletecell>span::after {
-    content: "🚮";
-}
-
 @media screen and (any-pointer: fine) {
     cell>button,
     cellinput>button,

@@ -237,9 +237,23 @@ responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initi
 end
 
 responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    success = WorkspaceManager.kill_workspace(notebook)
+    success = WorkspaceManager.interrupt_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
+
+responses[:shutdownworkspace] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
+    toshutdown = notebooks[UUID(body["id"])]
+    listeners = putnotebookupdates!(toshutdown) # TODO: shutdown message
+    if body["remove_from_list"]
+        delete!(notebooks, toshutdown.uuid)
+        putplutoupdates!(clientupdate_notebook_list(notebooks))
+        for client in listeners
+            @async close(client.stream)
+        end
+    end
+    success = WorkspaceManager.unmake_workspace(toshutdown)
+end
+
 
 responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     bound_sym = Symbol(body["sym"])

@@ -40,11 +40,6 @@ body.statistics #title {
     margin-left: .1em;
 }
 
-.phantom {
-    opacity: 0%;
-    display: none;
-}
-
 body {
     margin: 0px;
     position: absolute;
@@ -146,11 +141,6 @@ filepicker button {
     border-bottom-left-radius: 0;
 }
 
-button {
-    width: 20%;
-    font-family: inherit;
-}
-
 li.file.new.CodeMirror-hint:before {
     content: "👉 ";
 }
@@ -172,7 +162,51 @@ ul.CodeMirror-hints {
     font-size: .75em;
 }
 
-body.loading .running,
-body.nosessions .running {
+body.nosessions ul#new ~ * {
     display: none;
+}
+
+#recent>li.recent {
+    opacity: .8;
+}
+
+#recent button {
+    margin: 0px;
+    margin-right: .2em;
+    padding: 1px;
+    opacity: .6;
+    border: none;
+    background: none;
+    cursor: pointer;
+    /* color: hsl(204, 86%, 35%); */
+    color: black;
+}
+
+
+#recent button {
+    /* still WIP */
+    /* display: none;  */
+}
+
+#recent button>span::after {
+    display: block;
+    content: " ";
+    background-size: 17px 17px;
+    height: 17px;
+    width: 17px;
+    margin-bottom: -3px;
+}
+
+#recent li.running button>span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle.svg);
+}
+
+
+#recent li.recent button>span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
+}
+
+
+#recent li.transitioning button>span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
 }

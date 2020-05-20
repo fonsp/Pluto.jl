@@ -40,8 +40,8 @@ class PlutoConnection {
     getUniqueShortID() {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
-    
-    send(messageType, body, cellUUID = undefined, createPromise=false) {
+
+    send(messageType, body, cellID = undefined, notebookID = undefined, createPromise = false) {
         const requestID = this.getUniqueShortID()
 
         var toSend = {
@@ -53,13 +53,16 @@ class PlutoConnection {
         if (this.notebookID) {
             toSend.notebookID = this.notebookID
         }
-        if (cellUUID) {
-            toSend.cellID = cellUUID
+        if (notebookID) {
+            toSend.notebookID = notebookID
+        }
+        if (cellID) {
+            toSend.cellID = cellID
         }
 
         var p = undefined
 
-        if(createPromise){
+        if (createPromise) {
             var resolve, reject;
 
             p = new Promise((res, rej) => {
@@ -75,10 +78,10 @@ class PlutoConnection {
         return p
     }
 
-    sendreceive(messageType, body, cellUUID = undefined) {
-        return this.send(messageType, body, cellUUID, true)
+    sendreceive(messageType, body, cellID = undefined, notebookID = undefined) {
+        return this.send(messageType, body, cellID, notebookID, true)
     }
-    
+
     handleMessage(event) {
         event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
@@ -89,9 +92,9 @@ class PlutoConnection {
             const byMe = ("initiatorID" in update) && (update.initiatorID == this.clientID)
             const requestID = update.requestID
 
-            if(byMe && requestID) {
+            if (byMe && requestID) {
                 const request = this.sentRequests[requestID]
-                if(request){
+                if (request) {
                     request(update)
                     delete this.sentRequests[requestID]
                     return
@@ -102,26 +105,26 @@ class PlutoConnection {
         }).catch((ex) => {
             console.error("Failed to get updates!", ex)
             console.log(event)
-    
+
             this.waitForOnline()
         })
     }
-    
+
     startSocketConnection(onSucces) {
-        
-        this.psocket = new WebSocket(document.location.protocol.replace("http","ws") + '//' + document.location.host + document.location.pathname.replace("/edit", "/"))
+
+        this.psocket = new WebSocket(document.location.protocol.replace("http", "ws") + '//' + document.location.host + document.location.pathname.replace("/edit", "/"))
         this.psocket.onmessage = (e) => {
             this.handleMessage(e)
         }
         this.psocket.onerror = (e) => {
             console.error("SOCKET ERROR", e)
-    
+
             if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
                 this.waitForOnline()
                 setTimeout(() => {
                     if (this.psocket.readyState != WebSocket.OPEN) {
                         this.tryCloseSocketConnection()
-    
+
                         this.startSocketConnection(onSucces)
                     }
                 }, 500)
@@ -130,13 +133,13 @@ class PlutoConnection {
         this.psocket.onclose = (e) => {
             console.warn("SOCKET CLOSED")
             console.log(e)
-    
+
             this.waitForOnline()
         }
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then(u => {
                 this.plutoENV = u.message.ENV
-                if(this.notebookID && !u.message.notebookExists){
+                if (this.notebookID && !u.message.notebookExists) {
                     // https://github.com/fonsp/Pluto.jl/issues/55
                     document.location.href = "./"
                     return
@@ -147,12 +150,12 @@ class PlutoConnection {
             })
         }
     }
-    
+
     tryCloseSocketConnection() {
         this.psocket.close(1000, "byebye")
     }
 
-    initialize(){
+    initialize() {
         this.ping(() => {
             // on ping success
             this.startSocketConnection(() => {
@@ -164,8 +167,8 @@ class PlutoConnection {
             this.onDisconnect()
         })
     }
-    
-    constructor(onUpdate, onEstablishConnection, onReconnect, onDisconnect){
+
+    constructor(onUpdate, onEstablishConnection, onReconnect, onDisconnect) {
         this.onUpdate = onUpdate
         this.onEstablishConnection = onEstablishConnection
         this.onReconnect = onReconnect
@@ -186,7 +189,7 @@ class PlutoConnection {
         })
     }
 
-    fetchPlutoVersions(){
+    fetchPlutoVersions() {
         const githubPromise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
             method: 'GET',
             mode: 'cors',
@@ -210,11 +213,11 @@ class PlutoConnection {
 
         return Promise.all([githubPromise, plutoPromise])
     }
-    
+
     // TODO: reconnect with a delay if the last request went poorly
     // this would avoid hanging UI when the connection is lost maybe?
     // implemented, but untested
-    
+
     // TODO: check cell order every now and then?
     // or do ___maths___ to make sure that it never gets messed up
 }

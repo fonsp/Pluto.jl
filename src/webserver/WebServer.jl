@@ -25,12 +25,8 @@ function putnotebookupdates!(notebook::Notebook, messages::UpdateMessage...)
         c.connected_notebook !== nothing &&
         c.connected_notebook.uuid == notebook.uuid
     end
-    if isempty(listeners)
-        @info "no clients connected to this notebook!"
-    else
-        for next_to_send in messages, client in listeners
-            put!(client.pendingupdates, next_to_send)
-        end
+    for next_to_send in messages, client in listeners
+        put!(client.pendingupdates, next_to_send)
     end
     flushallclients(listeners)
     listeners
@@ -39,12 +35,8 @@ end
 "Send `messages` to all connected clients."
 function putplutoupdates!(messages::UpdateMessage...)
     listeners = collect(values(connectedclients))
-    if isempty(listeners)
-        @info "no clients connected to pluto!"
-    else
-        for next_to_send in messages, client in listeners
-            put!(client.pendingupdates, next_to_send)
-        end
+    for next_to_send in messages, client in listeners
+        put!(client.pendingupdates, next_to_send)
     end
     flushallclients(listeners)
     listeners
@@ -68,10 +60,8 @@ const flushtoken = Channel{Nothing}(1)
 put!(flushtoken, nothing)
 
 function flushclient(client::Client)
-    didsomething = false
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
-        didsomething = true
         
         token = take!(flushtoken)
         try
@@ -87,7 +77,11 @@ function flushclient(client::Client)
             end
         catch ex
             bt = stacktrace(catch_backtrace())
-            @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
+            if ex isa Base.IOError
+                # client socket closed, so we return false (about 5 lines after this one)
+            else
+                @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
+            end
             put!(flushtoken, token)
             return false
         end

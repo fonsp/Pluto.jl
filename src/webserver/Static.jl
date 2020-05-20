@@ -1,7 +1,6 @@
 import HTTP
 
-# STATIC: Serve index.html, which is the same for every notebook - it's a ⚡🤑🌈 web app
-# index.html also contains the CSS and JS
+# Serve everything from `/assets`, and create HTTP endpoints to open notebooks.
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
 function mime_fromfilename(filename)
@@ -49,6 +48,10 @@ function serve_sample(req::HTTP.Request)
         nb.path = tempname() * ".jl"
         save_notebook(nb)
         notebooks[nb.uuid] = nb
+        if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
+            run_reactive_async!(nb, nb.cells)
+        end
+        @async putplutoupdates!(clientupdate_notebook_list(notebooks))
         return notebook_redirect(nb)
     catch e
         return HTTP.Response(500, "Failed to load sample:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
@@ -70,8 +73,11 @@ function serve_openfile(req::HTTP.Request)
                 end
 
                 nb = load_notebook(path)
-                save_notebook(nb)
                 notebooks[nb.uuid] = nb
+                if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
+                    run_reactive_async!(nb, nb.cells) # TODO: send message when initial run completed
+                end
+                @async putplutoupdates!(clientupdate_notebook_list(notebooks))
                 return notebook_redirect(nb)
             catch e
                 return HTTP.Response(500, "Failed to load notebook:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
@@ -87,6 +93,10 @@ function serve_newfile(req::HTTP.Request)
     nb = emptynotebook()
     save_notebook(nb)
     notebooks[nb.uuid] = nb
+    if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
+        run_reactive_async!(nb, nb.cells)
+    end
+    @async putplutoupdates!(clientupdate_notebook_list(notebooks))
     return notebook_redirect(nb)
 end
 

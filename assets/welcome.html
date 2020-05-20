@@ -19,6 +19,7 @@
     <script src="assets/client.js" defer></script>
     <script src="assets/filepicker.js" defer></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/display/placeholder.min.js" defer></script>
@@ -32,22 +33,23 @@
 
 <body class="loading nosessions">
     <div id="title">
-        <h1>welcome to <img src="assets/logo.svg"><span class="phantom"> ot emoclew</span></h1>
+        <h1>welcome to <img src="assets/logo.svg"></h1>
         <main>
-            <p class="new">New session:</p>
-            <ul class="new">
+            <p>New session:</p>
+            <ul id="new">
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>Open from file:
                     <filepicker>
-
                         <button>Open</button>
                     </filepicker>
                 </li>
             </ul>
-            <br class="running" />
-            <p class="running">Running sessions:</p>
-            <ul class="running"></ul>
+            <br/>
+            <p>Recent sessions:</p>
+            <ul id="recent">
+                <li><em>Loading...</em></li>
+            </ul>
         </main>
     </div>
 </body>

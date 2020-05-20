@@ -18,6 +18,8 @@ function updateLocalNotebookPath(newPath) {
 var remoteNotebookList = []
 
 function updateRemoteNotebooks(list) {
+    const oldPath = notebook.path
+
     remoteNotebookList = list
     list.forEach(nb => {
         if (nb.uuid == notebook.uuid) {
@@ -25,6 +27,8 @@ function updateRemoteNotebooks(list) {
             updateLocalNotebookPath(nb.path)
         }
     })
+
+    updateRecentNotebooks(oldPath)
 }
 
 /* DOM THINGIES */
@@ -293,7 +297,7 @@ function updateLocalCellOutput(cellNode, msg) {
         window.allCellsCompletedPromise.resolver()
     }
 
-    if (document.body.classList.contains("loading")) {
+    if (!notebookNode.querySelector("cell:focus-within")) {
         return
     }
     const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
@@ -477,18 +481,6 @@ function requestRunAllChangedRemoteCells() {
     }).catch(console.error)
 }
 
-function requestRunAllRemoteCells() {
-    refreshAllCompletionPromise()
-
-    const uuids = Object.values(window.localCells).map(cellNode => {
-        cellNode.classList.add("running")
-        return cellNode.id
-    })
-    client.send("runmultiple", {
-        cells: uuids
-    })
-}
-
 function requestInterruptRemote() {
     client.send("interruptall", {})
 }
@@ -590,27 +582,18 @@ function onEstablishConnection() {
             )
             promises.push(
                 client.sendreceive("getoutput", {}, cell.uuid).then(u => {
-                    updateLocalCellOutput(cellNode, u.message)
+                    if(!runAll || cellNode.classList.contains("running")) {
+                        updateLocalCellOutput(cellNode, u.message)
+                    } else {
+                        // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
+                    }
                 })
             )
         })
 
         Promise.all(promises).then(() => {
-            function happy() {
-                document.body.classList.remove("loading")
-                console.info("Workspace initialized")
-            }
-            if (runAll
-                && !document.querySelector("notebook>cell.running")
-                && document.querySelector("notebook>cell.output-notinsync")) {
-                requestRunAllRemoteCells()
-                window.allCellsCompletedPromise.then(happy)
-            } else {
-                // We do a code completion request to trigger starting the workpsace
-                client.sendreceive("complete", {
-                    query: "nothinginparticular"
-                }).then(happy)
-            }
+            document.body.classList.remove("loading")
+            console.info("Workspace initialized")
         })
     }).catch(console.error)
 
@@ -656,6 +639,17 @@ window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect
 client.notebookID = notebook.uuid
 client.initialize()
 
+/* LOCALSTORAGE NOTEBOOKS LIST */
+
+function updateRecentNotebooks(alsodelete) {
+    const storedString = localStorage.getItem("recent notebooks")
+    const storedList = !!storedString ? JSON.parse(storedString) : []
+    const oldpaths = storedList
+    const newpaths = [notebook.path].concat(oldpaths.filter(path => {
+        return (path != notebook.path) && (path != alsodelete)
+    }))
+    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0,50)))
+}
 
 /* DRAG-DROPPING CELLS */
 
