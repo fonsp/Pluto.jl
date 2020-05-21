@@ -39,6 +39,10 @@ main {
     }
 }
 
+notebook {
+    display: block;
+}
+
 
 /* STANDARD HTML ELEMENTS */
 
@@ -86,6 +90,11 @@ celloutput h2 {
     font-size: 1.8rem;
     border-bottom: 2px dotted rgba(0, 0, 0, .15);
     margin-bottom: .5rem;
+}
+
+celloutput h1:empty,
+celloutput h2:empty {
+    border-bottom: none;
 }
 
 celloutput h3 {
@@ -476,7 +485,8 @@ preamble>button,
 cell>button,
 cellinput>button,
 runarea>button,
-cellshoulder>button {
+cellshoulder>button,
+slide-controls>button {
     margin: 0px;
     padding: 1px;
     opacity: 50%;
@@ -948,6 +958,48 @@ footer button {
     padding: 1rem;
 }
 
+
+/* PRESENTATION MODE */
+
+body.presentation celloutput  h1,
+body.presentation celloutput  h2 {
+    margin-top: 100vh;
+}
+body.presentation notebook {
+    padding-bottom: 100vh;
+}
+
+body>slide-controls {
+    display: none;
+}
+body.presentation>slide-controls {
+    display: flex;
+    position: fixed;
+    bottom: 0px;
+    right: 0px;
+    z-index: 10;
+}
+
+body>slide-controls>button {
+    position: static;
+    padding: 5px;
+}
+
+body>slide-controls>button>span::after {
+    display: block;
+    content: " " !important;
+    background-size: 30px 30px;
+    height: 30px;
+    width: 30px;
+}
+body>slide-controls>button.prev>span::after {
+    
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-back-outline.svg);
+}
+body>slide-controls>button.next>span::after {
+    
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
+}
 
 /* CODEMIRROR STYLE */
 

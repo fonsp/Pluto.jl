@@ -951,6 +951,48 @@ Ctrl+S:   rename notebook`)
     }
 })
 
+/* PRESENTATION MODE */
+
+function calculateSlidePositions() {
+    const height = window.innerHeight
+    const headers = Array.from(document.querySelectorAll("celloutput h1, celloutput h2"))
+    const pos = headers.map(el => el.getBoundingClientRect())
+    const edges = pos.map(rect => rect.top + window.pageYOffset)
+    edges.push(notebookNode.getBoundingClientRect().bottom + window.pageYOffset)
+
+    const scrollPositions = headers.map((el, i) => {
+        if(el.tagName == "H1") {
+            // center vertically
+            const slideHeight = edges[i+1] - edges[i] - height
+            return edges[i] - Math.max(0, (height - slideHeight) / 2)
+        } else {
+            // align to top
+            return edges[i] - 20
+        }
+    })
+
+    return scrollPositions
+}
+
+function currentSlideIndex(positions) {
+    return positions.findIndex(y => y + (window.innerHeight / 2) > window.pageYOffset)
+}
+
+function prevSlide(e) {
+    positions = calculateSlidePositions()
+    
+    window.scrollTo(window.pageXOffset, positions.reverse().find(y => y < window.pageYOffset - 10))
+}
+
+function nextSlide(e) {
+    positions = calculateSlidePositions()
+    window.scrollTo(window.pageXOffset, positions.find(y => y - 10 > window.pageYOffset))
+}
+
+function present(){
+    document.body.classList.toggle("presentation")
+}
+
 /* CHANGES THAT YOU MADE MIGHT NOT BE SAVED */
 
 window.addEventListener('beforeunload', (event) => {

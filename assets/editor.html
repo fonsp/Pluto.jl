@@ -44,7 +44,7 @@
                 processHtmlClass: "tex",
             },
             startup: {
-                typeset: true,
+                typeset: true, // because we load MathJax asynchronously
             },
             tex: {
                 inlineMath: [['$', '$'], ['\\(', '\\)']],
@@ -117,6 +117,11 @@
             </form>
         </div>
     </footer>
+
+    <slide-controls>
+        <button class="changeslide prev" title="Previous slide" onclick="prevSlide(event)"><span></span></button>
+        <button class="changeslide next" title="Next slide" onclick="nextSlide(event)"><span></span></button>
+    </slide-controls>
 
     <script src="assets/bond.js" defer></script>
     <script src="assets/editor.js" defer></script>
