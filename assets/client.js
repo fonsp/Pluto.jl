@@ -101,7 +101,6 @@ class PlutoConnection {
     }
 
     handleMessage(event) {
-
         event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
