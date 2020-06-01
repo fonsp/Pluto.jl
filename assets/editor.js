@@ -1,21 +1,26 @@
+import { html } from "https://unpkg.com/htl@0.2.0/src/index.js";
 
+import { PlutoConnection } from "./client.js"
+import { createCodeMirrorFilepicker } from "./filepicker.js"
+import { statistics } from "./feedback.js"
 
 /* REMOTE NOTEBOOK LIST */
 
-var notebook = {
+export let notebook = {
     path: "unknown",
     uuid: document.location.search.split("uuid=")[1],
 }
+let editor;
 
 function updateLocalNotebookPath(newPath) {
-    window.filePickerCodeMirror.setValue(newPath)
+    filePickerCodeMirror.setValue(newPath)
 
-    fileName = newPath.split("/").pop().split("\\").pop()
-    cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
+    const fileName = newPath.split("/").pop().split("\\").pop()
+    const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
     document.title = cuteName
 }
 
-var remoteNotebookList = []
+export let remoteNotebookList = []
 
 function updateRemoteNotebooks(list) {
     const oldPath = notebook.path
@@ -46,8 +51,8 @@ const submitFileButton = document.querySelector("header>#logocontainer>filepicke
 submitFileButton.addEventListener("click", submitFileChange)
 
 function submitFileChange() {
-    const oldPath = window.notebook.path
-    const newPath = window.filePickerCodeMirror.getValue()
+    const oldPath = notebook.path
+    const newPath = filePickerCodeMirror.getValue()
     if (oldPath == newPath) {
         return
     }
@@ -71,13 +76,13 @@ function submitFileChange() {
     }
 }
 
-window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
+let filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
     document.querySelector("header>#logocontainer>filepicker").insertBefore(
         elt,
         submitFileButton)
 }, submitFileChange, () => updateLocalNotebookPath(notebook.path), true)
 
-window.filePickerCodeMirror.on("blur", (cm, e) => {
+filePickerCodeMirror.on("blur", (cm, e) => {
     // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
     // debounce:
     setTimeout(() => {
@@ -89,8 +94,8 @@ window.filePickerCodeMirror.on("blur", (cm, e) => {
 
 /* RESPONSE FUNCTIONS TO REMOTE CHANGES */
 
-window.localCells = {}
-window.codeMirrors = {}
+export let localCells = {}
+export let codeMirrors = {}
 
 function createCodeMirrorInsideCell(cellNode, code) {
     var cm = CodeMirror((elt) => {
@@ -108,7 +113,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
         matchBrackets: true,
     });
 
-    window.codeMirrors[cellNode.id] = cm
+    codeMirrors[cellNode.id] = cm
     //cm.setOption("readOnly", true);
 
     cm.setOption("extraKeys", {
@@ -182,7 +187,7 @@ function prettytime(time_ns) {
 }
 
 function updateLocalCellOutput(cellNode, msg) {
-    window.statistics.numRuns++
+    statistics.numRuns++
 
     if (msg.running) {
         cellNode.classList.add("running")
@@ -196,8 +201,8 @@ function updateLocalCellOutput(cellNode, msg) {
     const assigneeNode = outputNode.querySelector(":scope > assignee")
     const containerNode = outputNode.querySelector(":scope > div")
 
-    oldHeight = outputNode.scrollHeight
-    oldScroll = window.scrollY
+    const oldHeight = outputNode.scrollHeight
+    const oldScroll = window.scrollY
 
     cellNode.classList.remove("has-assignee")
     cellNode.classList.remove("inline-output")
@@ -290,12 +295,12 @@ function updateLocalCellOutput(cellNode, msg) {
         cellNode.classList.remove("output-notinsync")
     }
 
-    newHeight = outputNode.scrollHeight
-    newScroll = window.scrollY
+    const newHeight = outputNode.scrollHeight
+    const newScroll = window.scrollY
 
     if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
-        window.allCellsCompleted = true
-        window.allCellsCompletedPromise.resolver()
+        allCellsCompleted = true
+        allCellsCompletedPromise.resolver()
     }
 
     if (!notebookNode.querySelector("cell:focus-within")) {
@@ -308,9 +313,9 @@ function updateLocalCellOutput(cellNode, msg) {
 }
 
 function updateLocalCellInput(byMe, cellNode, code, folded) {
-    var cm = window.codeMirrors[cellNode.id]
+    var cm = codeMirrors[cellNode.id]
     cellNode.remoteCode = code
-    oldVal = cm.getValue()
+    const oldVal = cm.getValue()
     // We don't want to update the cell's input if we sent the update.
     // This might be annoying if you change the cell after the submission,
     // while the request is still running. This also prevents the codemirror cursor
@@ -344,17 +349,17 @@ function indexOfLocalCell(cellNode) {
 }
 
 function createLocalCell(newIndex, uuid, code, focus = true) {
-    if (uuid in window.localCells) {
+    if (uuid in localCells) {
         console.warn("Tried to add cell with existing UUID. Canceled.")
         console.log(uuid)
         console.log(localCells)
-        return window.localCells[uuid]
+        return localCells[uuid]
     }
     var newCellNode = cellTemplate.cloneNode(true)
     newCellNode.id = uuid
     newCellNode.remoteCode = code
 
-    window.localCells[uuid] = newCellNode
+    localCells[uuid] = newCellNode
 
     moveLocalCell(newCellNode, newIndex)
 
@@ -404,12 +409,12 @@ function foldLocalCell(cellNode, newFolded) {
 
 function deleteLocalCell(cellNode) {
     // TODO: event listeners? gc?
-    uuid = cellNode.id
+    const uuid = cellNode.id
     try {
-        delete window.codeMirrors[uuid]
+        delete codeMirrors[uuid]
     } catch (err) { }
     try {
-        delete window.localCells[uuid]
+        delete localCells[uuid]
     } catch (err) { }
 
     cellNode.remove()
@@ -430,34 +435,32 @@ function moveLocalCell(cellNode, newIndex) {
 }
 
 function deleteAllLocalCells() {
-    for (var uuid in window.localCells) {
-        deleteLocalCell(window.localCells[uuid])
+    for (var uuid in localCells) {
+        deleteLocalCell(localCells[uuid])
     }
 }
 
 /* REQUEST FUNCTIONS FOR REMOTE CHANGES */
 
-window.allCellsCompleted = true // will be set to false soon
-window.allCellsCompletedPromise = null
+export let allCellsCompleted = true // will be set to false soon
+export let allCellsCompletedPromise = null
 
-function refreshAllCompletionPromise() {
+export function refreshAllCompletionPromise() {
     if (allCellsCompleted) {
         var resolver
-        window.allCellsCompletedPromise = new Promise(r => { resolver = r })
-        window.allCellsCompletedPromise.resolver = resolver
-        window.allCellsCompleted = false
+        allCellsCompletedPromise = new Promise(r => { resolver = r })
+        allCellsCompletedPromise.resolver = resolver
+        allCellsCompleted = false
     }
 }
-
-window.refreshAllCompletionPromise = refreshAllCompletionPromise
 refreshAllCompletionPromise()
 
 function requestChangeRemoteCell(uuid, createPromise = false) {
-    window.statistics.numEvals++
+    statistics.numEvals++
 
     refreshAllCompletionPromise()
-    window.localCells[uuid].classList.add("running")
-    newCode = window.codeMirrors[uuid].getValue()
+    localCells[uuid].classList.add("running")
+    const newCode = codeMirrors[uuid].getValue()
 
     return client.send("changecell", { code: newCode }, uuid, createPromise)
 }
@@ -470,7 +473,7 @@ function requestRunAllChangedRemoteCells() {
         const uuid = cellNode.id
         cellNode.classList.add("running")
         return client.sendreceive("setinput", {
-            code: window.codeMirrors[uuid].getValue()
+            code: codeMirrors[uuid].getValue()
         }, uuid).then(u => {
             updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
         })
@@ -498,8 +501,8 @@ function requestNewRemoteCell(newIndex) {
 }
 
 function requestDeleteRemoteCell(uuid) {
-    window.localCells[uuid].classList.add("running")
-    window.codeMirrors[uuid].setValue("")
+    localCells[uuid].classList.add("running")
+    codeMirrors[uuid].setValue("")
     client.send("deletecell", {}, uuid)
 }
 
@@ -515,26 +518,26 @@ function onUpdate(update, byMe) {
 
     switch (update.type) {
         case "cell_output":
-            updateLocalCellOutput(window.localCells[update.cellID], message)
+            updateLocalCellOutput(localCells[update.cellID], message)
             break
         case "cell_running":
             // TODO: catch exception
-            window.localCells[update.cellID].classList.add("running")
+            localCells[update.cellID].classList.add("running")
             break
         case "cell_folded":
-            foldLocalCell(window.localCells[update.cellID], message.folded)
+            foldLocalCell(localCells[update.cellID], message.folded)
             break
         case "cell_input":
             // TODO: catch exception
-            updateLocalCellInput(byMe, window.localCells[update.cellID], message.code, message.folded)
+            updateLocalCellInput(byMe, localCells[update.cellID], message.code, message.folded)
             break
         case "cell_deleted":
             // TODO: catch exception
-            deleteLocalCell(window.localCells[update.cellID])
+            deleteLocalCell(localCells[update.cellID])
             break
         case "cell_moved":
             // TODO: catch exception
-            moveLocalCell(window.localCells[update.cellID], message.index)
+            moveLocalCell(localCells[update.cellID], message.index)
             break
         case "cell_added":
             createLocalCell(message.index, update.cellID, "", true)
@@ -619,8 +622,8 @@ function onEstablishConnection() {
 function onReconnect() {
     document.body.classList.remove("disconnected")
     document.querySelector("meta[name=theme-color]").content = "#fff"
-    for (var uuid in window.codeMirrors) {
-        window.codeMirrors[uuid].options.disableInput = false
+    for (var uuid in codeMirrors) {
+        codeMirrors[uuid].options.disableInput = false
     }
 }
 
@@ -629,8 +632,8 @@ function onDisconnect() {
     document.querySelector("meta[name=theme-color]").content = "#DEAF91"
     setTimeout(() => {
         if (!client.currentlyConnected) {
-            for (var uuid in window.codeMirrors) {
-                window.codeMirrors[uuid].options.disableInput = true
+            for (var uuid in codeMirrors) {
+                codeMirrors[uuid].options.disableInput = true
             }
         }
     }, 5000)
@@ -668,7 +671,7 @@ function argmin(x) {
     return best_index
 }
 
-dropruler = document.querySelector("dropruler")
+let dropruler = document.querySelector("dropruler")
 
 var dropPositions = []
 var dropee = null
@@ -714,8 +717,8 @@ document.ondrop = (e) => {
 if ("fonts" in document) {
     document.fonts.ready.then(function () {
         console.log("fonts loaded");
-        for (var uuid in window.codeMirrors) {
-            window.codeMirrors[uuid].refresh()
+        for (var uuid in codeMirrors) {
+            codeMirrors[uuid].refresh()
         }
     });
 }
@@ -824,12 +827,12 @@ function render_filename(frame, ctx) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const uuid = frame.file.substr(sep_index + 4)
-        const a = DOM.element("a", { href: "#" + uuid + "#" + frame.line, onclick: "window.cellRedirect(event)" })
-        if (uuid == ctx.id) {
-            a.innerText = "Local:" + frame.line
-        } else {
-            a.innerText = "Other:" + frame.line
-        }
+        const a = html`<a
+          href=${`#${uuid}#${frame.line}`}
+          onClick=${e => cellRedirect(event)}
+        >
+          ${uuid == ctx.id ? "Local" : "Other"}: ${frame.line}
+        </a>`
         return html`<em>${a}</em>`
     } else {
         return html`<em>${frame.file}:${frame.line}</em>`
@@ -851,7 +854,7 @@ function render_error(state, ctx) {
         <header>
             ${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
         </header>
-        <section style="display: ${state.stacktrace.length == 0 ? "none" : "potato"};">
+        <section style=${{ display: state.stacktrace.length == 0 ? "none" : "potato" }}>
             <ol>
             ${state.stacktrace.map(frame => html`
                 <li>
@@ -866,8 +869,8 @@ function cellRedirect(event) {
     const url = new URL(event.target.href).hash
     const uuid = url.substr(1, 36)
     const line = (+url.substr(38)) - 1 // Julia index to JS
-    window.codeMirrors[uuid].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
-    window.codeMirrors[uuid].focus()
+    codeMirrors[uuid].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
+    codeMirrors[uuid].focus()
 }
 
 
@@ -893,7 +896,7 @@ function parentByTag(el, tag) {
 
 function errorHint(e) {
     const cellNode = parentByTag(e.target, "CELL")
-    wrapInBlock(window.codeMirrors[cellNode.id], "begin")
+    wrapInBlock(codeMirrors[cellNode.id], "begin")
     requestChangeRemoteCell(cellNode.id)
     e.preventDefault()
 }
@@ -917,7 +920,7 @@ document.addEventListener("keydown", (e) => {
             break
         case 82: // r
             if (e.ctrlKey) {
-                if (window.notebook) {
+                if (notebook) {
                     document.location.href = "open?path=" + encodeURIComponent(notebook.path)
                     e.preventDefault()
                 }
@@ -936,7 +939,7 @@ document.addEventListener("keydown", (e) => {
             }
         // fall into:
         case 112: // F1
-            // TODO: show help    
+            // TODO: show help
             alert(
                 `Shortcuts 🎹
 
@@ -980,7 +983,7 @@ function currentSlideIndex(positions) {
 
 function prevSlide(e) {
     positions = calculateSlidePositions()
-    
+
     window.scrollTo(window.pageXOffset, positions.reverse().find(y => y < window.pageYOffset - 10))
 }
 
@@ -998,7 +1001,7 @@ function present(){
 window.addEventListener('beforeunload', (event) => {
     const firstUnsaved = document.querySelector("notebook>cell.code-differs")
     if (firstUnsaved) {
-        window.codeMirrors[firstUnsaved.id].focus()
+        codeMirrors[firstUnsaved.id].focus()
         event.preventDefault();
         event.returnValue = '';
     }

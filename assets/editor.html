@@ -16,10 +16,6 @@
     <link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png">
     <meta name="description" content="Pluto.jl notebooks" />
 
-    <script src="assets/client.js" defer></script>
-    <script src="assets/filepicker.js" defer></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/mode/julia/julia.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
@@ -123,9 +119,9 @@
         <button class="changeslide next" title="Next slide" onclick="nextSlide(event)"><span></span></button>
     </slide-controls>
 
-    <script src="assets/bond.js" defer></script>
-    <script src="assets/editor.js" defer></script>
-    <script src="assets/feedback.js" defer></script>
+    <script src="assets/bond.js" type="module"></script>
+    <script src="assets/editor.js" type="module"></script>
+    <script src="assets/feedback.js" type="module"></script>
     <script src="assets/treeview.js" defer></script>
 </body>
 
