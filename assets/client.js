@@ -1,3 +1,24 @@
+// Polyfill for Blob::text when there is none (safari)
+// This is not "officialy" supported
+if (Blob.prototype.text == null) {
+    Blob.prototype.text = function() {
+        const reader = new FileReader()
+        const promise = new Promise((resolve, reject) => {
+            // on read success
+            reader.onload = () => {
+                resolve(reader.result)
+            }
+            // on failure
+            reader.onerror = (e) => {
+                reader.abort()
+                reject(e)
+            }
+        })
+        reader.readAsText(this)
+        return promise;
+    }
+}
+
 class PlutoConnection {
     ping(onSucces, onFailure) {
         fetch("ping", {
@@ -79,30 +100,9 @@ class PlutoConnection {
         return this.send(messageType, body, cellID, true)
     }
 
-    readBlob(blob) { // Event-based fill-in for newer Blob.text().
-
-        const reader = new FileReader()
-
-        const p = new Promise((res, rej) => {
-            // on read success
-            reader.onload = () => {
-                res(reader.result)
-            }
-            // on failure
-            reader.onerror = (e) => {
-                reader.abort()
-                rej(e)
-            }
-        })
-
-        reader.readAsText(blob)
-
-        return p
-    }
-
     handleMessage(event) {
 
-        this.readBlob(event.data).then((msg) => JSON.parse(msg)).then((update) => {
+        event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
                 console.log("Update message not meant for this notebook")
