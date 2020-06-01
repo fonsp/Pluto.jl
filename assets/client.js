@@ -79,8 +79,30 @@ class PlutoConnection {
         return this.send(messageType, body, cellID, true)
     }
 
+    readBlob(blob) { // Event-based fill-in for newer Blob.text().
+
+        const reader = new FileReader()
+
+        const p = new Promise((res, rej) => {
+            // on read success
+            reader.onload = () => {
+                res(reader.result)
+            }
+            // on failure
+            reader.onerror = (e) => {
+                reader.abort()
+                rej(e)
+            }
+        })
+
+        reader.readAsText(blob)
+
+        return p
+    }
+
     handleMessage(event) {
-        event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
+
+        this.readBlob(event.data).then((msg) => JSON.parse(msg)).then((update) => {
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
                 console.log("Update message not meant for this notebook")
