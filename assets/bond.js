@@ -1,4 +1,4 @@
-import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
+import { Generators } from "./common/ObservableStdlib.js"
 
 import { refreshAllCompletionPromise, allCellsCompletedPromise } from "./editor.js"
 import { statistics } from "./feedback.js";
@@ -31,7 +31,7 @@ document.addEventListener("celloutputchanged", (e) => {
     const bondNodes = cellNode.querySelectorAll("bond")
 
     bondNodes.forEach(bondNode => {
-        bondNode.generator = Generators_input(bondNode.firstElementChild)
+        bondNode.generator = Generators.input(bondNode.firstElementChild)
         allCellsCompletedPromise.then(_ => {
             makeBond(bondNode)
         })

@@ -1,7 +1,7 @@
 import { html } from "https://unpkg.com/htl@0.2.0/src/index.js";
 
 import { createCodeMirrorFilepicker } from "./filepicker.js"
-import { PlutoConnection } from "./client.js"
+import { PlutoConnection } from "./common/PlutoConnection.js"
 
 /* REMOTE & LOCALSTORAGE NOTEBOOK LISTS */
 

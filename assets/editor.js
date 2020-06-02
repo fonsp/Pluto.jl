@@ -1,8 +1,12 @@
 import { html } from "https://unpkg.com/htl@0.2.0/src/index.js";
 
-import { PlutoConnection } from "./client.js"
+import { PlutoConnection } from "./common/PlutoConnection.js"
+import { utf8index_to_ut16index } from "./common/UnicodeTools.js"
+
 import { createCodeMirrorFilepicker } from "./filepicker.js"
 import { statistics } from "./feedback.js"
+
+import "./common/SetupCellEnvironment.js"
 
 /* REMOTE NOTEBOOK LIST */
 
@@ -10,7 +14,6 @@ export let notebook = {
     path: "unknown",
     uuid: document.location.search.split("uuid=")[1],
 }
-let editor;
 
 function updateLocalNotebookPath(newPath) {
     filePickerCodeMirror.setValue(newPath)
@@ -98,7 +101,7 @@ export let localCells = {}
 export let codeMirrors = {}
 
 function createCodeMirrorInsideCell(cellNode, code) {
-    var cm = CodeMirror((elt) => {
+    const cm = CodeMirror((elt) => {
         cellNode.querySelector("cellinput").appendChild(elt)
     }, {
         value: code,
@@ -172,12 +175,12 @@ function prettytime(time_ns) {
         // return "---"
     }
     const prefices = ["n", "μ", "m", ""]
-    var i = 0
+    let i = 0
     while (i < prefices.length && time_ns >= 1000.0) {
         i += 1
         time_ns /= 1000
     }
-    var roundedtime
+    let roundedtime
     if (time_ns >= 100.0) {
         roundedtime = Math.round(time_ns)
     } else {
@@ -265,7 +268,7 @@ function updateLocalCellOutput(cellNode, msg) {
                 console.info(err)
             }
         } else if (msg.mime == "image/png" || msg.mime == "image/jpg" || msg.mime == "image/gif") {
-            var i = undefined
+            let i
             if (containerNode.children.length == 1 && containerNode.children[0].tagName == "IMG") {
                 // https://github.com/fonsp/Pluto.jl/issues/95
                 // images are loaded asynchronously and don't initiate with the final height.
@@ -313,7 +316,7 @@ function updateLocalCellOutput(cellNode, msg) {
 }
 
 function updateLocalCellInput(byMe, cellNode, code, folded) {
-    var cm = codeMirrors[cellNode.id]
+    const cm = codeMirrors[cellNode.id]
     cellNode.remoteCode = code
     const oldVal = cm.getValue()
     // We don't want to update the cell's input if we sent the update.
@@ -341,7 +344,7 @@ function updateLocalCellInput(byMe, cellNode, code, folded) {
 
 function indexOfLocalCell(cellNode) {
     // .indexOf doesn't work on HTMLCollection
-    for (var i = 0; i < notebookNode.children.length; i++) {
+    for (let i = 0; i < notebookNode.children.length; i++) {
         if (notebookNode.children[i].id == cellNode.id) {
             return i
         }
@@ -355,7 +358,7 @@ function createLocalCell(newIndex, uuid, code, focus = true) {
         console.log(localCells)
         return localCells[uuid]
     }
-    var newCellNode = cellTemplate.cloneNode(true)
+    const newCellNode = cellTemplate.cloneNode(true)
     newCellNode.id = uuid
     newCellNode.remoteCode = code
 
@@ -363,8 +366,8 @@ function createLocalCell(newIndex, uuid, code, focus = true) {
 
     moveLocalCell(newCellNode, newIndex)
 
-    editor = createCodeMirrorInsideCell(newCellNode, code)
-    focus && editor.focus()
+    const cm = createCodeMirrorInsideCell(newCellNode, code)
+    focus && cm.focus()
 
     // EVENT LISTENERS FOR CLICKY THINGS
 
@@ -403,7 +406,7 @@ function foldLocalCell(cellNode, newFolded) {
         cellNode.classList.remove("code-folded")
         // Force redraw:
         cellNode.offsetTop
-        editor.refresh()
+        codeMirrors[cellNode.id].refresh()
     }
 }
 
@@ -435,7 +438,7 @@ function moveLocalCell(cellNode, newIndex) {
 }
 
 function deleteAllLocalCells() {
-    for (var uuid in localCells) {
+    for (let uuid in localCells) {
         deleteLocalCell(localCells[uuid])
     }
 }
@@ -447,7 +450,7 @@ export let allCellsCompletedPromise = null
 
 export function refreshAllCompletionPromise() {
     if (allCellsCompleted) {
-        var resolver
+        let resolver
         allCellsCompletedPromise = new Promise(r => { resolver = r })
         allCellsCompletedPromise.resolver = resolver
         allCellsCompleted = false
@@ -514,7 +517,7 @@ function requestCodeFoldRemoteCell(uuid, newFolded) {
 /* SERVER CONNECTION */
 
 function onUpdate(update, byMe) {
-    var message = update.message
+    const message = update.message
 
     switch (update.type) {
         case "cell_output":
@@ -607,8 +610,8 @@ function onEstablishConnection() {
 
         console.log(local)
         if (remote != local) {
-            var rs = remote.split(".")
-            var ls = local.split(".")
+            const rs = remote.split(".")
+            const ls = local.split(".")
 
             // while we are in alpha, we also notify for patch updates.
             if (rs[0] != ls[0] || rs[1] != ls[1] || true) {
@@ -617,12 +620,13 @@ function onEstablishConnection() {
         }
     })
 
+    updateDocQuery()
 }
 
 function onReconnect() {
     document.body.classList.remove("disconnected")
     document.querySelector("meta[name=theme-color]").content = "#fff"
-    for (var uuid in codeMirrors) {
+    for (let uuid in codeMirrors) {
         codeMirrors[uuid].options.disableInput = false
     }
 }
@@ -632,16 +636,12 @@ function onDisconnect() {
     document.querySelector("meta[name=theme-color]").content = "#DEAF91"
     setTimeout(() => {
         if (!client.currentlyConnected) {
-            for (var uuid in codeMirrors) {
+            for (let uuid in codeMirrors) {
                 codeMirrors[uuid].options.disableInput = true
             }
         }
     }, 5000)
 }
-
-window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
-client.notebookID = notebook.uuid
-client.initialize()
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
@@ -658,10 +658,10 @@ function updateRecentNotebooks(alsodelete) {
 /* DRAG-DROPPING CELLS */
 
 function argmin(x) {
-    var best_val = Infinity
-    var best_index = -1
-    var val
-    for (var i = 0; i < x.length; i++) {
+    let best_val = Infinity
+    let best_index = -1
+    let val
+    for (let i = 0; i < x.length; i++) {
         val = x[i]
         if (val < best_val) {
             best_index = i
@@ -673,8 +673,8 @@ function argmin(x) {
 
 let dropruler = document.querySelector("dropruler")
 
-var dropPositions = []
-var dropee = null
+let dropPositions = []
+let dropee = null
 document.ondragstart = (e) => {
     if (e.target.tagName != "CELLSHOULDER") {
         dropee = null
@@ -684,16 +684,20 @@ document.ondragstart = (e) => {
     dropruler.style.display = "block"
 
     dropPositions = []
-    for (var i = 0; i < notebookNode.children.length; i++) {
+    for (let i = 0; i < notebookNode.children.length; i++) {
         dropPositions.push(notebookNode.children[i].offsetTop)
     }
     dropPositions.push(notebookNode.lastChild.offsetTop + notebookNode.lastChild.scrollHeight)
 }
+
+function getDropIndexOf(pageY) {
+    const distances = dropPositions.map(p => Math.abs(p - pageY))
+    return argmin(distances)
+}
+
 document.ondragover = (e) => {
     // Called continuously during drag
-    dist = dropPositions.map(p => Math.abs(p - e.pageY))
-    dropIndex = argmin(dist)
-
+    const dropIndex = getDropIndexOf(e.pageY)
     dropruler.style.top = dropPositions[dropIndex] + "px"
     e.preventDefault()
 }
@@ -706,9 +710,7 @@ document.ondrop = (e) => {
         return
     }
     // Called when drag-dropped somewhere on the page
-    dist = dropPositions.map(p => Math.abs(p - e.pageY))
-    dropIndex = argmin(dist)
-
+    const dropIndex = getDropIndexOf(e.pageY)
     requestMoveRemoteCell(dropee.id, dropIndex)
 }
 
@@ -717,7 +719,7 @@ document.ondrop = (e) => {
 if ("fonts" in document) {
     document.fonts.ready.then(function () {
         console.log("fonts loaded");
-        for (var uuid in codeMirrors) {
+        for (let uuid in codeMirrors) {
             codeMirrors[uuid].refresh()
         }
     });
@@ -769,7 +771,7 @@ doc.querySelector("header").addEventListener("click", (e) => {
     updateDocQuery(window.desiredDocQuery)
 })
 
-var updateDocTimer = undefined
+let updateDocTimer = undefined
 
 function updateDocQuery(query = undefined) {
     if (doc.classList.contains("hidden")) {
@@ -819,18 +821,16 @@ function updateDocQuery(query = undefined) {
     })
 }
 
-updateDocQuery()
-
 /* ERRORS */
 
 function render_filename(frame, ctx) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const uuid = frame.file.substr(sep_index + 4)
-        const a = html`<a
-          href=${`#${uuid}#${frame.line}`}
-          onClick=${e => cellRedirect(event)}
-        >
+        const a = html`<a ${{
+            href: "#" + uuid + "#" + frame.line,
+            onclick: cellRedirect
+        }}>
           ${uuid == ctx.id ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
@@ -855,14 +855,13 @@ function render_error(state, ctx) {
             ${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
         </header>
         <section style=${{ display: state.stacktrace.length == 0 ? "none" : "potato" }}>
-            <ol>
-            ${state.stacktrace.map(frame => html`
-                <li>
+            <ol>${
+                state.stacktrace.map(frame => html`<li>
                     ${render_funccall(frame, ctx)}<span>@</span>${render_filename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
-                </li>`)}
-            </ol>
+                </li>`)
+            }</ol>
         </section>
-    </jltree>`
+    </jlerror>`
 }
 
 function cellRedirect(event) {
@@ -882,7 +881,7 @@ const errorRewrites = [
 ]
 
 function rewrittenError(old_raw) {
-    var new_raw = old_raw;
+    let new_raw = old_raw;
     errorRewrites.forEach(rw => {
         new_raw = new_raw.replace(rw.from, rw.to)
     })
@@ -1006,3 +1005,9 @@ window.addEventListener('beforeunload', (event) => {
         event.returnValue = '';
     }
 });
+
+/* START CONNECTION */
+
+window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
+client.notebookID = notebook.uuid
+client.initialize()

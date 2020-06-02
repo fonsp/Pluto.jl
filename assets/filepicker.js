@@ -1,3 +1,5 @@
+import { utf8index_to_ut16index } from "./common/UnicodeTools.js"
+
 export function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
     var editor = CodeMirror(placer, {
         value: "",

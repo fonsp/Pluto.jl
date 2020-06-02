@@ -112,7 +112,7 @@ HTTP.@register(PLUTOROUTER, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR,
 HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "sample.html")))
 HTTP.@register(PLUTOROUTER, "GET", "/sample/*", serve_sample)
 
-HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "favicon.ico")))
+HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "img", "favicon.ico")))
 HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serve_asset)
 
 HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))

@@ -13,7 +13,7 @@ self.addEventListener('install', function (event) {
     );
 });
 
-const whiteList = ["fonts.gstatic.com", "fonts.googleapis.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com"]
+const whiteList = ["fonts.gstatic.com", "fonts.googleapis.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "unpkg.com"]
 
 function shouldCache(request) {
     const url = new URL(request.url)
