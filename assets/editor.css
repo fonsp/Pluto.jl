@@ -156,6 +156,13 @@ celloutput pre {
     font-family: "Roboto Mono", monospace;
 }
 
+celloutput blockquote {
+    border-radius: 15px;
+    padding: 15px;
+    margin: 1rem 1rem;
+    background-color: #fafafa;
+    color: #555;
+}
 
 /* HEADER */
 
