@@ -23,6 +23,6 @@ import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
         @test_nowarn run_reactive!(notebookA, notebookA.cells[1])
         @test_nowarn run_reactive!(notebookB, notebookB.cells[1])
 
-        @test notebookB.cells[1].error_repr !== nothing
+        @test notebookB.cells[1].errored == true
     end
 end

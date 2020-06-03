@@ -84,11 +84,11 @@ function showNotebooks() {
     console.log("Running:")
     console.log(runningNotebookList)
     document.body.classList.toggle("nosessions", combinedNotebookList.length == 0)
-    document.body.querySelector("main").replaceChild(render_notebooklist(combinedNotebookList), document.querySelector("ul#recent"))
+    document.body.querySelector("main").replaceChild(renderNotebookList(combinedNotebookList), document.querySelector("ul#recent"))
     document.body.classList.remove("loading")
 }
 
-function render_notebooklist(list) {
+function renderNotebookList(list) {
     return html`<ul id="recent">
         ${list.map(nb => {
             const running = !!nb.uuid

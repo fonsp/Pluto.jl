@@ -67,6 +67,10 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
 end
 
+function occursinerror(needle, haystack::Pluto.Cell)
+    return haystack.errored && occursin(needle, haystack.output_repr)
+end
+
 "Test notebook equality, ignoring cell UUIDs and such."
 function notebook_inputs_equal(nbA, nbB)
     x = normpath(nbA.path) == normpath(nbB.path)

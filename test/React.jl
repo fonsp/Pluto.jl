@@ -41,12 +41,12 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         @test notebook.cells[2].runtime !== missing
 
         run_reactive!(notebook, notebook.cells[3])
-        @test notebook.cells[3].error_repr === nothing
+        @test notebook.cells[3].errored == false
         @test notebook.cells[3].rootassignee === nothing
     
         run_reactive!(notebook, notebook.cells[4])
         @test notebook.cells[4].output_repr == "16"
-        @test notebook.cells[4].error_repr === nothing
+        @test notebook.cells[4].errored == false
         @test notebook.cells[4].rootassignee === nothing
 
         notebook.cells[1].code = "x = 912"
@@ -61,7 +61,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         notebook.cells[2].code = "y = 2"
         run_reactive!(notebook, notebook.cells[1:2])
         run_reactive!(notebook, notebook.cells[5:6])
-        @test notebook.cells[5].error_repr === nothing
+        @test notebook.cells[5].errored == false
         @test notebook.cells[6].output_repr == "3"
 
         notebook.cells[2].code = "y = 1"
@@ -107,48 +107,48 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         @testset "Strange code"  begin
             run_reactive!(notebook, notebook.cells[1])
             run_reactive!(notebook, notebook.cells[2])
-            @test notebook.cells[1].error_repr !== nothing
-            @test notebook.cells[2].error_repr !== nothing
+            @test notebook.cells[1].errored == true
+            @test notebook.cells[2].errored == true
 
         end
         @testset "Mutliple expressions & semicolon"  begin
 
             run_reactive!(notebook, notebook.cells[3:end])
-            @test occursin("syntax: extra token after", notebook.cells[3].error_repr)
+            @test occursinerror("syntax: extra token after", notebook.cells[3])
 
-            @test notebook.cells[4].error_repr === nothing
+            @test notebook.cells[4].errored == false
             @test notebook.cells[4].output_repr == "4"
             @test notebook.cells[4].rootassignee == :c
 
-            @test notebook.cells[5].error_repr === nothing
+            @test notebook.cells[5].errored == false
             @test notebook.cells[5].output_repr == ""
             @test notebook.cells[5].rootassignee === nothing
 
-            @test notebook.cells[6].error_repr === nothing
+            @test notebook.cells[6].errored == false
             @test notebook.cells[6].output_repr == "6"
             @test notebook.cells[6].rootassignee === nothing
 
-            @test notebook.cells[7].error_repr === nothing
+            @test notebook.cells[7].errored == false
             @test notebook.cells[7].output_repr == ""
             @test notebook.cells[7].rootassignee === nothing
 
-            @test notebook.cells[8].error_repr === nothing
+            @test notebook.cells[8].errored == false
             @test notebook.cells[8].output_repr == ""
 
-            @test notebook.cells[9].error_repr === nothing
+            @test notebook.cells[9].errored == false
             @test notebook.cells[9].output_repr == ""
 
-            @test occursin("syntax: extra token after", notebook.cells[10].error_repr)
+            @test occursinerror("syntax: extra token after", notebook.cells[10])
 
-            @test occursin("syntax: extra token after", notebook.cells[11].error_repr)
+            @test occursinerror("syntax: extra token after", notebook.cells[11])
         end
 
         @testset "Stack traces" begin
             @test_nowarn run_reactive!(notebook, notebook.cells[12:16])
 
-            @test occursin("DomainError", notebook.cells[12].error_repr)
+            @test occursinerror("DomainError", notebook.cells[12])
             let
-                st = Pluto.JSON.parse(notebook.cells[12].error_repr)
+                st = Pluto.JSON.parse(notebook.cells[12].output_repr)
                 @test length(st["stacktrace"]) == 4 # check in REPL
                 if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 1
@@ -159,9 +159,9 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 end
             end
 
-            @test occursin("DomainError", notebook.cells[13].error_repr)
+            @test occursinerror("DomainError", notebook.cells[13])
             let
-                st = Pluto.JSON.parse(notebook.cells[13].error_repr)
+                st = Pluto.JSON.parse(notebook.cells[13].output_repr)
                 @test length(st["stacktrace"]) == 4
                 if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 3
@@ -172,9 +172,9 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 end
             end
 
-            @test occursin("DomainError", notebook.cells[15].error_repr)
+            @test occursinerror("DomainError", notebook.cells[15])
             let
-                st = Pluto.JSON.parse(notebook.cells[15].error_repr)
+                st = Pluto.JSON.parse(notebook.cells[15].output_repr)
                 @test length(st["stacktrace"]) == 5
 
                 if Pluto.can_insert_filename
@@ -191,7 +191,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
             end
 
             let
-                st = Pluto.JSON.parse(notebook.cells[16].error_repr)
+                st = Pluto.JSON.parse(notebook.cells[16].output_repr)
                 @test occursin(escape_me, st["msg"])
             end
 
@@ -213,41 +213,41 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         run_reactive!(notebook, notebook.cells[1])
         run_reactive!(notebook, notebook.cells[2])
-        @test occursin("Multiple", notebook.cells[1].error_repr)
-        @test occursin("Multiple", notebook.cells[2].error_repr)
+        @test occursinerror("Multiple", notebook.cells[1])
+        @test occursinerror("Multiple", notebook.cells[2])
     
         notebook.cells[1].code = ""
         run_reactive!(notebook, notebook.cells[1])
-        @test notebook.cells[1].error_repr === nothing
-        @test notebook.cells[2].error_repr === nothing
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
     
     # https://github.com/fonsp/Pluto.jl/issues/26
         notebook.cells[1].code = "x = 1"
         run_reactive!(notebook, notebook.cells[1])
         notebook.cells[2].code = "x"
         run_reactive!(notebook, notebook.cells[2])
-        @test notebook.cells[1].error_repr === nothing
-        @test notebook.cells[2].error_repr === nothing
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
 
         run_reactive!(notebook, notebook.cells[3])
         run_reactive!(notebook, notebook.cells[4])
-        @test occursin("Multiple", notebook.cells[3].error_repr)
-        @test occursin("Multiple", notebook.cells[4].error_repr)
+        @test occursinerror("Multiple", notebook.cells[3])
+        @test occursinerror("Multiple", notebook.cells[4])
     
         notebook.cells[3].code = ""
         run_reactive!(notebook, notebook.cells[3])
-        @test notebook.cells[3].error_repr === nothing
-        @test notebook.cells[4].error_repr === nothing
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
     
         run_reactive!(notebook, notebook.cells[5])
         run_reactive!(notebook, notebook.cells[6])
-        @test occursin("Multiple", notebook.cells[5].error_repr)
-        @test occursin("Multiple", notebook.cells[6].error_repr)
+        @test occursinerror("Multiple", notebook.cells[5])
+        @test occursinerror("Multiple", notebook.cells[6])
     
         notebook.cells[5].code = ""
         run_reactive!(notebook, notebook.cells[5])
-        @test notebook.cells[5].error_repr === nothing
-        @test notebook.cells[6].error_repr === nothing
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -281,8 +281,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         run_reactive!(notebook, notebook.cells[1])
         run_reactive!(notebook, notebook.cells[2])
-        @test occursin("Cyclic reference", notebook.cells[1].error_repr)
-        @test occursin("Cyclic reference", notebook.cells[2].error_repr)
+        @test occursinerror("Cyclic reference", notebook.cells[1])
+        @test occursinerror("Cyclic reference", notebook.cells[2])
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -300,9 +300,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         notebook.cells[1].code = ""
         run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == ""
-        @test notebook.cells[1].error_repr === nothing
-        @test notebook.cells[2].output_repr === nothing
-        @test occursin("x not defined", notebook.cells[2].error_repr)
+        @test notebook.cells[1].errored == false
+        @test occursinerror("x not defined", notebook.cells[2])
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -323,13 +322,13 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         run_reactive!(notebook, notebook.cells[1])
         @test startswith(notebook.cells[1].output_repr, "f (generic function with ")
-        @test notebook.cells[1].error_repr === nothing
+        @test notebook.cells[1].errored == false
 
         run_reactive!(notebook, notebook.cells[2:3])
-        @test notebook.cells[2].error_repr === nothing
-        @test notebook.cells[3].error_repr === nothing
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == false
         run_reactive!(notebook, notebook.cells[3])
-        @test notebook.cells[3].error_repr === nothing
+        @test notebook.cells[3].errored == false
 
         run_reactive!(notebook, notebook.cells[4])
         @test notebook.cells[4].output_repr == "2"
@@ -350,8 +349,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         run_reactive!(notebook, notebook.cells[1])
         notebook.cells[1].code = "x = x + 1"
         run_reactive!(notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr === nothing
-        @test occursin("UndefVarError", notebook.cells[1].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[1])
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -418,7 +416,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
     @testset "Changing functions" begin
 
         run_reactive!(notebook, notebook.cells[2])
-        @test notebook.cells[2].error_repr === nothing
+        @test notebook.cells[2].errored == false
 
         run_reactive!(notebook, notebook.cells[1])
         run_reactive!(notebook, notebook.cells[3])
@@ -427,13 +425,13 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         notebook.cells[1].code = "y = 2"
         run_reactive!(notebook, notebook.cells[1])
         @test notebook.cells[3].output_repr == "5"
-        @test notebook.cells[2].error_repr === nothing
+        @test notebook.cells[2].errored == false
 
         notebook.cells[1].code = "y"
         run_reactive!(notebook, notebook.cells[1])
-        @test occursin("UndefVarError", notebook.cells[1].error_repr)
-        @test notebook.cells[2].error_repr === nothing
-        @test occursin("UndefVarError", notebook.cells[3].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[1])
+        @test notebook.cells[2].errored == false
+        @test occursinerror("UndefVarError", notebook.cells[3])
 
         run_reactive!(notebook, notebook.cells[4])
         run_reactive!(notebook, notebook.cells[5])
@@ -441,8 +439,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         notebook.cells[4].code = "g(a) = a+a"
         run_reactive!(notebook, notebook.cells[4])
-        @test notebook.cells[4].error_repr === nothing
-        @test notebook.cells[5].error_repr != nothing
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == true
 
         notebook.cells[5].code = "g(5)"
         run_reactive!(notebook, notebook.cells[5])
@@ -451,69 +449,69 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         run_reactive!(notebook, notebook.cells[6])
         run_reactive!(notebook, notebook.cells[7])
         run_reactive!(notebook, notebook.cells[8])
-        @test notebook.cells[6].error_repr === nothing
-        @test notebook.cells[7].error_repr === nothing
-        @test notebook.cells[8].error_repr != nothing
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[8].errored == true
     
         notebook.cells[6].code = "h(x::Float64) = 2.0 * x"
         run_reactive!(notebook, notebook.cells[6])
-        @test notebook.cells[6].error_repr === nothing
-        @test notebook.cells[7].error_repr != nothing
-        @test notebook.cells[8].error_repr === nothing
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == true
+        @test notebook.cells[8].errored == false
 
         run_reactive!(notebook, notebook.cells[9:10])
-        @test notebook.cells[9].error_repr === nothing
+        @test notebook.cells[9].errored == false
         @test notebook.cells[10].output_repr == "true"
 
         notebook.cells[9].code = "p = p"
         run_reactive!(notebook, notebook.cells[9])
-        @test occursin("UndefVarError", notebook.cells[9].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[9])
 
         notebook.cells[9].code = "p = 9"
         run_reactive!(notebook, notebook.cells[9])
-        @test notebook.cells[9].error_repr === nothing
+        @test notebook.cells[9].errored == false
         @test notebook.cells[10].output_repr == "false"
         
         notebook.cells[9].code = "p(x) = 9"
         run_reactive!(notebook, notebook.cells[9])
-        @test notebook.cells[9].error_repr === nothing
+        @test notebook.cells[9].errored == false
         @test notebook.cells[10].output_repr == "true"
     end
 
     @testset "Extending imported functions" begin
         run_reactive!(notebook, notebook.cells[11:15])
-        @test_broken notebook.cells[11].error_repr === nothing
-        @test_broken notebook.cells[12].error_repr === nothing # multiple definitions for `Something` should be okay?
-        @test notebook.cells[13].error_repr === nothing
-        @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
+        @test_broken notebook.cells[11].errored == false
+        @test_broken notebook.cells[12].errored == false # multiple definitions for `Something` should be okay? == false
+        @test notebook.cells[13].errored == false
+        @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output_repr == "15"
 
         
         @test_nowarn run_reactive!(notebook, notebook.cells[13:15])
-        @test notebook.cells[13].error_repr === nothing
-        @test notebook.cells[14].error_repr != nothing # the definition for a was created before `a` was used, so it hides the `a` from `Something`
+        @test notebook.cells[13].errored == false
+        @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
         @test notebook.cells[15].output_repr == "15"
 
         @test_nowarn run_reactive!(notebook, notebook.cells[16:20])
-        @test notebook.cells[16].error_repr === nothing
-        @test occursin("Multiple", notebook.cells[17].error_repr)
-        @test occursin("Multiple", notebook.cells[18].error_repr)
-        @test occursin("UndefVarError", notebook.cells[19].error_repr)
-        @test occursin("UndefVarError", notebook.cells[20].error_repr)
+        @test notebook.cells[16].errored == false
+        @test occursinerror("Multiple", notebook.cells[17])
+        @test occursinerror("Multiple", notebook.cells[18])
+        @test occursinerror("UndefVarError", notebook.cells[19])
+        @test occursinerror("UndefVarError", notebook.cells[20])
 
         @test_nowarn run_reactive!(notebook, notebook.cells[21:24])
-        @test notebook.cells[21].error_repr === nothing
-        @test notebook.cells[22].error_repr === nothing
-        @test notebook.cells[23].error_repr === nothing
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == false
+        @test notebook.cells[23].errored == false
         @test notebook.cells[23].output_repr == "\"🐟\""
         @test notebook.cells[24].output_repr == "24"
 
         notebook.cells[22].code = "import .Wow: c"
         @test_nowarn run_reactive!(notebook, notebook.cells[22])
-        @test notebook.cells[22].error_repr === nothing
+        @test notebook.cells[22].errored == false
         @test notebook.cells[23].output_repr == "\"🐟\""
-        @test notebook.cells[23].error_repr === nothing
-        @test notebook.cells[24].error_repr != nothing # the extension should no longer exist
+        @test notebook.cells[23].errored == false
+        @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
         @test_nowarn run_reactive!(notebook, notebook.cells[25])
@@ -549,14 +547,14 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
     @testset "Using external libraries" begin
         run_reactive!(notebook, notebook.cells[30:31])
-        @test notebook.cells[30].error_repr === nothing
+        @test notebook.cells[30].errored == false
         @test notebook.cells[31].output_repr == "31"
         run_reactive!(notebook, notebook.cells[31])
         @test notebook.cells[31].output_repr == "31"
 
         notebook.cells[30].code = ""
         run_reactive!(notebook, notebook.cells[30:31])
-        @test occursin("UndefVarError", notebook.cells[31].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[31])
     end
     WorkspaceManager.unmake_workspace(notebook)
 
@@ -576,8 +574,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         fakeclient.connected_notebook = notebook
 
         run_reactive!(notebook, notebook.cells[1:2])
-        @test occursin("Multiple definitions for a", notebook.cells[1].error_repr)
-        @test occursin("Multiple definitions for a", notebook.cells[2].error_repr)
+        @test occursinerror("Multiple definitions for a", notebook.cells[1])
+        @test occursinerror("Multiple definitions for a", notebook.cells[2])
 
         notebook.cells[1].code = "a"
         run_reactive!(notebook, notebook.cells[1])
@@ -585,10 +583,10 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         @test notebook.cells[2].output_repr == "4"
 
         run_reactive!(notebook, notebook.cells[3:6])
-        @test notebook.cells[3].error_repr === nothing
-        @test notebook.cells[4].error_repr === nothing
-        @test notebook.cells[5].error_repr === nothing
-        @test notebook.cells[6].error_repr === nothing
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
         @test notebook.cells[6].output_repr == "9"
 
         notebook.cells[3].code = "b = -3"
@@ -596,7 +594,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         @test notebook.cells[6].output_repr == "3"
 
         run_reactive!(notebook, notebook.cells[7:8])
-        @test notebook.cells[7].error_repr === nothing
+        @test notebook.cells[7].errored == false
         @test notebook.cells[8].output_repr == "5"
 
         notebook.cells[3].code = "b = 3"
@@ -627,10 +625,8 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         run_reactive!(notebook, notebook.cells[1])
         run_reactive!(notebook, notebook.cells[2])
-        @test notebook.cells[1].output_repr === nothing
-        @test notebook.cells[2].output_repr === nothing
-        @test occursin("Multiple definitions for x", notebook.cells[1].error_repr)
-        @test occursin("Multiple definitions for x", notebook.cells[1].error_repr)
+        @test occursinerror("Multiple definitions for x", notebook.cells[1])
+        @test occursinerror("Multiple definitions for x", notebook.cells[1])
     
         notebook.cells[2].code = "x + 1"
         run_reactive!(notebook, notebook.cells[2])
@@ -642,27 +638,27 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
         run_reactive!(notebook, notebook.cells[4])
         run_reactive!(notebook, notebook.cells[5])
-        @test occursin("Multiple definitions for z", notebook.cells[4].error_repr)
-        @test occursin("Multiple definitions for z", notebook.cells[5].error_repr)
+        @test occursinerror("Multiple definitions for z", notebook.cells[4])
+        @test occursinerror("Multiple definitions for z", notebook.cells[5])
     
         run_reactive!(notebook, notebook.cells[6:7])
-        @test occursin("UndefVarError", notebook.cells[6].error_repr)
-        @test notebook.cells[7].error_repr === nothing
+        @test occursinerror("UndefVarError", notebook.cells[6])
+        @test notebook.cells[7].errored == false
     
         run_reactive!(notebook, notebook.cells[8])
-        @test occursin("UndefVarError", notebook.cells[6].error_repr)
-        @test occursin("Multiple definitions for w", notebook.cells[7].error_repr)
-        @test occursin("Multiple definitions for w", notebook.cells[8].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[6])
+        @test occursinerror("Multiple definitions for w", notebook.cells[7])
+        @test occursinerror("Multiple definitions for w", notebook.cells[8])
 
         run_reactive!(notebook, notebook.cells[9:10])
         @test notebook.cells[9].output_repr == "10"
-        @test notebook.cells[9].error_repr === nothing
-        @test notebook.cells[10].error_repr === nothing
+        @test notebook.cells[9].errored == false
+        @test notebook.cells[10].errored == false
 
         run_reactive!(notebook, notebook.cells[11])
-        @test occursin("UndefVarError", notebook.cells[9].error_repr)
-        @test occursin("Multiple definitions for v", notebook.cells[10].error_repr)
-        @test occursin("Multiple definitions for v", notebook.cells[11].error_repr)
+        @test occursinerror("UndefVarError", notebook.cells[9])
+        @test occursinerror("Multiple definitions for v", notebook.cells[10])
+        @test occursinerror("Multiple definitions for v", notebook.cells[11])
 
         WorkspaceManager.unmake_workspace(notebook)
     end
@@ -731,21 +727,21 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         
 
         run_reactive!(notebook, notebook.cells[16:18])
-        @test notebook.cells[16].error_repr === nothing
+        @test notebook.cells[16].errored == false
         @test notebook.cells[16].output_repr == "34"
-        @test notebook.cells[17].error_repr === nothing
-        @test notebook.cells[18].error_repr === nothing
+        @test notebook.cells[17].errored == false
+        @test notebook.cells[18].errored == false
 
         notebook.cells[18].code = "υ = 8"
         run_reactive!(notebook, notebook.cells[18])
         @test notebook.cells[16].output_repr == "24"
         
         run_reactive!(notebook, notebook.cells[19:22])
-        @test notebook.cells[19].error_repr === nothing
+        @test notebook.cells[19].errored == false
         @test notebook.cells[19].output_repr == "60"
-        @test notebook.cells[20].error_repr === nothing
-        @test notebook.cells[21].error_repr === nothing
-        @test notebook.cells[22].error_repr === nothing
+        @test notebook.cells[20].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == false
 
         notebook.cells[22].code = "y = 0"
         run_reactive!(notebook, notebook.cells[22])

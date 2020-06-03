@@ -189,65 +189,52 @@ function prettytime(time_ns) {
     return roundedtime + '\xa0' + prefices[i] + "s"
 }
 
-function updateLocalCellOutput(cellNode, msg) {
-    statistics.numRuns++
+function renderOutputContainer(contents) {
+    return html`<div>${contents}</div>`
+}
 
-    if (msg.running) {
-        cellNode.classList.add("running")
-    } else {
-        cellNode.classList.remove("running")
-    }
-    cellNode.runtime = msg.runtime
-    cellNode.querySelector(":scope > runarea > span").innerText = prettytime(msg.runtime)
-
-    const outputNode = cellNode.querySelector(":scope > celloutput")
-    const assigneeNode = outputNode.querySelector(":scope > assignee")
-    const containerNode = outputNode.querySelector(":scope > div")
-
-    const oldHeight = outputNode.scrollHeight
-    const oldScroll = window.scrollY
-
-    cellNode.classList.remove("has-assignee")
-    cellNode.classList.remove("inline-output")
-    cellNode.classList.remove("error")
-
-    if (msg.errormessage) {
-        cellNode.classList.add("error")
-
-        if (msg.mime == "text/plain") {
-            containerNode.innerHTML = "<pre><code></code></pre>"
-            containerNode.querySelector("code").innerHTML = rewrittenError(msg.errormessage)
-        } else {
-            const render = render_error(JSON.parse(msg.errormessage), cellNode)
-            containerNode.innerHTML = ""
-            containerNode.appendChild(render)
-        }
-    } else {
-        cellNode.classList.toggle("has-assignee", msg.rootassignee != null)
-
-        assigneeNode.innerText = msg.rootassignee
-
-
-        if (msg.mime == "text/html" || msg.mime == "image/svg+xml" || msg.mime == "application/vnd.pluto.tree+xml") {
-            containerNode.innerHTML = msg.output
-
-            if (msg.mime == "application/vnd.pluto.tree+xml") {
-                cellNode.classList.add("inline-output")
+function renderOutput(msg, ctx) {
+    switch(msg.mime){
+        case "image/png":
+        case "image/jpg":
+        case "image/gif":
+            let i, container
+            if (ctx.oldNode.children.length == 1 && ctx.oldNode.children[0].tagName == "IMG") {
+                // https://github.com/fonsp/Pluto.jl/issues/95
+                // images are loaded asynchronously and don't initiate with the final height.
+                // we fix this by reusing the old image
+                i = ctx.oldNode.children[0]
+                i.src = msg.output
+                new Array("width", "height", "alt", "sizes", "srcset").map(attr => i.removeAttribute(attr))
+                return ctx.oldNode
+            } else {
+                i = document.createElement("img")
+                i.src = msg.output
+                return renderOutputContainer(i)
             }
+        break
+        case "text/html":
+        case "image/svg+xml":
+        case "application/vnd.pluto.tree+xml":
+            let newContainer = renderOutputContainer(null)
+            newContainer.innerHTML = msg.output
 
             // based on https://stackoverflow.com/a/26716182
             // to execute all scripts in the output html:
             try {
-                Array.from(containerNode.querySelectorAll("script")).map((script) => {
-                    containerNode.currentScript = script
+                Array.from(newContainer.querySelectorAll("script")).map((script) => {
+                    newContainer.currentScript = script // available inside user JS as `this.currentScript`
                     if (script.src != "") {
                         if (!Array.from(document.head.querySelectorAll("script")).map(s => s.src).includes(script)) {
                             const tag = document.createElement("script")
                             tag.src = script.src
                             document.head.appendChild(tag)
+                            // might be wise to wait after adding scripts to head
+                            // maybe use a better method?
                         }
                     } else {
-                        const result = Function(script.innerHTML).bind(containerNode)()
+                        const result = Function(script.innerHTML).bind(newContainer)()
+                        console.log(result)
                         if (result && result.nodeType === Node.ELEMENT_NODE) {
                             script.parentElement.insertBefore(result, script)
                         }
@@ -257,61 +244,95 @@ function updateLocalCellOutput(cellNode, msg) {
                 console.error("Couldn't execute script:")
                 console.error(err)
                 // TODO: relay to user
-                // might be wise to wait after adding scripts to head
             }
 
             // convert LaTeX to svg
             try {
-                MathJax.typeset([containerNode])
+                MathJax.typeset([newContainer])
             } catch (err) {
                 console.info("Failed to typeset TeX:")
                 console.info(err)
             }
-        } else if (msg.mime == "image/png" || msg.mime == "image/jpg" || msg.mime == "image/gif") {
-            let i
-            if (containerNode.children.length == 1 && containerNode.children[0].tagName == "IMG") {
-                // https://github.com/fonsp/Pluto.jl/issues/95
-                // images are loaded asynchronously and don't initiate with the final height.
-                // we fix this by reusing the old image
-                i = containerNode.children[0]
-                new Array("width", "height", "alt", "sizes", "srcset").map(attr => i.removeAttribute(attr))
-            } else {
-                i = document.createElement("img")
-                containerNode.innerHTML = ""
-                containerNode.appendChild(i)
-            }
-            i.src = msg.output
-        } else {
+            return newContainer
+        break
+        case "application/vnd.pluto.stacktrace+json":
+            return renderOutputContainer(renderError(JSON.parse(msg.output), {id: ctx.id}))
+        break
+        
+        case "text/plain":
+        default:
             if (msg.output) {
-                containerNode.innerHTML = "<pre><code></code></pre>"
-                cellNode.classList.add("inline-output")
-                containerNode.querySelector("code").innerText = msg.output
+                let m = msg.errored ? rewrittenError(msg.output) : msg.output
+                return renderOutputContainer(html`<pre><code>${m}</code></pre>`)
             } else {
-                containerNode.innerHTML = ""
+                // Julia object `nothing`
+                return renderOutputContainer(null)
             }
-        }
+        break
     }
-    document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
-    if (msg.output == null && msg.errormessage == null) {
-        cellNode.classList.add("output-notinsync")
-    } else {
-        cellNode.classList.remove("output-notinsync")
+}
+
+function updateLocalCellOutput(cellNode, msg) {
+    statistics.numRuns++
+
+    const outputNode = cellNode.querySelector(":scope > celloutput")
+    const assigneeNode = outputNode.querySelector(":scope > assignee")
+    const containerNode = outputNode.querySelector(":scope > div")
+
+    const oldHeight = outputNode.scrollHeight
+    const oldScroll = window.scrollY
+
+    // Runtime:
+    cellNode.runtime = msg.runtime
+    cellNode.querySelector(":scope > runarea > span").innerText = prettytime(msg.runtime)
+    
+    // Cell classes:
+    cellNode.classList.toggle("running", 
+        msg.running
+    )
+    cellNode.classList.toggle("output-notinsync", 
+        msg.output == null
+    )
+    cellNode.classList.toggle("has-assignee",
+        !msg.errored && 
+        msg.rootassignee != null
+    )
+    cellNode.classList.toggle("inline-output", 
+        !msg.errored && 
+        (msg.mime == "application/vnd.pluto.tree+xml" || msg.mime == "text/plain")
+    )
+    cellNode.classList.toggle("error", 
+        msg.errored
+    )
+
+    // Root assignee:
+    if (!msg.errored) {
+        assigneeNode.innerText = msg.rootassignee
     }
 
-    const newHeight = outputNode.scrollHeight
-    const newScroll = window.scrollY
+    // Render HTML:
+    const newNode = renderOutput(msg, {oldNode: containerNode, id: cellNode.id})
+    if(newNode !== containerNode){
+        outputNode.replaceChild(newNode, containerNode)
+    }
+
+    // (see bond.js)
+    document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
 
     if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
         allCellsCompleted = true
         allCellsCompletedPromise.resolver()
     }
 
-    if (!notebookNode.querySelector("cell:focus-within")) {
-        return
-    }
-    const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
-    if (cellsAfterFocused.length == 0 || !Array.from(cellsAfterFocused).includes(cellNode)) {
-        window.scrollTo(window.scrollX, oldScroll + (newHeight - oldHeight))
+    // Scroll the page to compensate for changes in page height:
+    const newHeight = outputNode.scrollHeight
+    const newScroll = window.scrollY
+
+    if (notebookNode.querySelector("cell:focus-within")) {
+        const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
+        if (cellsAfterFocused.length == 0 || !Array.from(cellsAfterFocused).includes(cellNode)) {
+            window.scrollTo(window.scrollX, oldScroll + (newHeight - oldHeight))
+        }
     }
 }
 
@@ -823,7 +844,7 @@ function updateDocQuery(query = undefined) {
 
 /* ERRORS */
 
-function render_filename(frame, ctx) {
+function renderFilename(frame, ctx) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const uuid = frame.file.substr(sep_index + 4)
@@ -839,7 +860,7 @@ function render_filename(frame, ctx) {
     }
 }
 
-function render_funccall(frame, ctx) {
+function renderFunccall(frame, ctx) {
     const bracket_index = frame.call.indexOf("(")
     if (bracket_index != -1) {
         return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
@@ -848,7 +869,7 @@ function render_funccall(frame, ctx) {
     }
 }
 
-function render_error(state, ctx) {
+function renderError(state, ctx) {
     return html`
     <jlerror>
         <header>
@@ -857,7 +878,7 @@ function render_error(state, ctx) {
         <section style=${{ display: state.stacktrace.length == 0 ? "none" : "potato" }}>
             <ol>${
                 state.stacktrace.map(frame => html`<li>
-                    ${render_funccall(frame, ctx)}<span>@</span>${render_filename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
+                    ${renderFunccall(frame, ctx)}<span>@</span>${renderFilename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
                 </li>`)
             }</ol>
         </section>
