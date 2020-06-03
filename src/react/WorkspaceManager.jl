@@ -141,10 +141,10 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID
             @assert ex.pid == workspace.pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(InterruptException()), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = missing)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(exs), errored = true, interrupted = true, runtime=missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = missing)
         end
     end
 
