@@ -199,4 +199,4 @@ function tryexpanduser(path)
 	end
 end
 
-tamepath = normpath ∘ tryexpanduser
+tamepath = abspath ∘ tryexpanduser
