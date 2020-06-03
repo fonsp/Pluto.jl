@@ -1,4 +1,4 @@
-<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/assets/logo.svg" width=300 height=74 ></h1>
+<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/assets/img/logo.svg" width=300 height=74 ></h1>
 
 _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 

@@ -1,4 +1,6 @@
-function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
+import { utf8index_to_ut16index } from "./common/UnicodeTools.js"
+
+export function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
     var editor = CodeMirror(placer, {
         value: "",
         lineNumbers: false,
@@ -35,7 +37,7 @@ function createCodeMirrorFilepicker(placer, onEnter, reset, suggestNewFile) {
     return editor
 }
 
-function requestPathCompletions(cm) {
+export function requestPathCompletions(cm) {
     const cursor = cm.getCursor()
     const oldLine = cm.getLine(cursor.line)
 
@@ -46,11 +48,11 @@ function requestPathCompletions(cm) {
     }
 }
 
-function pathhints(cm, option) {
+export function pathhints(cm, option) {
     const cursor = cm.getCursor()
     const oldLine = cm.getLine(cursor.line)
 
-    return client.sendreceive("completepath", {
+    return window.client.sendreceive("completepath", {
         query: oldLine,
     }).then(update => {
         const queryFileName = oldLine.split("/").pop().split("\\").pop()
