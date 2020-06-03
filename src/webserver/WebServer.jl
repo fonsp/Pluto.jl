@@ -258,46 +258,42 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
     messagetype = Symbol(parentbody["type"])
     requestID = Symbol(parentbody["requestID"])
 
-    if messagetype == :disconnect
-        delete!(connectedclients, client.id)
-        close(clientstream)
-    else
-        body = parentbody["body"]
+    body = parentbody["body"]
 
-        args = []
-        if haskey(parentbody, "notebookID")
-            notebook = let
-                notebookID = UUID(parentbody["notebookID"])
-                get(notebooks, notebookID, nothing)
-            end
-            if notebook === nothing
-                messagetype === :connect || @warn "Remote notebook not found locally!"
-            else
-                client.connected_notebook = notebook
-                push!(args, notebook)
-            end
+    args = []
+    if haskey(parentbody, "notebookID")
+        notebook = let
+            notebookID = UUID(parentbody["notebookID"])
+            get(notebooks, notebookID, nothing)
         end
-
-        if haskey(parentbody, "cellID")
-            cellID = UUID(parentbody["cellID"])
-            index = cellindex_fromuuid(notebook, cellID)
-            if index === nothing
-                @warn "Remote cell not found locally!"
-            else
-                push!(args, notebook.cells[index])
-            end
-        end
-        
-        if haskey(responses, messagetype)
-            responsefunc = responses[messagetype]
-            try
-                responsefunc(body, args..., initiator=Initiator(client.id, requestID))
-            catch ex
-                @warn "Response function to message of type $(messagetype) failed"
-                rethrow(ex)
-            end
+        if notebook === nothing
+            messagetype === :connect || @warn "Remote notebook not found locally!"
         else
-            @warn "Message of type $(messagetype) not recognised"
+            client.connected_notebook = notebook
+            push!(args, notebook)
         end
     end
+
+    if haskey(parentbody, "cellID")
+        cellID = UUID(parentbody["cellID"])
+        index = cellindex_fromuuid(notebook, cellID)
+        if index === nothing
+            @warn "Remote cell not found locally!"
+        else
+            push!(args, notebook.cells[index])
+        end
+    end
+    
+    if haskey(responses, messagetype)
+        responsefunc = responses[messagetype]
+        try
+            responsefunc(body, args..., initiator=Initiator(client.id, requestID))
+        catch ex
+            @warn "Response function to message of type $(messagetype) failed"
+            rethrow(ex)
+        end
+    else
+        @warn "Message of type $(messagetype) not recognised"
+    end
+
 end

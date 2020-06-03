@@ -1000,7 +1000,9 @@ function present(){
 window.addEventListener('beforeunload', (event) => {
     const firstUnsaved = document.querySelector("notebook>cell.code-differs")
     if (firstUnsaved) {
+        console.log("preventing unload")
         codeMirrors[firstUnsaved.id].focus()
+        event.stopImmediatePropagation()
         event.preventDefault();
         event.returnValue = '';
     }

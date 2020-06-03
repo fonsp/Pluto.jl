@@ -163,6 +163,12 @@ export class PlutoConnection {
             this.currentlyConnected = false
             this.onDisconnect()
         })
+
+        window.addEventListener("beforeunload", e => {
+            console.warn("unloading 👉 disconnecting websocket")
+            this.psocket.onclose = undefined
+            this.tryCloseSocketConnection()
+        })
     }
 
     constructor(onUpdate, onEstablishConnection, onReconnect, onDisconnect) {
@@ -178,12 +184,6 @@ export class PlutoConnection {
         this.sentRequests = {}
         this.plutoVersion = "unknown"
         this.juliaVersion = "unknown"
-
-        window.addEventListener("beforeunload", e => {
-            //this.send("disconnect", {})
-            this.psocket.onclose = undefined
-            this.tryCloseSocketConnection()
-        })
     }
 
     fetchPlutoVersions() {
