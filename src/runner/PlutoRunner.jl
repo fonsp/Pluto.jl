@@ -456,8 +456,12 @@ end
 
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        obj = getfield(workspace, Symbol(query))
-        (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
+        obj = Core.eval(workspace, Meta.parse(query))
+        if obj isa Expr
+            (nothing, :👎)
+        else
+            (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
+        end
     catch ex
         (nothing, :👎)
     end

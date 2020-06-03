@@ -145,12 +145,19 @@ function createCodeMirrorInsideCell(cellNode, code) {
     })
 
     cm.on("cursorActivity", (cm) => {
-        const token = cm.getTokenAt(cm.getCursor())
-
-        if (token.type != null && token.type != "string") {
-            updateDocQuery(token.string)
+        if (cm.somethingSelected()) {
+            let sel = cm.getSelection()
+            if (!/[\s]/.test(sel)){
+                // no whitespace
+                updateDocQuery(sel)
+            }
+        } else {
+            let token = cm.getTokenAt(cm.getCursor())
+            if (token.type != null && token.type != "string") {
+                updateDocQuery(token.string)
+            }
         }
-    });
+    })
 
     cm.on("blur", (cm, e) => {
         if (document.hasFocus()) {
@@ -234,7 +241,6 @@ function renderOutput(msg, ctx) {
                         }
                     } else {
                         const result = Function(script.innerHTML).bind(newContainer)()
-                        console.log(result)
                         if (result && result.nodeType === Node.ELEMENT_NODE) {
                             script.parentElement.insertBefore(result, script)
                         }
@@ -299,6 +305,7 @@ function updateLocalCellOutput(cellNode, msg) {
     )
     cellNode.classList.toggle("inline-output", 
         !msg.errored && 
+        !!msg.output &&
         (msg.mime == "application/vnd.pluto.tree+xml" || msg.mime == "text/plain")
     )
     cellNode.classList.toggle("error", 
