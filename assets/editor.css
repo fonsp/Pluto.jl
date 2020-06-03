@@ -88,7 +88,7 @@ celloutput h1 {
 
 celloutput h2 {
     font-size: 1.8rem;
-    border-bottom: 2px dotted rgba(0, 0, 0, .15);
+    border-bottom: 2px solid rgba(0, 0, 0, .15);
     margin-bottom: .5rem;
 }
 
@@ -156,6 +156,15 @@ celloutput pre {
     font-family: "Roboto Mono", monospace;
 }
 
+blockquote p {
+    border-radius: 15px;
+    padding: 15px;
+    margin: 1rem auto 1rem;
+    max-width: 48rem;
+    background-color: #fafafa;
+    color: #555;
+    height: auto;
+}
 
 /* HEADER */
 
