@@ -159,7 +159,7 @@ setTimeout(() => {
 
         setTimeout(() => {
             storeStatisticsSample()
-            if (!localStorage.getItem("statistics enable") || (localStorage.getItem("statistics enable") == "true")) {
+            if (localStorage.getItem("statistics enable") && (localStorage.getItem("statistics enable") == "true")) {
                 feedbackdb.collection("statistics").add(statistics)
                     .catch(function (error) {
                         console.error("Failed to send statistics:")

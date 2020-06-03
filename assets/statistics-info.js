@@ -4,7 +4,7 @@ const check = document.querySelector("input#enable-statistics")
 function updatePage() {
     const enable = localStorage.getItem("statistics enable")
     const sample = localStorage.getItem("statistics sample")
-    check.checked = !enable || (enable == "true")
+    check.checked = enable && (enable == "true")
     code.innerText = !sample ? "\n\tOpen a notebook to see statistics" : sample
 }
 
