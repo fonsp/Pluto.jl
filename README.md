@@ -81,20 +81,25 @@ julia> Pluto.run(1234)
 
 Then go to [`http://localhost:1234/`](http://localhost:1234/) to start coding!
 
-<br >
-<hr >
-<br >
-
-### Remote access
-You can also run Pluto _on a server_, and use the browser on your own computer as user interface. For this, you need to set up an _SSH tunnel_. First, log in to your server using SSH and start a Pluto server. Then open a local terminal on your own computer and type:
-
-```bash
-ssh user@ipaddress -LN 1234:localhost:1234
-```
-with `user` and `ipaddress` filled in accordingly. You can then go to [`http://localhost:1234/`](http://localhost:1234/) on your own computer to get started! For more info and instructions for Windows, see [this guide](https://medium.com/@apbetahouse45/how-to-run-jupyter-notebooks-on-remote-server-part-1-ssh-a2be0232c533).
-
 ### To developers
 Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/dev_instructions.md) to start working on the package.
+
+<img src="https://raw.githubusercontent.com/gist/fonsp/9a36c183e2cad7c8fc30290ec95eb104/raw/ca3a38a61f95cd58d79d00b663a3c114d21e284e/cute.svg">
+
+## License
+
+Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/fonsp/Pluto.jl/blob/master/LICENSE). The included sample notebooks have a more permissive license: the [Unlicense](https://github.com/fonsp/Pluto.jl/blob/master/sample/LICENSE). This means that you can use sample notebook code however you like - you do not need to credit us!
+
+Pluto.jl is built by gluing together open source software:
+
+- `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
+- `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
+- `JSON.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
+- `CodeMirror` - [license](https://github.com/codemirror/CodeMirror/blob/master/LICENSE)
+- `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
+- `observablehq/stdlib` - [license](https://github.com/observablehq/stdlib/blob/master/LICENSE)
+
+Your notebook files are _yours_, you do not need to credit us. Have fun!
 
 ## Note
 
@@ -109,3 +114,4 @@ If you feel the same, give Pluto a try! We would love to hear what you think. ðŸ
 Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**MikoÅ‚aj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
+
