@@ -1,15 +1,17 @@
-import { html } from "https://unpkg.com/htl@0.2.0/src/index.js";
+import { html } from "https://unpkg.com/htl@0.2.0/src/index.js"
 
 import { PlutoConnection } from "./common/PlutoConnection.js"
 import { utf8index_to_ut16index } from "./common/UnicodeTools.js"
 
-import { createCodeMirrorFilepicker } from "./filepicker.js"
 import { statistics } from "./feedback.js"
 
 import "./common/SetupCellEnvironment.js"
+import "./common/GlobalShortKeys.js"
 
-import { html as preacthtml, Component, render } from 'https://unpkg.com/htm/preact/standalone.module.js';
+import { html as preacthtml, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
 import { CellOutput } from "./components/CellOutput.js"
+import { CellInput } from "./components/Cell.js"
+import { FilePicker } from "./components/FilePicker.js"
 
 /* REMOTE NOTEBOOK LIST */
 
@@ -19,7 +21,7 @@ export let notebook = {
 }
 
 function updateLocalNotebookPath(newPath) {
-    filePickerCodeMirror.setValue(newPath)
+    window.filePickerCodeMirror.setValue(newPath)
 
     const fileName = newPath.split("/").pop().split("\\").pop()
     const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
@@ -32,7 +34,7 @@ function updateRemoteNotebooks(list) {
     const oldPath = notebook.path
 
     remoteNotebookList = list
-    list.forEach(nb => {
+    list.forEach((nb) => {
         if (nb.uuid == notebook.uuid) {
             notebook = nb
             updateLocalNotebookPath(nb.path)
@@ -53,50 +55,49 @@ const notebookNode = document.querySelector("notebook")
 
 /* FILE PICKER */
 
-const submitFileButton = document.querySelector("header>#logocontainer>filepicker>button")
-submitFileButton.addEventListener("click", submitFileChange)
-
 function submitFileChange() {
     const oldPath = notebook.path
-    const newPath = filePickerCodeMirror.getValue()
+    const newPath = window.filePickerCodeMirror.getValue()
     if (oldPath == newPath) {
         return
     }
     if (confirm("Are you sure? Will move from\n\n" + oldPath + "\n\nto\n\n" + newPath)) {
         document.body.classList.add("loading")
-        client.sendreceive("movenotebookfile", {
-            path: newPath,
-        }).then(u => {
-            updateLocalNotebookPath(notebook.path)
-            document.body.classList.remove("loading")
+        client
+            .sendreceive("movenotebookfile", {
+                path: newPath,
+            })
+            .then((u) => {
+                updateLocalNotebookPath(notebook.path)
+                document.body.classList.remove("loading")
 
-            if (u.message.success) {
-                document.activeElement.blur()
-            } else {
-                updateLocalNotebookPath(oldPath)
-                alert("Failed to move file:\n\n" + u.message.reason)
-            }
-        })
+                if (u.message.success) {
+                    document.activeElement.blur()
+                } else {
+                    updateLocalNotebookPath(oldPath)
+                    alert("Failed to move file:\n\n" + u.message.reason)
+                }
+            })
     } else {
         updateLocalNotebookPath(oldPath)
     }
 }
 
-let filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
-    document.querySelector("header>#logocontainer>filepicker").insertBefore(
-        elt,
-        submitFileButton)
-}, submitFileChange, () => updateLocalNotebookPath(notebook.path), true)
-
-filePickerCodeMirror.on("blur", (cm, e) => {
-    // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-    // debounce:
-    setTimeout(() => {
-        if (!cm.hasFocus()) {
-            updateLocalNotebookPath(notebook.path)
-        }
-    }, 250)
-})
+render(
+    preacthtml`<${FilePicker}
+        onEnter=${submitFileChange} 
+        onReset=${() => updateLocalNotebookPath(notebook.path)} 
+        onBlur=${(cm, e) => {
+        // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
+        // debounce:
+        setTimeout(() => {
+            if (!cm.hasFocus()) {
+                updateLocalNotebookPath(notebook.path)
+            }
+        }, 250)
+    }} suggestNewFile=${true}/>`,
+    document.querySelector("header>#logocontainer>span#filepickerhereplease")
+)
 
 /* RESPONSE FUNCTIONS TO REMOTE CHANGES */
 
@@ -104,20 +105,23 @@ export let localCells = {}
 export let codeMirrors = {}
 
 function createCodeMirrorInsideCell(cellNode, code) {
-    const cm = CodeMirror((elt) => {
-        cellNode.querySelector("cellinput").appendChild(elt)
-    }, {
-        value: code,
-        lineNumbers: true,
-        mode: "julia",
-        lineWrapping: true,
-        viewportMargin: Infinity,
-        placeholder: "Enter cell code...",
-        indentWithTabs: true,
-        indentUnit: 4,
-        hintOptions: { hint: juliahints },
-        matchBrackets: true,
-    });
+    const cm = CodeMirror(
+        (elt) => {
+            cellNode.querySelector("cellinput").appendChild(elt)
+        },
+        {
+            value: code,
+            lineNumbers: true,
+            mode: "julia",
+            lineWrapping: true,
+            viewportMargin: Infinity,
+            placeholder: "Enter cell code...",
+            indentWithTabs: true,
+            indentUnit: 4,
+            hintOptions: { hint: juliahints },
+            matchBrackets: true,
+        }
+    )
 
     codeMirrors[cellNode.id] = cm
     //cm.setOption("readOnly", true);
@@ -136,8 +140,8 @@ function createCodeMirrorInsideCell(cellNode, code) {
             }
         },
         "Shift-Tab": "indentLess",
-        "Tab": onTabKey,
-    });
+        Tab: onTabKey,
+    })
 
     cm.on("change", (cm, change) => {
         // TODO: optimise
@@ -150,7 +154,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
     cm.on("cursorActivity", (cm) => {
         if (cm.somethingSelected()) {
             let sel = cm.getSelection()
-            if (!/[\s]/.test(sel)){
+            if (!/[\s]/.test(sel)) {
                 // no whitespace
                 updateDocQuery(sel)
             }
@@ -175,7 +179,7 @@ function createCodeMirrorInsideCell(cellNode, code) {
 }
 
 function updateAnyCodeDiffers(hint = false) {
-    document.body.classList.toggle("code-differs", hint || (document.querySelector("notebook>cell.code-differs") != null))
+    document.body.classList.toggle("code-differs", hint || document.querySelector("notebook>cell.code-differs") != null)
 }
 
 function prettytime(time_ns) {
@@ -196,7 +200,7 @@ function prettytime(time_ns) {
     } else {
         roundedtime = Math.round(time_ns * 10) / 10
     }
-    return roundedtime + '\xa0' + prefices[i] + "s"
+    return roundedtime + "\xa0" + prefices[i] + "s"
 }
 
 function renderOutputContainer(contents) {
@@ -216,26 +220,13 @@ function updateLocalCellOutput(cellNode, msg) {
     // Runtime:
     cellNode.runtime = msg.runtime
     cellNode.querySelector(":scope > runarea > span").innerText = prettytime(msg.runtime)
-    
+
     // Cell classes:
-    cellNode.classList.toggle("running", 
-        msg.running
-    )
-    cellNode.classList.toggle("output-notinsync", 
-        msg.output == null
-    )
-    cellNode.classList.toggle("has-assignee",
-        !msg.errored && 
-        msg.rootassignee != null
-    )
-    cellNode.classList.toggle("inline-output", 
-        !msg.errored && 
-        !!msg.output &&
-        (msg.mime == "application/vnd.pluto.tree+xml" || msg.mime == "text/plain")
-    )
-    cellNode.classList.toggle("error", 
-        msg.errored
-    )
+    cellNode.classList.toggle("running", msg.running)
+    cellNode.classList.toggle("output-notinsync", msg.output == null)
+    cellNode.classList.toggle("has-assignee", !msg.errored && msg.rootassignee != null)
+    cellNode.classList.toggle("inline-output", !msg.errored && !!msg.output && (msg.mime == "application/vnd.pluto.tree+xml" || msg.mime == "text/plain"))
+    cellNode.classList.toggle("error", msg.errored)
 
     // Root assignee:
     if (!msg.errored) {
@@ -243,11 +234,11 @@ function updateLocalCellOutput(cellNode, msg) {
     }
 
     // Render HTML:
-	const newNode = renderOutputContainer()
+    const newNode = renderOutputContainer()
 
-	render(preacthtml`<${CellOutput} cell=${cellNode} ...${msg}/>`, newNode)
+    render(preacthtml`<${CellOutput} cell=${cellNode} ...${msg}/>`, newNode)
 
-    if(newNode !== containerNode){
+    if (newNode !== containerNode) {
         outputNode.replaceChild(newNode, containerNode)
     }
 
@@ -371,10 +362,10 @@ function deleteLocalCell(cellNode) {
     const uuid = cellNode.id
     try {
         delete codeMirrors[uuid]
-    } catch (err) { }
+    } catch (err) {}
     try {
         delete localCells[uuid]
-    } catch (err) { }
+    } catch (err) {}
 
     cellNode.remove()
 }
@@ -407,7 +398,9 @@ export let allCellsCompletedPromise = null
 export function refreshAllCompletionPromise() {
     if (allCellsCompleted) {
         let resolver
-        allCellsCompletedPromise = new Promise(r => { resolver = r })
+        allCellsCompletedPromise = new Promise((r) => {
+            resolver = r
+        })
         allCellsCompletedPromise.resolver = resolver
         allCellsCompleted = false
     }
@@ -428,20 +421,28 @@ function requestRunAllChangedRemoteCells() {
     refreshAllCompletionPromise()
 
     const changed = Array.from(notebookNode.querySelectorAll("cell.code-differs"))
-    const promises = changed.map(cellNode => {
+    const promises = changed.map((cellNode) => {
         const uuid = cellNode.id
         cellNode.classList.add("running")
-        return client.sendreceive("setinput", {
-            code: codeMirrors[uuid].getValue()
-        }, uuid).then(u => {
-            updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
-        })
+        return client
+            .sendreceive(
+                "setinput",
+                {
+                    code: codeMirrors[uuid].getValue(),
+                },
+                uuid
+            )
+            .then((u) => {
+                updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
+            })
     })
-    Promise.all(promises).then(() => {
-        client.send("runmultiple", {
-            cells: changed.map(c => c.id)
+    Promise.all(promises)
+        .then(() => {
+            client.send("runmultiple", {
+                cells: changed.map((c) => c.id),
+            })
         })
-    }).catch(console.error)
+        .catch(console.error)
 }
 
 function requestInterruptRemote() {
@@ -468,7 +469,6 @@ function requestDeleteRemoteCell(uuid) {
 function requestCodeFoldRemoteCell(uuid, newFolded) {
     client.send("foldcell", { folded: newFolded }, uuid)
 }
-
 
 /* SERVER CONNECTION */
 
@@ -506,7 +506,7 @@ function onUpdate(update, byMe) {
             updateRemoteNotebooks(message.notebooks)
             break
         case "eval":
-            (new Function(update.message.script))()
+            new Function(update.message.script)()
             break
         case "bond_update":
             // TODO
@@ -531,36 +531,39 @@ function onEstablishConnection() {
     // on socket success
     client.send("getallnotebooks", {})
 
-    client.sendreceive("getallcells", {}).then(update => {
-        const promises = []
+    client
+        .sendreceive("getallcells", {})
+        .then((update) => {
+            const promises = []
 
-        update.message.cells.forEach((cell, index) => {
-            const cellNode = createLocalCell(index, cell.uuid, "", false)
-            cellNode.classList.add("output-notinsync")
-            runAll && cellNode.classList.add("running")
-            promises.push(
-                client.sendreceive("getinput", {}, cell.uuid).then(u => {
-                    updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
-                })
-            )
-            promises.push(
-                client.sendreceive("getoutput", {}, cell.uuid).then(u => {
-                    if(!runAll || cellNode.classList.contains("running")) {
-                        updateLocalCellOutput(cellNode, u.message)
-                    } else {
-                        // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
-                    }
-                })
-            )
+            update.message.cells.forEach((cell, index) => {
+                const cellNode = createLocalCell(index, cell.uuid, "", false)
+                cellNode.classList.add("output-notinsync")
+                runAll && cellNode.classList.add("running")
+                promises.push(
+                    client.sendreceive("getinput", {}, cell.uuid).then((u) => {
+                        updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
+                    })
+                )
+                promises.push(
+                    client.sendreceive("getoutput", {}, cell.uuid).then((u) => {
+                        if (!runAll || cellNode.classList.contains("running")) {
+                            updateLocalCellOutput(cellNode, u.message)
+                        } else {
+                            // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
+                        }
+                    })
+                )
+            })
+
+            Promise.all(promises).then(() => {
+                document.body.classList.remove("loading")
+                console.info("Workspace initialized")
+            })
         })
+        .catch(console.error)
 
-        Promise.all(promises).then(() => {
-            document.body.classList.remove("loading")
-            console.info("Workspace initialized")
-        })
-    }).catch(console.error)
-
-    client.fetchPlutoVersions().then(versions => {
+    client.fetchPlutoVersions().then((versions) => {
         const remote = versions[0]
         const local = versions[1]
 
@@ -571,7 +574,13 @@ function onEstablishConnection() {
 
             // while we are in alpha, we also notify for patch updates.
             if (rs[0] != ls[0] || rs[1] != ls[1] || true) {
-                alert("A new version of Pluto.jl is available! 🎉\n\n    You have " + local + ", the latest is " + remote + ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia.")
+                alert(
+                    "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                        local +
+                        ", the latest is " +
+                        remote +
+                        ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia."
+                )
             }
         }
     })
@@ -605,10 +614,12 @@ function updateRecentNotebooks(alsodelete) {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
     const oldpaths = storedList
-    const newpaths = [notebook.path].concat(oldpaths.filter(path => {
-        return (path != notebook.path) && (path != alsodelete)
-    }))
-    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0,50)))
+    const newpaths = [notebook.path].concat(
+        oldpaths.filter((path) => {
+            return path != notebook.path && path != alsodelete
+        })
+    )
+    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
 
 /* DRAG-DROPPING CELLS */
@@ -647,7 +658,7 @@ document.ondragstart = (e) => {
 }
 
 function getDropIndexOf(pageY) {
-    const distances = dropPositions.map(p => Math.abs(p - pageY))
+    const distances = dropPositions.map((p) => Math.abs(p - pageY))
     return argmin(distances)
 }
 
@@ -674,11 +685,11 @@ document.ondrop = (e) => {
 
 if ("fonts" in document) {
     document.fonts.ready.then(function () {
-        console.log("fonts loaded");
+        console.log("fonts loaded")
         for (let uuid in codeMirrors) {
             codeMirrors[uuid].refresh()
         }
-    });
+    })
 }
 
 /* AUTOCOMPLETE */
@@ -695,7 +706,7 @@ function onTabKey(cm) {
         if (cursor.ch > 0 && noAutocomplete.indexOf(oldLine[cursor.ch - 1]) == -1) {
             cm.showHint()
         } else {
-            cm.replaceSelection('\t')
+            cm.replaceSelection("\t")
         }
     }
 }
@@ -705,15 +716,17 @@ function juliahints(cm, option) {
     const oldLine = cm.getLine(cursor.line)
     const oldLineSliced = oldLine.slice(0, cursor.ch)
 
-    return client.sendreceive("complete", {
-        query: oldLineSliced,
-    }).then(update => {
-        return {
-            list: update.message.results,
-            from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.start)),
-            to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.stop)),
-        }
-    })
+    return client
+        .sendreceive("complete", {
+            query: oldLineSliced,
+        })
+        .then((update) => {
+            return {
+                list: update.message.results,
+                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.start)),
+                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.stop)),
+            }
+        })
 }
 
 /* LIVE DOCS */
@@ -750,7 +763,6 @@ function updateDocQuery(query = undefined) {
 
     window.desiredDocQuery = query
 
-
     if (doc.classList.contains("loading")) {
         updateDocTimer = setTimeout(() => {
             updateDocQuery()
@@ -759,7 +771,7 @@ function updateDocQuery(query = undefined) {
     }
 
     doc.classList.add("loading")
-    client.sendreceive("docs", { query: query }).then(u => {
+    client.sendreceive("docs", { query: query }).then((u) => {
         if (u.message.status == "⌛") {
             updateDocTimer = setTimeout(() => {
                 doc.classList.remove("loading")
@@ -777,67 +789,19 @@ function updateDocQuery(query = undefined) {
     })
 }
 
-/* MORE SHORTKEYS */
-
-document.addEventListener("keydown", (e) => {
-    switch (e.keyCode) {
-        case 81: // q
-            if (e.ctrlKey) {
-                if (document.querySelector("notebook>cell.running")) {
-                    requestInterruptRemote()
-                }
-                e.preventDefault()
-            }
-            break
-        case 82: // r
-            if (e.ctrlKey) {
-                if (notebook) {
-                    document.location.href = "open?path=" + encodeURIComponent(notebook.path)
-                    e.preventDefault()
-                }
-            }
-            break
-        case 83: // s
-            if (e.ctrlKey) {
-                filePickerCodeMirror.focus()
-                filePickerCodeMirror.setSelection({ line: 0, ch: 0 }, { line: Infinity, ch: Infinity })
-                e.preventDefault()
-            }
-            break
-        case 191: // ? or /
-            if (!(e.ctrlKey && e.shiftKey)) {
-                break
-            }
-        // fall into:
-        case 112: // F1
-            // TODO: show help
-            alert(
-                `Shortcuts 🎹
-
-Ctrl+Enter:   run cell
-Shift+Enter:   run cell and add cell below
-Ctrl+Shift+Delete:   delete cell
-Ctrl+Q:   interrupt notebook
-Ctrl+S:   rename notebook`)
-
-            e.preventDefault()
-            break
-    }
-})
-
 /* PRESENTATION MODE */
 
 function calculateSlidePositions() {
     const height = window.innerHeight
     const headers = Array.from(document.querySelectorAll("celloutput h1, celloutput h2"))
-    const pos = headers.map(el => el.getBoundingClientRect())
-    const edges = pos.map(rect => rect.top + window.pageYOffset)
+    const pos = headers.map((el) => el.getBoundingClientRect())
+    const edges = pos.map((rect) => rect.top + window.pageYOffset)
     edges.push(notebookNode.getBoundingClientRect().bottom + window.pageYOffset)
 
     const scrollPositions = headers.map((el, i) => {
-        if(el.tagName == "H1") {
+        if (el.tagName == "H1") {
             // center vertically
-            const slideHeight = edges[i+1] - edges[i] - height
+            const slideHeight = edges[i + 1] - edges[i] - height
             return edges[i] - Math.max(0, (height - slideHeight) / 2)
         } else {
             // align to top
@@ -849,36 +813,42 @@ function calculateSlidePositions() {
 }
 
 function currentSlideIndex(positions) {
-    return positions.findIndex(y => y + (window.innerHeight / 2) > window.pageYOffset)
+    return positions.findIndex((y) => y + window.innerHeight / 2 > window.pageYOffset)
 }
 
 function prevSlide(e) {
     positions = calculateSlidePositions()
 
-    window.scrollTo(window.pageXOffset, positions.reverse().find(y => y < window.pageYOffset - 10))
+    window.scrollTo(
+        window.pageXOffset,
+        positions.reverse().find((y) => y < window.pageYOffset - 10)
+    )
 }
 
 function nextSlide(e) {
     positions = calculateSlidePositions()
-    window.scrollTo(window.pageXOffset, positions.find(y => y - 10 > window.pageYOffset))
+    window.scrollTo(
+        window.pageXOffset,
+        positions.find((y) => y - 10 > window.pageYOffset)
+    )
 }
 
-function present(){
+function present() {
     document.body.classList.toggle("presentation")
 }
 
 /* CHANGES THAT YOU MADE MIGHT NOT BE SAVED */
 
-window.addEventListener('beforeunload', (event) => {
+window.addEventListener("beforeunload", (event) => {
     const firstUnsaved = document.querySelector("notebook>cell.code-differs")
     if (firstUnsaved) {
         console.log("preventing unload")
         codeMirrors[firstUnsaved.id].focus()
         event.stopImmediatePropagation()
-        event.preventDefault();
-        event.returnValue = '';
+        event.preventDefault()
+        event.returnValue = ""
     }
-});
+})
 
 /* START CONNECTION */
 
@@ -889,10 +859,12 @@ client.initialize()
 const ccc = html`<div></div>`
 document.body.appendChild(ccc)
 
-
-
-render(preacthtml`
+render(
+    preacthtml`
 <${CellOutput} mime="text/plain" output="wowie!" assignee="xoxo"/>
+<${FilePicker} />
 <${CellOutput} mime="text/plain" output="wowie!" assignee=${null} />
 <${CellOutput} mime="text/html" output="<h1>H00fd</h1>" assignee="xoxo"/>
-`, ccc)
+`,
+    ccc
+)
