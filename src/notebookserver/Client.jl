@@ -33,7 +33,7 @@ function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Uni
     return UpdateMessage(:cell_output, 
             Dict(:mime => mime,
              :output => payload,
-             :errormessage => cell.error_repr,
+             :errored => cell.errored,
              :runtime => cell.runtime,
              :running => cell.running,
              :rootassignee => cell.rootassignee,

@@ -1,6 +1,7 @@
-observablehq.Library()
-const html = observablehq.html()
-const DOM = observablehq.DOM
+import { html } from "https://unpkg.com/htl@0.2.0/src/index.js";
+
+import { createCodeMirrorFilepicker } from "./filepicker.js"
+import { PlutoConnection } from "./common/PlutoConnection.js"
 
 /* REMOTE & LOCALSTORAGE NOTEBOOK LISTS */
 
@@ -36,7 +37,7 @@ function updateRunningNotebooks(list) {
 function updateCombinedNotebooks() {
     if(!combinedNotebookList){
         // This is the initial render. Place running notebooks at the top.
-        
+
         const runningPaths = runningNotebookList.map(nb => nb.path)
 
         combinedNotebookList = runningNotebookList.map(x => x) // shallow copy but that's okay
@@ -47,7 +48,7 @@ function updateCombinedNotebooks() {
         })
     } else {
         // The list has already been generated and rendered to the page. Try to maintain order as much as possible.
-        
+
         // already rendered notebooks will be added:
         const renderedRunning = []
 
@@ -83,19 +84,23 @@ function showNotebooks() {
     console.log("Running:")
     console.log(runningNotebookList)
     document.body.classList.toggle("nosessions", combinedNotebookList.length == 0)
-    document.body.querySelector("main").replaceChild(render_notebooklist(combinedNotebookList), document.querySelector("ul#recent"))
+    document.body.querySelector("main").replaceChild(renderNotebookList(combinedNotebookList), document.querySelector("ul#recent"))
     document.body.classList.remove("loading")
 }
 
-function render_notebooklist(list) {
+function renderNotebookList(list) {
     return html`<ul id="recent">
         ${list.map(nb => {
             const running = !!nb.uuid
-            const li = html`<li class="${running ? "running" : "recent"}">
-                <button onclick="onSessionClick(event)" title="${running ? "Shut down notebook" : "Start notebook in background"}"><span></span></button>
-                <a href="${
-                    running ? "edit?uuid=" + nb.uuid : "open?path=" + encodeURIComponent(nb.path)
-                }" title="${nb.path}">${nb.shortpath}</a>
+            const li = html`<li class=${running ? "running" : "recent"}>
+                <button
+                  onclick=${event => onSessionClick(event)}
+                  title=${running ? "Shut down notebook" : "Start notebook in background"}
+                ><span></span></button>
+                <a
+                  href=${running ? `edit?uuid=${nb.uuid}` : `open?path=${encodeURIComponent(nb.path)}`}
+                  title=${nb.path}
+                >${nb.shortpath}</a>
             </li>`
             li.nb = nb
             return li
@@ -122,7 +127,7 @@ function onSessionClick(event) {
         } else {
             li.classList.replace("transitioning", "running")
         }
-        
+
     } else if(li.classList.replace("recent", "transitioning")) {
         fetch(li.querySelector("a").href, {
             method: "GET",
@@ -145,11 +150,11 @@ const openFileButton = document.querySelector("filepicker>button")
 openFileButton.addEventListener("click", openFile)
 
 function openFile() {
-    const path = window.filePickerCodeMirror.getValue()
+    const path = filePickerCodeMirror.getValue()
     window.location.href = "open?path=" + encodeURIComponent(path)
 }
 
-window.filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
+let filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
     document.querySelector("filepicker").insertBefore(
         elt,
         openFileButton)

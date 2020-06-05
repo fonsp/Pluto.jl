@@ -76,6 +76,7 @@ ul {
 }
 
 li {
+    white-space: nowrap;
     margin-bottom: .9em;
 }
 

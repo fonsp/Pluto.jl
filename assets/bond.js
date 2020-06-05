@@ -1,22 +1,22 @@
-observablehq.Library()
-const html = observablehq.html()
-const DOM = observablehq.DOM
+import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
+import { refreshAllCompletionPromise, allCellsCompletedPromise } from "./editor.js"
+import { statistics } from "./feedback.js";
 
 function makeBond(bondNode) {
     if(bondNode.getRootNode() != document){
         return
     }
     bondNode.generator.next().value.then(val => {
-        window.statistics.numBondSets++
+        statistics.numBondSets++
 
-        window.refreshAllCompletionPromise()
+        refreshAllCompletionPromise();
         window.client.sendreceive("bond_set", {
             sym: bondNode.getAttribute("def"),
             val: val,
         }).then(u => {
         })
-        window.allCellsCompletedPromise.then(_ => {
+        allCellsCompletedPromise.then(_ => {
             makeBond(bondNode)
         })
     })
@@ -31,8 +31,8 @@ document.addEventListener("celloutputchanged", (e) => {
     const bondNodes = cellNode.querySelectorAll("bond")
 
     bondNodes.forEach(bondNode => {
-        bondNode.generator = observablehq.Generators.input(bondNode.firstElementChild)
-        window.allCellsCompletedPromise.then(_ => {
+        bondNode.generator = Generators_input(bondNode.firstElementChild)
+        allCellsCompletedPromise.then(_ => {
             makeBond(bondNode)
         })
     })

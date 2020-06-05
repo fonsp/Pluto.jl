@@ -83,15 +83,9 @@ function run_single!(notebook::Notebook, cell::Cell)
 	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.uuid, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
-	if run.errored
-		cell.output_repr = nothing
-		cell.error_repr = run.output_formatted[1]
-		cell.repr_mime = run.output_formatted[2]
-	else
-		cell.output_repr = run.output_formatted[1]
-		cell.error_repr = nothing
-		cell.repr_mime = run.output_formatted[2]
-	end
+	cell.output_repr = run.output_formatted[1]
+	cell.repr_mime = run.output_formatted[2]
+	cell.errored = run.errored
 
 	return run
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now

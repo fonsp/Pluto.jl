@@ -146,6 +146,15 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 # FORMATTING
 ###
 
+function try_showerror(io::IO, e, args...)
+    try
+        showerror(io, e, args...)
+    catch show_ex
+        print(io, "\nFailed to show error:\n\n")
+        try_showerror(io, show_ex, stacktrace(catch_backtrace()))
+    end
+end
+
 # We add a method for the Markdown -> HTML conversion that takes a LaTeX chunk from the Markdown tree and adds our custom span
 function htmlinline(io::IO, x::LaTeX)
     withtag(io, :span, :class => "tex") do
@@ -176,39 +185,35 @@ const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); ima
 
 See `PlutoRunner.allmimes` for the ordered list of supported MIME types."""
 function format_output(val::Any)::Tuple{String, MIME}
-    if val === nothing
-        "", MIME"text/plain"()
-    else
-        try
-            sprint_withreturned(show_richest, val; context=iocontext)
-        catch ex
-            "Failed to show value: \n" * sprint(showerror, ex, stacktrace(catch_backtrace())), MIME"text/plain"()
-        end
+    try
+        sprint_withreturned(show_richest, val; context=iocontext)
+    catch ex
+        title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
+        bt = stacktrace(catch_backtrace())
+        format_output(CapturedException(title, bt))
     end
 end
 
+format_output(val::Nothing)::Tuple{String, MIME} = "", MIME"text/plain"()
+
 function format_output(val::CapturedException)::Tuple{String, MIME}
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    try
-        stack = [s for (s,_) in val.processed_bt]
+    stack = [s for (s,_) in val.processed_bt]
 
-        for _ in 1:2
-            until = findfirst(b -> b.func == :eval, reverse(stack))
-            stack = until === nothing ? stack : stack[1:(length(stack) - until)]
-        end
-
-        pretty = map(stack[1:end]) do s
-            Dict(
-                :call => pretty_stackcall(s, s.linfo),
-                :inlined => s.inlined,
-                :file => basename(String(s.file)),
-                :line => s.line,
-            )
-        end
-        sprint(json, Dict(:msg => sprint(showerror, val.ex), :stacktrace => pretty)), MIME"application/vnd.pluto.stacktrace+json"()
-    catch ex
-        sprint(showerror, val.ex, val.processed_bt), MIME"text/plain"()
+    for _ in 1:2
+        until = findfirst(b -> b.func == :eval, reverse(stack))
+        stack = until === nothing ? stack : stack[1:(length(stack) - until)]
     end
+
+    pretty = map(stack[1:end]) do s
+        Dict(
+            :call => pretty_stackcall(s, s.linfo),
+            :inlined => s.inlined,
+            :file => basename(String(s.file)),
+            :line => s.line,
+        )
+    end
+    sprint(json, Dict(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty)), MIME"application/vnd.pluto.stacktrace+json"()
 end
 
 # from the Julia source code:
@@ -451,8 +456,12 @@ end
 
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        obj = getfield(workspace, Symbol(query))
-        (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
+        obj = Core.eval(workspace, Meta.parse(query))
+        if obj isa Expr
+            (nothing, :👎)
+        else
+            (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
+        end
     catch ex
         (nothing, :👎)
     end

@@ -1,3 +1,5 @@
+import { remoteNotebookList, localCells, codeMirrors } from "./editor.js"
+
 function timeoutPromise(promise, time_ms) {
     return Promise.race([
         promise,
@@ -13,62 +15,63 @@ function measurePingTimes() {
     fetch("ping").then(() => {
         const ticHTTP = Date.now()
         fetch("ping").then(() => {
-            window.statistics.pingTimeHTTP = Date.now() - ticHTTP
+            statistics.pingTimeHTTP = Date.now() - ticHTTP
         })
     })
-    client.sendreceive("getversion", {}).then(() => {
+    window.client.sendreceive("getversion", {}).then(() => {
         const ticWS = Date.now()
-        client.sendreceive("getversion", {}).then(() => {
-            window.statistics.pingTimeWS = Date.now() - ticWS
+        window.client.sendreceive("getversion", {}).then(() => {
+            statistics.pingTimeWS = Date.now() - ticWS
         })
     })
 }
 
+export let statistics = null;
 function resetStatistics() {
-    window.statistics = {
+    statistics = {
         get numCells() {
-            return Object.values(window.codeMirrors).length
+            return Object.values(codeMirrors).length
             // integer
         },
         get numErrored() {
-            return Object.values(window.localCells).filter(c => c.classList.contains("error")).length
+            return Object.values(localCells).filter(c => c.classList.contains("error")).length
             // integer
         },
         get numFolded() {
-            return Object.values(window.localCells).filter(c => c.classList.contains("code-folded")).length
+            return Object.values(localCells).filter(c => c.classList.contains("code-folded")).length
             // integer
         },
         get numCodeDiffers() {
-            return Object.values(window.localCells).filter(c => c.classList.contains("code-differs")).length
+            return Object.values(localCells).filter(c => c.classList.contains("code-differs")).length
             // integer
         },
         get numMarkdowns() {
-            return Object.values(window.codeMirrors).filter(cm => cm.getLine(0).startsWith("md\"")).length
+            return Object.values(codeMirrors).filter(cm => cm.getLine(0).startsWith("md\"")).length
             // integer
         },
         get numBinds() {
-            return Object.values(window.codeMirrors).map(cm => (cm.getValue().match(/\@bind/g) || []).length).reduce((a, b) => a + b, 0)
+            return Object.values(codeMirrors).map(cm => (cm.getValue().match(/\@bind/g) || []).length).reduce((a, b) => a + b, 0)
             // integer
         },
         get numBegins() {
-            return Object.values(window.codeMirrors).filter(cm => cm.getLine(0).endsWith("begin")).length
+            return Object.values(codeMirrors).filter(cm => cm.getLine(0).endsWith("begin")).length
             // integer
         },
         get numLets() {
-            return Object.values(window.codeMirrors).filter(cm => cm.getLine(0).endsWith("let")).length
+            return Object.values(codeMirrors).filter(cm => cm.getLine(0).endsWith("let")).length
             // integer
         },
         get numConcurrentNotebooks() {
-            return window.remoteNotebookList.length
+            return remoteNotebookList.length
             // integer
         },
         get cellSizes() {
-            return Object.values(window.codeMirrors).map(cm => cm.lineCount()).reduce((a, b) => { a[b] = a[b] ? a[b] + 1 : 1; return a }, {})
+            return Object.values(codeMirrors).map(cm => cm.lineCount()).reduce((a, b) => { a[b] = a[b] ? a[b] + 1 : 1; return a }, {})
             // {numLines: numCells, ...}
             // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
         },
         get runtimes() {
-            return Object.values(window.localCells).map(c => Math.floor(Math.log10(c.runtime + 1))).reduce((a, b) => { a[b] = a[b] ? a[b] + 1 : 1; return a }, {})
+            return Object.values(localCells).map(c => Math.floor(Math.log10(c.runtime + 1))).reduce((a, b) => { a[b] = a[b] ? a[b] + 1 : 1; return a }, {})
             // {runtime: numCells, ...}
             // where `runtime` is log10, rounded
             // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
@@ -106,7 +109,7 @@ function resetStatistics() {
 }
 
 function storeStatisticsSample() {
-    localStorage.setItem("statistics sample", JSON.stringify(window.statistics, null, 4))
+    localStorage.setItem("statistics sample", JSON.stringify(statistics, null, 4))
 }
 
 resetStatistics()
@@ -134,13 +137,13 @@ setTimeout(() => {
                 email: email ? email : "",
             }), 5000)
             .then(function () {
-                message = "Submitted. Thank you for your feedback! 💕"
+                let message = "Submitted. Thank you for your feedback! 💕"
                 console.log(message)
                 alert(message)
                 feedbackform.querySelector("#opinion").value = ""
             })
             .catch(function (error) {
-                message = "Whoops, failed to send feedback 😢\nWe would really like to hear from you! Please got to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
+                let message = "Whoops, failed to send feedback 😢\nWe would really like to hear from you! Please got to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
                 console.error(message)
                 console.error(error)
                 alert(message + error)
@@ -149,15 +152,15 @@ setTimeout(() => {
         e.preventDefault()
     })
 
-    localStorage.setItem("statistics sample", JSON.stringify(window.statistics, null, 4))
+    localStorage.setItem("statistics sample", JSON.stringify(statistics, null, 4))
 
     setInterval(() => {
         measurePingTimes()
 
         setTimeout(() => {
             storeStatisticsSample()
-            if (!localStorage.getItem("statistics enable") || (localStorage.getItem("statistics enable") == "true")) {
-                feedbackdb.collection("statistics").add(window.statistics)
+            if (localStorage.getItem("statistics enable") && (localStorage.getItem("statistics enable") == "true")) {
+                feedbackdb.collection("statistics").add(statistics)
                     .catch(function (error) {
                         console.error("Failed to send statistics:")
                         console.error(error)

@@ -192,6 +192,12 @@ using Test
         @test testee(:(function f(::MIME"text/html") 1 end), [], [], [], [
             :f => ([Symbol("@MIME_str")], [], [], [])
         ])
+        @test testee(:(a(a::AbstractArray{T}) where T = 5), [], [], [], [
+            :a => ([:AbstractArray], [], [], [])
+        ])
+        @test testee(:(a(a::AbstractArray{T, R}) where {T,S} = a+b), [], [], [], [
+            :a => ([:AbstractArray, :b, :R], [], [:+], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])

@@ -11,15 +11,15 @@
     <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
     <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/master/LICENSE" />
     <meta name="theme-color" content="#ffffff" />
-    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="assets/img/favicon-96x96.png">
     <meta name="description" content="Pluto.jl notebooks" />
+    
+    <script src="assets/common/RegisterSW.js"></script>
 
-    <script src="assets/client.js" defer></script>
-    <script src="assets/filepicker.js" defer></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
+    
+    <!-- <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script> -->
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/mode/julia/julia.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
@@ -30,7 +30,7 @@
 
 
     <link rel="stylesheet" href="assets/editor.css" type="text/css" />
-    <link rel="stylesheet" href="assets/treeview.css" />
+    <link rel="stylesheet" href="assets/treeview.css" type="text/css"  />
     <link rel="stylesheet" href="assets/hide-ui.css" type="text/css" media="print" />
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback and statistics. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form and anonymous statistics. See /statistics-info for more details. -->
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js" defer></script>
@@ -55,13 +55,18 @@
         };
     </script>
     <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js" async></script>
+    
+    <script src="assets/bond.js" type="module" defer></script>
+    <script src="assets/editor.js" type="module" defer></script>
+    <script src="assets/feedback.js" type="module" defer></script>
+    <script src="assets/treeview.js" defer></script>
 </head>
 
 <body class="loading no-MαθJax">
     <header>
         <div id="logocontainer">
             <a href="./">
-                <h1><img id="logo-big" src="assets/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/favicon_unsaturated.svg" alt="" /></h1>
+                <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" alt="" /></h1>
             </a>
             <filepicker>
 
@@ -122,11 +127,6 @@
         <button class="changeslide prev" title="Previous slide" onclick="prevSlide(event)"><span></span></button>
         <button class="changeslide next" title="Next slide" onclick="nextSlide(event)"><span></span></button>
     </slide-controls>
-
-    <script src="assets/bond.js" defer></script>
-    <script src="assets/editor.js" defer></script>
-    <script src="assets/feedback.js" defer></script>
-    <script src="assets/treeview.js" defer></script>
 </body>
 
 </html>
