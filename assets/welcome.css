@@ -40,6 +40,15 @@ body.statistics #title {
     margin-left: .1em;
 }
 
+#title img#error-img {
+    height: 250px;
+    width: 250px;
+}
+
+#title #emoji {
+    font-style: normal;
+}
+
 body {
     margin: 0px;
     position: absolute;
