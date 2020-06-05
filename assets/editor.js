@@ -8,6 +8,9 @@ import { statistics } from "./feedback.js"
 
 import "./common/SetupCellEnvironment.js"
 
+import { html as preacthtml, Component, render } from 'https://unpkg.com/htm/preact/standalone.module.js';
+import { CellOutput } from "./components/CellOutput.js"
+
 /* REMOTE NOTEBOOK LIST */
 
 export let notebook = {
@@ -200,84 +203,6 @@ function renderOutputContainer(contents) {
     return html`<div>${contents}</div>`
 }
 
-function renderOutput(msg, ctx) {
-    switch(msg.mime){
-        case "image/png":
-        case "image/jpg":
-        case "image/gif":
-            let i, container
-            if (ctx.oldNode.children.length == 1 && ctx.oldNode.children[0].tagName == "IMG") {
-                // https://github.com/fonsp/Pluto.jl/issues/95
-                // images are loaded asynchronously and don't initiate with the final height.
-                // we fix this by reusing the old image
-                i = ctx.oldNode.children[0]
-                i.src = msg.output
-                new Array("width", "height", "alt", "sizes", "srcset").map(attr => i.removeAttribute(attr))
-                return ctx.oldNode
-            } else {
-                i = document.createElement("img")
-                i.src = msg.output
-                return renderOutputContainer(i)
-            }
-        break
-        case "text/html":
-        case "image/svg+xml":
-        case "application/vnd.pluto.tree+xml":
-            let newContainer = renderOutputContainer(null)
-            newContainer.innerHTML = msg.output
-
-            // based on https://stackoverflow.com/a/26716182
-            // to execute all scripts in the output html:
-            try {
-                Array.from(newContainer.querySelectorAll("script")).map((script) => {
-                    newContainer.currentScript = script // available inside user JS as `this.currentScript`
-                    if (script.src != "") {
-                        if (!Array.from(document.head.querySelectorAll("script")).map(s => s.src).includes(script)) {
-                            const tag = document.createElement("script")
-                            tag.src = script.src
-                            document.head.appendChild(tag)
-                            // might be wise to wait after adding scripts to head
-                            // maybe use a better method?
-                        }
-                    } else {
-                        const result = Function(script.innerHTML).bind(newContainer)()
-                        if (result && result.nodeType === Node.ELEMENT_NODE) {
-                            script.parentElement.insertBefore(result, script)
-                        }
-                    }
-                })
-            } catch (err) {
-                console.error("Couldn't execute script:")
-                console.error(err)
-                // TODO: relay to user
-            }
-
-            // convert LaTeX to svg
-            try {
-                MathJax.typeset([newContainer])
-            } catch (err) {
-                console.info("Failed to typeset TeX:")
-                console.info(err)
-            }
-            return newContainer
-        break
-        case "application/vnd.pluto.stacktrace+json":
-            return renderOutputContainer(renderError(JSON.parse(msg.output), {id: ctx.id}))
-        break
-        
-        case "text/plain":
-        default:
-            if (msg.output) {
-                let m = msg.errored ? rewrittenError(msg.output) : msg.output
-                return renderOutputContainer(html`<pre><code>${m}</code></pre>`)
-            } else {
-                // Julia object `nothing`
-                return renderOutputContainer(null)
-            }
-        break
-    }
-}
-
 function updateLocalCellOutput(cellNode, msg) {
     statistics.numRuns++
 
@@ -318,7 +243,10 @@ function updateLocalCellOutput(cellNode, msg) {
     }
 
     // Render HTML:
-    const newNode = renderOutput(msg, {oldNode: containerNode, id: cellNode.id})
+	const newNode = renderOutputContainer()
+
+	render(preacthtml`<${CellOutput} cell=${cellNode} ...${msg}/>`, newNode)
+
     if(newNode !== containerNode){
         outputNode.replaceChild(newNode, containerNode)
     }
@@ -849,90 +777,6 @@ function updateDocQuery(query = undefined) {
     })
 }
 
-/* ERRORS */
-
-function renderFilename(frame, ctx) {
-    const sep_index = frame.file.indexOf("#==#")
-    if (sep_index != -1) {
-        const uuid = frame.file.substr(sep_index + 4)
-        const a = html`<a ${{
-            href: "#" + uuid + "#" + frame.line,
-            onclick: cellRedirect
-        }}>
-          ${uuid == ctx.id ? "Local" : "Other"}: ${frame.line}
-        </a>`
-        return html`<em>${a}</em>`
-    } else {
-        return html`<em>${frame.file}:${frame.line}</em>`
-    }
-}
-
-function renderFunccall(frame, ctx) {
-    const bracket_index = frame.call.indexOf("(")
-    if (bracket_index != -1) {
-        return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
-    } else {
-        return html`<mark><strong>${frame.call}</strong></mark>`
-    }
-}
-
-function renderError(state, ctx) {
-    return html`
-    <jlerror>
-        <header>
-            ${rewrittenError(state.msg).split("\n").map(line => html`<p>${line}</p>`)}
-        </header>
-        <section style=${{ display: state.stacktrace.length == 0 ? "none" : "potato" }}>
-            <ol>${
-                state.stacktrace.map(frame => html`<li>
-                    ${renderFunccall(frame, ctx)}<span>@</span>${renderFilename(frame, ctx)}${frame.inlined ? html`<span>[inlined]</span>` : []}
-                </li>`)
-            }</ol>
-        </section>
-    </jlerror>`
-}
-
-function cellRedirect(event) {
-    const url = new URL(event.target.href).hash
-    const uuid = url.substr(1, 36)
-    const line = (+url.substr(38)) - 1 // Julia index to JS
-    codeMirrors[uuid].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
-    codeMirrors[uuid].focus()
-}
-
-
-const errorRewrites = [
-    {
-        from: "syntax: extra token after end of expression",
-        to: "Multiple expressions in one cell.\n<a href=\"#\" onclick=\"errorHint(event)\">Wrap all code in a `begin ... end` block.</a>",
-    },
-]
-
-function rewrittenError(old_raw) {
-    let new_raw = old_raw;
-    errorRewrites.forEach(rw => {
-        new_raw = new_raw.replace(rw.from, rw.to)
-    })
-    return new_raw
-}
-
-// move up the dom tree until the tag is found
-function parentByTag(el, tag) {
-    return (!el || el.tagName == tag) ? el : parentByTag(el.parentElement, tag)
-}
-
-function errorHint(e) {
-    const cellNode = parentByTag(e.target, "CELL")
-    wrapInBlock(codeMirrors[cellNode.id], "begin")
-    requestChangeRemoteCell(cellNode.id)
-    e.preventDefault()
-}
-
-function wrapInBlock(cm, block = "begin") {
-    const oldVal = cm.getValue()
-    cm.setValue(block + "\n\t" + oldVal.replace(/\n/g, "\n\t") + '\n' + "end")
-}
-
 /* MORE SHORTKEYS */
 
 document.addEventListener("keydown", (e) => {
@@ -1041,3 +885,14 @@ window.addEventListener('beforeunload', (event) => {
 window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
 client.notebookID = notebook.uuid
 client.initialize()
+
+const ccc = html`<div></div>`
+document.body.appendChild(ccc)
+
+
+
+render(preacthtml`
+<${CellOutput} mime="text/plain" output="wowie!" assignee="xoxo"/>
+<${CellOutput} mime="text/plain" output="wowie!" assignee=${null} />
+<${CellOutput} mime="text/html" output="<h1>H00fd</h1>" assignee="xoxo"/>
+`, ccc)
