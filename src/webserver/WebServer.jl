@@ -109,7 +109,7 @@ end
 
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
-responses = Dict{Symbol,Function}()
+const responses = Dict{Symbol,Function}()
 
 const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 

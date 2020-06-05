@@ -79,8 +79,9 @@ export class PlutoConnection {
         return this.send(messageType, body, cellID, true)
     }
 
-    handleMessage(event) {
-        event.data.text().then((msg) => JSON.parse(msg)).then((update) => {
+    async handleMessage(event) {
+        try {
+            const update = await event.data.text().then(JSON.parse)
             const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
             if (!forMe) {
                 console.log("Update message not meant for this notebook")
@@ -99,12 +100,12 @@ export class PlutoConnection {
             }
 
             this.onUpdate(update, byMe)
-        }).catch((ex) => {
-            console.error("Failed to get updates!", ex)
+        } catch(ex) {
+            console.error("Failed to get update!", ex)
             console.log(event)
 
             this.waitForOnline()
-        })
+        }
     }
 
     startSocketConnection(onSucces) {

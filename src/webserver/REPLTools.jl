@@ -77,6 +77,7 @@ responses[:docs] = (body, notebook::Notebook; initiator::Union{Initiator, Missin
     query = body["query"]
 
     doc_html, status = if haskey(Docs.keywords, query |> Symbol)
+        # available in Base, no need to ask worker
         doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
         (repr(MIME("text/html"), doc_md), :👍)
     else

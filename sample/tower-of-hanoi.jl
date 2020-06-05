@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.9.2
+# v0.9.3
 
 using Markdown
 
@@ -71,13 +71,10 @@ Another good thing to check: no disks should have appeared or disappeared since 
 
 # ╔═╡ 512fa6d2-a2bd-11ea-3dbe-b935b536967b
 function islegal(stacks)
-	#check order
-	order_correct_per_stack = map(stacks) do stack 
-		stack == sort(stack)
-	end
-	order_correct = sum(order_correct_per_stack) == length(stacks)
+	order_correct = all(issorted, stacks)
 	
 	#check if we use the same disk set that we started with
+	
 	disks_in_state = sort([disk for stack in stacks for disk in stack])
 	disks_complete = disks_in_state == all_disks
 	
@@ -110,18 +107,16 @@ So what should those instructions look like? It may seem intuitive to give a _di
 # ╔═╡ e915394e-a2c0-11ea-0cd9-1df6fd3c7adf
 function move(stacks, source::Int, target::Int)
 	#check if the from stack if not empty
-	if length(stacks[source]) == 0
-		throw(ErrorException("Error: attempted to move disk from empty stack"))
+	if isempty(stacks[source])
+		error("Error: attempted to move disk from empty stack")
 	end
 	
-	#make a copy of the stacks
-	new_stacks = [stack for stack in stacks]
+	new_stacks = deepcopy(stacks)
 	
-	disk = first(new_stacks[source]) #take disk
-	new_stacks[source] = new_stacks[source][2:end] #remove from old stack
-	new_stacks[target] = vcat([disk], new_stacks[target]) #put on new stack
+	disk = popfirst!(new_stacks[source]) #take disk
+	pushfirst!(new_stacks[target], disk) #put on new stack
 	
-	new_stacks
+	return new_stacks
 end
 
 # ╔═╡ 87b2d164-a2c4-11ea-3095-916628943879
@@ -130,7 +125,7 @@ md"""
 
 We have implemented the game pieces and the rules, so you can start working on your solution.
 
-To do this, you can fill in the `solve()` function. This function should give a solution for the `starting_stacks`, by moving all the disks from stack 1 to stack 3.
+To do this, you can fill in the `solve(stacks)` function. This function should give a solution for the given `stacks`, by moving all the disks from stack 1 to stack 3.
 
 As output, `solve` should give a recipe, that tells us what to do. This recipe should be an array of moves. Each moves is a `(source, target)` tuple, specifying from which stack to which stack you should move.
 
@@ -138,19 +133,24 @@ For example, it might look like this:
 """
 
 # ╔═╡ 29b410cc-a329-11ea-202a-795b31ce5ad5
-wrong_solution = [(1,2), (2,3), (2,1), (1,3)]
+function wrong_solution(stacks)::Array{Tuple{Int, Int}}
+	return [(1,2), (2,3), (2,1), (1,3)]
+end
 
 # ╔═╡ ea24e778-a32e-11ea-3f11-dbe9d36b1011
 md"""
 Now you can work on building an actual solution. Some tips:
-* `solve()` can keep track of the board if you want, but it doesn't have to.
+* `solve(stacks)` can keep track of the board if you want, but it doesn't have to.
 * The section below will actually run your moves, which is very useful for checking them.
 * If you want, you can change `num_disks` to 1 or 2. That can be a good starting point.
 """
 
 # ╔═╡ 010dbdbc-a2c5-11ea-34c3-837eae17416f
-function solve() ::Array{Tuple{Int, Int}}
-	[]
+function solve(stacks)::Array{Tuple{Int, Int}}
+	
+	#what to do?
+	
+	return []
 end
 
 # ╔═╡ 3eb3c4c0-a2c5-11ea-0bcc-c9b52094f660
@@ -161,34 +161,35 @@ This is where we can check a solution. We start with a function that takes our r
 """
 
 # ╔═╡ 4709db36-a327-11ea-13a3-bbfb18da84ce
-function run_solution(moves, start = starting_stacks)
-	all_states = map(x -> start, 1:length(moves) + 1)
+function run_solution(solver::Function, start = starting_stacks)
+	moves = solver(deepcopy(start)) #apply the solver
 	
-	for i = 1:length(moves)
+	all_states = Array{Any,1}(undef, length(moves) + 1)
+	all_states[1] = starting_stacks
+	
+	for (i, m) in enumerate(moves)
 		try
-			source, target = moves[i]
-			all_states[i + 1] = move(all_states[i],source, target)
+			all_states[i + 1] = move(all_states[i], m[1], m[2])
 		catch
-			
-			all_states[i + 1] = []
+			all_states[i + 1] = missing
 		end
 	end
 	
-	all_states
+	return all_states
 end
 
 # ╔═╡ 372824b4-a330-11ea-2f26-7b9a1ad018f1
 md"""
 You can use this function to see what your solution does.
 
-If `run_solution` encounters an error, it will give empty arrays from that point onwards. Look at what happens in the `wrong_solution` version and compare it to the moves in `wrong_solution`.
+If `run_solution` tries to make an impossible move, it will give `missing` from that point onwards. Look at what happens in the `wrong_solution` version and compare it to the moves in `wrong_solution`.
 """
-
-# ╔═╡ 9173b174-a327-11ea-3a69-9f7525f2e7b4
-run_solution(solve())
 
 # ╔═╡ d2227b40-a329-11ea-105c-b585d5fcf970
 run_solution(wrong_solution)
+
+# ╔═╡ 9173b174-a327-11ea-3a69-9f7525f2e7b4
+run_solution(solve)
 
 # ╔═╡ bb5088ec-a330-11ea-2c41-6b8b92724b3b
 md"""
@@ -196,14 +197,13 @@ Now that we have way to run a recipe, we can check if its output is correct. We 
 """
 
 # ╔═╡ 10fb1c56-a2c5-11ea-2a06-0d8c36bfa138
-function check_solution(moves, start = starting_stacks)
+function check_solution(solver::Function, start = starting_stacks)
 	try
 		#run the solution
-		all_states = run_solution(moves, start)
+		all_states = run_solution(solver, start)
 		
 		#check if each state is legal
-		legal_moves = map(islegal, all_states)
-		all_legal = sum(legal_moves) == length(all_states)
+		all_legal = all(islegal, all_states)
 		
 		#check if the final state is is the completed puzzle
 		complete = (iscomplete ∘ last)(all_states)
@@ -216,10 +216,10 @@ function check_solution(moves, start = starting_stacks)
 end
 
 # ╔═╡ 8ea7f944-a329-11ea-22cc-4dbd11ec0610
-check_solution(solve())
+check_solution(solve)
 
 # ╔═╡ e54add0a-a330-11ea-2eeb-1d42f552ba38
-if check_solution(solve())
+if check_solution(solve)
 	if num_disks >= 8
 		md"""
 		Congratulations, your solution works!
@@ -231,7 +231,7 @@ if check_solution(solve())
 	end
 else
 	md"""
-	The `solve()` function doesn't work yet. Keep working on it!
+	The `solve` function doesn't work yet. Keep working on it!
 	"""
 end
 
@@ -258,8 +258,8 @@ end
 # ╟─3eb3c4c0-a2c5-11ea-0bcc-c9b52094f660
 # ╠═4709db36-a327-11ea-13a3-bbfb18da84ce
 # ╟─372824b4-a330-11ea-2f26-7b9a1ad018f1
-# ╠═9173b174-a327-11ea-3a69-9f7525f2e7b4
 # ╠═d2227b40-a329-11ea-105c-b585d5fcf970
+# ╠═9173b174-a327-11ea-3a69-9f7525f2e7b4
 # ╟─bb5088ec-a330-11ea-2c41-6b8b92724b3b
 # ╠═10fb1c56-a2c5-11ea-2a06-0d8c36bfa138
 # ╠═8ea7f944-a329-11ea-22cc-4dbd11ec0610
