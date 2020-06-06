@@ -4,8 +4,14 @@ import { html, Component, render } from "https://unpkg.com/htm/preact/standalone
 export class FilePicker extends Component {
     constructor() {
         super()
-        this.state = {}
-    }
+		this.remoteCode = ""
+	}
+	componentDidUpdate() {
+		if(this.remoteCode != this.props.remoteValue){
+            this.cm.setValue(this.props.remoteValue)
+            this.remoteCode = this.props.remoteValue
+        }
+	}
     componentDidMount() {
         this.cm = CodeMirror(
             (el) => {

@@ -15,8 +15,9 @@ export class Notebook extends Component {
 
     componentDidMount() {
         this.remote = new NotebookRemote(this.props.client, this)
-        // addthis. me _before_ intializing client - it also attaches a listener to beforeunload
+        // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
+            // TODO: dit mag vast niet meer
             const firstUnsaved = document.querySelector("notebook>cell.code-differs")
             if (firstUnsaved) {
                 console.log("preventing unload")
@@ -108,7 +109,10 @@ export class Notebook extends Component {
                 this.moveLocalCell(this.cellById(update.cellID), message.index)
                 break
             case "cell_added":
-                this.addLocalCell(emptyCellData(update.cellID), message.index, true)
+                const newCell = emptyCellData(update.cellID)
+                newCell.running = false
+                newCell.output.body = ""
+                this.addLocalCell(newCell, message.index, true)
                 break
             case "notebook_list":
                 // TODO: Editor.js can sendreceive this information themself
@@ -221,7 +225,7 @@ export class Notebook extends Component {
     /* NOTEBOOK MODIFIERS */
 
     addLocalCell(cell, newIndex, focus = true) {
-        if (cell.cellID in localCells) {
+        if (this.state.localCellData.any(c => c.cellID == cell.cellID)) {
             console.warn("Tried to add cell with existing cellID. Canceled.")
             console.log(cell)
             console.log(this.state.localCellData)
@@ -377,8 +381,10 @@ class NotebookRemote {
         this.client.send("movecell", { index: newIndex }, cellID)
     }
     
-    requestNewRemoteCell(newIndex) {
-        this.client.send("addcell", { index: newIndex })
+    requestNewRemoteCell(cellID, beforeOrAfter) {
+        const index = this.notebook.state.localCellData.findIndex(c => c.cellID == cellID)
+        const delta = beforeOrAfter == "before" ? 0 : 1
+        this.client.send("addcell", { index: index + delta })
     }
     
     requestDeleteRemoteCell(cellID) {

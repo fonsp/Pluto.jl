@@ -5,14 +5,10 @@ export class CellInput extends Component {
         super()
         this.remoteCode = ""
     }
-    shouldComponentUpdate() {
-        return !this.props.submittedByMe
-    }
 
     componentDidUpdate() 
     {
-        console.log("update")
-        if(this.remoteCode != this.props.body){
+        if(!this.props.submittedByMe && this.remoteCode != this.props.body){
             this.cm.setValue(this.props.body)
             this.remoteCode = this.props.body
         }
@@ -21,7 +17,7 @@ export class CellInput extends Component {
     componentDidMount() {
         this.cm = CodeMirror(
             (el) => {
-                this.base.insertBefore(el, this.base.firstElementChild)
+                this.base.appendChild(el)
             },
             {
                 value: this.remoteCode,
@@ -63,20 +59,20 @@ export class CellInput extends Component {
         //     }
         // })
 
-        this.cm.on("cursorActivity", () => {
-            if (this.cm.somethingSelected()) {
-                const sel = this.cm.getSelection()
-                if (!/[\s]/.test(sel)) {
-                    // no whitespace
-                    this.props.onUpdateDocQuery(sel)
-                }
-            } else {
-                const token = this.cm.getTokenAt(this.cm.getCursor())
-                if (token.type != null && token.type != "string") {
-                    this.props.onUpdateDocQuery(token.string)
-                }
-            }
-        })
+        // this.cm.on("cursorActivity", () => {
+        //     if (this.cm.somethingSelected()) {
+        //         const sel = this.cm.getSelection()
+        //         if (!/[\s]/.test(sel)) {
+        //             // no whitespace
+        //             this.props.onUpdateDocQuery(sel)
+        //         }
+        //     } else {
+        //         const token = this.cm.getTokenAt(this.cm.getCursor())
+        //         if (token.type != null && token.type != "string") {
+        //             this.props.onUpdateDocQuery(token.string)
+        //         }
+        //     }
+        // })
 
         this.cm.on("blur", () => {
             if (document.hasFocus()) {
@@ -87,7 +83,7 @@ export class CellInput extends Component {
     render() {
         return html`
             <cellinput>
-                <button class="deletecell" title="Delete cell"><span></span></button>
+                <button onClick=${this.props.onDelete} class="deletecell" title="Delete cell"><span></span></button>
             </cellinput>
         `
     }

@@ -46,7 +46,7 @@ export class Cell extends Component {
                 <cellshoulder draggable="true" title="Drag to move cell">
                     <button
                         onClick=${() => {
-                            requestCodeFoldRemoteCell(cellID, codeFolded)
+                            this.props.remote.requestCodeFoldRemoteCell(cellID, !codeFolded)
                         }}
                         class="foldcode"
                         title="Show/hide code"

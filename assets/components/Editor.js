@@ -32,7 +32,7 @@ export class Editor extends Component {
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        initialValue=${this.state.path}
+                        remoteValue=${this.state.path}
                         onEnter=${this.submitFileChange}
                         onReset=${() => updateLocalNotebookPath(notebook.path)}
                         onBlur=${() => updateLocalNotebookPath(notebook.path)}
@@ -44,10 +44,15 @@ export class Editor extends Component {
                 <preamble>
                     <button onClick=${this.requestRunAllChangedRemoteCells} class="runallchanged" title="Save and run all changed cells"><span></span></button>
                 </preamble>
-                <${Notebook} notebookID=${this.state.notebookID} onUpdateRemoteNotebooks=${this.updateRemoteNotebooks.bind(this)} onUpdateDocQuery=${query => this.setState({desiredDocQuery: query})} client=${this.client} />
+                <${Notebook}
+                    notebookID=${this.state.notebookID}
+                    onUpdateRemoteNotebooks=${this.updateRemoteNotebooks.bind(this)}
+                    onUpdateDocQuery=${(query) => this.setState({ desiredDocQuery: query })}
+                    client=${this.client}
+                />
                 <dropruler></dropruler>
             </main>
-            <${LiveDocs} desiredQuery=${this.state.desiredDocQuery} client=${this.client}/>
+            <${LiveDocs} desiredQuery=${this.state.desiredDocQuery} client=${this.client} />
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
@@ -64,30 +69,36 @@ export class Editor extends Component {
     /* FILE PICKER */
 
     submitFileChange() {
-        const oldPath = notebook.path
+        const oldPath = this.state.path
         const newPath = window.filePickerCodeMirror.getValue()
         if (oldPath == newPath) {
             return
         }
         if (confirm("Are you sure? Will move from\n\n" + oldPath + "\n\nto\n\n" + newPath)) {
             document.body.classList.add("loading")
-            client
+            this.client
                 .sendreceive("movenotebookfile", {
                     path: newPath,
                 })
                 .then((u) => {
-                    updateLocalNotebookPath(notebook.path)
                     document.body.classList.remove("loading")
 
                     if (u.message.success) {
+                        this.setState({
+                            path: newPath,
+                        })
                         document.activeElement.blur()
                     } else {
-                        updateLocalNotebookPath(oldPath)
+                        this.setState({
+                            path: oldPath, // TODO: this doesnt set the codemirror value
+                        })
                         alert("Failed to move file:\n\n" + u.message.reason)
                     }
                 })
         } else {
-            updateLocalNotebookPath(oldPath)
+            this.setState({
+                path: oldPath, // TODO: this doesnt set the codemirror value
+            })
         }
     }
 
@@ -105,12 +116,9 @@ export class Editor extends Component {
     }
 }
 
-
-
-
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
-export function updateStoredRecentNotebooks(recentPath, alsodelete=undefined) {
+export function updateStoredRecentNotebooks(recentPath, alsodelete = undefined) {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
     const oldpaths = storedList
