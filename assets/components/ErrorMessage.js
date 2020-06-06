@@ -2,7 +2,7 @@ import { html, Component, render } from "https://unpkg.com/htm/preact/standalone
 import { codeMirrors } from "../editor.js"
 
 
-function StackFrameFilename(frame, cell) {
+function StackFrameFilename(frame, cellId) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const uuid = frame.file.substr(sep_index + 4)
@@ -10,7 +10,7 @@ function StackFrameFilename(frame, cell) {
             cellRedirect(uuid, frame.line - 1) // 1-based to 0-based index
             e.preventDefault()
         }}>
-            ${uuid == cell.id ? "Local" : "Other"}: ${frame.line}
+            ${uuid == cellId ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
@@ -27,7 +27,7 @@ function renderFunccall(frame) {
     }
 }
 
-export function ErrorMessage({ msg, stacktrace, cell }) {
+export function ErrorMessage({ msg, stacktrace, cellId }) {
     return html`<jlerror>
         <header>
             ${rewrittenError(msg)
@@ -41,7 +41,7 @@ export function ErrorMessage({ msg, stacktrace, cell }) {
                       ${stacktrace.map(
                           (frame) =>
                               html`<li>
-                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cell)}${frame.inlined
+                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cellId)}${frame.inlined
                                       ? html`<span>[inlined]</span>`
                                       : null}
                               </li>`

@@ -5,10 +5,7 @@ export class Notebook extends Component {
         super()
 
         this.state = {
-            path: "unknown",
-            uuid: document.location.search.split("uuid=")[1],
             localCells: [],
-            remoteNotebookList: [],
         }
     }
     render() {
@@ -18,4 +15,11 @@ export class Notebook extends Component {
             </notebook>
         `
     }
+}
+
+if (uuid in localCells) {
+    console.warn("Tried to add cell with existing UUID. Canceled.")
+    console.log(uuid)
+    console.log(localCells)
+    return localCells[uuid]
 }

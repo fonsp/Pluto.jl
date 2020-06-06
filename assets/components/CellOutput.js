@@ -12,7 +12,7 @@ export class CellOutput extends Component {
 	}
 }
 
-function renderOutput({mime, output, cell}) {
+function renderOutput({mime, output, cellId}) {
     switch(mime){
         case "image/png":
         case "image/jpg":
@@ -25,7 +25,7 @@ function renderOutput({mime, output, cell}) {
             return html`<${RawHTMLContainer} body=${output}/>`
         break
         case "application/vnd.pluto.stacktrace+json":
-            return html`<div><${ErrorMessage} cell=${cell} ...${JSON.parse(output)} /></div>`
+            return html`<div><${ErrorMessage} cellId=${cellId} ...${JSON.parse(output)} /></div>`
         break
         
         case "text/plain":
