@@ -755,7 +755,7 @@ if ("fonts" in document) {
 
 /* AUTOCOMPLETE */
 
-const noAutocomplete = " \t\r\n([])+-=/,:;'\"!#$%^&*~`<>|"
+const noAutocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
 
 function onTabKey(cm) {
     const cursor = cm.getCursor()
