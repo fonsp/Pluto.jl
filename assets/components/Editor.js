@@ -11,7 +11,6 @@ export class Editor extends Component {
         this.state = {
             path: "unknown",
             notebookID: document.location.search.split("id=")[1],
-            localCells: [],
             desiredDocQuery: "nothing yet",
         }
 
@@ -106,67 +105,6 @@ export class Editor extends Component {
     }
 }
 
-export function requestChangeRemoteCell(newCode, cellID, createPromise = false) {
-    statistics.numEvals++
-
-    refreshAllCompletionPromise()
-    localCells[cellID].classList.add("running")
-
-    return client.send("changecell", { code: newCode }, cellID, createPromise)
-}
-
-export function requestRunAllChangedRemoteCells() {
-    refreshAllCompletionPromise()
-
-    const changed = Array.from(notebookNode.querySelectorAll("cell.code-differs"))
-    const promises = changed.map((cellNode) => {
-        const cellID = cellNode.id
-        cellNode.classList.add("running")
-        return client
-            .sendreceive(
-                "setinput",
-                {
-                    code: codeMirrors[cellID].getValue(),
-                },
-                cellID
-            )
-            .then((u) => {
-                updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
-            })
-    })
-    Promise.all(promises)
-        .then(() => {
-            client.send("runmultiple", {
-                cells: changed.map((c) => c.id),
-            })
-        })
-        .catch(console.error)
-}
-
-export function requestInterruptRemote() {
-    client.send("interruptall", {})
-}
-
-// Indexing works as if a new cell is added.
-// e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
-// is moved to the end, that would be new js-index = 5
-export function requestMoveRemoteCell(cellID, newIndex) {
-    client.send("movecell", { index: newIndex }, cellID)
-}
-
-export function requestNewRemoteCell(newIndex) {
-    client.send("addcell", { index: newIndex })
-}
-
-export function requestDeleteRemoteCell(cellID) {
-    localCells[cellID].classList.add("running")
-    codeMirrors[cellID].setValue("")
-    client.send("deletecell", {}, cellID)
-}
-
-export function requestCodeFoldRemoteCell(cellID, newFolded) {
-    client.send("foldcell", { folded: newFolded }, cellID)
-}
 
 
 

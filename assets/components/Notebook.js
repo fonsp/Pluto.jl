@@ -10,6 +10,11 @@ export class Notebook extends Component {
             localCellData: [],
         }
 
+        this.remote = null
+    }
+
+    componentDidMount() {
+        this.remote = new NotebookRemote(this.props.client, this)
         // addthis. me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
             const firstUnsaved = document.querySelector("notebook>cell.code-differs")
@@ -21,9 +26,7 @@ export class Notebook extends Component {
                 event.returnValue = ""
             }
         })
-    }
-
-    componentDidMount() {
+        
         this.props.client.onUpdate = this.onUpdate.bind(this)
         this.props.client.onEstablishConnection = this.onEstablishConnection.bind(this)
         this.props.client.onReconnect = this.onReconnect.bind(this)
@@ -44,6 +47,8 @@ export class Notebook extends Component {
                     (d) => html`<${Cell}
                         ...${d}
                         key=${d.cellID}
+                        client=${this.props.client}
+                        remote=${this.remote}
                         createfocus=${false}
                         onUpdateDocQuery=${this.props.onUpdateDocQuery}
                         onCodeDiffersUpdate=${(x) => this.setCellState(d.cellID, { codeDiffers: x })}
@@ -144,8 +149,6 @@ export class Notebook extends Component {
                     this.state.localCellData.forEach((cellData) => {
                         promises.push(
                             this.props.client.sendreceive("getinput", {}, cellData.cellID).then((u) => {
-                                console.log(this.state.localCellData)
-
                                 this.updateLocalCellInput(cellData, false, u.message.code, u.message.folded)
                             })
                         )
@@ -238,7 +241,6 @@ export class Notebook extends Component {
         // TODO:
         // const oldHeight = outputNode.scrollHeight
         // const oldScroll = window.scrollY
-        console.log({...cell, ...msg})
         this.setCellState(cell.cellID, msg)
 
         // TODO
@@ -310,6 +312,92 @@ export class Notebook extends Component {
         this.setState({
             localCellData: [...without.slice(0, newIndex), cell, ...without.slice(newIndex)],
         })
+    }
+
+    /* REQUEST FUNCTIONS */
+
+    
+}
+
+class NotebookRemote {
+    constructor(client, notebook) {
+        this.client = client
+        this.notebook = notebook
+    }
+
+    requestChangeRemoteCell(cellID, newCode, createPromise = false) {
+        // TODO
+        // statistics.numEvals++
+    
+        // TODO
+        // refreshAllCompletionPromise()
+        
+        this.notebook.setCellState(cellID, {running: true})
+    
+        return this.client.send("changecell", { code: newCode }, cellID, createPromise)
+    }
+    
+    // TODO:
+    // requestRunAllChangedRemoteCells() {
+    //     // TODO
+    //     // refreshAllCompletionPromise()
+    
+    //     const changed = this.notebook.state.localCellData.filter(c => c.codeDiffers)
+    //     const promises = changed.map((cell) => {
+    //         this.notebook.setCellState(cell.cellID, {running: true})
+    //         return this.client
+    //             .sendreceive(
+    //                 "setinput",
+    //                 {
+    //                     code: codeMirrors[cellID].getValue(),
+    //                 },
+    //                 cellID
+    //             )
+    //             .then((u) => {
+    //                 updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
+    //             })
+    //     })
+    //     Promise.all(promises)
+    //         .then(() => {
+    //             this.client.send("runmultiple", {
+    //                 cells: changed.map((c) => c.id),
+    //             })
+    //         })
+    //         .catch(console.error)
+    // }
+    
+    requestInterruptRemote() {
+        this.client.send("interruptall", {})
+    }
+    
+    // Indexing works as if a new cell is added.
+    // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
+    // is moved to the end, that would be new js-index = 5
+    requestMoveRemoteCell(cellID, newIndex) {
+        this.client.send("movecell", { index: newIndex }, cellID)
+    }
+    
+    requestNewRemoteCell(newIndex) {
+        this.client.send("addcell", { index: newIndex })
+    }
+    
+    requestDeleteRemoteCell(cellID) {
+        if (false /* TODO: if i am the last cell */) {
+            requestNewRemoteCell(cellID, "after")
+        }
+
+        this.notebook.setCellState(cellID, {
+            running: true,
+            remoteCode: {
+                body: "",
+                submittedByMe: false,
+            }
+        })
+        this.client.send("deletecell", {}, cellID)
+    }
+    
+    requestCodeFoldRemoteCell(cellID, newFolded) {
+        this.client.send("foldcell", { folded: newFolded }, cellID)
     }
 }
 

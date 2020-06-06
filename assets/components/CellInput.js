@@ -1,12 +1,21 @@
 import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
 
 export class CellInput extends Component {
-    // shouldComponentUpdate() {
-    //     return !this.props.submittedByMe
-    // }
+    constructor() {
+        super()
+        this.remoteCode = ""
+    }
+    shouldComponentUpdate() {
+        return !this.props.submittedByMe
+    }
 
-    componentDidUpdate() {
-        this.cm.setValue(this.props.body)
+    componentDidUpdate() 
+    {
+        console.log("update")
+        if(this.remoteCode != this.props.body){
+            this.cm.setValue(this.props.body)
+            this.remoteCode = this.props.body
+        }
     }
 
     componentDidMount() {
@@ -15,7 +24,7 @@ export class CellInput extends Component {
                 this.base.insertBefore(el, this.base.firstElementChild)
             },
             {
-                value: this.props.body, // TODO: input can be changed by the server (eg 2nd tab)
+                value: this.remoteCode,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -45,14 +54,14 @@ export class CellInput extends Component {
             "Tab": onTabKey,
         })
 
-        this.cm.on("change", () => {
-            // TODO: optimise
-            const differsNow = this.cm.getValue() != this.props.body
+        // this.cm.on("change", () => {
+        //     // TODO: optimise
+        //     const differsNow = this.cm.getValue() != this.props.body
 
-            if(differsNow != this.props.codeDiffers){
-                // this.props.onCodeDiffersUpdate(differsNow)
-            }
-        })
+        //     if(differsNow != this.props.codeDiffers){
+        //         this.props.onCodeDiffersUpdate(differsNow)
+        //     }
+        // })
 
         this.cm.on("cursorActivity", () => {
             if (this.cm.somethingSelected()) {

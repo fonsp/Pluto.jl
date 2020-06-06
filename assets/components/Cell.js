@@ -2,7 +2,6 @@ import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
-import { requestChangeRemoteCell, requestDeleteRemoteCell, requestNewRemoteCell, requestCodeFoldRemoteCell, requestInterruptRemote } from "./Editor.js"
 import { cl } from "../common/ClassTable.js"
 
 export function emptyCellData(cellID) {
@@ -41,6 +40,7 @@ export class Cell extends Component {
                     "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
 					error: errored,
 					"code-differs": codeDiffers,
+					"code-folded": codeFolded,
                 })}
             >
                 <cellshoulder draggable="true" title="Drag to move cell">
@@ -57,7 +57,7 @@ export class Cell extends Component {
                 <trafficlight></trafficlight>
                 <button
                     onClick=${() => {
-                        requestNewRemoteCell(cellID, "before")
+                        this.props.remote.requestNewRemoteCell(cellID, "before")
                     }}
                     class="addcell before"
                     title="Add cell"
@@ -68,14 +68,11 @@ export class Cell extends Component {
                 <${CellInput}
 					...${remoteCode}
                     createFocus=${this.props.createFocus}
-                    onChange=${() => {
-                        requestChangeRemoteCell(cellID)
+                    onChange=${(newCode) => {
+                        this.props.remote.requestChangeRemoteCell(cellID, newCode)
                     }}
                     onDelete=${() => {
-                        if (false /* TODO: if i am the last cell */) {
-                            requestNewRemoteCell(cellID, "after")
-                        }
-                        requestDeleteRemoteCell(cellID)
+                        this.props.remote.requestDeleteRemoteCell(cellID)
                     }}
                     onCodeDiffersUpdate=${this.props.onCodeDiffersUpdate}
                     onUpdateDocQuery=${this.props.onUpdateDocQuery}
@@ -84,16 +81,16 @@ export class Cell extends Component {
                     onClick=${() => {
                         if (running) {
                             newCellNode.classList.add("error")
-                            requestInterruptRemote()
+                            this.props.remote.requestInterruptRemote()
                         } else {
-                            requestChangeRemoteCell(cellID)
+                            this.props.remote.requestChangeRemoteCell(cellID)
                         }
                     }}
                     runtime=${runtime}
                 />
                 <button
                     onClick=${() => {
-                        requestNewRemoteCell(cellID, "after")
+                        this.props.remote.requestNewRemoteCell(cellID, "after")
                     }}
                     class="addcell after"
                     title="Add cell"
@@ -104,28 +101,3 @@ export class Cell extends Component {
         `
     }
 }
-
-// newCellNode.querySelector("button.foldcode").onclick = (e) => {
-// 	requestCodeFoldRemoteCell(cellID, !newCellNode.classList.contains("code-folded"))
-// }
-
-// newCellNode.querySelector("button.addcell.before").onclick = (e) => {
-// 	requestNewRemoteCell(indexOfLocalCell(newCellNode))
-// }
-// newCellNode.querySelector("button.addcell.after").onclick = (e) => {
-// 	requestNewRemoteCell(indexOfLocalCell(newCellNode) + 1)
-// }
-// newCellNode.querySelector("button.deletecell").onclick = (e) => {
-// 	if (Object.keys(localCells).length <= 1) {
-// 		requestNewRemoteCell(0)
-// 	}
-// 	requestDeleteRemoteCell(newCellNode.id)
-// }
-// newCellNode.querySelector("button.runcell").onclick = (e) => {
-// 	if (newCellNode.classList.contains("running")) {
-// 		newCellNode.classList.add("error")
-// 		requestInterruptRemote()
-// 	} else {
-// 		requestChangeRemoteCell(newCellNode.id)
-// 	}
-// }
