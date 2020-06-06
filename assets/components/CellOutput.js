@@ -5,33 +5,33 @@ export class CellOutput extends Component {
 	render() {
 		return html`
 		<celloutput>
-			<assignee>${this.props.assignee}</assignee>
+			<assignee>${this.props.rootassignee}</assignee>
 			${renderOutput(this.props)}
 		</celloutput>
 		`
 	}
 }
 
-function renderOutput({mime, output, cellId}) {
+function renderOutput({mime, body, cellID}) {
     switch(mime){
         case "image/png":
         case "image/jpg":
         case "image/gif":
-			return html`<div><img src=${output} /></div>`
+			return html`<div><img src=${body} /></div>`
         break
         case "text/html":
         case "image/svg+xml":
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer} body=${output}/>`
+            return html`<${RawHTMLContainer} body=${body}/>`
         break
         case "application/vnd.pluto.stacktrace+json":
-            return html`<div><${ErrorMessage} cellId=${cellId} ...${JSON.parse(output)} /></div>`
+            return html`<div><${ErrorMessage} cellID=${cellID} ...${JSON.parse(body)} /></div>`
         break
         
         case "text/plain":
         default:
-            if (output) {
-                return html`<div><pre><code>${output}</code></pre></div>`
+            if (body) {
+                return html`<div><pre><code>${body}</code></pre></div>`
             } else {
                 return html`<div></div>`
             }
@@ -39,7 +39,7 @@ function renderOutput({mime, output, cellId}) {
     }
 }
 
-class RawHTMLContainer extends Component {
+export class RawHTMLContainer extends Component {
 	componentDidMount() {
 		this.base.innerHTML = this.props.body
 

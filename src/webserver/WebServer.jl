@@ -23,7 +23,7 @@ const notebooks = Dict{UUID,Notebook}()
 function putnotebookupdates!(notebook::Notebook, messages::UpdateMessage...)
     listeners = filter(collect(values(connectedclients))) do c
         c.connected_notebook !== nothing &&
-        c.connected_notebook.uuid == notebook.uuid
+        c.connected_notebook.notebookID == notebook.notebookID
     end
     for next_to_send in messages, client in listeners
         put!(client.pendingupdates, next_to_send)
@@ -236,7 +236,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                 @async close(client.stream)
             end
             empty!(connectedclients)
-            for (uuid, ws) in WorkspaceManager.workspaces
+            for (notebookID, ws) in WorkspaceManager.workspaces
                 WorkspaceManager.unmake_workspace(ws)
             end
         else
@@ -276,7 +276,7 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
 
     if haskey(parentbody, "cellID")
         cellID = UUID(parentbody["cellID"])
-        index = cellindex_fromuuid(notebook, cellID)
+        index = cellindex_fromID(notebook, cellID)
         if index === nothing
             @warn "Remote cell not found locally!"
         else

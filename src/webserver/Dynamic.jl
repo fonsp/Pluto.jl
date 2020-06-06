@@ -8,10 +8,10 @@ JSON.lower(u::UUID) = string(u)
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
-        to_send[:notebookID] = message.notebook.uuid
+        to_send[:notebookID] = message.notebook.notebookID
     end
     if message.cell !== nothing
-        to_send[:cellID] = message.cell.uuid
+        to_send[:cellID] = message.cell.cellID
     end
     if message.initiator !== missing
         to_send[:initiatorID] = message.initiator.clientID
@@ -80,7 +80,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     @async begin
         wait(runtask)
 
-        filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
+        filter!(c->c.cellID ≠ to_delete.cellID, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
         save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
@@ -128,7 +128,7 @@ responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initia
 end
 
 responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    indices = cellindex_fromuuid.([notebook], UUID.(body["cells"]))
+    indices = cellindex_fromID.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
     run_reactive_async!(notebook, cells)
 end
@@ -149,7 +149,7 @@ responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
-                :uuid => string(cell.uuid),
+                :cellID => string(cell.cellID),
                 ) for cell in notebook.cells]), nothing, nothing, initiator)
     
     putclientupdates!(initiator, update)
@@ -187,7 +187,7 @@ responses[:shutdownworkspace] = (body, notebook=nothing; initiator::Union{Initia
     toshutdown = notebooks[UUID(body["id"])]
     listeners = putnotebookupdates!(toshutdown) # TODO: shutdown message
     if body["remove_from_list"]
-        delete!(notebooks, toshutdown.uuid)
+        delete!(notebooks, toshutdown.notebookID)
         putplutoupdates!(clientupdate_notebook_list(notebooks))
         for client in listeners
             @async close(client.stream)

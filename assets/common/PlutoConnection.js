@@ -172,11 +172,11 @@ export class PlutoConnection {
         })
     }
 
-    constructor(onUpdate, onEstablishConnection, onReconnect, onDisconnect) {
-        this.onUpdate = onUpdate
-        this.onEstablishConnection = onEstablishConnection
-        this.onReconnect = onReconnect
-        this.onDisconnect = onDisconnect
+    constructor() {
+        this.onUpdate = console.log // should be set before calling initialize()
+        this.onEstablishConnection = console.log // should be set before calling initialize()
+        this.onReconnect = console.log // should be set before calling initialize()
+        this.onDisconnect = console.log // should be set before calling initialize()
 
         this.currentlyConnected = false
         this.psocket = null

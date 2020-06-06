@@ -113,7 +113,8 @@ function storeStatisticsSample() {
 }
 
 resetStatistics()
-document.querySelector("footer a#statistics-info").addEventListener("click", storeStatisticsSample)
+// TODO
+//document.querySelector("footer a#statistics-info").addEventListener("click", storeStatisticsSample)
 
 setTimeout(() => {
     storeStatisticsSample()

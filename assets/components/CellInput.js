@@ -1,13 +1,21 @@
 import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
 
 export class CellInput extends Component {
+    // shouldComponentUpdate() {
+    //     return !this.props.submittedByMe
+    // }
+
+    componentDidUpdate() {
+        this.cm.setValue(this.props.body)
+    }
+
     componentDidMount() {
         this.cm = CodeMirror(
-            (elt) => {
+            (el) => {
                 this.base.insertBefore(el, this.base.firstElementChild)
             },
             {
-                value: this.props.remoteCode, // TODO: input can be changed by the server (eg 2nd tab)
+                value: this.props.body, // TODO: input can be changed by the server (eg 2nd tab)
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -39,10 +47,10 @@ export class CellInput extends Component {
 
         this.cm.on("change", () => {
             // TODO: optimise
-            const differsNow = this.cm.getValue() != this.props.remoteCode
+            const differsNow = this.cm.getValue() != this.props.body
 
             if(differsNow != this.props.codeDiffers){
-                this.props.onCodeDiffersUpdate(differsNow)
+                // this.props.onCodeDiffersUpdate(differsNow)
             }
         })
 

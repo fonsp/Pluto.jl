@@ -55,7 +55,7 @@ function make_workspace(notebook::Notebook, new_process = (ENV["PLUTO_WORKSPACE_
     module_name = create_emptyworkspacemodule(pid)
     
     workspace = Workspace(pid, module_name)
-    workspaces[notebook.uuid] = workspace
+    workspaces[notebook.notebookID] = workspace
     return workspace
 end
 
@@ -104,10 +104,10 @@ end
 
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(notebook::Notebook)::Workspace
-    if haskey(workspaces, notebook.uuid)
-        workspaces[notebook.uuid]
+    if haskey(workspaces, notebook.notebookID)
+        workspaces[notebook.notebookID]
     else
-        workspaces[notebook.uuid] = make_workspace(notebook)
+        workspaces[notebook.notebookID] = make_workspace(notebook)
     end
 end
 

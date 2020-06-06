@@ -3,7 +3,7 @@ import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.
 export function RunArea({ runtime, onClick }) {
     return html`
         <runarea>
-            <span class="runtime">${this.prettytime(runtime)}</span>
+            <span class="runtime">${prettytime(runtime)}</span>
             <button onClick=${ onClick } class="runcell" title="Run"><span></span></button>
         </runarea>
     `

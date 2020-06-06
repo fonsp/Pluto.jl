@@ -21,7 +21,7 @@ export class FilePicker extends Component {
                 indentWithTabs: true,
                 indentUnit: 4,
                 hintOptions: {
-                    hint: pathhints,
+                    hint: this.pathhints.bind(this),
                     completeSingle: false,
                     suggestNewFile: this.props.suggestNewFile,
                 },
@@ -41,14 +41,20 @@ export class FilePicker extends Component {
                 this.props.onReset()
                 document.activeElement.blur()
             },
-            Tab: (cm) => requestPathCompletions(cm),
+            Tab: (cm) => this.requestPathCompletions.bind(this),
         })
 
-        this.cm.on("change", (cm, change) => {
-            requestPathCompletions(cm)
-        })
+        this.cm.on("change", this.requestPathCompletions.bind(this))
 
-        this.cm.on("blur", this.props.onBlur)
+        this.cm.on("blur", (cm, e) => {
+			// if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
+			// debounce:
+			setTimeout(() => {
+				if (!cm.hasFocus()) {
+					this.props.onBlur()
+				}
+			}, 250)
+		})
     }
     render() {
         return html`
@@ -56,25 +62,25 @@ export class FilePicker extends Component {
                 <button onClick=${this.props.onEnter}>Rename</button>
             </filepicker>
         `
-    }
-}
+	}
+	
+	
+ requestPathCompletions() {
+    const cursor = this.cm.getCursor()
+    const oldLine = this.cm.getLine(cursor.line)
 
-export function requestPathCompletions(cm) {
-    const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
-
-    if (!cm.somethingSelected()) {
+    if (!this.cm.somethingSelected()) {
         if (cursor.ch == oldLine.length) {
-            cm.showHint()
+            this.cm.showHint()
         }
     }
 }
 
-export function pathhints(cm, option) {
+ pathhints(cm, option) {
     const cursor = cm.getCursor()
     const oldLine = cm.getLine(cursor.line)
 
-    return window.client
+    return this.props.client
         .sendreceive("completepath", {
             query: oldLine,
         })
@@ -126,3 +132,5 @@ export function pathhints(cm, option) {
             }
         })
 }
+}
+

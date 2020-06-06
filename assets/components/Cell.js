@@ -1,23 +1,52 @@
 import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
 import { CellOutput } from "./CellOutput.js"
-import { CellInput } from "./CellOutput.js"
+import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
 import { requestChangeRemoteCell, requestDeleteRemoteCell, requestNewRemoteCell, requestCodeFoldRemoteCell, requestInterruptRemote } from "./Editor.js"
+import { cl } from "../common/ClassTable.js"
+
+export function emptyCellData(cellID) {
+    return {
+        cellID: cellID,
+        remoteCode: {
+			body: "",
+			submittedByMe: false,
+		},
+		codeFolded: false,
+		codeDiffers: false,
+        running: true,
+        runtime: null,
+		errored: false,
+        output: {
+            body: null,
+            mime: "text/plain",
+            rootassignee: null,
+        },
+    }
+}
 
 export class Cell extends Component {
     constructor() {
         super()
         this.state = {
-            codeDiffers: false,
         }
     }
-    render() {
+    render({ cellID, remoteCode, codeFolded, codeDiffers, running, runtime, errored, output }) {
         return html`
-            <cell>
+            <cell
+                class=${cl({
+                    running: running,
+                    "output-notinsync": output.body == null,
+                    "has-assignee": !output.errored && output.rootassignee != null,
+                    "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
+					error: errored,
+					"code-differs": codeDiffers,
+                })}
+            >
                 <cellshoulder draggable="true" title="Drag to move cell">
                     <button
                         onClick=${() => {
-                            requestCodeFoldRemoteCell(this.cellId, this.props.codeFolded)
+                            requestCodeFoldRemoteCell(cellID, codeFolded)
                         }}
                         class="foldcode"
                         title="Show/hide code"
@@ -28,40 +57,43 @@ export class Cell extends Component {
                 <trafficlight></trafficlight>
                 <button
                     onClick=${() => {
-                        requestNewRemoteCell(this.props.cellId, "before")
+                        requestNewRemoteCell(cellID, "before")
                     }}
                     class="addcell before"
                     title="Add cell"
                 >
                     <span></span>
                 </button>
-                <${CellOutput} output=${this.props.output} mime=${this.props.mime} errored=${this.props.errored} cellId=${this.props.cellId} />
+                <${CellOutput} ...${output} cellID=${cellID} />
                 <${CellInput}
-					remoteCode=${this.props.input}
-					createFocus=${this.props.createFocus}
+					...${remoteCode}
+                    createFocus=${this.props.createFocus}
                     onChange=${() => {
-                        requestChangeRemoteCell(this.props.cellId)
+                        requestChangeRemoteCell(cellID)
                     }}
                     onDelete=${() => {
-						if (I AM THE LAST CELL) {
-							requestNewRemoteCell(this.props.cellId, "after")
-						}
-                        requestDeleteRemoteCell(this.props.cellId)
+                        if (false /* TODO: if i am the last cell */) {
+                            requestNewRemoteCell(cellID, "after")
+                        }
+                        requestDeleteRemoteCell(cellID)
                     }}
-                    onCodeDiffersUpdate=${(x) => this.setState({ codeDiffers: x })}
+                    onCodeDiffersUpdate=${this.props.onCodeDiffersUpdate}
                     onUpdateDocQuery=${this.props.onUpdateDocQuery}
                 />
-                <${RunArea} onClick=${() => {
-					if (this.props.running) {
-						newCellNode.classList.add("error")
-						requestInterruptRemote()
-					} else {
-						requestChangeRemoteCell(this.props.cellId)
-					}
-				}} runtime=${this.props.runtime} />
+                <${RunArea}
+                    onClick=${() => {
+                        if (running) {
+                            newCellNode.classList.add("error")
+                            requestInterruptRemote()
+                        } else {
+                            requestChangeRemoteCell(cellID)
+                        }
+                    }}
+                    runtime=${runtime}
+                />
                 <button
                     onClick=${() => {
-                        requestNewRemoteCell(this.props.cellId, "after")
+                        requestNewRemoteCell(cellID, "after")
                     }}
                     class="addcell after"
                     title="Add cell"
@@ -70,5 +102,30 @@ export class Cell extends Component {
                 </button>
             </cell>
         `
-	}
+    }
 }
+
+// newCellNode.querySelector("button.foldcode").onclick = (e) => {
+// 	requestCodeFoldRemoteCell(cellID, !newCellNode.classList.contains("code-folded"))
+// }
+
+// newCellNode.querySelector("button.addcell.before").onclick = (e) => {
+// 	requestNewRemoteCell(indexOfLocalCell(newCellNode))
+// }
+// newCellNode.querySelector("button.addcell.after").onclick = (e) => {
+// 	requestNewRemoteCell(indexOfLocalCell(newCellNode) + 1)
+// }
+// newCellNode.querySelector("button.deletecell").onclick = (e) => {
+// 	if (Object.keys(localCells).length <= 1) {
+// 		requestNewRemoteCell(0)
+// 	}
+// 	requestDeleteRemoteCell(newCellNode.id)
+// }
+// newCellNode.querySelector("button.runcell").onclick = (e) => {
+// 	if (newCellNode.classList.contains("running")) {
+// 		newCellNode.classList.add("error")
+// 		requestInterruptRemote()
+// 	} else {
+// 		requestChangeRemoteCell(newCellNode.id)
+// 	}
+// }

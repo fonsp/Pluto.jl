@@ -54,18 +54,18 @@ function updateCombinedNotebooks() {
 
         combinedNotebookList.forEach(nb => {
             var runningNb
-            if(nb.uuid){
-                runningNb = runningNotebookList.find(rnb => rnb.uuid == nb.uuid)
+            if(nb.notebookID){
+                runningNb = runningNotebookList.find(rnb => rnb.notebookID == nb.notebookID)
             } else {
                 runningNb = runningNotebookList.find(rnb => rnb.path == nb.path)
             }
             if(runningNb){
-                nb.uuid = runningNb.uuid
+                nb.notebookID = runningNb.notebookID
                 nb.path = runningNb.path
                 nb.shortpath = runningNb.shortpath
                 renderedRunning.push(runningNb)
             } else {
-                delete nb.uuid
+                delete nb.notebookID
             }
         })
 
@@ -91,14 +91,14 @@ function showNotebooks() {
 function renderNotebookList(list) {
     return html`<ul id="recent">
         ${list.map(nb => {
-            const running = !!nb.uuid
+            const running = !!nb.notebookID
             const li = html`<li class=${running ? "running" : "recent"}>
                 <button
                   onclick=${event => onSessionClick(event)}
                   title=${running ? "Shut down notebook" : "Start notebook in background"}
                 ><span></span></button>
                 <a
-                  href=${running ? `edit?uuid=${nb.uuid}` : `open?path=${encodeURIComponent(nb.path)}`}
+                  href=${running ? `edit?notebookID=${nb.notebookID}` : `open?path=${encodeURIComponent(nb.path)}`}
                   title=${nb.path}
                 >${nb.shortpath}</a>
             </li>`
@@ -121,7 +121,7 @@ function onSessionClick(event) {
     if(li.classList.replace("running", "transitioning")) {
         if (confirm("Shut down notebook process?")) {
             client.send("shutdownworkspace", {
-                id: li.nb.uuid,
+                id: li.nb.notebookID,
                 remove_from_list: true,
             })
         } else {

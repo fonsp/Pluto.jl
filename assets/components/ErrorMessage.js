@@ -1,16 +1,16 @@
 import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
-import { codeMirrors } from "../editor.js"
+// import { codeMirrors } from "./Editor.js"
 
 
-function StackFrameFilename(frame, cellId) {
+function StackFrameFilename(frame, cellID) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
-        const uuid = frame.file.substr(sep_index + 4)
+        const frameCellID = frame.file.substr(sep_index + 4)
         const a = html`<a href="#" onclick=${e => {
-            cellRedirect(uuid, frame.line - 1) // 1-based to 0-based index
+            cellRedirect(frameCellID, frame.line - 1) // 1-based to 0-based index
             e.preventDefault()
         }}>
-            ${uuid == cellId ? "Local" : "Other"}: ${frame.line}
+            ${frameCellID == cellID ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
@@ -27,7 +27,7 @@ function renderFunccall(frame) {
     }
 }
 
-export function ErrorMessage({ msg, stacktrace, cellId }) {
+export function ErrorMessage({ msg, stacktrace, cellID }) {
     return html`<jlerror>
         <header>
             ${rewrittenError(msg)
@@ -41,7 +41,7 @@ export function ErrorMessage({ msg, stacktrace, cellId }) {
                       ${stacktrace.map(
                           (frame) =>
                               html`<li>
-                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cellId)}${frame.inlined
+                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cellID)}${frame.inlined
                                       ? html`<span>[inlined]</span>`
                                       : null}
                               </li>`
@@ -51,9 +51,9 @@ export function ErrorMessage({ msg, stacktrace, cellId }) {
     </jlerror>`
 }
 
-function cellRedirect(uuid, line) { // TODO: move to Cell class
-    codeMirrors[uuid].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
-    codeMirrors[uuid].focus()
+function cellRedirect(cellID, line) { // TODO: move to Cell class
+    // codeMirrors[cellID].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
+    // codeMirrors[cellID].focus()
 }
 
 const errorRewrites = [
@@ -78,7 +78,7 @@ function parentByTag(el, tag) {
 
 function errorHint(e) {
     const cellNode = parentByTag(e.target, "CELL")
-    wrapInBlock(codeMirrors[cellNode.id], "begin")
+    // wrapInBlock(codeMirrors[cellNode.id], "begin")
     requestChangeRemoteCell(cellNode.id)
     e.preventDefault()
 }

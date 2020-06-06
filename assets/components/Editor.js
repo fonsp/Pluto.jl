@@ -1,59 +1,42 @@
 import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
 import { FilePicker } from "./FilePicker.js"
+import { Notebook } from "./Notebook.js"
+import { LiveDocs } from "./LiveDocs.js"
+import { PlutoConnection } from "../common/PlutoConnection.js"
 
 export class Editor extends Component {
-    
     constructor() {
         super()
 
         this.state = {
             path: "unknown",
-            uuid: document.location.search.split("uuid=")[1],
-            remoteNotebookList: [],
+            notebookID: document.location.search.split("id=")[1],
             localCells: [],
+            desiredDocQuery: "nothing yet",
         }
 
-        window.addEventListener("beforeunload", (event) => {
-            const firstUnsaved = document.querySelector("notebook>cell.code-differs")
-            if (firstUnsaved) {
-                console.log("preventing unload")
-                codeMirrors[firstUnsaved.id].focus()
-                event.stopImmediatePropagation()
-                event.preventDefault()
-                event.returnValue = ""
-            }
-        })
+        this.remoteNotebookList = []
 
-        window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
-        client.notebookID = this.state.uuid
-        client.initialize()
+        this.client = new PlutoConnection() // will be initialized by Notebook
     }
 
     render() {
+        const fileName = this.state.path.split("/").pop().split("\\").pop()
+        const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
+        document.title = cuteName
+
         return html`
             <header>
                 <div id="logocontainer">
                     <a href="./">
-                        <h1>
-                            <img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img
-                                id="logo-small"
-                                src="assets/img/favicon_unsaturated.svg"
-                                alt=""
-                            />
-                        </h1>
+                        <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" /></h1>
                     </a>
                     <${FilePicker}
+                        client=${this.client}
+                        initialValue=${this.state.path}
                         onEnter=${this.submitFileChange}
                         onReset=${() => updateLocalNotebookPath(notebook.path)}
-                        onBlur=${(cm, e) => {
-                            // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-                            // debounce:
-                            setTimeout(() => {
-                                if (!cm.hasFocus()) {
-                                    updateLocalNotebookPath(notebook.path)
-                                }
-                            }, 250)
-                        }}
+                        onBlur=${() => updateLocalNotebookPath(notebook.path)}
                         suggestNewFile=${true}
                     />
                 </div>
@@ -62,15 +45,10 @@ export class Editor extends Component {
                 <preamble>
                     <button onClick=${this.requestRunAllChangedRemoteCells} class="runallchanged" title="Save and run all changed cells"><span></span></button>
                 </preamble>
-                <${Notebook} id=${this.state.uuid}/>
+                <${Notebook} notebookID=${this.state.notebookID} onUpdateRemoteNotebooks=${this.updateRemoteNotebooks.bind(this)} onUpdateDocQuery=${query => this.setState({desiredDocQuery: query})} client=${this.client} />
                 <dropruler></dropruler>
             </main>
-            <div id="helpbox-wrapper">
-                <helpbox class="hidden">
-                    <header></header>
-                    <section></section>
-                </helpbox>
-            </div>
+            <${LiveDocs} desiredQuery=${this.state.desiredDocQuery} client=${this.client}/>
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
@@ -113,17 +91,28 @@ export class Editor extends Component {
             updateLocalNotebookPath(oldPath)
         }
     }
+
+    updateRemoteNotebooks(list) {
+        const oldPath = this.state.path
+
+        this.remoteNotebookList = list
+        list.forEach((nb) => {
+            if (nb.notebookID == this.state.notebookID) {
+                this.setState(nb)
+            }
+        })
+
+        updateStoredRecentNotebooks(this.state.path, oldPath)
+    }
 }
 
-
-
-export function requestChangeRemoteCell(newCode, uuid, createPromise = false) {
+export function requestChangeRemoteCell(newCode, cellID, createPromise = false) {
     statistics.numEvals++
 
     refreshAllCompletionPromise()
-    localCells[uuid].classList.add("running")
+    localCells[cellID].classList.add("running")
 
-    return client.send("changecell", { code: newCode }, uuid, createPromise)
+    return client.send("changecell", { code: newCode }, cellID, createPromise)
 }
 
 export function requestRunAllChangedRemoteCells() {
@@ -131,15 +120,15 @@ export function requestRunAllChangedRemoteCells() {
 
     const changed = Array.from(notebookNode.querySelectorAll("cell.code-differs"))
     const promises = changed.map((cellNode) => {
-        const uuid = cellNode.id
+        const cellID = cellNode.id
         cellNode.classList.add("running")
         return client
             .sendreceive(
                 "setinput",
                 {
-                    code: codeMirrors[uuid].getValue(),
+                    code: codeMirrors[cellID].getValue(),
                 },
-                uuid
+                cellID
             )
             .then((u) => {
                 updateLocalCellInput(true, cellNode, u.message.code, u.message.folded)
@@ -161,20 +150,36 @@ export function requestInterruptRemote() {
 // Indexing works as if a new cell is added.
 // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
 // is moved to the end, that would be new js-index = 5
-export function requestMoveRemoteCell(uuid, newIndex) {
-    client.send("movecell", { index: newIndex }, uuid)
+export function requestMoveRemoteCell(cellID, newIndex) {
+    client.send("movecell", { index: newIndex }, cellID)
 }
 
 export function requestNewRemoteCell(newIndex) {
     client.send("addcell", { index: newIndex })
 }
 
-export function requestDeleteRemoteCell(uuid) {
-    localCells[uuid].classList.add("running")
-    codeMirrors[uuid].setValue("")
-    client.send("deletecell", {}, uuid)
+export function requestDeleteRemoteCell(cellID) {
+    localCells[cellID].classList.add("running")
+    codeMirrors[cellID].setValue("")
+    client.send("deletecell", {}, cellID)
 }
 
-export function requestCodeFoldRemoteCell(uuid, newFolded) {
-    client.send("foldcell", { folded: newFolded }, uuid)
+export function requestCodeFoldRemoteCell(cellID, newFolded) {
+    client.send("foldcell", { folded: newFolded }, cellID)
+}
+
+
+
+/* LOCALSTORAGE NOTEBOOKS LIST */
+
+export function updateStoredRecentNotebooks(recentPath, alsodelete=undefined) {
+    const storedString = localStorage.getItem("recent notebooks")
+    const storedList = !!storedString ? JSON.parse(storedString) : []
+    const oldpaths = storedList
+    const newpaths = [recentPath].concat(
+        oldpaths.filter((path) => {
+            return path != recentPath && path != alsodelete
+        })
+    )
+    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
