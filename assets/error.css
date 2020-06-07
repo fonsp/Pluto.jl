@@ -1,0 +1,81 @@
+@import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext');
+@import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+#title {
+    margin-top: 8vh;
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+body.statistics #title {
+    margin-top: 10vh;
+}
+
+#title h1,
+#title h2 {
+    font-style: italic;
+    font-size: 2em;
+    letter-spacing: .08em;
+    font-weight: 500;
+    font-family: 'Vollkorn', serif;
+    color: hsl(0, 0%, 26%);
+    margin: 0px;
+    border-bottom: solid 2px hsl(0, 0%, 88%);
+}
+
+#title h2 {
+    font-size: 1.4em;
+}
+
+#title img {
+    height: 300px;
+    width: 300px;
+}
+
+#title #emoji {
+    font-style: normal;
+}
+
+body {
+    margin: 0px;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: white;
+}
+
+main {
+    width: 110em;
+    margin-bottom: 10em;
+    padding-left: 1em;
+    text-align: left;
+    font-family: 'Roboto Mono', monospace;
+    color: hsl(0, 0%, 40%);;
+}
+
+body.statistics main {
+    width: unset;
+    max-width: 40em;
+    padding: .5em;
+    margin-top: 5vh;
+    font-size: 14px;
+}
+
+p {
+    color: hsl(0, 0%, 30%);
+}
+
+ul {
+    padding-left: .5em;
+    list-style: none;
+}
+
+li {
+    white-space: nowrap;
+    margin-bottom: .9em;
+}
+
+a {
+    color: inherit;
+    color: hsl(0, 0%, 30%);
+}
