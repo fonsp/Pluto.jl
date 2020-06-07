@@ -50,7 +50,6 @@ export class Editor extends Component {
                     onUpdateDocQuery=${(query) => this.setState({ desiredDocQuery: query })}
                     client=${this.client}
                 />
-                <dropruler></dropruler>
             </main>
             <${LiveDocs} desiredQuery=${this.state.desiredDocQuery} client=${this.client} />
             <footer>

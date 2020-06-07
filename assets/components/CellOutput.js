@@ -20,7 +20,7 @@ function renderOutput({mime, body, cellID}) {
 			return html`<div><img src=${body} /></div>`
         break
         case "text/html":
-        case "image/svg+xml":
+        case "image/svg+xml":// TODO: don't run scripts here
         case "application/vnd.pluto.tree+xml":
             return html`<${RawHTMLContainer} body=${body}/>`
         break

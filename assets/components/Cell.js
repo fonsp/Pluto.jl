@@ -42,6 +42,7 @@ export class Cell extends Component {
 					"code-differs": codeDiffers,
 					"code-folded": codeFolded,
                 })}
+				id=${cellID}
             >
                 <cellshoulder draggable="true" title="Drag to move cell">
                     <button

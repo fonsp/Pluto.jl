@@ -1,6 +1,7 @@
 import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
 import { Cell, emptyCellData } from "./Cell.js"
 import { PlutoConnection } from "../common/PlutoConnection.js"
+import { DropRuler } from "./DropRuler.js"
 
 export class Notebook extends Component {
     constructor() {
@@ -27,7 +28,7 @@ export class Notebook extends Component {
                 event.returnValue = ""
             }
         })
-        
+
         this.props.client.onUpdate = this.onUpdate.bind(this)
         this.props.client.onEstablishConnection = this.onEstablishConnection.bind(this)
         this.props.client.onReconnect = this.onReconnect.bind(this)
@@ -56,6 +57,7 @@ export class Notebook extends Component {
                     />`
                 )}
             </notebook>
+            <${DropRuler} remote=${this.remote} />
         `
     }
 
@@ -141,38 +143,40 @@ export class Notebook extends Component {
         this.props.client
             .sendreceive("getallcells", {})
             .then((update) => {
-                this.setState({
-                    localCellData: update.message.cells.map((cell) => {
-                        const cellData = emptyCellData(cell.cellID)
-                        cellData.running = runAll
-                        return cellData
-                    }),
-                }, () => {
+                this.setState(
+                    {
+                        localCellData: update.message.cells.map((cell) => {
+                            const cellData = emptyCellData(cell.cellID)
+                            cellData.running = runAll
+                            return cellData
+                        }),
+                    },
+                    () => {
+                        const promises = []
+                        this.state.localCellData.forEach((cellData) => {
+                            promises.push(
+                                this.props.client.sendreceive("getinput", {}, cellData.cellID).then((u) => {
+                                    this.updateLocalCellInput(cellData, false, u.message.code, u.message.folded)
+                                })
+                            )
+                            promises.push(
+                                this.props.client.sendreceive("getoutput", {}, cellData.cellID).then((u) => {
+                                    if (!runAll || cellData.running) {
+                                        this.updateLocalCellOutput(cellData, u.message)
+                                    } else {
+                                        // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
+                                    }
+                                })
+                            )
+                        })
 
-                    const promises = []
-                    this.state.localCellData.forEach((cellData) => {
-                        promises.push(
-                            this.props.client.sendreceive("getinput", {}, cellData.cellID).then((u) => {
-                                this.updateLocalCellInput(cellData, false, u.message.code, u.message.folded)
-                            })
-                        )
-                        promises.push(
-                            this.props.client.sendreceive("getoutput", {}, cellData.cellID).then((u) => {
-                                if (!runAll || cellData.running) {
-                                    this.updateLocalCellOutput(cellData, u.message)
-                                } else {
-                                    // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
-                                }
-                            })
-                        )
-                    })
-    
-                    Promise.all(promises).then(() => {
-                        // TODO: more reacty
-                        document.body.classList.remove("loading")
-                        console.info("Workspace initialized")
-                    })
-                })
+                        Promise.all(promises).then(() => {
+                            // TODO: more reacty
+                            document.body.classList.remove("loading")
+                            console.info("Workspace initialized")
+                        })
+                    }
+                )
             })
             .catch(console.error)
 
@@ -225,7 +229,7 @@ export class Notebook extends Component {
     /* NOTEBOOK MODIFIERS */
 
     addLocalCell(cell, newIndex, focus = true) {
-        if (this.state.localCellData.any(c => c.cellID == cell.cellID)) {
+        if (this.state.localCellData.any((c) => c.cellID == cell.cellID)) {
             console.warn("Tried to add cell with existing cellID. Canceled.")
             console.log(cell)
             console.log(this.state.localCellData)
@@ -311,16 +315,17 @@ export class Notebook extends Component {
     }
 
     moveLocalCell(cell, newIndex) {
+        const oldIndex = this.state.localCellData.findIndex(c => c === cell)
+        if(newIndex > oldIndex) {
+            newIndex--
+        }
         const without = this.state.localCellData.filter((c) => c !== cell)
-
         this.setState({
             localCellData: [...without.slice(0, newIndex), cell, ...without.slice(newIndex)],
         })
     }
 
     /* REQUEST FUNCTIONS */
-
-    
 }
 
 class NotebookRemote {
@@ -332,20 +337,20 @@ class NotebookRemote {
     requestChangeRemoteCell(cellID, newCode, createPromise = false) {
         // TODO
         // statistics.numEvals++
-    
+
         // TODO
         // refreshAllCompletionPromise()
-        
-        this.notebook.setCellState(cellID, {running: true})
-    
+
+        this.notebook.setCellState(cellID, { running: true })
+
         return this.client.send("changecell", { code: newCode }, cellID, createPromise)
     }
-    
+
     // TODO:
     // requestRunAllChangedRemoteCells() {
     //     // TODO
     //     // refreshAllCompletionPromise()
-    
+
     //     const changed = this.notebook.state.localCellData.filter(c => c.codeDiffers)
     //     const promises = changed.map((cell) => {
     //         this.notebook.setCellState(cell.cellID, {running: true})
@@ -369,24 +374,24 @@ class NotebookRemote {
     //         })
     //         .catch(console.error)
     // }
-    
+
     requestInterruptRemote() {
         this.client.send("interruptall", {})
     }
-    
+
     // Indexing works as if a new cell is added.
     // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
     // is moved to the end, that would be new js-index = 5
     requestMoveRemoteCell(cellID, newIndex) {
         this.client.send("movecell", { index: newIndex }, cellID)
     }
-    
+
     requestNewRemoteCell(cellID, beforeOrAfter) {
-        const index = this.notebook.state.localCellData.findIndex(c => c.cellID == cellID)
+        const index = this.notebook.state.localCellData.findIndex((c) => c.cellID == cellID)
         const delta = beforeOrAfter == "before" ? 0 : 1
         this.client.send("addcell", { index: index + delta })
     }
-    
+
     requestDeleteRemoteCell(cellID) {
         if (false /* TODO: if i am the last cell */) {
             requestNewRemoteCell(cellID, "after")
@@ -397,11 +402,11 @@ class NotebookRemote {
             remoteCode: {
                 body: "",
                 submittedByMe: false,
-            }
+            },
         })
         this.client.send("deletecell", {}, cellID)
     }
-    
+
     requestCodeFoldRemoteCell(cellID, newFolded) {
         this.client.send("foldcell", { folded: newFolded }, cellID)
     }
