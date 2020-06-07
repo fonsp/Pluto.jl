@@ -1,15 +1,17 @@
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 
 export class FilePicker extends Component {
     constructor() {
         super()
-		this.remoteCode = ""
+		this.remote_code = ""
 	}
 	componentDidUpdate() {
-		if(this.remoteCode != this.props.remoteValue){
+		if(this.remote_code != this.props.remoteValue){
             this.cm.setValue(this.props.remoteValue)
-            this.remoteCode = this.props.remoteValue
+            this.remote_code = this.props.remoteValue
         }
 	}
     componentDidMount() {
@@ -54,7 +56,7 @@ export class FilePicker extends Component {
 
         this.cm.on("blur", (cm, e) => {
 			// if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-			// debounce:
+			// NOT a debounce:
 			setTimeout(() => {
 				if (!cm.hasFocus()) {
 					this.props.onBlur()

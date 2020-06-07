@@ -1,18 +1,20 @@
-import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 
 export class CellInput extends Component {
     constructor() {
         super()
-        this.remoteCode = ""
+        this.remote_code = ""
         this.differsYesterday = false
     }
 
     componentDidUpdate() 
     {
-        if(!this.props.submittedByMe && this.remoteCode != this.props.body){
-            this.cm.setValue(this.props.body)
-            this.remoteCode = this.props.body
+        if(!this.props.remote_code.submitted_by_me && this.remote_code !== this.props.remote_code.body){
+            this.cm.setValue(this.props.remote_code.body)
         }
+        this.remote_code = this.props.remote_code.body
     }
 
     componentDidMount() {
@@ -21,7 +23,7 @@ export class CellInput extends Component {
                 this.base.appendChild(el)
             },
             {
-                value: this.remoteCode,
+                value: this.remote_code,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -35,15 +37,16 @@ export class CellInput extends Component {
         )
 
         this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": () => this.props.onSubmitChange(this.cm.getValue()),
+            "Ctrl-Enter": () => this.props.on_submit(this.cm.getValue()),
             "Shift-Enter": () => {
                 this.props.onRequestNewCell()
-                this.props.onSubmitChange(this.cm.getValue())
+                this.props.on_submit(this.cm.getValue())
             },
             "Ctrl-Shift-Delete": () => {
-                this.props.onDelete()
+                this.props.on_delete()
                 const nextCell = cellNode.nextSibling
                 if (nextCell) {
+                    // TODO
                     codeMirrors[nextCell.id].focus()
                 }
             },
@@ -52,12 +55,7 @@ export class CellInput extends Component {
         })
 
         this.cm.on("change", () => {
-            // TODO: optimise
-            const differsNow = this.cm.getValue() != this.props.body
-
-            if(differsNow != this.props.codeDiffers){
-                this.props.onCodeDiffersUpdate(differsNow)
-            }
+            this.props.on_change(this.cm.getValue())
         })
 
         // this.cm.on("cursorActivity", () => {
@@ -65,12 +63,12 @@ export class CellInput extends Component {
         //         const sel = this.cm.getSelection()
         //         if (!/[\s]/.test(sel)) {
         //             // no whitespace
-        //             this.props.onUpdateDocQuery(sel)
+        //             this.props.on_update_doc_query(sel)
         //         }
         //     } else {
         //         const token = this.cm.getTokenAt(this.cm.getCursor())
         //         if (token.type != null && token.type != "string") {
-        //             this.props.onUpdateDocQuery(token.string)
+        //             this.props.on_update_doc_query(token.string)
         //         }
         //     }
         // })
@@ -84,7 +82,7 @@ export class CellInput extends Component {
     render() {
         return html`
             <cellinput>
-                <button onClick=${this.props.onDelete} class="deletecell" title="Delete cell"><span></span></button>
+                <button onClick=${this.props.on_delete} class="deletecell" title="Delete cell"><span></span></button>
             </cellinput>
         `
     }

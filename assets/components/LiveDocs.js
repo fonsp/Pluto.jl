@@ -1,4 +1,6 @@
-import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 import { RawHTMLContainer } from "./CellOutput.js"
 import { cl } from "../common/ClassTable.js"
 
@@ -18,20 +20,20 @@ export class LiveDocs extends Component {
         if (this.state.hidden) {
             return
         }
-        let newQuery = this.props.desiredDocQuery
+        let newQuery = this.props.desired_doc_query
         if (!/[^\s]/.test(newQuery)) {
             // only whitespace
             return
         }
 
         if (query == undefined) {
-            query = window.desiredDocQuery
+            query = window.desired_doc_query
         }
         if (query == displayedDocQuery) {
             return
         }
 
-        window.desiredDocQuery = query
+        window.desired_doc_query = query
 
         if (doc.classList.contains("loading")) {
             updateDocTimer = setTimeout(() => {

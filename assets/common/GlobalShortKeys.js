@@ -3,7 +3,7 @@ document.addEventListener("keydown", (e) => {
         case 81: // q
             if (e.ctrlKey) {
                 if (document.querySelector("notebook>cell.running")) {
-                    requestInterruptRemote()
+                    requestinterrupt()
                 }
                 e.preventDefault()
             }

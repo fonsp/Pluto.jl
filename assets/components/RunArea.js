@@ -1,4 +1,6 @@
-import { html, Component } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 
 export function RunArea({ runtime, onClick }) {
     return html`

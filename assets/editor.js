@@ -97,7 +97,7 @@ document.ondrop = (e) => {
     }
     // Called when drag-dropped somewhere on the page
     const dropIndex = getDropIndexOf(e.pageY)
-    requestMoveRemoteCell(dropee.id, dropIndex)
+    requestmove_cell(dropee.id, dropIndex)
 }
 
 /* FONTS */
@@ -105,8 +105,8 @@ document.ondrop = (e) => {
 if ("fonts" in document) {
     document.fonts.ready.then(function () {
         console.log("fonts loaded")
-        for (let cellID in codeMirrors) {
-            codeMirrors[cellID].refresh()
+        for (let cell_id in codeMirrors) {
+            codeMirrors[cell_id].refresh()
         }
     })
 }

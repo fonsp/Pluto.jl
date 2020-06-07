@@ -6,7 +6,7 @@ mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
     
-    notebookID::UUID
+    notebook_id::UUID
     combined_funcdefs::Dict{Vector{Symbol}, SymbolsState}
 
     # buffer will contain all unfetched updates - must be big enough
@@ -24,12 +24,12 @@ end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
 
-function cellindex_fromID(notebook::Notebook, cellID::UUID)::Union{Int,Nothing}
-    findfirst(c->c.cellID == cellID, notebook.cells)
+function cellindex_fromID(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
+    findfirst(c->c.cell_id == cell_id, notebook.cells)
 end
 
 # We use a creative delimiter to avoid accidental use in code
-const _cellID_delimiter = "# ╔═╡ "
+const _cell_id_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
@@ -59,15 +59,15 @@ function save_notebook(io, notebook::Notebook)
     cells_ordered = union(celltopology.runnable, keys(celltopology.errable))
 
     for c in cells_ordered
-        println(io, _cellID_delimiter, string(c.cellID))
+        println(io, _cell_id_delimiter, string(c.cell_id))
         print(io, c.code)
         print(io, _cell_suffix)
     end
 
-    println(io, _cellID_delimiter, "Cell order:")
+    println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
-        println(io, delim, string(c.cellID))
+        println(io, delim, string(c.cell_id))
     end
 end
 
@@ -95,36 +95,36 @@ function load_notebook_nobackup(io, path)::Notebook
     collected_cells = Dict()
     
     # ignore first bits of file
-    readuntil(io, _cellID_delimiter)
+    readuntil(io, _cell_id_delimiter)
 
     last_read = ""
     while !eof(io)
-        cellID_str = String(readline(io))
-        if cellID_str == "Cell order:"
+        cell_id_str = String(readline(io))
+        if cell_id_str == "Cell order:"
             break
         else
-            cellID = UUID(cellID_str)
-            code_raw = String(readuntil(io, _cellID_delimiter))
+            cell_id = UUID(cell_id_str)
+            code_raw = String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
             # remove the cell appendix
             code = code_normalised[1 : prevind(code_normalised, end, length(_cell_suffix))]
 
-            read_cell = Cell(cellID, code)
-            collected_cells[cellID] = read_cell
+            read_cell = Cell(cell_id, code)
+            collected_cells[cell_id] = read_cell
         end
     end
 
     ordered_cells = Cell[]
     while !eof(io)
-        cellID_str = String(readline(io))
-        o, c = startswith(cellID_str, _order_delimiter), 
-        if length(cellID_str) >= 36
-            cellID = let
-                UUID(cellID_str[end-35:end])
+        cell_id_str = String(readline(io))
+        o, c = startswith(cell_id_str, _order_delimiter), 
+        if length(cell_id_str) >= 36
+            cell_id = let
+                UUID(cell_id_str[end-35:end])
             end
-            next_cell = collected_cells[cellID]
-            next_cell.code_folded = startswith(cellID_str, _order_delimiter_folded)
+            next_cell = collected_cells[cell_id]
+            next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
             push!(ordered_cells, next_cell)
         end
     end

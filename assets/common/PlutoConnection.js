@@ -21,7 +21,7 @@ export class PlutoConnection {
 
     waitForOnline() {
         this.currentlyConnected = false
-        this.onDisconnect()
+        this.on_disconnect()
 
         setTimeout(() => {
             this.ping(() => {
@@ -29,7 +29,7 @@ export class PlutoConnection {
                     this.waitForOnline()
                 } else {
                     this.currentlyConnected = true
-                    this.onReconnect()
+                    this.on_reconnect()
                 }
             }, () => {
                 this.waitForOnline()
@@ -41,7 +41,7 @@ export class PlutoConnection {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
 
-    send(messageType, body, cellID = undefined, createPromise = false) {
+    send(messageType, body, cell_id = undefined, createPromise = false) {
         const requestID = this.getUniqueShortID()
 
         var toSend = {
@@ -50,11 +50,11 @@ export class PlutoConnection {
             requestID: requestID,
             body: body,
         }
-        if (this.notebookID) {
-            toSend.notebookID = this.notebookID
+        if (this.notebook_id) {
+            toSend.notebook_id = this.notebook_id
         }
-        if (cellID) {
-            toSend.cellID = cellID
+        if (cell_id) {
+            toSend.cell_id = cell_id
         }
 
         var p = undefined
@@ -75,18 +75,18 @@ export class PlutoConnection {
         return p
     }
 
-    sendreceive(messageType, body, cellID = undefined) {
-        return this.send(messageType, body, cellID, true)
+    sendreceive(messageType, body, cell_id = undefined) {
+        return this.send(messageType, body, cell_id, true)
     }
 
     async handleMessage(event) {
         try {
             const update = await event.data.text().then(JSON.parse)
-            const forMe = !(("notebookID" in update) && (update.notebookID != this.notebookID))
-            if (!forMe) {
-                console.log("Update message not meant for this notebook")
-                return
-            }
+            // const forMe = !(("notebook_id" in update) && (update.notebook_id != this.notebook_id))
+            // if (!forMe) {
+            //     console.log("Update message not meant for this notebook")
+            //     return
+            // }
             const byMe = ("initiatorID" in update) && (update.initiatorID == this.clientID)
             const requestID = update.requestID
 
@@ -99,7 +99,7 @@ export class PlutoConnection {
                 }
             }
 
-            this.onUpdate(update, byMe)
+            this.on_update(update, byMe)
         } catch(ex) {
             console.error("Failed to get update!", ex)
             console.log(event)
@@ -137,7 +137,7 @@ export class PlutoConnection {
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then(u => {
                 this.plutoENV = u.message.ENV
-                if (this.notebookID && !u.message.notebookExists) {
+                if (this.notebook_id && !u.message.notebookExists) {
                     // https://github.com/fonsp/Pluto.jl/issues/55
                     document.location.href = "./"
                     return
@@ -157,12 +157,12 @@ export class PlutoConnection {
         this.ping(() => {
             // on ping success
             this.startSocketConnection(() => {
-                this.onEstablishConnection()
+                this.on_establish_connection()
             })
         }, () => {
             // on failure
             this.currentlyConnected = false
-            this.onDisconnect()
+            this.on_disconnect()
         })
 
         window.addEventListener("beforeunload", e => {
@@ -172,11 +172,11 @@ export class PlutoConnection {
         })
     }
 
-    constructor() {
-        this.onUpdate = console.log // should be set before calling initialize()
-        this.onEstablishConnection = console.log // should be set before calling initialize()
-        this.onReconnect = console.log // should be set before calling initialize()
-        this.onDisconnect = console.log // should be set before calling initialize()
+    constructor(on_update, on_establish_connection, on_reconnect, on_disconnect) {
+        this.on_update = on_update
+        this.on_establish_connection = on_establish_connection
+        this.on_reconnect = on_reconnect
+        this.on_disconnect = on_disconnect
 
         this.currentlyConnected = false
         this.psocket = null

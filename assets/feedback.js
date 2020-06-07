@@ -1,4 +1,4 @@
-import { remoteNotebookList, localCells, codeMirrors } from "./editor.js"
+import { remote_notebooks, localCells, codeMirrors } from "./editor.js"
 
 function timeoutPromise(promise, time_ms) {
     return Promise.race([
@@ -41,7 +41,7 @@ function resetStatistics() {
             return Object.values(localCells).filter(c => c.classList.contains("code-folded")).length
             // integer
         },
-        get numCodeDiffers() {
+        get numcode_differs() {
             return Object.values(localCells).filter(c => c.classList.contains("code-differs")).length
             // integer
         },
@@ -62,7 +62,7 @@ function resetStatistics() {
             // integer
         },
         get numConcurrentNotebooks() {
-            return remoteNotebookList.length
+            return remote_notebooks.length
             // integer
         },
         get cellSizes() {

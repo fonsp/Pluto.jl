@@ -54,18 +54,18 @@ function updateCombinedNotebooks() {
 
         combinedNotebookList.forEach(nb => {
             var runningNb
-            if(nb.notebookID){
-                runningNb = runningNotebookList.find(rnb => rnb.notebookID == nb.notebookID)
+            if(nb.notebook_id){
+                runningNb = runningNotebookList.find(rnb => rnb.notebook_id == nb.notebook_id)
             } else {
                 runningNb = runningNotebookList.find(rnb => rnb.path == nb.path)
             }
             if(runningNb){
-                nb.notebookID = runningNb.notebookID
+                nb.notebook_id = runningNb.notebook_id
                 nb.path = runningNb.path
                 nb.shortpath = runningNb.shortpath
                 renderedRunning.push(runningNb)
             } else {
-                delete nb.notebookID
+                delete nb.notebook_id
             }
         })
 
@@ -91,14 +91,14 @@ function showNotebooks() {
 function renderNotebookList(list) {
     return html`<ul id="recent">
         ${list.map(nb => {
-            const running = !!nb.notebookID
+            const running = !!nb.notebook_id
             const li = html`<li class=${running ? "running" : "recent"}>
                 <button
                   onclick=${event => onSessionClick(event)}
                   title=${running ? "Shut down notebook" : "Start notebook in background"}
                 ><span></span></button>
                 <a
-                  href=${running ? `edit?notebookID=${nb.notebookID}` : `open?path=${encodeURIComponent(nb.path)}`}
+                  href=${running ? `edit?notebook_id=${nb.notebook_id}` : `open?path=${encodeURIComponent(nb.path)}`}
                   title=${nb.path}
                 >${nb.shortpath}</a>
             </li>`
@@ -121,7 +121,7 @@ function onSessionClick(event) {
     if(li.classList.replace("running", "transitioning")) {
         if (confirm("Shut down notebook process?")) {
             client.send("shutdownworkspace", {
-                id: li.nb.notebookID,
+                id: li.nb.notebook_id,
                 remove_from_list: true,
             })
         } else {
@@ -163,7 +163,7 @@ let filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
 
 /* SERVER CONNECTION */
 
-function onUpdate(update, byMe) {
+function on_update(update, byMe) {
     var message = update.message
 
     switch (update.type) {
@@ -178,20 +178,20 @@ function onUpdate(update, byMe) {
     }
 }
 
-function onEstablishConnection() {
+function on_establish_connection() {
     client.send("getallnotebooks", {})
     client.sendreceive("completepath", {
         query: "nothinginparticular",
     }) // to start JIT'ting
 }
 
-function onReconnect() {
+function on_reconnect() {
     console.info("connected")
 }
 
-function onDisconnect() {
+function on_disconnect() {
     console.info("disconnected")
 }
 
-window.client = new PlutoConnection(onUpdate, onEstablishConnection, onReconnect, onDisconnect)
+window.client = new PlutoConnection(on_update, on_establish_connection, on_reconnect, on_disconnect)
 client.initialize()

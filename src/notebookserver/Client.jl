@@ -83,7 +83,7 @@ function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Missin
         Dict(
             :notebooks => [
                 Dict(
-                    :notebookID => notebook.notebookID,
+                    :notebook_id => notebook.notebook_id,
                     :path => notebook.path,
                     :shortpath => basename(notebook.path)
                 ) for notebook in values(notebooks)

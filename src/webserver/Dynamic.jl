@@ -8,10 +8,10 @@ JSON.lower(u::UUID) = string(u)
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
-        to_send[:notebookID] = message.notebook.notebookID
+        to_send[:notebook_id] = message.notebook.notebook_id
     end
     if message.cell !== nothing
-        to_send[:cellID] = message.cell.cellID
+        to_send[:cell_id] = message.cell.cell_id
     end
     if message.initiator !== missing
         to_send[:initiatorID] = message.initiator.clientID
@@ -80,7 +80,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     @async begin
         wait(runtask)
 
-        filter!(c->c.cellID ≠ to_delete.cellID, notebook.cells)
+        filter!(c->c.cell_id ≠ to_delete.cell_id, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
         save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
@@ -149,7 +149,7 @@ responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
-                :cellID => string(cell.cellID),
+                :cell_id => string(cell.cell_id),
                 ) for cell in notebook.cells]), nothing, nothing, initiator)
     
     putclientupdates!(initiator, update)
@@ -187,7 +187,7 @@ responses[:shutdownworkspace] = (body, notebook=nothing; initiator::Union{Initia
     toshutdown = notebooks[UUID(body["id"])]
     listeners = putnotebookupdates!(toshutdown) # TODO: shutdown message
     if body["remove_from_list"]
-        delete!(notebooks, toshutdown.notebookID)
+        delete!(notebooks, toshutdown.notebook_id)
         putplutoupdates!(clientupdate_notebook_list(notebooks))
         for client in listeners
             @async close(client.stream)

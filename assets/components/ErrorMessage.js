@@ -1,8 +1,10 @@
-import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 // import { codeMirrors } from "./Editor.js"
 
 
-function StackFrameFilename(frame, cellID) {
+function StackFrameFilename(frame, cell_id) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const frameCellID = frame.file.substr(sep_index + 4)
@@ -10,7 +12,7 @@ function StackFrameFilename(frame, cellID) {
             cellRedirect(frameCellID, frame.line - 1) // 1-based to 0-based index
             e.preventDefault()
         }}>
-            ${frameCellID == cellID ? "Local" : "Other"}: ${frame.line}
+            ${frameCellID == cell_id ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
@@ -27,7 +29,7 @@ function renderFunccall(frame) {
     }
 }
 
-export function ErrorMessage({ msg, stacktrace, cellID }) {
+export function ErrorMessage({ msg, stacktrace, cell_id }) {
     return html`<jlerror>
         <header>
             ${rewrittenError(msg)
@@ -41,7 +43,7 @@ export function ErrorMessage({ msg, stacktrace, cellID }) {
                       ${stacktrace.map(
                           (frame) =>
                               html`<li>
-                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cellID)}${frame.inlined
+                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cell_id)}${frame.inlined
                                       ? html`<span>[inlined]</span>`
                                       : null}
                               </li>`
@@ -51,9 +53,9 @@ export function ErrorMessage({ msg, stacktrace, cellID }) {
     </jlerror>`
 }
 
-function cellRedirect(cellID, line) { // TODO: move to Cell class
-    // codeMirrors[cellID].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
-    // codeMirrors[cellID].focus()
+function cellRedirect(cell_id, line) { // TODO: move to Cell class
+    // codeMirrors[cell_id].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
+    // codeMirrors[cell_id].focus()
 }
 
 const errorRewrites = [
@@ -79,7 +81,7 @@ function parentByTag(el, tag) {
 function errorHint(e) {
     const cellNode = parentByTag(e.target, "CELL")
     // wrapInBlock(codeMirrors[cellNode.id], "begin")
-    requestChangeRemoteCell(cellNode.id)
+    requestchange_cell(cellNode.id)
     e.preventDefault()
 }
 

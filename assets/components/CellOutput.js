@@ -1,4 +1,6 @@
-import { html, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { html } from "./Editor.js"
+import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+
 import { ErrorMessage } from "./ErrorMessage.js"
 
 export class CellOutput extends Component {
@@ -12,7 +14,7 @@ export class CellOutput extends Component {
 	}
 }
 
-function renderOutput({mime, body, cellID}) {
+function renderOutput({mime, body, cell_id}) {
     switch(mime){
         case "image/png":
         case "image/jpg":
@@ -25,7 +27,7 @@ function renderOutput({mime, body, cellID}) {
             return html`<${RawHTMLContainer} body=${body}/>`
         break
         case "application/vnd.pluto.stacktrace+json":
-            return html`<div><${ErrorMessage} cellID=${cellID} ...${JSON.parse(body)} /></div>`
+            return html`<div><${ErrorMessage} cell_id=${cell_id} ...${JSON.parse(body)} /></div>`
         break
         
         case "text/plain":
@@ -82,3 +84,21 @@ export class RawHTMLContainer extends Component {
 		return html`<div></div>`
 	}
 }
+
+
+
+    // TODO:
+    // const oldHeight = outputNode.scrollHeight
+    // const oldScroll = window.scrollY
+    
+    // TODO
+    // // Scroll the page to compensate for changes in page height:
+    // const newHeight = outputNode.scrollHeight
+    // const newScroll = window.scrollY
+
+    // if (notebookNode.querySelector("cell:focus-within")) {
+    //     const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
+    //     if (cellsAfterFocused.length == 0 || !Array.from(cellsAfterFocused).includes(cellNode)) {
+    //         window.scrollTo(window.scrollX, oldScroll + (newHeight - oldHeight))
+    //     }
+    // }
