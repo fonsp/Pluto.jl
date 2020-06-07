@@ -4,6 +4,7 @@ export class CellInput extends Component {
     constructor() {
         super()
         this.remoteCode = ""
+        this.differsYesterday = false
     }
 
     componentDidUpdate() 
@@ -34,10 +35,10 @@ export class CellInput extends Component {
         )
 
         this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": () => this.props.onChange(this.cm.getValue()),
+            "Ctrl-Enter": () => this.props.onSubmitChange(this.cm.getValue()),
             "Shift-Enter": () => {
                 this.props.onRequestNewCell()
-                this.props.onChange(this.cm.getValue())
+                this.props.onSubmitChange(this.cm.getValue())
             },
             "Ctrl-Shift-Delete": () => {
                 this.props.onDelete()
@@ -50,14 +51,14 @@ export class CellInput extends Component {
             "Tab": onTabKey,
         })
 
-        // this.cm.on("change", () => {
-        //     // TODO: optimise
-        //     const differsNow = this.cm.getValue() != this.props.body
+        this.cm.on("change", () => {
+            // TODO: optimise
+            const differsNow = this.cm.getValue() != this.props.body
 
-        //     if(differsNow != this.props.codeDiffers){
-        //         this.props.onCodeDiffersUpdate(differsNow)
-        //     }
-        // })
+            if(differsNow != this.props.codeDiffers){
+                this.props.onCodeDiffersUpdate(differsNow)
+            }
+        })
 
         // this.cm.on("cursorActivity", () => {
         //     if (this.cm.somethingSelected()) {

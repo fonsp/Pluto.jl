@@ -25,11 +25,6 @@ export function emptyCellData(cellID) {
 }
 
 export class Cell extends Component {
-    constructor() {
-        super()
-        this.state = {
-        }
-    }
     render({ cellID, remoteCode, codeFolded, codeDiffers, running, runtime, errored, output }) {
         return html`
             <cell
@@ -69,12 +64,13 @@ export class Cell extends Component {
                 <${CellInput}
 					...${remoteCode}
                     createFocus=${this.props.createFocus}
-                    onChange=${(newCode) => {
+                    onSubmitChange=${(newCode) => {
                         this.props.remote.requestChangeRemoteCell(cellID, newCode)
                     }}
                     onDelete=${() => {
                         this.props.remote.requestDeleteRemoteCell(cellID)
                     }}
+                    codeDiffers=${codeDiffers}
                     onCodeDiffersUpdate=${this.props.onCodeDiffersUpdate}
                     onUpdateDocQuery=${this.props.onUpdateDocQuery}
                 />

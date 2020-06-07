@@ -17,6 +17,7 @@ export class Editor extends Component {
         this.remoteNotebookList = []
 
         this.client = new PlutoConnection() // will be initialized by Notebook
+        this.notebookRef = null
     }
 
     render() {
@@ -42,13 +43,14 @@ export class Editor extends Component {
             </header>
             <main>
                 <preamble>
-                    <button onClick=${this.requestRunAllChangedRemoteCells} class="runallchanged" title="Save and run all changed cells"><span></span></button>
+                    <button onClick=${() => this.notebookRef.remote.requestRunAllChangedRemoteCells()} class="runallchanged" title="Save and run all changed cells"><span></span></button>
                 </preamble>
                 <${Notebook}
                     notebookID=${this.state.notebookID}
                     onUpdateRemoteNotebooks=${this.updateRemoteNotebooks.bind(this)}
                     onUpdateDocQuery=${(query) => this.setState({ desiredDocQuery: query })}
                     client=${this.client}
+                    ref=${nb => this.notebookRef = nb}
                 />
             </main>
             <${LiveDocs} desiredQuery=${this.state.desiredDocQuery} client=${this.client} />
@@ -99,6 +101,19 @@ export class Editor extends Component {
                 path: oldPath, // TODO: this doesnt set the codemirror value
             })
         }
+    }
+
+    updateRemoteNotebooks(list) {
+        const oldPath = this.state.path
+
+        this.remoteNotebookList = list
+        list.forEach((nb) => {
+            if (nb.notebookID == this.state.notebookID) {
+                this.setState(nb)
+            }
+        })
+
+        updateStoredRecentNotebooks(this.state.path, oldPath)
     }
 
     updateRemoteNotebooks(list) {
