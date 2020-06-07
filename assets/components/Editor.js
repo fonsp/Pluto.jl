@@ -69,8 +69,7 @@ export class Editor extends Component {
         const update_local_cell_output = (cell, output) => {
             // TODO:
             // statistics.numRuns++
-
-            set_cell_state(cell.cell_id, { output: output })
+            set_cell_state(cell.cell_id, output)
 
             // TODO
             // (see bond.js)
@@ -144,24 +143,23 @@ export class Editor extends Component {
                         break
                 }
             } else {
-                const notebook = [this.state.notebook].some((nb) => nb.notebook_id === update.notebook_id)
-                if (notebook == null) {
+                if (this.state.notebook.notebook_id !== update.notebook_id) {
                     return
                 }
 
-                const cell = notebook.cells.find((c) => c.cell_id == cell_id)
+                const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
 
                 switch (update.type) {
                     case "cell_output":
-                        update_local_cell_output(notebook, cell, message.output)
+                        update_local_cell_output(cell, message)
                         break
                     case "cell_running":
-                        setCellState(update.cell_id, {
+                        set_cell_state(update.cell_id, {
                             running: true,
                         })
                         break
                     case "cell_folded":
-                        setCellState(update.cell_id, {
+                        set_cell_state(update.cell_id, {
                             code_folded: message.folded,
                         })
                         break
@@ -325,21 +323,21 @@ export class Editor extends Component {
                 // statistics.numEvals++
 
                 set_cell_state(cell_id, { running: true })
-                return client.send("changecell", { code: newCode }, cell_id, createPromise)
+                return this.client.send("changecell", { code: newCode }, cell_id, createPromise)
             },
-            interrupt: (client, notebook) => {
-                client.send("interruptall", {})
+            interrupt: () => {
+                this.client.send("interruptall", {})
             },
             move_cell: (cell_id, newIndex) => {
                 // Indexing works as if a new cell is added.
                 // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
                 // is moved to the end, that would be new js-index = 5
-                client.send("movecell", { index: newIndex }, cell_id)
+                this.client.send("movecell", { index: newIndex }, cell_id)
             },
             add_cell: (cell_id, beforeOrAfter) => {
                 const index = notebook.state.cells.findIndex((c) => c.cell_id == cell_id)
                 const delta = beforeOrAfter == "before" ? 0 : 1
-                client.send("addcell", { index: index + delta })
+                this.client.send("addcell", { index: index + delta })
             },
             delete_cell: (cell_id) => {
                 if (false /* TODO: if i am the last cell */) {
@@ -352,10 +350,10 @@ export class Editor extends Component {
                         submitted_by_me: false,
                     },
                 })
-                client.send("deletecell", {}, cell_id)
+                this.client.send("deletecell", {}, cell_id)
             },
             fold_cell: (cell_id, newFolded) => {
-                client.send("foldcell", { folded: newFolded }, cell_id)
+                this.client.send("foldcell", { folded: newFolded }, cell_id)
             },
             runAllChangedRemoteCells: () => {
                 const changed = notebook.state.cells.filter((c) => c.code_differs)
@@ -363,7 +361,7 @@ export class Editor extends Component {
                 // TODO: async await?
                 const promises = changed.map((cell) => {
                     notebook.setCellState(cell.cell_id, { running: true })
-                    return client
+                    return this.client
                         .sendreceive("setinput", {
                             code: cell.cm.getValue(),
                         })
@@ -373,7 +371,7 @@ export class Editor extends Component {
                 })
                 Promise.all(promises)
                     .then(() => {
-                        client.send("runmultiple", {
+                        this.client.send("runmultiple", {
                             cells: changed.map((c) => c.id),
                         })
                     })
@@ -415,13 +413,18 @@ export class Editor extends Component {
                         <span></span>
                     </button>
                 </preamble>
-                <${Notebook} ...${this.state.notebook} on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })} on_cell_input=${(cell, new_val) => {
-                    this.set_cell_state(cell.cell_id, {
-                        local_code: {
-                            body: new_val,
-                        },
-                    })
-                }} requests=${this.requests} />
+                <${Notebook}
+                    ...${this.state.notebook}
+                    on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
+                    on_cell_input=${(cell, new_val) => {
+                        this.set_cell_state(cell.cell_id, {
+                            local_code: {
+                                body: new_val,
+                            },
+                        })
+                    }}
+                    requests=${this.requests}
+                />
 
                 <${DropRuler} requests=${this.requests} />
             </main>
