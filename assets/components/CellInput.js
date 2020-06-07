@@ -15,6 +15,7 @@ export class CellInput extends Component {
             this.cm.setValue(this.props.remote_code.body)
         }
         this.remote_code = this.props.remote_code.body
+        this.cm.options.disableInput = this.props.disable_input
     }
 
     componentDidMount() {

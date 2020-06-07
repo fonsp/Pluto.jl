@@ -22,6 +22,8 @@ export class Editor extends Component {
                 cells: [],
             },
             desired_doc_query: "nothing yet",
+            connected: false,
+            loading: true,
         }
         const set_notebook_state = (callback) => {
             this.setState((prevstate) => {
@@ -124,18 +126,18 @@ export class Editor extends Component {
         // these are update message that are _not_ a response to a `sendreceive`
         const on_update = (update, byMe) => {
             const message = update.message
-
             if (update.notebook_id == null) {
                 switch (update.type) {
                     case "notebook_list":
+                        console.log(message.notebooks)
                         // TODO: Editor.js can sendreceive this information themself
                         // but this requires sendreceive to queue messages until it has connected
                         const old_path = this.state.notebook.path
 
                         this.remote_notebooks = message.notebooks
                         message.notebooks.forEach((nb) => {
-                            if (nb.notebook_id == this.state.notebook_id) {
-                                this.setState(nb)
+                            if (nb.notebook_id == this.state.notebook.notebook_id) {
+                                set_notebook_state(() => nb)
                             }
                         })
 
@@ -227,7 +229,9 @@ export class Editor extends Component {
 
                             Promise.all(promises).then(() => {
                                 // TODO: more reacty
-                                document.body.classList.remove("loading")
+                                this.setState({
+                                    loading: false,
+                                })
                                 console.info("Workspace initialized")
                             })
                         }
@@ -256,49 +260,9 @@ export class Editor extends Component {
                     }
                 }
             })
-
-            // TODO
-            // updateDocQuery()
         }
 
-        const on_reconnect = () => {
-            document.body.classList.remove("disconnected")
-            document.querySelector("meta[name=theme-color]").content = "#fff"
-            for (let cell_id in codeMirrors) {
-                codeMirrors[cell_id].options.disableInput = false
-            }
-        }
-
-        const on_disconnect = () => {
-            // let [connected, set_connected] = React.useState(true);
-
-            // let on_disconnect = () => {
-            //     set_connected(false);
-            // }
-
-            // React.useEffect(() => {
-            //     if (connected) {
-            //         document.body.classList.add("disconnected")
-            //         document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            //     } else {
-            //         document.body.classList.remove("disconnected")
-            //         document.querySelector("meta[name=theme-color]").content = "#fff"
-            //     }
-            // }, [connected])
-
-            document.body.classList.add("disconnected")
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            setTimeout(() => {
-                if (!this.client.currentlyConnected) {
-                    for (let cell_id in codeMirrors) {
-                        // TODO
-                        codeMirrors[cell_id].options.disableInput = true
-                    }
-                }
-            }, 5000)
-        }
-
-        this.client = new PlutoConnection(on_update, on_establish_connection, on_reconnect, on_disconnect)
+        this.client = new PlutoConnection(on_update)
 
         // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
@@ -315,7 +279,7 @@ export class Editor extends Component {
 
         // TODO: whoops
         this.client.notebook_id = this.state.notebook.notebook_id
-        this.client.initialize()
+        this.client.initialize(on_establish_connection)
 
         this.requests = {
             change_cell: (cell_id, newCode, createPromise = false) => {
@@ -335,7 +299,7 @@ export class Editor extends Component {
                 this.client.send("movecell", { index: newIndex }, cell_id)
             },
             add_cell: (cell_id, beforeOrAfter) => {
-                const index = notebook.state.cells.findIndex((c) => c.cell_id == cell_id)
+                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
                 const delta = beforeOrAfter == "before" ? 0 : 1
                 this.client.send("addcell", { index: index + delta })
             },
@@ -355,8 +319,8 @@ export class Editor extends Component {
             fold_cell: (cell_id, newFolded) => {
                 this.client.send("foldcell", { folded: newFolded }, cell_id)
             },
-            runAllChangedRemoteCells: () => {
-                const changed = notebook.state.cells.filter((c) => c.code_differs)
+            run_all_changed_cells: () => {
+                const changed = this.state.notebook.cells.filter((c) => c.code_differs)
 
                 // TODO: async await?
                 const promises = changed.map((cell) => {
@@ -384,6 +348,14 @@ export class Editor extends Component {
         const any_code_differs = this.state.notebook.cells.any((cell) => cell.code_differs)
         // TODO: meer react meer leuk
         document.body.classList.toggle("code-differs", any_code_differs)
+        document.body.classList.toggle("loading", this.state.loading)
+        if(this.client.currentlyConnected){
+            document.querySelector("meta[name=theme-color]").content = "#fff"
+            document.body.classList.remove("disconnected")
+        } else {
+            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
+            document.body.classList.add("disconnected")
+        }
     }
 
     render() {
@@ -409,7 +381,7 @@ export class Editor extends Component {
             </header>
             <main>
                 <preamble>
-                    <button onClick=${() => this.remote.requestRunAllChangedRemoteCells()} class="runallchanged" title="Save and run all changed cells">
+                    <button onClick=${() => this.remote.requestrun_all_changed_cells()} class="runallchanged" title="Save and run all changed cells">
                         <span></span>
                     </button>
                 </preamble>
@@ -423,6 +395,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
+                    disable_input=${!this.client.currentlyConnected}
                     requests=${this.requests}
                 />
 
@@ -452,14 +425,15 @@ export class Editor extends Component {
             return
         }
         if (confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + newPath)) {
-            document.body.classList.add("loading")
+            this.setState({ loading: true })
             this.client
                 .sendreceive("movenotebookfile", {
                     path: newPath,
                 })
                 .then((u) => {
-                    document.body.classList.remove("loading")
-
+                    this.setState({
+                        loading: false,
+                    })
                     if (u.message.success) {
                         this.setState({
                             path: newPath,

@@ -1,39 +1,43 @@
 export class PlutoConnection {
     ping(onSucces, onFailure) {
         fetch("ping", {
-            method: 'GET',
-            cache: 'no-cache',
+            method: "GET",
+            cache: "no-cache",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-        }).then((response) => {
-            return response.json()
-        }).then((response) => {
-            if (response == "OK!") {
-                onSucces(response)
-            } else {
-                onFailure(response)
-            }
-        }).catch(onFailure)
+            redirect: "follow",
+            referrerPolicy: "no-referrer",
+        })
+            .then((response) => {
+                return response.json()
+            })
+            .then((response) => {
+                if (response == "OK!") {
+                    onSucces(response)
+                } else {
+                    onFailure(response)
+                }
+            })
+            .catch(onFailure)
     }
 
     waitForOnline() {
         this.currentlyConnected = false
-        this.on_disconnect()
 
         setTimeout(() => {
-            this.ping(() => {
-                if (this.psocket.readyState != WebSocket.OPEN) {
+            this.ping(
+                () => {
+                    if (this.psocket.readyState != WebSocket.OPEN) {
+                        this.waitForOnline()
+                    } else {
+                        this.currentlyConnected = true
+                    }
+                },
+                () => {
                     this.waitForOnline()
-                } else {
-                    this.currentlyConnected = true
-                    this.on_reconnect()
                 }
-            }, () => {
-                this.waitForOnline()
-            })
+            )
         }, 1000)
     }
 
@@ -60,7 +64,7 @@ export class PlutoConnection {
         var p = undefined
 
         if (createPromise) {
-            var resolve, reject;
+            var resolve, reject
 
             p = new Promise((res, rej) => {
                 resolve = res
@@ -87,7 +91,7 @@ export class PlutoConnection {
             //     console.log("Update message not meant for this notebook")
             //     return
             // }
-            const byMe = ("initiatorID" in update) && (update.initiatorID == this.clientID)
+            const byMe = "initiatorID" in update && update.initiatorID == this.clientID
             const requestID = update.requestID
 
             if (byMe && requestID) {
@@ -100,7 +104,7 @@ export class PlutoConnection {
             }
 
             this.on_update(update, byMe)
-        } catch(ex) {
+        } catch (ex) {
             console.error("Failed to get update!", ex)
             console.log(event)
 
@@ -109,8 +113,9 @@ export class PlutoConnection {
     }
 
     startSocketConnection(onSucces) {
-
-        this.psocket = new WebSocket(document.location.protocol.replace("http", "ws") + '//' + document.location.host + document.location.pathname.replace("/edit", "/"))
+        this.psocket = new WebSocket(
+            document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/")
+        )
         this.psocket.onmessage = (e) => {
             this.handleMessage(e)
         }
@@ -135,7 +140,7 @@ export class PlutoConnection {
             this.waitForOnline()
         }
         this.psocket.onopen = () => {
-            this.sendreceive("connect", {}).then(u => {
+            this.sendreceive("connect", {}).then((u) => {
                 this.plutoENV = u.message.ENV
                 if (this.notebook_id && !u.message.notebookExists) {
                     // https://github.com/fonsp/Pluto.jl/issues/55
@@ -153,30 +158,29 @@ export class PlutoConnection {
         this.psocket.close(1000, "byebye")
     }
 
-    initialize() {
-        this.ping(() => {
-            // on ping success
-            this.startSocketConnection(() => {
-                this.on_establish_connection()
-            })
-        }, () => {
-            // on failure
-            this.currentlyConnected = false
-            this.on_disconnect()
-        })
+    initialize(on_establish_connection) {
+        this.ping(
+            () => {
+                // on ping success
+                this.startSocketConnection(() => {
+                    on_establish_connection(this)
+                })
+            },
+            () => {
+                // on failure
+                this.currentlyConnected = false
+            }
+        )
 
-        window.addEventListener("beforeunload", e => {
+        window.addEventListener("beforeunload", (e) => {
             console.warn("unloading 👉 disconnecting websocket")
             this.psocket.onclose = undefined
             this.tryCloseSocketConnection()
         })
     }
 
-    constructor(on_update, on_establish_connection, on_reconnect, on_disconnect) {
+    constructor(on_update) {
         this.on_update = on_update
-        this.on_establish_connection = on_establish_connection
-        this.on_reconnect = on_reconnect
-        this.on_disconnect = on_disconnect
 
         this.currentlyConnected = false
         this.psocket = null
@@ -189,21 +193,23 @@ export class PlutoConnection {
 
     fetchPlutoVersions() {
         const githubPromise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
-            method: 'GET',
-            mode: 'cors',
-            cache: 'no-cache',
+            method: "GET",
+            mode: "cors",
+            cache: "no-cache",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
             },
-            redirect: 'follow',
-            referrerPolicy: 'no-referrer',
-        }).then((response) => {
-            return response.json()
-        }).then((response) => {
-            return response[0].tag_name
+            redirect: "follow",
+            referrerPolicy: "no-referrer",
         })
+            .then((response) => {
+                return response.json()
+            })
+            .then((response) => {
+                return response[0].tag_name
+            })
 
-        const plutoPromise = this.sendreceive("getversion", {}).then(u => {
+        const plutoPromise = this.sendreceive("getversion", {}).then((u) => {
             this.plutoVersion = u.message.pluto
             this.juliaVersion = u.message.julia
             return this.plutoVersion

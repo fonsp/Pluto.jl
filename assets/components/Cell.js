@@ -28,7 +28,7 @@ export function empty_cell_data(cell_id) {
     }
 }
 
-export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, runtime, errored, output, remote, on_change, on_update_doc_query, requests }) => {
+export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, runtime, errored, output, remote, on_change, on_update_doc_query, disable_input, requests }) => {
     return html`
         <cell
             class=${cl({
@@ -74,6 +74,7 @@ export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, r
                 }}
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
+                disable_input=${disable_input}
             />
             <${RunArea}
                 onClick=${() => {
