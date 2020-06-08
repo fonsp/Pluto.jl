@@ -46,9 +46,9 @@ export class FilePicker extends Component {
 		window.filePickerCodeMirror = this.cm
 
         this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": this.props.on_submit,
-            "Ctrl-Shift-Enter": this.props.on_submit,
-            Enter: this.props.on_submit,
+            "Ctrl-Enter": this.on_submit,
+            "Ctrl-Shift-Enter": this.on_submit,
+            Enter: this.on_submit,
             Esc: (cm) => {
                 cm.closeHint()
                 cm.setValue(this.props.value)
@@ -72,7 +72,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <filepicker>
-                <button onClick=${this.props.on_submit}>Rename</button>
+                <button onClick=${this.on_submit}>${this.props.button_label}</button>
             </filepicker>
         `
 	}

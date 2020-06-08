@@ -1,9 +1,9 @@
-import { Editor } from "./components/Editor.js"
-import { html as preacthtml, render } from "https://unpkg.com/htm/preact/standalone.module.js"
+import { Editor, html } from "./components/Editor.js"
+import { render } from "https://unpkg.com/preact@10.4.4?module"
 import "./common/Polyfill.js"
 import "./common/GlobalShortKeys.js"
 
-render(preacthtml`<${Editor} />`, document.body)
+render(html`<${Editor} />`, document.body)
 
 // TODO:
 // if ("fonts" in document) {

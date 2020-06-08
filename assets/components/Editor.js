@@ -68,14 +68,14 @@ export class Editor extends Component {
                     }
                 })
             },
-            update_local_cell_output: (cell, {output, running, runtime, errored }) => {
+            update_local_cell_output: (cell, { output, running, runtime, errored }) => {
                 // TODO:
                 // statistics.numRuns++
                 set_cell_state(cell.cell_id, {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now()}
+                    output: { ...output, timestamp: Date.now() },
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
@@ -110,50 +110,71 @@ export class Editor extends Component {
             },
         }
 
-        this.remote_notebooks = []
+        const on_remote_notebooks = ({ message }) => {
+            console.log(message.notebooks)
+            // TODO: Editor.js can sendreceive this information themself
+            // but this requires sendreceive to queue messages until it has connected
+            const old_path = this.state.notebook.path
+
+            message.notebooks.forEach((nb) => {
+                if (nb.notebook_id == this.state.notebook.notebook_id) {
+                    set_notebook_state(() => nb)
+                    update_stored_recent_notebooks(nb.path, old_path)
+                }
+            })
+
+        }
 
         // these are update message that are _not_ a response to a `sendreceive`
         const on_update = (update, by_me) => {
-            if (this.state.notebook.notebook_id === update.notebook_id) {
-                const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
-                const message = update.message
+            if (update.notebook_id == null) {
                 switch (update.type) {
-                    case "cell_output":
-                        actions.update_local_cell_output(cell, message)
+                    case "notebook_list":
+                        on_remote_notebooks(update)
                         break
-                    case "cell_running":
-                        set_cell_state(update.cell_id, {
-                            running: true,
-                        })
-                        break
-                    case "cell_folded":
-                        set_cell_state(update.cell_id, {
-                            code_folded: message.folded,
-                        })
-                        break
-                    case "cell_input":
-                        actions.update_local_cell_input(cell, by_me, message.code, message.folded)
-                        break
-                    case "cell_deleted":
-                        actions.delete_local_cell(cell)
-                        break
-                    case "cell_moved":
-                        actions.move_local_cell(cell, message.index)
-                        break
-                    case "cell_added":
-                        const new_cell = empty_cell_data(update.cell_id)
-                        new_cell.running = false
-                        new_cell.output.body = ""
-                        actions.add_local_cell(new_cell, message.index)
-                        break
-                    case "bond_update":
-                        // by someone else
-                        break
-                    default:
-                        console.error("Received unknown update type!")
-                        console.log(update)
-                        alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
-                        break
+                }
+            } else {
+                if (this.state.notebook.notebook_id === update.notebook_id) {
+                    const message = update.message
+                    const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
+                    switch (update.type) {
+                        case "cell_output":
+                            actions.update_local_cell_output(cell, message)
+                            break
+                        case "cell_running":
+                            set_cell_state(update.cell_id, {
+                                running: true,
+                            })
+                            break
+                        case "cell_folded":
+                            set_cell_state(update.cell_id, {
+                                code_folded: message.folded,
+                            })
+                            break
+                        case "cell_input":
+                            actions.update_local_cell_input(cell, by_me, message.code, message.folded)
+                            break
+                        case "cell_deleted":
+                            actions.delete_local_cell(cell)
+                            break
+                        case "cell_moved":
+                            actions.move_local_cell(cell, message.index)
+                            break
+                        case "cell_added":
+                            const new_cell = empty_cell_data(update.cell_id)
+                            new_cell.running = false
+                            new_cell.output.body = ""
+                            actions.add_local_cell(new_cell, message.index)
+                            break
+                        case "bond_update":
+                            // by someone else
+                            break
+                        default:
+                            console.error("Received unknown update type!")
+                            console.log(update)
+                            alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
+                            break
+                    }
                 }
             }
         }
@@ -161,21 +182,7 @@ export class Editor extends Component {
         const on_establish_connection = () => {
             const runAll = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
             // on socket success
-            this.client.sendreceive("getallnotebooks", {}).then(({ message }) => {
-                console.log(message.notebooks)
-                // TODO: Editor.js can sendreceive this information themself
-                // but this requires sendreceive to queue messages until it has connected
-                const old_path = this.state.notebook.path
-
-                this.remote_notebooks = message.notebooks
-                message.notebooks.forEach((nb) => {
-                    if (nb.notebook_id == this.state.notebook.notebook_id) {
-                        set_notebook_state(() => nb)
-                    }
-                })
-
-                update_stored_recent_notebooks(this.state.notebook.path, old_path)
-            })
+            this.client.sendreceive("getallnotebooks", {}).then(on_remote_notebooks)
 
             this.client
                 .sendreceive("getallcells", {})
@@ -245,7 +252,7 @@ export class Editor extends Component {
             })
         }
 
-        const on_connection_status = val => this.setState({connected: val})
+        const on_connection_status = (val) => this.setState({ connected: val })
 
         this.client = new PlutoConnection(on_update, on_connection_status)
 
@@ -329,9 +336,13 @@ export class Editor extends Component {
                 const promises = changed.map((cell) => {
                     set_cell_state(cell.cell_id, { running: true })
                     return this.client
-                        .sendreceive("setinput", {
-                            code: cell.local_code.body,
-                        }, cell.cell_id)
+                        .sendreceive(
+                            "setinput",
+                            {
+                                code: cell.local_code.body,
+                            },
+                            cell.cell_id
+                        )
                         .then((u) => {
                             actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
                         })
@@ -399,7 +410,7 @@ export class Editor extends Component {
         const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
         document.body.classList.toggle("code-differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
-        if (this.client.connected) {
+        if (this.state.connected) {
             document.querySelector("meta[name=theme-color]").content = "#fff"
             document.body.classList.remove("disconnected")
         } else {
@@ -424,12 +435,7 @@ export class Editor extends Component {
                     <a href="./">
                         <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" /></h1>
                     </a>
-                    <${FilePicker}
-                        client=${this.client}
-                        value=${this.state.notebook.path}
-                        on_submit=${this.submit_file_change}
-                        suggest_new_file=${true}
-                    />
+                    <${FilePicker} client=${this.client} value=${this.state.notebook.path} on_submit=${this.submit_file_change} suggest_new_file=${true} button_label="Rename"/>
                 </div>
             </header>
             <main>

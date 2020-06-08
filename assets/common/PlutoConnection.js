@@ -23,7 +23,7 @@ export class PlutoConnection {
     }
 
     wait_for_online() {
-        this.connected = false
+        this.on_connection_status(false)
 
         setTimeout(() => {
             this.ping(
@@ -31,7 +31,7 @@ export class PlutoConnection {
                     if (this.psocket.readyState != WebSocket.OPEN) {
                         this.wait_for_online()
                     } else {
-                        this.connected = true
+                        this.on_connection_status(true)
                     }
                 },
                 () => {
@@ -142,7 +142,7 @@ export class PlutoConnection {
                     document.location.href = "./"
                     return
                 }
-                this.connected = true
+                this.on_connection_status(true)
                 console.log("socket opened")
                 on_success()
             })
@@ -163,7 +163,7 @@ export class PlutoConnection {
             },
             () => {
                 // on failure
-                this.connected = false
+                this.on_connection_status(false)
             }
         )
 
@@ -174,10 +174,10 @@ export class PlutoConnection {
         })
     }
 
-    constructor(on_update) {
+    constructor(on_update, on_connection_status) {
         this.on_update = on_update
+        this.on_connection_status = on_connection_status
 
-        this.connected = false
         this.psocket = null
         this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
         this.client_id = this.get_short_unqiue_id()
