@@ -1,10 +1,12 @@
 import { html } from "../common/Html.js"
 import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
+import { PlutoConnection } from "../common/PlutoConnection.js"
+import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
+
 import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
-import { PlutoConnection } from "../common/PlutoConnection.js"
 import { DropRuler } from "./DropRuler.js"
 
 import { link_open } from "./Welcome.js"
@@ -16,7 +18,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: {
-                path: "unknown",
+                path: "...",
                 notebook_id: document.location.search.split("id=")[1],
                 cells: [],
             },
@@ -51,6 +53,8 @@ export class Editor extends Component {
         this.all_completed = true
         this.all_completed_promise = resolvable_promise()
 
+        this.counter_statistics = create_counter_statistics()
+
         // these are things that can be done to the local notebook
         const actions = {
             add_local_cell: (cell, new_index) => {
@@ -69,8 +73,7 @@ export class Editor extends Component {
                 })
             },
             update_local_cell_output: (cell, { output, running, runtime, errored }) => {
-                // TODO:
-                // statistics.numRuns++
+                this.counter_statistics.numRuns++
                 set_cell_state(cell.cell_id, {
                     running: running,
                     runtime: runtime,
@@ -111,9 +114,6 @@ export class Editor extends Component {
         }
 
         const on_remote_notebooks = ({ message }) => {
-            console.log(message.notebooks)
-            // TODO: Editor.js can sendreceive this information themself
-            // but this requires sendreceive to queue messages until it has connected
             const old_path = this.state.notebook.path
 
             message.notebooks.forEach((nb) => {
@@ -179,7 +179,7 @@ export class Editor extends Component {
         }
 
         const on_establish_connection = () => {
-            const runAll = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
+            const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
             // on socket success
             this.client.sendreceive("getallnotebooks", {}).then(on_remote_notebooks)
 
@@ -192,7 +192,7 @@ export class Editor extends Component {
                                 ...this.state.notebook,
                                 cells: update.message.cells.map((cell) => {
                                     const cell_data = empty_cell_data(cell.cell_id)
-                                    cell_data.running = runAll
+                                    cell_data.running = run_all
                                     return cell_data
                                 }),
                             },
@@ -207,7 +207,7 @@ export class Editor extends Component {
                                 )
                                 promises.push(
                                     this.client.sendreceive("getoutput", {}, cell_data.cell_id).then((u) => {
-                                        if (!runAll || cell_data.running) {
+                                        if (!run_all || cell_data.running) {
                                             actions.update_local_cell_output(cell_data, u.message)
                                         } else {
                                             // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
@@ -215,9 +215,7 @@ export class Editor extends Component {
                                     })
                                 )
                             })
-
                             Promise.all(promises).then(() => {
-                                // TODO: more reacty
                                 this.setState({
                                     loading: false,
                                 })
@@ -274,9 +272,7 @@ export class Editor extends Component {
         // these are things that can be done to the remote notebook
         this.requests = {
             change_remote_cell: (cell_id, new_code, create_promise = false) => {
-                // TODO
-                // statistics.numEvals++
-
+                this.counter_statistics.numEvals++
                 set_cell_state(cell_id, { running: true })
                 return this.client.send("changecell", { code: new_code }, cell_id, create_promise)
             },
@@ -353,10 +349,11 @@ export class Editor extends Component {
                         })
                     })
                     .catch(console.error)
-                
+
                 return changed.length != 0
             },
             set_bond: (symbol, value) => {
+                this.counter_statistics.numBondSets++
                 this.client
                     .sendreceive("bond_set", {
                         sym: symbol,
@@ -406,7 +403,7 @@ export class Editor extends Component {
             switch (e.keyCode) {
                 case 81: // q
                     if (e.ctrlKey) {
-                        if(this.state.notebook.cells.some(c => c.running)){
+                        if (this.state.notebook.cells.some((c) => c.running)) {
                             this.requests.interrupt_remote()
                         }
                         e.preventDefault()
@@ -414,16 +411,14 @@ export class Editor extends Component {
                     break
                 case 82: // r
                     if (e.ctrlKey) {
-                        if (notebook) {
-                            document.location.href = link_open(notebook)
-                            e.preventDefault()
-                        }
+                        document.location.href = link_open(this.state.notebook)
+                        e.preventDefault()
                     }
                     break
                 case 83: // s
                     if (e.ctrlKey) {
                         const some_cells_ran = this.requests.run_all_changed_remote_cells()
-                        if(!some_cells_ran) {
+                        if (!some_cells_ran) {
                             // all cells were in sync allready
                             // TODO: let user know that the notebook autosaves
                         }
@@ -444,12 +439,26 @@ export class Editor extends Component {
         Shift+Enter:   run cell and add cell below
         Ctrl+Shift+Delete:   delete cell
         Ctrl+Q:   interrupt notebook
-        Ctrl+S:   rename notebook`)
-        
+        Ctrl+S:   rename notebook`
+                    )
+
                     e.preventDefault()
                     break
             }
         })
+
+        setTimeout(() => {
+            init_feedback()
+            finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
+
+            setInterval(() => {
+                finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
+                    store_statistics_sample(statistics)
+                    send_statistics_if_enabled(statistics)
+                })
+                this.counter_statistics = create_counter_statistics()
+            }, 10 * 60 * 1000) // 10 minutes - statistics interval
+        }, 5 * 1000) // 10 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {

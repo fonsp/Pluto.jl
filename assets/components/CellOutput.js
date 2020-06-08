@@ -118,54 +118,6 @@ export class RawHTMLContainer extends Component {
     }
 }
 
-// export const RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
-//     const DOM_hook = (node) => {
-//         node.innerHTML = body
-
-//         // based on https://stackoverflow.com/a/26716182
-//         // to execute all scripts in the output html:
-//         try {
-//             Array.from(node.querySelectorAll("script")).map((script) => {
-//                 node.currentScript = script // available inside user JS as `this.currentScript`
-//                 if (script.src != "") {
-//                     if (
-//                         !Array.from(document.head.querySelectorAll("script"))
-//                             .map((s) => s.src)
-//                             .includes(script)
-//                     ) {
-//                         const tag = document.createElement("script")
-//                         tag.src = script.src
-//                         document.head.appendChild(tag)
-//                         // might be wise to wait after adding scripts to head
-//                         // maybe use a better method?
-//                     }
-//                 } else {
-//                     const result = Function(script.innerHTML).bind(node)()
-//                     if (result && result.nodeType === Node.ELEMENT_NODE) {
-//                         script.parentElement.insertBefore(result, script)
-//                     }
-//                 }
-//             })
-//         } catch (err) {
-//             console.error("Couldn't execute script:")
-//             console.error(err)
-//             // TODO: relay to user
-//         }
-
-//         connect_bonds(node, all_completed_promise, requests)
-
-//         // convert LaTeX to svg
-//         try {
-//             MathJax.typeset([node])
-//         } catch (err) {
-//             console.info("Failed to typeset TeX:")
-//             console.info(err)
-//         }
-//     }
-
-//     return html`<div ref=${DOM_hook}></div>`
-// }
-
 // TODO:
 // const oldHeight = outputNode.scrollHeight
 // const oldScroll = window.scrollY

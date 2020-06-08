@@ -1,7 +1,5 @@
 import Generators_input from "https://unpkg.com/@observablehq/stdlib@3.3.1/src/generators/input.js"
 
-// import { statistics } from "./feedback.js";
-
 const make_bond = (bond_node, all_completed_promise, requests) => {
     if(bond_node.getRootNode() != document){
         return
