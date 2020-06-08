@@ -904,7 +904,11 @@ function cellRedirect(event) {
 const errorRewrites = [
     {
         from: "syntax: extra token after end of expression",
-        to: "Multiple expressions in one cell.\n<a href=\"#\" onclick=\"errorHint(event)\">Wrap all code in a `begin ... end` block.</a>",
+        to: "Multiple expressions in one cell.\n<a href=\"#\" onclick=\"errorHint(event)\">Wrap all code in a `begin ... end` block.</a>"
+    },
+    {
+        to: "Tried to reevaluate a cell that includes a file containing structs.\nThis is not yet supported :(.\nAs a workaround you can put the included code in a module and use it with `using <module>` in the notebook.\n However, changes to that file will only take effect after restarting Pluto.",
+        from: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/
     },
 ]
 
