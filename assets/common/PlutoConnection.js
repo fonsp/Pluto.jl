@@ -86,15 +86,15 @@ export class PlutoConnection {
     async handleMessage(event) {
         try {
             const update = await event.data.text().then(JSON.parse)
-            // const forMe = !(("notebook_id" in update) && (update.notebook_id != this.notebook_id))
-            // if (!forMe) {
+            // const for_me = !(("notebook_id" in update) && (update.notebook_id != this.notebook_id))
+            // if (!for_me) {
             //     console.log("Update message not meant for this notebook")
             //     return
             // }
-            const byMe = "initiatorID" in update && update.initiatorID == this.clientID
+            const by_me = "initiatorID" in update && update.initiatorID == this.clientID
             const requestID = update.requestID
 
-            if (byMe && requestID) {
+            if (by_me && requestID) {
                 const request = this.sentRequests[requestID]
                 if (request) {
                     request(update)
@@ -103,7 +103,7 @@ export class PlutoConnection {
                 }
             }
 
-            this.on_update(update, byMe)
+            this.on_update(update, by_me)
         } catch (ex) {
             console.error("Failed to get update!", ex)
             console.log(event)

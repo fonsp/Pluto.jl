@@ -1,17 +1,16 @@
 import { html } from "./Editor.js"
-import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
-// import { codeMirrors } from "./Editor.js"
-
-
-function StackFrameFilename(frame, cell_id) {
+function StackFrameFilename({frame, cell_id}) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const frameCellID = frame.file.substr(sep_index + 4)
-        const a = html`<a href="#" onclick=${e => {
-            cellRedirect(frameCellID, frame.line - 1) // 1-based to 0-based index
-            e.preventDefault()
-        }}>
+        const a = html`<a
+            href="#"
+            onclick=${(e) => {
+                cellRedirect(frameCellID, frame.line - 1) // 1-based to 0-based index
+                e.preventDefault()
+            }}
+        >
             ${frameCellID == cell_id ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
@@ -20,7 +19,7 @@ function StackFrameFilename(frame, cell_id) {
     }
 }
 
-function renderFunccall(frame) {
+function Funccall({ frame }) {
     const bracket_index = frame.call.indexOf("(")
     if (bracket_index != -1) {
         return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
@@ -43,9 +42,10 @@ export function ErrorMessage({ msg, stacktrace, cell_id }) {
                       ${stacktrace.map(
                           (frame) =>
                               html`<li>
-                                  ${renderFunccall(frame)}<span>@</span>${StackFrameFilename(frame, cell_id)}${frame.inlined
-                                      ? html`<span>[inlined]</span>`
-                                      : null}
+                                  <${Funccall} frame=${frame} />
+                                  <span>@</span>
+                                  <${StackFrameFilename} frame=${frame} cell_id=${cell_id} />
+                                  ${frame.inlined ? html`<span>[inlined]</span>` : null}
                               </li>`
                       )}
                   </ol>
@@ -53,7 +53,8 @@ export function ErrorMessage({ msg, stacktrace, cell_id }) {
     </jlerror>`
 }
 
-function cellRedirect(cell_id, line) { // TODO: move to Cell class
+function cellRedirect(cell_id, line) {
+    // TODO: move to Cell class
     // codeMirrors[cell_id].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
     // codeMirrors[cell_id].focus()
 }
@@ -81,7 +82,7 @@ function parentByTag(el, tag) {
 function errorHint(e) {
     const cellNode = parentByTag(e.target, "CELL")
     // wrapInBlock(codeMirrors[cellNode.id], "begin")
-    requestchange_cell(cellNode.id)
+    requestchange_remote_cell(cellNode.id)
     e.preventDefault()
 }
 

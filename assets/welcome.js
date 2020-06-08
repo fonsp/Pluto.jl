@@ -163,7 +163,7 @@ let filePickerCodeMirror = createCodeMirrorFilepicker((elt) => {
 
 /* SERVER CONNECTION */
 
-function on_update(update, byMe) {
+function on_update(update, by_me) {
     var message = update.message
 
     switch (update.type) {

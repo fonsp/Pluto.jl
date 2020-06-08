@@ -3,6 +3,8 @@ import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 
+import "../common/SetupCellEnvironment.js"
+
 export class CellOutput extends Component {
 	render() {
 		return html`

@@ -1,5 +1,4 @@
 import { html } from "./Editor.js"
-import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -28,7 +27,22 @@ export function empty_cell_data(cell_id) {
     }
 }
 
-export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, runtime, errored, output, remote, on_change, on_update_doc_query, disable_input, requests }) => {
+export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
+
+export const Cell = ({
+    cell_id,
+    remote_code,
+    local_code,
+    code_folded,
+    running,
+    runtime,
+    errored,
+    output,
+    on_change,
+    on_update_doc_query,
+    disable_input,
+    requests,
+}) => {
     return html`
         <cell
             class=${cl({
@@ -45,7 +59,7 @@ export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, r
             <cellshoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
-                        requests.fold_cell(cell_id, !code_folded)
+                        requests.fold_remote_cell(cell_id, !code_folded)
                     }}
                     class="foldcode"
                     title="Show/hide code"
@@ -56,7 +70,7 @@ export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, r
             <trafficlight></trafficlight>
             <button
                 onClick=${() => {
-                    requests.add_cell(cell_id, "before")
+                    requests.add_remote_cell(cell_id, "before")
                 }}
                 class="addcell before"
                 title="Add cell"
@@ -67,10 +81,13 @@ export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, r
             <${CellInput}
                 remote_code=${remote_code}
                 on_submit=${(newCode) => {
-                    requests.change_cell(cell_id, newCode)
+                    requests.change_remote_cell(cell_id, newCode)
                 }}
                 on_delete=${() => {
                     requests.delete_cell(cell_id)
+                }}
+                on_add_after=${() => {
+                    requests.add_remote_cell(cell_id, "after")
                 }}
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
@@ -79,18 +96,16 @@ export const Cell = ({ cell_id, remote_code, local_code, code_folded, running, r
             <${RunArea}
                 onClick=${() => {
                     if (running) {
-                        // TODO
-                        newCellNode.classList.add("error")
-                        requests.interrupt()
+                        requests.interrupt_remote(cell_id)
                     } else {
-                        requests.change_cell(cell_id)
+                        requests.change_remote_cell(cell_id)
                     }
                 }}
                 runtime=${runtime}
             />
             <button
                 onClick=${() => {
-                    requests.add_cell(cell_id, "after")
+                    requests.add_remote_cell(cell_id, "after")
                 }}
                 class="addcell after"
                 title="Add cell"

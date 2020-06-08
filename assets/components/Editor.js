@@ -1,5 +1,4 @@
-import { h, render, Component } from "https://unpkg.com/preact@10.4.4?module"
-import { useState } from "https://unpkg.com/preact@10.4.4/hooks/dist/hooks.module.js?module"
+import { h, Component } from "https://unpkg.com/preact@10.4.4?module"
 import htm from "https://unpkg.com/htm@3.0.4/dist/htm.module.js?module"
 
 export const html = htm.bind(h)
@@ -9,7 +8,7 @@ import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { PlutoConnection } from "../common/PlutoConnection.js"
 import { DropRuler } from "./DropRuler.js"
-import { empty_cell_data } from "./Cell.js"
+import { empty_cell_data, code_differs } from "./Cell.js"
 
 export class Editor extends Component {
     constructor() {
@@ -30,13 +29,12 @@ export class Editor extends Component {
                 return {
                     notebook: {
                         ...prevstate.notebook,
-                        ...callback(prevstate.Notebook),
+                        ...callback(prevstate.notebook),
                     },
                 }
             })
         }
         const set_cell_state = (cell_id, new_state_props) => {
-            // callback to ensure that things work synchronously
             this.setState((prevstate) => {
                 return {
                     notebook: {
@@ -50,110 +48,69 @@ export class Editor extends Component {
         }
         this.set_cell_state = set_cell_state.bind(this)
 
-        /* NOTEBOOK MODIFIERS */
-
-        const add_local_cell = (cell, newIndex, focus = true) => {
-            set_notebook_state_callback(notebook.notebook_id, (prevstate) => {
-                if (prevstate.cells.any((c) => c.cell_id == cell.cell_id)) {
-                    console.warn("Tried to add cell with existing cell_id. Canceled.")
-                    console.log(cell)
-                    console.log(notebook)
-                    return
-                }
-
-                const before = prevstate.cells
-                return {
-                    cells: [...before.slice(0, newIndex), cell, ...before.slice(newIndex)],
-                }
-            })
-        }
-
-        const update_local_cell_output = (cell, output) => {
-            // TODO:
-            // statistics.numRuns++
-            set_cell_state(cell.cell_id, output)
-
-            // TODO
-            // (see bond.js)
-            // document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
-
-            // if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
-            //     allCellsCompleted = true
-            //     allCellsCompletedPromise.resolver()
-            // }
-        }
-
-        const update_local_cell_input = (cell, byMe, code, folded) => {
-            set_cell_state(cell.cell_id, {
-                remote_code: {
-                    body: code,
-                    submitted_by_me: byMe,
-                },
-                code_folded: folded,
-            })
-        }
-
-        const delete_local_cell = (cell) => {
-            // TODO: event listeners? gc?
-            this.setState((prevstate) => {
-                return {
-                    notebook: {
-                        ...prevstate.notebook,
-                        cells: prevstate.notebook.cells.filter((c) => c !== cell),
+        // these are things that can be done to the local notebook
+        const actions = {
+            add_local_cell: (cell, new_index) => {
+                set_notebook_state((prevstate) => {
+                    if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
+                        console.warn("Tried to add cell with existing cell_id. Canceled.")
+                        console.log(cell)
+                        console.log(prevstate)
+                        return prevstate
+                    }
+    
+                    const before = prevstate.cells
+                    return {
+                        cells: [...before.slice(0, new_index), cell, ...before.slice(new_index)],
+                    }
+                })
+            },
+            update_local_cell_output: (cell, output) => {
+                // TODO:
+                // statistics.numRuns++
+                set_cell_state(cell.cell_id, output)
+            },
+            update_local_cell_input: (cell, by_me, code, folded) => {
+                set_cell_state(cell.cell_id, {
+                    remote_code: {
+                        body: code,
+                        submitted_by_me: by_me,
                     },
-                }
-            })
-        }
-
-        const move_local_cell = (cell, newIndex) => {
-            this.setState((prevstate) => {
-                const oldIndex = prevstate.notebook.cells.findIndex((c) => c === cell)
-                if (newIndex > oldIndex) {
-                    newIndex--
-                }
-                const without = prevstate.notebook.cells.filter((c) => c !== cell)
-                return {
-                    notebook: {
-                        ...prevstate.notebook,
-                        cells: [...without.slice(0, newIndex), cell, ...without.slice(newIndex)],
-                    },
-                }
-            })
+                    code_folded: folded,
+                })
+            },
+            delete_local_cell: (cell) => {
+                // TODO: event listeners? gc?
+                set_notebook_state((prevstate) => {
+                    return {
+                        cells: prevstate.cells.filter((c) => c !== cell),
+                    }
+                })
+            },
+            move_local_cell: (cell, new_index) => {
+                set_notebook_state((prevstate) => {
+                    const old_index = prevstate.cells.findIndex((c) => c === cell)
+                    if (new_index > old_index) {
+                        new_index--
+                    }
+                    const without = prevstate.cells.filter((c) => c !== cell)
+                    return {
+                        cells: [...without.slice(0, new_index), cell, ...without.slice(new_index)],
+                    }
+                })
+            }
         }
 
         this.remote_notebooks = []
 
         // these are update message that are _not_ a response to a `sendreceive`
-        const on_update = (update, byMe) => {
-            const message = update.message
-            if (update.notebook_id == null) {
-                switch (update.type) {
-                    case "notebook_list":
-                        console.log(message.notebooks)
-                        // TODO: Editor.js can sendreceive this information themself
-                        // but this requires sendreceive to queue messages until it has connected
-                        const old_path = this.state.notebook.path
-
-                        this.remote_notebooks = message.notebooks
-                        message.notebooks.forEach((nb) => {
-                            if (nb.notebook_id == this.state.notebook.notebook_id) {
-                                set_notebook_state(() => nb)
-                            }
-                        })
-
-                        updateStoredRecentNotebooks(this.state.notebook.path, old_path)
-                        break
-                }
-            } else {
-                if (this.state.notebook.notebook_id !== update.notebook_id) {
-                    return
-                }
-
+        const on_update = (update, by_me) => {
+            if (this.state.notebook.notebook_id === update.notebook_id) {
                 const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
-
+                const message = update.message
                 switch (update.type) {
                     case "cell_output":
-                        update_local_cell_output(cell, message)
+                        actions.update_local_cell_output(cell, message)
                         break
                     case "cell_running":
                         set_cell_state(update.cell_id, {
@@ -166,19 +123,19 @@ export class Editor extends Component {
                         })
                         break
                     case "cell_input":
-                        update_local_cell_input(cell, byMe, message.code, message.folded)
+                        actions.update_local_cell_input(cell, by_me, message.code, message.folded)
                         break
                     case "cell_deleted":
-                        delete_local_cell(cell)
+                        actions.delete_local_cell(cell)
                         break
                     case "cell_moved":
-                        move_local_cell(cell, message.index)
+                        actions.move_local_cell(cell, message.index)
                         break
                     case "cell_added":
                         const new_cell = empty_cell_data(update.cell_id)
                         new_cell.running = false
                         new_cell.output.body = ""
-                        add_local_cell(new_cell, message.index, true)
+                        actions.add_local_cell(new_cell, message.index)
                         break
                     default:
                         console.error("Received unknown update type!")
@@ -192,7 +149,21 @@ export class Editor extends Component {
         const on_establish_connection = () => {
             const runAll = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
             // on socket success
-            this.client.send("getallnotebooks", {})
+            this.client.sendreceive("getallnotebooks", {}).then(({ message }) => {
+                console.log(message.notebooks)
+                // TODO: Editor.js can sendreceive this information themself
+                // but this requires sendreceive to queue messages until it has connected
+                const old_path = this.state.notebook.path
+
+                this.remote_notebooks = message.notebooks
+                message.notebooks.forEach((nb) => {
+                    if (nb.notebook_id == this.state.notebook.notebook_id) {
+                        set_notebook_state(() => nb)
+                    }
+                })
+
+                update_stored_recent_notebooks(this.state.notebook.path, old_path)
+            })
 
             this.client
                 .sendreceive("getallcells", {})
@@ -213,13 +184,13 @@ export class Editor extends Component {
                             this.state.notebook.cells.forEach((cell_data) => {
                                 promises.push(
                                     this.client.sendreceive("getinput", {}, cell_data.cell_id).then((u) => {
-                                        update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
+                                        actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
                                     })
                                 )
                                 promises.push(
                                     this.client.sendreceive("getoutput", {}, cell_data.cell_id).then((u) => {
                                         if (!runAll || cell_data.running) {
-                                            update_local_cell_output(cell_data, u.message)
+                                            actions.update_local_cell_output(cell_data, u.message)
                                         } else {
                                             // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
                                         }
@@ -266,6 +237,7 @@ export class Editor extends Component {
 
         // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
+
             // TODO: dit mag vast niet meer
             const first_unsaved = document.querySelector("notebook>cell.code-differs")
             if (first_unsaved) {
@@ -281,31 +253,39 @@ export class Editor extends Component {
         this.client.notebook_id = this.state.notebook.notebook_id
         this.client.initialize(on_establish_connection)
 
+        // these are things that can be done to the remote notebook
         this.requests = {
-            change_cell: (cell_id, newCode, createPromise = false) => {
+            change_remote_cell: (cell_id, newCode, createPromise = false) => {
                 // TODO
                 // statistics.numEvals++
 
                 set_cell_state(cell_id, { running: true })
                 return this.client.send("changecell", { code: newCode }, cell_id, createPromise)
             },
-            interrupt: () => {
+            interrupt_remote: (cell_id) => {
+                set_notebook_state((prevstate) => {
+                    return {
+                        cells: prevstate.cells.map((c) => {
+                            return { ...c, errored: c.running }
+                        }),
+                    }
+                })
                 this.client.send("interruptall", {})
             },
-            move_cell: (cell_id, newIndex) => {
+            move_remote_cell: (cell_id, new_index) => {
                 // Indexing works as if a new cell is added.
                 // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
                 // is moved to the end, that would be new js-index = 5
-                this.client.send("movecell", { index: newIndex }, cell_id)
+                this.client.send("movecell", { index: new_index }, cell_id)
             },
-            add_cell: (cell_id, beforeOrAfter) => {
+            add_remote_cell: (cell_id, beforeOrAfter) => {
                 const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
                 const delta = beforeOrAfter == "before" ? 0 : 1
                 this.client.send("addcell", { index: index + delta })
             },
             delete_cell: (cell_id) => {
-                if (false /* TODO: if i am the last cell */) {
-                    this.requests.add_cell(cell_id, "after")
+                if (this.state.notebook.cells.length <= 1) {
+                    this.requests.add_remote_cell(cell_id, "after")
                 }
                 set_cell_state(cell_id, {
                     running: true,
@@ -316,11 +296,11 @@ export class Editor extends Component {
                 })
                 this.client.send("deletecell", {}, cell_id)
             },
-            fold_cell: (cell_id, newFolded) => {
+            fold_remote_cell: (cell_id, newFolded) => {
                 this.client.send("foldcell", { folded: newFolded }, cell_id)
             },
-            run_all_changed_cells: () => {
-                const changed = this.state.notebook.cells.filter((c) => c.code_differs)
+            run_all_changed_remote_cells: () => {
+                const changed = this.state.notebook.cells.filter((cell) => code_differs(cell))
 
                 // TODO: async await?
                 const promises = changed.map((cell) => {
@@ -330,7 +310,7 @@ export class Editor extends Component {
                             code: cell.cm.getValue(),
                         })
                         .then((u) => {
-                            update_local_cell_input(true, cellNode, u.message.code, u.message.folded)
+                            actions.update_local_cell_input(true, cellNode, u.message.code, u.message.folded)
                         })
                 })
                 Promise.all(promises)
@@ -345,17 +325,24 @@ export class Editor extends Component {
     }
 
     componentDidUpdate() {
-        const any_code_differs = this.state.notebook.cells.any((cell) => cell.code_differs)
-        // TODO: meer react meer leuk
+        const any_code_differs = this.state.notebook.cells.any((cell) => code_differs(cell))
         document.body.classList.toggle("code-differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
-        if(this.client.currentlyConnected){
+        if (this.client.currentlyConnected) {
             document.querySelector("meta[name=theme-color]").content = "#fff"
             document.body.classList.remove("disconnected")
         } else {
             document.querySelector("meta[name=theme-color]").content = "#DEAF91"
             document.body.classList.add("disconnected")
         }
+        // TODO
+        // (see bond.js)
+        // document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
+
+        // if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
+        //     allCellsCompleted = true
+        //     allCellsCompletedPromise.resolver()
+        // }
     }
 
     render() {
@@ -381,7 +368,7 @@ export class Editor extends Component {
             </header>
             <main>
                 <preamble>
-                    <button onClick=${() => this.remote.requestrun_all_changed_cells()} class="runallchanged" title="Save and run all changed cells">
+                    <button onClick=${() => this.remote.requestrun_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
                         <span></span>
                     </button>
                 </preamble>
@@ -401,7 +388,7 @@ export class Editor extends Component {
 
                 <${DropRuler} requests=${this.requests} />
             </main>
-            <${LiveDocs} desiredQuery=${this.state.desired_doc_query} client=${this.client} />
+            <${LiveDocs} desired_doc_query=${this.state.desired_doc_query} client=${this.client} />
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
@@ -456,7 +443,7 @@ export class Editor extends Component {
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
-export function updateStoredRecentNotebooks(recent_path, also_delete = undefined) {
+export function update_stored_recent_notebooks(recent_path, also_delete = undefined) {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
     const oldpaths = storedList

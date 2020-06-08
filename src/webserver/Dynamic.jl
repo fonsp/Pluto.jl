@@ -25,7 +25,7 @@ function serialize_message(message::UpdateMessage)
     sprint(serialize_message_to_stream, message)
 end
 
-function change_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
+function change_remote_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -72,7 +72,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
-    change_cellinput!(notebook, to_delete, "", initiator=initiator)
+    change_remote_cellinput!(notebook, to_delete, "", initiator=initiator)
     runtask = run_reactive_async!(notebook, cell)
     
     # wait for the reactive run to finish, then delete the cells
@@ -111,7 +111,7 @@ end
 responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     newcode = body["code"]
 
-    change_cellinput!(notebook, cell, newcode, initiator=initiator)
+    change_remote_cellinput!(notebook, cell, newcode, initiator=initiator)
     run_reactive_async!(notebook, cell)
 end
 
@@ -138,7 +138,7 @@ responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{I
 end
 
 responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    change_cellinput!(notebook, cell, body["code"], initiator=initiator)
+    change_remote_cellinput!(notebook, cell, body["code"], initiator=initiator)
 end
 
 responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin

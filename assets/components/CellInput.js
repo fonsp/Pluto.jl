@@ -40,16 +40,11 @@ export class CellInput extends Component {
         this.cm.setOption("extraKeys", {
             "Ctrl-Enter": () => this.props.on_submit(this.cm.getValue()),
             "Shift-Enter": () => {
-                this.props.onRequestNewCell()
+                this.props.on_add_after()
                 this.props.on_submit(this.cm.getValue())
             },
             "Ctrl-Shift-Delete": () => {
                 this.props.on_delete()
-                const nextCell = cellNode.nextSibling
-                if (nextCell) {
-                    // TODO
-                    codeMirrors[nextCell.id].focus()
-                }
             },
             "Shift-Tab": "indentLess",
             "Tab": onTabKey,
@@ -59,20 +54,20 @@ export class CellInput extends Component {
             this.props.on_change(this.cm.getValue())
         })
 
-        // this.cm.on("cursorActivity", () => {
-        //     if (this.cm.somethingSelected()) {
-        //         const sel = this.cm.getSelection()
-        //         if (!/[\s]/.test(sel)) {
-        //             // no whitespace
-        //             this.props.on_update_doc_query(sel)
-        //         }
-        //     } else {
-        //         const token = this.cm.getTokenAt(this.cm.getCursor())
-        //         if (token.type != null && token.type != "string") {
-        //             this.props.on_update_doc_query(token.string)
-        //         }
-        //     }
-        // })
+        this.cm.on("cursorActivity", () => {
+            if (this.cm.somethingSelected()) {
+                const sel = this.cm.getSelection()
+                if (!/[\s]/.test(sel)) {
+                    // no whitespace
+                    this.props.on_update_doc_query(sel)
+                }
+            } else {
+                const token = this.cm.getTokenAt(this.cm.getCursor())
+                if (token.type != null && token.type != "string") {
+                    this.props.on_update_doc_query(token.string)
+                }
+            }
+        })
 
         this.cm.on("blur", () => {
             if (document.hasFocus()) {

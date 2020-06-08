@@ -58,7 +58,7 @@ export class DropRuler extends Component {
             }
             // Called when drag-dropped somewhere on the page
             const dropIndex = this.getDropIndexOf(e.pageY)
-            this.props.requests.requestmove_cell(this.dropee.id, dropIndex)
+            this.props.requests.move_remote_cell(this.dropee.id, dropIndex)
         }
     }
 

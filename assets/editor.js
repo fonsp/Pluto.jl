@@ -5,7 +5,6 @@ import { utf8index_to_ut16index } from "./common/UnicodeTools.js"
 
 import { statistics } from "./feedback.js"
 
-import "./common/SetupCellEnvironment.js"
 import "./common/GlobalShortKeys.js"
 
 import { html as preacthtml, Component, render } from "https://unpkg.com/htm/preact/standalone.module.js"
@@ -97,7 +96,7 @@ document.ondrop = (e) => {
     }
     // Called when drag-dropped somewhere on the page
     const dropIndex = getDropIndexOf(e.pageY)
-    requestmove_cell(dropee.id, dropIndex)
+    this.props.move_remote_cell(dropee.id, dropIndex)
 }
 
 /* FONTS */
