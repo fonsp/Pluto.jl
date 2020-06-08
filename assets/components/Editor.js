@@ -58,7 +58,7 @@ export class Editor extends Component {
                         console.log(prevstate)
                         return prevstate
                     }
-    
+
                     const before = prevstate.cells
                     return {
                         cells: [...before.slice(0, new_index), cell, ...before.slice(new_index)],
@@ -98,7 +98,7 @@ export class Editor extends Component {
                         cells: [...without.slice(0, new_index), cell, ...without.slice(new_index)],
                     }
                 })
-            }
+            },
         }
 
         this.remote_notebooks = []
@@ -237,12 +237,10 @@ export class Editor extends Component {
 
         // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
-
-            // TODO: dit mag vast niet meer
-            const first_unsaved = document.querySelector("notebook>cell.code-differs")
-            if (first_unsaved) {
+            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
+            if (first_unsaved != null) {
                 console.log("preventing unload")
-                codeMirrors[first_unsaved.id].focus()
+                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
                 event.stopImmediatePropagation()
                 event.preventDefault()
                 event.returnValue = ""
@@ -255,12 +253,22 @@ export class Editor extends Component {
 
         // these are things that can be done to the remote notebook
         this.requests = {
-            change_remote_cell: (cell_id, newCode, createPromise = false) => {
+            change_remote_cell: (cell_id, new_code, createPromise = false) => {
                 // TODO
                 // statistics.numEvals++
 
                 set_cell_state(cell_id, { running: true })
-                return this.client.send("changecell", { code: newCode }, cell_id, createPromise)
+                return this.client.send("changecell", { code: new_code }, cell_id, createPromise)
+            },
+            wrap_remote_cell: (cell_id, block = "begin") => {
+                const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
+                const new_code = block + "\n\t" + cell.local_code.body.replace(/\n/g, "\n\t") + "\n" + "end"
+                set_cell_state(cell_id, { 
+                    remote_code: {
+                        body: new_code,
+                        submitted_by_me: false,
+                    },})
+                this.requests.change_remote_cell(cell_id, new_code)
             },
             interrupt_remote: (cell_id) => {
                 set_notebook_state((prevstate) => {
@@ -368,7 +376,7 @@ export class Editor extends Component {
             </header>
             <main>
                 <preamble>
-                    <button onClick=${() => this.remote.requestrun_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
+                    <button onClick=${() => this.requests.run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
                         <span></span>
                     </button>
                 </preamble>

@@ -1,6 +1,5 @@
 import { html } from "./Editor.js"
-import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
-
+import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
 export class CellInput extends Component {
     constructor() {
@@ -9,9 +8,8 @@ export class CellInput extends Component {
         this.differsYesterday = false
     }
 
-    componentDidUpdate() 
-    {
-        if(!this.props.remote_code.submitted_by_me && this.remote_code !== this.props.remote_code.body){
+    componentDidUpdate() {
+        if (!this.props.remote_code.submitted_by_me && this.remote_code !== this.props.remote_code.body) {
             this.cm.setValue(this.props.remote_code.body)
         }
         this.remote_code = this.props.remote_code.body
@@ -47,7 +45,7 @@ export class CellInput extends Component {
                 this.props.on_delete()
             },
             "Shift-Tab": "indentLess",
-            "Tab": onTabKey,
+            Tab: onTabKey,
         })
 
         this.cm.on("change", () => {
@@ -74,7 +72,23 @@ export class CellInput extends Component {
                 this.cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, { scroll: false })
             }
         })
+
+        // yayo
+        this.focusListener = (e) => {
+            if (e.detail.cell_id === this.props.cell_id) {
+                if (e.detail.line != null) {
+                    this.cm.setSelection({ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true })
+                }
+                this.cm.focus()
+            }
+        }
+        window.addEventListener("cell_focus", this.focusListener)
     }
+
+    componentWillUnmount() {
+        window.removeEventListener("cell_focus", this.focusListener)
+    }
+
     render() {
         return html`
             <cellinput>

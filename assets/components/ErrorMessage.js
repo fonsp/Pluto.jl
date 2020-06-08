@@ -1,17 +1,24 @@
 import { html } from "./Editor.js"
 
-function StackFrameFilename({frame, cell_id}) {
+function StackFrameFilename({ frame, cell_id }) {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
-        const frameCellID = frame.file.substr(sep_index + 4)
+        const frame_cell_id = frame.file.substr(sep_index + 4)
         const a = html`<a
             href="#"
             onclick=${(e) => {
-                cellRedirect(frameCellID, frame.line - 1) // 1-based to 0-based index
+                window.dispatchEvent(
+                    new CustomEvent("cell_focus", {
+                        detail: {
+                            cell_id: frame_cell_id,
+                            line: frame.line - 1, // 1-based to 0-based index
+                        },
+                    })
+                )
                 e.preventDefault()
             }}
         >
-            ${frameCellID == cell_id ? "Local" : "Other"}: ${frame.line}
+            ${frame_cell_id == cell_id ? "Local" : "Other"}: ${frame.line}
         </a>`
         return html`<em>${a}</em>`
     } else {
@@ -28,12 +35,25 @@ function Funccall({ frame }) {
     }
 }
 
-export function ErrorMessage({ msg, stacktrace, cell_id }) {
+export function ErrorMessage({ msg, stacktrace, cell_id, requests }) {
+    const rewriters = [
+        {
+            pattern: /syntax: extra token after end of expression/,
+            display: () =>
+                html`<p>Multiple expressions in one cell.</p>
+                    <a href="#" onclick=${() => requests.wrap_remote_cell(cell_id, "begin")}>Wrap all code in a <em>begin ... end</em> block.</a>`,
+        },
+        {
+            pattern: /.?/,
+            display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
+        },
+    ]
+
+    const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg))
+
     return html`<jlerror>
         <header>
-            ${rewrittenError(msg)
-                .split("\n")
-                .map((line) => html`<p>${line}</p>`)}
+            ${matched_rewriter.display(msg)}
         </header>
         ${stacktrace.length == 0
             ? null
@@ -51,42 +71,4 @@ export function ErrorMessage({ msg, stacktrace, cell_id }) {
                   </ol>
               </section>`}
     </jlerror>`
-}
-
-function cellRedirect(cell_id, line) {
-    // TODO: move to Cell class
-    // codeMirrors[cell_id].setSelection({ line: line, ch: 0 }, { line: line, ch: Infinity }, { scroll: true })
-    // codeMirrors[cell_id].focus()
-}
-
-const errorRewrites = [
-    {
-        from: "syntax: extra token after end of expression",
-        to: 'Multiple expressions in one cell.\n<a href="#" onclick="errorHint(event)">Wrap all code in a `begin ... end` block.</a>',
-    },
-]
-
-function rewrittenError(old_raw) {
-    let new_raw = old_raw
-    errorRewrites.forEach((rw) => {
-        new_raw = new_raw.replace(rw.from, rw.to)
-    })
-    return new_raw
-}
-
-// move up the dom tree until the tag is found
-function parentByTag(el, tag) {
-    return !el || el.tagName == tag ? el : parentByTag(el.parentElement, tag)
-}
-
-function errorHint(e) {
-    const cellNode = parentByTag(e.target, "CELL")
-    // wrapInBlock(codeMirrors[cellNode.id], "begin")
-    requestchange_remote_cell(cellNode.id)
-    e.preventDefault()
-}
-
-function wrapInBlock(cm, block = "begin") {
-    const oldVal = cm.getValue()
-    cm.setValue(block + "\n\t" + oldVal.replace(/\n/g, "\n\t") + "\n" + "end")
 }

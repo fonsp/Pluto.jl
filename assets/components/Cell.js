@@ -77,7 +77,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} cell_id=${cell_id} />
+            <${CellOutput} ...${output} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
                 remote_code=${remote_code}
                 on_submit=${(newCode) => {
@@ -92,6 +92,7 @@ export const Cell = ({
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
                 disable_input=${disable_input}
+                cell_id=${cell_id}
             />
             <${RunArea}
                 onClick=${() => {
