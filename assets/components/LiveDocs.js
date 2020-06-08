@@ -1,4 +1,4 @@
-import { html } from "./Editor.js"
+import { html } from "../common/Html.js"
 import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { cl } from "../common/ClassTable.js"

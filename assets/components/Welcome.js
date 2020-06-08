@@ -1,7 +1,5 @@
-import { h, Component } from "https://unpkg.com/preact@10.4.4?module"
-import htm from "https://unpkg.com/htm@3.0.4/dist/htm.module.js?module"
-
-export const html = htm.bind(h)
+import { html } from "../common/Html.js"
+import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { FilePicker } from "./FilePicker.js"
 import { PlutoConnection } from "../common/PlutoConnection.js"
@@ -17,8 +15,8 @@ const create_empty_notebook = (path, notebook_id = null) => {
 
 const shortpath = (path) => path.split("/").pop().split("\\").pop()
 
-const link_open = ({ path }) => "open?path=" + encodeURIComponent(path)
-const link_edit = ({ notebook_id }) => "edit?id=" + notebook_id
+export const link_open = ({ path }) => "open?path=" + encodeURIComponent(path)
+export const link_edit = ({ notebook_id }) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
     constructor() {
@@ -35,7 +33,7 @@ export class Welcome extends Component {
                 return {
                     combined_notebooks: prevstate.combined_notebooks.map((nb) => {
                         return nb.path == path ? { ...nb, ...new_state_props } : nb
-                    })
+                    }),
                 }
             })
         }
@@ -83,7 +81,7 @@ export class Welcome extends Component {
         this.client = new PlutoConnection(on_update, on_connection_status)
 
         this.on_open_path = (new_path) => {
-            window.location.href = link_open({path: new_path})
+            window.location.href = link_open({ path: new_path })
         }
 
         this.on_session_click = (nb) => {
@@ -184,7 +182,7 @@ export class Welcome extends Component {
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
                     Open from file:
-                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} suggest_new_file=${false} button_label="Open"/>
+                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} suggest_new_file=${false} button_label="Open" />
                 </li>
             </ul>
             <br />
@@ -195,14 +193,8 @@ export class Welcome extends Component {
     }
 }
 
-/* REMOTE & LOCALSTORAGE NOTEBOOK LISTS */
-
 function get_stored_recent_notebooks() {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
-    return storedList.map(path => create_empty_notebook(path))
+    return storedList.map((path) => create_empty_notebook(path))
 }
-
-/* RUN & SHUT DOWN IN BACKGROUND */
-
-

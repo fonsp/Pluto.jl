@@ -1,13 +1,13 @@
-import { h, Component } from "https://unpkg.com/preact@10.4.4?module"
-import htm from "https://unpkg.com/htm@3.0.4/dist/htm.module.js?module"
-
-export const html = htm.bind(h)
+import { html } from "../common/Html.js"
+import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { PlutoConnection } from "../common/PlutoConnection.js"
 import { DropRuler } from "./DropRuler.js"
+
+import { link_open } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
 export class Editor extends Component {
@@ -122,7 +122,6 @@ export class Editor extends Component {
                     update_stored_recent_notebooks(nb.path, old_path)
                 }
             })
-
         }
 
         // these are update message that are _not_ a response to a `sendreceive`
@@ -296,7 +295,7 @@ export class Editor extends Component {
                 set_notebook_state((prevstate) => {
                     return {
                         cells: prevstate.cells.map((c) => {
-                            return { ...c, errored: c.running }
+                            return { ...c, errored: c.errored || c.running }
                         }),
                     }
                 })
@@ -354,6 +353,8 @@ export class Editor extends Component {
                         })
                     })
                     .catch(console.error)
+                
+                return changed.length != 0
             },
             set_bond: (symbol, value) => {
                 this.client
@@ -400,6 +401,55 @@ export class Editor extends Component {
                 reset_cm_value()
             }
         }
+
+        document.addEventListener("keydown", (e) => {
+            switch (e.keyCode) {
+                case 81: // q
+                    if (e.ctrlKey) {
+                        if(this.state.notebook.cells.some(c => c.running)){
+                            this.requests.interrupt_remote()
+                        }
+                        e.preventDefault()
+                    }
+                    break
+                case 82: // r
+                    if (e.ctrlKey) {
+                        if (notebook) {
+                            document.location.href = link_open(notebook)
+                            e.preventDefault()
+                        }
+                    }
+                    break
+                case 83: // s
+                    if (e.ctrlKey) {
+                        const some_cells_ran = this.requests.run_all_changed_remote_cells()
+                        if(!some_cells_ran) {
+                            // all cells were in sync allready
+                            // TODO: let user know that the notebook autosaves
+                        }
+                        e.preventDefault()
+                    }
+                    break
+                case 191: // ? or /
+                    if (!(e.ctrlKey && e.shiftKey)) {
+                        break
+                    }
+                // fall into:
+                case 112: // F1
+                    // TODO: show help
+                    alert(
+                        `Shortcuts 🎹
+        
+        Ctrl+Enter:   run cell
+        Shift+Enter:   run cell and add cell below
+        Ctrl+Shift+Delete:   delete cell
+        Ctrl+Q:   interrupt notebook
+        Ctrl+S:   rename notebook`)
+        
+                    e.preventDefault()
+                    break
+            }
+        })
     }
 
     componentDidUpdate() {
@@ -435,7 +485,13 @@ export class Editor extends Component {
                     <a href="./">
                         <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" /></h1>
                     </a>
-                    <${FilePicker} client=${this.client} value=${this.state.notebook.path} on_submit=${this.submit_file_change} suggest_new_file=${true} button_label="Rename"/>
+                    <${FilePicker}
+                        client=${this.client}
+                        value=${this.state.notebook.path}
+                        on_submit=${this.submit_file_change}
+                        suggest_new_file=${true}
+                        button_label="Rename"
+                    />
                 </div>
             </header>
             <main>
@@ -454,7 +510,8 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    disable_input=${!this.client.connected}
+                    disable_input=${!this.state.connected}
+                    create_focus=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
                     requests=${this.requests}
                 />

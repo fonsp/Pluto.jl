@@ -1,12 +1,10 @@
-import { html } from "./Editor.js"
-import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
-
+import { html } from "../common/Html.js"
 
 export function RunArea({ runtime, onClick }) {
     return html`
         <runarea>
             <span class="runtime">${prettytime(runtime)}</span>
-            <button onClick=${ onClick } class="runcell" title="Run"><span></span></button>
+            <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
         </runarea>
     `
 }

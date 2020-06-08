@@ -1,4 +1,4 @@
-import { html } from "./Editor.js"
+import { html } from "../common/Html.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -43,6 +43,7 @@ export const Cell = ({
     on_change,
     on_update_doc_query,
     disable_input,
+    create_focus,
     all_completed_promise,
     requests,
 }) => {
@@ -95,6 +96,7 @@ export const Cell = ({
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
                 disable_input=${disable_input}
+                create_focus=${create_focus}
                 cell_id=${cell_id}
             />
             <${RunArea}

@@ -1,4 +1,4 @@
-import { html } from "./Editor.js"
+import { html } from "../common/Html.js"
 
 function StackFrameFilename({ frame, cell_id }) {
     const sep_index = frame.file.indexOf("#==#")

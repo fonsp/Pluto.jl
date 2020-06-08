@@ -1,4 +1,4 @@
-import { html } from "./Editor.js"
+import { html } from "../common/Html.js"
 import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
 export class CellInput extends Component {
@@ -7,10 +7,10 @@ export class CellInput extends Component {
         this.displayed_timestamp = 0
     }
 
-    shouldComponentUpdate({remote_code}) {
+    shouldComponentUpdate({ remote_code }) {
         return remote_code.timestamp > this.displayed_timestamp
     }
-    
+
     componentDidUpdate() {
         this.displayed_timestamp = this.props.remote_code.timestamp
         if (!this.props.remote_code.submitted_by_me) {
@@ -75,6 +75,10 @@ export class CellInput extends Component {
                 this.cm.setSelection({ line: 0, ch: 0 }, { line: 0, ch: 0 }, { scroll: false })
             }
         })
+
+        if(this.props.create_focus){
+            this.cm.focus()
+        }
 
         // yayo
         this.focusListener = (e) => {

@@ -1,7 +1,7 @@
-import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { html } from "./Editor.js"
-import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html } from "../common/Html.js"
+import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
+import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
 export class FilePicker extends Component {
     constructor() {
@@ -12,13 +12,13 @@ export class FilePicker extends Component {
         this.on_submit = () => {
             this.props.on_submit(this.cm.getValue(), () => this.cm.setValue(this.props.value))
         }
-	}
-	componentDidUpdate() {
-		if(this.forced_value != this.props.value){
+    }
+    componentDidUpdate() {
+        if (this.forced_value != this.props.value) {
             this.cm.setValue(this.props.value)
             this.forced_value = this.props.value
         }
-	}
+    }
     componentDidMount() {
         this.cm = CodeMirror(
             (el) => {
@@ -40,10 +40,10 @@ export class FilePicker extends Component {
                 },
                 scrollbarStyle: "null",
             }
-		)
-		
-		// YAY (dit kan weg als Editor ook een react component is)
-		window.filePickerCodeMirror = this.cm
+        )
+
+        // YAY (dit kan weg als Editor ook een react component is)
+        window.filePickerCodeMirror = this.cm
 
         this.cm.setOption("extraKeys", {
             "Ctrl-Enter": this.on_submit,
@@ -60,14 +60,14 @@ export class FilePicker extends Component {
         this.cm.on("change", this.requestPathCompletions.bind(this))
 
         this.cm.on("blur", (cm, e) => {
-			// if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-			// NOT a debounce:
-			setTimeout(() => {
-				if (!cm.hasFocus()) {
+            // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
+            // NOT a debounce:
+            setTimeout(() => {
+                if (!cm.hasFocus()) {
                     cm.setValue(this.props.value)
-				}
-			}, 250)
-		})
+                }
+            }, 250)
+        })
     }
     render() {
         return html`
@@ -75,75 +75,73 @@ export class FilePicker extends Component {
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
             </filepicker>
         `
-	}
-	
-	
- requestPathCompletions() {
-    const cursor = this.cm.getCursor()
-    const oldLine = this.cm.getLine(cursor.line)
+    }
 
-    if (!this.cm.somethingSelected()) {
-        if (cursor.ch == oldLine.length) {
-            this.cm.showHint()
+    requestPathCompletions() {
+        const cursor = this.cm.getCursor()
+        const oldLine = this.cm.getLine(cursor.line)
+
+        if (!this.cm.somethingSelected()) {
+            if (cursor.ch == oldLine.length) {
+                this.cm.showHint()
+            }
         }
     }
-}
 
- pathhints(cm, option) {
-    const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
+    pathhints(cm, option) {
+        const cursor = cm.getCursor()
+        const oldLine = cm.getLine(cursor.line)
 
-    return this.props.client
-        .sendreceive("completepath", {
-            query: oldLine,
-        })
-        .then((update) => {
-            const queryFileName = oldLine.split("/").pop().split("\\").pop()
+        return this.props.client
+            .sendreceive("completepath", {
+                query: oldLine,
+            })
+            .then((update) => {
+                const queryFileName = oldLine.split("/").pop().split("\\").pop()
 
-            const results = update.message.results
-            const from = utf8index_to_ut16index(oldLine, update.message.start)
-            const to = utf8index_to_ut16index(oldLine, update.message.stop)
+                const results = update.message.results
+                const from = utf8index_to_ut16index(oldLine, update.message.start)
+                const to = utf8index_to_ut16index(oldLine, update.message.stop)
 
-            if (results.length >= 1 && results[0] == queryFileName) {
-                return null
-            }
+                if (results.length >= 1 && results[0] == queryFileName) {
+                    return null
+                }
 
-            var styledResults = results.map((r) => ({
-                text: r,
-                className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
-            }))
+                var styledResults = results.map((r) => ({
+                    text: r,
+                    className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
+                }))
 
-            if (option.suggest_new_file) {
-                for (var initLength = 3; initLength >= 0; initLength--) {
-                    const init = ".jl".substring(0, initLength)
-                    if (queryFileName.endsWith(init)) {
-                        var suggestedFileName = queryFileName + ".jl".substring(initLength)
+                if (option.suggest_new_file) {
+                    for (var initLength = 3; initLength >= 0; initLength--) {
+                        const init = ".jl".substring(0, initLength)
+                        if (queryFileName.endsWith(init)) {
+                            var suggestedFileName = queryFileName + ".jl".substring(initLength)
 
-                        if (suggestedFileName == ".jl") {
-                            suggestedFileName = "notebook.jl"
+                            if (suggestedFileName == ".jl") {
+                                suggestedFileName = "notebook.jl"
+                            }
+
+                            if (initLength == 3) {
+                                return null
+                            }
+                            if (!results.includes(suggestedFileName)) {
+                                styledResults.push({
+                                    text: suggestedFileName,
+                                    displayText: suggestedFileName + " (new)",
+                                    className: "file new",
+                                })
+                            }
+                            break
                         }
-
-                        if (initLength == 3) {
-                            return null
-                        }
-                        if (!results.includes(suggestedFileName)) {
-                            styledResults.push({
-                                text: suggestedFileName,
-                                displayText: suggestedFileName + " (new)",
-                                className: "file new",
-                            })
-                        }
-                        break
                     }
                 }
-            }
 
-            return {
-                list: styledResults,
-                from: CodeMirror.Pos(cursor.line, from),
-                to: CodeMirror.Pos(cursor.line, to),
-            }
-        })
+                return {
+                    list: styledResults,
+                    from: CodeMirror.Pos(cursor.line, from),
+                    to: CodeMirror.Pos(cursor.line, to),
+                }
+            })
+    }
 }
-}
-
