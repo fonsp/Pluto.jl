@@ -19,11 +19,6 @@ if (Blob.prototype.text == null) {
     }
 }
 
-// One can dream!
-Array.prototype.any = function (pred) {
-    return this.findIndex(pred) != -1
-}
-
 Array.prototype.last = function () {
     return this[this.length-1]
 }

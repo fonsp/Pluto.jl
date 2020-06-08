@@ -20,7 +20,7 @@ export class Editor extends Component {
                 notebook_id: document.location.search.split("id=")[1],
                 cells: [],
             },
-            desired_doc_query: "nothing yet",
+            desired_doc_query: null,
             connected: false,
             loading: true,
         }
@@ -47,6 +47,9 @@ export class Editor extends Component {
             })
         }
         this.set_cell_state = set_cell_state.bind(this)
+
+        this.all_completed = true
+        this.all_completed_promise = resolvable_promise()
 
         // these are things that can be done to the local notebook
         const actions = {
@@ -263,11 +266,12 @@ export class Editor extends Component {
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
                 const new_code = block + "\n\t" + cell.local_code.body.replace(/\n/g, "\n\t") + "\n" + "end"
-                set_cell_state(cell_id, { 
+                set_cell_state(cell_id, {
                     remote_code: {
                         body: new_code,
                         submitted_by_me: false,
-                    },})
+                    },
+                })
                 this.requests.change_remote_cell(cell_id, new_code)
             },
             interrupt_remote: (cell_id) => {
@@ -329,11 +333,19 @@ export class Editor extends Component {
                     })
                     .catch(console.error)
             },
+            set_bond: (symbol, value) => {
+                this.client
+                    .sendreceive("bond_set", {
+                        sym: symbol,
+                        val: value,
+                    })
+                    .then((u) => {})
+            },
         }
     }
 
     componentDidUpdate() {
-        const any_code_differs = this.state.notebook.cells.any((cell) => code_differs(cell))
+        const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
         document.body.classList.toggle("code-differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
         if (this.client.currentlyConnected) {
@@ -343,14 +355,15 @@ export class Editor extends Component {
             document.querySelector("meta[name=theme-color]").content = "#DEAF91"
             document.body.classList.add("disconnected")
         }
-        // TODO
-        // (see bond.js)
-        // document.dispatchEvent(new CustomEvent("celloutputchanged", { detail: { cell: cellNode, mime: msg.mime } }))
 
-        // if (!allCellsCompleted && !notebookNode.querySelector(":scope > cell.running")) {
-        //     allCellsCompleted = true
-        //     allCellsCompletedPromise.resolver()
-        // }
+        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running)
+        if (all_completed_now && !this.all_completed) {
+            this.all_completed_promise.resolve()
+        }
+        if (!all_completed_now && this.all_completed) {
+            this.all_completed_promise = resolvable_promise()
+        }
+        this.all_completed = all_completed_now
     }
 
     render() {
@@ -391,6 +404,7 @@ export class Editor extends Component {
                         })
                     }}
                     disable_input=${!this.client.currentlyConnected}
+                    all_completed_promise=${this.all_completed_promise}
                     requests=${this.requests}
                 />
 
@@ -461,4 +475,15 @@ export function update_stored_recent_notebooks(recent_path, also_delete = undefi
         })
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+}
+
+function resolvable_promise() {
+    let resolve
+    const p = new Promise((r) => {
+        resolve = r
+    })
+    return {
+        current: p,
+        resolve: resolve,
+    }
 }

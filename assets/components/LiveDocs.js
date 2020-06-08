@@ -1,7 +1,6 @@
 import { html } from "./Editor.js"
-import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
+import { Component } from "https://unpkg.com/preact@10.4.4?module"
 
-import { RawHTMLContainer } from "./CellOutput.js"
 import { cl } from "../common/ClassTable.js"
 
 import observablehq from "../common/SetupCellEnvironment.js"
@@ -44,7 +43,6 @@ export class LiveDocs extends Component {
         Promise.race([
             observablehq.Promises.delay(2000, false),
             this.props.client.sendreceive("docs", { query: new_query }).then((u) => {
-                console.log(u)
                 if (u.message.status === "⌛") {
                     return false
                 }
@@ -56,7 +54,7 @@ export class LiveDocs extends Component {
                     return true
                 }
             }),
-        ]).then((success) => {
+        ]).then(() => {
             this.setState({
                 loading: false,
             })

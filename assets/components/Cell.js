@@ -41,6 +41,7 @@ export const Cell = ({
     on_change,
     on_update_doc_query,
     disable_input,
+    all_completed_promise,
     requests,
 }) => {
     return html`
@@ -77,7 +78,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} requests=${requests} cell_id=${cell_id} />
+            <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
                 remote_code=${remote_code}
                 on_submit=${(newCode) => {

@@ -3,6 +3,8 @@ import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 
+import { connect_bonds } from "../common/Bond.js"
+
 import "../common/SetupCellEnvironment.js"
 
 export const CellOutput = (props) => {
@@ -14,7 +16,7 @@ export const CellOutput = (props) => {
     `
 }
 
-const OutputBody = ({ mime, body, cell_id, requests }) => {
+const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -24,7 +26,7 @@ const OutputBody = ({ mime, body, cell_id, requests }) => {
         case "text/html":
         case "image/svg+xml": // TODO: don't run scripts here
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer} body=${body} />`
+            return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
             break
         case "application/vnd.pluto.stacktrace+json":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
@@ -76,6 +78,8 @@ export class RawHTMLContainer extends Component {
             console.error(err)
             // TODO: relay to user
         }
+
+        connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
 
         // convert LaTeX to svg
         try {
