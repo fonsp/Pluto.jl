@@ -77,11 +77,11 @@ function resetStatistics() {
             // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
         },
         get versionPluto() {
-            return window.client.plutoVersion
+            return window.client.pluto_version
             // string, e.g. "v0.7.10"
         },
         // get versionJulia() {
-        //     return window.client.juliaVersion
+        //     return window.client.julia_version
         //     // string, e.g. "v1.0.5"
         // },
         get timestamp() {

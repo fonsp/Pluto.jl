@@ -1,5 +1,5 @@
 export class PlutoConnection {
-    ping(onSucces, onFailure) {
+    ping(on_success, onFailure) {
         fetch("ping", {
             method: "GET",
             cache: "no-cache",
@@ -14,7 +14,7 @@ export class PlutoConnection {
             })
             .then((response) => {
                 if (response == "OK!") {
-                    onSucces(response)
+                    on_success(response)
                 } else {
                     onFailure(response)
                 }
@@ -22,36 +22,36 @@ export class PlutoConnection {
             .catch(onFailure)
     }
 
-    waitForOnline() {
-        this.currentlyConnected = false
+    wait_for_online() {
+        this.connected = false
 
         setTimeout(() => {
             this.ping(
                 () => {
                     if (this.psocket.readyState != WebSocket.OPEN) {
-                        this.waitForOnline()
+                        this.wait_for_online()
                     } else {
-                        this.currentlyConnected = true
+                        this.connected = true
                     }
                 },
                 () => {
-                    this.waitForOnline()
+                    this.wait_for_online()
                 }
             )
         }, 1000)
     }
 
-    getUniqueShortID() {
+    get_short_unqiue_id() {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
 
-    send(messageType, body, cell_id = undefined, createPromise = false) {
-        const requestID = this.getUniqueShortID()
+    send(messageType, body, cell_id = undefined, create_promise = false) {
+        const request_id = this.get_short_unqiue_id()
 
         var toSend = {
             type: messageType,
-            clientID: this.clientID,
-            requestID: requestID,
+            client_id: this.client_id,
+            request_id: request_id,
             body: body,
         }
         if (this.notebook_id) {
@@ -63,7 +63,7 @@ export class PlutoConnection {
 
         var p = undefined
 
-        if (createPromise) {
+        if (create_promise) {
             var resolve, reject
 
             p = new Promise((res, rej) => {
@@ -71,7 +71,7 @@ export class PlutoConnection {
                 reject = rej
             })
 
-            this.sentRequests[requestID] = resolve
+            this.sent_requests[request_id] = resolve
         }
 
         this.psocket.send(JSON.stringify(toSend) + this.MSG_DELIM)
@@ -83,22 +83,17 @@ export class PlutoConnection {
         return this.send(messageType, body, cell_id, true)
     }
 
-    async handleMessage(event) {
+    async handle_message(event) {
         try {
             const update = await event.data.text().then(JSON.parse)
-            // const for_me = !(("notebook_id" in update) && (update.notebook_id != this.notebook_id))
-            // if (!for_me) {
-            //     console.log("Update message not meant for this notebook")
-            //     return
-            // }
-            const by_me = "initiatorID" in update && update.initiatorID == this.clientID
-            const requestID = update.requestID
+            const by_me = "initiator_id" in update && update.initiator_id == this.client_id
+            const request_id = update.request_id
 
-            if (by_me && requestID) {
-                const request = this.sentRequests[requestID]
+            if (by_me && request_id) {
+                const request = this.sent_requests[request_id]
                 if (request) {
                     request(update)
-                    delete this.sentRequests[requestID]
+                    delete this.sent_requests[request_id]
                     return
                 }
             }
@@ -108,27 +103,27 @@ export class PlutoConnection {
             console.error("Failed to get update!", ex)
             console.log(event)
 
-            this.waitForOnline()
+            this.wait_for_online()
         }
     }
 
-    startSocketConnection(onSucces) {
+    start_socket_connection(on_success) {
         this.psocket = new WebSocket(
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/")
         )
         this.psocket.onmessage = (e) => {
-            this.handleMessage(e)
+            this.handle_message(e)
         }
         this.psocket.onerror = (e) => {
             console.error("SOCKET ERROR", e)
 
             if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
-                this.waitForOnline()
+                this.wait_for_online()
                 setTimeout(() => {
                     if (this.psocket.readyState != WebSocket.OPEN) {
-                        this.tryCloseSocketConnection()
+                        this.try_close_socket_connection()
 
-                        this.startSocketConnection(onSucces)
+                        this.start_socket_connection(on_success)
                     }
                 }, 500)
             }
@@ -137,7 +132,7 @@ export class PlutoConnection {
             console.warn("SOCKET CLOSED")
             console.log(e)
 
-            this.waitForOnline()
+            this.wait_for_online()
         }
         this.psocket.onopen = () => {
             this.sendreceive("connect", {}).then((u) => {
@@ -147,14 +142,14 @@ export class PlutoConnection {
                     document.location.href = "./"
                     return
                 }
-                this.currentlyConnected = true
+                this.connected = true
                 console.log("socket opened")
-                onSucces()
+                on_success()
             })
         }
     }
 
-    tryCloseSocketConnection() {
+    try_close_socket_connection() {
         this.psocket.close(1000, "byebye")
     }
 
@@ -162,37 +157,37 @@ export class PlutoConnection {
         this.ping(
             () => {
                 // on ping success
-                this.startSocketConnection(() => {
+                this.start_socket_connection(() => {
                     on_establish_connection(this)
                 })
             },
             () => {
                 // on failure
-                this.currentlyConnected = false
+                this.connected = false
             }
         )
 
         window.addEventListener("beforeunload", (e) => {
             console.warn("unloading 👉 disconnecting websocket")
             this.psocket.onclose = undefined
-            this.tryCloseSocketConnection()
+            this.try_close_socket_connection()
         })
     }
 
     constructor(on_update) {
         this.on_update = on_update
 
-        this.currentlyConnected = false
+        this.connected = false
         this.psocket = null
         this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
-        this.clientID = this.getUniqueShortID()
-        this.sentRequests = {}
-        this.plutoVersion = "unknown"
-        this.juliaVersion = "unknown"
+        this.client_id = this.get_short_unqiue_id()
+        this.sent_requests = {}
+        this.pluto_version = "unknown"
+        this.julia_version = "unknown"
     }
 
-    fetchPlutoVersions() {
-        const githubPromise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+    fetch_pluto_versions() {
+        const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
             method: "GET",
             mode: "cors",
             cache: "no-cache",
@@ -209,13 +204,13 @@ export class PlutoConnection {
                 return response[0].tag_name
             })
 
-        const plutoPromise = this.sendreceive("getversion", {}).then((u) => {
-            this.plutoVersion = u.message.pluto
-            this.juliaVersion = u.message.julia
-            return this.plutoVersion
+        const pluto_promise = this.sendreceive("getversion", {}).then((u) => {
+            this.pluto_version = u.message.pluto
+            this.julia_version = u.message.julia
+            return this.pluto_version
         })
 
-        return Promise.all([githubPromise, plutoPromise])
+        return Promise.all([github_promise, pluto_promise])
     }
 
     // TODO: reconnect with a delay if the last request went poorly

@@ -52,7 +52,7 @@ end
 
 "Send `messages` to the `Client` who initiated."
 function putclientupdates!(initiator::Initiator, messages::UpdateMessage...)
-    putclientupdates!(connectedclients[initiator.clientID], messages...)
+    putclientupdates!(connectedclients[initiator.client_id], messages...)
 end
 
 # https://github.com/JuliaWeb/HTTP.jl/issues/382
@@ -249,14 +249,14 @@ run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let
-        clientID = Symbol(parentbody["clientID"])
-        Client(clientID, clientstream)
+        client_id = Symbol(parentbody["client_id"])
+        Client(client_id, clientstream)
     end
     # add to our list of connected clients
     connectedclients[client.id] = client
     
     messagetype = Symbol(parentbody["type"])
-    requestID = Symbol(parentbody["requestID"])
+    request_id = Symbol(parentbody["request_id"])
 
     body = parentbody["body"]
 
@@ -287,7 +287,7 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(body, args..., initiator=Initiator(client.id, requestID))
+            responsefunc(body, args..., initiator=Initiator(client.id, request_id))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

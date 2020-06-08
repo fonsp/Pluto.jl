@@ -68,16 +68,22 @@ export class Editor extends Component {
                     }
                 })
             },
-            update_local_cell_output: (cell, output) => {
+            update_local_cell_output: (cell, {output, running, runtime, errored }) => {
                 // TODO:
                 // statistics.numRuns++
-                set_cell_state(cell.cell_id, output)
+                set_cell_state(cell.cell_id, {
+                    running: running,
+                    runtime: runtime,
+                    errored: errored,
+                    output: { ...output, timestamp: Date.now()}
+                })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
                 set_cell_state(cell.cell_id, {
                     remote_code: {
                         body: code,
                         submitted_by_me: by_me,
+                        timestamp: Date.now(),
                     },
                     code_folded: folded,
                 })
@@ -139,6 +145,9 @@ export class Editor extends Component {
                         new_cell.running = false
                         new_cell.output.body = ""
                         actions.add_local_cell(new_cell, message.index)
+                        break
+                    case "bond_update":
+                        // by someone else
                         break
                     default:
                         console.error("Received unknown update type!")
@@ -213,7 +222,7 @@ export class Editor extends Component {
                 })
                 .catch(console.error)
 
-            this.client.fetchPlutoVersions().then((versions) => {
+            this.client.fetch_pluto_versions().then((versions) => {
                 const remote = versions[0]
                 const local = versions[1]
 
@@ -236,7 +245,9 @@ export class Editor extends Component {
             })
         }
 
-        this.client = new PlutoConnection(on_update)
+        const on_connection_status = val => this.setState({connected: val})
+
+        this.client = new PlutoConnection(on_update, on_connection_status)
 
         // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
@@ -256,12 +267,12 @@ export class Editor extends Component {
 
         // these are things that can be done to the remote notebook
         this.requests = {
-            change_remote_cell: (cell_id, new_code, createPromise = false) => {
+            change_remote_cell: (cell_id, new_code, create_promise = false) => {
                 // TODO
                 // statistics.numEvals++
 
                 set_cell_state(cell_id, { running: true })
-                return this.client.send("changecell", { code: new_code }, cell_id, createPromise)
+                return this.client.send("changecell", { code: new_code }, cell_id, create_promise)
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
@@ -316,19 +327,19 @@ export class Editor extends Component {
 
                 // TODO: async await?
                 const promises = changed.map((cell) => {
-                    notebook.setCellState(cell.cell_id, { running: true })
+                    set_cell_state(cell.cell_id, { running: true })
                     return this.client
                         .sendreceive("setinput", {
-                            code: cell.cm.getValue(),
-                        })
+                            code: cell.local_code.body,
+                        }, cell.cell_id)
                         .then((u) => {
-                            actions.update_local_cell_input(true, cellNode, u.message.code, u.message.folded)
+                            actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
                         })
                 })
                 Promise.all(promises)
                     .then(() => {
                         this.client.send("runmultiple", {
-                            cells: changed.map((c) => c.id),
+                            cells: changed.map((c) => c.cell_id),
                         })
                     })
                     .catch(console.error)
@@ -342,13 +353,53 @@ export class Editor extends Component {
                     .then((u) => {})
             },
         }
+
+        this.submit_file_change = (new_path, reset_cm_value) => {
+            const old_path = this.state.notebook.path
+            if (old_path === new_path) {
+                return
+            }
+            if (confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                this.setState({ loading: true })
+                this.client
+                    .sendreceive("movenotebookfile", {
+                        path: new_path,
+                    })
+                    .then((u) => {
+                        this.setState({
+                            loading: false,
+                        })
+                        if (u.message.success) {
+                            this.setState({
+                                path: new_path,
+                            })
+                            document.activeElement.blur()
+                        } else {
+                            this.setState({
+                                path: old_path,
+                            })
+                            reset_cm_value()
+                            alert("Failed to move file:\n\n" + u.message.reason)
+                        }
+                    })
+            } else {
+                this.setState({
+                    path: old_path, // TODO: this doesnt set the codemirror value
+                })
+                reset_cm_value()
+            }
+        }
     }
 
     componentDidUpdate() {
+        const fileName = this.state.notebook.path.split("/").pop().split("\\").pop()
+        const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
+        document.title = cuteName
+
         const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
         document.body.classList.toggle("code-differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
-        if (this.client.currentlyConnected) {
+        if (this.client.connected) {
             document.querySelector("meta[name=theme-color]").content = "#fff"
             document.body.classList.remove("disconnected")
         } else {
@@ -367,10 +418,6 @@ export class Editor extends Component {
     }
 
     render() {
-        const fileName = this.state.notebook.path.split("/").pop().split("\\").pop()
-        const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
-        document.title = cuteName
-
         return html`
             <header>
                 <div id="logocontainer">
@@ -379,11 +426,9 @@ export class Editor extends Component {
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        remoteValue=${this.state.notebook.path}
-                        onEnter=${this.submit_file_change}
-                        onReset=${() => updateLocalNotebookPath(notebook.path)}
-                        onBlur=${() => updateLocalNotebookPath(notebook.path)}
-                        suggestNewFile=${true}
+                        value=${this.state.notebook.path}
+                        on_submit=${this.submit_file_change}
+                        suggest_new_file=${true}
                     />
                 </div>
             </header>
@@ -403,7 +448,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    disable_input=${!this.client.currentlyConnected}
+                    disable_input=${!this.client.connected}
                     all_completed_promise=${this.all_completed_promise}
                     requests=${this.requests}
                 />
@@ -422,44 +467,6 @@ export class Editor extends Component {
                 </div>
             </footer>
         `
-    }
-
-    /* FILE PICKER */
-
-    submit_file_change() {
-        // TODO
-        const old_path = this.state.notebook.path
-        const newPath = window.filePickerCodeMirror.getValue()
-        if (old_path == newPath) {
-            return
-        }
-        if (confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + newPath)) {
-            this.setState({ loading: true })
-            this.client
-                .sendreceive("movenotebookfile", {
-                    path: newPath,
-                })
-                .then((u) => {
-                    this.setState({
-                        loading: false,
-                    })
-                    if (u.message.success) {
-                        this.setState({
-                            path: newPath,
-                        })
-                        document.activeElement.blur()
-                    } else {
-                        this.setState({
-                            path: old_path, // TODO: this doesnt set the codemirror value
-                        })
-                        alert("Failed to move file:\n\n" + u.message.reason)
-                    }
-                })
-        } else {
-            this.setState({
-                path: old_path, // TODO: this doesnt set the codemirror value
-            })
-        }
     }
 }
 

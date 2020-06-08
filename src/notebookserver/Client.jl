@@ -10,8 +10,8 @@ Client(id::Symbol, stream) = let
 end
 
 struct Initiator
-    clientID::Symbol
-    requestID::Symbol
+    client_id::Symbol
+    request_id::Symbol
 end
 
 

@@ -7,13 +7,28 @@ import { connect_bonds } from "../common/Bond.js"
 
 import "../common/SetupCellEnvironment.js"
 
-export const CellOutput = (props) => {
-    return html`
-        <celloutput>
-            <assignee>${props.rootassignee}</assignee>
-            <${OutputBody} ...${props} />
-        </celloutput>
-    `
+export class CellOutput extends Component {
+    constructor() {
+        super()
+        this.displayed_timestamp = 0
+    }
+
+    shouldComponentUpdate({ timestamp }) {
+        return timestamp > this.displayed_timestamp
+    }
+
+    componentDidUpdate() {
+        this.displayed_timestamp = this.props.timestamp
+    }
+
+    render() {
+        return html`
+            <celloutput>
+                <assignee>${this.props.rootassignee}</assignee>
+                <${OutputBody} ...${this.props} />
+            </celloutput>
+        `
+    }
 }
 
 const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
@@ -46,7 +61,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
 }
 
 export class RawHTMLContainer extends Component {
-    componentDidMount() {
+    render_DOM() {
         this.base.innerHTML = this.props.body
 
         // based on https://stackoverflow.com/a/26716182
@@ -90,10 +105,66 @@ export class RawHTMLContainer extends Component {
         }
     }
 
+    componentDidUpdate() {
+        this.render_DOM()
+    }
+
+    componentDidMount() {
+        this.render_DOM()
+    }
+
     render() {
         return html`<div></div>`
     }
 }
+
+// export const RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
+//     const DOM_hook = (node) => {
+//         node.innerHTML = body
+
+//         // based on https://stackoverflow.com/a/26716182
+//         // to execute all scripts in the output html:
+//         try {
+//             Array.from(node.querySelectorAll("script")).map((script) => {
+//                 node.currentScript = script // available inside user JS as `this.currentScript`
+//                 if (script.src != "") {
+//                     if (
+//                         !Array.from(document.head.querySelectorAll("script"))
+//                             .map((s) => s.src)
+//                             .includes(script)
+//                     ) {
+//                         const tag = document.createElement("script")
+//                         tag.src = script.src
+//                         document.head.appendChild(tag)
+//                         // might be wise to wait after adding scripts to head
+//                         // maybe use a better method?
+//                     }
+//                 } else {
+//                     const result = Function(script.innerHTML).bind(node)()
+//                     if (result && result.nodeType === Node.ELEMENT_NODE) {
+//                         script.parentElement.insertBefore(result, script)
+//                     }
+//                 }
+//             })
+//         } catch (err) {
+//             console.error("Couldn't execute script:")
+//             console.error(err)
+//             // TODO: relay to user
+//         }
+
+//         connect_bonds(node, all_completed_promise, requests)
+
+//         // convert LaTeX to svg
+//         try {
+//             MathJax.typeset([node])
+//         } catch (err) {
+//             console.info("Failed to typeset TeX:")
+//             console.info(err)
+//         }
+//     }
+
+//     return html`<div ref=${DOM_hook}></div>`
+// }
 
 // TODO:
 // const oldHeight = outputNode.scrollHeight

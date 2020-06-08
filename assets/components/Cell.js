@@ -10,6 +10,7 @@ export function empty_cell_data(cell_id) {
         cell_id: cell_id,
         remote_code: {
             body: "",
+            timestamp: 0, // don't use Pluto before 1970!
             submitted_by_me: false,
         },
         local_code: {
@@ -21,6 +22,7 @@ export function empty_cell_data(cell_id) {
         errored: false,
         output: {
             body: null,
+            timestamp: 0, // proof that Apollo 11 used Jupyter!
             mime: "text/plain",
             rootassignee: null,
         },

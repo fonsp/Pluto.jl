@@ -4,15 +4,18 @@ import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 export class CellInput extends Component {
     constructor() {
         super()
-        this.remote_code = ""
-        this.differsYesterday = false
+        this.displayed_timestamp = 0
     }
 
+    shouldComponentUpdate({remote_code}) {
+        return remote_code.timestamp > this.displayed_timestamp
+    }
+    
     componentDidUpdate() {
-        if (!this.props.remote_code.submitted_by_me && this.remote_code !== this.props.remote_code.body) {
+        this.displayed_timestamp = this.props.remote_code.timestamp
+        if (!this.props.remote_code.submitted_by_me) {
             this.cm.setValue(this.props.remote_code.body)
         }
-        this.remote_code = this.props.remote_code.body
         this.cm.options.disableInput = this.props.disable_input
     }
 
@@ -22,7 +25,7 @@ export class CellInput extends Component {
                 this.base.appendChild(el)
             },
             {
-                value: this.remote_code,
+                value: this.props.remote_code.body,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,

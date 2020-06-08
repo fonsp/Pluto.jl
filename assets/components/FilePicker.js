@@ -6,12 +6,17 @@ import {render, Component } from "https://unpkg.com/preact@10.4.4?module"
 export class FilePicker extends Component {
     constructor() {
         super()
-		this.remote_code = ""
+        this.forced_value = ""
+        this.cm = null
+
+        this.on_submit = () => {
+            this.props.on_submit(this.cm.getValue(), () => this.cm.setValue(this.props.value))
+        }
 	}
 	componentDidUpdate() {
-		if(this.remote_code != this.props.remoteValue){
-            this.cm.setValue(this.props.remoteValue)
-            this.remote_code = this.props.remoteValue
+		if(this.forced_value != this.props.value){
+            this.cm.setValue(this.props.value)
+            this.forced_value = this.props.value
         }
 	}
     componentDidMount() {
@@ -31,7 +36,7 @@ export class FilePicker extends Component {
                 hintOptions: {
                     hint: this.pathhints.bind(this),
                     completeSingle: false,
-                    suggestNewFile: this.props.suggestNewFile,
+                    suggest_new_file: this.props.suggest_new_file,
                 },
                 scrollbarStyle: "null",
             }
@@ -41,12 +46,12 @@ export class FilePicker extends Component {
 		window.filePickerCodeMirror = this.cm
 
         this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": this.props.onEnter,
-            "Ctrl-Shift-Enter": this.props.onEnter,
-            Enter: this.props.onEnter,
+            "Ctrl-Enter": this.props.on_submit,
+            "Ctrl-Shift-Enter": this.props.on_submit,
+            Enter: this.props.on_submit,
             Esc: (cm) => {
                 cm.closeHint()
-                this.props.onReset()
+                cm.setValue(this.props.value)
                 document.activeElement.blur()
             },
             Tab: (cm) => this.requestPathCompletions.bind(this),
@@ -59,7 +64,7 @@ export class FilePicker extends Component {
 			// NOT a debounce:
 			setTimeout(() => {
 				if (!cm.hasFocus()) {
-					this.props.onBlur()
+                    cm.setValue(this.props.value)
 				}
 			}, 250)
 		})
@@ -67,7 +72,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <filepicker>
-                <button onClick=${this.props.onEnter}>Rename</button>
+                <button onClick=${this.props.on_submit}>Rename</button>
             </filepicker>
         `
 	}
@@ -108,7 +113,7 @@ export class FilePicker extends Component {
                 className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
             }))
 
-            if (option.suggestNewFile) {
+            if (option.suggest_new_file) {
                 for (var initLength = 3; initLength >= 0; initLength--) {
                     const init = ".jl".substring(0, initLength)
                     if (queryFileName.endsWith(init)) {

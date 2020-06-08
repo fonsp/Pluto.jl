@@ -14,8 +14,8 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
         to_send[:cell_id] = message.cell.cell_id
     end
     if message.initiator !== missing
-        to_send[:initiatorID] = message.initiator.clientID
-        to_send[:requestID] = message.initiator.requestID
+        to_send[:initiator_id] = message.initiator.client_id
+        to_send[:request_id] = message.initiator.request_id
     end
 
     JSON.print(io, to_send)
