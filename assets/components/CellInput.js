@@ -1,6 +1,8 @@
 import { html } from "../common/Html.js"
 import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
 
+import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+
 export class CellInput extends Component {
     constructor() {
         super()
@@ -33,7 +35,10 @@ export class CellInput extends Component {
                 placeholder: "Enter cell code...",
                 indentWithTabs: true,
                 indentUnit: 4,
-                hintOptions: { hint: juliahints },
+                hintOptions: {
+                    hint: juliahints,
+                    client: this.props.client,
+                },
                 matchBrackets: true,
             }
         )
@@ -48,7 +53,7 @@ export class CellInput extends Component {
                 this.props.on_delete()
             },
             "Shift-Tab": "indentLess",
-            Tab: onTabKey,
+            Tab: on_tab_key,
         })
 
         this.cm.on("change", () => {
@@ -76,7 +81,7 @@ export class CellInput extends Component {
             }
         })
 
-        if(this.props.create_focus){
+        if (this.props.create_focus) {
             this.cm.focus()
         }
 
@@ -90,7 +95,7 @@ export class CellInput extends Component {
             }
         }
         window.addEventListener("cell_focus", this.focusListener)
-        document.fonts.ready.then(function () {
+        document.fonts.ready.then(() => {
             this.cm.refresh()
         })
     }
@@ -110,14 +115,14 @@ export class CellInput extends Component {
 
 const noAutocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
 
-function onTabKey(cm) {
+const on_tab_key = (cm) => {
     const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
+    const old_line = cm.getLine(cursor.line)
 
     if (cm.somethingSelected()) {
         cm.indentSelection()
     } else {
-        if (cursor.ch > 0 && noAutocomplete.indexOf(oldLine[cursor.ch - 1]) == -1) {
+        if (cursor.ch > 0 && noAutocomplete.indexOf(old_line[cursor.ch - 1]) == -1) {
             cm.showHint()
         } else {
             cm.replaceSelection("\t")
@@ -125,20 +130,20 @@ function onTabKey(cm) {
     }
 }
 
-function juliahints(cm, option) {
+const juliahints = (cm, options) => {
     const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
-    const oldLineSliced = oldLine.slice(0, cursor.ch)
+    const old_line = cm.getLine(cursor.line)
+    const old_line_sliced = old_line.slice(0, cursor.ch)
 
-    return client
+    return options.client
         .sendreceive("complete", {
-            query: oldLineSliced,
+            query: old_line_sliced,
         })
         .then((update) => {
             return {
                 list: update.message.results,
-                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.start)),
-                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(oldLine, update.message.stop)),
+                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
+                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
         })
 }

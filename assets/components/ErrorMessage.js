@@ -1,6 +1,6 @@
 import { html } from "../common/Html.js"
 
-function StackFrameFilename({ frame, cell_id }) {
+const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
     if (sep_index != -1) {
         const frame_cell_id = frame.file.substr(sep_index + 4)
@@ -26,7 +26,7 @@ function StackFrameFilename({ frame, cell_id }) {
     }
 }
 
-function Funccall({ frame }) {
+const Funccall = ({ frame }) => {
     const bracket_index = frame.call.indexOf("(")
     if (bracket_index != -1) {
         return html`<mark><strong>${frame.call.substr(0, bracket_index)}</strong>${frame.call.substr(bracket_index)}</mark>`
@@ -35,7 +35,7 @@ function Funccall({ frame }) {
     }
 }
 
-export function ErrorMessage({ msg, stacktrace, cell_id, requests }) {
+export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,

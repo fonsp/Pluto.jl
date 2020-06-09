@@ -57,9 +57,9 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // integer
         versionPluto: client.pluto_version,
         // string, e.g. "v0.7.10"
-        // versionJulia: rn window.client.julia_version,
+        // versionJulia: client.julia_version,
         //     // string, e.g. "v1.0.5"
-        // timestamp: firebase.firestore.Timestamp.now(),
+        timestamp: firebase.firestore.Timestamp.now(),
         // timestamp (ms)
         screenWidthApprox: 100 * Math.round(document.body.clientWidth / 100),
         // number, rounded to nearest multiple of 100

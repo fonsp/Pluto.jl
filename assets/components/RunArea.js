@@ -1,6 +1,6 @@
 import { html } from "../common/Html.js"
 
-export function RunArea({ runtime, onClick }) {
+export const RunArea = ({ runtime, onClick }) => {
     return html`
         <runarea>
             <span class="runtime">${prettytime(runtime)}</span>
@@ -9,7 +9,7 @@ export function RunArea({ runtime, onClick }) {
     `
 }
 
-function prettytime(time_ns) {
+const prettytime = (time_ns) => {
     if (time_ns == null) {
         return "---"
     }

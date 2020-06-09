@@ -549,6 +549,7 @@ export class Editor extends Component {
                     create_focus=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
                     requests=${this.requests}
+                    client=${this.client}
                 />
 
                 <${DropRuler} requests=${this.requests} />
@@ -570,7 +571,7 @@ export class Editor extends Component {
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
-export function update_stored_recent_notebooks(recent_path, also_delete = undefined) {
+export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
     const oldpaths = storedList
@@ -582,7 +583,7 @@ export function update_stored_recent_notebooks(recent_path, also_delete = undefi
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
 
-function resolvable_promise() {
+const resolvable_promise = () => {
     let resolve
     const p = new Promise((r) => {
         resolve = r

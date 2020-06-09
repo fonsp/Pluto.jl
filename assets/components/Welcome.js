@@ -193,7 +193,7 @@ export class Welcome extends Component {
     }
 }
 
-function get_stored_recent_notebooks() {
+const get_stored_recent_notebooks = () => {
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = !!storedString ? JSON.parse(storedString) : []
     return storedList.map((path) => create_empty_notebook(path))

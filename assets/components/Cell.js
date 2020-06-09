@@ -5,7 +5,7 @@ import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
-export function empty_cell_data(cell_id) {
+export const empty_cell_data = (cell_id) => {
     return {
         cell_id: cell_id,
         remote_code: {
@@ -46,6 +46,7 @@ export const Cell = ({
     create_focus,
     all_completed_promise,
     requests,
+    client,
 }) => {
     return html`
         <cell
@@ -95,6 +96,7 @@ export const Cell = ({
                 }}
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
+                client=${client} 
                 disable_input=${disable_input}
                 create_focus=${create_focus}
                 cell_id=${cell_id}

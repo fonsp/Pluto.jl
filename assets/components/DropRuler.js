@@ -66,7 +66,7 @@ export class DropRuler extends Component {
     }
 }
 
-function argmin(x) {
+const argmin = (x) => {
     let best_val = Infinity
     let best_index = -1
     let val

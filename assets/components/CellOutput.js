@@ -6,6 +6,7 @@ import { ErrorMessage } from "./ErrorMessage.js"
 import { connect_bonds } from "../common/Bond.js"
 
 import "../common/SetupCellEnvironment.js"
+import "../treeview.js"
 
 export class CellOutput extends Component {
     constructor() {
