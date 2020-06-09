@@ -85,8 +85,8 @@ export const Cell = ({
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
                 remote_code=${remote_code}
-                on_submit=${(newCode) => {
-                    requests.change_remote_cell(cell_id, newCode)
+                on_submit=${(new_code) => {
+                    requests.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
                     requests.delete_cell(cell_id)
@@ -106,7 +106,7 @@ export const Cell = ({
                     if (running) {
                         requests.interrupt_remote(cell_id)
                     } else {
-                        requests.change_remote_cell(cell_id)
+                        requests.change_remote_cell(cell_id, local_code.body)
                     }
                 }}
                 runtime=${runtime}

@@ -464,7 +464,7 @@ export class Editor extends Component {
         Shift+Enter:   run cell and add cell below
         Ctrl+Shift+Delete:   delete cell
         Ctrl+Q:   interrupt notebook
-        Ctrl+S:   rename notebook`
+        Ctrl+S:   submit all changes`
                     )
 
                     e.preventDefault()
