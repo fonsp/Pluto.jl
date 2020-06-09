@@ -90,6 +90,9 @@ export class CellInput extends Component {
             }
         }
         window.addEventListener("cell_focus", this.focusListener)
+        document.fonts.ready.then(function () {
+            this.cm.refresh()
+        })
     }
 
     componentWillUnmount() {
