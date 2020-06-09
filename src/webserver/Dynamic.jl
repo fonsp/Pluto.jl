@@ -8,14 +8,14 @@ JSON.lower(u::UUID) = string(u)
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
     if message.notebook !== nothing
-        to_send[:notebookID] = message.notebook.uuid
+        to_send[:notebook_id] = message.notebook.notebook_id
     end
     if message.cell !== nothing
-        to_send[:cellID] = message.cell.uuid
+        to_send[:cell_id] = message.cell.cell_id
     end
     if message.initiator !== missing
-        to_send[:initiatorID] = message.initiator.clientID
-        to_send[:requestID] = message.initiator.requestID
+        to_send[:initiator_id] = message.initiator.client_id
+        to_send[:request_id] = message.initiator.request_id
     end
 
     JSON.print(io, to_send)
@@ -25,7 +25,7 @@ function serialize_message(message::UpdateMessage)
     sprint(serialize_message_to_stream, message)
 end
 
-function change_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
+function change_remote_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -72,7 +72,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
-    change_cellinput!(notebook, to_delete, "", initiator=initiator)
+    change_remote_cellinput!(notebook, to_delete, "", initiator=initiator)
     runtask = run_reactive_async!(notebook, cell)
     
     # wait for the reactive run to finish, then delete the cells
@@ -80,7 +80,7 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     @async begin
         wait(runtask)
 
-        filter!(c->c.uuid ≠ to_delete.uuid, notebook.cells)
+        filter!(c->c.cell_id ≠ to_delete.cell_id, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
         save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
@@ -111,7 +111,7 @@ end
 responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
     newcode = body["code"]
 
-    change_cellinput!(notebook, cell, newcode, initiator=initiator)
+    change_remote_cellinput!(notebook, cell, newcode, initiator=initiator)
     run_reactive_async!(notebook, cell)
 end
 
@@ -128,7 +128,7 @@ responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initia
 end
 
 responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    indices = cellindex_fromuuid.([notebook], UUID.(body["cells"]))
+    indices = cellindex_fromID.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
     run_reactive_async!(notebook, cells)
 end
@@ -138,7 +138,7 @@ responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{I
 end
 
 responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    change_cellinput!(notebook, cell, body["code"], initiator=initiator)
+    change_remote_cellinput!(notebook, cell, body["code"], initiator=initiator)
 end
 
 responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
@@ -149,7 +149,7 @@ responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
-                :uuid => string(cell.uuid),
+                :cell_id => string(cell.cell_id),
                 ) for cell in notebook.cells]), nothing, nothing, initiator)
     
     putclientupdates!(initiator, update)
@@ -187,7 +187,7 @@ responses[:shutdownworkspace] = (body, notebook=nothing; initiator::Union{Initia
     toshutdown = notebooks[UUID(body["id"])]
     listeners = putnotebookupdates!(toshutdown) # TODO: shutdown message
     if body["remove_from_list"]
-        delete!(notebooks, toshutdown.uuid)
+        delete!(notebooks, toshutdown.notebook_id)
         putplutoupdates!(clientupdate_notebook_list(notebooks))
         for client in listeners
             @async close(client.stream)
@@ -200,9 +200,11 @@ end
 responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
+
+    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
     putnotebookupdates!(notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
     
-    if !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
+    if any_dependents
         function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
             push!(to_delete_vars, bound_sym) # also delete the bound symbol
             WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)

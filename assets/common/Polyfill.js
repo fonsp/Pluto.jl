@@ -1,7 +1,7 @@
 // Polyfill for Blob::text when there is none (safari)
 // This is not "officialy" supported
 if (Blob.prototype.text == null) {
-    Blob.prototype.text = function() {
+    Blob.prototype.text = function () {
         const reader = new FileReader()
         const promise = new Promise((resolve, reject) => {
             // on read success
@@ -15,6 +15,10 @@ if (Blob.prototype.text == null) {
             }
         })
         reader.readAsText(this)
-        return promise;
+        return promise
     }
+}
+
+Array.prototype.last = function () {
+    return this[this.length-1]
 }

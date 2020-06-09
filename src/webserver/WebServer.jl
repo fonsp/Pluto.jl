@@ -23,7 +23,7 @@ const notebooks = Dict{UUID,Notebook}()
 function putnotebookupdates!(notebook::Notebook, messages::UpdateMessage...)
     listeners = filter(collect(values(connectedclients))) do c
         c.connected_notebook !== nothing &&
-        c.connected_notebook.uuid == notebook.uuid
+        c.connected_notebook.notebook_id == notebook.notebook_id
     end
     for next_to_send in messages, client in listeners
         put!(client.pendingupdates, next_to_send)
@@ -52,7 +52,7 @@ end
 
 "Send `messages` to the `Client` who initiated."
 function putclientupdates!(initiator::Initiator, messages::UpdateMessage...)
-    putclientupdates!(connectedclients[initiator.clientID], messages...)
+    putclientupdates!(connectedclients[initiator.client_id], messages...)
 end
 
 # https://github.com/JuliaWeb/HTTP.jl/issues/382
@@ -236,7 +236,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                 @async close(client.stream)
             end
             empty!(connectedclients)
-            for (uuid, ws) in WorkspaceManager.workspaces
+            for (notebook_id, ws) in WorkspaceManager.workspaces
                 WorkspaceManager.unmake_workspace(ws)
             end
         else
@@ -249,22 +249,22 @@ run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let
-        clientID = Symbol(parentbody["clientID"])
-        Client(clientID, clientstream)
+        client_id = Symbol(parentbody["client_id"])
+        Client(client_id, clientstream)
     end
     # add to our list of connected clients
     connectedclients[client.id] = client
     
     messagetype = Symbol(parentbody["type"])
-    requestID = Symbol(parentbody["requestID"])
+    request_id = Symbol(parentbody["request_id"])
 
     body = parentbody["body"]
 
     args = []
-    if haskey(parentbody, "notebookID")
+    if haskey(parentbody, "notebook_id")
         notebook = let
-            notebookID = UUID(parentbody["notebookID"])
-            get(notebooks, notebookID, nothing)
+            notebook_id = UUID(parentbody["notebook_id"])
+            get(notebooks, notebook_id, nothing)
         end
         if notebook === nothing
             messagetype === :connect || @warn "Remote notebook not found locally!"
@@ -274,9 +274,9 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
         end
     end
 
-    if haskey(parentbody, "cellID")
-        cellID = UUID(parentbody["cellID"])
-        index = cellindex_fromuuid(notebook, cellID)
+    if haskey(parentbody, "cell_id")
+        cell_id = UUID(parentbody["cell_id"])
+        index = cellindex_fromID(notebook, cell_id)
         if index === nothing
             @warn "Remote cell not found locally!"
         else
@@ -287,7 +287,7 @@ function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.We
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(body, args..., initiator=Initiator(client.id, requestID))
+            responsefunc(body, args..., initiator=Initiator(client.id, request_id))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

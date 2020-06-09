@@ -75,7 +75,7 @@ end
 function notebook_inputs_equal(nbA, nbB)
     x = normpath(nbA.path) == normpath(nbB.path)
 
-    to_compare(cell) = (cell.uuid, cell.code)
+    to_compare(cell) = (cell.cell_id, cell.code)
     y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
     
     x && y

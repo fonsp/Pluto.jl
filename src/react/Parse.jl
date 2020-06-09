@@ -1,5 +1,5 @@
 "Generate a file name to be given to the parser (will show up in stack traces)."
-pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.uuid)
+pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
 
 "Is Julia new enough to support filenames in parsing?"
 const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_line("1\n2"))
