@@ -18,7 +18,7 @@ export const create_counter_statistics = () => {
     }
 }
 
-const first_line = (cell) => /(.+)/.exec(cell.local_code.body.split("\n"))[0]
+const first_line = (cell) => /(.*)/.exec(cell.local_code.body)[0]
 const count_matches = (pattern, haystack) => (haystack.match(pattern) || []).length
 const value_counts = (values) =>
     values.reduce((prev_counts, val) => {

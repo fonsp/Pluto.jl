@@ -200,9 +200,11 @@ end
 responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
+
+    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
     putnotebookupdates!(notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
     
-    if !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
+    if any_dependents
         function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
             push!(to_delete_vars, bound_sym) # also delete the bound symbol
             WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)

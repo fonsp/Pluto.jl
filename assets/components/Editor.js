@@ -26,6 +26,7 @@ export class Editor extends Component {
             connected: false,
             loading: true,
         }
+        // convenience method
         const set_notebook_state = (callback) => {
             this.setState((prevstate) => {
                 return {
@@ -36,6 +37,7 @@ export class Editor extends Component {
                 }
             })
         }
+        // convenience method
         const set_cell_state = (cell_id, new_state_props) => {
             this.setState((prevstate) => {
                 return {
@@ -50,9 +52,11 @@ export class Editor extends Component {
         }
         this.set_cell_state = set_cell_state.bind(this)
 
+        // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
         this.all_completed = true
         this.all_completed_promise = resolvable_promise()
 
+        // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
 
         // these are things that can be done to the local notebook
@@ -354,12 +358,33 @@ export class Editor extends Component {
             },
             set_bond: (symbol, value) => {
                 this.counter_statistics.numBondSets++
+
+                if (this.all_completed) {
+                    // instead of waiting for this component to update, we reset the promise right now
+                    // this prevents very fast bonds from sending multiple values within the ping interval
+                    this.all_completed = false
+                    Object.assign(this.all_completed_promise, resolvable_promise())
+                }
+
                 this.client
                     .sendreceive("bond_set", {
                         sym: symbol,
                         val: value,
                     })
-                    .then((u) => {})
+                    .then(({ message }) => {
+                        // the back-end tells us whether any cells depend on the bound value
+
+                        if (message.any_dependents) {
+                            // there are dependent cells, those cells will start running and returning output soon
+                            // when the last running cell returns its output, the all_completed_promise is resolved, and a new bond value can be sent
+                        } else {
+                            // there are no dependent cells, so we resolve the promise right now
+                            if (!this.all_completed) {
+                                this.all_completed = true
+                                this.all_completed_promise.resolve()
+                            }
+                        }
+                    })
             },
         }
 
@@ -393,7 +418,7 @@ export class Editor extends Component {
                     })
             } else {
                 this.setState({
-                    path: old_path, // TODO: this doesnt set the codemirror value
+                    path: old_path,
                 })
                 reset_cm_value()
             }
@@ -458,7 +483,7 @@ export class Editor extends Component {
                 })
                 this.counter_statistics = create_counter_statistics()
             }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 5 * 1000) // 10 seconds - load feedback a little later for snappier UI
+        }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {
@@ -479,12 +504,15 @@ export class Editor extends Component {
 
         const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running)
         if (all_completed_now && !this.all_completed) {
+            this.all_completed = true
             this.all_completed_promise.resolve()
+            console.log(true)
         }
         if (!all_completed_now && this.all_completed) {
-            this.all_completed_promise = resolvable_promise()
+            this.all_completed = false
+            Object.assign(this.all_completed_promise, resolvable_promise())
+            console.log(false)
         }
-        this.all_completed = all_completed_now
     }
 
     render() {

@@ -17,8 +17,8 @@ export class CellOutput extends Component {
         return timestamp > this.displayed_timestamp
     }
 
-    componentDidUpdate() {
-        this.displayed_timestamp = this.props.timestamp
+    componentWillUpdate() {
+        this.old_height = this.base.scrollHeight
     }
 
     render() {
@@ -28,6 +28,22 @@ export class CellOutput extends Component {
                 <${OutputBody} ...${this.props} />
             </celloutput>
         `
+    }
+
+    componentDidUpdate() {
+        this.displayed_timestamp = this.props.timestamp
+
+        // Scroll the page to compensate for change in page height:
+        const new_height = this.base.scrollHeight
+        const new_scroll = window.scrollY
+
+        if (document.body.querySelector("cell:focus-within")) {
+            const cell_outputs_after_focused = document.body.querySelectorAll("cell:focus-within ~ cell > celloutput") // CSS wizardry ✨
+            if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                // window.scrollTo(window.scrollX, new_scroll + (new_height - this.old_height))
+                window.scrollBy(0, new_height - this.old_height)
+            }
+        }
     }
 }
 
@@ -117,19 +133,3 @@ export class RawHTMLContainer extends Component {
         return html`<div></div>`
     }
 }
-
-// TODO:
-// const oldHeight = outputNode.scrollHeight
-// const oldScroll = window.scrollY
-
-// TODO
-// // Scroll the page to compensate for changes in page height:
-// const newHeight = outputNode.scrollHeight
-// const newScroll = window.scrollY
-
-// if (notebookNode.querySelector("cell:focus-within")) {
-//     const cellsAfterFocused = notebookNode.querySelectorAll("cell:focus-within ~ cell")
-//     if (cellsAfterFocused.length == 0 || !Array.from(cellsAfterFocused).includes(cellNode)) {
-//         window.scrollTo(window.scrollX, oldScroll + (newHeight - oldHeight))
-//     }
-// }
