@@ -506,12 +506,10 @@ export class Editor extends Component {
         if (all_completed_now && !this.all_completed) {
             this.all_completed = true
             this.all_completed_promise.resolve()
-            console.log(true)
         }
         if (!all_completed_now && this.all_completed) {
             this.all_completed = false
             Object.assign(this.all_completed_promise, resolvable_promise())
-            console.log(false)
         }
     }
 
