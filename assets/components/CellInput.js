@@ -22,7 +22,7 @@ export class CellInput extends Component {
     }
 
     componentDidMount() {
-        this.cm = CodeMirror(
+        this.cm = window.CodeMirror(
             (el) => {
                 this.base.appendChild(el)
             },
@@ -38,6 +38,7 @@ export class CellInput extends Component {
                 hintOptions: {
                     hint: juliahints,
                     client: this.props.client,
+                    on_update_doc_query: this.props.on_update_doc_query,
                 },
                 matchBrackets: true,
             }
@@ -140,10 +141,12 @@ const juliahints = (cm, options) => {
             query: old_line_sliced,
         })
         .then((update) => {
-            return {
+            const completions = {
                 list: update.message.results,
                 from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
                 to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
+            window.CodeMirror.on(completions, "select", options.on_update_doc_query)
+            return completions
         })
 }
