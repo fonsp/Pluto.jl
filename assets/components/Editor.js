@@ -8,6 +8,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { SlideControls } from "./SlideControls.js"
 
 import { link_open } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
@@ -565,6 +566,7 @@ export class Editor extends Component {
                     </form>
                 </div>
             </footer>
+            <${SlideControls} />
         `
     }
 }
