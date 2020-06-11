@@ -77,49 +77,56 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     }
 }
 
+const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback) => {
+    if(next_node == null){
+        callback()
+        return
+    }
+    const load_next = () => execute_scripttags(root_node, remaining_nodes, callback)
+
+    root_node.currentScript = next_node
+    if (next_node.src != "") {
+        if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === next_node.src)) {
+            const new_el = document.createElement("script")
+            new_el.src = next_node.src
+            // new_el.async = false
+            new_el.addEventListener("load", load_next)
+            new_el.addEventListener("error", load_next)
+            document.head.appendChild(new_el)
+        } else {
+            load_next()
+        }
+    } else {
+        try{
+            const result = Function(next_node.innerHTML).bind(root_node)()
+            if (result && result.nodeType === Node.ELEMENT_NODE) {
+                next_node.parentElement.insertBefore(result, script)
+            }
+        } catch (err) {
+            console.log("Couldn't execute script:")
+            console.error(err)
+            // TODO: relay to user
+        }
+        load_next()
+    }
+}
+
 export class RawHTMLContainer extends Component {
     render_DOM() {
         this.base.innerHTML = this.props.body
 
-        // based on https://stackoverflow.com/a/26716182
-        // to execute all scripts in the output html:
-        try {
-            Array.from(this.base.querySelectorAll("script")).map((script) => {
-                this.base.currentScript = script // available inside user JS as `this.currentScript`
-                if (script.src != "") {
-                    if (
-                        !Array.from(document.head.querySelectorAll("script"))
-                            .map((s) => s.src)
-                            .includes(script)
-                    ) {
-                        const tag = document.createElement("script")
-                        tag.src = script.src
-                        document.head.appendChild(tag)
-                        // might be wise to wait after adding scripts to head
-                        // maybe use a better method?
-                    }
-                } else {
-                    const result = Function(script.innerHTML).bind(this.base)()
-                    if (result && result.nodeType === Node.ELEMENT_NODE) {
-                        script.parentElement.insertBefore(result, script)
-                    }
-                }
-            })
-        } catch (err) {
-            console.error("Couldn't execute script:")
-            console.error(err)
-            // TODO: relay to user
-        }
+        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script")), () => {
+            connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
+    
+            // convert LaTeX to svg
+            try {
+                MathJax.typeset([this.base])
+            } catch (err) {
+                console.info("Failed to typeset TeX:")
+                console.info(err)
+            }
+        })
 
-        connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
-
-        // convert LaTeX to svg
-        try {
-            MathJax.typeset([this.base])
-        } catch (err) {
-            console.info("Failed to typeset TeX:")
-            console.info(err)
-        }
     }
 
     componentDidUpdate() {
