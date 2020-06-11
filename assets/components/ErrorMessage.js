@@ -44,6 +44,12 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
                     <a href="#" onclick=${() => requests.wrap_remote_cell(cell_id, "begin")}>Wrap all code in a <em>begin ... end</em> block.</a>`,
         },
         {
+            pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
+            display: () => 
+                html`<p>Tried to reevaluate an <code>include</code> call, this is not yet supported 😢.</p>
+                <p>As a workaround, develop the code <em>inside</em> this notebook, or restart the notebook process in the <a href="./">Pluto home screen</a>.</p>`,
+        },
+        {
             pattern: /.?/,
             display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
