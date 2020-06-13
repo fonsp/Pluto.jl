@@ -288,6 +288,7 @@ export class Editor extends Component {
                     remote_code: {
                         body: new_code,
                         submitted_by_me: false,
+                        timestamp: Date.now(),
                     },
                 })
                 this.requests.change_remote_cell(cell_id, new_code)

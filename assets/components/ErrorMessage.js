@@ -41,7 +41,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
             pattern: /syntax: extra token after end of expression/,
             display: () =>
                 html`<p>Multiple expressions in one cell.</p>
-                    <a href="#" onclick=${() => requests.wrap_remote_cell(cell_id, "begin")}>Wrap all code in a <em>begin ... end</em> block.</a>`,
+                    <a href="#" onClick=${(e) => {
+                        e.preventDefault()
+                        requests.wrap_remote_cell(cell_id, "begin")
+                    }}>Wrap all code in a <em>begin ... end</em> block.</a>`,
         },
         {
             pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
