@@ -116,7 +116,7 @@ const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
 
 This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
-function run(host, port::Integer; launchbrowser::Bool = false)
+function run(host, port::Integer; launchbrowser::Bool = true)
     set_ENV_defaults()
     hostIP = parse(Sockets.IPAddr, host)
     serversocket = Sockets.listen(hostIP, UInt16(port))
@@ -219,7 +219,11 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
     
-    launchbrowser && @warn "Not implemented yet"
+    if launchbrowser
+        Sys.islinux() && Base.run(`xdg-open $address`)
+        Sys.isapple() && Base.run(`open $address`)
+        Sys.iswindows() && Base.run(`cmd /c start $address`)
+    end
 
     
     # create blocking call:
