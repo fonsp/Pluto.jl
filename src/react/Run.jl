@@ -80,7 +80,7 @@ run_reactive_async!(notebook::Notebook, cell::Cell; kwargs...) = run_reactive_as
 
 "Run a single cell non-reactively, return run information."
 function run_single!(notebook::Notebook, cell::Cell)
-	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.uuid, ends_with_semicolon(cell.code))
+	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]

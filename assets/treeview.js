@@ -1,4 +1,4 @@
-function onjltreeclick(self, e) {
+window.onjltreeclick = (self, e) => {
 	if(e.target !== self && !self.classList.contains("collapsed")){
 		return
 	}

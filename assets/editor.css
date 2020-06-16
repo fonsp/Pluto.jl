@@ -645,7 +645,7 @@ cellinput>button>span {
     }
     cell:hover>button,
     cell:hover>cellinput>button,
-    cell:hover>runarea>button,
+    cell>runarea>button,
     cell:hover>cellshoulder>button {
         opacity: 25%;
     }
@@ -664,7 +664,6 @@ cellinput>button>span {
 @media screen and (any-pointer: coarse) {
     cell>button,
     cellinput>button,
-    runarea>button,
     cellshoulder>button,
     cell>runarea {
         opacity: 0%;
@@ -673,7 +672,6 @@ cellinput>button>span {
     }
     cell:focus-within>button,
     cell:focus-within>cellinput>button,
-    cell:focus-within>runarea>button,
     cell:focus-within>runarea,
     cell:focus-within>cellshoulder>button {
         opacity: 25%;
@@ -780,6 +778,7 @@ cell.code-differs>runarea {
     display: block;
 }
 
+cell:focus-within>runarea,
 cell.output-notinsync>runarea,
 cell.code-differs>runarea {
     opacity: 100%;
@@ -974,6 +973,9 @@ body.presentation celloutput  h2 {
 }
 body.presentation notebook {
     padding-bottom: 100vh;
+}
+body.presentation #helpbox-wrapper {
+    display: none !important;
 }
 
 body>slide-controls {

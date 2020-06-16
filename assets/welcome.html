@@ -18,6 +18,7 @@
     
     <script src="assets/common/RegisterSW.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/display/placeholder.min.js" defer></script>
@@ -28,6 +29,7 @@
     <link rel="stylesheet" href="assets/welcome.css">
     
     <script src="assets/welcome.js" type="module" defer></script>
+    <script src="assets/warn_old_browsers.js"></script>
 </head>
 
 <body class="loading nosessions">
@@ -38,16 +40,10 @@
             <ul id="new">
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>
-                <li>Open from file:
-                    <filepicker>
-                        <button>Open</button>
-                    </filepicker>
+                <li>
+                    Open from file:
+                    <p><em>Loading...</em></p>
                 </li>
-            </ul>
-            <br/>
-            <p>Recent sessions:</p>
-            <ul id="recent">
-                <li><em>Loading...</em></li>
             </ul>
         </main>
     </div>

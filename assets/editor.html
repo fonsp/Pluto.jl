@@ -18,8 +18,8 @@
     
     <script src="assets/common/RegisterSW.js"></script>
 
-    
-    <!-- <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/core.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/mode/julia/julia.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.53.2/addon/hint/show-hint.min.js" defer></script>
@@ -56,77 +56,12 @@
     </script>
     <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js" async></script>
     
-    <script src="assets/bond.js" type="module" defer></script>
     <script src="assets/editor.js" type="module" defer></script>
-    <script src="assets/feedback.js" type="module" defer></script>
-    <script src="assets/treeview.js" defer></script>
+    <script src="assets/warn_old_browsers.js"></script>
 </head>
 
 <body class="loading no-MαθJax">
-    <header>
-        <div id="logocontainer">
-            <a href="./">
-                <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" alt="" /></h1>
-            </a>
-            <filepicker>
-
-                <button>Rename</button>
-            </filepicker>
-        </div>
-    </header>
-
-    <main>
-        <preamble>
-            <button class="runallchanged" title="Save and run all changed cells"><span></span></button>
-        </preamble>
-        <notebook>
-        </notebook>
-        <dropruler></dropruler>
-        <template id="celltemplate">
-            <cell>
-                <cellshoulder draggable="true" title="Drag to move cell">
-                    <button class="foldcode" title="Show/hide code"><span></span></button>
-                </cellshoulder>
-                <trafficlight></trafficlight>
-                <button class="addcell before" title="Add cell"><span></span></button>
-                <celloutput tabindex="1">
-                    <assignee></assignee>
-                    <div></div>
-                </celloutput>
-                <cellinput>
-                    <button class="deletecell" title="Delete cell"><span></span></button>
-                </cellinput>
-                <runarea>
-                    <span clas="runtime">---</span>
-                    <button class="runcell" title="Run"><span></span></button>
-                </runarea>
-                <button class="addcell after" title="Add cell"><span></span></button>
-            </cell>
-        </template>
-    </main>
-    <div id="helpbox-wrapper">
-        <helpbox class="hidden">
-            <header></header>
-            <section></section>
-        </helpbox>
-
-    </div>
-
-    <footer>
-        <div id="info">
-            <form id="feedback" action="#" method="post">
-                <a id="statistics-info" href="statistics-info">Statistics</a>
-                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback...">
-                <button>Send</button>
-            </form>
-        </div>
-    </footer>
-
-    <slide-controls>
-        <button class="changeslide prev" title="Previous slide" onclick="prevSlide(event)"><span></span></button>
-        <button class="changeslide next" title="Next slide" onclick="nextSlide(event)"><span></span></button>
-    </slide-controls>
 </body>
+
 
 </html>

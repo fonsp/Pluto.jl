@@ -29,7 +29,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
     ])
         fakeclient.connected_notebook = notebook
 
-        @test !haskey(WorkspaceManager.workspaces, notebook.uuid)
+        @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
 
         run_reactive!(notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
@@ -152,7 +152,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 @test length(st["stacktrace"]) == 4 # check in REPL
                 if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 1
-                    @test occursin(notebook.cells[12].uuid |> string, st["stacktrace"][4]["file"])
+                    @test occursin(notebook.cells[12].cell_id |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
                 else
                     @test_broken false
@@ -165,7 +165,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
                 @test length(st["stacktrace"]) == 4
                 if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[13].uuid |> string, st["stacktrace"][4]["file"])
+                    @test occursin(notebook.cells[13].cell_id |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
                 else
                     @test_broken false
@@ -179,11 +179,11 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
                 if Pluto.can_insert_filename
                     @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[14].uuid |> string, st["stacktrace"][4]["file"])
+                    @test occursin(notebook.cells[14].cell_id |> string, st["stacktrace"][4]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
 
                     @test st["stacktrace"][5]["line"] == 1
-                    @test occursin(notebook.cells[15].uuid |> string, st["stacktrace"][5]["file"])
+                    @test occursin(notebook.cells[15].cell_id |> string, st["stacktrace"][5]["file"])
                     @test occursin(notebook.path |> basename, st["stacktrace"][5]["file"])
                 else
                     @test_broken false

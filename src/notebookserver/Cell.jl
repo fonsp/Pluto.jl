@@ -5,7 +5,7 @@ import JSON: lower
 "The building block of `Notebook`s. Contains code, output and reactivity data."
 mutable struct Cell
     "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
-    uuid::UUID
+    cell_id::UUID
     code::String
     
     output_repr::Union{String,Nothing}
@@ -21,5 +21,5 @@ mutable struct Cell
     rootassignee::Union{Nothing,Symbol}
 end
 
-Cell(uuid, code) = Cell(uuid, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, SymbolsState(), Set{Expr}(), nothing)
+Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, SymbolsState(), Set{Expr}(), nothing)
 Cell(code) = Cell(uuid1(), code)

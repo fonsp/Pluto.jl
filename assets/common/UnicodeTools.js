@@ -1,15 +1,11 @@
 const te = new TextEncoder()
 const td = new TextDecoder()
 
-export function lengthUtf8(str, startindex_utf16 = 0, endindex_utf16 = undefined) {
-    return te.encode(str.substring(startindex_utf16, endindex_utf16)).length
-}
+export const length_utf8 = (str, startindex_utf16 = 0, endindex_utf16 = undefined) => te.encode(str.substring(startindex_utf16, endindex_utf16)).length
 
-export function utf8index_to_ut16index(str, index_utf8) {
-    return td.decode(te.encode(str).slice(0, index_utf8)).length
-}
+export const utf8index_to_ut16index = (str, index_utf8) => td.decode(te.encode(str).slice(0, index_utf8)).length
 
-export function spliceUtf8(original, startindex_utf8, endindex_utf8, replacement) {
+export const spliceUtf8 = (original, startindex_utf8, endindex_utf8, replacement)  => {
     // JS uses UTF-16 for internal representation of strings, e.g.
     // "e".length == 1, "é".length == 1, "🐶".length == 2
 
@@ -25,18 +21,9 @@ export function spliceUtf8(original, startindex_utf8, endindex_utf8, replacement
 
     const result_enc = new Uint8Array(original_enc.length + replacement_enc.length - (endindex_utf8 - startindex_utf8))
 
-    result_enc.set(
-        original_enc.slice(0, startindex_utf8),
-        0,
-    )
-    result_enc.set(
-        replacement_enc,
-        startindex_utf8,
-    )
-    result_enc.set(
-        original_enc.slice(endindex_utf8),
-        startindex_utf8 + replacement_enc.length
-    )
+    result_enc.set(original_enc.slice(0, startindex_utf8), 0)
+    result_enc.set(replacement_enc, startindex_utf8)
+    result_enc.set(original_enc.slice(endindex_utf8), startindex_utf8 + replacement_enc.length)
 
     return td.decode(result_enc)
 }
