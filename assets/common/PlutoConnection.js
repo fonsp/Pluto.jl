@@ -28,7 +28,7 @@ export class PlutoConnection {
         setTimeout(() => {
             this.ping(
                 () => {
-                    if (this.psocket.readyState != WebSocket.OPEN) {
+                    if (this.psocket.readyState !== WebSocket.OPEN) {
                         this.wait_for_online()
                     } else {
                         this.on_connection_status(true)

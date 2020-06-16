@@ -26,7 +26,9 @@ Your notebooks are **saved as pure Julia files** ([sample](https://github.com/fo
 ## Dynamic environment
 
 Pluto offers an environment where changed code takes effect instantly and where deleted code leaves no trace.
-Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather a _one-to-one correspondence_ between variables and code. In a Pluto notebook, a variable or function definition _always_ corresponds to the code that defines it — there is no hidden state. 
+Unlike Jupyter or Matlab, there is **no mutable workspace**, but rather, an important guarantee:
+<blockquote align="center"><em><b>At any instant</b>, the program state is <b>completely described</b> by the code you see.</em></blockquote>
+No hidden state, no hidden bugs.
 
 ### Interactivity
 
@@ -113,7 +115,7 @@ If you feel the same, give Pluto a try! We would love to hear what you think. �
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" width="70%">
 
-Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
+Questions? Have a look at the [FAQ](https://www.notion.so/3ce1c1cff62f4f97815891cdaa3daa7d?v=b5824fb6bc804d2c90d34c4d49a1c295).
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._
 

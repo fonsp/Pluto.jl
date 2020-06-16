@@ -15,6 +15,7 @@ function assetresponse(path)
         @assert isfile(path)
         response = HTTP.Response(200, read(path, String))
         push!(response.headers, "Content-Type" => string(mime_fromfilename(path)))
+        push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
         HTTP.Response(404, "Not found!: $(e)")
