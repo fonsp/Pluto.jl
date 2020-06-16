@@ -13,13 +13,15 @@ import { SlideControls } from "./SlideControls.js"
 import { link_open } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
+const default_path = "..."
+
 export class Editor extends Component {
     constructor() {
         super()
 
         this.state = {
             notebook: {
-                path: "...",
+                path: default_path,
                 notebook_id: document.location.search.split("id=")[1],
                 cells: [],
             },
@@ -438,7 +440,9 @@ export class Editor extends Component {
                     break
                 case 82: // r
                     if (e.ctrlKey) {
-                        document.location.href = link_open(this.state.notebook)
+                        if(this.state.notebook.path !== default_path){
+                            document.location.href = link_open(this.state.notebook)
+                        }
                         e.preventDefault()
                     }
                     break
@@ -561,7 +565,8 @@ export class Editor extends Component {
                 <div id="info">
                     <form id="feedback" action="#" method="post">
                         <a id="statistics-info" href="statistics-info">Statistics</a>
-                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                        <label for="opinio
+                        if(this.state.notebook.path n">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>
                     </form>

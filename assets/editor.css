@@ -974,6 +974,9 @@ body.presentation celloutput  h2 {
 body.presentation notebook {
     padding-bottom: 100vh;
 }
+body.presentation #helpbox-wrapper {
+    display: none !important;
+}
 
 body>slide-controls {
     display: none;

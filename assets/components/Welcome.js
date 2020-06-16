@@ -122,6 +122,7 @@ export class Welcome extends Component {
     }
 
     componentDidMount() {
+        this.componentDidUpdate()
         this.client.initialize(() => {
             this.client.sendreceive("getallnotebooks", {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
@@ -148,7 +149,7 @@ export class Welcome extends Component {
     }
 
     componentDidUpdate() {
-        document.body.classList.toggle("nosessions", this.state.combined_notebooks == null || this.state.combined_notebooks.length == 0)
+        document.body.classList.toggle("nosessions", !(this.state.combined_notebooks == null || this.state.combined_notebooks.length > 0))
     }
 
     render() {
