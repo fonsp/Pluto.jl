@@ -84,7 +84,7 @@ function load_notebook_nobackup(io, path)::Notebook
     firstline = String(readline(io))
     
     if firstline != "### A Pluto.jl notebook ###"
-        @error "File is not a Pluto.jl notebook"
+        error("File is not a Pluto.jl notebook")
     end
 
     file_VERSION_STR = readline(io)[3:end]

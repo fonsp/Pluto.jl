@@ -12,6 +12,7 @@
     text-align: center;
 }
 
+body.error #title,
 body.statistics #title {
     margin-top: 10vh;
     /* text-align: left; */
@@ -58,6 +59,7 @@ main {
     color: hsl(0, 0%, 60%);
 }
 
+body.error main,
 body.statistics main {
     width: unset;
     max-width: 40em;

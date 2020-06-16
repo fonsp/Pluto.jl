@@ -1,4 +1,5 @@
 import HTTP
+import Markdown: htmlesc
 
 # Serve everything from `/assets`, and create HTTP endpoints to open notebooks.
 
@@ -18,7 +19,7 @@ function assetresponse(path)
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
-        HTTP.Response(404, "Not found!: $(e)")
+        HTTP.Response(404, "Not found!")
     end
 end
 
@@ -55,7 +56,7 @@ function serve_sample(req::HTTP.Request)
         @async putplutoupdates!(clientupdate_notebook_list(notebooks))
         return notebook_redirect(nb)
     catch e
-        return HTTP.Response(500, "Failed to load sample:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
+        return serve_errorpage(500, "Failed to load sample", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
     end
 end
 
@@ -81,13 +82,13 @@ function serve_openfile(req::HTTP.Request)
                 @async putplutoupdates!(clientupdate_notebook_list(notebooks))
                 return notebook_redirect(nb)
             catch e
-                return HTTP.Response(500, "Failed to load notebook:\n\n$(e)\n\n<a href=\"/\">Go back</a>")
+                return serve_errorpage(500, "Failed to load notebook", "The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
             end
         else
-            return HTTP.Response(404, "Can't find a file here.\n\n<a href=\"/\">Go back</a>")
+            return serve_errorpage(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
         end
     end
-    return HTTP.Response(400, "Bad query.\n\n<a href=\"/\">Go back</a>")
+    return serve_errorpage(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
 end
 
 function serve_newfile(req::HTTP.Request)
@@ -99,6 +100,17 @@ function serve_newfile(req::HTTP.Request)
     end
     @async putplutoupdates!(clientupdate_notebook_list(notebooks))
     return notebook_redirect(nb)
+end
+
+function serve_errorpage(status_code::Integer, title, advice, body="")
+    template = read(joinpath(PKG_ROOT_DIR, "assets", "error.jl.html"), String)
+
+    body_title = body == "" ? "" : "Error message:"
+    filled_in = replace(replace(replace(replace(template, "\$TITLE" => title), "\$ADVICE" => advice), "\$BODYTITLE" => body_title), "\$BODY" => htmlesc(body))
+
+    response = HTTP.Response(status_code, filled_in)
+    push!(response.headers, "Content-Type" => string(mime_fromfilename(".html")))
+    response
 end
 
 HTTP.@register(PLUTOROUTER, "GET", "/", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
