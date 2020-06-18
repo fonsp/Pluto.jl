@@ -1,16 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
 
 /*  */
 
 jltree {
     font-family: "Roboto Mono", monospace;
-    font-size: .75rem;
+    font-size: 0.75rem;
 }
 jltree {
-    color: hsl(0, 0%, 25%, .7);
+    color: hsl(0, 0%, 25%, 0.7);
     white-space: pre;
     cursor: pointer;
 }
+
 jltree * {
     cursor: auto;
 }
@@ -21,8 +22,8 @@ jltree::before {
     background-size: 100%;
     height: 1em;
     width: 1em;
-    margin-bottom: -.1em;
-    opacity: .5;
+    margin-bottom: -0.1em;
+    opacity: 0.5;
     cursor: pointer;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-down-outline.svg);
 }
@@ -43,16 +44,15 @@ jltree.collapsed r {
     display: inline-block;
 }
 
-jltree r>v {
+jltree r > v {
     display: inline-flex;
     color: hsl(0, 0%, 25%, 1);
 }
 
-jltree.collapsed jlarray>r>k,
-jltree.collapsed jlstruct>r>k {
+jltree.collapsed jlarray > r > k,
+jltree.collapsed jlstruct > r > k {
     display: none;
 }
-
 
 /*  */
 
@@ -60,69 +60,66 @@ jltree r {
     margin-left: 1em;
 }
 
-jltree.collapsed r:first-child{
+jltree.collapsed r:first-child {
     margin-left: 0;
 }
 
-jltree jlarray>r>k {
+jltree jlarray > r > k {
     margin-right: 1em;
-    opacity: .5;
+    opacity: 0.5;
     user-select: none;
 }
-
 
 /*  */
 
 jltree jlarray::before {
-    content: "["
+    content: "[";
 }
 
 jltree jlarray::after {
-    content: "]"
+    content: "]";
 }
 
 jltree jldict::before,
 jltree jlstruct::before {
-    content: "("
+    content: "(";
 }
 
 jltree jldict::after,
 jltree jlstruct::after {
-    content: ")"
+    content: ")";
 }
-
 
 /*  */
 
-jltree jlarray>r>k::after {
+jltree jlarray > r > k::after {
     content: ":";
 }
 
-jltree jldict>r>k::after {
-    content: " => "
+jltree jldict > r > k::after {
+    content: " => ";
 }
 
-jltree jlstruct>r>k::after {
-    content: " = "
+jltree jlstruct > r > k::after {
+    content: " = ";
 }
 
 jltree.collapsed r::after {
     content: ",";
 }
 
-jltree.collapsed r:last-child::after{
+jltree.collapsed r:last-child::after {
     content: "";
 }
 
-jltree r>more::after {
+jltree r > more::after {
     content: "⁝";
-    margin-left: .2em;
+    margin-left: 0.2em;
 }
 
-jltree.collapsed r>more::after {
+jltree.collapsed r > more::after {
     content: "⋅⋅⋅";
 }
-
 
 /*  */
 
@@ -141,32 +138,32 @@ jltree svg {
 /*  */
 
 jlerror {
-    font-size: .75rem;
+    font-size: 0.75rem;
     font-family: "Space Mono", monospace;
 }
 
-jlerror>header {
+jlerror > header {
     color: #330000;
 }
-jlerror>header>p {
-    margin-block-end: .2em;
+jlerror > header > p {
+    margin-block-end: 0.2em;
 }
-jlerror>header>p:first-child {
+jlerror > header > p:first-child {
     font-weight: bold;
 }
-jlerror>section>ol>li>mark {
+jlerror > section > ol > li > mark {
     background: #f3f2f1;
     border-radius: 6px;
     font-family: "Roboto Mono", monospace;
 }
-jlerror>section>ol>li>em>a {
+jlerror > section > ol > li > em > a {
     background: #f5efd9;
     border-radius: 4px;
     padding: 1px 7px;
     text-decoration: none;
     border-left: 3px solid #9a7575;
 }
-jlerror>section>ol>li>span {
-    opacity: .8;
+jlerror > section > ol > li > span {
+    opacity: 0.8;
     padding: 0px 1em;
 }

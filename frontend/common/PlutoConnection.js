@@ -97,7 +97,9 @@ export class PlutoConnection {
                     return
                 }
             }
-
+            if (update.type === "reload") {
+                document.location = document.location
+            }
             this.on_update(update, by_me)
         } catch (ex) {
             console.error("Failed to get update!", ex)
@@ -135,6 +137,7 @@ export class PlutoConnection {
             this.wait_for_online()
         }
         this.psocket.onopen = () => {
+            console.log("socket opened")
             this.sendreceive("connect", {}).then((u) => {
                 this.plutoENV = u.message.ENV
                 if (this.notebook_id && !u.message.notebookExists) {
@@ -143,10 +146,10 @@ export class PlutoConnection {
                     return
                 }
                 this.on_connection_status(true)
-                console.log("socket opened")
                 on_success()
             })
         }
+        console.log("waiting...")
     }
 
     try_close_socket_connection() {

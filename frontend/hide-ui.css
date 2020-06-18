@@ -6,13 +6,14 @@ body {
     font-size: 14px;
 }
 
-body>header,
-preamble>button,
-cell>button,
-cellinput>button,
+body > header,
+preamble > button,
+cell > button,
+cellinput > button,
 cellshoulder,
 footer,
-runarea {
+runarea,
+#helpbox-wrapper {
     display: none !important;
 }
 
@@ -21,8 +22,4 @@ celloutput img {
     display: block;
     margin: 0 auto;
     margin-block-end: 1rem;
-}
-
-#info::before {
-    content: "Generated using";
 }

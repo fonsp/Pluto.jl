@@ -54,7 +54,7 @@ export class CellInput extends Component {
                 this.props.on_delete()
             },
             "Shift-Tab": "indentLess",
-            Tab: on_tab_key,
+            "Tab": on_tab_key,
         })
 
         this.cm.on("change", () => {

@@ -440,7 +440,7 @@ export class Editor extends Component {
                     break
                 case 82: // r
                     if (e.ctrlKey) {
-                        if(this.state.notebook.path !== default_path){
+                        if (this.state.notebook.path !== default_path) {
                             document.location.href = link_open(this.state.notebook)
                         }
                         e.preventDefault()
@@ -524,7 +524,7 @@ export class Editor extends Component {
             <header>
                 <div id="logocontainer">
                     <a href="./">
-                        <h1><img id="logo-big" src="assets/img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="assets/img/favicon_unsaturated.svg" /></h1>
+                        <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                     </a>
                     <${FilePicker}
                         client=${this.client}
@@ -565,8 +565,7 @@ export class Editor extends Component {
                 <div id="info">
                     <form id="feedback" action="#" method="post">
                         <a id="statistics-info" href="statistics-info">Statistics</a>
-                        <label for="opinio
-                        if(this.state.notebook.path n">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>
                     </form>

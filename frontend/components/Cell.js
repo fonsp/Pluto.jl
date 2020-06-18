@@ -51,11 +51,11 @@ export const Cell = ({
     return html`
         <cell
             class=${cl({
-                running: running,
+                "running": running,
                 "output-notinsync": output.body == null,
                 "has-assignee": !output.errored && output.rootassignee != null,
                 "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
-                error: errored,
+                "error": errored,
                 "code-differs": remote_code.body !== local_code.body,
                 "code-folded": code_folded,
             })}
@@ -96,7 +96,7 @@ export const Cell = ({
                 }}
                 on_change=${on_change}
                 on_update_doc_query=${on_update_doc_query}
-                client=${client} 
+                client=${client}
                 disable_input=${disable_input}
                 create_focus=${create_focus}
                 cell_id=${cell_id}

@@ -41,16 +41,23 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
             pattern: /syntax: extra token after end of expression/,
             display: () =>
                 html`<p>Multiple expressions in one cell.</p>
-                    <a href="#" onClick=${(e) => {
-                        e.preventDefault()
-                        requests.wrap_remote_cell(cell_id, "begin")
-                    }}>Wrap all code in a <em>begin ... end</em> block.</a>`,
+                    <a
+                        href="#"
+                        onClick=${(e) => {
+                            e.preventDefault()
+                            requests.wrap_remote_cell(cell_id, "begin")
+                        }}
+                        >Wrap all code in a <em>begin ... end</em> block.</a
+                    >`,
         },
         {
             pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
-            display: () => 
+            display: () =>
                 html`<p>Tried to reevaluate an <code>include</code> call, this is not yet supported 😢.</p>
-                <p>As a workaround, develop the code <em>inside</em> this notebook, or restart the notebook process in the <a href="./">Pluto home screen</a>.</p>`,
+                    <p>
+                        As a workaround, develop the code <em>inside</em> this notebook, or restart the notebook process in the
+                        <a href="./">Pluto home screen</a>.
+                    </p>`,
         },
         {
             pattern: /.?/,

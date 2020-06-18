@@ -78,7 +78,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
 }
 
 const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback) => {
-    if(next_node == null){
+    if (next_node == null) {
         callback()
         return
     }
@@ -97,7 +97,7 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback
             load_next()
         }
     } else {
-        try{
+        try {
             const result = Function(next_node.innerHTML).bind(root_node)()
             if (result && result.nodeType === Node.ELEMENT_NODE) {
                 next_node.parentElement.insertBefore(result, script)
@@ -117,7 +117,7 @@ export class RawHTMLContainer extends Component {
 
         execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script")), () => {
             connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
-    
+
             // convert LaTeX to svg
             try {
                 MathJax.typeset([this.base])
@@ -126,7 +126,6 @@ export class RawHTMLContainer extends Component {
                 console.info(err)
             }
         })
-
     }
 
     componentDidUpdate() {

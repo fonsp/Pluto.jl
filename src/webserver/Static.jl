@@ -1,7 +1,8 @@
 import HTTP
 import Markdown: htmlesc
+import FileWatching
 
-# Serve everything from `/assets`, and create HTTP endpoints to open notebooks.
+# Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
 "Attempts to find the MIME pair corresponding to the extension of a filename. Defaults to `text/plain`."
 function mime_fromfilename(filename)
@@ -12,6 +13,9 @@ function mime_fromfilename(filename)
 end
 
 function assetresponse(path)
+    if !isfile(path) && !endswith(path, ".html")
+        return assetresponse(path * ".html")
+    end
     try
         @assert isfile(path)
         response = HTTP.Response(200, read(path, String))
@@ -30,11 +34,11 @@ end
 function serve_asset(req::HTTP.Request)
     reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
     
-    filepath = joinpath(PKG_ROOT_DIR, relpath(reqURI.path, "/"))
+    filepath = joinpath(PKG_ROOT_DIR, "frontend", relpath(reqURI.path, "/"))
     assetresponse(filepath)
 end
 
-const PLUTOROUTER = HTTP.Router()
+const pluto_router = HTTP.Router()
 
 function notebook_redirect(notebook)
     response = HTTP.Response(302, "")
@@ -102,8 +106,8 @@ function serve_newfile(req::HTTP.Request)
     return notebook_redirect(nb)
 end
 
-function serve_errorpage(status_code::Integer, title, advice, body="")
-    template = read(joinpath(PKG_ROOT_DIR, "assets", "error.jl.html"), String)
+function serve_errorpage(status_code::Integer, title, advice, body = "")
+    template = read(joinpath(PKG_ROOT_DIR, "frontend", "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(template, "\$TITLE" => title), "\$ADVICE" => advice), "\$BODYTITLE" => body_title), "\$BODY" => htmlesc(body))
@@ -113,20 +117,29 @@ function serve_errorpage(status_code::Integer, title, advice, body="")
     response
 end
 
-HTTP.@register(PLUTOROUTER, "GET", "/", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/index.html", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "welcome.html")))
+HTTP.@register(pluto_router, "GET", "/", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
 
-HTTP.@register(PLUTOROUTER, "GET", "/sw.js", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "sw.js")))
+HTTP.@register(pluto_router, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
+HTTP.@register(pluto_router, "GET", "/*", serve_asset)
 
-HTTP.@register(PLUTOROUTER, "GET", "/new", serve_newfile)
-HTTP.@register(PLUTOROUTER, "GET", "/open", serve_openfile)
-HTTP.@register(PLUTOROUTER, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "editor.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/sample", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "sample.html")))
-HTTP.@register(PLUTOROUTER, "GET", "/sample/*", serve_sample)
+HTTP.@register(pluto_router, "GET", "/new", serve_newfile)
+HTTP.@register(pluto_router, "GET", "/open", serve_openfile)
+HTTP.@register(pluto_router, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
+HTTP.@register(pluto_router, "GET", "/sample/*", serve_sample)
 
-HTTP.@register(PLUTOROUTER, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "img", "favicon.ico")))
-HTTP.@register(PLUTOROUTER, "GET", "/assets/*", serve_asset)
+HTTP.@register(pluto_router, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
 
-HTTP.@register(PLUTOROUTER, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
-HTTP.@register(PLUTOROUTER, "GET", "/statistics-info", serve_onefile(joinpath(PKG_ROOT_DIR, "assets", "statistics-info.html")))
+function hot_reload_async(dir)
+    @async while true
+        try
+            FileWatching.watch_folder(dir)
+            println("Hot reloading!")
+            putplutoupdates!(UpdateMessage(:reload, nothing))
+            FileWatching.unwatch_folder(dir)
+            sleep(1) # debounce
+        catch e
+            # can Julia please print errors in @async blocks please
+            showerror(stderr, e, stacktrace(catch_backtrace()))
+        end
+    end
+end

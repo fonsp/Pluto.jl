@@ -49,13 +49,13 @@ export class FilePicker extends Component {
         this.cm.setOption("extraKeys", {
             "Ctrl-Enter": this.on_submit,
             "Ctrl-Shift-Enter": this.on_submit,
-            Enter: this.on_submit,
-            Esc: (cm) => {
+            "Enter": this.on_submit,
+            "Esc": (cm) => {
                 cm.closeHint()
                 cm.setValue(this.props.value)
                 document.activeElement.blur()
             },
-            Tab: (cm) => this.requestPathCompletions.bind(this),
+            "Tab": (cm) => this.requestPathCompletions.bind(this),
         })
 
         this.cm.on("change", this.requestPathCompletions.bind(this))

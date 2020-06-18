@@ -7,7 +7,7 @@ import Base: endswith
 function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     local liv = lastindex(vec)
     local lis = lastindex(suffix)
-    liv >= lis && (view(vec, (liv-lis + 1):liv) == suffix)
+    liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
 end
 
 function set_ENV_defaults()
@@ -70,7 +70,6 @@ function flushclient(client::Client)
                     client.stream.frame_type = HTTP.WebSockets.WS_BINARY
                     write(client.stream, serialize_message(next_to_send) |> codeunits)
                 else
-                    @info "Client $(client.id) stream closed."
                     put!(flushtoken, token)
                     return false
                 end
@@ -90,7 +89,7 @@ function flushclient(client::Client)
     true
 end
 
-function flushallclients(subset::Union{Set{Client}, AbstractArray{Client}})
+function flushallclients(subset::Union{Set{Client},AbstractArray{Client}})
     disconnected = Set{Symbol}()
     for client in subset
         stillconnected = flushclient(client)
@@ -137,7 +136,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                                 # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
                                 data = ""
                                 while !endswith(data, MSG_DELIM)
-                                    if(eof(clientstream))
+                                    if eof(clientstream)
                                         if data == ""
                                             return
                                         end
@@ -147,12 +146,13 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                                     end
                                     data = data * String(readavailable(clientstream))
                                 end
-                                JSON.parse(SubString(data, 1:(lastindex(data)-length(MSG_DELIM))))
+                                JSON.parse(SubString(data, 1:(lastindex(data) - length(MSG_DELIM))))
                             end
                             process_ws_message(parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException
                                 rethrow(ex)
+                                # TODO: this won't work, `upgrade` wraps our function in a try without catch
                             elseif ex isa HTTP.WebSockets.WebSocketError
                                 # that's fine!
                             elseif ex isa InexactError
@@ -185,10 +185,10 @@ function run(host, port::Integer; launchbrowser::Bool = false)
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
                 # no request body
-                response_body = HTTP.handle(PLUTOROUTER, request)
+                response_body = HTTP.handle(pluto_router, request)
             else
                 # there's a body, so pass it on to the handler we dispatch to
-                response_body = HTTP.handle(PLUTOROUTER, request, JSON.parse(request_body))
+                response_body = HTTP.handle(pluto_router, request, JSON.parse(request_body))
             end
     
             request.response::HTTP.Response = response_body
@@ -221,6 +221,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     
     launchbrowser && @warn "Not implemented yet"
 
+    hot_reload_async.(joinpath(PKG_ROOT_DIR, "frontend") |> walkdir .|> first)
     
     # create blocking call:
     try
@@ -245,9 +246,9 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     end
 end
 
-run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
+run(port::Integer = 1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
-function process_ws_message(parentbody::Dict{String, Any}, clientstream::HTTP.WebSockets.WebSocket)
+function process_ws_message(parentbody::Dict{String,Any}, clientstream::HTTP.WebSockets.WebSocket)
     client = let
         client_id = Symbol(parentbody["client_id"])
         Client(client_id, clientstream)

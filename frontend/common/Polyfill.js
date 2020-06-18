@@ -20,5 +20,5 @@ if (Blob.prototype.text == null) {
 }
 
 Array.prototype.last = function () {
-    return this[this.length-1]
+    return this[this.length - 1]
 }
