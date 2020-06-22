@@ -220,9 +220,18 @@ function run(host, port::Integer; launchbrowser::Bool = true)
     println()
     
     if launchbrowser
-        Sys.islinux() && Base.run(`xdg-open $address`)
-        Sys.isapple() && Base.run(`open $address`)
-        Sys.iswindows() && Base.run(`cmd /c start $address`)
+        try
+            Sys.isapple() && Base.run(`open $address`)
+            Sys.iswindows() && Base.run(`cmd /c start $address`)
+            if Sys.islinux()
+                occursin(r"microsoft", lowercase(readline("/proc/version"))) && 
+                Base.run(`cmd.exe /s /c start "" /b $address`)
+            else
+                Base.run(`xdg-open $address`)
+            end
+        catch
+            @warn "Couldn't open browser"
+        end
     end
 
     
