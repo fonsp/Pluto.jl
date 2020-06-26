@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
@@ -94,7 +93,7 @@ const pathhints = (cm, options) => {
     const oldLine = cm.getLine(cursor.line)
 
     return options.client
-        .sendreceive("completepath", {
+        .send("completepath", {
             query: oldLine,
         })
         .then((update) => {

@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 
@@ -53,6 +52,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/png":
         case "image/jpg":
         case "image/gif":
+        case "image/bmp":
             return html`<div><img src=${body} /></div>`
             break
         case "text/html":

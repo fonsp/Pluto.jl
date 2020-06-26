@@ -261,10 +261,7 @@ filepicker .CodeMirror-scroll {
 }
 
 filepicker button {
-    height: calc(1rem + 4px + 4px + 4px);
     cursor: pointer;
-    border-top-left-radius: 0 !important;
-    border-bottom-left-radius: 0 !important;
 }
 
 #logocontainer:after {
@@ -896,7 +893,6 @@ footer form {
 
 footer form > * {
     flex: 0 0 auto;
-    margin-left: 0.5rem;
 }
 
 footer form a,
@@ -923,14 +919,15 @@ footer a {
 footer input {
     border: 2px solid #818181;
     font-family: "Roboto Mono";
-    border-radius: 3px;
+    border-radius: 3px 0 0 3px;
     padding: 3px;
+    border-right: none;
 }
 
 body > header button,
 footer button {
     background: #896c6c;
-    border-radius: 3px;
+    border-radius: 0 3px 3px 0;
     border: 2px solid #896c6c;
     color: white;
     /* border: none; */

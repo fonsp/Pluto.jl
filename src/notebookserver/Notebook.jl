@@ -2,10 +2,10 @@ import UUIDs: UUID, uuid1
 
 mutable struct Notebook
     path::String
-    
+
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
-    
+
     notebook_id::UUID
     combined_funcdefs::Dict{Vector{Symbol}, SymbolsState}
 
@@ -54,6 +54,7 @@ function save_notebook(io, notebook::Notebook)
     # whenever a run_reactive is done, move the found cells **up** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
 
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
+    # 15 ms for a massive notebook - 120 cells, 800 lines
     celltopology = topological_order(notebook, notebook.cells)
 
     cells_ordered = union(celltopology.runnable, keys(celltopology.errable))
@@ -82,7 +83,7 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 "Load a notebook without saving it or creating a backup; returns a `Notebook`. REMEMBER TO CHANGE THE NOTEBOOK PATH after loading it to prevent it from autosaving and overwriting the original file."
 function load_notebook_nobackup(io, path)::Notebook
     firstline = String(readline(io))
-    
+
     if firstline != "### A Pluto.jl notebook ###"
         error("File is not a Pluto.jl notebook")
     end
@@ -93,7 +94,7 @@ function load_notebook_nobackup(io, path)::Notebook
     end
 
     collected_cells = Dict()
-    
+
     # ignore first bits of file
     readuntil(io, _cell_id_delimiter)
 
@@ -118,7 +119,7 @@ function load_notebook_nobackup(io, path)::Notebook
     ordered_cells = Cell[]
     while !eof(io)
         cell_id_str = String(readline(io))
-        o, c = startswith(cell_id_str, _order_delimiter), 
+        o, c = startswith(cell_id_str, _order_delimiter),
         if length(cell_id_str) >= 36
             cell_id = let
                 UUID(cell_id_str[end-35:end])

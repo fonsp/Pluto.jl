@@ -4,7 +4,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 
 **Explore models and share results** in a notebook that is
 - **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
-- **_lightweight_** - Pluto is written in pure Julia and is easy to install
+- **_lightweight_** - Pluto is written in pure Julia and is easy to install.
 - **_simple_** - no hidden workspace state; intuitive UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >

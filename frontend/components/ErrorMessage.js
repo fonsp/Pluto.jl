@@ -1,4 +1,4 @@
-import { html } from "../common/Html.js"
+import { html } from "../common/Preact.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")

@@ -1,5 +1,4 @@
-import { html } from "./common/Html.js"
-import { render } from "https://unpkg.com/preact@10.4.4?module"
+import { html, render } from "./common/Preact.js"
 
 import { Editor } from "./components/Editor.js"
 

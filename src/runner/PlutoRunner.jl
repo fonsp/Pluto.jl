@@ -105,14 +105,14 @@ function delete_toplevel_methods(f::Function)
     # 
     # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
     if !isempty(deleted_sigs)
-        to_insert = Set{Method}()
+        to_insert = Method[]
         Base.visit(methods_table) do method
             if !isfromtoplevel(method) && method.sig ∈ deleted_sigs
                 push!(to_insert, method)
             end
         end
         # separate loop to avoid visiting the recently added method
-        for method in to_insert
+        for method in Iterators.reverse(to_insert)
             setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end

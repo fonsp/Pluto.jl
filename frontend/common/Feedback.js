@@ -73,7 +73,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         ...counter_statistics,
     }
 
-    let { message } = await client.sendreceive("getallnotebooks", {})
+    let { message } = await client.send("getallnotebooks")
     statistics.numConcurrentNotebooks = message.notebooks.length
 
     await fetch("ping")
@@ -81,9 +81,9 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
     await fetch("ping")
     statistics.pingTimeHTTP = Date.now() - ticHTTP
 
-    await client.sendreceive("getversion", {})
+    await client.send("getversion")
     const ticWS = Date.now()
-    await client.sendreceive("getversion", {})
+    await client.send("getversion")
     statistics.pingTimeWS = Date.now() - ticWS
 
     return statistics

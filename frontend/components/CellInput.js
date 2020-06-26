@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { render, Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, render, Component } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
@@ -38,6 +37,7 @@ export class CellInput extends Component {
                 hintOptions: {
                     hint: juliahints,
                     client: this.props.client,
+                    notebook_id: this.props.notebook_id,
                     on_update_doc_query: this.props.on_update_doc_query,
                 },
                 matchBrackets: true,
@@ -45,8 +45,8 @@ export class CellInput extends Component {
         )
 
         this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": () => this.props.on_submit(this.cm.getValue()),
-            "Shift-Enter": () => {
+            "Shift-Enter": () => this.props.on_submit(this.cm.getValue()),
+            "Ctrl-Enter": () => {
                 this.props.on_add_after()
                 this.props.on_submit(this.cm.getValue())
             },
@@ -137,9 +137,15 @@ const juliahints = (cm, options) => {
     const old_line_sliced = old_line.slice(0, cursor.ch)
 
     return options.client
-        .sendreceive("complete", {
-            query: old_line_sliced,
-        })
+        .send(
+            "complete",
+            {
+                query: old_line_sliced,
+            },
+            {
+                notebook_id: options.notebook_id,
+            }
+        )
         .then((update) => {
             const completions = {
                 list: update.message.results,

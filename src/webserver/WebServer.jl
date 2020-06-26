@@ -60,10 +60,10 @@ const flushtoken = Channel{Nothing}(1)
 put!(flushtoken, nothing)
 
 function flushclient(client::Client)
+    token = take!(flushtoken)
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
         
-        token = take!(flushtoken)
         try
             if client.stream !== nothing
                 if isopen(client.stream)
@@ -79,13 +79,13 @@ function flushclient(client::Client)
             if ex isa Base.IOError
                 # client socket closed, so we return false (about 5 lines after this one)
             else
-                @warn "Failed to write to WebSocket of $(client.id) " exception=(ex,bt)
+                @warn "Failed to write to WebSocket of $(client.id) " exception = (ex, bt)
             end
             put!(flushtoken, token)
             return false
         end
-        put!(flushtoken, token)
     end
+    put!(flushtoken, token)
     true
 end
 
@@ -115,11 +115,11 @@ const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 """Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
 
 This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
-function run(host, port::Integer; launchbrowser::Bool = false)
+function run(host, port::Integer; launchbrowser::Bool=false)
     set_ENV_defaults()
     hostIP = parse(Sockets.IPAddr, host)
     serversocket = Sockets.listen(hostIP, UInt16(port))
-    servertask = @async HTTP.serve(hostIP, UInt16(port), stream = true, server = serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
@@ -160,7 +160,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                                 # TODO: remove this switch
                             else
                                 bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" exception=(ex,bt)
+                                @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
                             end
                         end
                     end
@@ -174,7 +174,7 @@ function run(host, port::Integer; launchbrowser::Bool = false)
                     # that's fine!
                 else
                     bt = stacktrace(catch_backtrace())
-                    @warn "HTTP upgrade failed for unknown reason" exception=(ex,bt)
+                    @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                 end
             end
         else
@@ -221,8 +221,6 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     
     launchbrowser && @warn "Not implemented yet"
 
-    hot_reload_async.(joinpath(PKG_ROOT_DIR, "frontend") |> walkdir .|> first)
-    
     # create blocking call:
     try
         wait(servertask)
@@ -246,13 +244,11 @@ function run(host, port::Integer; launchbrowser::Bool = false)
     end
 end
 
-run(port::Integer = 1234; kwargs...) = run("127.0.0.1", port; kwargs...)
+run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String,Any}, clientstream::HTTP.WebSockets.WebSocket)
-    client = let
-        client_id = Symbol(parentbody["client_id"])
-        Client(client_id, clientstream)
-    end
+    client_id = Symbol(parentbody["client_id"])
+    client = get(connectedclients, client_id, Client(client_id, clientstream))
     # add to our list of connected clients
     connectedclients[client.id] = client
     

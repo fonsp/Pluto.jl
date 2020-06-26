@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { PlutoConnection } from "../common/PlutoConnection.js"
@@ -51,7 +50,7 @@ export class Welcome extends Component {
 
                 const new_combined_notebooks = this.state.combined_notebooks.map((nb) => {
                     // try to find a matching notebook in the remote list
-                    let running_version = false
+                    let running_version = null
 
                     if (nb.notebook_id) {
                         // match notebook_ids to handle a path change
@@ -95,10 +94,16 @@ export class Welcome extends Component {
                         running: false,
                         transitioning: true,
                     })
-                    this.client.send("shutdownworkspace", {
-                        id: nb.notebook_id,
-                        remove_from_list: true,
-                    })
+                    this.client.send(
+                        "shutdownworkspace",
+                        {
+                            remove_from_list: true,
+                        },
+                        {
+                            notebook_id: nb.notebook_id,
+                        },
+                        false
+                    )
                 }
             } else {
                 fetch(link_open(nb), {
@@ -124,7 +129,7 @@ export class Welcome extends Component {
     componentDidMount() {
         this.componentDidUpdate()
         this.client.initialize(() => {
-            this.client.sendreceive("getallnotebooks", {}).then(({ message }) => {
+            this.client.send("getallnotebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
                 // we are going to construct the combined list:
@@ -140,9 +145,13 @@ export class Welcome extends Component {
             })
 
             // to start JIT'ting
-            this.client.sendreceive("completepath", {
-                query: "nothinginparticular",
-            })
+            this.client.send(
+                "completepath",
+                {
+                    query: "nothinginparticular",
+                },
+                {}
+            )
 
             document.body.classList.remove("loading")
         })

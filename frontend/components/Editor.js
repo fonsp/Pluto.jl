@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 import { PlutoConnection } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -131,7 +130,7 @@ export class Editor extends Component {
             })
         }
 
-        // these are update message that are _not_ a response to a `sendreceive`
+        // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (update.notebook_id == null) {
                 switch (update.type) {
@@ -145,26 +144,38 @@ export class Editor extends Component {
                     const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
                     switch (update.type) {
                         case "cell_output":
-                            actions.update_local_cell_output(cell, message)
+                            if (cell != null) {
+                                actions.update_local_cell_output(cell, message)
+                            }
                             break
                         case "cell_running":
-                            set_cell_state(update.cell_id, {
-                                running: true,
-                            })
+                            if (cell != null) {
+                                set_cell_state(update.cell_id, {
+                                    running: true,
+                                })
+                            }
                             break
                         case "cell_folded":
-                            set_cell_state(update.cell_id, {
-                                code_folded: message.folded,
-                            })
+                            if (cell != null) {
+                                set_cell_state(update.cell_id, {
+                                    code_folded: message.folded,
+                                })
+                            }
                             break
                         case "cell_input":
-                            actions.update_local_cell_input(cell, by_me, message.code, message.folded)
+                            if (cell != null) {
+                                actions.update_local_cell_input(cell, by_me, message.code, message.folded)
+                            }
                             break
                         case "cell_deleted":
-                            actions.delete_local_cell(cell)
+                            if (cell != null) {
+                                actions.delete_local_cell(cell)
+                            }
                             break
                         case "cell_moved":
-                            actions.move_local_cell(cell, message.index)
+                            if (cell != null) {
+                                actions.move_local_cell(cell, message.index)
+                            }
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
@@ -188,10 +199,10 @@ export class Editor extends Component {
         const on_establish_connection = () => {
             const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
             // on socket success
-            this.client.sendreceive("getallnotebooks", {}).then(on_remote_notebooks)
+            this.client.send("getallnotebooks", {}, {}).then(on_remote_notebooks)
 
             this.client
-                .sendreceive("getallcells", {})
+                .send("getallcells", {}, { notebook_id: this.state.notebook.notebook_id })
                 .then((update) => {
                     this.setState(
                         {
@@ -208,18 +219,36 @@ export class Editor extends Component {
                             const promises = []
                             this.state.notebook.cells.forEach((cell_data) => {
                                 promises.push(
-                                    this.client.sendreceive("getinput", {}, cell_data.cell_id).then((u) => {
-                                        actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
-                                    })
+                                    this.client
+                                        .send(
+                                            "getinput",
+                                            {},
+                                            {
+                                                notebook_id: this.state.notebook.notebook_id,
+                                                cell_id: cell_data.cell_id,
+                                            }
+                                        )
+                                        .then((u) => {
+                                            actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
+                                        })
                                 )
                                 promises.push(
-                                    this.client.sendreceive("getoutput", {}, cell_data.cell_id).then((u) => {
-                                        if (!run_all || cell_data.running) {
-                                            actions.update_local_cell_output(cell_data, u.message)
-                                        } else {
-                                            // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
-                                        }
-                                    })
+                                    this.client
+                                        .send(
+                                            "getoutput",
+                                            {},
+                                            {
+                                                notebook_id: this.state.notebook.notebook_id,
+                                                cell_id: cell_data.cell_id,
+                                            }
+                                        )
+                                        .then((u) => {
+                                            if (!run_all || cell_data.running) {
+                                                actions.update_local_cell_output(cell_data, u.message)
+                                            } else {
+                                                // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
+                                            }
+                                        })
                                 )
                             })
                             Promise.all(promises).then(() => {
@@ -272,16 +301,22 @@ export class Editor extends Component {
             }
         })
 
-        // TODO: whoops
-        this.client.notebook_id = this.state.notebook.notebook_id
-        this.client.initialize(on_establish_connection)
+        this.client.initialize(on_establish_connection, { notebook_id: this.state.notebook.notebook_id })
 
         // these are things that can be done to the remote notebook
         this.requests = {
             change_remote_cell: (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
-                set_cell_state(cell_id, { running: true })
-                return this.client.send("changecell", { code: new_code }, cell_id, create_promise)
+                // set_cell_state(cell_id, { running: true })
+                return this.client.send(
+                    "changecell",
+                    { code: new_code },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    create_promise
+                )
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
@@ -303,18 +338,40 @@ export class Editor extends Component {
                         }),
                     }
                 })
-                this.client.send("interruptall", {})
+                this.client.send(
+                    "interruptall",
+                    {},
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                    },
+                    false
+                )
             },
             move_remote_cell: (cell_id, new_index) => {
                 // Indexing works as if a new cell is added.
                 // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
                 // is moved to the end, that would be new js-index = 5
-                this.client.send("movecell", { index: new_index }, cell_id)
+                this.client.send(
+                    "movecell",
+                    { index: new_index },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    false
+                )
             },
-            add_remote_cell: (cell_id, beforeOrAfter) => {
+            add_remote_cell: (cell_id, before_or_after) => {
                 const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-                const delta = beforeOrAfter == "before" ? 0 : 1
-                this.client.send("addcell", { index: index + delta })
+                const delta = before_or_after == "before" ? 0 : 1
+                this.client.send(
+                    "addcell",
+                    { index: index + delta },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                    },
+                    false
+                )
             },
             delete_cell: (cell_id) => {
                 if (this.state.notebook.cells.length <= 1) {
@@ -327,10 +384,26 @@ export class Editor extends Component {
                         submitted_by_me: false,
                     },
                 })
-                this.client.send("deletecell", {}, cell_id)
+                this.client.send(
+                    "deletecell",
+                    {},
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    false
+                )
             },
             fold_remote_cell: (cell_id, newFolded) => {
-                this.client.send("foldcell", { folded: newFolded }, cell_id)
+                this.client.send(
+                    "foldcell",
+                    { folded: newFolded },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    false
+                )
             },
             run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cells.filter((cell) => code_differs(cell))
@@ -339,23 +412,30 @@ export class Editor extends Component {
                 const promises = changed.map((cell) => {
                     set_cell_state(cell.cell_id, { running: true })
                     return this.client
-                        .sendreceive(
+                        .send(
                             "setinput",
+                            { code: cell.local_code.body },
                             {
-                                code: cell.local_code.body,
-                            },
-                            cell.cell_id
+                                notebook_id: this.state.notebook.notebook_id,
+                                cell_id: cell.cell_id,
+                            }
                         )
                         .then((u) => {
                             actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
                         })
                 })
                 Promise.all(promises)
-                    .then(() => {
-                        this.client.send("runmultiple", {
-                            cells: changed.map((c) => c.cell_id),
-                        })
-                    })
+                    .then(() =>
+                        this.client.send(
+                            "runmultiple",
+                            {
+                                cells: changed.map((c) => c.cell_id),
+                            },
+                            {
+                                notebook_id: this.state.notebook.notebook_id,
+                            }
+                        )
+                    )
                     .catch(console.error)
 
                 return changed.length != 0
@@ -371,10 +451,14 @@ export class Editor extends Component {
                 }
 
                 this.client
-                    .sendreceive("bond_set", {
-                        sym: symbol,
-                        val: value,
-                    })
+                    .send(
+                        "bond_set",
+                        {
+                            sym: symbol,
+                            val: value,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
                     .then(({ message }) => {
                         // the back-end tells us whether any cells depend on the bound value
 
@@ -400,9 +484,13 @@ export class Editor extends Component {
             if (confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
                 this.setState({ loading: true })
                 this.client
-                    .sendreceive("movenotebookfile", {
-                        path: new_path,
-                    })
+                    .send(
+                        "movenotebookfile",
+                        {
+                            path: new_path,
+                        },
+                        { notebook_id: this.state.notebook.notebook_id }
+                    )
                     .then((u) => {
                         this.setState({
                             loading: false,
@@ -466,8 +554,8 @@ export class Editor extends Component {
                     alert(
                         `Shortcuts 🎹
         
-        Ctrl+Enter:   run cell
-        Shift+Enter:   run cell and add cell below
+        Shift+Enter:   run cell
+        Ctrl+Enter:   run cell and add cell below
         Ctrl+Shift+Delete:   delete cell
         Ctrl+Q:   interrupt notebook
         Ctrl+S:   submit all changes`
@@ -560,7 +648,7 @@ export class Editor extends Component {
 
                 <${DropRuler} requests=${this.requests} />
             </main>
-            <${LiveDocs} desired_doc_query=${this.state.desired_doc_query} client=${this.client} />
+            <${LiveDocs} desired_doc_query=${this.state.desired_doc_query} client=${this.client} notebook=${this.state.notebook} />
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
@@ -590,6 +678,9 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
 
+/**
+ * @returns {{current: Promise<any>, resolve: function}}
+ */
 const resolvable_promise = () => {
     let resolve
     const p = new Promise((r) => {

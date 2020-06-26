@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 export class DropRuler extends Component {
     constructor() {

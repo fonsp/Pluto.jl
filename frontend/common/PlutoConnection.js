@@ -1,3 +1,12 @@
+const do_next = async (queue) => {
+    const next = queue[0]
+    await next()
+    queue.shift()
+    if (queue.length > 0) {
+        await do_next(queue)
+    }
+}
+
 export class PlutoConnection {
     ping(on_success, onFailure) {
         fetch("ping", {
@@ -45,7 +54,15 @@ export class PlutoConnection {
         return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
     }
 
-    send(messageType, body, cell_id = undefined, create_promise = false) {
+    /**
+     *
+     * @param {string} messageType
+     * @param {Object} body
+     * @param {{notebook_id?: string, cell_id?: string}} metadata
+     * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
+     * @returns {(undefined|Promise<Object>)}
+     */
+    send(messageType, body = {}, metadata = {}, create_promise = true) {
         const request_id = this.get_short_unqiue_id()
 
         var toSend = {
@@ -53,12 +70,7 @@ export class PlutoConnection {
             client_id: this.client_id,
             request_id: request_id,
             body: body,
-        }
-        if (this.notebook_id) {
-            toSend.notebook_id = this.notebook_id
-        }
-        if (cell_id) {
-            toSend.cell_id = cell_id
+            ...metadata,
         }
 
         var p = undefined
@@ -79,15 +91,13 @@ export class PlutoConnection {
         return p
     }
 
-    sendreceive(messageType, body, cell_id = undefined) {
-        return this.send(messageType, body, cell_id, true)
-    }
-
     async handle_message(event) {
         try {
             const update = await event.data.text().then(JSON.parse)
             const by_me = "initiator_id" in update && update.initiator_id == this.client_id
             const request_id = update.request_id
+
+            console.log(update)
 
             if (by_me && request_id) {
                 const request = this.sent_requests[request_id]
@@ -109,12 +119,17 @@ export class PlutoConnection {
         }
     }
 
-    start_socket_connection(on_success) {
+    start_socket_connection(on_success, connect_metadata) {
         this.psocket = new WebSocket(
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/")
         )
         this.psocket.onmessage = (e) => {
-            this.handle_message(e)
+            this.task_queue.push(async () => {
+                await this.handle_message(e)
+            })
+            if (this.task_queue.length == 1) {
+                do_next(this.task_queue)
+            }
         }
         this.psocket.onerror = (e) => {
             console.error("SOCKET ERROR", e)
@@ -125,7 +140,7 @@ export class PlutoConnection {
                     if (this.psocket.readyState != WebSocket.OPEN) {
                         this.try_close_socket_connection()
 
-                        this.start_socket_connection(on_success)
+                        this.start_socket_connection(on_success, connect_metadata)
                     }
                 }, 500)
             }
@@ -138,9 +153,10 @@ export class PlutoConnection {
         }
         this.psocket.onopen = () => {
             console.log("socket opened")
-            this.sendreceive("connect", {}).then((u) => {
+            this.send("connect", {}, connect_metadata).then((u) => {
                 this.plutoENV = u.message.ENV
-                if (this.notebook_id && !u.message.notebookExists) {
+                // TODO: don't check this here
+                if (connect_metadata.notebook_id && !u.message.notebookExists) {
                     // https://github.com/fonsp/Pluto.jl/issues/55
                     document.location.href = "./"
                     return
@@ -156,13 +172,13 @@ export class PlutoConnection {
         this.psocket.close(1000, "byebye")
     }
 
-    initialize(on_establish_connection) {
+    initialize(on_establish_connection, connect_metadata = {}) {
         this.ping(
             () => {
                 // on ping success
                 this.start_socket_connection(() => {
                     on_establish_connection(this)
-                })
+                }, connect_metadata)
             },
             () => {
                 // on failure
@@ -181,6 +197,7 @@ export class PlutoConnection {
         this.on_update = on_update
         this.on_connection_status = on_connection_status
 
+        this.task_queue = []
         this.psocket = null
         this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
         this.client_id = this.get_short_unqiue_id()
@@ -207,7 +224,7 @@ export class PlutoConnection {
                 return response[0].tag_name
             })
 
-        const pluto_promise = this.sendreceive("getversion", {}).then((u) => {
+        const pluto_promise = this.send("getversion").then((u) => {
             this.pluto_version = u.message.pluto
             this.julia_version = u.message.julia
             return this.pluto_version

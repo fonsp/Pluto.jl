@@ -1,5 +1,4 @@
-import { html } from "../common/Html.js"
-import { Component } from "https://unpkg.com/preact@10.4.4?module"
+import { html, Component } from "../common/Preact.js"
 
 import { cl } from "../common/ClassTable.js"
 
@@ -42,7 +41,7 @@ export class LiveDocs extends Component {
         })
         Promise.race([
             observablehq.Promises.delay(2000, false),
-            this.props.client.sendreceive("docs", { query: new_query }).then((u) => {
+            this.props.client.send("docs", { query: new_query }, { notebook_id: this.props.notebook.notebook_id }).then((u) => {
                 if (u.message.status === "⌛") {
                     return false
                 }

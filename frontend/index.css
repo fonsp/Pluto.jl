@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext');
-@import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese');
+@import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 #title {
     /* position: absolute; */
     /* left: 0; */
@@ -22,9 +22,9 @@ body.statistics #title {
 #title h2 {
     font-style: italic;
     font-size: 2em;
-    letter-spacing: .08em;
+    letter-spacing: 0.08em;
     font-weight: 500;
-    font-family: 'Vollkorn', serif;
+    font-family: "Vollkorn", serif;
     color: hsl(0, 0%, 26%);
     margin: 0px;
     border-bottom: solid 2px hsl(0, 0%, 88%);
@@ -36,9 +36,9 @@ body.statistics #title {
 
 #title img {
     height: 1.2em;
-    margin-bottom: -.27em;
+    margin-bottom: -0.27em;
     /* margin-right: -1.5em; */
-    margin-left: .1em;
+    margin-left: 0.1em;
 }
 
 body {
@@ -55,7 +55,7 @@ main {
     margin-top: 20vh;
     margin-bottom: 10em;
     text-align: left;
-    font-family: 'Roboto Mono', monospace;
+    font-family: "Roboto Mono", monospace;
     color: hsl(0, 0%, 60%);
 }
 
@@ -63,7 +63,7 @@ body.error main,
 body.statistics main {
     width: unset;
     max-width: 40em;
-    padding: .5em;
+    padding: 0.5em;
     margin-top: 5vh;
     font-size: 14px;
 }
@@ -73,20 +73,19 @@ p {
 }
 
 ul {
-    padding-left: .5em;
+    padding-left: 0.5em;
     list-style: none;
 }
 
 li {
     white-space: nowrap;
-    margin-bottom: .9em;
+    margin-bottom: 0.9em;
 }
 
 a {
     color: inherit;
     color: hsl(0, 0%, 30%);
 }
-
 
 /* input {
             width: 70%;
@@ -101,17 +100,17 @@ a {
 filepicker {
     display: flex;
     flex-direction: row;
-    margin-top: .3rem;
+    margin-top: 0.3rem;
 }
 
 filepicker .CodeMirror {
     height: calc(1rem + 4px + 4px);
     display: inline-block;
     width: 100%;
-    opacity: .6;
+    opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: 'Roboto Mono', monospace !important;
+    font-family: "Roboto Mono", monospace !important;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -134,11 +133,10 @@ filepicker button {
     /* border: none; */
     font-family: "Roboto Mono";
     font-weight: 600;
-    font-size: .75rem;
+    font-size: 0.75rem;
 }
 
 filepicker button {
-    height: calc(1rem + 4px + 4px + 4px);
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
@@ -161,23 +159,23 @@ ul.CodeMirror-hints {
 }
 
 ul.CodeMirror-hints {
-    font-family: 'Roboto Mono', monospace !important;
-    font-size: .75em;
+    font-family: "Roboto Mono", monospace !important;
+    font-size: 0.75em;
 }
 
 body.nosessions ul#new ~ * {
     display: none;
 }
 
-#recent>li.recent {
-    opacity: .8;
+#recent > li.recent {
+    opacity: 0.8;
 }
 
 #recent button {
     margin: 0px;
-    margin-right: .2em;
+    margin-right: 0.2em;
     padding: 1px;
-    opacity: .6;
+    opacity: 0.6;
     border: none;
     background: none;
     cursor: pointer;
@@ -185,13 +183,12 @@ body.nosessions ul#new ~ * {
     color: black;
 }
 
-
 #recent button {
     /* still WIP */
     /* display: none;  */
 }
 
-#recent button>span::after {
+#recent button > span::after {
     display: block;
     content: " ";
     background-size: 17px 17px;
@@ -200,16 +197,14 @@ body.nosessions ul#new ~ * {
     margin-bottom: -3px;
 }
 
-#recent li.running button>span::after {
+#recent li.running button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle.svg);
 }
 
-
-#recent li.recent button>span::after {
+#recent li.recent button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
 }
 
-
-#recent li.transitioning button>span::after {
+#recent li.transitioning button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
 }

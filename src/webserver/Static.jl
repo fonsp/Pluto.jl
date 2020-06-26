@@ -106,7 +106,7 @@ function serve_newfile(req::HTTP.Request)
     return notebook_redirect(nb)
 end
 
-function serve_errorpage(status_code::Integer, title, advice, body = "")
+function serve_errorpage(status_code::Integer, title, advice, body="")
     template = read(joinpath(PKG_ROOT_DIR, "frontend", "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
@@ -128,18 +128,3 @@ HTTP.@register(pluto_router, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR
 HTTP.@register(pluto_router, "GET", "/sample/*", serve_sample)
 
 HTTP.@register(pluto_router, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
-
-function hot_reload_async(dir)
-    @async while true
-        try
-            FileWatching.watch_folder(dir)
-            println("Hot reloading!")
-            putplutoupdates!(UpdateMessage(:reload, nothing))
-            FileWatching.unwatch_folder(dir)
-            sleep(1) # debounce
-        catch e
-            # can Julia please print errors in @async blocks please
-            showerror(stderr, e, stacktrace(catch_backtrace()))
-        end
-    end
-end

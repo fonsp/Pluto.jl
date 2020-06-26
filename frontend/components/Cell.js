@@ -1,10 +1,35 @@
-import { html } from "../common/Html.js"
+import { html } from "../common/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
+/**
+ * @typedef {Object} CodeState
+ * @property {string} body
+ * @property {number} [timestamp]
+ * @property {boolean} [submitted_by_me]
+ */
+
+/**
+ * A cell!
+ * @typedef {Object} Cell
+ * @property {string} cell_id
+ * @property {CodeState} remote_code
+ * @property {CodeState} local_code
+ * @property {boolean} code_folded
+ * @property {boolean} running
+ * @property {?number} runtime
+ * @property {boolean} errored
+ * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
+ */
+
+/**
+ *
+ * @param {string} cell_id
+ * @returns {Cell}
+ */
 export const empty_cell_data = (cell_id) => {
     return {
         cell_id: cell_id,
@@ -29,6 +54,11 @@ export const empty_cell_data = (cell_id) => {
     }
 }
 
+/**
+ *
+ * @param {Cell} cell
+ * @return {boolean}
+ */
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
 export const Cell = ({
@@ -47,6 +77,7 @@ export const Cell = ({
     all_completed_promise,
     requests,
     client,
+    notebook_id,
 }) => {
     return html`
         <cell
@@ -100,6 +131,7 @@ export const Cell = ({
                 disable_input=${disable_input}
                 create_focus=${create_focus}
                 cell_id=${cell_id}
+                notebook_id=${notebook_id}
             />
             <${RunArea}
                 onClick=${() => {

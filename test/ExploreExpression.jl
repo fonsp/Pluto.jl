@@ -188,6 +188,9 @@ using Test
         @test testee(:(function f(x::T; k = 1) where {T,S<:R} return x + 1 end), [], [], [], [
             :f => ([:R], [], [:+], [])
         ])
+        @test_broken testee(:(f(x)::String = x), [], [], [], [
+            :f => ([:String], [], [], [])
+        ])
         @test testee(:(MIME"text/html"), [Symbol("@MIME_str")], [], [], [])
         @test testee(:(function f(::MIME"text/html") 1 end), [], [], [], [
             :f => ([Symbol("@MIME_str")], [], [], [])

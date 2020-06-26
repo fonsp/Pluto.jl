@@ -5,16 +5,6 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			// this one doesn't work well yet
-			"type": "julia",
-			"request": "launch",
-			"name": "Back-end",
-			"program": "${workspaceFolder}/.vscode/run.jl",
-			"stopOnEntry": false,
-			"cwd": "${workspaceFolder}",
-			"juliaEnv": "${command:activeJuliaEnvironment}"
-		},
-		{
 			// yes! use it!!!
 			// this one is for when you are only working on the front-end. Have Pluto running in a separate terminal, and then run this debug config. It should launch Firefox. Reload Firefox after making changes.
 			"type": "firefox",
@@ -30,6 +20,16 @@
 			"request": "launch",
 			"url": "http://localhost:1234/",
 			"webRoot": "${workspaceFolder}/frontend"
+		},
+		{
+			// this one doesn't work well yet
+			"type": "julia",
+			"request": "launch",
+			"name": "Back-end",
+			"program": "${workspaceFolder}/.vscode/run.jl",
+			"stopOnEntry": false,
+			"cwd": "${workspaceFolder}",
+			"juliaEnv": "${command:activeJuliaEnvironment}"
 		}
 	]
 }
