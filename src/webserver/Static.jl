@@ -71,7 +71,7 @@ function serve_sample(req::HTTP.Request)
     sample_path = split(uri.path, "sample/")[2]
 
     path = tempname() * ".jl"
-    cp(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
+    copy_write(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
 
     return launch_notebook_response(path, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
 end

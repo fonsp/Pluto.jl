@@ -505,7 +505,7 @@ macro bind(def, element)
 	if def isa Symbol
 		quote
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+            global $(esc(def)) = Core.applicable(Base.peek, el, missing) ? Base.peek(el, missing) : missing
 			PlutoRunner.Bond(el, $(Meta.quot(def)))
 		end
 	else
