@@ -1,26 +1,26 @@
-name: Run Julia tests
+name: Run Julia Nightly tests
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# Controls when the action will run.
 on:
     push:
         paths-ignore: "frontend/**"
     pull_request:
         paths-ignore: "frontend/**"
+    schedule:
+        # every monday
+        - cron: "0 0 * * 1"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-    # This workflow contains a single job called "test"
-    test:
+    # This workflow contains a single job called "test-nightly"
+    test-nightly:
         # The type of runner that the job will run on
         runs-on: ${{ matrix.os }}
+        continue-on-error: true
         strategy:
             matrix:
-                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4"]
-                os: [ubuntu-latest, windows-latest]
-                include:
-                    - julia-version: "1.4"
-                      os: macOS-latest
+                julia-version: ["nightly"]
+                os: [ubuntu-latest, windows-latest, macOS-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
