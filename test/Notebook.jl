@@ -5,7 +5,7 @@ import Random
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
-    Notebook(tempname(), [
+    Notebook([
         Cell("100*a + b"),
         Cell("a = 1"),
         Cell("💩 = :💩"), # ends with 4-byte character
@@ -26,7 +26,7 @@ function basic_notebook()
 end
 
 function shuffled_notebook()
-    Notebook(joinpath(tempdir(), "é🧡💛.jl"), [
+    Notebook([
         Cell("z = y"),
         Cell("v = u"),
         Cell("y = x"),
@@ -39,7 +39,7 @@ function shuffled_notebook()
 end
 
 function shuffled_with_imports_notebook()
-    Notebook(tempname(), [
+    Notebook([
         Cell("c = uuid1()"),
         Cell("a = (b, today())"),
         Cell("y = 2"),
@@ -62,7 +62,7 @@ function shuffled_with_imports_notebook()
 end
 
 function bad_code_notebook()
-    Notebook(tempname(), [
+    Notebook([
         Cell("z = y"),
         Cell("y = z"),
         Cell(""";lka;fd;jasdf;;;\n\n\n\n\nasdfasdf
@@ -73,7 +73,7 @@ function bad_code_notebook()
 end
 
 function bonds_notebook()
-    Notebook(tempname(), [
+    Notebook([
         Cell("y = x"),
         Cell("@bind x html\"<input type='range'>\""),
         Cell("""struct Wow
@@ -87,7 +87,7 @@ function bonds_notebook()
     ])
 end
 
-@testset "Notebook File I/O" begin
+@testset "Notebook Files" begin
     nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook]]
 
     @testset "Sample notebooks " begin
@@ -97,14 +97,14 @@ end
 
             @testset "$(file)" begin
                 nb = @test_nowarn load_notebook_nobackup(path)
-                nb.path = tempname() * ".jl"
-
                 push!(nbs, "sample " * file => nb)
             end
         end
     end
 
     for (name, nb) in nbs
+        nb.path = tempname() * "é🧡💛.jl"
+
         client = Client(Symbol("client", rand(UInt16)), nothing)
         client.connected_notebook = nb
         Pluto.connectedclients[client.id] = client
@@ -125,14 +125,17 @@ end
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
-            Random.seed!(time_ns())
             new_path = tempname()
+            @assert !isfile(new_path)
             cp(nb.path, new_path)
+
+            # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
+            # laod_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
 
-            @test jl_is_runnable(new_path; only_undefvar=true)
+            @test jl_is_runnable(new_nb.path; only_undefvar=true)
             if name ∉ expect_error
-                @test jl_is_runnable(new_path; only_undefvar=false)
+                @test jl_is_runnable(new_nb.path; only_undefvar=false)
             end
         end
     end
@@ -188,6 +191,5 @@ end
         end
     end
 
-    # TODO: tests for things mentioned in https://github.com/fonsp/Pluto.jl/issues/9
     # TODO: test bad dirs, filenames, permissions
 end

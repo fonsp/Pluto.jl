@@ -28,7 +28,7 @@ function assetresponse(path)
 end
 
 function serve_onefile(path)
-    return request::HTTP.Request->assetresponse(normpath(path))
+    return request::HTTP.Request -> assetresponse(normpath(path))
 end
 
 function serve_asset(req::HTTP.Request)
@@ -46,22 +46,34 @@ function notebook_redirect(notebook)
     return response
 end
 
-function serve_sample(req::HTTP.Request)
-    uri = HTTP.URI(req.target)
-    path = split(uri.path, "sample/")[2]
+function launch_notebook_response(path::AbstractString; title="", advice="")
     try
-        nb = load_notebook_nobackup(joinpath(PKG_ROOT_DIR, "sample", path))
-        nb.path = tempname() * ".jl"
-        save_notebook(nb)
+        for nb in values(notebooks)
+            if realpath(nb.path) == realpath(path)
+                return notebook_redirect(nb)
+            end
+        end
+
+        nb = load_notebook(path)
         notebooks[nb.notebook_id] = nb
         if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
-            run_reactive_async!(nb, nb.cells)
+            run_reactive_async!(nb, nb.cells) # TODO: send message when initial run completed
         end
         @async putplutoupdates!(clientupdate_notebook_list(notebooks))
         return notebook_redirect(nb)
     catch e
-        return serve_errorpage(500, "Failed to load sample", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
     end
+end
+
+function serve_sample(req::HTTP.Request)
+    uri = HTTP.URI(req.target)
+    sample_path = split(uri.path, "sample/")[2]
+
+    path = tempname() * ".jl"
+    cp(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
+
+    return launch_notebook_response(path, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
 end
 
 function serve_openfile(req::HTTP.Request)
@@ -71,28 +83,12 @@ function serve_openfile(req::HTTP.Request)
     if length(query) > 5
         path = tamepath(query[6:end])
         if (isfile(path))
-            try
-                for nb in values(notebooks)
-                    if realpath(nb.path) == realpath(path)
-                        return notebook_redirect(nb)
-                    end
-                end
-
-                nb = load_notebook(path)
-                notebooks[nb.notebook_id] = nb
-                if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
-                    run_reactive_async!(nb, nb.cells) # TODO: send message when initial run completed
-                end
-                @async putplutoupdates!(clientupdate_notebook_list(notebooks))
-                return notebook_redirect(nb)
-            catch e
-                return serve_errorpage(500, "Failed to load notebook", "The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
-            end
+            return launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
         else
-            return serve_errorpage(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
+            return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
         end
     end
-    return serve_errorpage(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+    return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
 end
 
 function serve_newfile(req::HTTP.Request)
@@ -106,7 +102,7 @@ function serve_newfile(req::HTTP.Request)
     return notebook_redirect(nb)
 end
 
-function serve_errorpage(status_code::Integer, title, advice, body="")
+function error_response(status_code::Integer, title, advice, body="")
     template = read(joinpath(PKG_ROOT_DIR, "frontend", "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
@@ -127,4 +123,4 @@ HTTP.@register(pluto_router, "GET", "/open", serve_openfile)
 HTTP.@register(pluto_router, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
 HTTP.@register(pluto_router, "GET", "/sample/*", serve_sample)
 
-HTTP.@register(pluto_router, "GET", "/ping", r->HTTP.Response(200, JSON.json("OK!")))
+HTTP.@register(pluto_router, "GET", "/ping", r -> HTTP.Response(200, JSON.json("OK!")))
