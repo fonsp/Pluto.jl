@@ -17,7 +17,7 @@ jobs:
     # This workflow contains a single job called "test"
     test:
         runs-on: ${{ matrix.os }}
-        continue-on-error: ${{ matrix.experimental }}
+        continue-on-error: true
         strategy:
             matrix:
                 julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4"]
