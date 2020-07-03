@@ -19,6 +19,7 @@ jobs:
                 include:
                     - os: macOS-latest
                       julia-version: "1.4"
+                      experimental: true
                     - os: ubuntu-latest
                       julia-version: "nightly"
                       experimental: true
