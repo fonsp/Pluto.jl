@@ -41,7 +41,7 @@ end
 function shuffled_with_imports_notebook()
     Notebook(tempname(), [
         Cell("c = uuid1()"),
-        Cell("a = (b, today()"),
+        Cell("a = (b, today())"),
         Cell("y = 2"),
         Cell("using UUIDs"),
         Cell("y"),
@@ -72,12 +72,27 @@ function bad_code_notebook()
     ])
 end
 
+function bonds_notebook()
+    Notebook(tempname(), [
+        Cell("y = x"),
+        Cell("@bind x html\"<input type='range'>\""),
+        Cell("""struct Wow
+            x
+        end"""),
+        Cell("Base.peek(w::Wow) = w.x"),
+        Cell("Base.show(io::IO, ::MIME\"text/html\", w::Wow) = nothing"),
+        Cell("w = Wow(10)"),
+        Cell("@bind z w"),
+        Cell("@assert z == 10"),
+    ])
+end
+
 @testset "Notebook File I/O" begin
-    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook]]
-    
+    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook]]
+
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
-        for file in ["basic.jl", "ui.jl"]
+        for file in ["basic.jl", "tower-of-hanoi.jl", "ui.jl"]
             path = normpath(joinpath(Pluto.PKG_ROOT_DIR, "sample", file))
 
             @testset "$(file)" begin
@@ -105,13 +120,28 @@ end
         end
     end
 
+    # Some notebooks are designed to error (inside/outside Pluto)
+    expect_error = [String(nameof(bad_code_notebook)), "sample ui.jl"]
+
     @testset "Runnable without Pluto" begin
-        @testset "$(name)" for (name,nb) in nbs
+        @testset "$(name)" for (name, nb) in nbs
             Random.seed!(time_ns())
             new_path = tempname()
             cp(nb.path, new_path)
             new_nb = load_notebook(new_path)
-            @test jl_is_runnable(new_path)
+
+            @test jl_is_runnable(new_path; only_undefvar=true)
+            if name ∉ expect_error
+                @test jl_is_runnable(new_path; only_undefvar=false)
+            end
+        end
+    end
+
+    @testset "Runnable with Pluto" begin
+        @testset "$(name)" for (name, nb) in nbs
+            if name ∉ expect_error
+                @test nb_is_runnable(nb)
+            end
         end
     end
 
@@ -144,7 +174,7 @@ end
 
             # Delete last line
             cp(nb.path, new_path, force=true)
-            to_write = readlines(new_path)[1:end-1]
+            to_write = readlines(new_path)[1:end - 1]
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1

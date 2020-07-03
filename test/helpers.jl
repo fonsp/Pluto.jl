@@ -31,7 +31,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     result.assignments = Set(new_name.(result.assignments))
     result.funcdefs = let
         newfuncdefs = Dict()
-        for (k,v) in result.funcdefs
+        for (k, v) in result.funcdefs
             newfuncdefs[new_name.(k)] = v
         end
         newfuncdefs
@@ -42,7 +42,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
         println("FAILED TEST")
         println(expr)
         println()
-        dump(expr, maxdepth = 20)
+        dump(expr, maxdepth=20)
         println()
         @show expected
         resulted = result
@@ -81,21 +81,34 @@ function notebook_inputs_equal(nbA, nbB)
     x && y
 end
 
-"Whether the given .jl file can be run without an `UndefVarError`. While notebooks cells can be in arbitrary order, their order in the save file must be topological."
-function jl_is_runnable(path)
-    🔖 = Symbol("lab", hash(path))
+"Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.
+
+If `only_undefvar` is `true`, all errors other than an `UndefVarError` will be ignored."
+function jl_is_runnable(path; only_undefvar=false)
+    🔖 = Symbol("lab", time_ns())
     🏡 = Core.eval(Main, :(module $(🔖) end))
     try
         Core.eval(🏡, :(include($path)))
         true
     catch ex
-        if ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
+        if (!only_undefvar) || ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
+            println(stderr, "$(path) failed to run")
             showerror(stderr, ex, stacktrace(catch_backtrace()))
             false
         else
             true
         end
     end
+end
+
+"Whether the `notebook` runs without errors."
+function nb_is_runnable(notebook::Pluto.Notebook)
+    run_reactive!(notebook, notebook.cells)
+    errored = filter(c -> c.errored, notebook.cells)
+    if !isempty(errored)
+        @show errored
+    end
+    isempty(errored)
 end
 
 "The converse of Julia's `Base.sprint`."

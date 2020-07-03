@@ -12,8 +12,8 @@ using Test
     end
     @testset "Bad code" begin
         # @test_nowarn testee(:(begin end = 2), [:+], [], [:+], [], verbose=false)
-        @test_nowarn testee(:((a=b,c,d=123,)), [:b], [], [], [], verbose=false)
-        @test_nowarn testee(:((a=b,c[r]=2,d=123,)), [:b], [], [], [], verbose=false)
+        @test_nowarn testee(:((a = b, c, d = 123,)), [:b], [], [], [], verbose=false)
+        @test_nowarn testee(:((a = b, c[r] = 2, d = 123,)), [:b], [], [], [], verbose=false)
 
         @test_nowarn testee(:(function f(function g() end) end), [], [], [:+], [], verbose=false)
         @test_nowarn testee(:(function f() Base.sqrt(x::String) = 2; end), [], [], [:+], [], verbose=false)
@@ -51,7 +51,7 @@ using Test
         @test testee(:(struct a{T,S}; c::T; d::Foo; end), [], [], [], [:a => ([:Foo], [], [], [])])
         @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
         @test testee(:(struct a{T} <: b{T}; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
-        @test testee(:(struct a; c; a(x=y) = new(x,z); end), [], [], [], [:a => ([:y, :z], [], [:new], [])])
+        @test testee(:(struct a; c; a(x=y) = new(x, z); end), [], [], [], [:a => ([:y, :z], [], [:new], [])])
         # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
@@ -62,23 +62,23 @@ using Test
         @test testee(:(f(x) = x), [], [], [], [:f => ([], [], [], [])])
         @test testee(:(a[b,c,:] = d), [:a, :b, :c, :d, :(:)], [], [], [])
         @test testee(:(a.b = c), [:a, :c], [], [], [])
-        @test testee(:(f(a,b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
+        @test testee(:(f(a, b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
         
         @test testee(:(a += 1), [:a], [:a], [:+], [])
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
     end
     @testset "Tuples" begin
-        @test testee(:((a,b,)), [:a,:b], [], [], [])
-        @test testee(:((a=b,c=2,d=123,)), [:b], [], [], [])
+        @test testee(:((a, b,)), [:a,:b], [], [], [])
+        @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])
         @test testee(:(a, b = c), [:c], [:a, :b], [], [])
         @test testee(:(a = (b, c)), [:b, :c], [:a], [], [])
-        @test testee(:(a, (b,c) = [e,[f,g]]), [:e, :f, :g], [:a, :b, :c], [], [])
-        @test testee(:((x,y), a, (b,c) = z, e, (f,g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
-        @test testee(:((x[i], y.r), a, (b,c) = z, e, (f,g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(:(a, (b, c) = [e,[f,g]]), [:e, :f, :g], [:a, :b, :c], [], [])
+        @test testee(:((x, y), a, (b, c) = z, e, (f, g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
+        @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
         @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
     end
     @testset "Dot operator" begin
@@ -94,7 +94,7 @@ using Test
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
-        @test testee(:([sqrt(s+r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
+        @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
@@ -125,7 +125,7 @@ using Test
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
-        @test testee(:(function f(x, y = 1; r, s = 3 + 3) r + s + x * y * z end), [], [], [], [
+        @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
         @test testee(:(function f(x) x * y * z end), [], [], [], [
@@ -137,7 +137,7 @@ using Test
         @test testee(:(function f(x) a end; function f(x, y) b end), [], [], [], [
             :f => ([:a, :b], [], [], [])
         ])
-        @test testee(:(f(x, y = a + 1) = x * y * z), [], [], [], [
+        @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
         @test testee(:(begin f() = 1; f end), [], [], [], [
@@ -148,7 +148,7 @@ using Test
         ])
         @test testee(:(begin
                 f(x) = (global a = √b)
-                f(x,y) = (global c = -d)
+                f(x, y) = (global c = -d)
             end), [], [], [], [
             :f => ([:b, :d], [:a, :c], [:√, :-], [])
         ])
@@ -179,13 +179,13 @@ using Test
         @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
     end
     @testset "Functions & types" begin
-        @test testee(:(function f(y::Int64 = a)::String string(y) end), [], [], [], [
+        @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
             :f => ([:String, :Int64, :a], [], [:string], [])
         ])
-        @test testee(:(function f(x::T; k = 1) where T return x + 1 end), [], [], [], [
+        @test testee(:(function f(x::T; k=1) where T return x + 1 end), [], [], [], [
             :f => ([], [], [:+], [])
         ])
-        @test testee(:(function f(x::T; k = 1) where {T,S<:R} return x + 1 end), [], [], [], [
+        @test testee(:(function f(x::T; k=1) where {T,S <: R} return x + 1 end), [], [], [], [
             :f => ([:R], [], [:+], [])
         ])
         @test_broken testee(:(f(x)::String = x), [], [], [], [
@@ -198,24 +198,30 @@ using Test
         @test testee(:(a(a::AbstractArray{T}) where T = 5), [], [], [], [
             :a => ([:AbstractArray], [], [], [])
         ])
-        @test testee(:(a(a::AbstractArray{T, R}) where {T,S} = a+b), [], [], [], [
+        @test testee(:(a(a::AbstractArray{T,R}) where {T,S} = a + b), [], [], [], [
             :a => ([:AbstractArray, :b, :R], [], [:+], [])
         ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
+        @test_broken testee(:(let global a = b = 1 end), [], [:a], [], []; verbose=false)
         @test testee(:(let global k = 3 end), [], [:k], [], [])
+        @test_broken testee(:(let global k = r end), [], [:k], [], []; verbose=false)
+        @test testee(:(let global k = 3; k end), [], [:k], [], [])
         @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
         @test testee(:(let global k; k = 4 end), [], [:k], [], [])
         @test testee(:(let global k; b = 5 end), [], [], [], [])
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
+        @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
         @test testee(:(begin local k = 3 end), [], [], [], [])
+        @test testee(:(begin local k = r end), [:r], [], [], [])
         @test testee(:(begin local k = 3; k; b = 4 end), [], [:b], [], [])
         @test testee(:(begin local k += 3 end), [], [], [:+], []) # does not reference global k
         @test testee(:(begin local k; k = 4 end), [], [], [], [])
         @test testee(:(begin local k; b = 5 end), [], [:b], [], [])
         @test testee(:(begin local r[1] = 5 end), [:r], [], [], [])
+        @test_broken testee(:(begin begin local a = 2 end; a end), [:a], [], [], []; verbose=false)
         
         @test testee(:(function f(x) global k = x end), [], [], [], [
             :f => ([], [:k], [], [])
@@ -235,8 +241,12 @@ using Test
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [Symbol("@time")], [:a], [], [])
+        @test testee(:(@bind a b), [Symbol("@bind"), :b], [:a], [], [])
+        @test testee(:(let @bind a b end), [Symbol("@bind"), :b], [:a], [], [])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [Symbol("@md_str"), Symbol("@bind"), :b], [:a], [], [])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [Symbol("@md_str"), Symbol("@bind"), :b, :a], [:a], [], [])
         @test testee(:(html"a $(b = c)"), [Symbol("@html_str")], [], [], [])
-        @test testee(:(md"a $(b = c)"), [Symbol("@md_str"), :c], [:b], [], [])
+        @test testee(:(md"a $(b = c) $(b)"), [Symbol("@md_str"), :c], [:b], [], [])
         @test testee(:(md"\* $r"), [Symbol("@md_str"), :r], [], [], [])
         @test testee(:(md"a \$(b = c)"), [Symbol("@md_str")], [], [], [])
     end

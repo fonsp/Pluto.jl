@@ -156,7 +156,7 @@ end
 
 uncurly!(ex::Expr)::Symbol = ex.args[1]
 
-uncurly!(s::Symbol, scopestate = nothing)::Symbol = s
+uncurly!(s::Symbol, scopestate=nothing)::Symbol = s
 
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FuncName
@@ -288,7 +288,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
 
-        return mapfoldl(a->explore!(a, innerscopestate), union!, ex.args, init = SymbolsState())
+        return mapfoldl(a->explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
     elseif ex.head == :call
         # Does not create scope
 
@@ -398,9 +398,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             push!(scopestate.exposedglobals, globalisee)
             return SymbolsState()
         elseif isa(globalisee, Expr)
-            innerscopestate = deepcopy(scopestate)
-            innerscopestate.inglobalscope = true
-            return explore!(globalisee, innerscopestate)
+            # temporarily set inglobalscope to true
+            old = scopestate.inglobalscope
+            scopestate.inglobalscope = true
+            result = explore!(globalisee, scopestate)
+            scopestate.inglobalscope = old
+            return result
         else
             @error "unknow global use" ex
             return explore!(globalisee, scopestate)
@@ -428,6 +431,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # Is something like:
         # a,b,c = 1,2,3
         
+
         # This parses to:
         # head = :tuple
         # args = [:a, :b, :(c=1), :2, :3]
@@ -494,10 +498,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif (ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@bind")
         && length(ex.args) == 4 && ex.args[3] isa Symbol)
         
-        innersymstate = explore!(ex.args[4], scopestate)
-        push!(innersymstate.assignments, ex.args[3])
-        
-        return innersymstate
+        # Rewrite `@bind a b` to the "equivalent" expression `global a = b; @bind;`
+        return explore!(Expr(:global, Expr(:(=), ex.args[3], Expr(:block, ex.args[4], ex.args[1]))), scopestate)
     elseif ex.head == :quote
         # We ignore contents
 
@@ -513,7 +515,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         # Does not create scope (probably)
 
-        return mapfoldl(a->explore!(a, scopestate), union!, ex.args, init = SymbolsState())
+        return mapfoldl(a->explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
 
@@ -525,7 +527,7 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         # get the function name
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         # and explore the function arguments
-        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args[2:end], init = (name, symstate))
+        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # recurse
@@ -567,7 +569,7 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return Symbol[name], SymbolsState()
 
     elseif ex.head == :parameters || ex.head == :tuple
-        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args, init = (Symbol[], SymbolsState()))
+        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
 
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
