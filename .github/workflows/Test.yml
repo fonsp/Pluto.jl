@@ -4,22 +4,28 @@ name: Run Julia tests
 # events but only for the master branch
 on:
     push:
-        paths-ignore: "frontend/**"
+        paths-ignore:
+            - "frontend/**"
+            - "**.md"
     pull_request:
-        paths-ignore: "frontend/**"
+        paths-ignore:
+            - "frontend/**"
+            - "**.md"
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
     # This workflow contains a single job called "test"
     test:
-        # The type of runner that the job will run on
         runs-on: ${{ matrix.os }}
         strategy:
             matrix:
-                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4"]
+                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "v1.5.0-rc1"]
                 os: [ubuntu-latest, windows-latest]
                 include:
-                    - julia-version: "1.4"
+                    # macOS - only the most risky
+                    - julia-version: "1.0"
+                      os: macOS-latest
+                    - julia-version: "v1.5.0-rc1"
                       os: macOS-latest
 
         steps:
