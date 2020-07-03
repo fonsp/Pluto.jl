@@ -76,10 +76,11 @@ function bonds_notebook()
     Notebook([
         Cell("y = x"),
         Cell("@bind x html\"<input type='range'>\""),
+        Cell("@assert y === missing"),
         Cell("""struct Wow
             x
         end"""),
-        Cell("Base.peek(w::Wow) = w.x"),
+        Cell("Base.peek(w::Wow, ::Missing) = w.x"),
         Cell("Base.show(io::IO, ::MIME\"text/html\", w::Wow) = nothing"),
         Cell("w = Wow(10)"),
         Cell("@bind z w"),
@@ -132,6 +133,8 @@ end
             # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
             # laod_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
+
+            # println(read(new_nb.path, String))
 
             @test jl_is_runnable(new_nb.path; only_undefvar=true)
             if name ∉ expect_error
