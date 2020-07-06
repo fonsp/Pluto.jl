@@ -3,6 +3,7 @@ using Pluto
 import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 import Distributed
 
+Pluto.set_ENV_defaults()
 ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
 @testset "Reactivity" begin
@@ -321,7 +322,7 @@ ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
         fakeclient.connected_notebook = notebook
 
         run_reactive!(notebook, notebook.cells[1])
-        @test startswith(notebook.cells[1].output_repr, "f (generic function with ")
+        @test notebook.cells[1].output_repr == "f" || startswith(notebook.cells[1].output_repr, "f (generic function with ")
         @test notebook.cells[1].errored == false
 
         run_reactive!(notebook, notebook.cells[2:3])

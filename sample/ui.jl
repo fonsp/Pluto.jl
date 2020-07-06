@@ -1,11 +1,11 @@
 ### A Pluto.jl notebook ###
-# v0.7.7
+# v0.10.0
 
 using Markdown
 macro bind(def, element)
     quote
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
         el
     end
 end
@@ -74,7 +74,7 @@ md"""
 """
 
 # ╔═╡ ede8009e-7f15-11ea-192a-a5c6135a9dcf
-(a,b,c,d,e,f)
+(a, b, c, d, e, f)
 
 # ╔═╡ e2168b4c-7f32-11ea-355c-cf5932419a70
 md"""**You can also use JavaScript to write more complicated input objects.** The `input` event can be triggered on any object using
@@ -202,18 +202,20 @@ The update mechanism is _lossy_ and _lazy_, which means that it will skip values
 # ╔═╡ 8f829274-7eb1-11ea-3888-13c00b3ba70f
 md"""#### What does the macro do?
 
-The `@bind` macro turns an expression like
+The `@bind` macro does not actually contain the interactivity mechanism, this is built into Pluto itself. Still, it does two things: it assigns a _default value_ to the variable (`missing` in most cases), and it wraps the second argument in a `PlutoRunner.Bond` object.
+
+For example, _expanding_ the `@bind` macro turns this expression:
 
 ```julia
 @bind x Slider(5:15)
 ```
 
-into
+into:
 ```julia
 begin
 	local el = Slider(5:15)
-	global x = if applicable(Base.peek, el)
-		Base.peek(el)
+	global x = if applicable(Base.get, el)
+		Base.get(el)
 	else
 		missing
 	end
@@ -221,9 +223,9 @@ begin
 end
 ```
 
-The `if` block in the middle assigns an initial value to `x`, which will be `missing`, unless an extension of `Base.peek` has been declared for the element. 
+The `if` block in the middle assigns an initial value to `x`, which will be `missing`, unless an extension of `Base.get` has been declared for the element. Most objects (like `html"<input>"` or `md"quelque chose"`) don't have a `Base.get` method defined. In fact, `Base.get` has _no_ single-argument methods by default, but you can write one for your special types!
 
-Declaring a default value using `Base.peek` is not necessary, as shown by the examples above, but the default value will be used for `x` if the `notebook.jl` file is _run as a plain julia file_, without Pluto's interactivity. The package `PlutoUI` defines default values.
+Declaring a default value using `Base.get` is **not necessary**, as shown by the examples above, but the default value will be used for `x` if the `notebook.jl` file is _run as a plain julia file_, without Pluto's interactivity. The package [`PlutoUI`](https://github.com/fonsp/PlutoUI.jl) defines default values.
 
 """
 

@@ -1,11 +1,11 @@
 ### A Pluto.jl notebook ###
-# v0.8.9
+# v0.10.0
 
 using Markdown
 macro bind(def, element)
     quote
         local el = $(esc(element))
-        global $(esc(def)) = Core.applicable(Base.peek, el) ? Base.peek(el) : missing
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
         el
     end
 end

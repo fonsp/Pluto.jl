@@ -7,7 +7,7 @@ mutable struct Notebook
     cells::Array{Cell,1}
 
     notebook_id::UUID
-    combined_funcdefs::Dict{Vector{Symbol}, SymbolsState}
+    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
 
     # buffer will contain all unfetched updates - must be big enough
     pendingupdates::Channel
@@ -19,13 +19,13 @@ end
 Notebook(path::String, cells::Array{Cell,1}, notebooID) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
-    Notebook(path, cells, notebooID, Dict{Vector{Symbol}, SymbolsState}(), Channel(1024), et)
+    Notebook(path, cells, notebooID, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), et)
 end
 Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
 Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
 
 function cellindex_fromID(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
-    findfirst(c->c.cell_id == cell_id, notebook.cells)
+    findfirst(c -> c.cell_id == cell_id, notebook.cells)
 end
 
 # We use a creative delimiter to avoid accidental use in code
@@ -109,7 +109,7 @@ function load_notebook_nobackup(io, path)::Notebook
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
             # remove the cell appendix
-            code = code_normalised[1 : prevind(code_normalised, end, length(_cell_suffix))]
+            code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
             collected_cells[cell_id] = read_cell
@@ -122,7 +122,7 @@ function load_notebook_nobackup(io, path)::Notebook
         o, c = startswith(cell_id_str, _order_delimiter),
         if length(cell_id_str) >= 36
             cell_id = let
-                UUID(cell_id_str[end-35:end])
+                UUID(cell_id_str[end - 35:end])
             end
             next_cell = collected_cells[cell_id]
             next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
@@ -149,7 +149,7 @@ function load_notebook(path::String)::Notebook
         backupPath = path * ".backup" * string(backupNum)
         backupNum += 1
     end
-    cp(path, backupPath)
+    copy_write(path, backupPath)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
@@ -190,6 +190,11 @@ end
 
 function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
     readlines(pathA)[3:end] == readlines(pathB)[3:end]
+end
+
+"Like `cp` except we create the file manually (to fix permission issues)."
+function copy_write(from::AbstractString, to::AbstractString)
+    write(to, read(from, String))
 end
 
 function tryexpanduser(path)
