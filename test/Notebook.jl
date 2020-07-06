@@ -3,6 +3,8 @@ using Pluto
 import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
 import Random
 
+Pluto.set_ENV_defaults()
+
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
     Notebook([
@@ -80,7 +82,7 @@ function bonds_notebook()
         Cell("""struct Wow
             x
         end"""),
-        Cell("Base.peek(w::Wow, ::Missing) = w.x"),
+        Cell("Base.get(w::Wow) = w.x"),
         Cell("Base.show(io::IO, ::MIME\"text/html\", w::Wow) = nothing"),
         Cell("w = Wow(10)"),
         Cell("@bind z w"),

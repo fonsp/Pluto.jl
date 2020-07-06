@@ -1,5 +1,7 @@
 using Test
 
+Pluto.set_ENV_defaults()
+
 @testset "Explore Expressions" begin
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
@@ -158,16 +160,16 @@ using Test
         @test testee(:(minimum(x) do (a, b); a + b end), [:x], [], [:minimum], [
             :anon => ([], [], [:+], [])
         ])
-        @test testee(:(f = x->x * y), [], [:f], [], [
+        @test testee(:(f = x -> x * y), [], [:f], [], [
             :anon => ([:y], [], [:*], [])
         ])
-        @test testee(:(f = (x, y)->x * y), [], [:f], [], [
+        @test testee(:(f = (x, y) -> x * y), [], [:f], [], [
             :anon => ([], [], [:*], [])
         ])
-        @test testee(:(f = (x, y = a + 1)->x * y), [], [:f], [], [
+        @test testee(:(f = (x, y = a + 1) -> x * y), [], [:f], [], [
             :anon => ([:a], [], [:*, :+], [])
         ])
-        @test testee(:((((a, b), c), (d, e))->a * b * c * d * e * f), [], [], [], [
+        @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
 

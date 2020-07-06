@@ -147,15 +147,26 @@ celloutput code {
 }
 
 celloutput pre {
-    margin: 0px;
     display: inline-block;
+    margin: 0px;
+    tab-size: 4;
+    -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: "Roboto Mono", monospace;
 }
 
 celloutput blockquote {
-    border-radius: 15px;
+    margin-left: 1rem;
+    margin-right: 1rem;
+}
+
+cell:not(.inline-output) celloutput pre,
+celloutput blockquote {
+    margin-block-start: 0px;
+    margin-block-end: var(--cell-spacing);
+    display: block;
     padding: 15px;
-    margin: 1rem 1rem;
+
+    border-radius: 15px;
     background-color: #fafafa;
     color: #555;
 }
@@ -165,9 +176,10 @@ celloutput blockquote {
 body > header {
     position: absolute;
     top: 0px;
-    z-index: 5;
     width: 100%;
     min-height: 60px;
+
+    z-index: 5;
     overflow: hidden;
     background-color: white;
     transition: background-color 0.5s ease-in-out;
@@ -336,14 +348,15 @@ main > preamble > button {
 }
 
 main > preamble > button > span::after {
-    background-size: 17px 17px;
-    display: block;
     content: "Submit all changes";
+    display: block;
+    padding-right: 20px;
+
+    background-size: 17px 17px;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-circle-outline.svg);
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
-    padding-right: 20px;
 }
 
 body.code-differs > main > preamble > button {
@@ -365,6 +378,7 @@ celloutput {
     padding-right: 10px;
     align-items: baseline;
     overflow-x: auto;
+
     background-color: white;
 }
 
@@ -481,6 +495,7 @@ cellinput > button,
 runarea > button,
 cellshoulder > button,
 slide-controls > button {
+    position: absolute;
     margin: 0px;
     padding: 1px;
     opacity: 50%;
@@ -490,7 +505,6 @@ slide-controls > button {
     /* color: hsl(204, 86%, 35%); */
     color: black;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
-    position: absolute;
     z-index: 3;
     /* CodeMirror is 2 */
 }
@@ -509,10 +523,10 @@ cellshoulder {
     justify-content: flex-end;
     align-items: flex-start;
     /* Add an invisible border around the shoulder, to make it easier to click on. (The are between two cells is divided in two, each half belongs to the closest cell.) */
-    border-top: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, 0);
-    border-bottom: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, 0);
     top: calc(0px - 0.5 * var(--cell-spacing));
     bottom: calc(0px - 0.5 * var(--cell-spacing));
+    border-top: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, 0);
+    border-bottom: calc(0.5 * var(--cell-spacing)) solid rgba(0, 0, 0, 0);
 }
 
 cellshoulder:hover {
@@ -726,15 +740,16 @@ runarea {
 }
 
 runarea > span {
-    font-family: "Roboto Mono";
-    font-size: 0.6em;
     display: inline-block;
     position: absolute;
     top: 1px;
     right: 24px;
+    width: 45px;
+
+    font-family: "Roboto Mono";
+    font-size: 0.6em;
     font-style: italic;
     color: hsl(353, 5%, 64%);
-    width: 45px;
     text-align: center;
 }
 
@@ -790,11 +805,11 @@ cell.code-differs > runarea > button {
 
 dropruler {
     position: absolute;
+    display: none;
     left: 0px;
     right: 0px;
     height: 4px;
     background: rgba(0, 0, 0, 0.5);
-    display: none;
 }
 
 /* LIVE DOCS */
@@ -939,8 +954,8 @@ footer button {
 #info {
     max-width: 9400px;
     margin: 0 auto;
-    text-align: right;
     padding: 1rem;
+    text-align: right;
 }
 
 /* PRESENTATION MODE */
@@ -973,11 +988,11 @@ body > slide-controls > button {
 }
 
 body > slide-controls > button > span::after {
-    display: block;
     content: " " !important;
-    background-size: 30px 30px;
+    display: block;
     height: 30px;
     width: 30px;
+    background-size: 30px 30px;
 }
 body > slide-controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-back-outline.svg);

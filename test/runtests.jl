@@ -1,9 +1,13 @@
 include("./helpers.jl")
 
-include("./Notebook.jl")
 include("./ExploreExpression.jl")
 include("./React.jl")
+include("./Notebook.jl")
 include("./WorkspaceManager.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
+
+# TODO: test HTTP
+# We could use NodeJS.jl to run these tests without a browser
+# We could also do real browser testing, but that seems difficult

@@ -130,5 +130,3 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
-
-Pluto.set_ENV_defaults()

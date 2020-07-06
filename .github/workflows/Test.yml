@@ -14,16 +14,17 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-    # This workflow contains a single job called "test"
     test:
         runs-on: ${{ matrix.os }}
-        continue-on-error: true
+        # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
+        # continue-on-error: true
         strategy:
             matrix:
+                # We test quite a lot of versions, but we do some OS and version specific things unfortunately
                 julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "v1.5.0-rc1"]
                 os: [ubuntu-latest, windows-latest]
                 include:
-                    # macOS - only the most risky
+                    # macOS - only the extremes, linux and windows cover pretty much everything already i think
                     - julia-version: "1.0"
                       os: macOS-latest
                     - julia-version: "v1.5.0-rc1"
@@ -33,7 +34,10 @@ jobs:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
             - uses: actions/checkout@v2
 
+            # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
                   version: ${{ matrix.julia-version }}
+
+            # 🚗
             - uses: julia-actions/julia-runtest@v0.1

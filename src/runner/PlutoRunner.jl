@@ -505,7 +505,7 @@ macro bind(def, element)
 	if def isa Symbol
 		quote
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.peek, el, missing) ? Base.peek(el, missing) : missing
+            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
 			PlutoRunner.Bond(el, $(Meta.quot(def)))
 		end
 	else
@@ -513,11 +513,11 @@ macro bind(def, element)
 	end
 end
 
-"Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.peek` for custom UI objects gives bound variables a sensible value."
+"Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value."
 const fake_bind = """macro bind(def, element)
     quote
         local el = \$(esc(element))
-        global \$(esc(def)) = Core.applicable(Base.peek, el, missing) ? Base.peek(el, missing) : missing
+        global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
         el
     end
 end"""

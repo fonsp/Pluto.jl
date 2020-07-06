@@ -3,6 +3,7 @@ using Pluto
 import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
 import Distributed
 
+Pluto.set_ENV_defaults()
 ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] = "false"
 
 @testset "Reactivity" begin

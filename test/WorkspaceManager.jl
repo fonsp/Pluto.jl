@@ -1,4 +1,8 @@
-import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
+using Pluto
+import Pluto: run_reactive!, WorkspaceManager
+
+Pluto.set_ENV_defaults()
+
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
