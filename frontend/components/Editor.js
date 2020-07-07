@@ -268,19 +268,25 @@ export class Editor extends Component {
 
                 console.log(local)
                 if (remote != local) {
-                    const rs = remote.split(".")
-                    const ls = local.split(".")
+                    const rs = remote.slice(1).split(".").map(Number)
+                    const ls = local.slice(1).split(".").map(Number)
 
-                    // while we are in alpha, we also notify for patch updates.
-                    if (rs[0] != ls[0] || rs[1] != ls[1] || true) {
-                        alert(
-                            "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                local +
-                                ", the latest is " +
-                                remote +
-                                ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia."
-                        )
+                    // if the semver can't be parsed correctly, we always show it to the user
+                    if (rs.length == 3 && ls.length == 3) {
+                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
+                            // JS orders arrays lexicographically, which is exactly what we want
+                            if (rs <= ls) {
+                                return
+                            }
+                        }
                     }
+                    alert(
+                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                            local +
+                            ", the latest is " +
+                            remote +
+                            ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia."
+                    )
                 }
             })
         }
