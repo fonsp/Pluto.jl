@@ -117,6 +117,7 @@ celloutput h6:first-child {
     margin-block-start: 0px;
 }
 
+celloutput br,
 celloutput p {
     margin-block-start: 0px;
     margin-block-end: var(--cell-spacing);
@@ -910,9 +911,13 @@ footer form > * {
     flex: 0 0 auto;
 }
 
-footer form a,
-footer form label {
+footer form > a,
+footer form > label {
     align-self: center;
+}
+
+footer form > label {
+    margin-right: 1em;
 }
 
 footer form > a {

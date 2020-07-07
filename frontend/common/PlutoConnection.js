@@ -97,8 +97,6 @@ export class PlutoConnection {
             const by_me = "initiator_id" in update && update.initiator_id == this.client_id
             const request_id = update.request_id
 
-            console.log(update)
-
             if (by_me && request_id) {
                 const request = this.sent_requests[request_id]
                 if (request) {

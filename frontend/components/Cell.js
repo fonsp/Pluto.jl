@@ -1,4 +1,4 @@
-import { html } from "../common/Preact.js"
+import { html, Component, useState, useEffect } from "../common/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -14,7 +14,7 @@ import { cl } from "../common/ClassTable.js"
 
 /**
  * A cell!
- * @typedef {Object} Cell
+ * @typedef {Object} CellState
  * @property {string} cell_id
  * @property {CodeState} remote_code
  * @property {CodeState} local_code
@@ -28,7 +28,7 @@ import { cl } from "../common/ClassTable.js"
 /**
  *
  * @param {string} cell_id
- * @returns {Cell}
+ * @returns {CellState}
  */
 export const empty_cell_data = (cell_id) => {
     return {
@@ -56,13 +56,12 @@ export const empty_cell_data = (cell_id) => {
 
 /**
  *
- * @param {Cell} cell
+ * @param {CellState} cell
  * @return {boolean}
  */
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
 export const Cell = ({
-    cell_id,
     remote_code,
     local_code,
     code_folded,
@@ -72,13 +71,33 @@ export const Cell = ({
     output,
     on_change,
     on_update_doc_query,
+    on_focus_neighbor,
     disable_input,
-    create_focus,
+    focus_after_creation,
     all_completed_promise,
     requests,
     client,
+    cell_id,
     notebook_id,
 }) => {
+    // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
+    const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+
+    useEffect(() => {
+        const focusListener = (e) => {
+            if (e.detail.cell_id === cell_id) {
+                if (e.detail.line != null) {
+                    set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                }
+            }
+        }
+        window.addEventListener("cell_focus", focusListener)
+        // cleanup
+        return () => {
+            window.removeEventListener("cell_focus", focusListener)
+        }
+    }, [])
+
     return html`
         <cell
             class=${cl({
@@ -88,7 +107,7 @@ export const Cell = ({
                 "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
                 "error": errored,
                 "code-differs": remote_code.body !== local_code.body,
-                "code-folded": code_folded,
+                "code-folded": code_folded && cm_forced_focus == null,
             })}
             id=${cell_id}
         >
@@ -116,6 +135,10 @@ export const Cell = ({
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
                 remote_code=${remote_code}
+                disable_input=${disable_input}
+                focus_after_creation=${focus_after_creation}
+                cm_forced_focus=${cm_forced_focus}
+                set_cm_forced_focus=${set_cm_forced_focus}
                 on_submit=${(new_code) => {
                     requests.change_remote_cell(cell_id, new_code)
                 }}
@@ -125,11 +148,16 @@ export const Cell = ({
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")
                 }}
-                on_change=${on_change}
+                on_fold=${(new_folded) => requests.fold_remote_cell(cell_id, new_folded)}
+                on_change=${(new_code) => {
+                    if (code_folded && cm_forced_focus != null) {
+                        requests.fold_remote_cell(cell_id, false)
+                    }
+                    on_change(new_code)
+                }}
                 on_update_doc_query=${on_update_doc_query}
+                on_focus_neighbor=${on_focus_neighbor}
                 client=${client}
-                disable_input=${disable_input}
-                create_focus=${create_focus}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />

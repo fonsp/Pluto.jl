@@ -556,9 +556,15 @@ export class Editor extends Component {
         
         Shift+Enter:   run cell
         Ctrl+Enter:   run cell and add cell below
-        Ctrl+Shift+Delete:   delete cell
+        Shift+Delete:   delete cell
+
+        PageUp or fn+Up:   select cell above
+        PageDown or fn+Down:   select cell below
+
         Ctrl+Q:   interrupt notebook
-        Ctrl+S:   submit all changes`
+        Ctrl+S:   submit all changes
+        
+        The notebook file saves every time you run`
                     )
 
                     e.preventDefault()
@@ -639,8 +645,22 @@ export class Editor extends Component {
                             },
                         })
                     }}
+                    on_focus_neighbor=${(cell_id, delta) => {
+                        const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
+                        const new_i = i + delta
+                        if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
+                            window.dispatchEvent(
+                                new CustomEvent("cell_focus", {
+                                    detail: {
+                                        cell_id: this.state.notebook.cells[new_i].cell_id,
+                                        line: -1,
+                                    },
+                                })
+                            )
+                        }
+                    }}
                     disable_input=${!this.state.connected}
-                    create_focus=${!this.state.loading}
+                    focus_after_creation=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
                     requests=${this.requests}
                     client=${this.client}
