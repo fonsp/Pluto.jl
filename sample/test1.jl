@@ -1,7 +1,10 @@
 ### A Pluto.jl notebook ###
-# v0.10.0
+# v0.10.1
 
 using Markdown
+using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
         local el = $(esc(element))
@@ -48,6 +51,14 @@ md"## Autocomplete"
 
 # ╔═╡ e141f910-b162-11ea-039b-3ba1414cbd07
 
+
+# ╔═╡ c7a1f21e-c137-11ea-1d11-8fb5508ac80c
+md"## Selections"
+
+# ╔═╡ f7297d72-c137-11ea-3a9b-a10be62c3976
+ask("manual", md"Put your cursor in this cell, scroll down 2 screens, and click somewhere else
+	
+Page should not jump back to this cell")
 
 # ╔═╡ 39724bae-b160-11ea-0af5-737755a57e48
 md"# Network"
@@ -264,6 +275,11 @@ Drag to end of the screen, **should autoscroll**")
 # ╔═╡ 1b569b72-b167-11ea-1462-63674f7e13db
 ask("manual", md"Test autocomplete")
 
+# ╔═╡ cd3f70fc-c137-11ea-2871-936287684d2c
+ask("manual", md"Select a chunk of code, then put your cursor in another cell
+	
+Selection of the original cell should collapse")
+
 # ╔═╡ 4902abb2-b160-11ea-1120-f501bf151fc2
 ask("manual", md"Refresh quickly & slowly a couple of times")
 
@@ -386,6 +402,9 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─d890a190-b162-11ea-31dd-8d603787e5c5
 # ╟─1b569b72-b167-11ea-1462-63674f7e13db
 # ╠═e141f910-b162-11ea-039b-3ba1414cbd07
+# ╟─c7a1f21e-c137-11ea-1d11-8fb5508ac80c
+# ╠═cd3f70fc-c137-11ea-2871-936287684d2c
+# ╠═f7297d72-c137-11ea-3a9b-a10be62c3976
 # ╟─39724bae-b160-11ea-0af5-737755a57e48
 # ╟─4902abb2-b160-11ea-1120-f501bf151fc2
 # ╟─58721630-b160-11ea-30b4-e9667b4df6da

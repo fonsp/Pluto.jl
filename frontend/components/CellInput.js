@@ -4,7 +4,7 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
-    cm.setSelection(c, c, { sroll: false })
+    cm.setSelection(c, c, { scroll: false })
 }
 
 export const CellInput = ({
@@ -124,7 +124,6 @@ export const CellInput = ({
 
     useEffect(() => {
         if (cm_forced_focus == null) {
-            // clear selection
             clear_selection(cm_ref.current)
         } else {
             cm_ref.current.focus()

@@ -41,14 +41,14 @@ function change_remote_cellinput!(notebook, cell, newcode; initiator::Union{Init
     putnotebookupdates!(notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-responses[:connect] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:connect] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     putclientupdates!(initiator, UpdateMessage(:👋, Dict(
         :notebookExists => (notebook != nothing),
-        :ENV => filter(p->startswith(p.first, "PLUTO"), ENV),
+        :ENV => filter(p -> startswith(p.first, "PLUTO"), ENV),
     ), nothing, nothing, initiator))
 end
 
-responses[:getversion] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:getversion] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     putclientupdates!(initiator, UpdateMessage(:versioninfo, Dict(
         :pluto => PLUTO_VERSION_STR,
         :julia => JULIA_VERSION_STR,
@@ -57,18 +57,19 @@ end
 
 
 # TODO: actions on the notebook are not thread safe
-responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
     new_cell.output_repr = "" # we 'run' the code and get this output
 
     insert!(notebook.cells, new_index, new_cell)
-
+    
     putnotebookupdates!(notebook, clientupdate_cell_added(notebook, new_cell, new_index, initiator=initiator))
+    save_notebook(notebook)
 end
 
-responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
@@ -80,13 +81,13 @@ responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     @async begin
         wait(runtask)
 
-        filter!(c->c.cell_id ≠ to_delete.cell_id, notebook.cells)
+        filter!(c -> c.cell_id ≠ to_delete.cell_id, notebook.cells)
         putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
         save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
 end
 
-responses[:movecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:movecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     to_move = cell
 
     # Indexing works as if a new cell is added.
@@ -104,18 +105,19 @@ responses[:movecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{I
         insert!(notebook.cells, new_index, to_move)
         deleteat!(notebook.cells, old_index)
     end
-
+    
     putnotebookupdates!(notebook, clientupdate_cell_moved(notebook, to_move, new_index, initiator=initiator))
+    save_notebook(notebook)
 end
 
-responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     newcode = body["code"]
 
     change_remote_cellinput!(notebook, cell, newcode, initiator=initiator)
     run_reactive_async!(notebook, cell)
 end
 
-responses[:foldcell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:foldcell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     newfolded = body["folded"]
     cell.code_folded = newfolded
     save_notebook(notebook)
@@ -123,29 +125,29 @@ responses[:foldcell] = (body, notebook::Notebook, cell::Cell; initiator::Union{I
     putnotebookupdates!(notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
 end
 
-responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     run_reactive_async!(notebook, cell)
 end
 
-responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     indices = cellindex_fromID.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
     run_reactive_async!(notebook, cells)
 end
 
-responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     putclientupdates!(initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     change_remote_cellinput!(notebook, cell, body["code"], initiator=initiator)
 end
 
-responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> begin
     putclientupdates!(initiator, clientupdate_cell_output(notebook, cell, initiator=initiator))
 end
 
-responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
@@ -155,11 +157,11 @@ responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator,
     putclientupdates!(initiator, update)
 end
 
-responses[:getallnotebooks] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:getallnotebooks] = (body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     putplutoupdates!(clientupdate_notebook_list(notebooks, initiator=initiator))
 end
 
-responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     newpath = tamepath(body["path"])
     result = try
         if isfile(newpath)
@@ -178,12 +180,12 @@ responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initi
     putclientupdates!(initiator, update)
 end
 
-responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     success = WorkspaceManager.interrupt_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
-responses[:shutdownworkspace] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:shutdownworkspace] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     listeners = putnotebookupdates!(notebook) # TODO: shutdown message
     if body["remove_from_list"]
         delete!(notebooks, notebook.notebook_id)
@@ -196,7 +198,7 @@ responses[:shutdownworkspace] = (body, notebook::Notebook; initiator::Union{Init
 end
 
 
-responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)->begin
+responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
