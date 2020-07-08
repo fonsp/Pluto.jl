@@ -19,7 +19,7 @@ end
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
-    :(using Markdown, Main.PlutoRunner), 
+    :(using Markdown, InteractiveUtils, Main.PlutoRunner), 
     :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
@@ -37,7 +37,7 @@ workspaces = Dict{UUID,Workspace}()
 """Create a workspace for the notebook, optionally in a separate process.
 
 `new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]`_"""
-function make_workspace(notebook::Notebook, new_process = (ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] == "true"))::Workspace
+function make_workspace(notebook::Notebook, new_process=(ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] == "true"))::Workspace
     pid = if new_process
         create_workspaceprocess()
     else
@@ -115,11 +115,11 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExploreExpression.is_toplevel_expr`."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64,Missing}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr, cell_id, ends_with_semicolon)
 end
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64,Missing}}}
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
     wrapped = trycatch_expr(expr, workspace.module_name, cell_id)
 

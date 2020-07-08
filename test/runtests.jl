@@ -1,8 +1,8 @@
 include("./helpers.jl")
 
 include("./ExploreExpression.jl")
-include("./React.jl")
 include("./Notebook.jl")
+include("./React.jl")
 include("./WorkspaceManager.jl")
 
 # TODO: test PlutoRunner functions like:
