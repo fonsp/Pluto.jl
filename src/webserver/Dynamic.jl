@@ -114,6 +114,7 @@ responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union
     newcode = body["code"]
 
     change_remote_cellinput!(notebook, cell, newcode, initiator=initiator)
+    putnotebookupdates!(notebook, clientupdate_cell_running(notebook, cell, initiator=initiator))
     run_reactive_async!(notebook, cell)
 end
 
@@ -169,6 +170,7 @@ responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initi
         else
             move_notebook(notebook, newpath)
             putplutoupdates!(clientupdate_notebook_list(notebooks))
+            WorkspaceManager.eval_in_workspace(notebook, :(cd($(newpath |> dirname))))
             (success = true, reason = "")
         end
     catch ex

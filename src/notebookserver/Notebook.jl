@@ -4,7 +4,7 @@ mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
     
-    path::String
+    path::AbstractString
     notebook_id::UUID
     combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
 
@@ -15,12 +15,12 @@ mutable struct Notebook
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(cells::Array{Cell,1}, path::String, notebook_id::UUID) = let
+Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
     Notebook(cells, path, notebook_id, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), et)
 end
-Notebook(cells::Array{Cell,1}, path::String=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)

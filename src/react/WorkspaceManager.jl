@@ -56,6 +56,10 @@ function make_workspace(notebook::Notebook, new_process=(ENV["PLUTO_WORKSPACE_US
     
     workspace = Workspace(pid, module_name)
     workspaces[notebook.notebook_id] = workspace
+
+    # We call cd("path of notebook file"). This is also done when the filename is changed.
+    eval_in_workspace(workspace, :(cd($(notebook.path |> dirname))))
+
     return workspace
 end
 

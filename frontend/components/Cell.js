@@ -143,7 +143,13 @@ export const Cell = ({
                     requests.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
-                    requests.delete_cell(cell_id)
+                    if (running) {
+                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                            requests.interrupt_remote(cell_id)
+                        }
+                    } else {
+                        requests.delete_cell(cell_id)
+                    }
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")

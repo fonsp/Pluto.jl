@@ -12,7 +12,10 @@ const ENV_DEFAULTS = Dict(
     "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
     "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
     "PLUTO_ROOT_URL" => "/",
-    "PLUTO_WORKING_DIRECTORY" => joinpath(pwd(), ""), # must end with / or \
+    "PLUTO_WORKING_DIRECTORY" => let
+        preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
+        joinpath(preferred_dir, "") # must end with / or \
+    end,
 )
 
 if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
