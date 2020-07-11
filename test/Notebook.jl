@@ -201,7 +201,7 @@ end
 
     @testset "Utilities" begin
         @testset "Cute file names" begin
-            trash = mktempdir(; cleanup=true)
+            trash = mktempdir()
             for i in 1:200
                 touch(numbered_until_new(joinpath(trash, cutename())))
             end
