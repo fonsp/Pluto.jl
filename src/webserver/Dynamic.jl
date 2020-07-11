@@ -130,7 +130,7 @@ responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initia
 end
 
 responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
-    indices = cellindex_fromID.([notebook], UUID.(body["cells"]))
+    indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
     run_reactive_async!(notebook, cells)
 end

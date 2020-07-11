@@ -9,12 +9,16 @@ export class FilePicker extends Component {
         this.cm = null
 
         this.on_submit = () => {
-            this.props.on_submit(this.cm.getValue(), () => this.cm.setValue(this.props.value))
+            this.props.on_submit(this.cm.getValue(), () => {
+                this.cm.setValue(this.props.value)
+                this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+            })
         }
     }
     componentDidUpdate() {
         if (this.forced_value != this.props.value) {
             this.cm.setValue(this.props.value)
+            this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
             this.forced_value = this.props.value
         }
     }
@@ -29,7 +33,7 @@ export class FilePicker extends Component {
                 lineWrapping: false,
                 theme: "plutoheader",
                 viewportMargin: Infinity,
-                placeholder: "Enter path...",
+                placeholder: this.props.placeholder,
                 indentWithTabs: true,
                 indentUnit: 4,
                 hintOptions: {
@@ -52,12 +56,17 @@ export class FilePicker extends Component {
             "Esc": (cm) => {
                 cm.closeHint()
                 cm.setValue(this.props.value)
+                cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
                 document.activeElement.blur()
             },
-            "Tab": (cm) => this.requestPathCompletions.bind(this),
+            "Tab": this.request_path_completions.bind(this),
         })
 
-        this.cm.on("change", this.requestPathCompletions.bind(this))
+        this.cm.on("change", (cm, e) => {
+            if (e.origin !== "setValue") {
+                this.request_path_completions.bind(this)()
+            }
+        })
 
         this.cm.on("blur", (cm, e) => {
             // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
@@ -65,8 +74,23 @@ export class FilePicker extends Component {
             setTimeout(() => {
                 if (!cm.hasFocus()) {
                     cm.setValue(this.props.value)
+                    cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
                 }
             }, 250)
+        })
+        this.cm.on("focus", (cm, e) => {
+            console.log(e)
+            const suggest = this.props.suggest_new_file
+            if (suggest != null && cm.getValue() === "") {
+                cm.setValue(suggest.base + suggest.name)
+                cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
+            }
+        })
+
+        window.addEventListener("resize", () => {
+            if (!this.cm.hasFocus()) {
+                this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+            }
         })
     }
     render() {
@@ -77,7 +101,7 @@ export class FilePicker extends Component {
         `
     }
 
-    requestPathCompletions() {
+    request_path_completions() {
         const cursor = this.cm.getCursor()
         const oldLine = this.cm.getLine(cursor.line)
 
@@ -112,7 +136,7 @@ const pathhints = (cm, options) => {
                 className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
             }))
 
-            if (options.suggest_new_file) {
+            if (options.suggest_new_file != null) {
                 for (var initLength = 3; initLength >= 0; initLength--) {
                     const init = ".jl".substring(0, initLength)
                     if (queryFileName.endsWith(init)) {

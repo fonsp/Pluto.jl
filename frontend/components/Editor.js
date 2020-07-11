@@ -21,6 +21,8 @@ export class Editor extends Component {
         this.state = {
             notebook: {
                 path: default_path,
+                shortpath: "",
+                in_temp_dir: true,
                 notebook_id: document.location.search.split("id=")[1],
                 cells: [],
             },
@@ -293,20 +295,24 @@ export class Editor extends Component {
 
         const on_connection_status = (val) => this.setState({ connected: val })
 
-        this.client = new PlutoConnection(on_update, on_connection_status)
-
         // add me _before_ intializing client - it also attaches a listener to beforeunload
         window.addEventListener("beforeunload", (event) => {
             const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
             if (first_unsaved != null) {
-                console.log("preventing unload")
                 window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
-                event.stopImmediatePropagation()
-                event.preventDefault()
-                event.returnValue = ""
+            } else if (this.state.notebook.in_temp_dir) {
+                window.scrollTo(0, 0)
+                // TODO: focus file picker
+            } else {
+                return
             }
+            console.log("preventing unload")
+            event.stopImmediatePropagation()
+            event.preventDefault()
+            event.returnValue = ""
         })
 
+        this.client = new PlutoConnection(on_update, on_connection_status)
         this.client.initialize(on_establish_connection, { notebook_id: this.state.notebook.notebook_id })
 
         // these are things that can be done to the remote notebook
@@ -487,7 +493,7 @@ export class Editor extends Component {
             if (old_path === new_path) {
                 return
             }
-            if (confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+            if (this.state.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
                 this.setState({ loading: true })
                 this.client
                     .send(
@@ -593,9 +599,7 @@ export class Editor extends Component {
     }
 
     componentDidUpdate() {
-        const fileName = this.state.notebook.path.split("/").pop().split("\\").pop()
-        const cuteName = "🎈 " + fileName + " ⚡ Pluto.jl ⚡"
-        document.title = cuteName
+        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
         document.body.classList.toggle("code-differs", any_code_differs)
@@ -620,6 +624,7 @@ export class Editor extends Component {
     }
 
     render() {
+        console.log(this.state.notebook.in_temp_dir)
         return html`
             <header>
                 <div id="logocontainer">
@@ -628,10 +633,14 @@ export class Editor extends Component {
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        value=${this.state.notebook.path}
+                        value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
                         on_submit=${this.submit_file_change}
-                        suggest_new_file=${true}
-                        button_label="Rename"
+                        suggest_new_file=${{
+                            base: this.client.plutoENV == null ? "" : this.client.plutoENV["PLUTO_WORKING_DIRECTORY"],
+                            name: this.state.notebook.shortpath,
+                        }}
+                        placeholder="Save notebook..."
+                        button_label=${this.state.notebook.in_temp_dir ? "Save" : "Rename"}
                     />
                 </div>
             </header>

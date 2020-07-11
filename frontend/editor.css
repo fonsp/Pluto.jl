@@ -200,7 +200,7 @@ body > header h1 {
     margin: 0 auto;
     max-width: 960px;
     padding-left: 20px;
-    padding-bottom: 0px;
+    padding-right: 20px;
     flex-wrap: wrap;
     min-height: 60px;
     display: flex;
@@ -245,14 +245,16 @@ body > header h1 {
     }
 }
 
-filepicker {
+#logocontainer > filepicker {
+    width: 0px;
+    flex-grow: 1;
+
     display: flex;
     flex-direction: row;
 }
 
-filepicker .CodeMirror {
+#logocontainer > filepicker .CodeMirror {
     height: calc(1rem + 4px + 4px);
-    max-width: calc(100vw - 60px - 20px - 20px);
     display: inline-block;
     min-width: 10rem;
     opacity: 0.6;
@@ -269,11 +271,11 @@ filepicker .CodeMirror {
     border-bottom-right-radius: 0;
 }
 
-filepicker .CodeMirror-scroll {
+#logocontainer > filepicker .CodeMirror-scroll {
     overflow: hidden !important;
 }
 
-filepicker button {
+#logocontainer > filepicker button {
     cursor: pointer;
 }
 
@@ -295,22 +297,22 @@ li.dir.CodeMirror-hint:before {
 }
 
 @media screen and (any-pointer: fine) {
-    #logocontainer .CodeMirror {
+    #logocontainer > filepicker .CodeMirror {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
     }
-    #logocontainer button {
+    #logocontainer > filepicker button {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
-    body > header:hover #logocontainer .CodeMirror,
-    body > header:focus-within #logocontainer .CodeMirror {
+    body > header:hover #logocontainer > filepicker .CodeMirror,
+    body > header:focus-within #logocontainer > filepicker .CodeMirror {
         border: 2px solid #818181;
         border-right: none;
     }
-    body > header:hover #logocontainer button,
-    body > header:focus-within #logocontainer button {
+    body > header:hover #logocontainer > filepicker button,
+    body > header:focus-within #logocontainer > filepicker button {
         opacity: 1;
     }
 }

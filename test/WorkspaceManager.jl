@@ -14,12 +14,12 @@ Pluto.set_ENV_defaults()
         Pluto.connectedclients[fakeclientB.id] = fakeclientB
 
 
-        notebookA = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebookA = Notebook([
             Cell("x = 3")
         ])
         fakeclientA.connected_notebook = notebookA
 
-        notebookB = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebookB = Notebook([
             Cell("x")
         ])
         fakeclientB.connected_notebook = notebookB

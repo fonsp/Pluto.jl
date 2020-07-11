@@ -192,7 +192,7 @@ export class Welcome extends Component {
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
                     Open from file:
-                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} suggest_new_file=${false} button_label="Open" />
+                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path..." />
                 </li>
             </ul>
             <br />

@@ -1,7 +1,10 @@
 ### A Pluto.jl notebook ###
-# v0.10.0
+# v0.10.2
 
 using Markdown
+using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
         local el = $(esc(element))

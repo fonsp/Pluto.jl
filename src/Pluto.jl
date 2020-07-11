@@ -12,6 +12,7 @@ const ENV_DEFAULTS = Dict(
     "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
     "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
     "PLUTO_ROOT_URL" => "/",
+    "PLUTO_WORKING_DIRECTORY" => joinpath(pwd(), ""), # must end with / or \
 )
 
 if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
@@ -30,6 +31,7 @@ include("./react/ExploreExpression.jl")
 include("./runner/PlutoRunner.jl")
 using .ExploreExpression
 
+include("./notebookserver/PathHelpers.jl")
 include("./notebookserver/Cell.jl")
 include("./notebookserver/Notebook.jl")
 include("./notebookserver/Client.jl")

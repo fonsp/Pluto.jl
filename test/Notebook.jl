@@ -1,6 +1,6 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager
+import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager, cutename, numbered_until_new
 import Random
 
 Pluto.set_ENV_defaults()
@@ -98,7 +98,7 @@ end
 
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
-        for file in ["basic.jl", "tower-of-hanoi.jl", "ui.jl"]
+        for file in ["Basic.jl", "Tower of Hanoi.jl", "Interactivity.jl"]
             path = normpath(joinpath(Pluto.PKG_ROOT_DIR, "sample", file))
 
             @testset "$(file)" begin
@@ -127,7 +127,7 @@ end
     end
 
     # Some notebooks are designed to error (inside/outside Pluto)
-    expect_error = [String(nameof(bad_code_notebook)), "sample ui.jl"]
+    expect_error = [String(nameof(bad_code_notebook)), "sample Interactivity.jl"]
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
@@ -196,6 +196,17 @@ end
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 2
+        end
+    end
+
+    @testset "Utilities" begin
+        @testset "Cute file names" begin
+            trash = mktempdir(; cleanup=true)
+            for i in 1:200
+                touch(numbered_until_new(joinpath(trash, cutename())))
+            end
+
+            @test all(!isfile, [numbered_until_new(joinpath(trash, cutename())) for _ in 1:200])
         end
     end
 

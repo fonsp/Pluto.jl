@@ -1,7 +1,8 @@
 ### A Pluto.jl notebook ###
-# v0.6.4
+# v0.10.2
 
 using Markdown
+using InteractiveUtils
 
 # ╔═╡ b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e
 md"# The Basel problem

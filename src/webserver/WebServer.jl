@@ -248,14 +248,10 @@ run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 function process_ws_message(parentbody::Dict{String,Any}, clientstream::HTTP.WebSockets.WebSocket)
     client_id = Symbol(parentbody["client_id"])
-    client = get(connectedclients, client_id, Client(client_id, clientstream))
-    # add to our list of connected clients
-    connectedclients[client.id] = client
+    client = get!(connectedclients, client_id, Client(client_id, clientstream))
     
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
-
-    body = parentbody["body"]
 
     args = []
     if haskey(parentbody, "notebook_id")
@@ -263,24 +259,30 @@ function process_ws_message(parentbody::Dict{String,Any}, clientstream::HTTP.Web
             notebook_id = UUID(parentbody["notebook_id"])
             get(notebooks, notebook_id, nothing)
         end
-        if notebook === nothing
-            messagetype === :connect || @warn "Remote notebook not found locally!"
-        else
-            client.connected_notebook = notebook
-            push!(args, notebook)
+
+        if messagetype === :connect
+            if notebook === nothing
+                messagetype === :connect || @warn "Remote notebook not found locally!"
+            else
+                client.connected_notebook = notebook
+            end
+        end
+        
+        push!(args, notebook)
+
+        if haskey(parentbody, "cell_id")
+            cell_id = UUID(parentbody["cell_id"])
+            index = cell_index_from_id(notebook, cell_id)
+            if index === nothing
+                @warn "Remote cell not found locally!"
+            else
+                push!(args, notebook.cells[index])
+            end
         end
     end
 
-    if haskey(parentbody, "cell_id")
-        cell_id = UUID(parentbody["cell_id"])
-        index = cellindex_fromID(notebook, cell_id)
-        if index === nothing
-            @warn "Remote cell not found locally!"
-        else
-            push!(args, notebook.cells[index])
-        end
-    end
-    
+    body = parentbody["body"]
+
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
@@ -292,5 +294,4 @@ function process_ws_message(parentbody::Dict{String,Any}, clientstream::HTTP.Web
     else
         @warn "Message of type $(messagetype) not recognised"
     end
-
 end

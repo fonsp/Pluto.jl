@@ -1,7 +1,10 @@
 ### A Pluto.jl notebook ###
-# v0.10.0
+# v0.10.2
 
 using Markdown
+using InteractiveUtils
+
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
         local el = $(esc(element))
@@ -137,11 +140,11 @@ confusing_function(text::String, array::Array) = repeat(text, length(array))
 # ╔═╡ a4a60262-9547-11ea-3a81-5bf7f9ee5d16
 consumption = confusing_function("🥫", neighbors)
 
-# ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
-md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
-
 # ╔═╡ e11e1660-9549-11ea-22f6-8bb53dc045fe
 md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
+
+# ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
+md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
 
 # ╔═╡ 1deaaf36-9554-11ea-3dae-85851f73dbc6
 md"_Have fun using Pluto!_

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.10.1
+# v0.10.2
 
 using Markdown
 using InteractiveUtils
@@ -54,11 +54,6 @@ md"## Autocomplete"
 
 # ╔═╡ c7a1f21e-c137-11ea-1d11-8fb5508ac80c
 md"## Selections"
-
-# ╔═╡ f7297d72-c137-11ea-3a9b-a10be62c3976
-ask("manual", md"Put your cursor in this cell, scroll down 2 screens, and click somewhere else
-	
-Page should not jump back to this cell")
 
 # ╔═╡ 39724bae-b160-11ea-0af5-737755a57e48
 md"# Network"
@@ -279,6 +274,11 @@ ask("manual", md"Test autocomplete")
 ask("manual", md"Select a chunk of code, then put your cursor in another cell
 	
 Selection of the original cell should collapse")
+
+# ╔═╡ f7297d72-c137-11ea-3a9b-a10be62c3976
+ask("manual", md"Put your cursor in this cell, scroll down 2 screens, and click somewhere else
+	
+Page should not jump back to this cell")
 
 # ╔═╡ 4902abb2-b160-11ea-1120-f501bf151fc2
 ask("manual", md"Refresh quickly & slowly a couple of times")

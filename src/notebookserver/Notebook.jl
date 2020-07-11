@@ -1,11 +1,10 @@
 import UUIDs: UUID, uuid1
 
 mutable struct Notebook
-    path::String
-
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
-
+    
+    path::String
     notebook_id::UUID
     combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
 
@@ -16,15 +15,14 @@ mutable struct Notebook
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(path::String, cells::Array{Cell,1}, notebooID) = let
+Notebook(cells::Array{Cell,1}, path::String, notebook_id::UUID) = let
     et = Channel{Nothing}(1)
     put!(et, nothing)
-    Notebook(path, cells, notebooID, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), et)
+    Notebook(cells, path, notebook_id, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), et)
 end
-Notebook(path::String, cells::Array{Cell,1}) = Notebook(path, cells, uuid1())
-Notebook(cells::Array{Cell,1}) = Notebook(tempname() * ".jl", cells)
+Notebook(cells::Array{Cell,1}, path::String=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
-function cellindex_fromID(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
+function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
 end
 
@@ -34,8 +32,7 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
-emptynotebook(path) = Notebook(path, [Cell("")])
-emptynotebook() = emptynotebook(tempname() * ".jl")
+emptynotebook(args...) = Notebook([Cell()], args...)
 
 function save_notebook(io, notebook::Notebook)
     println(io, "### A Pluto.jl notebook ###")
@@ -133,7 +130,7 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     end
 
-    Notebook(path, ordered_cells)
+    Notebook(ordered_cells, path)
 end
 
 function load_notebook_nobackup(path::String)::Notebook
@@ -146,13 +143,14 @@ end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
 function load_notebook(path::String)::Notebook
-    local backupNum = 1
-    backupPath = path
-    while isfile(backupPath)
-        backupPath = path * ".backup" * string(backupNum)
-        backupNum += 1
-    end
-    copy_write(path, backupPath)
+    backup_path = numbered_until_new(path; sep=".backup", suffix="")
+    # local backup_num = 1
+    # backup_path = path
+    # while isfile(backup_path)
+    #     backup_path = path * ".backup" * string(backup_num)
+    #     backup_num += 1
+    # end
+    copy_write(path, backup_path)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
@@ -165,10 +163,10 @@ function load_notebook(path::String)::Notebook
         end
     end
 
-    if only_versions_or_lineorder_differ(path, backupPath)
-        rm(backupPath)
+    if only_versions_or_lineorder_differ(path, backup_path)
+        rm(backup_path)
     else
-        @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backupPath
+        @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backup_path
     end
 
     loaded
@@ -194,18 +192,3 @@ end
 function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
     readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end
-
-"Like `cp` except we create the file manually (to fix permission issues)."
-function copy_write(from::AbstractString, to::AbstractString)
-    write(to, read(from, String))
-end
-
-function tryexpanduser(path)
-	try
-		expanduser(path)
-	catch ex
-		path
-	end
-end
-
-tamepath = abspath ∘ tryexpanduser
