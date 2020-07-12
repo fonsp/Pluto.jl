@@ -22,6 +22,7 @@ current_module = Main
 function set_current_module(newname)
     global current_module = getfield(Main, newname)
     global iocontext = IOContext(iocontext, :module => current_module)
+    global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
 end
 
 cell_results = Dict{UUID, WeakRef}()
@@ -138,6 +139,7 @@ function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbo
     catch; end
 end
 
+# these deal with some incosistencies in Julia's internal (undocumented!) variable names
 const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
 const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
 const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
@@ -174,11 +176,12 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
+iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
+iocontext_compact = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
-const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
 
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
@@ -252,29 +255,63 @@ struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
+"""
+Like two-argument `Base.show`, except:
+1. the richest MIME type available to Pluto will be used
+2. the used MIME type is returned
+3. 'raw' data (e.g. image data) is always base64 encoded, with base64 header. This will change when/if we switch to a binary message format
+
+With `onlyhtml=true`, the returned MIME type will always be MIME"text/html", and other MIME types are converted to this type. For example, an image with MIME type MIME"image/png" defined will display as:
+```
+<img src="data:image/png;base64,ahsdf87hf278hwh7823hr..." >
+```
+instead of (`onlyhtml=false`)
+```
+data:image/png;base64,ahsdf87hf278hwh7823hr...
+```
+"""
 function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
     t = typeof(x)
 
+    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
+    # this is how we check whether this display method is appropriate:
     isstruct = 
         mime isa MIME"text/plain" && 
         t isa DataType &&
+        # there are two ways to override the plaintext show method: 
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
     
     if isstruct
-        # we have a struct with no specialised show function
-        # we display it as an interactive tree
         show_struct(io, x)
         return MIME"application/vnd.pluto.tree+xml"()
     end
 
     if istextmime(mime)
-        onlyhtml && (mime isa MIME"text/plain") && print(io, "<pre>")
-        show(io, mime, x)
-        onlyhtml && (mime isa MIME"text/plain") && print(io, "</pre>")
-        return mime
+        if onlyhtml || mime isa MIME"text/latex"
+            # see onlyhtml description in docstring
+            if mime isa MIME"text/plain"
+                withtag(io, :pre) do 
+                    htmlesc(io, repr(mime, x; context=iocontext_compact))
+                end
+            elseif mime isa MIME"text/html"
+                show(io, mime, x)
+            elseif mime isa MIME"text/latex"
+                # LaTeXStrings prints $ at the start and end.
+                # We strip those, since Markdown.LaTeX only contains the math content
+                texed = repr(mime, x)
+                html(io, LaTeX(strip(texed, '$')))
+            end
+            return MIME"text/html"()
+        else
+            # the classic:
+            show(io, mime, x)
+            return mime
+        end
     else
+        # these are the "raw" MIME types
+        # they happen to all be imagy MIMEs
         enc_pipe = Base64.Base64EncodePipe(io)
         io_64 = IOContext(enc_pipe, iocontext)
         if onlyhtml
