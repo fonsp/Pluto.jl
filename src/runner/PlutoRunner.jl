@@ -295,13 +295,13 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
                 withtag(io, :pre) do 
                     htmlesc(io, repr(mime, x; context=iocontext_compact))
                 end
-            elseif mime isa MIME"text/html"
-                show(io, mime, x)
             elseif mime isa MIME"text/latex"
                 # LaTeXStrings prints $ at the start and end.
                 # We strip those, since Markdown.LaTeX only contains the math content
                 texed = repr(mime, x)
                 html(io, LaTeX(strip(texed, '$')))
+            else                
+                show(io, mime, x)
             end
             return MIME"text/html"()
         else
