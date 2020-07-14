@@ -6,7 +6,7 @@ const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_li
 
 "Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
 
-1. Turn multiple expressions into a error expression.
+1. Turn multiple expressions into an error expression.
 2. Will always produce an expression of the form: `Expr(:toplevel, LineNumberNode(..), root)`. It gets transformed (i.e. wrapped) into this form if needed. A `LineNumberNode` contains a line number and a file name. We use the cell UUID as a 'file name', which makes the stack traces easier to interpret. (Otherwise it would be impossible to tell from which cell a stack frame originates.) Not all Julia versions insert these `LineNumberNode`s, so we insert it ourselves if Julia doesn't.
 3. Apply `preprocess_expr` (below) to `root` (from rule 2)."
 function parse_custom(notebook::Notebook, cell::Cell)::Expr
@@ -79,7 +79,7 @@ function timed_expr(expr::Expr)::Expr
         linenumbernode,
         :(local result = $root),
         :(elapsed_ns = time_ns() - elapsed_ns),
-        :((result, elapsed_ns))
+        :((result, elapsed_ns)),
     )
 end
 

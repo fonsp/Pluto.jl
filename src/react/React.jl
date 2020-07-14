@@ -1,16 +1,20 @@
+function disjoint(a::Set, b::Set)
+	!any(x in a for x in b)
+end
+
 "Information container about the cells to run in a reactive call and any cells that will err."
 struct CellTopology
 	"Cells that form a directed acyclic graph, in topological order."
-	runnable::Array{Cell, 1}
+	runnable::Array{Cell,1}
 	"Cells that are in a directed cycle, with corresponding `ReactivityError`s."
-	errable::Dict{Cell, ReactivityError}
+	errable::Dict{Cell,ReactivityError}
 end
 
 "Return a `CellTopology` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
-function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_multiple_defs=false)::CellTopology
+function topological_order(notebook::Notebook, roots::Array{Cell,1}; allow_multiple_defs=false)::CellTopology
 	entries = Cell[]
 	exits = Cell[]
-	errable = Dict{Cell, ReactivityError}()
+	errable = Dict{Cell,ReactivityError}()
 
 	function dfs(cell::Cell)
 		if cell in exits
@@ -46,7 +50,7 @@ function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_mult
 
 	# we first move cells to the front if they call `import` or `using`
     # we use MergeSort because it is a stable sort: leaves cells in order if they are in the same category
-    prelim_order_1 = sort(roots, alg=MergeSort, by=(c -> isempty(c.module_usings)))
+    prelim_order_1 = sort(roots, alg=MergeSort, by=cell_precedence_heuristic)
 	# reversing because our search returns reversed order
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
@@ -54,12 +58,8 @@ function topological_order(notebook::Notebook, roots::Array{Cell, 1}; allow_mult
 	CellTopology(setdiff(ordered, keys(errable)), errable)
 end
 
-function disjoint(a::Set, b::Set)
-	!any(x in a for x in b)
-end
-
 "Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
-function where_referenced(notebook::Notebook, symbols::Set{Symbol})::Array{Cell, 1}
+function where_referenced(notebook::Notebook, symbols::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
 		if !disjoint(symbols, cell.symstate.references)
 			return true
@@ -76,7 +76,7 @@ function where_referenced(notebook::Notebook, symbols::Set{Symbol})::Array{Cell,
 end
 
 "Return the cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
-function where_assigned(notebook::Notebook, symbols::Set{Symbol})::Array{Cell, 1}
+function where_assigned(notebook::Notebook, symbols::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
 		if !disjoint(symbols, cell.symstate.assignments)
 			return true
@@ -112,4 +112,27 @@ function all_indirect_calls(notebook::Notebook, symstate::SymbolsState, found::S
 	end
 
 	return found
+end
+
+"""Assigns a number to a cell - cells with a lower number might run first. 
+
+This is used to run md"..." cells first, and to treat reactive dependencies between cells that cannot be found using static code anylsis."""
+function cell_precedence_heuristic(cell::Cell)::Number
+	if isempty(cell.symstate.assignments) && 
+		isempty(cell.symstate.funccalls) &&
+		isempty(cell.symstate.funcdefs) &&
+		length(cell.symstate.references) == 1 && 
+		(Symbol("@md_str") ∈ cell.symstate.references || Symbol("@html_str") ∈ cell.symstate.references)
+		# https://github.com/fonsp/Pluto.jl/issues/209
+		1
+	elseif !isempty(cell.module_usings)
+		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
+		2
+	elseif [:include] ∈ cell.symstate.funccalls
+		# https://github.com/fonsp/Pluto.jl/issues/193
+		# because we don't (yet) know which cells depend on it
+		3
+	else
+		4
+	end
 end

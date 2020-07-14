@@ -1,8 +1,6 @@
 import Base: showerror
 
-
 abstract type ReactivityError <: Exception end
-
 
 struct CyclicReferenceError <: ReactivityError
 	syms::Set{Symbol}

@@ -41,7 +41,7 @@ end
 
 
 "Like `cp` except we create the file manually (to fix permission issues)."
-function copy_write(from::AbstractString, to::AbstractString)
+function readwrite(from::AbstractString, to::AbstractString)
     write(to, read(from, String))
 end
 

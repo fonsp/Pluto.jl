@@ -150,7 +150,7 @@ function load_notebook(path::String)::Notebook
     #     backup_path = path * ".backup" * string(backup_num)
     #     backup_num += 1
     # end
-    copy_write(path, backup_path)
+    readwrite(path, backup_path)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
