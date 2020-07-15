@@ -17,7 +17,7 @@ window.MathJax = {
                         var fn = window.MathJax.Callback(arguments[i])
                         window.MathJax.startup.promise = window.MathJax.startup.promise.then(fn)
                     }
-                    return MathJax.startup.promise
+                    return window.MathJax.startup.promise
                 },
                 Typeset: function (elements, callback) {
                     var promise = window.MathJax.typesetPromise(elements)

@@ -1,9 +1,8 @@
 {
     "compilerOptions": {
-        "target": "ES6",
-        // "module": "ES6",
-        // "moduleResolution": "Classic",
-        "lib": ["dom", "DOM"],
+        "target": "ES2020",
+        "module": "ES2020",
+        "lib": ["ES2020", "DOM"],
         "allowJs": true,
         "checkJs": true,
         "noEmit": true,
