@@ -37,12 +37,10 @@ export class CellOutput extends Component {
 
         // Scroll the page to compensate for change in page height:
         const new_height = this.base.scrollHeight
-        const new_scroll = window.scrollY
 
         if (document.body.querySelector("cell:focus-within")) {
             const cell_outputs_after_focused = document.body.querySelectorAll("cell:focus-within ~ cell > celloutput") // CSS wizardry ✨
             if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
-                // window.scrollTo(window.scrollX, new_scroll + (new_height - this.old_height))
                 window.scrollBy(0, new_height - this.old_height)
             }
         }
@@ -93,6 +91,8 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
         if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === next_node.src)) {
             const new_el = document.createElement("script")
             new_el.src = next_node.src
+            new_el.type = next_node.type === "module" ? "module" : "text/javascript"
+
             // new_el.async = false
             new_el.addEventListener("load", load_next)
             new_el.addEventListener("error", load_next)
@@ -103,8 +103,11 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
     } else {
         try {
             const result = Function(next_node.innerHTML).bind(root_node)()
-            if (result && result.nodeType === Node.ELEMENT_NODE) {
-                next_node.parentElement.insertBefore(result, script)
+            if (result != null) {
+                console.log(result)
+                if (result.nodeType === Node.ELEMENT_NODE) {
+                    next_node.parentElement.insertBefore(result, next_node.nextSibling)
+                }
             }
         } catch (err) {
             console.log("Couldn't execute script:")

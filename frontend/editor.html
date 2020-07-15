@@ -18,7 +18,6 @@
 
     <script src="common/RegisterSW.js"></script>
 
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.15/core.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/lib/codemirror.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/codemirror@5.55.0/mode/julia/julia.min.js" defer></script>
@@ -36,26 +35,9 @@
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-app.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/7.13.1/firebase-firestore.js" defer></script>
 
-    <!-- MathJax config must be set before loading -->
-    <!-- <script>
-        MathJax = {
-            options: {
-                ignoreHtmlClass: "no-MαθJax",
-                processHtmlClass: "tex",
-            },
-            startup: {
-                typeset: true, // because we load MathJax asynchronously
-            },
-            tex: {
-                inlineMath: [['$', '$'], ['\\(', '\\)']],
-            },
-            svg: {
-                fontCache: 'global',
-            },
-        };
-    </script>
-    <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js" async></script> -->
-    <!-- <script src="https://cdn.plot.ly/plotly-1.54.2.min.js"></script> -->
+    <script src="common/SetupMathJax.js" async></script>
+    <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg-full.js" async></script>
+
     <script src="editor.js" type="module" defer></script>
     <script src="warn_old_browsers.js"></script>
 </head>
