@@ -12,9 +12,9 @@ function mime_fromfilename(filename)
     MIME(mimepairs[file_extension])
 end
 
-function assetresponse(path)
+function asset_response(path)
     if !isfile(path) && !endswith(path, ".html")
-        return assetresponse(path * ".html")
+        return asset_response(path * ".html")
     end
     try
         @assert isfile(path)
@@ -25,82 +25,6 @@ function assetresponse(path)
     catch e
         HTTP.Response(404, "Not found!")
     end
-end
-
-function serve_onefile(path)
-    return request::HTTP.Request -> assetresponse(normpath(path))
-end
-
-function serve_asset(req::HTTP.Request)
-    reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
-    
-    filepath = joinpath(PKG_ROOT_DIR, "frontend", relpath(reqURI.path, "/"))
-    assetresponse(filepath)
-end
-
-const pluto_router = HTTP.Router()
-
-function notebook_redirect(notebook)
-    response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => ENV["PLUTO_ROOT_URL"] * "edit?id=" * string(notebook.notebook_id))
-    return response
-end
-
-function launch_notebook_response(path::AbstractString; title="", advice="")
-    try
-        for nb in values(notebooks)
-            if realpath(nb.path) == realpath(path)
-                return notebook_redirect(nb)
-            end
-        end
-
-        nb = load_notebook(path)
-        notebooks[nb.notebook_id] = nb
-        if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
-            run_reactive_async!(nb, nb.cells) # TODO: send message when initial run completed
-        end
-        @async putplutoupdates!(clientupdate_notebook_list(notebooks))
-        return notebook_redirect(nb)
-    catch e
-        return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
-    end
-end
-
-function serve_sample(req::HTTP.Request)
-    uri = HTTP.URI(req.target)
-    sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
-    sample_path_without_dotjl = sample_path[1:end - 3]
-
-    path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
-    readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
-
-    return launch_notebook_response(path, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
-end
-
-function serve_openfile(req::HTTP.Request)
-    uri = HTTP.URI(req.target)
-    query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
-
-    if length(query) > 5
-        path = tamepath(query[6:end])
-        if (isfile(path))
-            return launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
-        else
-            return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
-        end
-    end
-    return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
-end
-
-function serve_newfile(req::HTTP.Request)
-    nb = emptynotebook()
-    save_notebook(nb)
-    notebooks[nb.notebook_id] = nb
-    if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
-        run_reactive_async!(nb, nb.cells)
-    end
-    @async putplutoupdates!(clientupdate_notebook_list(notebooks))
-    return notebook_redirect(nb)
 end
 
 function error_response(status_code::Integer, title, advice, body="")
@@ -114,14 +38,94 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-HTTP.@register(pluto_router, "GET", "/", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
+function notebook_redirect_response(notebook)
+    response = HTTP.Response(302, "")
+    push!(response.headers, "Location" => get_pl_env("PLUTO_ROOT_URL") * "edit?id=" * string(notebook.notebook_id))
+    return response
+end
 
-HTTP.@register(pluto_router, "GET", "/favicon.ico", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
-HTTP.@register(pluto_router, "GET", "/*", serve_asset)
 
-HTTP.@register(pluto_router, "GET", "/new", serve_newfile)
-HTTP.@register(pluto_router, "GET", "/open", serve_openfile)
-HTTP.@register(pluto_router, "GET", "/edit", serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
-HTTP.@register(pluto_router, "GET", "/sample/*", serve_sample)
+function http_router_for(session::ServerSession)
+    router = HTTP.Router()
+    
+    function create_serve_onefile(path)
+        return request::HTTP.Request -> asset_response(normpath(path))
+    end
+    
+    HTTP.@register(router, "GET", "/", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
+    HTTP.@register(router, "GET", "/edit", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
 
-HTTP.@register(pluto_router, "GET", "/ping", r -> HTTP.Response(200, JSON.json("OK!")))
+    HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, JSON.json("OK!")))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
+
+    function launch_notebook_response(path::AbstractString; title="", advice="")
+        try
+            for nb in values(session.notebooks)
+                if realpath(nb.path) == realpath(path)
+                    return notebook_redirect_response(nb)
+                end
+            end
+
+            nb = load_notebook(path)
+            session.notebooks[nb.notebook_id] = nb
+            if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
+                run_reactive_async!(session, nb, nb.cells) # TODO: send message when initial run completed
+            end
+            @async putplutoupdates!(clientupdate_notebook_list(session.notebooks))
+            return notebook_redirect_response(nb)
+        catch e
+            return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+
+    function serve_newfile(req::HTTP.Request)
+        nb = emptynotebook()
+        save_notebook(nb)
+        session.notebooks[nb.notebook_id] = nb
+        if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
+            run_reactive_async!(session, nb, nb.cells)
+        end
+        @async putplutoupdates!(clientupdate_notebook_list(session.notebooks))
+        return notebook_redirect_response(nb)
+    end
+    HTTP.@register(router, "GET", "/new", serve_newfile)
+    
+
+    function serve_openfile(req::HTTP.Request)
+        uri = HTTP.URI(req.target)
+        query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
+        
+        if length(query) > 5
+            path = tamepath(query[6:end])
+            if (isfile(path))
+                return launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+            else
+                return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
+            end
+        end
+        return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+    end
+    HTTP.@register(router, "GET", "/open", serve_openfile)
+    
+    function serve_sample(req::HTTP.Request)
+        uri = HTTP.URI(req.target)
+        sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
+        sample_path_without_dotjl = sample_path[1:end - 3]
+        
+        path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
+        readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
+        
+        return launch_notebook_response(path, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+    end
+    HTTP.@register(router, "GET", "/sample/*", serve_sample)
+    
+    function serve_asset(req::HTTP.Request)
+        reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
+        
+        filepath = joinpath(PKG_ROOT_DIR, "frontend", relpath(reqURI.path, "/"))
+        asset_response(filepath)
+    end
+    HTTP.@register(router, "GET", "/*", serve_asset)
+
+    return router
+end

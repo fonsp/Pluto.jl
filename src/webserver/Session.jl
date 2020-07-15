@@ -1,12 +1,18 @@
-mutable struct Client
+import UUIDs: UUID
+
+###
+# CLIENT
+###
+
+mutable struct ClientSession
     id::Symbol
     stream::Any
     connected_notebook::Union{Notebook,Nothing}
     pendingupdates::Channel
 end
 
-Client(id::Symbol, stream) = let
-    Client(id, stream, nothing, Channel(1024))
+ClientSession(id::Symbol, stream) = let
+    ClientSession(id, stream, nothing, Channel(1024))
 end
 
 struct Initiator
@@ -14,6 +20,22 @@ struct Initiator
     request_id::Symbol
 end
 
+
+###
+# SERVER
+###
+
+struct ServerSession
+    connected_clients::Dict{Symbol,ClientSession}
+    notebooks::Dict{UUID,Notebook}
+end
+
+ServerSession() = ServerSession(Dict{Symbol,ClientSession}(), Dict{UUID,Notebook}())
+
+
+###
+# UPDATE MESSAGE
+###
 
 struct UpdateMessage
     type::Symbol

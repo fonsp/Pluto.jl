@@ -1,7 +1,5 @@
 using Test
 
-Pluto.set_ENV_defaults()
-
 @testset "Explore Expressions" begin
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])

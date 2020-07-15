@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExploreExpression, pluto_filename, trycatch_expr
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExploreExpression, pluto_filename, trycatch_expr, Token, get_pl_env
 import ..PlutoRunner
 import Distributed
 
@@ -8,14 +8,10 @@ import Distributed
 mutable struct Workspace
     pid::Integer
     module_name::Symbol
-    dowork_token::Channel{Nothing}
+    dowork_token::Token
 end
 
-Workspace(pid::Integer, module_name::Symbol) = let
-    t = Channel{Nothing}(1)
-    put!(t, nothing)
-    Workspace(pid, module_name, t)
-end
+Workspace(pid::Integer, module_name::Symbol) = Workspace(pid, module_name, Token())
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
@@ -36,8 +32,8 @@ workspaces = Dict{UUID,Workspace}()
 
 """Create a workspace for the notebook, optionally in a separate process.
 
-`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]`_"""
-function make_workspace(notebook::Notebook, new_process=(ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] == "true"))::Workspace
+`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED")`_"""
+function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED") == "true"))::Workspace
     pid = if new_process
         create_workspaceprocess()
     else
@@ -130,14 +126,14 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID
     # run the code 🏃‍♀️
     
     # a try block (on this process) to catch an InterruptException
-    token = take!(workspace.dowork_token)
+    take!(workspace.dowork_token)
     try
         # we use [pid] instead of pid to prevent fetching output
         Distributed.remotecall_eval(Main, [workspace.pid], wrapped)
-        put!(workspace.dowork_token, token)
+        put!(workspace.dowork_token)
     catch exs
         # We don't use a `finally` because the token needs to be back asap
-        put!(workspace.dowork_token, token)
+        put!(workspace.dowork_token)
         try
             @assert exs isa CompositeException
             ex = exs.exceptions |> first
@@ -163,12 +159,12 @@ function eval_in_workspace(notebook::Notebook, expr)
 end
 
 function eval_in_workspace(workspace::Workspace, expr)
-    # token = take!(workspace.dowork_token)
+    # take!(workspace.dowork_token)
     try
         Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
-        # put!(workspace.dowork_token, token)
+        # put!(workspace.dowork_token)
     catch ex
-        # put!(workspace.dowork_token, token)
+        # put!(workspace.dowork_token)
         rethrow(ex)
     end
     nothing

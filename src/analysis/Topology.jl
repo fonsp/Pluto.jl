@@ -1,3 +1,5 @@
+import .ExploreExpression: SymbolsState
+
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end

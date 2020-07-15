@@ -1,4 +1,5 @@
 import UUIDs: UUID, uuid1
+import .ExploreExpression: SymbolsState
 
 mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
@@ -11,15 +12,13 @@ mutable struct Notebook
     # buffer will contain all unfetched updates - must be big enough
     pendingupdates::Channel
 
-    executetoken::Channel
+    executetoken::Token
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = let
-    et = Channel{Nothing}(1)
-    put!(et, nothing)
-    Notebook(cells, path, notebook_id, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), et)
-end
+Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
+    Notebook(cells, path, notebook_id, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), Token())
+
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
@@ -51,7 +50,7 @@ function save_notebook(io, notebook::Notebook)
 
     # TODO: this can be optimised by caching the topological order:
     # maintain cache with ordered UUIDs
-    # whenever a run_reactive is done, move the found cells **up** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
+    # whenever a run_reactive is done, move the found cells **down** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
 
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
     # 15 ms for a massive notebook - 120 cells, 800 lines
@@ -157,7 +156,7 @@ function load_notebook(path::String)::Notebook
     update_caches!(loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if ENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] != "true"
+    if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") != "true"
         for cell in loaded.cells
             cell.symstate = SymbolsState()
         end

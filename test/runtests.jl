@@ -13,3 +13,7 @@ include("./WorkspaceManager.jl")
 # We could also do real browser testing, but that seems difficult
 
 # TODO: test include() inside notebooks
+
+# TODO: test async
+
+# TODO: test tree viewer

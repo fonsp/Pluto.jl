@@ -1,17 +1,15 @@
 using Pluto
 import Pluto: run_reactive!, WorkspaceManager
 
-Pluto.set_ENV_defaults()
-
-
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
-        fakeclientA = Client(:fakeA, nothing)
-        fakeclientB = Client(:fakeB, nothing)
-        Pluto.connectedclients[fakeclientA.id] = fakeclientA
-        Pluto.connectedclients[fakeclientB.id] = fakeclientB
+        fakeclientA = ClientSession(:fakeA, nothing)
+        fakeclientB = ClientSession(:fakeB, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclientA.id] = fakeclientA
+        🍭.connected_clients[fakeclientB.id] = fakeclientB
 
 
         notebookA = Notebook([
@@ -24,8 +22,8 @@ Pluto.set_ENV_defaults()
         ])
         fakeclientB.connected_notebook = notebookB
 
-        @test_nowarn run_reactive!(notebookA, notebookA.cells[1])
-        @test_nowarn run_reactive!(notebookB, notebookB.cells[1])
+        @test_nowarn run_reactive!(🍭, notebookA, notebookA.cells[1])
+        @test_nowarn run_reactive!(🍭, notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].errored == true
     end

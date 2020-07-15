@@ -2,6 +2,10 @@ import { html, Component } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
+const deselect = (cm) => {
+    cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
+}
+
 export class FilePicker extends Component {
     constructor() {
         super()
@@ -11,19 +15,19 @@ export class FilePicker extends Component {
         this.on_submit = () => {
             this.props.on_submit(this.cm.getValue(), () => {
                 this.cm.setValue(this.props.value)
-                this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+                deselect(this.cm)
             })
         }
     }
     componentDidUpdate() {
         if (this.forced_value != this.props.value) {
             this.cm.setValue(this.props.value)
-            this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+            deselect(this.cm)
             this.forced_value = this.props.value
         }
     }
     componentDidMount() {
-        this.cm = CodeMirror(
+        this.cm = window.CodeMirror(
             (el) => {
                 this.base.insertBefore(el, this.base.firstElementChild)
             },
@@ -56,7 +60,7 @@ export class FilePicker extends Component {
             "Esc": (cm) => {
                 cm.closeHint()
                 cm.setValue(this.props.value)
-                cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+                deselect(cm)
                 document.activeElement.blur()
             },
             "Tab": this.request_path_completions.bind(this),
@@ -74,7 +78,7 @@ export class FilePicker extends Component {
             setTimeout(() => {
                 if (!cm.hasFocus()) {
                     cm.setValue(this.props.value)
-                    cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+                    deselect(cm)
                 }
             }, 250)
         })
@@ -89,7 +93,7 @@ export class FilePicker extends Component {
 
         window.addEventListener("resize", () => {
             if (!this.cm.hasFocus()) {
-                this.cm.setCursor({ line: 0, ch: Infinity }, { scroll: false })
+                deselect(this.cm)
             }
         })
     }

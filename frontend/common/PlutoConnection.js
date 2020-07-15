@@ -154,7 +154,7 @@ export class PlutoConnection {
             this.send("connect", {}, connect_metadata).then((u) => {
                 this.plutoENV = u.message.ENV
                 // TODO: don't check this here
-                if (connect_metadata.notebook_id && !u.message.notebookExists) {
+                if (connect_metadata.notebook_id && !u.message.notebook_exists) {
                     // https://github.com/fonsp/Pluto.jl/issues/55
                     document.location.href = "./"
                     return

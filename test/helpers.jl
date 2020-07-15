@@ -108,8 +108,8 @@ function jl_is_runnable(path; only_undefvar=false)
 end
 
 "Whether the `notebook` runs without errors."
-function nb_is_runnable(notebook::Pluto.Notebook)
-    run_reactive!(notebook, notebook.cells)
+function nb_is_runnable(session::Pluto.ServerSession, notebook::Pluto.Notebook)
+    Pluto.run_reactive!(session, notebook, notebook.cells)
     errored = filter(c -> c.errored, notebook.cells)
     if !isempty(errored)
         @show errored

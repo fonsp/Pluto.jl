@@ -1,9 +1,7 @@
 using Test
 using Pluto
-import Pluto: Notebook, Client, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager, cutename, numbered_until_new
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, run_reactive!, WorkspaceManager, cutename, numbered_until_new
 import Random
-
-Pluto.set_ENV_defaults()
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -108,18 +106,37 @@ end
         end
     end
 
+    🍭 = ServerSession()
     for (name, nb) in nbs
         nb.path = tempname() * "é🧡💛.jl"
 
-        client = Client(Symbol("client", rand(UInt16)), nothing)
+        client = ClientSession(Symbol("client", rand(UInt16)), nothing)
         client.connected_notebook = nb
-        Pluto.connectedclients[client.id] = client
+
+        🍭.connected_clients[client.id] = client
     end
 
-    @testset "I/O" begin
+    @testset "I/O basic" begin
         @testset "$(name)" for (name, nb) in nbs
             @test let
                 save_notebook(nb)
+                result = load_notebook_nobackup(nb.path)
+                notebook_inputs_equal(nb, result)
+            end
+        end
+    end
+
+    @testset "I/O overloaded" begin
+        @testset "$(name)" for (name, nb) in nbs
+            @test let
+                tasks = []
+                for i in 1:16
+                    push!(tasks, @async save_notebook(nb))
+                    if i <= 8
+                        sleep(0.01)
+                    end
+                end
+                wait.(tasks)
                 result = load_notebook_nobackup(nb.path)
                 notebook_inputs_equal(nb, result)
             end
@@ -151,7 +168,7 @@ end
     @testset "Runnable with Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
             if name ∉ expect_error
-                @test nb_is_runnable(nb)
+                @test nb_is_runnable(🍭, nb)
             end
         end
     end

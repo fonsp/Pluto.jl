@@ -17,6 +17,7 @@ const ENV_DEFAULTS = Dict(
         joinpath(preferred_dir, "") # must end with / or \
     end,
 )
+get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
 
 if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
 @info """\n
@@ -30,20 +31,20 @@ if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
 \n"""
 end
 
-include("./react/ExploreExpression.jl")
+include("./evaluation/Tokens.jl")
+include("./analysis/ExploreExpression.jl")
 include("./runner/PlutoRunner.jl")
-using .ExploreExpression
 
-include("./notebookserver/PathHelpers.jl")
-include("./notebookserver/Cell.jl")
-include("./notebookserver/Notebook.jl")
-include("./notebookserver/Client.jl")
+include("./notebook/PathHelpers.jl")
+include("./notebook/Cell.jl")
+include("./notebook/Notebook.jl")
+include("./webserver/Session.jl")
 
-include("./react/Parse.jl")
-include("./react/WorkspaceManager.jl")
-include("./react/Errors.jl")
-include("./react/React.jl")
-include("./react/Run.jl")
+include("./analysis/Errors.jl")
+include("./analysis/Parse.jl")
+include("./analysis/Topology.jl")
+include("./evaluation/WorkspaceManager.jl")
+include("./evaluation/Run.jl")
 
 include("./webserver/WebServer.jl")
 include("./webserver/Static.jl")
