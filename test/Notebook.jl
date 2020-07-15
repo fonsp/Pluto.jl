@@ -220,10 +220,10 @@ end
         @testset "Cute file names" begin
             trash = mktempdir()
             for i in 1:200
-                touch(numbered_until_new(joinpath(trash, cutename())))
+                numbered_until_new(joinpath(trash, cutename()); create_file=true)
             end
 
-            @test all(!isfile, [numbered_until_new(joinpath(trash, cutename())) for _ in 1:200])
+            @test all(!isfile, [numbered_until_new(joinpath(trash, cutename()); create_file=false) for _ in 1:200])
         end
     end
 
