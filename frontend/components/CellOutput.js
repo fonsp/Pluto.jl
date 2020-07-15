@@ -1,5 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
+import { resolvable_promise } from "../common/PlutoConnection.js"
+
 import { ErrorMessage } from "./ErrorMessage.js"
 
 import { connect_bonds } from "../common/Bond.js"
@@ -35,12 +37,10 @@ export class CellOutput extends Component {
 
         // Scroll the page to compensate for change in page height:
         const new_height = this.base.scrollHeight
-        const new_scroll = window.scrollY
 
         if (document.body.querySelector("cell:focus-within")) {
             const cell_outputs_after_focused = document.body.querySelectorAll("cell:focus-within ~ cell > celloutput") // CSS wizardry ✨
             if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
-                // window.scrollTo(window.scrollX, new_scroll + (new_height - this.old_height))
                 window.scrollBy(0, new_height - this.old_height)
             }
         }
@@ -77,18 +77,22 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     }
 }
 
-const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback) => {
+const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
+    const rp = resolvable_promise()
+
     if (next_node == null) {
-        callback()
-        return
+        rp.resolve()
+        return rp.current
     }
-    const load_next = () => execute_scripttags(root_node, remaining_nodes, callback)
+    const load_next = () => execute_scripttags(root_node, remaining_nodes).then(rp.resolve)
 
     root_node.currentScript = next_node
     if (next_node.src != "") {
         if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === next_node.src)) {
             const new_el = document.createElement("script")
             new_el.src = next_node.src
+            new_el.type = next_node.type === "module" ? "module" : "text/javascript"
+
             // new_el.async = false
             new_el.addEventListener("load", load_next)
             new_el.addEventListener("error", load_next)
@@ -99,8 +103,11 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback
     } else {
         try {
             const result = Function(next_node.innerHTML).bind(root_node)()
-            if (result && result.nodeType === Node.ELEMENT_NODE) {
-                next_node.parentElement.insertBefore(result, script)
+            if (result != null) {
+                console.log(result)
+                if (result.nodeType === Node.ELEMENT_NODE) {
+                    next_node.parentElement.insertBefore(result, next_node.nextSibling)
+                }
             }
         } catch (err) {
             console.log("Couldn't execute script:")
@@ -109,13 +116,14 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback
         }
         load_next()
     }
+    return rp.current
 }
 
 export class RawHTMLContainer extends Component {
     render_DOM() {
         this.base.innerHTML = this.props.body
 
-        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script")), () => {
+        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script"))).then(() => {
             connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
 
             // convert LaTeX to svg
