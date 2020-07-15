@@ -7,6 +7,20 @@ const do_next = async (queue) => {
     }
 }
 
+/**
+ * @returns {{current: Promise<any>, resolve: Function}}
+ */
+export const resolvable_promise = () => {
+    let resolve = () => {}
+    const p = new Promise((r) => {
+        resolve = r
+    })
+    return {
+        current: p,
+        resolve: resolve,
+    }
+}
+
 export class PlutoConnection {
     ping(on_success, onFailure) {
         fetch("ping", {
@@ -76,14 +90,10 @@ export class PlutoConnection {
         var p = undefined
 
         if (create_promise) {
-            var resolve, reject
+            const rp = resolvable_promise()
+            p = rp.current
 
-            p = new Promise((res, rej) => {
-                resolve = res
-                reject = rej
-            })
-
-            this.sent_requests[request_id] = resolve
+            this.sent_requests[request_id] = rp.resolve
         }
 
         this.psocket.send(JSON.stringify(toSend) + this.MSG_DELIM)

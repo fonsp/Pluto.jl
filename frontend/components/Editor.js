@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
 
-import { PlutoConnection } from "../common/PlutoConnection.js"
+import { PlutoConnection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -624,7 +624,6 @@ export class Editor extends Component {
     }
 
     render() {
-        console.log(this.state.notebook.in_temp_dir)
         return html`
             <header>
                 <div id="logocontainer">
@@ -711,18 +710,4 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
         })
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
-}
-
-/**
- * @returns {{current: Promise<any>, resolve: function}}
- */
-const resolvable_promise = () => {
-    let resolve
-    const p = new Promise((r) => {
-        resolve = r
-    })
-    return {
-        current: p,
-        resolve: resolve,
-    }
 }
