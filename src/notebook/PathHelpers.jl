@@ -28,13 +28,16 @@ function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end
 
-function numbered_until_new(base::AbstractString; sep=" ", suffix=".jl")
+function numbered_until_new(base::AbstractString; sep=" ", suffix=".jl", create_file=true)
     chosen = base * suffix
     n = 1
     while isfile(chosen)
         n += 1
         chosen = base * sep * string(n) * suffix
-    end
+	end
+	if create_file
+		touch(chosen)
+	end
     chosen
 end
 

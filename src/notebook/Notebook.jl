@@ -142,7 +142,7 @@ end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
 function load_notebook(path::String)::Notebook
-    backup_path = numbered_until_new(path; sep=".backup", suffix="")
+    backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)
