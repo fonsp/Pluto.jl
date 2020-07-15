@@ -12,7 +12,7 @@ The tower of hanoi is a famous puzzle.
 
 ![setup of the tower of a hanoi](https://upload.wikimedia.org/wikipedia/commons/0/07/Tower_of_Hanoi.jpeg)
 
-The game consists of three rods with disks stacked on top of them. The puzzle will start with all the disk in a stack on one of the rods (like in the picture). The goal is to move all the discs to a single stack on  different rod.
+The game consists of three rods with disks stacked on top of them. The puzzle will start with all disks in a stack on one of the rods (like in the picture). The goal is to move all the discs to a single stack on  different rod.
 
 To move the disks, you have to follow the following rules:
 

@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect } from "../common/Preact.js"
+import { html, useState, useEffect } from "../common/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"

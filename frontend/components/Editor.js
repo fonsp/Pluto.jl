@@ -7,6 +7,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { AreYouSure } from "./AreYouSure.js"
 import { SlideControls } from "./SlideControls.js"
 
 import { link_open } from "./Welcome.js"
@@ -27,22 +28,23 @@ export class Editor extends Component {
                 cells: [],
             },
             desired_doc_query: null,
+            recently_deleted: null,
             connected: false,
             loading: true,
         }
         // convenience method
-        const set_notebook_state = (callback) => {
+        const set_notebook_state = (updater, callback) => {
             this.setState((prevstate) => {
                 return {
                     notebook: {
                         ...prevstate.notebook,
-                        ...callback(prevstate.notebook),
+                        ...updater(prevstate.notebook),
                     },
                 }
-            })
+            }, callback)
         }
         // convenience method
-        const set_cell_state = (cell_id, new_state_props) => {
+        const set_cell_state = (cell_id, new_state_props, callback) => {
             this.setState((prevstate) => {
                 return {
                     notebook: {
@@ -52,7 +54,7 @@ export class Editor extends Component {
                         }),
                     },
                 }
-            })
+            }, callback)
         }
         this.set_cell_state = set_cell_state.bind(this)
 
@@ -64,8 +66,8 @@ export class Editor extends Component {
         this.counter_statistics = create_counter_statistics()
 
         // these are things that can be done to the local notebook
-        const actions = {
-            add_local_cell: (cell, new_index) => {
+        this.actions = {
+            add_local_cell: (cell, new_index, callback = undefined) => {
                 set_notebook_state((prevstate) => {
                     if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
                         console.warn("Tried to add cell with existing cell_id. Canceled.")
@@ -78,36 +80,44 @@ export class Editor extends Component {
                     return {
                         cells: [...before.slice(0, new_index), cell, ...before.slice(new_index)],
                     }
-                })
+                }, callback)
             },
-            update_local_cell_output: (cell, { output, running, runtime, errored }) => {
+            update_local_cell_output: (cell, { output, running, runtime, errored }, callback = undefined) => {
                 this.counter_statistics.numRuns++
-                set_cell_state(cell.cell_id, {
-                    running: running,
-                    runtime: runtime,
-                    errored: errored,
-                    output: { ...output, timestamp: Date.now() },
-                })
-            },
-            update_local_cell_input: (cell, by_me, code, folded) => {
-                set_cell_state(cell.cell_id, {
-                    remote_code: {
-                        body: code,
-                        submitted_by_me: by_me,
-                        timestamp: Date.now(),
+                set_cell_state(
+                    cell.cell_id,
+                    {
+                        running: running,
+                        runtime: runtime,
+                        errored: errored,
+                        output: { ...output, timestamp: Date.now() },
                     },
-                    code_folded: folded,
-                })
+                    callback
+                )
             },
-            delete_local_cell: (cell) => {
+            update_local_cell_input: (cell, by_me, code, folded, callback = undefined) => {
+                set_cell_state(
+                    cell.cell_id,
+                    {
+                        remote_code: {
+                            body: code,
+                            submitted_by_me: by_me,
+                            timestamp: Date.now(),
+                        },
+                        code_folded: folded,
+                    },
+                    callback
+                )
+            },
+            delete_local_cell: (cell, callback = undefined) => {
                 // TODO: event listeners? gc?
                 set_notebook_state((prevstate) => {
                     return {
                         cells: prevstate.cells.filter((c) => c !== cell),
                     }
-                })
+                }, callback)
             },
-            move_local_cell: (cell, new_index) => {
+            move_local_cell: (cell, new_index, callback = undefined) => {
                 set_notebook_state((prevstate) => {
                     const old_index = prevstate.cells.findIndex((c) => c === cell)
                     if (new_index > old_index) {
@@ -117,7 +127,7 @@ export class Editor extends Component {
                     return {
                         cells: [...without.slice(0, new_index), cell, ...without.slice(new_index)],
                     }
-                })
+                }, callback)
             },
         }
 
@@ -147,7 +157,7 @@ export class Editor extends Component {
                     switch (update.type) {
                         case "cell_output":
                             if (cell != null) {
-                                actions.update_local_cell_output(cell, message)
+                                this.actions.update_local_cell_output(cell, message)
                             }
                             break
                         case "cell_running":
@@ -166,24 +176,24 @@ export class Editor extends Component {
                             break
                         case "cell_input":
                             if (cell != null) {
-                                actions.update_local_cell_input(cell, by_me, message.code, message.folded)
+                                this.actions.update_local_cell_input(cell, by_me, message.code, message.folded)
                             }
                             break
                         case "cell_deleted":
                             if (cell != null) {
-                                actions.delete_local_cell(cell)
+                                this.actions.delete_local_cell(cell)
                             }
                             break
                         case "cell_moved":
                             if (cell != null) {
-                                actions.move_local_cell(cell, message.index)
+                                this.actions.move_local_cell(cell, message.index)
                             }
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
                             new_cell.running = false
                             new_cell.output.body = ""
-                            actions.add_local_cell(new_cell, message.index)
+                            this.actions.add_local_cell(new_cell, message.index)
                             break
                         case "bond_update":
                             // by someone else
@@ -231,7 +241,7 @@ export class Editor extends Component {
                                             }
                                         )
                                         .then((u) => {
-                                            actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
+                                            this.actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
                                         })
                                 )
                                 promises.push(
@@ -246,7 +256,7 @@ export class Editor extends Component {
                                         )
                                         .then((u) => {
                                             if (!run_all || cell_data.running) {
-                                                actions.update_local_cell_output(cell_data, u.message)
+                                                this.actions.update_local_cell_output(cell_data, u.message)
                                             } else {
                                                 // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
                                             }
@@ -373,22 +383,32 @@ export class Editor extends Component {
                     false
                 )
             },
-            add_remote_cell: (cell_id, before_or_after) => {
-                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-                const delta = before_or_after == "before" ? 0 : 1
-                this.client.send(
+            add_remote_cell_at: (index, create_promise = false) => {
+                return this.client.send(
                     "addcell",
-                    { index: index + delta },
+                    { index: index },
                     {
                         notebook_id: this.state.notebook.notebook_id,
                     },
-                    false
+                    create_promise
                 )
+            },
+            add_remote_cell: (cell_id, before_or_after, create_promise = false) => {
+                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+                const delta = before_or_after == "before" ? 0 : 1
+                return this.requests.add_remote_cell_at(index + delta, create_promise)
             },
             delete_cell: (cell_id) => {
                 if (this.state.notebook.cells.length <= 1) {
                     this.requests.add_remote_cell(cell_id, "after")
                 }
+                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+                this.setState({
+                    recently_deleted: {
+                        index: index,
+                        body: this.state.notebook.cells[index].local_code.body,
+                    },
+                })
                 set_cell_state(cell_id, {
                     running: true,
                     remote_code: {
@@ -433,7 +453,7 @@ export class Editor extends Component {
                             }
                         )
                         .then((u) => {
-                            actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
+                            this.actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
                         })
                 })
                 Promise.all(promises)
@@ -693,6 +713,17 @@ export class Editor extends Component {
                     </form>
                 </div>
             </footer>
+            <${AreYouSure}
+                recently_deleted=${this.state.recently_deleted}
+                on_click=${() => {
+                    this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
+                        this.client.on_update(update, true)
+                        this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false, () => {
+                            this.requests.change_remote_cell(update.cell_id, this.state.recently_deleted.body)
+                        })
+                    })
+                }}
+            />
             <${SlideControls} />
         `
     }
