@@ -123,7 +123,7 @@ responses[:foldcell] = (session::ServerSession, body, notebook::Notebook, cell::
     cell.code_folded = newfolded
     save_notebook(notebook)
 
-    putnotebookupdates!(session, session.notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
+    putnotebookupdates!(session, notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
 end
 
 responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let

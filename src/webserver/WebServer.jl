@@ -11,6 +11,19 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
 end
 
 
+# to fix lots of false error messages from HTTP
+# https://github.com/JuliaWeb/HTTP.jl/pull/546
+# we do HTTP.Stream{HTTP.Messages.Request,S} instead of just HTTP.Stream to prevent the Julia warning about incremental compilation
+function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: IO
+    if http.writechunked
+        http.writechunked = false
+        try
+            write(http.stream, "0\r\n\r\n")
+        catch end
+    end
+end
+
+
 "Send `messages` to all clients connected to the `notebook`."
 function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...)
     listeners = filter(collect(values(session.connected_clients))) do c
