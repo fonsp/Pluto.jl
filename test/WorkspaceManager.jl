@@ -1,10 +1,12 @@
+using Test
 using Pluto
-import Pluto: run_reactive!, WorkspaceManager
+import Pluto: run_reactive!, WorkspaceManager, ClientSession, ServerSession
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
+
         fakeclientA = ClientSession(:fakeA, nothing)
         fakeclientB = ClientSession(:fakeB, nothing)
         🍭 = ServerSession()
@@ -22,8 +24,10 @@ import Pluto: run_reactive!, WorkspaceManager
         ])
         fakeclientB.connected_notebook = notebookB
 
-        @test_nowarn run_reactive!(🍭, notebookA, notebookA.cells[1])
-        @test_nowarn run_reactive!(🍭, notebookB, notebookB.cells[1])
+        @test notebookA.path != notebookB.path
+
+        run_reactive!(🍭, notebookA, notebookA.cells[1])
+        run_reactive!(🍭, notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].errored == true
     end
