@@ -1,5 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
+import { resolvable_promise } from "../common/PlutoConnection.js"
+
 import { ErrorMessage } from "./ErrorMessage.js"
 
 import { connect_bonds } from "../common/Bond.js"
@@ -77,12 +79,14 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     }
 }
 
-const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback) => {
+const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
+    const rp = resolvable_promise()
+
     if (next_node == null) {
-        callback()
-        return
+        rp.resolve()
+        return rp.current
     }
-    const load_next = () => execute_scripttags(root_node, remaining_nodes, callback)
+    const load_next = () => execute_scripttags(root_node, remaining_nodes).then(rp.resolve)
 
     root_node.currentScript = next_node
     if (next_node.src != "") {
@@ -109,13 +113,14 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes], callback
         }
         load_next()
     }
+    return rp.current
 }
 
 export class RawHTMLContainer extends Component {
     render_DOM() {
         this.base.innerHTML = this.props.body
 
-        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script")), () => {
+        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script"))).then(() => {
             connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
 
             // convert LaTeX to svg
