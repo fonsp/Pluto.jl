@@ -1,6 +1,18 @@
 import { html, useState, useEffect, useRef } from "../common/Preact.js"
-
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+
+// For customization, see: https://codemirror.net/doc/manual.html#config
+// Note that some options will require you to add additional addons in editor.html
+const custom_codemirror_options = {
+    indentWithTabs: true,
+    indentUnit: 4,
+    tabSize: 4,
+    matchBrackets: true,
+    lineWrapping: true,
+    lineNumbers: true,
+    theme: "pluto",
+    autoCloseBrackets: false,
+}
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -26,7 +38,7 @@ export const CellInput = ({
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
-    const change_handler_ref = useRef(null)
+    const change_handler_ref = useRef(on_change)
     change_handler_ref.current = on_change
 
     useEffect(() => {
@@ -35,22 +47,17 @@ export const CellInput = ({
                 dom_node_ref.current.appendChild(el)
             },
             {
+                ...custom_codemirror_options,
                 value: remote_code.body,
-                lineNumbers: true,
                 mode: "julia",
-                lineWrapping: true,
                 viewportMargin: Infinity,
                 placeholder: "Enter cell code...",
-                indentWithTabs: true,
-                indentUnit: 4,
                 hintOptions: {
                     hint: juliahints,
                     client: client,
                     notebook_id: notebook_id,
                     on_update_doc_query: on_update_doc_query,
                 },
-                matchBrackets: true,
-                theme: "pluto",
             }
         ))
 
