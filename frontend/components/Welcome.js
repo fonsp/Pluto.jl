@@ -106,6 +106,9 @@ export class Welcome extends Component {
                     )
                 }
             } else {
+                set_notebook_state(nb.path, {
+                    transitioning: true,
+                })
                 fetch(link_open(nb), {
                     method: "GET",
                 })

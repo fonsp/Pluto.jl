@@ -133,7 +133,8 @@ celloutput p:last-child {
     margin-block-end: 0px;
 }
 
-celloutput img {
+celloutput img,
+celloutput video {
     max-width: 100%;
 }
 
@@ -847,12 +848,14 @@ dropruler {
         font-family: "Alegreya Sans", sans-serif;
     }
     helpbox > header {
+        padding: 15px;
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
-        padding: 15px;
         font-family: "Roboto Mono", monospace;
         font-weight: 500;
         cursor: pointer;
+        border-top-left-radius: 6px;
+        border-top-right-radius: 6px;
         /* border-top: 4px solid #8a8a8a; */
     }
     helpbox > section {

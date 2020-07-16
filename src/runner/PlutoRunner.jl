@@ -178,7 +178,7 @@ end
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
 iocontext_compact = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
 const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
