@@ -38,7 +38,7 @@ export const CellInput = ({
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
-    const change_handler_ref = useRef(on_change)
+    const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
 
     useEffect(() => {
