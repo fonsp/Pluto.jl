@@ -1,0 +1,219 @@
+/* PLUTO THEME FOR CODEMIRROR */
+/* Adapted from the default CM theme found here: https://github.com/codemirror/CodeMirror/blob/master/lib/codemirror.css */
+
+/*
+Based on "Paraíso (Light)" by Jan T. Sott:
+    Color scheme by Jan T. Sott (https://github.com/idleberg/Paraiso-CodeMirror)
+    Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
+*/
+
+/* SYNTAX */
+
+/* Values which don't differ from the default theme will have @default above them */
+
+/* @default */
+.cm-s-pluto .cm-header {
+    color: blue;
+}
+
+/* @default */
+.cm-s-pluto .cm-quote {
+    color: #090;
+}
+
+.cm-s-pluto .cm-keyword {
+    color: #ef6155;
+}
+
+.cm-s-pluto .cm-atom {
+    color: #815ba4;
+}
+
+.cm-s-pluto .cm-number {
+    color: #815ba4;
+}
+
+.cm-s-pluto .cm-def {
+    color: #f99b15;
+}
+
+/* @default */
+.cm-s-pluto .cm-punctuation {
+}
+
+/* @default */
+.cm-s-pluto .cm-operator {
+}
+
+.cm-s-pluto .cm-variable {
+    color: #5668a4;
+    font-weight: 500;
+}
+
+.cm-s-pluto .cm-variable-2 {
+    color: #06b6ef;
+}
+
+/* @default */
+.cm-s-pluto .cm-variable-3,
+.cm-s-pluto .cm-type {
+    color: #085;
+}
+
+.cm-s-pluto .cm-comment {
+    color: #e96ba8;
+    font-style: italic;
+}
+
+.cm-s-pluto .cm-string {
+    color: #ce7d0a;
+}
+
+/* @default */
+.cm-s-pluto .cm-string-2 {
+    color: #f50;
+}
+
+/* @default */
+.cm-s-pluto .cm-meta {
+    color: #555;
+}
+
+/* @default */
+.cm-s-pluto .cm-qualifier {
+    color: #555;
+}
+
+.cm-s-pluto .cm-builtin {
+    color: #5e7ad3;
+    font-weight: 500;
+}
+
+.cm-s-pluto .cm-bracket {
+    color: #41323f;
+}
+
+.cm-s-pluto .cm-tag {
+    color: #ef6155;
+}
+
+.cm-s-pluto .cm-attribute {
+    color: #48b685;
+}
+
+.cm-s-pluto .cm-property {
+    color: #48b685;
+}
+
+/* @default */
+.cm-s-pluto .cm-hr {
+    color: #999;
+}
+
+.cm-s-pluto .cm-link {
+    color: #815ba4;
+}
+
+.cm-s-pluto .cm-error {
+    background: #ef6155;
+    color: #776e71;
+}
+
+/* EDITOR */
+
+.CodeMirror {
+    --background-color: #fefcf6;
+    --activeline-background-color: #cfd1c4;
+    --selection-color: #d9dfef;
+    --cursor-color: #776e71;
+    --linenumber-color: #8d8687;
+    --notinsync-gutter-color: #f6eccb;
+}
+
+.cm-s-pluto .CodeMirror-activeline-background {
+    background: var(--activeline-background-color);
+}
+
+.cm-s-pluto ul.CodeMirror-hints {
+    padding: 0;
+}
+
+.cm-s-pluto.CodeMirror {
+    background: var(--background-color);
+    color: #41323f;
+}
+
+.cm-s-pluto div.CodeMirror-selected {
+    background: var(--selection-color);
+}
+
+.cm-s-pluto .CodeMirror-line::selection,
+.cm-s-pluto .CodeMirror-line > span::selection,
+.cm-s-pluto .CodeMirror-line > span > span::selection {
+    background: var(--selection-color);
+}
+
+.cm-s-pluto .CodeMirror-line::-moz-selection,
+.cm-s-pluto .CodeMirror-line > span::-moz-selection,
+.cm-s-pluto .CodeMirror-line > span > span::-moz-selection {
+    background: var(--selection-color);
+}
+
+.cm-s-pluto .CodeMirror-gutters {
+    background: var(--background-color);
+    border-right: solid 1px hsla(0, 0%, 0%, 0);
+}
+
+cell.output-notinsync .cm-s-pluto .CodeMirror-gutters,
+cell.code-differs .cm-s-pluto .CodeMirror-gutters {
+    background: var(--notinsync-gutter-color);
+}
+
+.cm-s-pluto .CodeMirror-guttermarker {
+    color: black;
+}
+
+.cm-s-pluto .CodeMirror-guttermarker-subtle {
+    color: var(--linenumber-color);
+}
+
+.cm-s-pluto .CodeMirror-linenumber {
+    color: var(--linenumber-color);
+}
+
+.cm-s-pluto .CodeMirror-linenumber::before {
+    content: "⋅";
+    font-size: 0.75rem;
+}
+
+.cm-s-pluto .CodeMirror-linenumber {
+    font-size: 0px;
+}
+
+.cm-s-pluto .CodeMirror-linenumber:hover {
+    font-size: 0.75rem;
+}
+
+.cm-s-pluto .CodeMirror-linenumber:hover::before {
+    font-size: 0px;
+}
+
+.cm-s-pluto .CodeMirror-cursor {
+    border-left: 1px solid var(--cursor-color);
+}
+
+div.CodeMirror span.CodeMirror-matchingbracket {
+    color: unset;
+}
+
+cellinput:focus-within .cm-s-pluto .CodeMirror-matchingbracket {
+    color: black !important;
+    font-weight: 700;
+    background-color: #1b4bbb21;
+    border-radius: 2px;
+}
+
+.cm-s-pluto.CodeMirror-empty {
+    color: rgba(0, 0, 0, 0.2);
+    font-style: italic;
+}

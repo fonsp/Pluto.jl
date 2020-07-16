@@ -50,6 +50,7 @@ export const CellInput = ({
                     on_update_doc_query: on_update_doc_query,
                 },
                 matchBrackets: true,
+                theme: "pluto",
             }
         ))
 

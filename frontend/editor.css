@@ -3,6 +3,7 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import "cm-s-pluto.css";
 
 /* VARIABLES */
 
@@ -152,7 +153,8 @@ celloutput pre {
     display: inline-block;
     margin: 0px;
     tab-size: 4;
-    -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
+    -moz-tab-size: 4;
+    /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: "Roboto Mono", monospace;
 }
 
@@ -171,6 +173,11 @@ celloutput blockquote {
     border-radius: 15px;
     background-color: #fafafa;
     color: #555;
+}
+
+celloutput > assignee {
+    color: #5668a4;
+    font-weight: 500;
 }
 
 /* HEADER */
@@ -238,9 +245,11 @@ body > header h1 {
     #logocontainer img#logo-small {
         display: unset;
     }
+
     #logocontainer img#logo-big {
         display: none;
     }
+
     #logocontainer > a {
         margin-right: 1rem;
     }
@@ -303,15 +312,18 @@ li.dir.CodeMirror-hint:before {
         border-right: none;
         transition: border 0.15s ease-in-out;
     }
+
     #logocontainer > filepicker button {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
+
     body > header:hover #logocontainer > filepicker .CodeMirror,
     body > header:focus-within #logocontainer > filepicker .CodeMirror {
         border: 2px solid #818181;
         border-right: none;
     }
+
     body > header:hover #logocontainer > filepicker button,
     body > header:focus-within #logocontainer > filepicker button {
         opacity: 1;
@@ -456,6 +468,12 @@ cell:hover > celloutput > div::-webkit-scrollbar-thumb {
 }
 
 /* CELL INPUT */
+
+cellinput .CodeMirror,
+ul.CodeMirror-hints {
+    font-family: "Roboto Mono", monospace !important;
+    font-size: 0.75em;
+}
 
 cellinput .CodeMirror {
     height: auto !important;
@@ -621,6 +639,7 @@ cell.running.error > trafficlight {
     0% {
         background-position-y: 0px;
     }
+
     100% {
         background-position-y: 22627.41699797px;
         /* 16 * sqrt(2) */
@@ -644,12 +663,14 @@ cellinput > button > span {
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
+
     cell:hover > button,
     cell:hover > cellinput > button,
     cell > runarea > button,
     cell:hover > cellshoulder > button {
         opacity: 25%;
     }
+
     preamble > button:hover,
     cell > button:hover,
     cell > cellinput > button:hover,
@@ -671,12 +692,14 @@ cellinput > button > span {
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
+
     cell:focus-within > button,
     cell:focus-within > cellinput > button,
     cell:focus-within > runarea,
     cell:focus-within > cellshoulder > button {
         opacity: 25%;
     }
+
     cell > button:focus-within,
     cell > cellinput > button:focus-within cell > runarea > button:focus-within,
     cell > cellshoulder > button:focus-within,
@@ -799,6 +822,7 @@ cell.code-differs > runarea > button {
         transform: scale(1);
         opacity: 50%;
     }
+
     90% {
         transform: scale(1.2);
         opacity: 100%;
@@ -830,6 +854,7 @@ dropruler {
         height: 0px;
         z-index: 5;
     }
+
     helpbox {
         bottom: 0px;
         right: 20px;
@@ -847,6 +872,7 @@ dropruler {
         box-shadow: 0 0 11px 0px #00000010;
         font-family: "Alegreya Sans", sans-serif;
     }
+
     helpbox > header {
         padding: 15px;
         background-color: #eef1f7;
@@ -858,11 +884,13 @@ dropruler {
         border-top-right-radius: 6px;
         /* border-top: 4px solid #8a8a8a; */
     }
+
     helpbox > section {
         height: 100%;
         overflow: auto;
         padding: 10px;
     }
+
     helpbox > section h1,
     helpbox > section h2,
     helpbox > section h3,
@@ -873,18 +901,23 @@ dropruler {
         border-bottom: none;
         font-size: 1rem;
     }
+
     helpbox > section h1 {
         font-size: 1.3rem;
     }
+
     helpbox.hidden {
         height: initial;
     }
+
     helpbox.hidden > section {
         display: none;
     }
+
     helpbox > header::before {
         content: "📖 ";
     }
+
     /* helpbox.loading>header::before{
                 content: "⌛ ";
             } */
@@ -1002,9 +1035,11 @@ are-you-sure.hidden {
         box-shadow: 00px 00px 10px 2px #0003;
         opacity: 1;
     }
+
     80% {
         opacity: 1;
     }
+
     100% {
         opacity: 0;
     }
@@ -1016,9 +1051,11 @@ body.presentation celloutput h1,
 body.presentation celloutput h2 {
     margin-top: 100vh;
 }
+
 body.presentation notebook {
     padding-bottom: 100vh;
 }
+
 body.presentation #helpbox-wrapper {
     display: none !important;
 }
@@ -1026,6 +1063,7 @@ body.presentation #helpbox-wrapper {
 body > slide-controls {
     display: none;
 }
+
 body.presentation > slide-controls {
     display: flex;
     position: fixed;
@@ -1046,173 +1084,11 @@ body > slide-controls > button > span::after {
     width: 30px;
     background-size: 30px 30px;
 }
+
 body > slide-controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-back-outline.svg);
 }
+
 body > slide-controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
-}
-
-/* CODEMIRROR STYLE */
-
-/*
-Based on "Paraíso (Light)" by Jan T. Sott:
-    Color scheme by Jan T. Sott (https://github.com/idleberg/Paraiso-CodeMirror)
-    Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
-*/
-
-ul.CodeMirror-hints {
-    padding: 0;
-}
-
-cellinput .CodeMirror,
-ul.CodeMirror-hints {
-    font-family: "Roboto Mono", monospace !important;
-    font-size: 0.75em;
-}
-
-.cm-s-default.CodeMirror {
-    background: hsla(46, 90%, 98%, 1);
-    color: #41323f;
-}
-
-.cm-s-default div.CodeMirror-selected {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-line::selection,
-.cm-s-default .CodeMirror-line > span::selection,
-.cm-s-default .CodeMirror-line > span > span::selection {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-line::-moz-selection,
-.cm-s-default .CodeMirror-line > span::-moz-selection,
-.cm-s-default .CodeMirror-line > span > span::-moz-selection {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 90%, 98%, 1);
-    border-right: solid 1px hsla(0, 0%, 0%, 0);
-}
-
-cell.output-notinsync .cm-s-default .CodeMirror-gutters,
-cell.code-differs .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 70%, 88%, 1);
-}
-
-.cm-s-default .CodeMirror-guttermarker {
-    color: black;
-}
-
-.cm-s-default .CodeMirror-guttermarker-subtle {
-    color: #8d8687;
-}
-
-.cm-s-default .CodeMirror-linenumber {
-    color: #8d8687;
-}
-
-.cm-s-default .CodeMirror-linenumber::before {
-    content: "⋅";
-    font-size: 0.75rem;
-}
-
-.cm-s-default .CodeMirror-linenumber {
-    font-size: 0px;
-}
-
-.cm-s-default .CodeMirror-linenumber:hover {
-    font-size: 0.75rem;
-}
-
-.cm-s-default .CodeMirror-linenumber:hover::before {
-    font-size: 0px;
-}
-
-.cm-s-default .CodeMirror-cursor {
-    border-left: 1px solid #776e71;
-}
-
-.cm-s-default span.cm-comment {
-    color: #e96ba8;
-    font-style: italic;
-}
-
-.cm-s-default span.cm-atom {
-    color: #815ba4;
-}
-
-.cm-s-default span.cm-number {
-    color: #815ba4;
-}
-
-.cm-s-default span.cm-property,
-.cm-s-default span.cm-attribute {
-    color: #48b685;
-}
-
-.cm-s-default span.cm-keyword {
-    color: #ef6155;
-}
-
-.cm-s-default span.cm-string {
-    color: #ce7d0a;
-}
-
-celloutput > assignee,
-.cm-s-default span.cm-variable {
-    color: #5668a4;
-    font-weight: 500;
-}
-
-.cm-s-default span.cm-builtin {
-    color: #5e7ad3;
-    font-weight: 500;
-}
-
-.cm-s-default span.cm-variable-2 {
-    color: #06b6ef;
-}
-
-.cm-s-default span.cm-def {
-    color: #f99b15;
-}
-
-.cm-s-default span.cm-bracket {
-    color: #41323f;
-}
-
-.cm-s-default span.cm-tag {
-    color: #ef6155;
-}
-
-.cm-s-default span.cm-link {
-    color: #815ba4;
-}
-
-.cm-s-default span.cm-error {
-    background: #ef6155;
-    color: #776e71;
-}
-
-.cm-s-default .CodeMirror-activeline-background {
-    background: #cfd1c4;
-}
-
-div.CodeMirror span.CodeMirror-matchingbracket {
-    color: unset;
-}
-
-cellinput:focus-within .cm-s-default .CodeMirror-matchingbracket {
-    color: black !important;
-    font-weight: 700;
-    background-color: #1b4bbb21;
-    border-radius: 2px;
-}
-
-.cm-s-default.CodeMirror-empty {
-    color: rgba(0, 0, 0, 0.2);
-    font-style: italic;
 }
