@@ -11,7 +11,7 @@ end
 Base.take!(token::Token) = Base.take!(token.c)
 Base.put!(token::Token) = Base.put!(token.c, nothing)
 Base.isready(token::Token) = Base.isready(token.c)
-
+Base.wait(token::Token) = Base.put!(token.c, Base.take!(token.c))
 
 "Track whether some task needs to be done. `request!(requestqueue)` will make sure that the task is done at least once after calling it. Multiple calls might get bundled into one."
 mutable struct RequestQueue

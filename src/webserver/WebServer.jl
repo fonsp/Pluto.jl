@@ -231,17 +231,19 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
         wait(servertask)
     catch e
         if isa(e, InterruptException)
-            println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
-            close(serversocket)
-            # TODO: HTTP has a kill signal?
-            # TODO: put do_work tokens back 
-            empty!(session.notebooks)
-            for client in values(session.connected_clients)
-                @async close(client.stream)
-            end
-            empty!(session.connected_clients)
-            for (notebook_id, ws) in WorkspaceManager.workspaces
-                WorkspaceManager.unmake_workspace(ws)
+            @sync begin
+                println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+                @async close(serversocket)
+                # TODO: HTTP has a kill signal?
+                # TODO: put do_work tokens back 
+                empty!(session.notebooks)
+                for client in values(session.connected_clients)
+                    @async close(client.stream)
+                end
+                empty!(session.connected_clients)
+                for (notebook_id, ws) in WorkspaceManager.workspaces
+                    @async WorkspaceManager.unmake_workspace(ws)
+                end
             end
         else
             rethrow(e)

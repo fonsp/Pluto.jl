@@ -7,6 +7,7 @@ include("./WorkspaceManager.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
+# - tree viewer
 
 # TODO: test HTTP
 # We could use NodeJS.jl to run these tests without a browser
@@ -14,6 +15,7 @@ include("./WorkspaceManager.jl")
 
 # TODO: test include() inside notebooks
 
-# TODO: test async
+# TODO: test async execution order
+# TODO: test @bind
 
-# TODO: test tree viewer
+# TODO: test if notebooks are saved correctly after edits
