@@ -484,7 +484,7 @@ export class Editor extends Component {
 
                 this.client
                     .send(
-                        "bond_set",
+                        "setbond",
                         {
                             sym: symbol,
                             val: value,

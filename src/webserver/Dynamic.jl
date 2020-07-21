@@ -71,11 +71,11 @@ responses[:deletecell] = (session::ServerSession, body, notebook::Notebook, cell
 
     # replace the cell's code with "" and do a reactive run
     change_remote_cellinput!(session, notebook, to_delete, "", initiator=initiator)
-    runtask = update_save_run!(session, notebook, [cell])
+    runtask = update_save_run!(session, notebook, [to_delete])
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
-    @async begin
+    @asynclog begin
         wait(runtask)
 
         filter!(c -> c.cell_id ≠ to_delete.cell_id, notebook.cells)
@@ -197,7 +197,7 @@ responses[:shutdownworkspace] = (session::ServerSession, body, notebook::Noteboo
 end
 
 
-responses[:bond_set] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:setbond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 

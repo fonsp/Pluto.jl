@@ -71,7 +71,9 @@ function flushclient(client::ClientSession)
         try
             if client.stream !== nothing
                 if isopen(client.stream)
-                    client.stream.frame_type = HTTP.WebSockets.WS_BINARY
+                    if client.stream isa HTTP.WebSockets.WebSocket
+                        client.stream.frame_type = HTTP.WebSockets.WS_BINARY
+                    end
                     write(client.stream, serialize_message(next_to_send) |> codeunits)
                 else
                     put!(flushtoken)
@@ -253,7 +255,7 @@ end
 
 run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
-function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::HTTP.WebSockets.WebSocket)
+function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
     

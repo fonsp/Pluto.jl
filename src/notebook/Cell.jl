@@ -15,7 +15,7 @@ mutable struct Cell
     code_folded::Bool
     running::Bool
     
-    parsedcode::Any
+    parsedcode::Union{Nothing,Expr}
     module_usings::Set{Expr}
     rootassignee::Union{Nothing,Symbol}
 end

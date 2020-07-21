@@ -57,7 +57,7 @@ export const CellInput = ({
             "Shift-Enter": () => on_submit(cm.getValue()),
             "Ctrl-Enter": () => {
                 on_add_after()
-                on_fold(true)
+                // on_fold(true)
                 on_submit(cm.getValue())
             },
             "Shift-Delete": () => {
