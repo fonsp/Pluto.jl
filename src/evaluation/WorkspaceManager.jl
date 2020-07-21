@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExploreExpression, pluto_filename, trycatch_expr, Token, get_pl_env
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, get_pl_env
 import ..PlutoRunner
 import Distributed
 
@@ -114,7 +114,7 @@ end
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
-`expr` has to satisfy `ExploreExpression.is_toplevel_expr`."
+`expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
 function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64,Missing}}}
     eval_fetch_in_workspace(get_workspace(notebook), expr, cell_id, ends_with_semicolon)
 end

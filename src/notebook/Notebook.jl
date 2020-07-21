@@ -1,5 +1,18 @@
 import UUIDs: UUID, uuid1
-import .ExploreExpression: SymbolsState
+import .ExpressionExplorer: SymbolsState
+
+struct NotebookTopology
+	symstates::Dict{Cell,SymbolsState}
+    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+end
+NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
+
+# `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
+# with the performance benefit of only generating SymbolsState() when needed
+function Base.getindex(topology::NotebookTopology, cell::Cell)
+    result = get(topology.symstates, cell, nothing)
+    result === nothing ? SymbolsState() : result
+end
 
 mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
@@ -7,7 +20,7 @@ mutable struct Notebook
     
     path::AbstractString
     notebook_id::UUID
-    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+    topology::NotebookTopology
 
     # buffer will contain all unfetched updates - must be big enough
     pendingupdates::Channel
@@ -17,7 +30,7 @@ end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, Dict{Vector{Symbol},SymbolsState}(), Channel(1024), Token())
+    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token())
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
@@ -50,13 +63,13 @@ function save_notebook(io, notebook::Notebook)
 
     # TODO: this can be optimised by caching the topological order:
     # maintain cache with ordered UUIDs
-    # whenever a run_reactive is done, move the found cells **down** until they are in one group, and order them topologcally within that group. Errable cells go to the bottom.
+    # whenever a run_reactive! is done, move the found cells **down** until they are in one group, and order them topologically within that group. Errable cells go to the bottom.
 
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
     # 15 ms for a massive notebook - 120 cells, 800 lines
-    celltopology = topological_order(notebook, notebook.cells)
+    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
 
-    cells_ordered = union(celltopology.runnable, keys(celltopology.errable))
+    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
@@ -154,12 +167,11 @@ function load_notebook(path::String)::Notebook
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     update_caches!(loaded, loaded.cells)
+    loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") != "true"
-        for cell in loaded.cells
-            cell.symstate = SymbolsState()
-        end
+        loaded.topology = NotebookTopology()
     end
 
     if only_versions_or_lineorder_differ(path, backup_path)

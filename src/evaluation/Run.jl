@@ -1,50 +1,59 @@
 import REPL: ends_with_semicolon
-import .ExploreExpression
-import .ExploreExpression: join_funcname_parts
 
 Base.push!(x::Set{Cell}) = x
 
-"Run given cells and all the cells that depend on them."
-function run_reactive!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, cached_hook::Function=identity)::CellTopology
+"Like @async except it prints errors to the terminal."
+macro asynclog(expr)
+	quote
+		@async begin
+			# because this is being run asynchronously, we need to catch exceptions manually
+			try
+				$(esc(expr))
+			catch ex
+				bt = stacktrace(catch_backtrace())
+				showerror(stderr, ex, bt)
+				rethrow(ex)
+			end
+		end
+	end
+end
+
+"Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
-	# save the old topology - we'll delete variables assigned from it and re-evalutate its cells
-	old_topology = topological_order(notebook, cells)
+	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
+	old_order = topological_order(notebook, old_topology, cells)
 
-	old_runnable = old_topology.runnable
-	to_delete_vars = union!(Set{Symbol}(), (runnable.symstate.assignments for runnable in old_runnable)...)
-	to_delete_funcs = union!(Set{Vector{Symbol}}(), (keys(runnable.symstate.funcdefs) for runnable in old_runnable)...)
+	old_runnable = old_order.runnable
+	to_delete_vars = union!(Set{Symbol}(), (old_topology[cell].assignments for cell in old_runnable)...)
+	to_delete_funcs = union!(Set{Vector{Symbol}}(), (keys(old_topology[cell].funcdefs) for cell in old_runnable)...)
 
-	# update the cache using the new code and compute the new topology
-	update_caches!(notebook, cells)
-
-	new_topology = topological_order(notebook, union(cells, keys(old_topology.errable)))
-	to_run = setdiff(union(new_topology.runnable, old_topology.runnable), keys(new_topology.errable))::Array{Cell,1} # TODO: think if old error cell order matters
-
-	# call the `cached_hook`, which is used to save the notebook to disk (if the caller wants that)
-	cached_hook(notebook)
+	# get the new topological order
+	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
+	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "running"
 	for cell in to_run
 		cell.running = true
 		putnotebookupdates!(session, notebook, clientupdate_cell_running(notebook, cell))
 	end
-	for (cell, error) in new_topology.errable
+	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
 
 	# delete new variables that will be defined by a cell
-	new_runnable = new_topology.runnable
-	to_delete_vars = union!(to_delete_vars, (runnable.symstate.assignments for runnable in new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, (keys(runnable.symstate.funcdefs) for runnable in new_runnable)...)
+	new_runnable = new_order.runnable
+	to_delete_vars = union!(to_delete_vars, (new_topology[cell].assignments for cell in new_runnable)...)
+	to_delete_funcs = union!(to_delete_funcs, (keys(new_topology[cell].funcdefs) for cell in new_runnable)...)
 
 	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-	new_errable = keys(new_topology.errable)
-	to_delete_vars = union!(to_delete_vars, (errable.symstate.assignments for errable in new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, (keys(errable.symstate.funcdefs) for errable in new_errable)...)
+	new_errable = keys(new_order.errable)
+	to_delete_vars = union!(to_delete_vars, (new_topology[cell].assignments for cell in new_errable)...)
+	to_delete_funcs = union!(to_delete_funcs, (keys(new_topology[cell].funcdefs) for cell in new_errable)...)
 
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
@@ -64,25 +73,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, cells::Array{
 
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
-	return new_topology
+	return new_order
 end
-
-
-"See `run_reactive`."
-function run_reactive_async!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; kwargs...)::Task
-	@async begin
-		# because this is being run asynchronously, we need to catch exceptions manually
-		try
-			run_reactive!(session, notebook, cells; kwargs...)
-		catch ex
-			bt = stacktrace(catch_backtrace())
-			showerror(stderr, ex, bt)
-		end
-	end
-end
-
-run_reactive!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = run_reactive!(session, notebook, [cell]; kwargs...)::CellTopology
-run_reactive_async!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = run_reactive_async!(session, notebook, [cell]; kwargs...)::Task
 
 "Run a single cell non-reactively, return run information."
 function run_single!(notebook::Notebook, cell::Cell)
@@ -97,50 +89,21 @@ function run_single!(notebook::Notebook, cell::Cell)
 	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
 
-"Parse and analyze code for the given `cells`; analyze (indirect) function calls."
-function update_caches!(notebook, cells)
-	for cell in cells
-		start_cache!(notebook, cell)
-	end
-	update_funcdefs!(notebook)
-	for cell in cells
-		finish_cache!(notebook, cell)
-	end
-end
+###
+# CONVENIENCE FUNCTIONS
+###
 
-"Update a single cell's cache - parsed code etc"
-function start_cache!(notebook::Notebook, cell::Cell)
-	cell.parsedcode = parse_custom(notebook, cell)
-	cell.module_usings = ExploreExpression.compute_usings(cell.parsedcode)
-	cell.rootassignee = ExploreExpression.get_rootassignee(cell.parsedcode)
-	cell.symstate = try
-		ExploreExpression.compute_symbolreferences(cell.parsedcode)
-	catch ex
-		@error "Expression explorer failed on: " cell.code
-		showerror(stderr, ex, stacktrace(backtrace()))
-		ExploreExpression.SymbolsState()
+function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, kwargs...)
+	update_caches!(notebook, cells)
+	old = notebook.topology
+	new = notebook.topology = updated_topology(old, notebook, cells)
+	save && save_notebook(notebook)
+	if run_async
+		@asynclog run_reactive!(session, notebook, old, new, cells; kwargs...)
+	else
+		run_reactive!(session, notebook, old, new, cells; kwargs...)
 	end
 end
 
-"Account for globals referenced in function calls by including `SymbolsState`s from called functions in the cell itself."
-function finish_cache!(notebook::Notebook, cell::Cell)
-	calls = all_indirect_calls(notebook, cell.symstate)
-	calls = union!(calls, keys(cell.symstate.funcdefs)) # _assume_ that all defined functions are called inside the cell to trigger eager reactivity.
-	filter!(in(keys(notebook.combined_funcdefs)), calls)
-
-	union!(cell.symstate.references, (notebook.combined_funcdefs[func].references for func in calls)...)
-	union!(cell.symstate.assignments, (notebook.combined_funcdefs[func].assignments for func in calls)...)
-
-	add_funcnames!(notebook, cell, calls)
-end
-
-"""Add method calls and definitions as symbol references and definition, resp.
-
-Will add `Module.func` (stored as `Symbol[:Module, :func]`) as Symbol("Module.func") (which is not the same as the expression `:(Module.func)`)."""
-function add_funcnames!(notebook::Notebook, cell::Cell, calls::Set{Vector{Symbol}})
-	push!(cell.symstate.references, (cell.symstate.funccalls .|> join_funcname_parts)...)
-	push!(cell.symstate.assignments, (keys(cell.symstate.funcdefs) .|> join_funcname_parts)...)
-
-	union!(cell.symstate.references, (notebook.combined_funcdefs[func].funccalls .|> join_funcname_parts for func in calls)...)
-	union!(cell.symstate.assignments, (keys(notebook.combined_funcdefs[func].funcdefs) .|> join_funcname_parts for func in calls)...)
-end
+update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
+update_run!(args...) = update_save_run!(args...; save=false)

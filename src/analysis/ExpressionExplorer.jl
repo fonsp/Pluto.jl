@@ -1,5 +1,5 @@
-module ExploreExpression
-export compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
+module ExpressionExplorer
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
 
 import Markdown
 import Base: union, union!, ==, push!
@@ -204,7 +204,7 @@ end
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
 This is **not** the same as the expression `:(Module.func)`, but is used to identify the function name using a single `Symbol` (like normal variables).
-This means that it is only the inverse of `ExploreExpression.split_funcname` iff `length(parts) ≤ 1`."""
+This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`."""
 function join_funcname_parts(parts::FuncName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
@@ -610,6 +610,16 @@ function compute_symbolreferences(ex::Any)::SymbolsState
         inner_symstate.funccalls = setdiff(inner_symstate.funccalls, keys(symstate.funcdefs))
     end
     symstate
+end
+
+function try_compute_symbolreferences(ex::Any)
+	try
+		compute_symbolreferences(ex)
+	catch e
+		@error "Expression explorer failed on: " ex
+		showerror(stderr, e, stacktrace(backtrace()))
+		SymbolsState()
+	end
 end
 
 # TODO: this can be done during the `explore` recursion

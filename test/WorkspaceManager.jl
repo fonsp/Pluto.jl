@@ -1,6 +1,5 @@
 using Test
-using Pluto
-import Pluto: run_reactive!, WorkspaceManager, ClientSession, ServerSession
+import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
@@ -26,8 +25,8 @@ import Pluto: run_reactive!, WorkspaceManager, ClientSession, ServerSession
 
         @test notebookA.path != notebookB.path
 
-        run_reactive!(🍭, notebookA, notebookA.cells[1])
-        run_reactive!(🍭, notebookB, notebookB.cells[1])
+        update_save_run!(🍭, notebookA, notebookA.cells[1])
+        update_save_run!(🍭, notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].errored == true
     end

@@ -70,17 +70,17 @@ export class PlutoConnection {
 
     /**
      *
-     * @param {string} messageType
+     * @param {string} message_type
      * @param {Object} body
      * @param {{notebook_id?: string, cell_id?: string}} metadata
      * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
      * @returns {(undefined|Promise<Object>)}
      */
-    send(messageType, body = {}, metadata = {}, create_promise = true) {
+    send(message_type, body = {}, metadata = {}, create_promise = true) {
         const request_id = this.get_short_unqiue_id()
 
         var toSend = {
-            type: messageType,
+            type: message_type,
             client_id: this.client_id,
             request_id: request_id,
             body: body,

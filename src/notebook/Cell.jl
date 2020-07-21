@@ -1,5 +1,5 @@
 import UUIDs: UUID, uuid1
-import .ExploreExpression: SymbolsState
+import .ExpressionExplorer: SymbolsState
 import JSON: lower
 
 "The building block of `Notebook`s. Contains code, output and reactivity data."
@@ -15,12 +15,11 @@ mutable struct Cell
     code_folded::Bool
     running::Bool
     
-    parsedcode::Any
-    symstate::SymbolsState
+    parsedcode::Union{Nothing,Expr}
     module_usings::Set{Expr}
     rootassignee::Union{Nothing,Symbol}
 end
 
-Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, SymbolsState(), Set{Expr}(), nothing)
+Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, Set{Expr}(), nothing)
 Cell(code) = Cell(uuid1(), code)
 Cell() = Cell("")
