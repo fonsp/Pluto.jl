@@ -1,6 +1,5 @@
 import HTTP
 import Markdown: htmlesc
-import FileWatching
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 

@@ -288,7 +288,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
 
-        return mapfoldl(a->explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+        return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
     elseif ex.head == :call
         # Does not create scope
 
@@ -444,10 +444,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         # and explore those :)
 
-        indexoffirstassignment = findfirst(a->isa(a, Expr) && a.head == :(=), ex.args)
+        indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
         if indexoffirstassignment !== nothing
             # we have one of two cases, see next `if`
-            indexofsecondassignment = findnext(a->isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
+            indexofsecondassignment = findnext(a -> isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
 
             if indexofsecondassignment !== nothing
                 # we have a named tuple, e.g. (a=1, b=2)
@@ -481,7 +481,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             ex.args
             end
 
-            packagenames = map(e->e.args[end], imports)
+            packagenames = map(e -> e.args[end], imports)
 
             return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames))
         else
@@ -510,12 +510,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
     else
         # fallback, includes:
-        # begin, block, do, toplevel
+        # begin, block, do, toplevel, const
         # (and hopefully much more!)
         
         # Does not create scope (probably)
 
-        return mapfoldl(a->explore!(a, scopestate), union!, ex.args, init=SymbolsState())
+        return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
 
@@ -527,7 +527,7 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         # get the function name
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         # and explore the function arguments
-        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
+        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # recurse
@@ -569,7 +569,7 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return Symbol[name], SymbolsState()
 
     elseif ex.head == :parameters || ex.head == :tuple
-        return mapfoldl(a->explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
+        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
 
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()

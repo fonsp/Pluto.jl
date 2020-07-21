@@ -25,7 +25,7 @@ function set_current_module(newname)
     global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
 end
 
-cell_results = Dict{UUID, WeakRef}()
+const cell_results = Dict{UUID, WeakRef}()
 
 function fetch_formatted_result(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     ans = cell_results[id].value
@@ -104,7 +104,7 @@ function delete_toplevel_methods(f::Function)
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
     # 
-    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer `primary_world`.
+    # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
@@ -139,7 +139,7 @@ function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbo
     catch; end
 end
 
-# these deal with some incosistencies in Julia's internal (undocumented!) variable names
+# these deal with some inconsistencies in Julia's internal (undocumented!) variable names
 const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world]) |> first # Julia v1.3 and v1.0 resp.
 const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
 const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
@@ -177,7 +177,7 @@ end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
-iocontext_compact = IOContext(stdout, :color => false, :compact => true, :limit => true, :displaysize => (18, 120))
+iocontext_compact = IOContext(iocontext, :compact => true)
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
@@ -299,7 +299,7 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
                 # LaTeXStrings prints $ at the start and end.
                 # We strip those, since Markdown.LaTeX only contains the math content
                 texed = repr(mime, x)
-                html(io, LaTeX(strip(texed, '$')))
+                html(io, Markdown.LaTeX(strip(texed, '$')))
             else                
                 show(io, mime, x)
             end
@@ -333,7 +333,7 @@ end
 # TREE VIEWER
 ###
 
-tree_display_limit = 50
+const tree_display_limit = 50
 
 function show_array_row(io::IO, pair::Tuple)
     i, el = pair
@@ -516,9 +516,9 @@ end
 
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
-    print(io, "<bond def=\"$(bond.defines)\">")
-    show(io, MIME"text/html"(), bond.element)
-    print(io, "</bond>")
+    withtag(io, :bond, :def => bond.defines) do 
+        show(io, MIME"text/html"(), bond.element)
+    end
 end
 
 """`@bind symbol element`
