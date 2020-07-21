@@ -25,7 +25,7 @@ function serialize_message(message::UpdateMessage)
     sprint(serialize_message_to_stream, message)
 end
 
-function change_remote_cellinput!(session::ServerSession, notebook, cell, newcode; initiator::Union{Initiator,Missing}=missing)
+function change_remote_cellinput!(session::ServerSession, notebook::Notebook, cell::Cell, newcode; initiator::Union{Initiator,Missing}=missing)
     # i.e. Ctrl+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
@@ -34,9 +34,6 @@ function change_remote_cellinput!(session::ServerSession, notebook, cell, newcod
         cell.code = newcode
         cell.parsedcode = nothing
     end
-
-    # TODO: feedback to user about File IO
-    save_notebook(notebook)
     
     putnotebookupdates!(session, notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
@@ -74,7 +71,7 @@ responses[:deletecell] = (session::ServerSession, body, notebook::Notebook, cell
 
     # replace the cell's code with "" and do a reactive run
     change_remote_cellinput!(session, notebook, to_delete, "", initiator=initiator)
-    runtask = run_reactive_async!(session, notebook, cell)
+    runtask = update_save_run!(session, notebook, [cell])
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
@@ -115,7 +112,7 @@ responses[:changecell] = (session::ServerSession, body, notebook::Notebook, cell
 
     change_remote_cellinput!(session, notebook, cell, newcode, initiator=initiator)
     putnotebookupdates!(session, notebook, clientupdate_cell_running(notebook, cell, initiator=initiator))
-    run_reactive_async!(session, notebook, cell)
+    update_save_run!(session, notebook, [cell]; run_async=true)
 end
 
 responses[:foldcell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
@@ -127,13 +124,13 @@ responses[:foldcell] = (session::ServerSession, body, notebook::Notebook, cell::
 end
 
 responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    run_reactive_async!(session, notebook, cell)
+    update_save_run!(session, notebook, [cell]; run_async=true, save=false)
 end
 
 responses[:runmultiple] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
-    run_reactive_async!(session, notebook, cells)
+    update_save_run!(session, notebook, cells; run_async=true, save=false)
 end
 
 responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
@@ -204,7 +201,7 @@ responses[:bond_set] = (session::ServerSession, body, notebook::Notebook; initia
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
-    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
+    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
     putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
     
     if any_dependents
@@ -213,8 +210,9 @@ responses[:bond_set] = (session::ServerSession, body, notebook::Notebook; initia
             WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)
             WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
         end
-        to_reeval = where_referenced(notebook, Set{Symbol}([bound_sym]))
-        run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook)
+        to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+
+        update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false)
     end
 
 end

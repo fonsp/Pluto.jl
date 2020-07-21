@@ -68,9 +68,10 @@ function http_router_for(session::ServerSession)
             nb = load_notebook(path)
             session.notebooks[nb.notebook_id] = nb
             if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-                run_reactive_async!(session, nb, nb.cells) # TODO: send message when initial run completed
+                update_save_run!(session, nb, nb.cells; run_async=true)
+                # TODO: send message when initial run completed
             end
-            @async putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+            @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
             return notebook_redirect_response(nb)
         catch e
             return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -79,12 +80,9 @@ function http_router_for(session::ServerSession)
 
     function serve_newfile(req::HTTP.Request)
         nb = emptynotebook()
-        save_notebook(nb)
+        update_save_run!(session, nb, nb.cells; run_async=true)
         session.notebooks[nb.notebook_id] = nb
-        if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-            run_reactive_async!(session, nb, nb.cells)
-        end
-        @async putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
         return notebook_redirect_response(nb)
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)

@@ -6,9 +6,9 @@ struct CyclicReferenceError <: ReactivityError
 	syms::Set{Symbol}
 end
 
-function CyclicReferenceError(cycle::Cell...)
-	referenced_during_cycle = union((c.symstate.references for c in cycle)...)
-	assigned_during_cycle = union((c.symstate.assignments for c in cycle)...)
+function CyclicReferenceError(topology::NotebookTopology, cycle::Cell...)
+	referenced_during_cycle = union((topology[c].references for c in cycle)...)
+	assigned_during_cycle = union((topology[c].assignments for c in cycle)...)
 	
 	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
 end
@@ -18,10 +18,11 @@ struct MultipleDefinitionsError <: ReactivityError
 	syms::Set{Symbol}
 end
 
-function MultipleDefinitionsError(cell::Cell, all_definers)
+function MultipleDefinitionsError(topology::NotebookTopology, cell::Cell, all_definers)
 	competitors = setdiff(all_definers, [cell])
-	union((cell.symstate.assignments ∩ c.symstate.assignments for c in competitors)...) |>
-	MultipleDefinitionsError
+	MultipleDefinitionsError(
+		union((topology[cell].assignments ∩ topology[c].assignments for c in competitors)...)
+	)
 end
 
 # Also update identically name variables in `editor.js`.

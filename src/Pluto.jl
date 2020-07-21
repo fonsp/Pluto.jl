@@ -32,7 +32,7 @@ if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
 end
 
 include("./evaluation/Tokens.jl")
-include("./analysis/ExploreExpression.jl")
+include("./analysis/ExpressionExplorer.jl")
 include("./runner/PlutoRunner.jl")
 
 include("./notebook/PathHelpers.jl")
@@ -44,6 +44,7 @@ include("./analysis/Errors.jl")
 include("./analysis/Parse.jl")
 include("./analysis/Topology.jl")
 include("./evaluation/WorkspaceManager.jl")
+include("./evaluation/Update.jl")
 include("./evaluation/Run.jl")
 
 include("./webserver/WebServer.jl")

@@ -1,3 +1,5 @@
+import .ExpressionExplorer
+
 "Generate a file name to be given to the parser (will show up in stack traces)."
 pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" * string(cell.cell_id)
 
@@ -38,7 +40,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     end
 
     # 2.
-    topleveled = if ExploreExpression.is_toplevel_expr(raw)
+    topleveled = if ExpressionExplorer.is_toplevel_expr(raw)
         raw
     else
         filename = pluto_filename(notebook, cell)
@@ -68,7 +70,7 @@ preprocess_expr(val::Any) = val
 
 "Wrap `expr` inside a timing block."
 function timed_expr(expr::Expr)::Expr
-    # @assert ExploreExpression.is_toplevel_expr(expr)
+    # @assert ExpressionExplorer.is_toplevel_expr(expr)
 
     linenumbernode = expr.args[1]
     root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give

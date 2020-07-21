@@ -1,7 +1,7 @@
 import Pluto
-import Pluto.ExploreExpression: SymbolsState, compute_symbolreferences
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences
 
-"Calls `ExploreExpression.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
+"Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
 # Example
 
@@ -67,6 +67,11 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
 end
 
+function setcode(cell, newcode)
+    cell.parsedcode = nothing
+    cell.code = newcode
+end
+
 function occursinerror(needle, haystack::Pluto.Cell)
     return haystack.errored && occursin(needle, haystack.output_repr)
 end
@@ -109,7 +114,7 @@ end
 
 "Whether the `notebook` runs without errors."
 function nb_is_runnable(session::Pluto.ServerSession, notebook::Pluto.Notebook)
-    Pluto.run_reactive!(session, notebook, notebook.cells)
+    Pluto.update_run!(session, notebook, notebook.cells)
     errored = filter(c -> c.errored, notebook.cells)
     if !isempty(errored)
         @show errored
