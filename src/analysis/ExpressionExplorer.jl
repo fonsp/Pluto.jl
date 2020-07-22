@@ -428,20 +428,25 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :tuple
         # Does not create scope
         
-        # Is something like:
-        # a,b,c = 1,2,3
+        # There are three (legal) cases:
+        # 1. Creating a tupe:
+        #   (a, b, c)
         
+        # 2. Creating a named tuple:
+        #   (a=1, b=2, c=3)
 
+        # 3. Multiple assignments
+        # a,b,c = 1,2,3
         # This parses to:
         # head = :tuple
         # args = [:a, :b, :(c=1), :2, :3]
-        
+        # 
         # 🤔
         # we turn it into two expressions:
-
+        #
         # (a, b) = (2, 3)
         # (c = 1)
-
+        #
         # and explore those :)
 
         indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
@@ -449,14 +454,16 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # we have one of two cases, see next `if`
             indexofsecondassignment = findnext(a -> isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
 
-            if indexofsecondassignment !== nothing
+            if length(ex.args) == 1 || indexofsecondassignment !== nothing
+                # 2.
                 # we have a named tuple, e.g. (a=1, b=2)
                 new_args = map(ex.args) do a
                     (a isa Expr && a.head == :(=)) ? a.args[2] : a
                 end
                 return explore!(Expr(:block, new_args...), scopestate)
             else
-            # we have a tuple assignment, e.g. `a, (b, c) = [1, [2, 3]]`
+                # 3. 
+                # we have a tuple assignment, e.g. `a, (b, c) = [1, [2, 3]]`
                 before = ex.args[1:indexoffirstassignment - 1]
                 after = ex.args[indexoffirstassignment + 1:end]
 
@@ -466,6 +473,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 return union!(symstate_middle, symstate_outer)
             end
         else
+            # 1.
+            # good 'ol tuple
             return explore!(Expr(:block, ex.args...), scopestate)
         end
     elseif ex.head == :(.) && ex.args[2] isa Expr && ex.args[2].head == :tuple
