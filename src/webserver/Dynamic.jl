@@ -71,7 +71,7 @@ responses[:deletecell] = (session::ServerSession, body, notebook::Notebook, cell
 
     # replace the cell's code with "" and do a reactive run
     change_remote_cellinput!(session, notebook, to_delete, "", initiator=initiator)
-    runtask = update_save_run!(session, notebook, [to_delete])
+    runtask = update_save_run!(session, notebook, [to_delete]; run_async=true)::Task
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
