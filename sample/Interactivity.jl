@@ -19,7 +19,7 @@ md"# Introducing _bound_ variables
 With the new `@bind` macro, Pluto.jl can listen to real-time events from HTML objects!"
 
 # ╔═╡ bd24d02c-7eac-11ea-14ab-95021678e71e
-@bind x html"<input type='range'>"
+@bind x html"<input type=range>"
 
 # ╔═╡ cf72c8a2-7ead-11ea-32b7-d31d5b2dacc2
 md"This syntax displays the HTML object as the cell's output, and uses its latest value as the definition of `x`. Of course, the variable `x` is _reactive_, and all references to `x` come to life ✨
@@ -39,8 +39,8 @@ The `@bind` macro returns a `Bond` object, which can be used inside Markdown and
 
 # ╔═╡ fc99521c-7eae-11ea-269b-0d124b8cbe48
 begin
-	🐶slider = @bind 🐶 html"<input type='range'>"
-	🐱slider = @bind 🐱 html"<input type='range'>"
+	🐶slider = @bind 🐶 html"<input type=range>"
+	🐱slider = @bind 🐱 html"<input type=range>"
 	
 	md"""**How many pets do you have?**
 	
@@ -62,17 +62,17 @@ You can use _any_ DOM element that fires an `input` event. For example:"
 
 # ╔═╡ c7203996-7f14-11ea-00a3-8192ccc54bd6
 md"""
-`a = ` $(@bind a html"<input type='range' >")
+`a = ` $(@bind a html"<input type=range >")
 
-`b = ` $(@bind b html"<input type='text' >")
+`b = ` $(@bind b html"<input type=text >")
 
-`c = ` $(@bind c html"<input type='button' value='Click'>")
+`c = ` $(@bind c html"<input type=button value='Click'>")
 
-`d = ` $(@bind d html"<input type='checkbox' >")
+`d = ` $(@bind d html"<input type=checkbox >")
 
 `e = ` $(@bind e html"<select><option value='one'>First</option><option value='two'>Second</option></select>")
 
-`f = ` $(@bind f html"<input type='color' >")
+`f = ` $(@bind f html"<input type=color >")
 
 """
 
@@ -150,8 +150,10 @@ You can use the (tiny) package [`PlutoUI`](https://github.com/fonsp/PlutoUI.jl) 
 instead of 
 
 ```julia
-@bind x html"<input type='range' min='5' max'15'>"
+@bind x html"<input type=range min=5 max=15>"
 ```
+
+Have a look at the [sample notebook about PlutoUI](./sample/PlutoUI.jl)!
 
 _The `@bind` syntax in not limited to `html"..."` objects, but **can be used for any HTML-showable object!**_
 """
@@ -178,12 +180,12 @@ If you put a bond and a reference to the same variable together, it will keep ev
 
 So **do not** write
 ```julia
-md""\"$(@bind r html"<input type='range'>")  $(r^2)""\"
+md""\"$(@bind r html"<input type=range>")  $(r^2)""\"
 ```
 
 Instead, create two cells:
 ```julia
-md""\"$(@bind r html"<input type='range'>")""\"
+md""\"$(@bind r html"<input type=range>")""\"
 ```
 ```julia
 r^2

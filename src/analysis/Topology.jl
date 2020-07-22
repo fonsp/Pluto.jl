@@ -111,6 +111,8 @@ function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, 
 	return found
 end
 
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
+
 """Assigns a number to a cell - cells with a lower number might run first. 
 
 This is used to run md"..." cells first, and to treat reactive dependencies between cells that cannot be found using static code anylsis."""
@@ -118,8 +120,8 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Numb
 	if isempty(topology[cell].assignments) && 
 		isempty(topology[cell].funccalls) &&
 		isempty(topology[cell].funcdefs) &&
-		length(topology[cell].references) == 1 && 
-		(Symbol("@md_str") ∈ topology[cell].references || Symbol("@html_str") ∈ topology[cell].references)
+		length(topology[cell].references) <= 2 && 
+		topology[cell].references ⊆ md_and_friends
 		# https://github.com/fonsp/Pluto.jl/issues/209
 		1
 	elseif !isempty(cell.module_usings)
