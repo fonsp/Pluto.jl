@@ -157,7 +157,6 @@ end
 
             # println(read(new_nb.path, String))
 
-            @test jl_is_runnable(new_nb.path; only_undefvar=true)
             if name ∉ expect_error
                 @test jl_is_runnable(new_nb.path; only_undefvar=false)
             end
