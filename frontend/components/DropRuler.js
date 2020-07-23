@@ -82,7 +82,6 @@ export class DropRuler extends Component {
                 // the setState callback seems to be broken (uses the outdated state)
                 // so we do it ourselves:
                 this.props.on_selection({
-                    selecting: true,
                     selection_start_index: new_index,
                     selection_stop_index: new_index,
                 })
@@ -117,7 +116,6 @@ export class DropRuler extends Component {
                     // the setState callback seems to be broken (uses the outdated state)
                     // so we do it ourselves:
                     this.props.on_selection({
-                        selecting: true,
                         selection_start_index: this.state.selection_start_index,
                         selection_stop_index: new_stop_index,
                     })
@@ -128,6 +126,22 @@ export class DropRuler extends Component {
         document.addEventListener("selectstart", (e) => {
             if (this.state.selecting) {
                 e.preventDefault()
+            }
+        })
+
+        document.addEventListener("keydown", (e) => {
+            switch (e.keyCode) {
+                case 65: // a
+                    if (e.ctrlKey) {
+                        if (document.activeElement === document.body && window.getSelection().isCollapsed) {
+                            this.props.on_selection({
+                                selection_start_index: 0,
+                                selection_stop_index: Infinity,
+                            })
+                            e.preventDefault()
+                        }
+                    }
+                    break
             }
         })
     }

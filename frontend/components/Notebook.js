@@ -10,6 +10,7 @@ export const Notebook = ({
     disable_input,
     focus_after_creation,
     all_completed_promise,
+    selected_friends,
     requests,
     client,
     notebook_id,
@@ -26,6 +27,7 @@ export const Notebook = ({
                     disable_input=${disable_input}
                     focus_after_creation=${focus_after_creation}
                     all_completed_promise=${all_completed_promise}
+                    selected_friends=${selected_friends}
                     requests=${requests}
                     client=${client}
                     notebook_id=${notebook_id}

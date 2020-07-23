@@ -428,7 +428,7 @@ cell.selected {
     border-radius: 0 3px 3px 0;
 }
 
-cell.selected > cellinput,
+cell.selected > cellinput > div.CodeMirror,
 cell.selected > celloutput {
     opacity: 0.7;
 }
@@ -659,7 +659,7 @@ cellinput > button > span {
     runarea > button,
     cellshoulder > button,
     cell > runarea {
-        opacity: 0%;
+        opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
@@ -667,7 +667,7 @@ cellinput > button > span {
     cell:hover > cellinput > button,
     cell > runarea > button,
     cell:hover > cellshoulder > button {
-        opacity: 25%;
+        opacity: 0.25;
     }
     preamble > button:hover,
     cell > button:hover,
@@ -675,7 +675,7 @@ cellinput > button > span {
     cell > runarea > button:hover,
     cell > cellshoulder > button:hover,
     cell:hover > runarea {
-        opacity: 100%;
+        opacity: 1;
         /* to make it feel snappy: */
         transition: opacity 0.05s ease-in-out;
     }
@@ -686,7 +686,7 @@ cellinput > button > span {
     cellinput > button,
     cellshoulder > button,
     cell > runarea {
-        opacity: 0%;
+        opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
@@ -694,13 +694,13 @@ cellinput > button > span {
     cell:focus-within > cellinput > button,
     cell:focus-within > runarea,
     cell:focus-within > cellshoulder > button {
-        opacity: 25%;
+        opacity: 0.25;
     }
     cell > button:focus-within,
     cell > cellinput > button:focus-within cell > runarea > button:focus-within,
     cell > cellshoulder > button:focus-within,
     cell > runarea {
-        opacity: 100%;
+        opacity: 1;
         /* to make it feel snappy: */
         transition: opacity 0.05s ease-in-out;
     }

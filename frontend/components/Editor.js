@@ -519,6 +519,15 @@ export class Editor extends Component {
             },
         }
 
+        this.selected_friends = (cell_id) => {
+            const cell = this.state.notebook.cells.find((c) => c.cell_id === cell_id)
+            if (cell.selected) {
+                return this.state.notebook.cells.filter((c) => c.selected)
+            } else {
+                return [cell]
+            }
+        }
+
         this.submit_file_change = (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
@@ -707,6 +716,7 @@ export class Editor extends Component {
                     disable_input=${!this.state.connected}
                     focus_after_creation=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
+                    selected_friends=${this.selected_friends}
                     requests=${this.requests}
                     client=${this.client}
                 />

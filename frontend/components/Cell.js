@@ -79,6 +79,7 @@ export const Cell = ({
     disable_input,
     focus_after_creation,
     all_completed_promise,
+    selected_friends,
     requests,
     client,
     notebook_id,
@@ -118,7 +119,9 @@ export const Cell = ({
             <cellshoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
-                        requests.fold_remote_cell(cell_id, !code_folded)
+                        selected_friends(cell_id).forEach((friend) => {
+                            requests.fold_remote_cell(friend.cell_id, !code_folded)
+                        })
                     }}
                     class="foldcode"
                     title="Show/hide code"
@@ -147,12 +150,15 @@ export const Cell = ({
                     requests.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
-                    if (running) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                            requests.interrupt_remote(cell_id)
+                    const friends = selected_friends(cell_id)
+                    if (friends.length == 1 || confirm(`Delete ${friends.length} cells?`)) {
+                        if (friends.some((f) => f.running)) {
+                            if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                                requests.interrupt_remote(cell_id)
+                            }
+                        } else {
+                            friends.forEach((f) => requests.delete_cell(f.cell_id))
                         }
-                    } else {
-                        requests.delete_cell(cell_id)
                     }
                 }}
                 on_add_after=${() => {
@@ -176,7 +182,9 @@ export const Cell = ({
                     if (running) {
                         requests.interrupt_remote(cell_id)
                     } else {
-                        requests.change_remote_cell(cell_id, local_code.body)
+                        selected_friends(cell_id).forEach((f) => {
+                            requests.change_remote_cell(f.cell_id, f.local_code.body)
+                        })
                     }
                 }}
                 runtime=${runtime}
