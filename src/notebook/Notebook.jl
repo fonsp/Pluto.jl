@@ -38,6 +38,7 @@ function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothin
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
 end
 
+const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
 const _cell_id_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
@@ -47,7 +48,7 @@ const _cell_suffix = "\n\n"
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 function save_notebook(io, notebook::Notebook)
-    println(io, "### A Pluto.jl notebook ###")
+    println(io, _notebook_header)
     println(io, "# ", PLUTO_VERSION_STR)
     # Anything between the version string and the first UUID delimiter will be ignored by the notebook loader.
     println(io, "")
@@ -96,7 +97,7 @@ save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 function load_notebook_nobackup(io, path)::Notebook
     firstline = String(readline(io))
 
-    if firstline != "### A Pluto.jl notebook ###"
+    if firstline != _notebook_header
         error("File is not a Pluto.jl notebook")
     end
 

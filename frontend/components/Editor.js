@@ -43,6 +43,8 @@ export class Editor extends Component {
                 }
             }, callback)
         }
+        this.set_notebook_state = set_notebook_state.bind(this)
+
         // convenience method
         const set_cell_state = (cell_id, new_state_props, callback) => {
             this.setState((prevstate) => {
@@ -709,7 +711,30 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler} requests=${this.requests} />
+                <${DropRuler}
+                    requests=${this.requests}
+                    on_selection=${(s) => {
+                        const from = Math.min(s.selection_start_index, s.selection_stop_index)
+                        const to = Math.max(s.selection_start_index, s.selection_stop_index)
+                        this.set_notebook_state((prevstate) => {
+                            return {
+                                cells: prevstate.cells.map((c, i) => {
+                                    if (from <= i && i < to) {
+                                        return {
+                                            ...c,
+                                            selected: true,
+                                        }
+                                    } else {
+                                        return {
+                                            ...c,
+                                            selected: false,
+                                        }
+                                    }
+                                }),
+                            }
+                        })
+                    }}
+                />
             </main>
             <${LiveDocs} desired_doc_query=${this.state.desired_doc_query} client=${this.client} notebook=${this.state.notebook} />
             <footer>

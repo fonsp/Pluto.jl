@@ -23,6 +23,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {?number} runtime
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
+ * @property {boolean} selected
  */
 
 /**
@@ -51,6 +52,7 @@ export const empty_cell_data = (cell_id) => {
             mime: "text/plain",
             rootassignee: null,
         },
+        selected: false,
     }
 }
 
@@ -62,6 +64,7 @@ export const empty_cell_data = (cell_id) => {
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
 export const Cell = ({
+    cell_id,
     remote_code,
     local_code,
     code_folded,
@@ -69,6 +72,7 @@ export const Cell = ({
     runtime,
     errored,
     output,
+    selected,
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
@@ -77,7 +81,6 @@ export const Cell = ({
     all_completed_promise,
     requests,
     client,
-    cell_id,
     notebook_id,
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -105,7 +108,8 @@ export const Cell = ({
                 "output-notinsync": output.body == null,
                 "has-assignee": !output.errored && output.rootassignee != null,
                 "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
-                "error": errored,
+                "errored": errored,
+                "selected": selected,
                 "code-differs": remote_code.body !== local_code.body,
                 "code-folded": code_folded && cm_forced_focus == null,
             })}

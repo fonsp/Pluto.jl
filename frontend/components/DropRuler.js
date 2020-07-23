@@ -5,21 +5,30 @@ export class DropRuler extends Component {
         super()
         this.elementRef = null
         this.dropee = null
-        this.dropPositions = []
+        this.cell_edges = []
+        this.precompute_cell_edges = () => {
+            const cell_nodes = Array.from(document.querySelectorAll("notebook > cell"))
+            this.cell_edges = cell_nodes.map((el) => el.offsetTop)
+            this.cell_edges.push(cell_nodes.last().offsetTop + cell_nodes.last().scrollHeight)
+        }
         this.getDropIndexOf = (pageY) => {
-            const distances = this.dropPositions.map((p) => Math.abs(p - pageY))
+            const distances = this.cell_edges.map((p) => Math.abs(p - pageY))
             return argmin(distances)
         }
 
         this.state = {
             dragging: false,
-            dropIndex: 0,
+            drop_index: 0,
+
+            selecting: false,
+            selection_start_index: 0,
+            selection_stop_index: 0,
         }
     }
 
     componentDidMount() {
         this.elementRef = this.base
-        document.ondragstart = (e) => {
+        document.addEventListener("dragstart", (e) => {
             if (e.target.tagName != "CELLSHOULDER") {
                 this.setState({
                     dragging: false,
@@ -31,37 +40,100 @@ export class DropRuler extends Component {
                 })
                 this.dropee = e.target.parentElement
 
-                const cellNodes = Array.from(document.querySelectorAll("notebook > cell"))
-                this.dropPositions = cellNodes.map((el) => el.offsetTop)
-                this.dropPositions.push(cellNodes.last().offsetTop + cellNodes.last().scrollHeight)
+                this.precompute_cell_edges()
             }
-        }
+        })
 
-        document.ondragover = (e) => {
+        document.addEventListener("dragover", (e) => {
             // Called continuously during drag
             this.setState({
-                dropIndex: this.getDropIndexOf(e.pageY),
+                drop_index: this.getDropIndexOf(e.pageY),
             })
             e.preventDefault()
-        }
-        document.ondragend = (e) => {
+        })
+        document.addEventListener("dragend", (e) => {
             // Called after drag, also when dropped outside of the browser or when ESC is pressed
             this.setState({
                 dragging: false,
             })
-        }
-        document.ondrop = (e) => {
+        })
+        document.addEventListener("drop", (e) => {
             if (!this.dropee) {
                 return
             }
             // Called when drag-dropped somewhere on the page
-            const dropIndex = this.getDropIndexOf(e.pageY)
-            this.props.requests.move_remote_cell(this.dropee.id, dropIndex)
-        }
+            const drop_index = this.getDropIndexOf(e.pageY)
+            this.props.requests.move_remote_cell(this.dropee.id, drop_index)
+        })
+
+        /* SELECTIONS */
+
+        document.addEventListener("mousedown", (e) => {
+            // console.log("MOUSE DOWN", e)
+            if (e.target.tagName === "MAIN" || e.target.tagName === "NOTEBOOK" || e.target.tagName === "PREAMBLE") {
+                console.log("SELECTION START")
+                this.precompute_cell_edges()
+                const new_index = this.getDropIndexOf(e.pageY)
+                this.setState({
+                    selecting: true,
+                    selection_start_index: new_index,
+                    selection_stop_index: new_index,
+                })
+                // the setState callback seems to be broken (uses the outdated state)
+                // so we do it ourselves:
+                this.props.on_selection({
+                    selecting: true,
+                    selection_start_index: new_index,
+                    selection_stop_index: new_index,
+                })
+            }
+        })
+
+        document.addEventListener("mouseup", (e) => {
+            if (this.state.selecting) {
+                console.log("SELECTION END")
+                this.setState({
+                    selecting: false,
+                    selection_start_index: null,
+                    selection_stop_index: null,
+                })
+                // the setState callback seems to be broken (uses the outdated state)
+                // so we do it ourselves:
+                // this.props.on_selection({
+                //     selecting: false,
+                //     selection_start_index: null,
+                //     selection_stop_index: null,
+                // })
+            }
+        })
+
+        document.addEventListener("mousemove", (e) => {
+            if (this.state.selecting) {
+                const new_stop_index = this.getDropIndexOf(e.pageY)
+                if (new_stop_index !== this.state.selection_stop_index) {
+                    this.setState({
+                        selection_stop_index: new_stop_index,
+                    })
+                    // the setState callback seems to be broken (uses the outdated state)
+                    // so we do it ourselves:
+                    this.props.on_selection({
+                        selecting: true,
+                        selection_start_index: this.state.selection_start_index,
+                        selection_stop_index: new_stop_index,
+                    })
+                }
+            }
+        })
+
+        document.addEventListener("selectstart", (e) => {
+            if (this.state.selecting) {
+                e.preventDefault()
+            }
+        })
     }
 
     render() {
-        return html`<dropruler style=${this.state.dragging ? { display: "block", top: this.dropPositions[this.state.dropIndex] + "px" } : {}}></dropruler>`
+        return html`<dropruler style=${this.state.dragging ? { display: "block", top: this.cell_edges[this.state.drop_index] + "px" } : {}}></dropruler>`
     }
 }
 

@@ -399,8 +399,9 @@ cell.inline-output > celloutput {
     padding-bottom: 3px;
 }
 
-cell.inline-output > celloutput > assignee {
+celloutput > assignee {
     font-family: "Roboto Mono", monospace;
+    font-size: 0.75rem;
 }
 
 celloutput > assignee::after {
@@ -412,17 +413,31 @@ celloutput > assignee:empty {
     display: none;
 }
 
-celloutput > assignee {
-    font-family: monospace;
-    font-size: 0.75em;
-}
-
 celloutput > div {
     overflow-x: auto;
 }
 
 cell.inline-output > celloutput > div > pre {
     display: flex;
+}
+
+/* SELECTION */
+
+cell.selected {
+    background: rgba(40, 78, 189, 0.24);
+    border-radius: 0 3px 3px 0;
+}
+
+cell.selected > cellinput,
+cell.selected > celloutput {
+    opacity: 0.7;
+}
+
+main {
+    cursor: vertical-text;
+}
+cell {
+    cursor: auto;
 }
 
 /* SCROLLBAR FIREFOX */
@@ -594,12 +609,16 @@ cell.code-folded > trafficlight {
     }
 }
 
+cell.selected > trafficlight {
+    background: rgba(40, 78, 189, 0.4);
+}
+
 cell.output-notinsync > trafficlight,
 cell.code-differs > trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
 }
 
-cell.error > trafficlight {
+cell.errored > trafficlight {
     background: hsl(0, 100%, 71%);
 }
 
@@ -610,7 +629,7 @@ cell.running > trafficlight {
     animation: 2000s linear 0s infinite running scrollbackground;
 }
 
-cell.running.error > trafficlight {
+cell.running.errored > trafficlight {
     background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
@@ -983,7 +1002,7 @@ are-you-sure {
     font-size: 0.75rem;
 
     background: white;
-    border-radius: 6px;
+    border-radius: 3px;
 
     box-shadow: 00px 00px 10px 2px #0003;
     opacity: 1;
