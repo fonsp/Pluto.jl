@@ -96,13 +96,6 @@ export class DropRuler extends Component {
                     selection_start_index: null,
                     selection_stop_index: null,
                 })
-                // the setState callback seems to be broken (uses the outdated state)
-                // so we do it ourselves:
-                // this.props.on_selection({
-                //     selecting: false,
-                //     selection_start_index: null,
-                //     selection_stop_index: null,
-                // })
             }
         })
 
@@ -126,9 +119,19 @@ export class DropRuler extends Component {
         document.addEventListener("selectstart", (e) => {
             if (this.state.selecting) {
                 e.preventDefault()
+            } else {
+                window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
             }
         })
 
+        window.addEventListener("collapse_cell_selection", () => {
+            this.props.on_selection({
+                selection_start_index: null,
+                selection_stop_index: null,
+            })
+        })
+
+        // Ctrl+A to select all cells
         document.addEventListener("keydown", (e) => {
             switch (e.keyCode) {
                 case 65: // a

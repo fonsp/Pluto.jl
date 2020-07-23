@@ -182,9 +182,13 @@ export const Cell = ({
                     if (running) {
                         requests.interrupt_remote(cell_id)
                     } else {
-                        selected_friends(cell_id).forEach((f) => {
-                            requests.change_remote_cell(f.cell_id, f.local_code.body)
-                        })
+                        const friends = selected_friends(cell_id)
+
+                        if (friends.length == 1) {
+                            requests.change_remote_cell(cell_id, local_code.body)
+                        } else {
+                            requests.set_and_run_multiple(friends)
+                        }
                     }
                 }}
                 runtime=${runtime}

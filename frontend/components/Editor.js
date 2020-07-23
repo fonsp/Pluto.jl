@@ -448,11 +448,12 @@ export class Editor extends Component {
                     false
                 )
             },
-            run_all_changed_remote_cells: () => {
+            set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cells.filter((cell) => code_differs(cell))
-
-                // TODO: async await?
-                const promises = changed.map((cell) => {
+                return this.requests.set_and_run_multiple(changed)
+            },
+            set_and_run_multiple: (cells) => {
+                const promises = cells.map((cell) => {
                     set_cell_state(cell.cell_id, { running: true })
                     return this.client
                         .send(
@@ -472,7 +473,7 @@ export class Editor extends Component {
                         this.client.send(
                             "runmultiple",
                             {
-                                cells: changed.map((c) => c.cell_id),
+                                cells: cells.map((c) => c.cell_id),
                             },
                             {
                                 notebook_id: this.state.notebook.notebook_id,
@@ -481,7 +482,7 @@ export class Editor extends Component {
                     )
                     .catch(console.error)
 
-                return changed.length != 0
+                return cells.length != 0
             },
             set_bond: (symbol, value) => {
                 this.counter_statistics.numBondSets++
@@ -588,7 +589,7 @@ export class Editor extends Component {
                     break
                 case 83: // s
                     if (e.ctrlKey) {
-                        const some_cells_ran = this.requests.run_all_changed_remote_cells()
+                        const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
                         if (!some_cells_ran) {
                             // all cells were in sync allready
                             // TODO: let user know that the notebook autosaves
@@ -685,7 +686,7 @@ export class Editor extends Component {
             </header>
             <main>
                 <preamble>
-                    <button onClick=${() => this.requests.run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
+                    <button onClick=${() => this.requests.set_and_run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
                         <span></span>
                     </button>
                 </preamble>

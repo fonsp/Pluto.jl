@@ -96,6 +96,10 @@ export const CellInput = ({
             change_handler_ref.current(cm.getValue())
         })
 
+        cm.on("focus", () => {
+            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+        })
+
         cm.on("blur", () => {
             // NOT a debounce:
             setTimeout(() => {

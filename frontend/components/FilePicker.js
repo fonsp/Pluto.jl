@@ -83,12 +83,12 @@ export class FilePicker extends Component {
             }, 250)
         })
         this.cm.on("focus", (cm, e) => {
-            console.log(e)
             const suggest = this.props.suggest_new_file
             if (suggest != null && cm.getValue() === "") {
                 cm.setValue(suggest.base + suggest.name)
                 cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
             }
+            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
         })
 
         window.addEventListener("resize", () => {
