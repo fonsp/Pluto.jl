@@ -70,9 +70,7 @@ export class DropRuler extends Component {
         /* SELECTIONS */
 
         document.addEventListener("mousedown", (e) => {
-            // console.log("MOUSE DOWN", e)
             if (e.target.tagName === "MAIN" || e.target.tagName === "NOTEBOOK" || e.target.tagName === "PREAMBLE") {
-                console.log("SELECTION START")
                 this.precompute_cell_edges()
                 const new_index = this.getDropIndexOf(e.pageY)
                 this.setState({
@@ -91,24 +89,24 @@ export class DropRuler extends Component {
 
         document.addEventListener("mouseup", (e) => {
             if (this.state.selecting) {
-                console.log("SELECTION END")
                 this.setState({
                     selecting: false,
                     selection_start_index: null,
                     selection_stop_index: null,
                 })
             } else {
+                // if you didn't click on a UI element...
                 if (
                     !e.composedPath().some((e) => {
                         const tag = e.tagName
                         return tag === "CELLSHOULDER" || tag === "BUTTON"
                     })
                 ) {
+                    // ...clear the selection
                     this.props.on_selection({
                         selection_start_index: null,
                         selection_stop_index: null,
                     })
-                    // window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
                 }
             }
         })
@@ -141,6 +139,7 @@ export class DropRuler extends Component {
             switch (e.keyCode) {
                 case 65: // a
                     if (e.ctrlKey) {
+                        // if you are not writing text somewhere else
                         if (document.activeElement === document.body && window.getSelection().isCollapsed) {
                             this.props.on_selection({
                                 selection_start_index: 0,

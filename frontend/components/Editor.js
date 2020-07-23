@@ -7,7 +7,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
-import { AreYouSure } from "./AreYouSure.js"
+import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 
 import { link_open } from "./Welcome.js"
@@ -291,6 +291,8 @@ export class Editor extends Component {
                 const remote = versions[0]
                 const local = versions[1]
 
+                const base1 = (n) => "1".repeat(n)
+
                 console.log(local)
                 if (remote != local) {
                     const rs = remote.slice(1).split(".").map(Number)
@@ -299,8 +301,8 @@ export class Editor extends Component {
                     // if the semver can't be parsed correctly, we always show it to the user
                     if (rs.length == 3 && ls.length == 3) {
                         if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                            // JS orders arrays lexicographically, which is exactly what we want
-                            if (rs <= ls) {
+                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
+                            if (rs.map(base1) <= ls.map(base1)) {
                                 return
                             }
                         }
@@ -763,7 +765,7 @@ export class Editor extends Component {
                     </form>
                 </div>
             </footer>
-            <${AreYouSure}
+            <${UndoDelete}
                 recently_deleted=${this.state.recently_deleted}
                 on_click=${() => {
                     this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
