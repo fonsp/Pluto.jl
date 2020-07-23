@@ -134,7 +134,7 @@ export const Cell = ({
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "before")
                 }}
-                class="addcell before"
+                class="add_cell before"
                 title="Add cell"
             >
                 <span></span>
@@ -197,7 +197,7 @@ export const Cell = ({
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "after")
                 }}
-                class="addcell after"
+                class="add_cell after"
                 title="Add cell"
             >
                 <span></span>

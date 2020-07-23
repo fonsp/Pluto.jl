@@ -12,7 +12,7 @@ export class DropRuler extends Component {
             this.cell_edges.push(cell_nodes.last().offsetTop + cell_nodes.last().scrollHeight)
         }
         this.getDropIndexOf = (pageY) => {
-            const distances = this.cell_edges.map((p) => Math.abs(p - pageY))
+            const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
 
@@ -63,7 +63,8 @@ export class DropRuler extends Component {
             }
             // Called when drag-dropped somewhere on the page
             const drop_index = this.getDropIndexOf(e.pageY)
-            this.props.requests.move_remote_cell(this.dropee.id, drop_index)
+            const friends = this.props.selected_friends(this.dropee.id)
+            this.props.requests.move_remote_cells(friends, drop_index)
         })
 
         /* SELECTIONS */
@@ -96,6 +97,19 @@ export class DropRuler extends Component {
                     selection_start_index: null,
                     selection_stop_index: null,
                 })
+            } else {
+                if (
+                    !e.composedPath().some((e) => {
+                        const tag = e.tagName
+                        return tag === "CELLSHOULDER" || tag === "BUTTON"
+                    })
+                ) {
+                    this.props.on_selection({
+                        selection_start_index: null,
+                        selection_stop_index: null,
+                    })
+                    // window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+                }
             }
         })
 
@@ -119,16 +133,7 @@ export class DropRuler extends Component {
         document.addEventListener("selectstart", (e) => {
             if (this.state.selecting) {
                 e.preventDefault()
-            } else {
-                window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
             }
-        })
-
-        window.addEventListener("collapse_cell_selection", () => {
-            this.props.on_selection({
-                selection_start_index: null,
-                selection_stop_index: null,
-            })
         })
 
         // Ctrl+A to select all cells

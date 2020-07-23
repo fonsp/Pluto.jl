@@ -83,11 +83,12 @@ function clientupdate_cell_deleted(notebook::Notebook, cell::Cell; initiator::Un
         Dict(), notebook, cell, initiator)
 end
 
-function clientupdate_cell_moved(notebook::Notebook, cell::Cell, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_moved, 
+function clientupdate_cells_moved(notebook::Notebook, cells::Vector{Cell}, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
+    return UpdateMessage(:cells_moved, 
         Dict(
+            :cells => [cell.cell_id for cell in cells],
             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
-        ), notebook, cell, initiator)
+        ), notebook, nothing, initiator)
 end
 
 function clientupdate_cell_running(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)

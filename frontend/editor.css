@@ -717,32 +717,32 @@ cellshoulder > button > span::after {
     width: 17px;
 }
 
-cell > button.addcell {
+cell > button.add_cell {
     left: -12px;
 }
 
-cell > button.addcell.before {
+cell > button.add_cell.before {
     margin-top: calc(-19px - 0.5 * (var(--cell-spacing) - 19px)) !important;
 }
 
-cell > button.addcell.after {
+cell > button.add_cell.after {
     bottom: 1px;
     margin-bottom: calc(-20px - 0.5 * (var(--cell-spacing) - 19px));
 }
 
-cell > button.addcell > span::after {
+cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
 }
 
-cellinput > button.deletecell {
+cellinput > button.delete_cell {
     /* top: 3px; */
     /* left: -26px; */
     right: 0px;
     padding: 5px;
 }
 
-cellinput > button.deletecell > span::after {
+cellinput > button.delete_cell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg);
 }
 
@@ -832,6 +832,7 @@ dropruler {
     left: 0px;
     right: 0px;
     height: 4px;
+    margin-top: calc(-2px - 0.5 * var(--cell-spacing));
     background: rgba(0, 0, 0, 0.5);
 }
 

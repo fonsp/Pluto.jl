@@ -232,7 +232,7 @@ export class PlutoConnection {
                 return response[0].tag_name
             })
 
-        const pluto_promise = this.send("getversion").then((u) => {
+        const pluto_promise = this.send("get_version").then((u) => {
             this.pluto_version = u.message.pluto
             this.julia_version = u.message.julia
             return this.pluto_version

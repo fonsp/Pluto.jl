@@ -119,15 +119,18 @@ export class Editor extends Component {
                     }
                 }, callback)
             },
-            move_local_cell: (cell, new_index, callback = undefined) => {
+            move_local_cells: (cells, new_index, callback = undefined) => {
                 set_notebook_state((prevstate) => {
-                    const old_index = prevstate.cells.findIndex((c) => c === cell)
-                    if (new_index > old_index) {
-                        new_index--
-                    }
-                    const without = prevstate.cells.filter((c) => c !== cell)
+                    // The set of moved cell can be scatter across the notebook (not necessarily contiguous)
+                    // but this action will move all of them to a single cluster
+                    // The first cell of that cluster will be at index `new_index`.
+                    const old_first_index = prevstate.cells.findIndex((c) => cells.includes(c))
+
+                    const before = prevstate.cells.filter((c, i) => i < new_index && !cells.includes(c))
+                    const after = prevstate.cells.filter((c, i) => i >= new_index && !cells.includes(c))
+
                     return {
-                        cells: [...without.slice(0, new_index), cell, ...without.slice(new_index)],
+                        cells: [...before, ...cells, ...after],
                     }
                 }, callback)
             },
@@ -186,10 +189,9 @@ export class Editor extends Component {
                                 this.actions.delete_local_cell(cell)
                             }
                             break
-                        case "cell_moved":
-                            if (cell != null) {
-                                this.actions.move_local_cell(cell, message.index)
-                            }
+                        case "cells_moved":
+                            const cells = message.cells.map((cell_id) => this.state.notebook.cells.find((c) => c.cell_id == cell_id))
+                            this.actions.move_local_cells(cells, message.index)
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
@@ -213,10 +215,10 @@ export class Editor extends Component {
         const on_establish_connection = () => {
             const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] == "true"
             // on socket success
-            this.client.send("getallnotebooks", {}, {}).then(on_remote_notebooks)
+            this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
 
             this.client
-                .send("getallcells", {}, { notebook_id: this.state.notebook.notebook_id })
+                .send("get_all_cells", {}, { notebook_id: this.state.notebook.notebook_id })
                 .then((update) => {
                     this.setState(
                         {
@@ -255,7 +257,7 @@ export class Editor extends Component {
                             const outputs_promise = Promise.all(
                                 this.state.notebook.cells.map((cell_data) => {
                                     return this.client.send(
-                                        "getoutput",
+                                        "get_output",
                                         {},
                                         {
                                             notebook_id: this.state.notebook.notebook_id,
@@ -342,7 +344,7 @@ export class Editor extends Component {
                 this.counter_statistics.numEvals++
                 // set_cell_state(cell_id, { running: true })
                 return this.client.send(
-                    "changecell",
+                    "change_cell",
                     { code: new_code },
                     {
                         notebook_id: this.state.notebook.notebook_id,
@@ -372,7 +374,7 @@ export class Editor extends Component {
                     }
                 })
                 this.client.send(
-                    "interruptall",
+                    "interrupt_all",
                     {},
                     {
                         notebook_id: this.state.notebook.notebook_id,
@@ -380,23 +382,25 @@ export class Editor extends Component {
                     false
                 )
             },
-            move_remote_cell: (cell_id, new_index) => {
+            move_remote_cells: (cells, new_index) => {
                 // Indexing works as if a new cell is added.
                 // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
                 // is moved to the end, that would be new js-index = 5
                 this.client.send(
-                    "movecell",
-                    { index: new_index },
+                    "move_multiple_cells",
+                    {
+                        cells: cells.map((c) => c.cell_id),
+                        index: new_index,
+                    },
                     {
                         notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
                     },
                     false
                 )
             },
             add_remote_cell_at: (index, create_promise = false) => {
                 return this.client.send(
-                    "addcell",
+                    "add_cell",
                     { index: index },
                     {
                         notebook_id: this.state.notebook.notebook_id,
@@ -428,7 +432,7 @@ export class Editor extends Component {
                     },
                 })
                 this.client.send(
-                    "deletecell",
+                    "delete_cell",
                     {},
                     {
                         notebook_id: this.state.notebook.notebook_id,
@@ -439,7 +443,7 @@ export class Editor extends Component {
             },
             fold_remote_cell: (cell_id, newFolded) => {
                 this.client.send(
-                    "foldcell",
+                    "fold_cell",
                     { folded: newFolded },
                     {
                         notebook_id: this.state.notebook.notebook_id,
@@ -457,7 +461,7 @@ export class Editor extends Component {
                     set_cell_state(cell.cell_id, { running: true })
                     return this.client
                         .send(
-                            "setinput",
+                            "set_input",
                             { code: cell.local_code.body },
                             {
                                 notebook_id: this.state.notebook.notebook_id,
@@ -471,7 +475,7 @@ export class Editor extends Component {
                 Promise.all(promises)
                     .then(() =>
                         this.client.send(
-                            "runmultiple",
+                            "run_multiple_cells",
                             {
                                 cells: cells.map((c) => c.cell_id),
                             },
@@ -496,7 +500,7 @@ export class Editor extends Component {
 
                 this.client
                     .send(
-                        "setbond",
+                        "set_bond",
                         {
                             sym: symbol,
                             val: value,
@@ -538,7 +542,7 @@ export class Editor extends Component {
                 this.setState({ loading: true })
                 this.client
                     .send(
-                        "movenotebookfile",
+                        "move_notebook_file",
                         {
                             path: new_path,
                         },
@@ -680,7 +684,7 @@ export class Editor extends Component {
                             name: this.state.notebook.shortpath,
                         }}
                         placeholder="Save notebook..."
-                        button_label=${this.state.notebook.in_temp_dir ? "Save" : "Rename"}
+                        button_label=${this.state.notebook.in_temp_dir ? "Save" : "Move"}
                     />
                 </div>
             </header>
@@ -724,6 +728,7 @@ export class Editor extends Component {
 
                 <${DropRuler}
                     requests=${this.requests}
+                    selected_friends=${this.selected_friends}
                     on_selection=${(s) => {
                         const from = Math.min(s.selection_start_index, s.selection_stop_index)
                         const to = Math.max(s.selection_start_index, s.selection_stop_index)

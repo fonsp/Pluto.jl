@@ -45,7 +45,7 @@ responses[:connect] = (session::ServerSession, body, notebook = nothing; initiat
     ), nothing, nothing, initiator))
 end
 
-responses[:getversion] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_version] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, UpdateMessage(:versioninfo, Dict(
         :pluto => PLUTO_VERSION_STR,
         :julia => JULIA_VERSION_STR,
@@ -54,7 +54,7 @@ end
 
 
 # TODO: actions on the notebook are not thread safe
-responses[:addcell] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:add_cell] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
@@ -66,7 +66,7 @@ responses[:addcell] = (session::ServerSession, body, notebook::Notebook; initiat
     save_notebook(notebook)
 end
 
-responses[:deletecell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:delete_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     to_delete = cell
 
     # replace the cell's code with "" and do a reactive run
@@ -84,30 +84,28 @@ responses[:deletecell] = (session::ServerSession, body, notebook::Notebook, cell
     end
 end
 
-responses[:movecell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    to_move = cell
+responses[:move_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+    indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
+    cells = [notebook.cells[i] for i in indices if i !== nothing]
 
     # Indexing works as if a new cell is added.
     # e.g. if the third cell (at julia-index 3) of [0, 1, 2, 3, 4]
     # is moved to the end, that would be new julia-index 6
 
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
-    old_index = findfirst(isequal(to_move), notebook.cells)
+    old_first_index = findfirst(in(cells), notebook.cells)
 
     # Because our cells run in _topological_ order, we don't need to reevaluate anything.
-    if new_index < old_index
-        deleteat!(notebook.cells, old_index)
-        insert!(notebook.cells, new_index, to_move)
-    elseif new_index > old_index + 1
-        insert!(notebook.cells, new_index, to_move)
-        deleteat!(notebook.cells, old_index)
-    end
+    before = setdiff(notebook.cells[1:new_index - 1], cells)
+    after = setdiff(notebook.cells[new_index:end], cells)
+
+    notebook.cells = [before; cells; after]
     
-    putnotebookupdates!(session, notebook, clientupdate_cell_moved(notebook, to_move, new_index, initiator=initiator))
+    putnotebookupdates!(session, notebook, clientupdate_cells_moved(notebook, cells, new_index, initiator=initiator))
     save_notebook(notebook)
 end
 
-responses[:changecell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:change_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     newcode = body["code"]
 
     change_remote_cellinput!(session, notebook, cell, newcode, initiator=initiator)
@@ -115,7 +113,7 @@ responses[:changecell] = (session::ServerSession, body, notebook::Notebook, cell
     update_save_run!(session, notebook, [cell]; run_async=true)
 end
 
-responses[:foldcell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:fold_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     newfolded = body["folded"]
     cell.code_folded = newfolded
     save_notebook(notebook)
@@ -127,7 +125,7 @@ responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell;
     update_save_run!(session, notebook, [cell]; run_async=true, save=false)
 end
 
-responses[:runmultiple] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
     update_save_run!(session, notebook, cells; run_async=true, save=false)
@@ -137,15 +135,15 @@ responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::
     putclientupdates!(session, initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-responses[:setinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:set_input] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     change_remote_cellinput!(session, notebook, cell, body["code"], initiator=initiator)
 end
 
-responses[:getoutput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_output] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, clientupdate_cell_output(notebook, cell, initiator=initiator))
 end
 
-responses[:getallcells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_all_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
@@ -155,11 +153,11 @@ responses[:getallcells] = (session::ServerSession, body, notebook::Notebook; ini
     putclientupdates!(session, initiator, update)
 end
 
-responses[:getallnotebooks] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_all_notebooks] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
     putplutoupdates!(session, clientupdate_notebook_list(session.notebooks, initiator=initiator))
 end
 
-responses[:movenotebookfile] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     newpath = tamepath(body["path"])
     result = try
         if isfile(newpath)
@@ -179,12 +177,12 @@ responses[:movenotebookfile] = (session::ServerSession, body, notebook::Notebook
     putclientupdates!(session, initiator, update)
 end
 
-responses[:interruptall] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     success = WorkspaceManager.interrupt_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
-responses[:shutdownworkspace] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:shut_down_workspace] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
     if body["remove_from_list"]
         delete!(session.notebooks, notebook.notebook_id)
@@ -197,7 +195,7 @@ responses[:shutdownworkspace] = (session::ServerSession, body, notebook::Noteboo
 end
 
 
-responses[:setbond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
