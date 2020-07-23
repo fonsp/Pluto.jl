@@ -1,8 +1,8 @@
 import { html, Component } from "../common/Preact.js"
-
+import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import observablehq from "../common/SetupCellEnvironment.js"
+import { RawHTMLContainer } from "./CellOutput.js"
 
 export class LiveDocs extends Component {
     constructor() {
@@ -69,7 +69,7 @@ export class LiveDocs extends Component {
                     </header>
                     <section>
                         <h1><code>${this.state.shown_query}</code></h1>
-                        <div dangerouslySetInnerHTML=${{ __html: this.state.body }} />
+                        <${RawHTMLContainer} body=${this.state.body} />
                     </section>
                 </helpbox>
             </div>

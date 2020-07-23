@@ -42,31 +42,31 @@ stringify_keys(x::Any) = x
         c(cell) = cell.cell_id |> string
 
         @test_nowarn send(:connect, Dict(), Dict(:notebook_id => n))
-        @test_nowarn send(:getversion, Dict(), Dict())
+        @test_nowarn send(:get_version, Dict(), Dict())
 
-        @test_nowarn send(:addcell, Dict(:index => 0), Dict(:notebook_id => n))
-        send(:addcell, Dict(:index => 0), Dict(:notebook_id => n))
-        send(:addcell, Dict(:index => 0), Dict(:notebook_id => n))
+        @test_nowarn send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
+        send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
+        send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
         @test length(notebook.cells) == 4
-        @test_nowarn send(:setinput, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:runmultiple, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
+        @test_nowarn send(:set_input, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
+        @test_nowarn send(:run_multiple_cells, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
         @test_nowarn send(:run, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:setbond, Dict(:sym => "x", :val => 9), Dict(:notebook_id => n))
-        @test_nowarn send(:changecell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
-        @test_nowarn send(:deletecell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
+        @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9), Dict(:notebook_id => n))
+        @test_nowarn send(:change_cell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
+        @test_nowarn send(:delete_cell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
 
-        @test_nowarn send(:movecell, Dict(:index => 1), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
-        @test_nowarn send(:foldcell, Dict(:folded => true), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
+        @test_nowarn send(:move_multiple_cells, Dict(:cells => [c(notebook.cells[3])], :index => 1), Dict(:notebook_id => n))
+        @test_nowarn send(:fold_cell, Dict(:folded => true), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:getinput, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:getoutput, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:getallcells, Dict(), Dict(:notebook_id => n))
-        @test_nowarn send(:getallnotebooks, Dict(), Dict(:notebook_id => n))
-        @test_nowarn send(:getallnotebooks, Dict(), Dict())
+        @test_nowarn send(:get_output, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
+        @test_nowarn send(:get_all_cells, Dict(), Dict(:notebook_id => n))
+        @test_nowarn send(:get_all_notebooks, Dict(), Dict(:notebook_id => n))
+        @test_nowarn send(:get_all_notebooks, Dict(), Dict())
 
-        @test_nowarn send(:movenotebookfile, Dict(:path => tempname()), Dict(:notebook_id => n))
+        @test_nowarn send(:move_notebook_file, Dict(:path => tempname()), Dict(:notebook_id => n))
         
         # TODO: we need to wait for all above command to finish before we can do this:
-        # send(:shutdownworkspace, Dict(:remove_from_list => true), Dict(:notebook_id => n))
+        # send(:shut_down_workspace, Dict(:remove_from_list => true), Dict(:notebook_id => n))
     end
 end
 

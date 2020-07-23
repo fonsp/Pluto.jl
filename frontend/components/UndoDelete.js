@@ -1,7 +1,7 @@
 import { html, useState, useEffect } from "../common/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
-export const AreYouSure = ({ recently_deleted, on_click }) => {
+export const UndoDelete = ({ recently_deleted, on_click }) => {
     const [hidden, set_hidden] = useState(true)
 
     useEffect(() => {

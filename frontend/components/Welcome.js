@@ -95,7 +95,7 @@ export class Welcome extends Component {
                         transitioning: true,
                     })
                     this.client.send(
-                        "shutdownworkspace",
+                        "shut_down_workspace",
                         {
                             remove_from_list: true,
                         },
@@ -132,7 +132,7 @@ export class Welcome extends Component {
     componentDidMount() {
         this.componentDidUpdate()
         this.client.initialize(() => {
-            this.client.send("getallnotebooks", {}, {}).then(({ message }) => {
+            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
                 // we are going to construct the combined list:

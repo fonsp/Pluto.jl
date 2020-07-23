@@ -96,6 +96,10 @@ export const CellInput = ({
             change_handler_ref.current(cm.getValue())
         })
 
+        // cm.on("focus", () => {
+        //     window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+        // })
+
         cm.on("blur", () => {
             // NOT a debounce:
             setTimeout(() => {
@@ -135,7 +139,7 @@ export const CellInput = ({
 
     return html`
         <cellinput ref=${dom_node_ref}>
-            <button onClick=${on_delete} class="deletecell" title="Delete cell"><span></span></button>
+            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
         </cellinput>
     `
     // TODO: confirm delete

@@ -124,11 +124,13 @@ export class RawHTMLContainer extends Component {
         this.base.innerHTML = this.props.body
 
         execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script"))).then(() => {
-            connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
+            if (this.props.all_completed_promise != null && this.props.requests != null) {
+                connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
+            }
 
             // convert LaTeX to svg
             try {
-                MathJax.typeset([this.base])
+                window.MathJax.typeset([this.base])
             } catch (err) {
                 console.info("Failed to typeset TeX:")
                 console.info(err)

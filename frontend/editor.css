@@ -399,8 +399,9 @@ cell.inline-output > celloutput {
     padding-bottom: 3px;
 }
 
-cell.inline-output > celloutput > assignee {
+celloutput > assignee {
     font-family: "Roboto Mono", monospace;
+    font-size: 0.75rem;
 }
 
 celloutput > assignee::after {
@@ -412,17 +413,31 @@ celloutput > assignee:empty {
     display: none;
 }
 
-celloutput > assignee {
-    font-family: monospace;
-    font-size: 0.75em;
-}
-
 celloutput > div {
     overflow-x: auto;
 }
 
 cell.inline-output > celloutput > div > pre {
     display: flex;
+}
+
+/* SELECTION */
+
+cell.selected {
+    background: rgba(40, 78, 189, 0.24);
+    border-radius: 0 3px 3px 0;
+}
+
+cell.selected > cellinput > div.CodeMirror,
+cell.selected > celloutput {
+    opacity: 0.7;
+}
+
+main {
+    cursor: vertical-text;
+}
+cell {
+    cursor: auto;
 }
 
 /* SCROLLBAR FIREFOX */
@@ -594,12 +609,16 @@ cell.code-folded > trafficlight {
     }
 }
 
+cell.selected > trafficlight {
+    background: rgba(40, 78, 189, 0.4);
+}
+
 cell.output-notinsync > trafficlight,
 cell.code-differs > trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
 }
 
-cell.error > trafficlight {
+cell.errored > trafficlight {
     background: hsl(0, 100%, 71%);
 }
 
@@ -610,7 +629,7 @@ cell.running > trafficlight {
     animation: 2000s linear 0s infinite running scrollbackground;
 }
 
-cell.running.error > trafficlight {
+cell.running.errored > trafficlight {
     background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
@@ -640,7 +659,7 @@ cellinput > button > span {
     runarea > button,
     cellshoulder > button,
     cell > runarea {
-        opacity: 0%;
+        opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
@@ -648,7 +667,7 @@ cellinput > button > span {
     cell:hover > cellinput > button,
     cell > runarea > button,
     cell:hover > cellshoulder > button {
-        opacity: 25%;
+        opacity: 0.25;
     }
     preamble > button:hover,
     cell > button:hover,
@@ -656,7 +675,7 @@ cellinput > button > span {
     cell > runarea > button:hover,
     cell > cellshoulder > button:hover,
     cell:hover > runarea {
-        opacity: 100%;
+        opacity: 1;
         /* to make it feel snappy: */
         transition: opacity 0.05s ease-in-out;
     }
@@ -667,7 +686,7 @@ cellinput > button > span {
     cellinput > button,
     cellshoulder > button,
     cell > runarea {
-        opacity: 0%;
+        opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
@@ -675,13 +694,13 @@ cellinput > button > span {
     cell:focus-within > cellinput > button,
     cell:focus-within > runarea,
     cell:focus-within > cellshoulder > button {
-        opacity: 25%;
+        opacity: 0.25;
     }
     cell > button:focus-within,
     cell > cellinput > button:focus-within cell > runarea > button:focus-within,
     cell > cellshoulder > button:focus-within,
     cell > runarea {
-        opacity: 100%;
+        opacity: 1;
         /* to make it feel snappy: */
         transition: opacity 0.05s ease-in-out;
     }
@@ -698,32 +717,32 @@ cellshoulder > button > span::after {
     width: 17px;
 }
 
-cell > button.addcell {
+cell > button.add_cell {
     left: -12px;
 }
 
-cell > button.addcell.before {
+cell > button.add_cell.before {
     margin-top: calc(-19px - 0.5 * (var(--cell-spacing) - 19px)) !important;
 }
 
-cell > button.addcell.after {
+cell > button.add_cell.after {
     bottom: 1px;
     margin-bottom: calc(-20px - 0.5 * (var(--cell-spacing) - 19px));
 }
 
-cell > button.addcell > span::after {
+cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
 }
 
-cellinput > button.deletecell {
+cellinput > button.delete_cell {
     /* top: 3px; */
     /* left: -26px; */
     right: 0px;
     padding: 5px;
 }
 
-cellinput > button.deletecell > span::after {
+cellinput > button.delete_cell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg);
 }
 
@@ -813,6 +832,7 @@ dropruler {
     left: 0px;
     right: 0px;
     height: 4px;
+    margin-top: calc(-2px - 0.5 * var(--cell-spacing));
     background: rgba(0, 0, 0, 0.5);
 }
 
@@ -983,7 +1003,7 @@ are-you-sure {
     font-size: 0.75rem;
 
     background: white;
-    border-radius: 6px;
+    border-radius: 3px;
 
     box-shadow: 00px 00px 10px 2px #0003;
     opacity: 1;

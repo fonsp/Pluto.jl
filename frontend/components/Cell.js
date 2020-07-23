@@ -23,6 +23,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {?number} runtime
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
+ * @property {boolean} selected
  */
 
 /**
@@ -51,6 +52,7 @@ export const empty_cell_data = (cell_id) => {
             mime: "text/plain",
             rootassignee: null,
         },
+        selected: false,
     }
 }
 
@@ -62,6 +64,7 @@ export const empty_cell_data = (cell_id) => {
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
 export const Cell = ({
+    cell_id,
     remote_code,
     local_code,
     code_folded,
@@ -69,15 +72,16 @@ export const Cell = ({
     runtime,
     errored,
     output,
+    selected,
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
     all_completed_promise,
+    selected_friends,
     requests,
     client,
-    cell_id,
     notebook_id,
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -105,7 +109,8 @@ export const Cell = ({
                 "output-notinsync": output.body == null,
                 "has-assignee": !output.errored && output.rootassignee != null,
                 "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
-                "error": errored,
+                "errored": errored,
+                "selected": selected,
                 "code-differs": remote_code.body !== local_code.body,
                 "code-folded": code_folded && cm_forced_focus == null,
             })}
@@ -114,7 +119,9 @@ export const Cell = ({
             <cellshoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
-                        requests.fold_remote_cell(cell_id, !code_folded)
+                        selected_friends(cell_id).forEach((friend) => {
+                            requests.fold_remote_cell(friend.cell_id, !code_folded)
+                        })
                     }}
                     class="foldcode"
                     title="Show/hide code"
@@ -127,7 +134,7 @@ export const Cell = ({
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "before")
                 }}
-                class="addcell before"
+                class="add_cell before"
                 title="Add cell"
             >
                 <span></span>
@@ -143,12 +150,15 @@ export const Cell = ({
                     requests.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
-                    if (running) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                            requests.interrupt_remote(cell_id)
+                    const friends = selected_friends(cell_id)
+                    if (friends.length == 1 || confirm(`Delete ${friends.length} cells?`)) {
+                        if (friends.some((f) => f.running)) {
+                            if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                                requests.interrupt_remote(cell_id)
+                            }
+                        } else {
+                            friends.forEach((f) => requests.delete_cell(f.cell_id))
                         }
-                    } else {
-                        requests.delete_cell(cell_id)
                     }
                 }}
                 on_add_after=${() => {
@@ -172,7 +182,13 @@ export const Cell = ({
                     if (running) {
                         requests.interrupt_remote(cell_id)
                     } else {
-                        requests.change_remote_cell(cell_id, local_code.body)
+                        const friends = selected_friends(cell_id)
+
+                        if (friends.length == 1) {
+                            requests.change_remote_cell(cell_id, local_code.body)
+                        } else {
+                            requests.set_and_run_multiple(friends)
+                        }
                     }
                 }}
                 runtime=${runtime}
@@ -181,7 +197,7 @@ export const Cell = ({
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "after")
                 }}
-                class="addcell after"
+                class="add_cell after"
                 title="Add cell"
             >
                 <span></span>
