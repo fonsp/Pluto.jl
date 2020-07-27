@@ -141,7 +141,20 @@ export class RawHTMLContainer extends Component {
                 console.info("Failed to typeset TeX:")
                 console.info(err)
             }
+
+            if(this.props.on_render != null){
+                this.props.on_render(this.base)
+            }
         })
+    }
+
+    shouldComponentUpdate(new_props) {
+        const pure = this.props.pure === true && new_props.pure === true
+        if (pure) {
+            return this.props.body !== new_props.body
+        } else {
+            return true
+        }
     }
 
     componentDidUpdate() {

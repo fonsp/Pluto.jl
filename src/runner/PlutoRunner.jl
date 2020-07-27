@@ -491,14 +491,24 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
     (completion_text.(results), loc, found)
 end
 
+# Based on /base/docs/bindings.jl from Julia source code
+function binding_from(x::Expr, workspace::Module=current_module)
+    if x.head == :macrocall
+        Docs.Binding(workspace, x.args[1])
+    elseif x.head == :.
+        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2])
+    else
+        error("Invalid @var syntax `$x`.")
+    end
+end
+binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspace, s)
+binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
+binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
+
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        obj = Core.eval(workspace, Meta.parse(query))
-        if obj isa Expr
-            (nothing, :👎)
-        else
-            (repr(MIME"text/html"(), Docs.doc(obj)), :👍)
-        end
+        binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
+        (repr(MIME"text/html"(), Docs.doc(binding)), :👍)
     catch ex
         (nothing, :👎)
     end
@@ -523,7 +533,7 @@ end
 
 """`@bind symbol element`
 
-Returns the HTML `element`, and uses its latest JavaScript value as the definition of `symbol`.
+Return the HTML `element`, and use its latest JavaScript value as the definition of `symbol`.
 
 # Example
 

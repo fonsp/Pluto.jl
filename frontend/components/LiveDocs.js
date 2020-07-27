@@ -69,10 +69,28 @@ export class LiveDocs extends Component {
                     </header>
                     <section>
                         <h1><code>${this.state.shown_query}</code></h1>
-                        <${RawHTMLContainer} body=${this.state.body} />
+                        <${RawHTMLContainer}
+                            body=${this.state.body}
+                            pure=${true}
+                            on_render=${(n) => resolve_doc_reference_links(n, this.props.on_update_doc_query)}
+                        />
                     </section>
                 </helpbox>
             </div>
         `
     }
+}
+
+const resolve_doc_reference_links = (node, on_update_doc_query) => {
+    const as = node.querySelectorAll("a")
+    as.forEach((a) => {
+        const href = a.getAttribute("href")
+        if (href != null && href.startsWith("@ref")) {
+            const query = href.length > 4 ? href.substr(5) : a.textContent
+            a.onclick = (e) => {
+                on_update_doc_query(query)
+                e.preventDefault()
+            }
+        }
+    })
 }

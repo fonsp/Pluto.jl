@@ -754,7 +754,12 @@ export class Editor extends Component {
                     }}
                 />
             </main>
-            <${LiveDocs} desired_doc_query=${this.state.desired_doc_query} client=${this.client} notebook=${this.state.notebook} />
+            <${LiveDocs}
+                desired_doc_query=${this.state.desired_doc_query}
+                on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
+                client=${this.client}
+                notebook=${this.state.notebook}
+            />
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">

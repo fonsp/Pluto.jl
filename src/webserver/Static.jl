@@ -107,7 +107,7 @@ function http_router_for(session::ServerSession)
     function serve_sample(req::HTTP.Request)
         uri = HTTP.URI(req.target)
         sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
-        sample_path_without_dotjl = sample_path[1:end - 3]
+        sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
         
         path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
         readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)

@@ -70,7 +70,7 @@ export class DropRuler extends Component {
         /* SELECTIONS */
 
         document.addEventListener("mousedown", (e) => {
-            if (e.target.tagName === "MAIN" || e.target.tagName === "NOTEBOOK" || e.target.tagName === "PREAMBLE") {
+            if (e.button === 0 && (e.target.tagName === "MAIN" || e.target.tagName === "NOTEBOOK" || e.target.tagName === "PREAMBLE")) {
                 this.precompute_cell_edges()
                 const new_index = this.getDropIndexOf(e.pageY)
                 this.setState({
