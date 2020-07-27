@@ -83,6 +83,7 @@ function save_notebook(io, notebook::Notebook)
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
         println(io, delim, string(c.cell_id))
     end
+    notebook
 end
 
 function save_notebook(notebook::Notebook, path::String)
@@ -184,14 +185,23 @@ function load_notebook(path::String)::Notebook
     loaded
 end
 
+"Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute."
 function move_notebook(notebook::Notebook, newpath::String)
     # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
-    oldpath = notebook.path
-    save_notebook(notebook, oldpath)
-    save_notebook(notebook, newpath)
-    @assert only_versions_differ(oldpath, newpath)
-    notebook.path = newpath
-    rm(oldpath)
+    oldpath_tame = tamepath(notebook.path)
+    newpath_tame = tamepath(newpath)
+    save_notebook(notebook, oldpath_tame)
+    save_notebook(notebook, newpath_tame)
+
+    # @assert that the new file looks alright
+    @assert only_versions_differ(oldpath_tame, newpath_tame)
+
+    notebook.path = newpath_tame
+
+    if oldpath_tame != newpath_tame
+        rm(oldpath_tame)
+    end
+    notebook
 end
 
 "Check if two savefiles are identical, up to their version numbers and a possible line shuffle.

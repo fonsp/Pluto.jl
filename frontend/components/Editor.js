@@ -325,11 +325,11 @@ export class Editor extends Component {
             const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
             if (first_unsaved != null) {
                 window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
-            } else if (this.state.notebook.in_temp_dir) {
-                window.scrollTo(0, 0)
-                // TODO: focus file picker
+                // } else if (this.state.notebook.in_temp_dir) {
+                //     window.scrollTo(0, 0)
+                //     // TODO: focus file picker
             } else {
-                return
+                return // and don't prevent the unload
             }
             console.log("preventing unload")
             event.stopImmediatePropagation()
@@ -686,7 +686,7 @@ export class Editor extends Component {
                             name: this.state.notebook.shortpath,
                         }}
                         placeholder="Save notebook..."
-                        button_label=${this.state.notebook.in_temp_dir ? "Save" : "Move"}
+                        button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
                 </div>
             </header>

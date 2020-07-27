@@ -12,7 +12,27 @@ export class FilePicker extends Component {
         this.forced_value = ""
         this.cm = null
 
+        this.suggest_not_tmp = () => {
+            const suggest = this.props.suggest_new_file
+            if (suggest != null && this.cm.getValue() === "") {
+                this.cm.setValue(suggest.base)
+                this.cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity })
+                this.cm.focus()
+                this.request_path_completions.bind(this)()
+
+                // this.cm.setValue(suggest.base + suggest.name)
+                // this.cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
+                // this.cm.focus()
+            }
+            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+        }
+
         this.on_submit = () => {
+            const my_val = this.cm.getValue()
+            if (my_val === this.forced_value) {
+                this.suggest_not_tmp()
+                return
+            }
             this.props.on_submit(this.cm.getValue(), () => {
                 this.cm.setValue(this.props.value)
                 deselect(this.cm)
@@ -83,12 +103,7 @@ export class FilePicker extends Component {
             }, 250)
         })
         this.cm.on("focus", (cm, e) => {
-            const suggest = this.props.suggest_new_file
-            if (suggest != null && cm.getValue() === "") {
-                cm.setValue(suggest.base + suggest.name)
-                cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
-            }
-            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+            this.suggest_not_tmp()
         })
 
         window.addEventListener("resize", () => {
