@@ -44,6 +44,7 @@ using Test
         @test testee(:(abstract type a{T,S} end), [], [], [], [:a => ([], [], [], [])])
         @test testee(:(abstract type a{T} <: b end), [], [], [], [:a => ([:b], [], [], [])])
         @test testee(:(abstract type a{T} <: b{T} end), [], [], [], [:a => ([:b], [], [], [])])
+        @test_nowarn testee(macroexpand(Main, :(@enum a b c)), [], [], [], []; verbose=false)
         
         e = :(struct a end) # needs to be on its own line to create LineNumberNode
         @test testee(e, [], [], [], [:a => ([], [], [], [])])
@@ -214,6 +215,7 @@ using Test
         @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
         @test testee(:(let global k; k = 4 end), [], [:k], [], [])
         @test testee(:(let global k; b = 5 end), [], [], [], [])
+        @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
         @test testee(:(begin local a = b = 1 end), [], [:b], [], [])
@@ -244,10 +246,13 @@ using Test
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [Symbol("@time")], [:a], [], [])
-        @test testee(:(@bind a b), [Symbol("@bind"), :b], [:a], [], [])
-        @test testee(:(let @bind a b end), [Symbol("@bind"), :b], [:a], [], [])
-        @test testee(:(md"hey $(@bind a b) $(a)"), [Symbol("@md_str"), Symbol("@bind"), :b], [:a], [], [])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [Symbol("@md_str"), Symbol("@bind"), :b, :a], [:a], [], [])
+        @test testee(:(@enum a b c), [Symbol("@enum")], [:a, :b, :c], [], [])
+        @test testee(:(@enum a b = d c), [Symbol("@enum"), :d], [:a, :b, :c], [], [])
+        @test testee(:(@gensym a b c), [Symbol("@gensym")], [:a, :b, :c], [], [])
+        @test testee(:(@bind a b), [Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
+        @test testee(:(let @bind a b end), [Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [Symbol("@md_str"), Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [Symbol("@md_str"), Symbol("@bind"), :b, :a], [:a], [:get, :applicable, :Bond], [])
         @test testee(:(html"a $(b = c)"), [Symbol("@html_str")], [], [], [])
         @test testee(:(md"a $(b = c) $(b)"), [Symbol("@md_str"), :c], [:b], [], [])
         @test testee(:(md"\* $r"), [Symbol("@md_str"), :r], [], [], [])

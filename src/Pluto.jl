@@ -32,8 +32,8 @@ if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
 end
 
 include("./evaluation/Tokens.jl")
-include("./analysis/ExpressionExplorer.jl")
 include("./runner/PlutoRunner.jl")
+include("./analysis/ExpressionExplorer.jl")
 
 include("./notebook/PathHelpers.jl")
 include("./notebook/Cell.jl")

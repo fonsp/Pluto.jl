@@ -1,6 +1,7 @@
 module ExpressionExplorer
 export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
 
+import ..PlutoRunner
 import Markdown
 import Base: union, union!, ==, push!
 
@@ -8,6 +9,7 @@ import Base: union, union!, ==, push!
 # TWO STATE OBJECTS
 ###
 
+# TODO: use GlobalRef instead
 FuncName = Array{Symbol,1}
 
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
@@ -151,7 +153,7 @@ get_assignees(::Any) = Symbol[]
 function uncurly!(ex::Expr, scopestate::ScopeState)::Symbol
     @assert ex.head == :curly
     push!(scopestate.hiddenglobals, (a for a in ex.args[2:end] if a isa Symbol)...)
-    ex.args[1]
+    Symbol(ex.args[1])
 end
 
 uncurly!(ex::Expr)::Symbol = ex.args[1]
@@ -496,25 +498,30 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         else
             return SymbolsState(Set{Symbol}(), Set{Symbol}())
         end
-    elseif ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@md_str")
+    # Some macros treat things differently, so we must too
+    # for the macros @bind and @md_str, we just explore the epxanded form
+    elseif ex.head == :macrocall && ex.args[1] isa Symbol && (ex.args[1] == Symbol("@md_str") || ex.args[1] == Symbol("@bind") || ex.args[1] == Symbol("@gensym"))
         # Does not create scope
-        # The Markdown macro treats things differently, so we must too
 
-        innersymstate = explore!(Markdown.toexpr(Markdown.parse(ex.args[3])), scopestate)
-        push!(innersymstate.references, Symbol("@md_str"))
-        
+        innersymstate = explore!(macroexpand(PlutoRunner, ex; recursive=false), scopestate)
+        push!(innersymstate.references, ex.args[1])
+
         return innersymstate
-    elseif (ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@bind")
-        && length(ex.args) == 4 && ex.args[3] isa Symbol)
-        
-        # Rewrite `@bind a b` to the "equivalent" expression `global a = b; @bind;`
-        return explore!(Expr(:global, Expr(:(=), ex.args[3], Expr(:block, ex.args[4], ex.args[1]))), scopestate)
+    elseif ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@enum")
+        # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
+        # https://github.com/fonsp/Pluto.jl/issues/177
+        # this would mean that you can only define one enum per notebook :(
+
+        syms = filter(x -> x isa Symbol, ex.args[2:end])
+        rest = setdiff(ex.args[2:end], syms)
+
+        return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}([Symbol("@enum")]), Set{Symbol}(syms)))
     elseif ex.head == :quote
         # We ignore contents
 
         return SymbolsState()
     elseif ex.head == :module
-        # We ignore contents
+        # We ignore contents; the module name is a definition
 
         return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
     else
