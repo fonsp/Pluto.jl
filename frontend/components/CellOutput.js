@@ -5,6 +5,7 @@ import { resolvable_promise } from "../common/PlutoConnection.js"
 import { ErrorMessage } from "./ErrorMessage.js"
 
 import { connect_bonds } from "../common/Bond.js"
+import { cl } from "../common/ClassTable.js"
 
 import "../common/SetupCellEnvironment.js"
 import "../treeview.js"
@@ -25,7 +26,12 @@ export class CellOutput extends Component {
 
     render() {
         return html`
-            <celloutput>
+            <celloutput
+                class=${cl({
+                    inline_output:
+                        !this.props.errored && !!this.props.body && (this.props.mime == "application/vnd.pluto.tree+xml" || this.props.mime == "text/plain"),
+                })}
+            >
                 <assignee>${this.props.rootassignee}</assignee>
                 <${OutputBody} ...${this.props} />
             </celloutput>

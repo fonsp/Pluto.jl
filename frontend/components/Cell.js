@@ -105,14 +105,12 @@ export const Cell = ({
     return html`
         <cell
             class=${cl({
-                "running": running,
-                "output-notinsync": output.body == null,
-                "has-assignee": !output.errored && output.rootassignee != null,
-                "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
-                "errored": errored,
-                "selected": selected,
-                "code-differs": remote_code.body !== local_code.body,
-                "code-folded": code_folded && cm_forced_focus == null,
+                running: running,
+                output_notinsync: output.body == null,
+                errored: errored,
+                selected: selected,
+                code_differs: remote_code.body !== local_code.body,
+                code_folded: code_folded && cm_forced_focus == null,
             })}
             id=${cell_id}
         >

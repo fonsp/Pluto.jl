@@ -649,7 +649,7 @@ export class Editor extends Component {
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
-        document.body.classList.toggle("code-differs", any_code_differs)
+        document.body.classList.toggle("code_differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
         if (this.state.connected) {
             document.querySelector("meta[name=theme-color]").content = "#fff"

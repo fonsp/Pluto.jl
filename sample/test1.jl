@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.11.0
 
 using Markdown
 using InteractiveUtils
@@ -13,9 +13,6 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 878a4750-b15e-11ea-2584-8feba490699f
-using Test
-
 # ╔═╡ fd0763a0-b163-11ea-23b4-a7bae7052e19
 md"# File picker"
 
@@ -25,23 +22,11 @@ md"# Notebook interaction"
 # ╔═╡ 6dde0352-b15e-11ea-2fa8-7327cc366c1a
 md"## Running multiple cells"
 
-# ╔═╡ 7370dcc0-b15e-11ea-234b-23584c864b61
-ma = 1
-
-# ╔═╡ 75b21a30-b15e-11ea-3046-2170ec097e63
-mb = 2
-
-# ╔═╡ 7b74dd40-b15e-11ea-291a-d7e10a185718
-@test ma + mb == 3
-
 # ╔═╡ f0b821b0-b15f-11ea-1f64-dd33aa85b54e
 md"## Moving cells"
 
 # ╔═╡ 4980fc10-b163-11ea-081b-c1335699a8f6
 md"## Stopping cells"
-
-# ╔═╡ 4e0c5090-b163-11ea-3cf9-a1b17dd2f053
-
 
 # ╔═╡ d2c1d090-b162-11ea-0c17-2b234c098cf9
 md"# CodeMirror"
@@ -77,26 +62,6 @@ md"## Stack traces"
 # ╔═╡ 84888e20-b160-11ea-1d61-c5934251d6dd
 html"<div style='height: 100vh'></div>"
 
-# ╔═╡ 9dc4a0a0-b15f-11ea-361c-87742cf3f2a2
-function ef(x)
-	
-	
-	sqrt(-x)
-end
-
-# ╔═╡ aab109c0-b15f-11ea-275d-31e21fcda8c4
-ef(1)
-
-# ╔═╡ 976bc2a0-b160-11ea-3e7a-9f033b0f2daf
-function eg(x)
-	
-	
-	sqrt(-x)
-end
-
-# ╔═╡ 9c74f9b2-b160-11ea-35fb-917cb1120f5b
-eg(1)
-
 # ╔═╡ ea3f77f0-b166-11ea-046e-ef39bfc57d0f
 md"## Bad errors"
 
@@ -109,41 +74,14 @@ md"# Bonds"
 # ╔═╡ 3a14b3f0-b165-11ea-153d-796416ee5ccc
 md"## Lossy"
 
-# ╔═╡ 41a75500-b165-11ea-2519-bbd0feaef6cf
-@bind bl1 html"<input type='range' max='100000'>"
-
-# ╔═╡ 4ccbf670-b165-11ea-1951-c17ffb8a58cf
-sleep(.5); bl1
-
-# ╔═╡ 8bb26902-b165-11ea-048c-d7f7a72006ee
-@assert bl1 isa Int64
-
-# ╔═╡ e559eaf0-b165-11ea-0d81-ffc480afe8f3
-@bind bl2 html"<input type='range' max='100000'>"
-
-# ╔═╡ e63be680-b165-11ea-0fd3-bd4e0bf92eb8
-bl2
-
 # ╔═╡ 59966a90-b163-11ea-1786-e56e45f06dd0
 md"## Recursive"
 
 # ╔═╡ 55bade10-b163-11ea-327f-132c93471713
 md"## Scrolling"
 
-# ╔═╡ f2c0bb90-b162-11ea-24a1-3f864a09e5ee
-@bind bw1 html"<input type='range' value='0'>"
-
-# ╔═╡ 56e6f440-b15e-11ea-1327-09932af5b5bd
-HTML("<div style='height: $(bw1)vh'></div>")
-
-# ╔═╡ 2296ac80-b163-11ea-3d00-ed366fa9ce3e
-@bind bw2 html"<input type='range' value='0'>"
-
-# ╔═╡ 20d72230-b163-11ea-39c2-69bf2c422d50
-HTML("<div style='height: $(bw2)vh'></div>")
-
-# ╔═╡ 54ccad80-b163-11ea-1777-c5364408948e
-
+# ╔═╡ 431d17c0-cfff-11ea-39b5-394b34438544
+md"### `text/html`"
 
 # ╔═╡ 32b5edc0-b15d-11ea-09d6-3b889f6d397a
 md"# Rich display"
@@ -151,20 +89,11 @@ md"# Rich display"
 # ╔═╡ 3be84600-b166-11ea-1d24-59212363543f
 md"## `text/plain`"
 
-# ╔═╡ 42f0a872-b166-11ea-0c71-355d62f67fca
-ra = 1:100
-
-# ╔═╡ 794bc212-b166-11ea-0840-fddb29190841
-1:13
-
 # ╔═╡ 95898660-b166-11ea-1db1-df7f3c4f1353
 "<b>I am not bold</b>"
 
 # ╔═╡ 2859a890-b161-11ea-14e9-b7ddaf08195a
 md"## Tree view"
-
-# ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
-Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => :b))
 
 # ╔═╡ 88bd7aae-b15f-11ea-270e-ab00e6a01203
 ["asdf", "<b>I am not bold</b>"]
@@ -215,6 +144,83 @@ html"""
 </style>
 
 """
+
+# ╔═╡ 878a4750-b15e-11ea-2584-8feba490699f
+using Test
+
+# ╔═╡ 7370dcc0-b15e-11ea-234b-23584c864b61
+ma = 1
+
+# ╔═╡ 75b21a30-b15e-11ea-3046-2170ec097e63
+mb = 2
+
+# ╔═╡ 7b74dd40-b15e-11ea-291a-d7e10a185718
+@test ma + mb == 3
+
+# ╔═╡ 9dc4a0a0-b15f-11ea-361c-87742cf3f2a2
+function ef(x)
+	
+	
+	sqrt(-x)
+end
+
+# ╔═╡ aab109c0-b15f-11ea-275d-31e21fcda8c4
+ef(1)
+
+# ╔═╡ 976bc2a0-b160-11ea-3e7a-9f033b0f2daf
+function eg(x)
+	
+	
+	sqrt(-x)
+end
+
+# ╔═╡ 9c74f9b2-b160-11ea-35fb-917cb1120f5b
+eg(1)
+
+# ╔═╡ 41a75500-b165-11ea-2519-bbd0feaef6cf
+@bind bl1 html"<input type='range' max='100000'>"
+
+# ╔═╡ 4ccbf670-b165-11ea-1951-c17ffb8a58cf
+sleep(.5); bl1
+
+# ╔═╡ 8bb26902-b165-11ea-048c-d7f7a72006ee
+@assert bl1 isa Int64
+
+# ╔═╡ e559eaf0-b165-11ea-0d81-ffc480afe8f3
+@bind bl2 html"<input type='range' max='100000'>"
+
+# ╔═╡ e63be680-b165-11ea-0fd3-bd4e0bf92eb8
+bl2
+
+# ╔═╡ f2c0bb90-b162-11ea-24a1-3f864a09e5ee
+@bind bw1 html"<input type='range' value='0'>"
+
+# ╔═╡ a4d4ac28-cfff-11ea-3f14-15d2928d2c88
+zeros((bw1, bw1))
+
+# ╔═╡ 56e6f440-b15e-11ea-1327-09932af5b5bd
+HTML("<div style='height: $(bw1)vh'></div>")
+
+# ╔═╡ 2296ac80-b163-11ea-3d00-ed366fa9ce3e
+@bind bw2 html"<input type='range' value='0'>"
+
+# ╔═╡ 20d72230-b163-11ea-39c2-69bf2c422d50
+HTML("<div style='height: $(bw2)vh'></div>")
+
+# ╔═╡ 55d116d6-cfff-11ea-25fc-056ce62c8bcd
+zeros((bw2, bw2))
+
+# ╔═╡ 76c98394-cfff-11ea-0b6c-25260a8a3bb9
+zeros((10,10));
+
+# ╔═╡ 42f0a872-b166-11ea-0c71-355d62f67fca
+ra = 1:100
+
+# ╔═╡ 794bc212-b166-11ea-0840-fddb29190841
+1:13
+
+# ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
+Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => :b))
 
 # ╔═╡ 7e2cc6c0-b15d-11ea-32b0-15394cdebd35
 function ask(kind, str::Markdown.MD)
@@ -316,6 +322,9 @@ ask("manual", md"Moving slider should **not scroll** window")
 # ╔═╡ 0c499910-b163-11ea-3fee-c5d006a97ff7
 ask("manual", md"Moving slider should **scroll** window to **keep this message at a fixed position**")
 
+# ╔═╡ b5cf05fa-cfff-11ea-2c43-6748c5d90a1e
+ask("manual", md"**Delete** semicolon below, then **add** semicolon back. CodeMirror should stay fixed on screen.")
+
 # ╔═╡ 486c7770-b166-11ea-22df-b38b69fb51ad
 ask("visual", md"Shows assignee `ra`")
 
@@ -393,11 +402,10 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─9b26e0c0-b15e-11ea-1fbb-a34d46c520fa
 # ╠═7370dcc0-b15e-11ea-234b-23584c864b61
 # ╠═75b21a30-b15e-11ea-3046-2170ec097e63
-# ╟─7b74dd40-b15e-11ea-291a-d7e10a185718
-# ╟─f0b821b0-b15f-11ea-1f64-dd33aa85b54e
+# ╠═7b74dd40-b15e-11ea-291a-d7e10a185718
+# ╠═f0b821b0-b15f-11ea-1f64-dd33aa85b54e
 # ╟─f4015940-b15f-11ea-0f3a-1714c79023c3
 # ╟─4980fc10-b163-11ea-081b-c1335699a8f6
-# ╠═4e0c5090-b163-11ea-3cf9-a1b17dd2f053
 # ╟─d2c1d090-b162-11ea-0c17-2b234c098cf9
 # ╟─d890a190-b162-11ea-31dd-8d603787e5c5
 # ╟─1b569b72-b167-11ea-1462-63674f7e13db
@@ -435,13 +443,17 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╠═e63be680-b165-11ea-0fd3-bd4e0bf92eb8
 # ╟─59966a90-b163-11ea-1786-e56e45f06dd0
 # ╟─55bade10-b163-11ea-327f-132c93471713
+# ╟─431d17c0-cfff-11ea-39b5-394b34438544
 # ╟─0d1ca080-b163-11ea-2927-7b46d602f837
 # ╠═f2c0bb90-b162-11ea-24a1-3f864a09e5ee
+# ╠═a4d4ac28-cfff-11ea-3f14-15d2928d2c88
 # ╠═56e6f440-b15e-11ea-1327-09932af5b5bd
 # ╠═20d72230-b163-11ea-39c2-69bf2c422d50
+# ╠═55d116d6-cfff-11ea-25fc-056ce62c8bcd
 # ╟─0c499910-b163-11ea-3fee-c5d006a97ff7
 # ╠═2296ac80-b163-11ea-3d00-ed366fa9ce3e
-# ╠═54ccad80-b163-11ea-1777-c5364408948e
+# ╟─b5cf05fa-cfff-11ea-2c43-6748c5d90a1e
+# ╠═76c98394-cfff-11ea-0b6c-25260a8a3bb9
 # ╟─32b5edc0-b15d-11ea-09d6-3b889f6d397a
 # ╟─3be84600-b166-11ea-1d24-59212363543f
 # ╟─486c7770-b166-11ea-22df-b38b69fb51ad
