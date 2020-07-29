@@ -214,12 +214,10 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
         end
     end
 
-    address = if get_pl_env("PLUTO_ROOT_URL") == "/"
+    address = let
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
-    else
-        get_pl_env("PLUTO_ROOT_URL")
     end
     println("Go to $address to start writing ~ have fun!")
     println()

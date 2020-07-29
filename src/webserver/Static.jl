@@ -37,9 +37,9 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-function notebook_redirect_response(notebook)
+function notebook_redirect_response(notebook; home_url="./")
     response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => get_pl_env("PLUTO_ROOT_URL") * "edit?id=" * string(notebook.notebook_id))
+    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
     return response
 end
 
@@ -57,11 +57,11 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, JSON.json("OK!")))
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
 
-    function launch_notebook_response(path::AbstractString; title="", advice="")
+    function launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")
         try
             for nb in values(session.notebooks)
                 if realpath(nb.path) == realpath(path)
-                    return notebook_redirect_response(nb)
+                    return notebook_redirect_response(nb; home_url=home_url)
                 end
             end
 
@@ -72,7 +72,7 @@ function http_router_for(session::ServerSession)
                 # TODO: send message when initial run completed
             end
             @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            return notebook_redirect_response(nb)
+            return notebook_redirect_response(nb; home_url=home_url)
         catch e
             return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
         end
@@ -112,7 +112,7 @@ function http_router_for(session::ServerSession)
         path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
         readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
         
-        return launch_notebook_response(path, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        return launch_notebook_response(path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     

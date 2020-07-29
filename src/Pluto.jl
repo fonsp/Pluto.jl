@@ -11,7 +11,6 @@ const JULIA_VERSION_STR = 'v' * string(VERSION)
 const ENV_DEFAULTS = Dict(
     "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
     "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
-    "PLUTO_ROOT_URL" => "/",
     "PLUTO_WORKING_DIRECTORY" => let
         preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
         joinpath(preferred_dir, "") # must end with / or \
