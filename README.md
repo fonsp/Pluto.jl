@@ -1,4 +1,39 @@
-<p align="center"><b>Questions?</b> Try the <a href="https://meet.jit.si/Pluto.jl">Pluto virtual hangout</a>!</p>
+<h1 align="center">JuliaCon 2020 updates</h1>
+
+Our presentation ([summary](https://pretalx.com/juliacon2020/talk/WNBYW8/)) will be live at <b>17:10 UTC</b>, you can watch it at [live.juliacon.org/live](https://live.juliacon.org/live) in the **Purple** room. 
+
+<p align="center"><b><a href="https://live.juliacon.org/live">🎈 Pluto presentation at 17:10 UTC 🎈</a></b></p>
+
+**You can chat with us on**
+- the **JuliaCon discord (purple room)**, or 
+- join our <a href="https://meet.jit.si/Pluto.jl"><b>Pluto video chat</b></a> and meet us in (pixelated) person!
+
+
+
+<br>
+
+Thanks to the wonderful people at [Binder](http://mybinder.org), we can provide a
+
+<p align="center"><b><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 Pluto demo inside your browser 🎈</a></b></p>
+
+If you like it, Pluto is very easy to install:
+```julia
+(@v1.4) pkg> add Pluto
+julia> import Pluto
+julia> Pluto.run()
+```
+This will allow you to save your notebooks, and it makes sliders much more responsive (no network delay). Have fun!
+
+<br>
+
+_**Let us know what you think!** What do think Pluto would be useful for? And most importantly:_
+
+<p align="center"><i>How can we make scientific computing more accessible?</i></p>
+
+<br>
+<hr>
+<br>
+
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg" width=300 height=74 ></h1>
 
