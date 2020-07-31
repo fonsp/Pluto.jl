@@ -46,9 +46,9 @@ export const SlideControls = () => {
     }
 
     return html`
-        <slide-controls>
+        <nav id="slide_controls">
             <button class="changeslide prev" title="Previous slide" onClick=${go_previous_slide}><span></span></button>
             <button class="changeslide next" title="Next slide" onClick=${go_next_slide}><span></span></button>
-        </slide-controls>
+        </nav>
     `
 }

@@ -673,7 +673,7 @@ export class Editor extends Component {
     render() {
         return html`
             <header>
-                <div id="logocontainer">
+                <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                     </a>
@@ -688,7 +688,7 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                </div>
+                </nav>
             </header>
             <main>
                 <preamble>
@@ -760,16 +760,6 @@ export class Editor extends Component {
                 client=${this.client}
                 notebook=${this.state.notebook}
             />
-            <footer>
-                <div id="info">
-                    <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
-                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                        <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                        <button>Send</button>
-                    </form>
-                </div>
-            </footer>
             <${UndoDelete}
                 recently_deleted=${this.state.recently_deleted}
                 on_click=${() => {
@@ -782,6 +772,16 @@ export class Editor extends Component {
                 }}
             />
             <${SlideControls} />
+            <footer>
+                <div id="info">
+                    <form id="feedback" action="#" method="post">
+                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                        <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                        <button>Send</button>
+                    </form>
+                </div>
+            </footer>
         `
     }
 }

@@ -7,7 +7,7 @@ export class DropRuler extends Component {
         this.dropee = null
         this.cell_edges = []
         this.precompute_cell_edges = () => {
-            const cell_nodes = Array.from(document.querySelectorAll("notebook > cell"))
+            const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
             this.cell_edges.push(cell_nodes.last().offsetTop + cell_nodes.last().scrollHeight)
         }
@@ -29,7 +29,7 @@ export class DropRuler extends Component {
     componentDidMount() {
         this.elementRef = this.base
         document.addEventListener("dragstart", (e) => {
-            if (e.target.tagName != "CELLSHOULDER") {
+            if (!e.target.matches("pluto-shoulder")) {
                 this.setState({
                     dragging: false,
                 })
@@ -70,7 +70,7 @@ export class DropRuler extends Component {
         /* SELECTIONS */
 
         document.addEventListener("mousedown", (e) => {
-            if (e.button === 0 && (e.target.tagName === "MAIN" || e.target.tagName === "NOTEBOOK" || e.target.tagName === "PREAMBLE")) {
+            if (e.button === 0 && (e.target.tagName === "MAIN" || e.target.tagName === "PLUTO-NOTEBOOK" || e.target.tagName === "PREAMBLE")) {
                 this.precompute_cell_edges()
                 const new_index = this.getDropIndexOf(e.pageY)
                 this.setState({
@@ -99,7 +99,7 @@ export class DropRuler extends Component {
                 if (
                     !e.composedPath().some((e) => {
                         const tag = e.tagName
-                        return tag === "CELLSHOULDER" || tag === "BUTTON"
+                        return tag === "PLUTO-SHOULDER" || tag === "BUTTON"
                     })
                 ) {
                     // ...clear the selection

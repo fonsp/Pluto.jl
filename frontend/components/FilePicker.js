@@ -114,9 +114,9 @@ export class FilePicker extends Component {
     }
     render() {
         return html`
-            <filepicker>
+            <pluto-filepicker>
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
-            </filepicker>
+            </pluto-filepicker>
         `
     }
 

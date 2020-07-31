@@ -18,7 +18,8 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
     }, [recently_deleted])
 
     return html`
-        <are-you-sure
+        <nav
+            id="undo_delete"
             class=${cl({
                 hidden: hidden,
             })}
@@ -33,6 +34,6 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
                 }}
                 >UNDO</a
             >)
-        </are-you-sure>
+        </nav>
     `
 }

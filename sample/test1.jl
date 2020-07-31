@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.0
+# v0.11.1
 
 using Markdown
 using InteractiveUtils
@@ -108,6 +108,156 @@ Writing a notebook is not just about writing the final document — Pluto empowe
 
 # ╔═╡ 5dbbc6c0-b162-11ea-0890-7f0e994b2691
 md"Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there."
+
+# ╔═╡ e9a68626-d04c-11ea-35ae-cb157d97fdf7
+md"## CSS defaults"
+
+# ╔═╡ 2afb1380-d04d-11ea-27e6-6733f186032a
+md"that are essential to **bold getting** there.
+
+that are essential to _italics getting_ there.
+
+that are essential to _**bold italics getting**_ there.
+
+that are essential to [linky](asfdfds) getting there.
+
+that are essential to `Base.get` getting there.
+
+that are essential to **`Base.bold`** getting there.
+
+that are essential to _`Base.italics`_ getting there.
+
+that are essential to _**`Base.bitald`**_ getting there.
+
+"
+
+# ╔═╡ 539c6442-d04d-11ea-2b5d-8faeb152a6fb
+md"""
+### Heading 3 - hello **bold** but also _italics_ and _**both**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+#### Heading 4 - hello **bold** but also _italics_ and _**both**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+##### Heading 5 - hello **bold** but also _italics_ and _**both**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+###### Heading 6 - hello **bold** but also _italics_ and _**both**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+"""
+
+# ╔═╡ fcf2e354-d04d-11ea-1340-1d6211796d5e
+md"""
+### Heading 3 - `hey` hello **`bold`** but also _`italics`_ and _**`both`**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+#### Heading 4 - `hey` hello **`bold`** but also _`italics`_ and _**`both`**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+##### Heading 5 - `hey` hello **`bold`** but also _`italics`_ and _**`both`**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+###### Heading 6 - `hey` hello **`bold`** but also _`italics`_ and _**`both`**_
+Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+"""
+
+# ╔═╡ e8c7abe6-d050-11ea-3999-e3f1d4994c0c
+md"Hey I am referencing [^1], [^two] and [^another_one_here].
+
+[^another_one_here]: Heyy"
+
+# ╔═╡ 95de7fac-d04d-11ea-0d83-f1b05c9bd972
+md"""
+> **Blockquote:** Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there.
+"""
+
+# ╔═╡ 33b2934e-d04e-11ea-0f18-0dfec350bb5e
+md"""Here is some generic code:
+```
+Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+REPL = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
+Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+with one very long line that should wrap on spaces with one very long line that should wrap on spaces with one very long line that should wrap on spaces with one very long line that should wrap
+
+andoneverylonglinethathasnospacesandoneverylonglinethathasnospacesandoneverylonglinethathasnospacesandoneverylonglinethathasnospacesandoneverylong
+```
+And this is Julia code:
+```julia
+if (isfile(path))
+    # 4 spaces
+    return launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+else
+	# 1 tab
+	return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
+end
+```
+
+"""
+
+# ╔═╡ a70fc678-d04d-11ea-0390-9705003cd285
+md"---"
+
+# ╔═╡ 29565386-d04e-11ea-3a40-47639d1fc22f
+md"---
+---"
+
+# ╔═╡ 2ee00948-d04e-11ea-3413-e5fb7dd2a25e
+md"""
+| Syntax      | Description | Test Text     |
+| :---        |    :----:   |          ---: |
+| Header      | Title       | Here's this   |
+| Paragraph   | Text        | And more      |
+"""
+
+# ╔═╡ ac82922e-d04e-11ea-0bac-8530cacc5c72
+md"""
+Stage | Direct Products | ATP Yields
+----: | --------------: | ---------:
+Glycolysis | 2 ATP ||
+^^ | 2 NADH | 3--5 ATP |
+Pyruvaye oxidation | 2 NADH | 5 ATP |
+Citric acid cycle | 2 ATP ||
+^^ | 6 NADH | 15 ATP |
+^^ | 2 FADH2 | 3 ATP |
+**30--32** ATP |||
+[Net ATP yields per hexose]
+"""
+
+# ╔═╡ ee43c1b6-d04f-11ea-3a3d-1384ff255535
+md"""
+!!! tip
+    asdf
+
+!!! note "Wowie!"
+
+    asdf
+
+!!! info
+	I don't work?
+
+!!! warning
+
+    asdf
+    
+    line 2
+
+
+!!! danger
+
+    asdf
+    
+    line 2
+
+
+"""
+
+# ╔═╡ 17f53606-d051-11ea-3183-b3a4cb7180db
+md"### Footnote defs
+
+asdfdasd
+
+[^1]: adsf
+[^two]:
+    asdfasfd
+    
+    line 2"
 
 # ╔═╡ 1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 md"# Testing machinery"
@@ -476,6 +626,19 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─21bd9950-b15d-11ea-2632-41b1c66563bd
 # ╟─57a82490-b162-11ea-0fdb-73c57b08830f
 # ╟─5dbbc6c0-b162-11ea-0890-7f0e994b2691
+# ╟─e9a68626-d04c-11ea-35ae-cb157d97fdf7
+# ╟─2afb1380-d04d-11ea-27e6-6733f186032a
+# ╟─539c6442-d04d-11ea-2b5d-8faeb152a6fb
+# ╟─fcf2e354-d04d-11ea-1340-1d6211796d5e
+# ╠═e8c7abe6-d050-11ea-3999-e3f1d4994c0c
+# ╟─95de7fac-d04d-11ea-0d83-f1b05c9bd972
+# ╟─33b2934e-d04e-11ea-0f18-0dfec350bb5e
+# ╟─a70fc678-d04d-11ea-0390-9705003cd285
+# ╟─29565386-d04e-11ea-3a40-47639d1fc22f
+# ╟─2ee00948-d04e-11ea-3413-e5fb7dd2a25e
+# ╟─ac82922e-d04e-11ea-0bac-8530cacc5c72
+# ╟─ee43c1b6-d04f-11ea-3a3d-1384ff255535
+# ╠═17f53606-d051-11ea-3183-b3a4cb7180db
 # ╟─1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 # ╠═9ac925d0-b15d-11ea-2abd-7db360900be0
 # ╠═7e2cc6c0-b15d-11ea-32b0-15394cdebd35

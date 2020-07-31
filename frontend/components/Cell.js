@@ -103,7 +103,7 @@ export const Cell = ({
     }, [])
 
     return html`
-        <cell
+        <pluto-cell
             class=${cl({
                 running: running,
                 output_notinsync: output.body == null,
@@ -114,7 +114,7 @@ export const Cell = ({
             })}
             id=${cell_id}
         >
-            <cellshoulder draggable="true" title="Drag to move cell">
+            <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
                         selected_friends(cell_id).forEach((friend) => {
@@ -126,8 +126,8 @@ export const Cell = ({
                 >
                     <span></span>
                 </button>
-            </cellshoulder>
-            <trafficlight></trafficlight>
+            </pluto-shoulder>
+            <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "before")
@@ -200,6 +200,6 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-        </cell>
+        </pluto-cell>
     `
 }

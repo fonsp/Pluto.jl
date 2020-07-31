@@ -138,9 +138,9 @@ export const CellInput = ({
     // TODO effect hook for disable_input?
 
     return html`
-        <cellinput ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref}>
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
-        </cellinput>
+        </pluto-input>
     `
     // TODO: confirm delete
 }

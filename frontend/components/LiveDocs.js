@@ -62,7 +62,7 @@ export class LiveDocs extends Component {
 
     render() {
         return html`
-            <div id="helpbox-wrapper">
+            <aside id="helpbox-wrapper">
                 <helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
                     <header onClick=${() => this.setState({ hidden: !this.state.hidden })}>
                         ${this.state.hidden || this.state.searched_query == null ? "Live docs" : this.state.searched_query}
@@ -76,7 +76,7 @@ export class LiveDocs extends Component {
                         />
                     </section>
                 </helpbox>
-            </div>
+            </aside>
         `
     }
 }

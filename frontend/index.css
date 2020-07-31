@@ -97,13 +97,13 @@ a {
             margin-block-start: .7em;
         } */
 
-filepicker {
+pluto-filepicker {
     display: flex;
     flex-direction: row;
     margin-top: 0.3rem;
 }
 
-filepicker .CodeMirror {
+pluto-filepicker .CodeMirror {
     height: calc(1rem + 4px + 4px);
     display: inline-block;
     width: 100%;
@@ -121,11 +121,11 @@ filepicker .CodeMirror {
     border-bottom-right-radius: 0;
 }
 
-filepicker .CodeMirror-scroll {
+pluto-filepicker .CodeMirror-scroll {
     overflow: hidden !important;
 }
 
-filepicker button {
+pluto-filepicker button {
     background: #6c8489;
     border-radius: 3px;
     border: 2px solid #6c8489;
@@ -136,7 +136,7 @@ filepicker button {
     font-size: 0.75rem;
 }
 
-filepicker button {
+pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
@@ -181,11 +181,6 @@ body.nosessions ul#new ~ * {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: black;
-}
-
-#recent button {
-    /* still WIP */
-    /* display: none;  */
 }
 
 #recent button > span::after {

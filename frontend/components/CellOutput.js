@@ -26,7 +26,7 @@ export class CellOutput extends Component {
 
     render() {
         return html`
-            <celloutput
+            <pluto-output
                 class=${cl({
                     inline_output:
                         !this.props.errored && !!this.props.body && (this.props.mime == "application/vnd.pluto.tree+xml" || this.props.mime == "text/plain"),
@@ -34,7 +34,7 @@ export class CellOutput extends Component {
             >
                 <assignee>${this.props.rootassignee}</assignee>
                 <${OutputBody} ...${this.props} />
-            </celloutput>
+            </pluto-output>
         `
     }
 
@@ -44,8 +44,8 @@ export class CellOutput extends Component {
         // Scroll the page to compensate for change in page height:
         const new_height = this.base.scrollHeight
 
-        if (document.body.querySelector("cell:focus-within")) {
-            const cell_outputs_after_focused = document.body.querySelectorAll("cell:focus-within ~ cell > celloutput") // CSS wizardry ✨
+        if (document.body.querySelector("pluto-cell:focus-within")) {
+            const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
             if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
                 window.scrollBy(0, new_height - this.old_height)
             }
@@ -142,7 +142,7 @@ export class RawHTMLContainer extends Component {
                 console.info(err)
             }
 
-            if(this.props.on_render != null){
+            if (this.props.on_render != null) {
                 this.props.on_render(this.base)
             }
         })
