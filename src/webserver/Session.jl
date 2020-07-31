@@ -1,4 +1,4 @@
-import UUIDs: UUID
+import UUIDs: UUID, uuid1
 
 ###
 # CLIENT
@@ -28,9 +28,10 @@ end
 struct ServerSession
     connected_clients::Dict{Symbol,ClientSession}
     notebooks::Dict{UUID,Notebook}
+    secret::UUID
 end
 
-ServerSession() = ServerSession(Dict{Symbol,ClientSession}(), Dict{UUID,Notebook}())
+ServerSession() = ServerSession(Dict{Symbol,ClientSession}(), Dict{UUID,Notebook}(), uuid1())
 
 
 ###

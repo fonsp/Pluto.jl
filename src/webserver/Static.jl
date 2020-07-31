@@ -54,7 +54,8 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
     HTTP.@register(router, "GET", "/edit", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
 
-    HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, JSON.json("OK!")))
+    HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
+    HTTP.@register(router, "GET", "/websocket_url_please", r -> HTTP.Response(200, string(session.secret)))
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
 
     function launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")

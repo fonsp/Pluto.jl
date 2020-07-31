@@ -22,45 +22,37 @@ export const resolvable_promise = () => {
 }
 
 export class PlutoConnection {
-    ping(on_success, onFailure) {
-        fetch("ping", {
-            method: "GET",
-            cache: "no-cache",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            redirect: "follow",
-            referrerPolicy: "no-referrer",
-        })
-            .then((response) => {
-                return response.json()
+    async ping() {
+        const response = await (
+            await fetch("ping", {
+                method: "GET",
+                cache: "no-cache",
+                redirect: "follow",
+                referrerPolicy: "no-referrer",
             })
-            .then((response) => {
-                if (response == "OK!") {
-                    on_success(response)
-                } else {
-                    onFailure(response)
-                }
-            })
-            .catch(onFailure)
+        ).text()
+        if (response == "OK!") {
+            return response
+        } else {
+            throw response
+        }
     }
 
     wait_for_online() {
         this.on_connection_status(false)
 
         setTimeout(() => {
-            this.ping(
-                () => {
+            this.ping()
+                .then(() => {
                     if (this.psocket.readyState !== WebSocket.OPEN) {
                         this.wait_for_online()
                     } else {
                         this.on_connection_status(true)
                     }
-                },
-                () => {
+                })
+                .catch(() => {
                     this.wait_for_online()
-                }
-            )
+                })
         }, 1000)
     }
 
@@ -127,53 +119,63 @@ export class PlutoConnection {
         }
     }
 
-    start_socket_connection(on_success, connect_metadata) {
-        this.psocket = new WebSocket(
-            document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/")
-        )
-        this.psocket.onmessage = (e) => {
-            this.task_queue.push(async () => {
-                await this.handle_message(e)
-            })
-            if (this.task_queue.length == 1) {
-                do_next(this.task_queue)
-            }
-        }
-        this.psocket.onerror = (e) => {
-            console.error("SOCKET ERROR", e)
-
-            if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
-                this.wait_for_online()
-                setTimeout(() => {
-                    if (this.psocket.readyState != WebSocket.OPEN) {
-                        this.try_close_socket_connection()
-
-                        this.start_socket_connection(on_success, connect_metadata)
-                    }
-                }, 500)
-            }
-        }
-        this.psocket.onclose = (e) => {
-            console.warn("SOCKET CLOSED")
-            console.log(e)
-
-            this.wait_for_online()
-        }
-        this.psocket.onopen = () => {
-            console.log("socket opened")
-            this.send("connect", {}, connect_metadata).then((u) => {
-                this.plutoENV = u.message.ENV
-                // TODO: don't check this here
-                if (connect_metadata.notebook_id && !u.message.notebook_exists) {
-                    // https://github.com/fonsp/Pluto.jl/issues/55
-                    document.location.href = "./"
-                    return
+    start_socket_connection(connect_metadata) {
+        return new Promise(async (res) => {
+            const secret = await (
+                await fetch("websocket_url_please", {
+                    method: "GET",
+                    cache: "no-cache",
+                    redirect: "follow",
+                    referrerPolicy: "no-referrer",
+                })
+            ).text()
+            this.psocket = new WebSocket(
+                document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
+            )
+            this.psocket.onmessage = (e) => {
+                this.task_queue.push(async () => {
+                    await this.handle_message(e)
+                })
+                if (this.task_queue.length == 1) {
+                    do_next(this.task_queue)
                 }
-                this.on_connection_status(true)
-                on_success()
-            })
-        }
-        console.log("waiting...")
+            }
+            this.psocket.onerror = (e) => {
+                console.error("SOCKET ERROR", e)
+
+                if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
+                    this.wait_for_online()
+                    setTimeout(() => {
+                        if (this.psocket.readyState != WebSocket.OPEN) {
+                            this.try_close_socket_connection()
+
+                            res(this.start_socket_connection(connect_metadata))
+                        }
+                    }, 500)
+                }
+            }
+            this.psocket.onclose = (e) => {
+                console.warn("SOCKET CLOSED")
+                console.log(e)
+
+                this.wait_for_online()
+            }
+            this.psocket.onopen = () => {
+                console.log("socket opened")
+                this.send("connect", {}, connect_metadata).then((u) => {
+                    this.plutoENV = u.message.ENV
+                    // TODO: don't check this here
+                    if (connect_metadata.notebook_id && !u.message.notebook_exists) {
+                        // https://github.com/fonsp/Pluto.jl/issues/55
+                        document.location.href = "./"
+                        return
+                    }
+                    this.on_connection_status(true)
+                    res(this)
+                })
+            }
+            console.log("waiting...")
+        })
     }
 
     try_close_socket_connection() {
@@ -181,18 +183,14 @@ export class PlutoConnection {
     }
 
     initialize(on_establish_connection, connect_metadata = {}) {
-        this.ping(
-            () => {
-                // on ping success
-                this.start_socket_connection(() => {
-                    on_establish_connection(this)
-                }, connect_metadata)
-            },
-            () => {
-                // on failure
+        this.ping()
+            .then(async () => {
+                await this.start_socket_connection(connect_metadata)
+                on_establish_connection(this)
+            })
+            .catch(() => {
                 this.on_connection_status(false)
-            }
-        )
+            })
 
         window.addEventListener("beforeunload", (e) => {
             console.warn("unloading 👉 disconnecting websocket")
@@ -243,8 +241,4 @@ export class PlutoConnection {
 
     // TODO: reconnect with a delay if the last request went poorly
     // this would avoid hanging UI when the connection is lost maybe?
-    // implemented, but untested
-
-    // TODO: check cell order every now and then?
-    // or do ___maths___ to make sure that it never gets messed up
 }

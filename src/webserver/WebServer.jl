@@ -131,6 +131,9 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
 
         if HTTP.WebSockets.is_upgrade(http.message)
             try
+                requestURI = http.message.target |> HTTP.URIs.unescapeuri |> HTTP.URI
+                @assert endswith(requestURI.path, string(session.secret))
+
                 HTTP.WebSockets.upgrade(http) do clientstream
                     if !isopen(clientstream)
                         return
