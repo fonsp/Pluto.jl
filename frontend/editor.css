@@ -173,6 +173,25 @@ pluto-output blockquote {
     color: #555;
 }
 
+pluto-output table {
+    border-collapse: collapse;
+    font-size: 0.7em;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+pluto-output td, th {
+    border: 1px solid #ddd;
+    padding: 6px;
+}
+
+pluto-output tr:nth-child(even) {
+    background-color: #f2f2f2;   
+}
+
+pluto-output tr:hover {
+    background-color: #ddd;   
+}
+
 /* HEADER */
 
 body > header {
