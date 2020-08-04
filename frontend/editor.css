@@ -151,6 +151,8 @@ pluto-output code {
 pluto-output pre {
     display: inline-block;
     margin: 0px;
+    white-space: pre-wrap;
+    word-break: break-all;
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: "Roboto Mono", monospace;
@@ -171,6 +173,34 @@ pluto-output blockquote {
     border-radius: 15px;
     background-color: #fafafa;
     color: #555;
+}
+
+pluto-output table {
+    border-collapse: collapse;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-left: none;
+    border-right: none;
+    margin: 0 auto;
+    margin-block-start: var(--pluto-cell-spacing);
+    margin-block-end: var(--pluto-cell-spacing);
+}
+
+pluto-output table > thead {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+pluto-output table > tbody td {
+    font-size: 0.75rem;
+    font-family: "Roboto Mono", monospace;
+}
+
+pluto-output table td,
+pluto-output table th {
+    padding: 0.2rem 0.5rem;
+}
+
+pluto-output table > tbody tr:hover {
+    background-color: rgba(224, 203, 158, 0.15);
 }
 
 /* HEADER */
