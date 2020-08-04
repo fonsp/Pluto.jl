@@ -273,7 +273,6 @@ data:image/png;base64,ahsdf87hf278hwh7823hr...
 """
 function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
-    println("mime: ", mime)
     t = typeof(x)
 
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer.
