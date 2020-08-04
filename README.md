@@ -1,45 +1,7 @@
-<h1 align="center">JuliaCon 2020 updates</h1>
-
-We are presenting at JuliaCon today!
-
-<p align="center"><b><a href="https://live.juliacon.org/live">🎈 Pluto presentation at 17:10 UTC 🎈</a></b></p>
-
-**You can chat with us on**
-- the **JuliaCon discord (Purple room)**, or 
-- join our <a href="https://meet.jit.si/Pluto.jl"><b>Pluto video chat</b></a>
-
+<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
-
-<hr>
-
 <br>
-
-Thanks to the wonderful people at [Binder](http://mybinder.org), we can provide a
-
-<p align="center"><b><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 Pluto demo inside your browser 🎈</a></b></p>
-
-If you like it, Pluto is very easy to install:
-```julia
-(@v1.4) pkg> add Pluto
-julia> import Pluto
-julia> Pluto.run()
-```
-This will allow you to save your notebooks, and it makes sliders much more responsive (no network delay). Have fun!
-
-<br>
-<hr>
-<br>
-
-_**Let us know what you think!** What do think Pluto would be useful for? And most importantly:_
-
-<p align="center"><i></i></p>
-<p align="center"><b><a href="mailto:fonsvdplas@gmail.com?subject=🎈 Dear Pluto friends, I would like to contribute!">🎈 How can we make scientific computing more accessible? 🎈</a></b></p>
-
-<br>
-<hr>
-<br>
-
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg" width=300 height=74 ></h1>
 
@@ -52,6 +14,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 -   **_simple_** - no hidden workspace state; intuitive UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
+<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 ### Input
 
@@ -108,7 +71,7 @@ But for those who want to dive deeper - you can use HTML, JavaScript and CSS to 
 
 For one tasty notebook 🥞 you will need:
 
--   **Julia** v1.0 or above
+-   **Julia** v1.0 or above, _v1.5 is fastest_
 -   **Linux**, **macOS** or **Windows**, _Linux and macOS will work best_
 -   Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
 
@@ -153,17 +116,21 @@ Pluto.jl is built by gluing together open source software:
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-Your notebook files are _yours_, you do not need to credit us. Have fun!
+Your notebook files are _yours_, you do not need to credit. Have fun!
 
 ## Note
 
 We are happy to say that Pluto.jl runs smoothly for most users, and is **ready to be used in your next project**!
 
-That being said, the Pluto project is an ambition to [_rethink what a programming environment should be_](http://worrydream.com/#!/LearnableProgramming). We believe that scientific programming can be a lot simpler. Not by adding more buttons to a text editor — by giving space to creative thought, and automating the rest.
+The Pluto project is an ambition to [_rethink what a programming environment should be_](http://worrydream.com/#!/LearnableProgramming). We believe that scientific computing can be a lot simpler and more accessible. If you feel the same, give Pluto a try! We would love to hear what you think. 😊
 
-If you feel the same, give Pluto a try! We would love to hear what you think. 😊
+### You can chat with us
 
-<img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/78135402-22d02d80-7422-11ea-900f-a8b01bdbd8d3.png" width="70%">
+-   contact me (fonsi) **[via email](mailto:fonsvdplas@gmail.com)** or on my <a href="https://meet.jit.si/Pluto.jl"><b>video chat room</b></a>
+-   send your funky notebooks to the **[Zulip chat room](https://julialang.zulipchat.com/#narrow/stream/243342-pluto.2Ejl)**
+-   use Pluto's **[built-in feedback system:](https://github.com/fonsp/Pluto.jl/issues/182#issue-637726414)**
+
+<img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 
 Questions? Have a look at the [FAQ](https://www.notion.so/3ce1c1cff62f4f97815891cdaa3daa7d?v=b5824fb6bc804d2c90d34c4d49a1c295).
 
