@@ -103,7 +103,7 @@ function delete_toplevel_methods(f::Function)
     # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
-    # 
+    #
     # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
@@ -178,10 +178,11 @@ end
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
 iocontext_compact = IOContext(iocontext, :compact => true)
+const vegamimes = [MIME"application/vnd.vegalite.v4+json"(), MIME"application/vnd.vega.v5+json"()]
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
-const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); vegamimes; imagemimes; MIME"text/latex"(); MIME"text/plain"()]
 
 
 """Format `val` using the richest possible output, return formatted string and used MIME type.
@@ -272,17 +273,18 @@ data:image/png;base64,ahsdf87hf278hwh7823hr...
 """
 function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
+    println("mime: ", mime)
     t = typeof(x)
 
-    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
+    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer.
     # this is how we check whether this display method is appropriate:
-    isstruct = 
-        mime isa MIME"text/plain" && 
+    isstruct =
+        mime isa MIME"text/plain" &&
         t isa DataType &&
-        # there are two ways to override the plaintext show method: 
+        # there are two ways to override the plaintext show method:
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
-    
+
     if isstruct
         show_struct(io, x)
         return MIME"application/vnd.pluto.tree+xml"()
@@ -292,7 +294,7 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
         if onlyhtml || mime isa MIME"text/latex"
             # see onlyhtml description in docstring
             if mime isa MIME"text/plain"
-                withtag(io, :pre) do 
+                withtag(io, :pre) do
                     htmlesc(io, repr(mime, x; context=iocontext_compact))
                 end
             elseif mime isa MIME"text/latex"
@@ -300,7 +302,7 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
                 # We strip those, since Markdown.LaTeX only contains the math content
                 texed = repr(mime, x)
                 html(io, Markdown.LaTeX(strip(texed, '$')))
-            else                
+            else
                 show(io, mime, x)
             end
             return MIME"text/html"()
@@ -362,13 +364,13 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
     else
         from_end = tree_display_limit > 20 ? 10 : 1
         show_array_row.([io], enumerate(x[1:tree_display_limit-from_end]))
-        
+
         print(io, "<r><more></more></r>")
-        
+
         indices = 1+length(x)-from_end:length(x)
         show_array_row.([io], zip(indices, x[indices]))
     end
-    
+
     print(io, "</jlarray>")
     print(io, "</jltree>")
 end
@@ -386,7 +388,7 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:
         end
         row_index += 1
     end
-    
+
     print(io, "</jldict>")
     print(io, "</jltree>")
 end
@@ -400,7 +402,7 @@ function show_struct(io::IO, @nospecialize(x))
         print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
         show(io, t)
         print(io, "<jlstruct>")
-        
+
         if !Base.show_circular(io, x)
             recur_io = IOContext(io, Pair{Symbol,Any}(:SHOWN_SET, x),
                                  Pair{Symbol,Any}(:typeinfo, Any))
@@ -526,7 +528,7 @@ end
 
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do 
+    withtag(io, :bond, :def => bond.defines) do
         show(io, MIME"text/html"(), bond.element)
     end
 end

@@ -70,6 +70,21 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
             break
 
+        case "application/vnd.vegalite.v4+json":
+        case "application/vnd.vega.v5+json":
+            let vg = window.require("vega-lite@4", "vega@5", "vega-embed")
+                .then((res) => {
+                    res.embed(`#vega-${cell_id}`, JSON.parse(body))
+                })
+                .catch((err) => {
+                    // fall back to plain svg
+                    return html`<${OutputBody} mime="image/svg+xml" cell_id=${cell_id} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
+                })
+
+            return html`
+                <div id="vega-${cell_id}" style="width:100%;height:100%;"></div>
+            `
+            break
         case "text/plain":
         default:
             if (body) {
