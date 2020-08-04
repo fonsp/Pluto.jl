@@ -232,27 +232,7 @@ export class Editor extends Component {
                             },
                         },
                         () => {
-                            // For cell inputs, we request them all, and then batch all responses into one using Promise.all
-                            // We process all updates in one go, so that React doesn't do its Thing™ for every cell input. (This makes page loading very slow.)
-                            const inputs_promise = Promise.all(
-                                this.state.notebook.cells.map((cell_data) => {
-                                    return this.client.send(
-                                        "getinput",
-                                        {},
-                                        {
-                                            notebook_id: this.state.notebook.notebook_id,
-                                            cell_id: cell_data.cell_id,
-                                        }
-                                    )
-                                })
-                            ).then((updates) => {
-                                updates.forEach((u, i) => {
-                                    const cell_data = this.state.notebook.cells[i]
-                                    this.actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
-                                })
-                            })
-
-                            // Same for cell outputs
+                            // For cell outputs, we request them all, and then batch all responses into one using Promise.all
                             // We could experiment with loading the first ~5 cell outputs in the first batch, and the rest in a second, to speed up the time-to-first-usable-content.
                             const outputs_promise = Promise.all(
                                 this.state.notebook.cells.map((cell_data) => {
@@ -276,7 +256,27 @@ export class Editor extends Component {
                                 })
                             })
 
-                            Promise.all([inputs_promise, outputs_promise]).then(() => {
+                            // Same for cell inputs
+                            // We process all updates in one go, so that React doesn't do its Thing™ for every cell input. (This makes page loading very slow.)
+                            const inputs_promise = Promise.all(
+                                this.state.notebook.cells.map((cell_data) => {
+                                    return this.client.send(
+                                        "getinput",
+                                        {},
+                                        {
+                                            notebook_id: this.state.notebook.notebook_id,
+                                            cell_id: cell_data.cell_id,
+                                        }
+                                    )
+                                })
+                            ).then((updates) => {
+                                updates.forEach((u, i) => {
+                                    const cell_data = this.state.notebook.cells[i]
+                                    this.actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
+                                })
+                            })
+
+                            Promise.all([outputs_promise, inputs_promise]).then(() => {
                                 this.setState({
                                     loading: false,
                                 })

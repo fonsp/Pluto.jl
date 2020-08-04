@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 
@@ -8,6 +8,7 @@ const clear_selection = (cm) => {
 }
 
 export const CellInput = ({
+    is_hidden,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -134,6 +135,13 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus)
         }
     }, [cm_forced_focus])
+
+    // if the CodeMirror initialized/changed while it was hidden, and it suddely became unhidden, we need to refresh it to fix a layout bug where the gutter takes no horizontal space.
+    useLayoutEffect(() => {
+        if (!is_hidden) {
+            cm_ref.current.refresh()
+        }
+    }, [is_hidden])
 
     // TODO effect hook for disable_input?
 

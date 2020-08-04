@@ -339,8 +339,8 @@ begin
 	let
 		env = mktempdir()
 		import Pkg
-		Pkg.update()
 		Pkg.activate(env)
+		Pkg.update()
 		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.5.1"))
 	end
 	import PlutoUI

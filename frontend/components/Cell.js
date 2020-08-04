@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -42,7 +42,7 @@ export const empty_cell_data = (cell_id) => {
         local_code: {
             body: "",
         },
-        code_folded: false,
+        code_folded: true,
         running: true,
         runtime: null,
         errored: false,
@@ -106,7 +106,7 @@ export const Cell = ({
         <pluto-cell
             class=${cl({
                 running: running,
-                output_notinsync: output.body == null,
+                // output_notinsync: output.body == null,
                 errored: errored,
                 selected: selected,
                 code_differs: remote_code.body !== local_code.body,
@@ -139,6 +139,7 @@ export const Cell = ({
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
+                is_hidden=${!errored && code_folded && cm_forced_focus == null}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
