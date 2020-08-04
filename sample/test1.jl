@@ -156,7 +156,7 @@ Writing a notebook is not just about writing the final document — Pluto empowe
 """
 
 # ╔═╡ e8c7abe6-d050-11ea-3999-e3f1d4994c0c
-md"Hey I am referencing [^1], [^two] and [^another_one_here].
+md"Hey I am referencing [^1], [^two], [^Raa97] and [^another_one_here].
 
 [^another_one_here]: Heyy"
 
@@ -198,6 +198,13 @@ md"---"
 md"---
 ---"
 
+# ╔═╡ 3804ce76-d68e-11ea-1641-b9d5e4d9bace
+md"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic 
+
+---
+
+typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+
 # ╔═╡ 2ee00948-d04e-11ea-3413-e5fb7dd2a25e
 md"""
 | Syntax      | Description | Test Text     |
@@ -228,7 +235,7 @@ md"""
 !!! tip
     asdf
 
-!!! note "Wowie!"
+!!! note "Note - Wowie!"
 
     asdf
 
@@ -259,6 +266,10 @@ asdfdasd
 [^1]: adsf
 [^two]:
     asdfasfd
+    
+    line 2
+[^thrice]:
+    Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum.
     
     line 2"
 
@@ -647,17 +658,18 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─e9a68626-d04c-11ea-35ae-cb157d97fdf7
 # ╟─2afb1380-d04d-11ea-27e6-6733f186032a
 # ╟─539c6442-d04d-11ea-2b5d-8faeb152a6fb
-# ╟─fcf2e354-d04d-11ea-1340-1d6211796d5e
-# ╠═e8c7abe6-d050-11ea-3999-e3f1d4994c0c
+# ╠═fcf2e354-d04d-11ea-1340-1d6211796d5e
+# ╟─e8c7abe6-d050-11ea-3999-e3f1d4994c0c
 # ╟─95de7fac-d04d-11ea-0d83-f1b05c9bd972
 # ╟─33b2934e-d04e-11ea-0f18-0dfec350bb5e
-# ╟─a70fc678-d04d-11ea-0390-9705003cd285
-# ╟─29565386-d04e-11ea-3a40-47639d1fc22f
+# ╠═a70fc678-d04d-11ea-0390-9705003cd285
+# ╠═29565386-d04e-11ea-3a40-47639d1fc22f
+# ╠═3804ce76-d68e-11ea-1641-b9d5e4d9bace
 # ╟─2ee00948-d04e-11ea-3413-e5fb7dd2a25e
 # ╟─f0e92382-d682-11ea-3ede-65cd0f124ea4
 # ╟─ac82922e-d04e-11ea-0bac-8530cacc5c72
-# ╟─ee43c1b6-d04f-11ea-3a3d-1384ff255535
-# ╠═17f53606-d051-11ea-3183-b3a4cb7180db
+# ╠═ee43c1b6-d04f-11ea-3a3d-1384ff255535
+# ╟─17f53606-d051-11ea-3183-b3a4cb7180db
 # ╟─46fc284a-d682-11ea-34b6-69874efcaf65
 # ╟─4d452956-d682-11ea-3aeb-cd7d1b2f67dc
 # ╠═4e320206-d682-11ea-3dfe-b77f6e96f33a
