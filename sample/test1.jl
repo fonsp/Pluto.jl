@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.1
+# v0.11.2
 
 using Markdown
 using InteractiveUtils
@@ -206,6 +206,9 @@ md"""
 | Paragraph   | Text        | And more      |
 """
 
+# ╔═╡ f0e92382-d682-11ea-3ede-65cd0f124ea4
+md"Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+
 # ╔═╡ ac82922e-d04e-11ea-0bac-8530cacc5c72
 md"""
 Stage | Direct Products | ATP Yields
@@ -258,6 +261,9 @@ asdfdasd
     asdfasfd
     
     line 2"
+
+# ╔═╡ 46fc284a-d682-11ea-34b6-69874efcaf65
+md"### Text wrapping"
 
 # ╔═╡ 1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 md"# Testing machinery"
@@ -371,6 +377,18 @@ ra = 1:100
 
 # ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
 Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => :b))
+
+# ╔═╡ 4d452956-d682-11ea-3aeb-cd7d1b2f67dc
+s="12345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678056780123456780123456780123456780123456780123456780123456780123456780123456780120123456780\n\n\"\"\n\n5678012345678012
+
+7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567 7801234567801234567801234567
+
+👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧‍👦👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧👩‍👩‍👧❤❤❤✔
+
+Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. It has survived not only five centuries, but also the leap into electronic typesetting, remaining essentially unchanged. It was popularised in the 1960s with the release of Letraset sheets containing Lorem Ipsum passages, and more recently with desktop publishing software like Aldus PageMaker including versions of Lorem Ipsum."
+
+# ╔═╡ 4e320206-d682-11ea-3dfe-b77f6e96f33a
+Text(s)
 
 # ╔═╡ 7e2cc6c0-b15d-11ea-32b0-15394cdebd35
 function ask(kind, str::Markdown.MD)
@@ -636,9 +654,13 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─a70fc678-d04d-11ea-0390-9705003cd285
 # ╟─29565386-d04e-11ea-3a40-47639d1fc22f
 # ╟─2ee00948-d04e-11ea-3413-e5fb7dd2a25e
+# ╟─f0e92382-d682-11ea-3ede-65cd0f124ea4
 # ╟─ac82922e-d04e-11ea-0bac-8530cacc5c72
 # ╟─ee43c1b6-d04f-11ea-3a3d-1384ff255535
 # ╠═17f53606-d051-11ea-3183-b3a4cb7180db
+# ╟─46fc284a-d682-11ea-34b6-69874efcaf65
+# ╟─4d452956-d682-11ea-3aeb-cd7d1b2f67dc
+# ╠═4e320206-d682-11ea-3dfe-b77f6e96f33a
 # ╟─1bb05fc0-b15d-11ea-3dae-7734f66a0c56
 # ╠═9ac925d0-b15d-11ea-2abd-7db360900be0
 # ╠═7e2cc6c0-b15d-11ea-32b0-15394cdebd35
