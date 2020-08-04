@@ -3,8 +3,8 @@ import { html } from "../common/Preact.js"
 export const RunArea = ({ runtime, onClick }) => {
     return html`
         <pluto-runarea>
-            <span class="runtime">${prettytime(runtime)}</span>
             <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
+            <span class="runtime">${prettytime(runtime)}</span>
         </pluto-runarea>
     `
 }

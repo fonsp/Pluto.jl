@@ -227,6 +227,7 @@ export class Editor extends Component {
                                 cells: update.message.cells.map((cell) => {
                                     const cell_data = empty_cell_data(cell.cell_id)
                                     cell_data.running = run_all
+                                    cell_data.code_folded = true
                                     return cell_data
                                 }),
                             },

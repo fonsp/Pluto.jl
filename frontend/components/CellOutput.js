@@ -59,10 +59,10 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/jpg":
         case "image/gif":
         case "image/bmp":
+        case "image/svg+xml":
             return html`<div><img src=${body} /></div>`
             break
         case "text/html":
-        case "image/svg+xml": // TODO: don't run scripts here
         case "application/vnd.pluto.tree+xml":
             return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
             break

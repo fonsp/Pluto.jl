@@ -42,7 +42,7 @@ export const empty_cell_data = (cell_id) => {
         local_code: {
             body: "",
         },
-        code_folded: true,
+        code_folded: false,
         running: true,
         runtime: null,
         errored: false,

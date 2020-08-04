@@ -139,7 +139,7 @@ export const CellInput = ({
     // if the CodeMirror initialized/changed while it was hidden, and it suddely became unhidden, we need to refresh it to fix a layout bug where the gutter takes no horizontal space.
     useLayoutEffect(() => {
         if (!is_hidden) {
-            cm_ref.current.refresh()
+            cm_ref.current && cm_ref.current.refresh()
         }
     }, [is_hidden])
 
