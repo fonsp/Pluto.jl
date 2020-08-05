@@ -59,11 +59,6 @@ Open a terminal (why do programming guides always start with that 😡) and laun
 
 ```bash
 cd ~/pluto_tests
-julia
-```
-
-then `]` to enter the package manager, and type
-```bash
 julia --project="." -e "import Pluto; Pluto.run(1234)"
 ```
 
