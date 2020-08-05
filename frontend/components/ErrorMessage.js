@@ -61,6 +61,10 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
                     <p>In the future, <code>include</code> will be deprecated, and this will be the default.</p>`,
         },
         {
+            pattern: /MethodError: no method matching .*\nClosest candidates are:/,
+            display: (x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
+        },
+        {
             pattern: /.?/,
             display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
