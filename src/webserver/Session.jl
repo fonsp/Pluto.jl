@@ -15,6 +15,7 @@ ClientSession(id::Symbol, stream) = let
     ClientSession(id, stream, nothing, Channel(1024))
 end
 
+"A combination of _client ID_ and a _request ID_. The front-end generates a unqique ID for every request that it sends. The back-end (the stuff you are currently reading) can respond to a specific request. In that case, the response does not go through the normal message handlers in the front-end, but it flies directly to the place where the message was sent. (It resolves the promise returned by `send(...)`.)"
 struct Initiator
     client_id::Symbol
     request_id::Symbol

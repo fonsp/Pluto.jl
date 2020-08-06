@@ -28,6 +28,11 @@ function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end
 
+"""
+Return `base` * `suffix` if the file does not exist yet.
+
+If it does, return `base * sep * string(n) * suffix`, where `n` is the smallest natural number such that the file is new. (no 0 is not a natural number you snake)
+"""
 function numbered_until_new(base::AbstractString; sep=" ", suffix=".jl", create_file=true)
     chosen = base * suffix
     n = 1
@@ -41,9 +46,7 @@ function numbered_until_new(base::AbstractString; sep=" ", suffix=".jl", create_
     chosen
 end
 
-
-
-"Like `cp` except we create the file manually (to fix permission issues)."
+"Like `cp` except we create the file manually (to fix permission issues). (It's not plagiarism if you use this function to copy homework.)"
 function readwrite(from::AbstractString, to::AbstractString)
     write(to, read(from, String))
 end

@@ -2,7 +2,7 @@ import REPL: ends_with_semicolon
 
 Base.push!(x::Set{Cell}) = x
 
-"Like @async except it prints errors to the terminal."
+"Like @async except it prints errors to the terminal. 👶"
 macro asynclog(expr)
 	quote
 		@async begin
@@ -93,6 +93,7 @@ end
 # CONVENIENCE FUNCTIONS
 ###
 
+"Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, kwargs...)
 	update_caches!(notebook, cells)
 	old = notebook.topology

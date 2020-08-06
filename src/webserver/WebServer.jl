@@ -118,9 +118,17 @@ const responses = Dict{Symbol,Function}()
 
 const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 
-"""Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
+"""
+    run([host,] port=1234)
 
-This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
+Start Pluto! Are you excited? I am!
+
+## Technobabble
+
+The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
+
+This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
+"""
 function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSession())
     pluto_router = http_router_for(session)
 
@@ -256,6 +264,7 @@ end
 
 run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
+"All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))

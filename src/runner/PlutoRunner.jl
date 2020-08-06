@@ -1,4 +1,9 @@
-# Will be evaluated _inside_ the workspace.
+# Will be evaluated _inside_ the workspace process.
+
+# Pluto does most things on process 1 (the server), and it uses little wokrpsace processes to evaluate notebook code in.
+# These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
+
+# So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
 
 module PlutoRunner
 
@@ -16,7 +21,8 @@ export @bind
 # WORKSPACE MANAGER
 ###
 
-"Will be set to the latest workspace module"
+#Will be set to the latest workspace module
+"The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
 
 function set_current_module(newname)
@@ -34,6 +40,15 @@ function fetch_formatted_result(id::UUID, ends_with_semicolon::Bool)::NamedTuple
     (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
 end
 
+"""
+Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined. 
+
+Notebook code does run in `Main` - it runs in workspace modules. Every time that you run cells, a new module is created, called `Main.workspace123` with `123` an increasing number.
+
+The trick boils down to two things:
+1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
+2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
+"""
 function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
@@ -88,6 +103,7 @@ end
 "Return whether the `method` was defined inside this notebook, and not in external code."
 isfromtoplevel(method::Method) = startswith(nameof(method.module) |> string, "workspace")
 
+"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂"
 function delete_toplevel_methods(f::Function)
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
@@ -148,6 +164,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 # FORMATTING
 ###
 
+"Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
     try
         showerror(io, e, args...)
@@ -178,15 +195,23 @@ end
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
 iocontext_compact = IOContext(iocontext, :compact => true)
+
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in order of coolness
 # text/plain always matches
+"""
+The MIMEs that Pluto supports, in order of how much I like them. 
+
+`text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
+"""
 const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
 
 
-"""Format `val` using the richest possible output, return formatted string and used MIME type.
+"""
+Format `val` using the richest possible output, return formatted string and used MIME type.
 
-See `PlutoRunner.allmimes` for the ordered list of supported MIME types."""
+See [`allmimes`](@ref) for the ordered list of supported MIME types.
+"""
 function format_output(val::Any)::Tuple{String, MIME}
     try
         sprint_withreturned(show_richest, val; context=iocontext)
@@ -240,7 +265,7 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Like `Base.sprint`, but return `(String, Any)` tuple containing function output as second entry."
+"Like `Base.sprint`, but return `(String, Any)` tuple containing function output as the second entry."
 function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
     s = IOBuffer(sizehint=sizehint)
     val = if context !== nothing
@@ -251,6 +276,7 @@ function sprint_withreturned(f::Function, args...; context=nothing, sizehint::In
     String(resize!(s.data, s.size)), val
 end
 
+"Super important thing don't change."
 struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
@@ -336,6 +362,8 @@ end
 ###
 # TREE VIEWER
 ###
+
+# We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 
 const tree_display_limit = 50
 
@@ -490,6 +518,7 @@ end
 # REPL THINGS
 ###
 
+"You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
     (completion_text.(results), loc, found)
@@ -509,6 +538,7 @@ binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspa
 binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
 
+"You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
 function doc_fetcher(query, workspace::Module=current_module)
     try
         binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
@@ -522,6 +552,27 @@ end
 # BONDS
 ###
 
+"""
+_“The name is Bond, James Bond.”_
+
+Wraps around an `element` and not much else. When you `show` a `Bond` with the `text/html` MIME type, you will get:
+
+```html
+<bond def="\$(bond.defines)">
+\$(repr(MIME"text/html"(), bond.element))
+</bond>
+```
+
+For example, `Bond(html"<input type=range>", :x)` becomes:
+
+```html
+<bond def="x">
+<input type=range>
+</bond>
+```
+
+The actual reactive-interactive functionality is not done in Julia - it is handled by the Pluto front-end (JavaScript), which searches cell output for `<bond>` elements, and attaches event listeners to them. Put on your slippers and have a look at the JS code to learn more.
+"""
 struct Bond
     element::Any
     defines::Symbol
@@ -535,14 +586,15 @@ function show(io::IO, ::MIME"text/html", bond::Bond)
     end
 end
 
-"""`@bind symbol element`
+"""
+    `@bind symbol element`
 
 Return the HTML `element`, and use its latest JavaScript value as the definition of `symbol`.
 
 # Example
 
 ```julia
-@bind x html"<input type='range'>"
+@bind x html"<input type=range>"
 ```
 and in another cell:
 ```julia
@@ -564,7 +616,9 @@ macro bind(def, element)
 	end
 end
 
-"Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value."
+"""
+Will be inserted in saved notebooks that use the @bind macro, make sure that they still contain legal syntax when executed as a vanilla Julia script. Overloading `Base.get` for custom UI objects gives bound variables a sensible value.
+"""
 const fake_bind = """macro bind(def, element)
     quote
         local el = \$(esc(element))
