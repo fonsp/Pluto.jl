@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.2
+# v0.11.3
 
 using Markdown
 using InteractiveUtils
@@ -84,7 +84,9 @@ md"## Scrolling"
 md"### `text/html`"
 
 # ╔═╡ 32b5edc0-b15d-11ea-09d6-3b889f6d397a
-md"# Rich display"
+md"# Rich display
+
+## `image/svg+xml` and `image/jpeg`"
 
 # ╔═╡ 3be84600-b166-11ea-1d24-59212363543f
 md"## `text/plain`"
@@ -380,6 +382,29 @@ zeros((bw2, bw2))
 # ╔═╡ 76c98394-cfff-11ea-0b6c-25260a8a3bb9
 zeros((10,10));
 
+# ╔═╡ 52cb1264-d824-11ea-332a-55964f3d8b90
+begin
+	struct A end
+	struct B end
+	
+	function Base.show(io::IO, ::MIME"image/svg+xml", x::A)
+		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg")))
+	end
+	function Base.show(io::IO, ::MIME"image/jpg", x::B)
+		write(io, read(download("https://fonsp.com/img/doggoSmall.jpg?raw=true")))
+	end
+	nothing
+end
+
+# ╔═╡ 5d59acfe-d824-11ea-1d7b-07551a2b11d4
+A()
+
+# ╔═╡ 64d929aa-d824-11ea-2cc1-835fbe38be11
+B()
+
+# ╔═╡ 661c112e-d824-11ea-3612-4104449c409e
+[A(), B()]
+
 # ╔═╡ 42f0a872-b166-11ea-0c71-355d62f67fca
 ra = 1:100
 
@@ -503,6 +528,12 @@ ask("manual", md"Moving slider should **scroll** window to **keep this message a
 
 # ╔═╡ b5cf05fa-cfff-11ea-2c43-6748c5d90a1e
 ask("manual", md"**Delete** semicolon below, then **add** semicolon back. CodeMirror should stay fixed on screen.")
+
+# ╔═╡ 6f4ba610-d824-11ea-2e8f-a1ec77bcaad3
+ask("visual", md"**Pluto logo** and **dogs** visible")
+
+# ╔═╡ 7fc898f4-d824-11ea-0edd-ff2084f0652f
+ask("visual", md"**Pluto logo** and **dogs** visible")
 
 # ╔═╡ 486c7770-b166-11ea-22df-b38b69fb51ad
 ask("visual", md"Shows assignee `ra`")
@@ -634,6 +665,12 @@ ask("visual", md"These three paragraphs must have equal spacing between them")
 # ╟─b5cf05fa-cfff-11ea-2c43-6748c5d90a1e
 # ╠═76c98394-cfff-11ea-0b6c-25260a8a3bb9
 # ╟─32b5edc0-b15d-11ea-09d6-3b889f6d397a
+# ╟─52cb1264-d824-11ea-332a-55964f3d8b90
+# ╟─6f4ba610-d824-11ea-2e8f-a1ec77bcaad3
+# ╠═5d59acfe-d824-11ea-1d7b-07551a2b11d4
+# ╠═64d929aa-d824-11ea-2cc1-835fbe38be11
+# ╟─7fc898f4-d824-11ea-0edd-ff2084f0652f
+# ╠═661c112e-d824-11ea-3612-4104449c409e
 # ╟─3be84600-b166-11ea-1d24-59212363543f
 # ╟─486c7770-b166-11ea-22df-b38b69fb51ad
 # ╟─5f28c770-b166-11ea-3099-afb5ec07119b

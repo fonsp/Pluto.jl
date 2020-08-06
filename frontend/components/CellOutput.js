@@ -57,6 +57,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     switch (mime) {
         case "image/png":
         case "image/jpg":
+        case "image/jpeg":
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":

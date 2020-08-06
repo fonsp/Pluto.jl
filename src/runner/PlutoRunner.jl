@@ -289,36 +289,25 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     end
 
     if mime ∈ imagemimes
-        if mime isa MIME"image/svg+xml"            
-            if onlyhtml
-                print(io, "<img src=\"data:", mime, ",")
-                htmlesc(io, repr(mime, x; context=io))
-                print(io, "\">")
-                return MIME"text/html"()
-            else
-                print(io, "data:", mime, ",")
-                show(io, mime, x)
-                return mime
-            end
+        # imagy MIMEs are "raw" mimes: show returns a UInt8[]
+        # so we base64 encode the result and use it as image source.
+
+        # TODO: use raw data (when we move from JSON to MsgPack)
+
+        enc_pipe = Base64.Base64EncodePipe(io)
+        io_64 = IOContext(enc_pipe, iocontext)
+
+        if onlyhtml
+            print(io, "<img src=\"data:", mime, ";base64,")
+            show(io_64, mime, x)
+            close(enc_pipe)
+            print(io, "\">")
+            return MIME"text/html"()
         else
-            # svg is a text mime, all other imagy MIMEs are "raw" mimes: show returns a UInt8[]
-            # so we base64 encode the result
-
-            enc_pipe = Base64.Base64EncodePipe(io)
-            io_64 = IOContext(enc_pipe, iocontext)
-
-            if onlyhtml
-                print(io, "<img src=\"data:", mime, ";base64,")
-                show(io_64, mime, x)
-                close(enc_pipe)
-                print(io, "\">")
-                return MIME"text/html"()
-            else
-                print(io, "data:", mime, ";base64,")
-                show(io_64, mime, x)
-                close(enc_pipe)
-                return mime
-            end
+            print(io, "data:", mime, ";base64,")
+            show(io_64, mime, x)
+            close(enc_pipe)
+            return mime
         end
     else
         if onlyhtml || mime isa MIME"text/latex"
