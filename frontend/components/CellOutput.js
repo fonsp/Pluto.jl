@@ -61,7 +61,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/bmp":
         case "image/svg+xml":
             console.log(body)
-            return html`<div><img src=${body} /></div>`
+            return html`<div><img src=${body.replace("%0A", "")} /></div>`
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
