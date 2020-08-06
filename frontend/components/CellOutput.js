@@ -57,13 +57,11 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     switch (mime) {
         case "image/png":
         case "image/jpg":
+        case "image/jpeg":
         case "image/gif":
         case "image/bmp":
-            return html`<div><img src=${body} /></div>`
-            break
         case "image/svg+xml":
-            const _svg = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(body.substring(19))))
-            return html`<div><img src=${_svg} /></div>`
+            return html`<div><img src=${body} /></div>`
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
