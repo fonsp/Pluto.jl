@@ -3,11 +3,11 @@ import { html } from "../common/Preact.js"
 export const SlideControls = () => {
     const calculate_slide_positions = () => {
         const height = window.innerHeight
-        const headers = Array.from(document.querySelectorAll("celloutput h1, celloutput h2"))
+        const headers = Array.from(document.querySelectorAll("pluto-output h1, pluto-output h2"))
         const pos = headers.map((el) => el.getBoundingClientRect())
         const edges = pos.map((rect) => rect.top + window.pageYOffset)
 
-        const notebook_node = document.querySelector("notebook")
+        const notebook_node = document.querySelector("pluto-notebook")
         edges.push(notebook_node.getBoundingClientRect().bottom + window.pageYOffset)
 
         const scrollPositions = headers.map((el, i) => {
