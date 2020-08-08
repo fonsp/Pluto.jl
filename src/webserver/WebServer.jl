@@ -133,7 +133,11 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
     pluto_router = http_router_for(session)
 
     hostIP = parse(Sockets.IPAddr, host)
-    serversocket = Sockets.listen(hostIP, UInt16(port))
+    usedport, serversocket = Sockets.listenany(hostIP, UInt16(port))
+    if usedport != port
+        @info "Port with number $port is already in use. Using port number $usedport instead"
+    end
+    port = usedport
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
