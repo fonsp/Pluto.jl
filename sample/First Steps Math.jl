@@ -34,7 +34,14 @@ md"""Now we have a function called **area** that we can pass any diameter and it
 # ╔═╡ edb95b14-d473-11ea-3a5a-77382d31f941
 md"""## Finding the best pizza deal
 
-Let's see if a larger pizza is a better value by calculating the price per area.  Go to [San Marino's Pizza website](http://sanmarinopizza.ca/menu) and find the **Meat Lover** pizza.  There are 4 sizes: small, medium, large, extra large.  
+Let's see if a larger pizza is a better value by calculating the price per area.  There are 4 sizes: small, medium, large, extra large with the following prices:
+
+Size     | Diameter (inches) | Price ($)
+:------- | :---------------: | --------:
+small    | 9  | 13.10
+medium   | 13 | 20.95
+large    | 15 | 24.90 
+XL       | 17 | 30.95
 
 ### 1. How many small pizzas is the same as one XL pizza?
 
@@ -73,13 +80,33 @@ A new worker at a pizza shop was getting paid for cutting pizza into pieces.  Th
 md"Now what about 3 cuts across the pizza.  What are the maximum pieces that can be made with 3 cuts?"
 
 # ╔═╡ 2eb9a560-d507-11ea-3b8b-9d06678fe131
-md"Now, how many pieces can be made with 6 cuts?"
+md"Now, how many pieces can be made with 4 cuts?"
 
 # ╔═╡ d1e3dec0-d507-11ea-1213-d37a9325ee2f
-md"Are you starting to see a pattern?  Can you figure out a formula for how many pieces of pizza can be made with \"n\" cuts?  Fix the formula below:"
+md"Are you starting to see a pattern?  Can you figure out a formula for how many pieces of pizza can be made with \"n\" cuts?  Make a table and fill in the number of pieces for a number of cuts and see if you can find the pattern:
+
+Cuts | Pieces
+:--- | ------:
+0    |   1
+1    |   2
+2    |   4
+3    |   
+4    |   
+"
+
+# ╔═╡ 48647ab2-daa5-11ea-0494-ef87be7cbf7c
+md"**Hint**: For each new cut it must cut all the previus cuts to get the maximum number of cuts.  So the 4th cut will add 4 more pieces."
+
+# ╔═╡ 8cada086-daa5-11ea-220c-0f660938b604
+md"**Hint 2**: To get the maximum number of pieces with 5 cuts it will be $$5 + 4 + 3 + 2 + 1$$ (plus 1 extra for the original pizza  with 0 cuts).  To find the formula of a sequence of numbers group them like so: $$5 + (4 + 1) + (3 + 2) = 3 * 5$$.
+
+Fix the formula below and then move the slider below to see if you have the right answer:"
 
 # ╔═╡ 03249876-d508-11ea-16bb-fd5afed37a1f
 md"""Let's test your formula if it is right."""
+
+# ╔═╡ b8644fb0-daa6-11ea-1e94-9bf46e7b0fad
+
 
 # ╔═╡ 14158eb0-d45c-11ea-088f-330e45412320
 a = 2
@@ -262,15 +289,15 @@ else
 end
 
 # ╔═╡ 5a8ede88-d507-11ea-30d9-c99a67243781
-cuts6 = 1
+cuts4 = 1
 
 # ╔═╡ 5df7eefc-d507-11ea-0d1f-45b224a04774
-if cuts6 == 22
-	md"**Great!** That was a tough question.  How did you figure it out?  You are smart."
-elseif cuts6 < 12
-	md"**Hint**: Draw it out on a piece of paper.  You can make more pieces with 6 cuts."
-elseif cuts6 < 22
-	md"**Hint**: Getting close but you can make more pieces with 6 cuts."
+if cuts4 == 11
+	md"**Great!** That was a tough question.  How did you figure it out?  You tried hard."
+elseif cuts4 < 10
+	md"**Hint**: Draw it out on a piece of paper.  You can make more pieces with 4 cuts."
+elseif cuts4 < 11
+	md"**Hint**: Getting close but you can make more pieces with 4 cuts."
 else
 	md"**Hint**: That is too high."
 end
@@ -285,9 +312,7 @@ md"""Move slider to change the number of cuts: $(@bind n html"<input type=range>
 if pieces(n) ==  n*(n+1)/2 + 1
 	md"Testing... For $n cuts you predict $(pieces(n)) pieces.  **Right**"
 else
-	md"""Testing... For $n cuts you predict $(pieces(n)) pieces.  **Wrong**  (The answer is $(Int(n*(n+1)/2+1))).
-	
-	**Hint**: To find the equation write down in a table the answers and see if you can solve the quadradic equation that fits the answers."""
+	md"""Testing... For $n cuts you predict $(pieces(n)) pieces.  **Wrong**  (The answer is $(Int(n*(n+1)/2+1)))."""
 end
 
 # ╔═╡ Cell order:
@@ -341,7 +366,10 @@ end
 # ╠═5a8ede88-d507-11ea-30d9-c99a67243781
 # ╟─5df7eefc-d507-11ea-0d1f-45b224a04774
 # ╟─d1e3dec0-d507-11ea-1213-d37a9325ee2f
+# ╟─48647ab2-daa5-11ea-0494-ef87be7cbf7c
+# ╟─8cada086-daa5-11ea-220c-0f660938b604
 # ╠═f5f89724-d507-11ea-0a93-6d904f36bbe4
 # ╟─03249876-d508-11ea-16bb-fd5afed37a1f
 # ╟─bd9f3d24-d509-11ea-165d-3d465a0b4542
 # ╟─e80986c6-d509-11ea-12e3-f79a54b5ab31
+# ╠═b8644fb0-daa6-11ea-1e94-9bf46e7b0fad
