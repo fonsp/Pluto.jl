@@ -129,15 +129,21 @@ The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSession())
+function run(host, port::Union{Missing, Integer}; launchbrowser::Bool=false, session=ServerSession())
     pluto_router = http_router_for(session)
 
     hostIP = parse(Sockets.IPAddr, host)
-    usedport, serversocket = Sockets.listenany(hostIP, UInt16(port))
-    if usedport != port
-        @info "Port with number $port is already in use. Using port number $usedport instead"
+    if ismissing(port)
+        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+    else
+        try
+            serversocket = Sockets.listen(hostIP, UInt16(port))
+        catch e
+            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
+            return
+        end
     end
-    port = usedport
+
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
@@ -266,7 +272,7 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
     end
 end
 
-run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
+run(port::Union{Missing, Integer}=missing; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::IO)
