@@ -280,10 +280,10 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 dog_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Welsh_Springer_Spaniel.jpg/640px-Welsh_Springer_Spaniel.jpg"
 
 # ╔═╡ 9ac7921c-c75e-11ea-30f5-c35e6ee370cb
-t_rex_url = "https://interactive-examples.mdn.mozilla.net/media/examples/t-rex-roar.mp3"
+t_rex_url = "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/62/Meow.ogg/Meow.ogg.mp3"
 
 # ╔═╡ a8c57442-c75e-11ea-1913-7d82cbd2c69c
-flower_url = "https://interactive-examples.mdn.mozilla.net/media/examples/flower.webm"
+flower_url = "https://upload.wikimedia.org/wikipedia/commons/4/41/Sunflower_Flower_Opening_Time_Lapse.ogv"
 
 # ╔═╡ f743076c-cc57-11ea-1a8e-8799d9db985a
 
@@ -341,10 +341,9 @@ begin
 		import Pkg
 		Pkg.activate(env)
 		Pkg.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.5.1"))
+		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.5.2"))
 	end
-	import PlutoUI
-	import PlutoUI: Slider, NumberField, CheckBox, TextField, Select, Button, FilePicker, Clock, DownloadButton, Resource, LocalResource
+	using PlutoUI
 end
 
 # ╔═╡ 34ebf81e-c760-11ea-05bb-376173e7ed10

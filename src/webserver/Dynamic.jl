@@ -128,7 +128,8 @@ end
 responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
-    update_save_run!(session, notebook, cells; run_async=true, save=false)
+    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+    update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
 
 responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
