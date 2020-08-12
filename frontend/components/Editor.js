@@ -587,6 +587,8 @@ export class Editor extends Component {
                     }
                     break
                 case 82: // r
+                    // I commonly have a test notebook that I want to re-run after changing something to the backend
+                    // if I would just reload the page, then the new Pluto session would be asked to open notebook with uuid=b1d2cbdb1c2bb12d, which does not exist in the new session
                     if (e.ctrlKey) {
                         if (this.state.notebook.path !== default_path) {
                             document.location.href = link_open(this.state.notebook)
