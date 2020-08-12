@@ -280,7 +280,7 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 dog_url = "https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Welsh_Springer_Spaniel.jpg/640px-Welsh_Springer_Spaniel.jpg"
 
 # ╔═╡ 9ac7921c-c75e-11ea-30f5-c35e6ee370cb
-t_rex_url = "https://upload.wikimedia.org/wikipedia/commons/3/30/DM550106_CervusElaphus_Slovakia_hill_Volovec.ogg"
+t_rex_url = "https://upload.wikimedia.org/wikipedia/commons/transcoded/6/62/Meow.ogg/Meow.ogg.mp3"
 
 # ╔═╡ a8c57442-c75e-11ea-1913-7d82cbd2c69c
 flower_url = "https://upload.wikimedia.org/wikipedia/commons/4/41/Sunflower_Flower_Opening_Time_Lapse.ogv"
@@ -341,7 +341,7 @@ begin
 		import Pkg
 		Pkg.activate(env)
 		Pkg.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.6.0"))
+		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.5.2"))
 	end
 	using PlutoUI
 end
