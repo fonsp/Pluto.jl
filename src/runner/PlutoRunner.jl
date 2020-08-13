@@ -17,6 +17,8 @@ import UUIDs: UUID
 
 export @bind
 
+MimedOutput = Tuple{Union{String,Vector{UInt8}}, MIME}
+
 ###
 # WORKSPACE MANAGER
 ###
@@ -33,7 +35,7 @@ end
 
 const cell_results = Dict{UUID, WeakRef}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
     ans = cell_results[id].value
     errored = ans isa CapturedException
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
@@ -212,9 +214,14 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output(val::Any)::Tuple{String, MIME}
+function format_output(@nospecialize(val))::MimedOutput
     try
-        sprint_withreturned(show_richest, val; context=iocontext)
+        result, mime = sprint_withreturned(show_richest, val; context=iocontext)
+        if mime ∈ imagemimes
+            result, mime
+        else
+            String(result), mime
+        end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
         bt = stacktrace(catch_backtrace())
@@ -222,9 +229,9 @@ function format_output(val::Any)::Tuple{String, MIME}
     end
 end
 
-format_output(val::Nothing)::Tuple{String, MIME} = "", MIME"text/plain"()
+format_output(val::Nothing)::MimedOutput = "", MIME"text/plain"()
 
-function format_output(val::CapturedException)::Tuple{String, MIME}
+function format_output(val::CapturedException)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s,_) in val.processed_bt]
 
@@ -265,7 +272,7 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
     end
 end
 
-"Like `Base.sprint`, but return `(String, Any)` tuple containing function output as the second entry."
+"Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
 function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
     s = IOBuffer(sizehint=sizehint)
     val = if context !== nothing
@@ -273,7 +280,7 @@ function sprint_withreturned(f::Function, args...; context=nothing, sizehint::In
     else
         f(s, args...)
     end
-    String(resize!(s.data, s.size)), val
+    resize!(s.data, s.size), val
 end
 
 "Super important thing don't change."
@@ -315,24 +322,18 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     end
 
     if mime ∈ imagemimes
-        # imagy MIMEs are "raw" mimes: show returns a UInt8[]
-        # so we base64 encode the result and use it as image source.
-
-        # TODO: use raw data (when we move from JSON to MsgPack)
-
-        enc_pipe = Base64.Base64EncodePipe(io)
-        io_64 = IOContext(enc_pipe, iocontext)
-
         if onlyhtml
+            # if only html output is accepted, we need to base64 encode the result and use it as image source.
+            enc_pipe = Base64.Base64EncodePipe(io)
+            io_64 = IOContext(enc_pipe, iocontext)
+
             print(io, "<img src=\"data:", mime, ";base64,")
             show(io_64, mime, x)
             close(enc_pipe)
             print(io, "\">")
             return MIME"text/html"()
         else
-            print(io, "data:", mime, ";base64,")
-            show(io_64, mime, x)
-            close(enc_pipe)
+            show(io, mime, x)
             return mime
         end
     else

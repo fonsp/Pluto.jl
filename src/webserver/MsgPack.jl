@@ -1,3 +1,7 @@
+# this file is just a bunch of ugly code to make sure that the Julia Array{UInt8,1} becomes a JS Uint8Array() instead of a normal array. This improves performance of the client.
+# ignore it if you are not interested in that kind of stuff
+
+import UUIDs: UUID
 import MsgPack
 
 # MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
@@ -12,7 +16,10 @@ const JSTypedIntSupport = [Int8, UInt8, Int16, UInt16, Int32, UInt32, Float32, F
 JSTypedInt = Union{Int8,UInt8,Int16,UInt16,Int32,UInt32,Float32,Float64}
 
 MsgPack.msgpack_type(m::Type{Vector{T}}) where T <: JSTypedInt = MsgPack.ExtensionType()
-MsgPack.to_msgpack(::MsgPack.ExtensionType, x::Vector{T}) where T <: JSTypedInt = reinterpret(UInt8, x)
+MsgPack.to_msgpack(::MsgPack.ExtensionType, x::Vector{T}) where T <: JSTypedInt = let
+    type = findfirst(isequal(T), JSTypedIntSupport) + 0x10
+    MsgPack.Extension(type, reinterpret(UInt8, x))
+end
 
 # The other side does the same (/frontend/common/MsgPack.js), and we decode it here:
 function decode_extension_and_addbits(x::MsgPack.Extension)

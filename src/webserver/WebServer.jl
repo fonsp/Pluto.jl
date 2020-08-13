@@ -267,7 +267,7 @@ end
 run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
-function process_ws_message(session::ServerSession, parentbody::Dict{Any,Any}, clientstream::IO)
+function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
     

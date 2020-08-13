@@ -7,7 +7,7 @@ mutable struct Cell
     cell_id::UUID
     code::String
     
-    output_repr::Union{String,Nothing}
+    output_repr::Union{Vector{UInt8},String,Nothing}
     repr_mime::MIME
     errored::Bool
     runtime::Union{Missing,UInt64}
