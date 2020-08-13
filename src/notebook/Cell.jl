@@ -1,6 +1,5 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState
-import JSON: lower
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
 mutable struct Cell

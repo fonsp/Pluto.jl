@@ -47,6 +47,7 @@ include("./evaluation/WorkspaceManager.jl")
 include("./evaluation/Update.jl")
 include("./evaluation/Run.jl")
 
+include("./webserver/MsgPack.jl")
 include("./webserver/WebServer.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")

@@ -1,3 +1,5 @@
+import { pack, unpack } from "./MsgPack.js"
+
 const do_next = async (queue) => {
     const next = queue[0]
     await next()
@@ -71,7 +73,7 @@ export class PlutoConnection {
     send(message_type, body = {}, metadata = {}, create_promise = true) {
         const request_id = this.get_short_unqiue_id()
 
-        var toSend = {
+        const message = {
             type: message_type,
             client_id: this.client_id,
             request_id: request_id,
@@ -88,14 +90,20 @@ export class PlutoConnection {
             this.sent_requests[request_id] = rp.resolve
         }
 
-        this.psocket.send(JSON.stringify(toSend) + this.MSG_DELIM)
+        const encoded = pack(message)
+        const to_send = new Uint8Array(encoded.length + this.MSG_DELIM.length)
+        to_send.set(encoded, 0)
+        to_send.set(this.MSG_DELIM, encoded.length)
+        this.psocket.send(to_send)
 
         return p
     }
 
     async handle_message(event) {
         try {
-            const update = await event.data.text().then(JSON.parse)
+            const buffer = await event.data.arrayBuffer()
+            const buffer_sliced = buffer.slice(0, buffer.byteLength - this.MSG_DELIM.length)
+            const update = unpack(new Uint8Array(buffer_sliced))
             const by_me = "initiator_id" in update && update.initiator_id == this.client_id
             const request_id = update.request_id
 
@@ -205,7 +213,7 @@ export class PlutoConnection {
 
         this.task_queue = []
         this.psocket = null
-        this.MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi"
+        this.MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
         this.client_id = this.get_short_unqiue_id()
         this.sent_requests = {}
         this.pluto_version = "unknown"

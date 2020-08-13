@@ -1,6 +1,7 @@
 using Test
 import Pluto: Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Distributed
+import JSON
 
 withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
     @testset "Reactivity" begin
@@ -148,7 +149,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
 
                 @test occursinerror("DomainError", notebook.cells[12])
                 let
-                    st = Pluto.JSON.parse(notebook.cells[12].output_repr)
+                    st = JSON.parse(notebook.cells[12].output_repr)
                     @test length(st["stacktrace"]) == 4 # check in REPL
                     if Pluto.can_insert_filename
                         @test st["stacktrace"][4]["line"] == 1
@@ -161,7 +162,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
 
                 @test occursinerror("DomainError", notebook.cells[13])
                 let
-                    st = Pluto.JSON.parse(notebook.cells[13].output_repr)
+                    st = JSON.parse(notebook.cells[13].output_repr)
                     @test length(st["stacktrace"]) == 4
                     if Pluto.can_insert_filename
                         @test st["stacktrace"][4]["line"] == 3
@@ -174,7 +175,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
 
                 @test occursinerror("DomainError", notebook.cells[15])
                 let
-                    st = Pluto.JSON.parse(notebook.cells[15].output_repr)
+                    st = JSON.parse(notebook.cells[15].output_repr)
                     @test length(st["stacktrace"]) == 5
 
                     if Pluto.can_insert_filename
@@ -191,7 +192,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 end
 
                 let
-                    st = Pluto.JSON.parse(notebook.cells[16].output_repr)
+                    st = JSON.parse(notebook.cells[16].output_repr)
                     @test occursin(escape_me, st["msg"])
                 end
 
