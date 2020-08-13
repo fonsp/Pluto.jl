@@ -110,7 +110,7 @@ Pluto.jl is built by gluing together open source software:
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
 -   `CodeMirror` - [license](https://github.com/codemirror/CodeMirror/blob/master/LICENSE)
 -   `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
--   `JSON.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
+-   `JSON.jl` - [license](https://github.com/JuliaIO/JSON.jl/blob/master/LICENSE.md)
 -   `observablehq/stdlib` - [license](https://github.com/observablehq/stdlib/blob/master/LICENSE)
 -   `preact` - [license](https://github.com/preactjs/preact/blob/master/LICENSE)
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
