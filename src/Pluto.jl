@@ -23,7 +23,7 @@ if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
 
-  julia> Pluto.run(1234)
+  julia> Pluto.run()
 
     Have a look at the FAQ:
     https://github.com/fonsp/Pluto.jl/wiki
