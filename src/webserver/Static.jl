@@ -69,7 +69,7 @@ function http_router_for(session::ServerSession)
             nb = load_notebook(path)
             session.notebooks[nb.notebook_id] = nb
             if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-                update_save_run!(session, nb, nb.cells; run_async=true)
+                update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
                 # TODO: send message when initial run completed
             end
             @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
@@ -81,7 +81,7 @@ function http_router_for(session::ServerSession)
 
     function serve_newfile(req::HTTP.Request)
         nb = emptynotebook()
-        update_save_run!(session, nb, nb.cells; run_async=true)
+        update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
         session.notebooks[nb.notebook_id] = nb
         @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
         return notebook_redirect_response(nb)

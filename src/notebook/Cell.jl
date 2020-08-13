@@ -1,6 +1,5 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState
-import JSON: lower
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
 mutable struct Cell
@@ -8,7 +7,7 @@ mutable struct Cell
     cell_id::UUID
     code::String
     
-    output_repr::Union{String,Nothing}
+    output_repr::Union{Vector{UInt8},String,Nothing}
     repr_mime::MIME
     errored::Bool
     runtime::Union{Missing,UInt64}

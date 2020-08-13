@@ -61,7 +61,8 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<div><img src=${body} /></div>`
+            const src = URL.createObjectURL(new Blob([body], { type: mime }))
+            return html`<div><img src=${src} /></div>`
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":

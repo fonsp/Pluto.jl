@@ -1,9 +1,3 @@
-import JSON
-
-# JSON.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
-import JSON: lower
-JSON.lower(m::MIME) = string(m)
-JSON.lower(u::UUID) = string(u)
 
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
@@ -18,7 +12,7 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
         to_send[:request_id] = message.initiator.request_id
     end
 
-    JSON.print(io, to_send)
+    pack(io, to_send)
 end
 
 function serialize_message(message::UpdateMessage)

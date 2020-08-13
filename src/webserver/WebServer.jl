@@ -1,4 +1,4 @@
-import JSON
+import MsgPack
 import UUIDs: UUID
 import HTTP
 import Sockets
@@ -22,6 +22,9 @@ function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: I
         catch end
     end
 end
+
+"Appended after every WS message to say that the transmission is complete. This solves an issue where the WS message is broken up over multiple frames/packets/thingies."
+const MSG_DELIM = Vector{UInt8}(codeunits("IUUQ.km jt ejggjdvmu vhi")) # riddle me this, Julius
 
 
 "Send `messages` to all clients connected to the `notebook`."
@@ -74,7 +77,7 @@ function flushclient(client::ClientSession)
                     if client.stream isa HTTP.WebSockets.WebSocket
                         client.stream.frame_type = HTTP.WebSockets.WS_BINARY
                     end
-                    write(client.stream, serialize_message(next_to_send) |> codeunits)
+                    write(client.stream, serialize_message(next_to_send), MSG_DELIM)
                 else
                     put!(flushtoken)
                     return false
@@ -116,7 +119,6 @@ end
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
 
-const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
 
 """
     run([host,] port=1234)
@@ -158,23 +160,24 @@ function run(host, port::Union{Missing, Integer}; launchbrowser::Bool=false, ses
                     end
                     while !eof(clientstream)
                         # This stream contains data received over the WebSocket.
-                        # It is formatted and JSON-encoded by send(...) in editor.html
+                        # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
                         try
                             parentbody = let
                                 # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
-                                data = ""
+                                data = UInt8[]
                                 while !endswith(data, MSG_DELIM)
                                     if eof(clientstream)
-                                        if data == ""
+                                        if isempty(data)
                                             return
                                         end
                                         @warn "Unexpected eof after" data
-                                        data = data * MSG_DELIM
+                                        append!(data, MSG_DELIM)
                                         break
                                     end
-                                    data = data * String(readavailable(clientstream))
+                                    append!(data, readavailable(clientstream))
                                 end
-                                JSON.parse(SubString(data, 1:(lastindex(data) - length(MSG_DELIM))))
+                                # TODO: view to avoid memory allocation
+                                unpack(data[1:end - length(MSG_DELIM)])
                             end
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
@@ -215,8 +218,7 @@ function run(host, port::Union{Missing, Integer}; launchbrowser::Bool=false, ses
                 # no request body
                 response_body = HTTP.handle(pluto_router, request)
             else
-                # there's a body, so pass it on to the handler we dispatch to
-                response_body = HTTP.handle(pluto_router, request, JSON.parse(request_body))
+                @warn "HTTP request contains a body, huh?" request_body
             end
     
             request.response::HTTP.Response = response_body
@@ -275,7 +277,7 @@ end
 run(port::Union{Missing, Integer}=missing; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
-function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::IO)
+function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
     

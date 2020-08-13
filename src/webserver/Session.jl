@@ -50,18 +50,15 @@ end
 UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, missing)
 UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, missing)
 
-
 function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
-    payload, mime = cell.output_repr, cell.repr_mime
-
-    return UpdateMessage(:cell_output, 
+    UpdateMessage(:cell_output, 
         Dict(
             :running => cell.running,
             :runtime => cell.runtime,
             :errored => cell.errored,
             :output => Dict(
-                :mime => mime,
-                :body => payload,
+                :mime => cell.repr_mime,
+                :body => cell.output_repr,
                 :rootassignee => cell.rootassignee,
             )
         ),
@@ -69,24 +66,24 @@ function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Uni
 end
 
 function clientupdate_cell_input(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_input, 
+    UpdateMessage(:cell_input, 
         Dict(:code => cell.code, :folded => cell.code_folded), notebook, cell, initiator)
 end
 
 function clientupdate_cell_added(notebook::Notebook, cell::Cell, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_added, 
+    UpdateMessage(:cell_added, 
         Dict(
             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
         ), notebook, cell, initiator)
 end
 
 function clientupdate_cell_deleted(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_deleted, 
+    UpdateMessage(:cell_deleted, 
         Dict(), notebook, cell, initiator)
 end
 
 function clientupdate_cells_moved(notebook::Notebook, cells::Vector{Cell}, new_index::Integer; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cells_moved, 
+    UpdateMessage(:cells_moved, 
         Dict(
             :cells => [cell.cell_id for cell in cells],
             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
@@ -94,17 +91,17 @@ function clientupdate_cells_moved(notebook::Notebook, cells::Vector{Cell}, new_i
 end
 
 function clientupdate_cell_running(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_running, 
+    UpdateMessage(:cell_running, 
         Dict(), notebook, cell, initiator)
 end
 
 function clientupdate_cell_folded(notebook::Notebook, cell::Cell, folded::Bool; initiator::Union{Initiator,Missing}=missing)
-    return UpdateMessage(:cell_folded, 
+    UpdateMessage(:cell_folded, 
         Dict(:folded => folded), notebook, cell, initiator)
 end
 
 function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Missing}=missing)
-    update = UpdateMessage(:notebook_list,
+    UpdateMessage(:notebook_list,
         Dict(
             :notebooks => [
                 Dict(
