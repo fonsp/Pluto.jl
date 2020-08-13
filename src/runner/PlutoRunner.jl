@@ -33,7 +33,7 @@ end
 
 const cell_results = Dict{UUID, WeakRef}()
 
-function fetch_formatted_result(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64, Missing}}}
     ans = cell_results[id].value
     errored = ans isa CapturedException
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())

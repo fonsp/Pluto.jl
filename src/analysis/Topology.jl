@@ -113,25 +113,30 @@ end
 
 const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 
-"""Assigns a number to a cell - cells with a lower number might run first. 
+"""Does the cell only contain md"..." and html"..."?
 
-This is used to run md"..." cells first, and to treat reactive dependencies between cells that cannot be found using static code anylsis."""
-function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Number
-	if isempty(topology[cell].assignments) && 
+This is used to run these cells first."""
+function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
+	# https://github.com/fonsp/Pluto.jl/issues/209
+	isempty(topology[cell].assignments) && 
 		isempty(topology[cell].funccalls) &&
 		isempty(topology[cell].funcdefs) &&
 		length(topology[cell].references) <= 2 && 
 		topology[cell].references ⊆ md_and_friends
-		# https://github.com/fonsp/Pluto.jl/issues/209
-		1
-	elseif !isempty(cell.module_usings)
+end
+
+"""Assigns a number to a cell - cells with a lower number might run first. 
+
+This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
+function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Number
+	if !isempty(cell.module_usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
-		2
+		1
 	elseif [:include] ∈ topology[cell].funccalls
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
-		3
+		2
 	else
-		4
+		3
 	end
 end

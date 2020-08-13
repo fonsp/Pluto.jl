@@ -77,7 +77,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 end
 
 "Run a single cell non-reactively, return run information."
-function run_single!(notebook::Notebook, cell::Cell)
+function run_single!(notebook::Union{Notebook,WorkspaceManager.Workspace}, cell::Cell)
 	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
@@ -86,7 +86,6 @@ function run_single!(notebook::Notebook, cell::Cell)
 	cell.errored = run.errored
 
 	return run
-	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
 
 ###
@@ -94,15 +93,33 @@ end
 ###
 
 "Do all the things!"
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, kwargs...)
+function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
-	if run_async
-		@asynclog run_reactive!(session, notebook, old, new, cells; kwargs...)
+	
+	# _assume `prerender_text == false` if you want to skip some details_
+
+	to_run_online = if !prerender_text
+		cells
 	else
-		run_reactive!(session, notebook, old, new, cells; kwargs...)
+		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
+		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
+		offline_workspace = WorkspaceManager.make_workspace(notebook, false)
+		
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		for cell in to_run_offline
+			run_single!(offline_workspace, cell)
+		end
+		
+		setdiff(cells, to_run_offline)
+	end
+
+	if run_async
+		@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+	else
+		run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
 	end
 end
 

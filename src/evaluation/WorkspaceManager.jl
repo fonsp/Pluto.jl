@@ -49,9 +49,7 @@ function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKS
     end
     
     module_name = create_emptyworkspacemodule(pid)
-    
     workspace = Workspace(pid, module_name)
-    workspaces[notebook.notebook_id] = workspace
 
     # We call cd("path of notebook file"). This is also done when the filename is changed.
     eval_in_workspace(workspace, :(cd($(notebook.path |> dirname))))
@@ -150,7 +148,7 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    return Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.fetch_formatted_result($cell_id, $ends_with_semicolon)))
+    return Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
