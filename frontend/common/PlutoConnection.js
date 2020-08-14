@@ -1,4 +1,5 @@
 import { pack, unpack } from "./MsgPack.js"
+import "./Polyfill.js"
 
 const do_next = async (queue) => {
     const next = queue[0]
@@ -101,7 +102,7 @@ export class PlutoConnection {
 
     async handle_message(event) {
         try {
-            const buffer = await new Response(event.data).arrayBuffer()
+            const buffer = await event.data.arrayBuffer()
             const buffer_sliced = buffer.slice(0, buffer.byteLength - this.MSG_DELIM.length)
             const update = unpack(new Uint8Array(buffer_sliced))
             const by_me = "initiator_id" in update && update.initiator_id == this.client_id

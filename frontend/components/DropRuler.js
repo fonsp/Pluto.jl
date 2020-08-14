@@ -9,7 +9,7 @@ export class DropRuler extends Component {
         this.precompute_cell_edges = () => {
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
-            this.cell_edges.push(cell_nodes.last().offsetTop + cell_nodes.last().scrollHeight)
+            this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
         this.getDropIndexOf = (pageY) => {
             const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
@@ -171,3 +171,5 @@ const argmin = (x) => {
     }
     return best_index
 }
+
+const last = (x) => x[x.length - 1]
