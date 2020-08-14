@@ -491,7 +491,7 @@ export class Editor extends Component {
 
                 return cells.length != 0
             },
-            set_bond: (symbol, value) => {
+            set_bond: (symbol, value, is_first_value) => {
                 this.counter_statistics.numBondSets++
 
                 if (this.all_completed) {
@@ -507,13 +507,14 @@ export class Editor extends Component {
                         {
                             sym: symbol,
                             val: value,
+                            is_first_value: is_first_value,
                         },
                         { notebook_id: this.state.notebook.notebook_id }
                     )
                     .then(({ message }) => {
                         // the back-end tells us whether any cells depend on the bound value
 
-                        if (message.any_dependents) {
+                        if (message.triggered_other_cells) {
                             // there are dependent cells, those cells will start running and returning output soon
                             // when the last running cell returns its output, the all_completed_promise is resolved, and a new bond value can be sent
                         } else {

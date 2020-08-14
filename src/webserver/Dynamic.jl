@@ -1,3 +1,4 @@
+import UUIDs: uuid1
 
 function serialize_message_to_stream(io::IO, message::UpdateMessage)
     to_send = Dict(:type => message.type, :message => message.message)
@@ -194,10 +195,33 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
-    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
+    any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
+    
+    # assume body["is_first_value"] == false if you want to skip an edge case in this code
+    
+    triggered_other_cells = if body["is_first_value"]
+        # fix for https://github.com/fonsp/Pluto.jl/issues/275
+        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+        
+        # check if the variable does not already have that value.
+        eq_tester = :(!ismissing($bound_sym) && ($bound_sym == $new_val)) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        fetched_result = WorkspaceManager.eval_fetch_in_workspace(notebook, eq_tester, uuid1())
+        if fetched_result.output_formatted[1] === "true"
+            # the initial value is already set, and we don't want to run cells again.
+            false
+        else
+            any_dependents
+        end
+    else
+        any_dependents
+    end
+
+    # we re-use `body` as our response message :)
+    body["triggered_other_cells"] = triggered_other_cells
+
     putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
     
-    if any_dependents
+    if triggered_other_cells
         function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
             push!(to_delete_vars, bound_sym) # also delete the bound symbol
             WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)
