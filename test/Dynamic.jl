@@ -51,7 +51,7 @@ stringify_keys(x::Any) = x
         @test_nowarn send(:set_input, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:run_multiple_cells, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
         @test_nowarn send(:run, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9), Dict(:notebook_id => n))
+        @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9, :is_first_value => true), Dict(:notebook_id => n))
         @test_nowarn send(:change_cell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
         @test_nowarn send(:delete_cell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
 
