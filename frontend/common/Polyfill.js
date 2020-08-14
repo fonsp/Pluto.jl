@@ -19,6 +19,10 @@ if (Blob.prototype.text == null) {
     }
 }
 
-Array.prototype.last = function () {
-    return this[this.length - 1]
+// Polyfill for Blob::arrayBuffer when there is none (safari)
+// This is not "officialy" supported
+if (Blob.prototype.arrayBuffer == null) {
+    Blob.prototype.arrayBuffer = function () {
+        return new Response(this).arrayBuffer()
+    }
 }
