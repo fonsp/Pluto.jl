@@ -10,7 +10,7 @@ import { DropRuler } from "./DropRuler.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 
-import { link_open } from "./Welcome.js"
+import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
 const default_path = "..."
@@ -592,7 +592,7 @@ export class Editor extends Component {
                     // if I would just reload the page, then the new Pluto session would be asked to open notebook with uuid=b1d2cbdb1c2bb12d, which does not exist in the new session
                     if (e.ctrlKey) {
                         if (this.state.notebook.path !== default_path) {
-                            document.location.href = link_open(this.state.notebook)
+                            document.location.href = link_open_path(this.state.notebook.path)
                         }
                         e.preventDefault()
                     }

@@ -58,7 +58,7 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/websocket_url_please", r -> HTTP.Response(200, string(session.secret)))
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
 
-    function launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")
+    function try_launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")
         try
             for nb in values(session.notebooks)
                 if realpath(nb.path) == realpath(path)
@@ -90,18 +90,25 @@ function http_router_for(session::ServerSession)
     
 
     function serve_openfile(req::HTTP.Request)
-        uri = HTTP.URI(req.target)
-        query = HTTP.URIs.unescapeuri(replace(uri.query, '+' => ' '))
-        
-        if length(query) > 5
-            path = tamepath(query[6:end])
-            if (isfile(path))
-                return launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        uri = HTTP.URI(req.target)        
+        try
+            query = HTTP.queryparams(uri)
+
+            path = if haskey(query, "path")
+                tamepath(query["path"])
+            elseif haskey(query, "url")
+                download(query["url"], emptynotebook().path)
+            else
+                error("Empty request")
+            end
+            if isfile(path)
+                return try_launch_notebook_response(path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
             end
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
         end
-        return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/open", serve_openfile)
     
@@ -113,7 +120,7 @@ function http_router_for(session::ServerSession)
         path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
         readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
         
-        return launch_notebook_response(path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        return try_launch_notebook_response(path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     
