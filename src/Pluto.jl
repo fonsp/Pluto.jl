@@ -59,7 +59,7 @@ include("./evaluation/Run.jl")
 
 include("./webserver/MsgPack.jl")
 include("./webserver/PutUpdates.jl")
-include("./webserver/SessionAction.jl")
+include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")

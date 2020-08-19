@@ -139,7 +139,7 @@ end
 
 responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     newpath = tamepath(body["path"])
-    result = SessionAction.move(session, notebook, newpath)
+    result = SessionActions.move(session, notebook, newpath)
     update = UpdateMessage(:move_notebook_result, result, notebook, nothing, initiator)
     putclientupdates!(session, initiator, update)
 end
@@ -150,7 +150,7 @@ responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; i
 end
 
 responses[:shutdown_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
-    SessionAction.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
+    SessionActions.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
 end
 
 responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let

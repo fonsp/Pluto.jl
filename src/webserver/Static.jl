@@ -59,10 +59,10 @@ function http_router_for(session::ServerSession)
     
     function try_launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")
         try
-            nb = SessionAction.open(session, path)
+            nb = SessionActions.open(session, path)
             return notebook_redirect_response(nb; home_url=home_url)
         catch e
-            if e isa SessionAction.NotebookIsRunningException
+            if e isa SessionActions.NotebookIsRunningException
                 return notebook_redirect_response(e.notebook; home_url=home_url)
             end
             return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -70,7 +70,7 @@ function http_router_for(session::ServerSession)
     end
 
     function serve_newfile(req::HTTP.Request)
-        return notebook_redirect_response(SessionAction.new(session))
+        return notebook_redirect_response(SessionActions.new(session))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
     

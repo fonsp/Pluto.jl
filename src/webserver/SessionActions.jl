@@ -1,6 +1,6 @@
-module SessionAction
+module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, get_pl_env, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, get_pl_env, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -8,12 +8,12 @@ end
 
 function open(session::ServerSession, path::AbstractString)
     for nb in values(session.notebooks)
-        if realpath(nb.path) == realpath(path)
+        if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
     
-    nb = load_notebook(path)
+    nb = load_notebook(tamepath(path))
     session.notebooks[nb.notebook_id] = nb
     if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
         update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
