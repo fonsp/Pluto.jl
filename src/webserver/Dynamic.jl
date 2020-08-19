@@ -1,24 +1,8 @@
 import UUIDs: uuid1
 
-function serialize_message_to_stream(io::IO, message::UpdateMessage)
-    to_send = Dict(:type => message.type, :message => message.message)
-    if message.notebook !== nothing
-        to_send[:notebook_id] = message.notebook.notebook_id
-    end
-    if message.cell !== nothing
-        to_send[:cell_id] = message.cell.cell_id
-    end
-    if message.initiator !== missing
-        to_send[:initiator_id] = message.initiator.client_id
-        to_send[:request_id] = message.initiator.request_id
-    end
 
-    pack(io, to_send)
-end
-
-function serialize_message(message::UpdateMessage)
-    sprint(serialize_message_to_stream, message)
-end
+"Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
+const responses = Dict{Symbol,Function}()
 
 function change_remote_cellinput!(session::ServerSession, notebook::Notebook, cell::Cell, newcode; initiator::Union{Initiator,Missing}=missing)
     # i.e. Ctrl+Enter was pressed on this cell
@@ -155,20 +139,7 @@ end
 
 responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     newpath = tamepath(body["path"])
-    result = try
-        if isfile(newpath)
-            (success = false, reason = "File exists already - you need to delete the old file manually.")
-        else
-            move_notebook(notebook, newpath)
-            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace(notebook, newpath)
-            (success = true, reason = "")
-        end
-    catch ex
-        showerror(stderr, stacktrace(catch_backtrace()))
-        (success = false, reason = sprint(showerror, ex))
-    end
-
+    result = SessionAction.move(session, notebook, newpath)
     update = UpdateMessage(:move_notebook_result, result, notebook, nothing, initiator)
     putclientupdates!(session, initiator, update)
 end
@@ -178,18 +149,9 @@ responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; i
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
-responses[:shut_down_workspace] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
-    listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
-    if body["remove_from_list"]
-        delete!(session.notebooks, notebook.notebook_id)
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        for client in listeners
-            @async close(client.stream)
-        end
-    end
-    success = WorkspaceManager.unmake_workspace(notebook)
+responses[:shutdown_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+    SessionAction.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
 end
-
 
 responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     bound_sym = Symbol(body["sym"])

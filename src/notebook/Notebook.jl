@@ -197,7 +197,7 @@ function load_notebook(path::String)::Notebook
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
-function move_notebook(notebook::Notebook, newpath::String)
+function move_notebook!(notebook::Notebook, newpath::String)
     # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
     oldpath_tame = tamepath(notebook.path)
     newpath_tame = tamepath(newpath)

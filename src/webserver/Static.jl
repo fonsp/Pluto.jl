@@ -43,7 +43,6 @@ function notebook_redirect_response(notebook; home_url="./")
     return response
 end
 
-
 function http_router_for(session::ServerSession)
     router = HTTP.Router()
     
@@ -53,38 +52,25 @@ function http_router_for(session::ServerSession)
     
     HTTP.@register(router, "GET", "/", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
     HTTP.@register(router, "GET", "/edit", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
-
+    
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
     HTTP.@register(router, "GET", "/websocket_url_please", r -> HTTP.Response(200, string(session.secret)))
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
-
+    
     function try_launch_notebook_response(path::AbstractString; title="", advice="", home_url="./")
         try
-            for nb in values(session.notebooks)
-                if realpath(nb.path) == realpath(path)
-                    return notebook_redirect_response(nb; home_url=home_url)
-                end
-            end
-
-            nb = load_notebook(path)
-            session.notebooks[nb.notebook_id] = nb
-            if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-                update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
-                # TODO: send message when initial run completed
-            end
-            @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+            nb = SessionAction.open(session, path)
             return notebook_redirect_response(nb; home_url=home_url)
         catch e
+            if e isa SessionAction.NotebookIsRunningException
+                return notebook_redirect_response(e.notebook; home_url=home_url)
+            end
             return error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
         end
     end
 
     function serve_newfile(req::HTTP.Request)
-        nb = emptynotebook()
-        update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
-        session.notebooks[nb.notebook_id] = nb
-        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        return notebook_redirect_response(nb)
+        return notebook_redirect_response(SessionAction.new(session))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
     

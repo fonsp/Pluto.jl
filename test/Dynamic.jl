@@ -66,7 +66,7 @@ stringify_keys(x::Any) = x
         @test_nowarn send(:move_notebook_file, Dict(:path => tempname()), Dict(:notebook_id => n))
         
         # TODO: we need to wait for all above command to finish before we can do this:
-        # send(:shut_down_workspace, Dict(:remove_from_list => true), Dict(:notebook_id => n))
+        # send(:shutdown_notebook, Dict(:keep_in_session => false), Dict(:notebook_id => n))
     end
 end
 

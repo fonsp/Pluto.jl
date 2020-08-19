@@ -140,9 +140,9 @@ export class Welcome extends Component {
                         transitioning: true,
                     })
                     this.client.send(
-                        "shut_down_workspace",
+                        "shutdown_notebook",
                         {
-                            remove_from_list: true,
+                            keep_in_session: false,
                         },
                         {
                             notebook_id: nb.notebook_id,
