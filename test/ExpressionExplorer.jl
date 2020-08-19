@@ -4,6 +4,7 @@ using Test
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
         @test testee(:(1 + 1), [], [], [:+], [])
+        @test testee(:(sqrt(1)), [], [], [:sqrt], [])
         @test testee(:(x = 3), [], [:x], [], [])
         @test testee(:(x = x), [:x], [:x], [], [])
         @test testee(:(x = 1 + y), [:y], [:x], [:+], [])
@@ -85,7 +86,7 @@ using Test
         @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
         @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
     end
-    @testset "Dot operator" begin
+    @testset "Broadcasting" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
         @test testee(:(a .+= b), [:b, :a], [], [:+], [])
         @test testee(:(a[i] .+= b), [:b, :a, :i], [], [:+], [])
@@ -195,9 +196,9 @@ using Test
         @test_broken testee(:(f(x)::String = x), [], [], [], [
             :f => ([:String], [], [], [])
         ])
-        @test testee(:(MIME"text/html"), [Symbol("@MIME_str")], [], [], [])
+        @test testee(:(MIME"text/html"), [], [], [Symbol("@MIME_str")], [])
         @test testee(:(function f(::MIME"text/html") 1 end), [], [], [], [
-            :f => ([Symbol("@MIME_str")], [], [], [])
+            :f => ([], [], [Symbol("@MIME_str")], [])
         ])
         @test testee(:(a(a::AbstractArray{T}) where T = 5), [], [], [], [
             :a => ([:AbstractArray], [], [], [])
@@ -245,18 +246,27 @@ using Test
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
     end
     @testset "Macros" begin
-        @test testee(:(@time a = 2), [Symbol("@time")], [:a], [], [])
-        @test testee(:(@enum a b c), [Symbol("@enum")], [:a, :b, :c], [], [])
-        @test testee(:(@enum a b = d c), [Symbol("@enum"), :d], [:a, :b, :c], [], [])
-        @test testee(:(@gensym a b c), [Symbol("@gensym")], [:a, :b, :c], [], [])
-        @test testee(:(@bind a b), [Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
-        @test testee(:(let @bind a b end), [Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
-        @test testee(:(md"hey $(@bind a b) $(a)"), [Symbol("@md_str"), Symbol("@bind"), :b], [:a], [:get, :applicable, :Bond], [])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [Symbol("@md_str"), Symbol("@bind"), :b, :a], [:a], [:get, :applicable, :Bond], [])
-        @test testee(:(html"a $(b = c)"), [Symbol("@html_str")], [], [], [])
-        @test testee(:(md"a $(b = c) $(b)"), [Symbol("@md_str"), :c], [:b], [], [])
-        @test testee(:(md"\* $r"), [Symbol("@md_str"), :r], [], [], [])
-        @test testee(:(md"a \$(b = c)"), [Symbol("@md_str")], [], [], [])
+        @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
+        @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
+        @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
+        @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
+        @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
+        @test testee(:(@gensym a b c), [], [:a, :b, :c], [Symbol("@gensym")], [])
+        @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [[:Base, Symbol("@gensym")]], [])
+        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
+            :A => ([:Int, :two], [], [], [])
+        ])
+        @test testee(quote "asdf" f(x) = x end, [], [], [], [:f => ([], [], [], [])])
+
+        @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+        @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+
+        @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(html"a $(b = c)"), [], [], [Symbol("@html_str")], [])
+        @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
+        @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
+        @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])

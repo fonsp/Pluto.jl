@@ -51,10 +51,17 @@ function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKS
     module_name = create_emptyworkspacemodule(pid)
     workspace = Workspace(pid, module_name)
 
-    # We call cd("path of notebook file"). This is also done when the filename is changed.
-    eval_in_workspace(workspace, :(cd($(notebook.path |> dirname))))
+    cd_workspace(workspace, notebook.path)
 
     return workspace
+end
+
+"Call `cd(\$path)` inside the workspace. This is done when creating a workspace, and whenever the notebook changes path."
+function cd_workspace(workspace, path::AbstractString)
+    eval_in_workspace(workspace, quote
+        cd($(path |> dirname))
+        Sys.set_process_title("Pluto - " * $(path |> basename))
+    end)
 end
 
 # TODO: move to PlutoRunner

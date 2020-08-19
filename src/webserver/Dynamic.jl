@@ -161,7 +161,7 @@ responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebo
         else
             move_notebook(notebook, newpath)
             putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.eval_in_workspace(notebook, :(cd($(newpath |> dirname))))
+            WorkspaceManager.cd_workspace(notebook, newpath)
             (success = true, reason = "")
         end
     catch ex

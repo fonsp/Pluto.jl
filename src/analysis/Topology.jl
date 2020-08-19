@@ -119,8 +119,6 @@ This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
 	isempty(topology[cell].assignments) && 
-		isempty(topology[cell].funccalls) &&
-		isempty(topology[cell].funcdefs) &&
 		length(topology[cell].references) <= 2 && 
 		topology[cell].references ⊆ md_and_friends
 end

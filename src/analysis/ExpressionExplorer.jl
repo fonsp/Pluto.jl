@@ -24,6 +24,28 @@ SymbolsState(references, assignments, funccalls) = SymbolsState(references, assi
 SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
 SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
 
+function Base.show(io::IO, s::SymbolsState)
+    print(io, "SymbolsState([")
+    join(io, s.references, ", ")
+    print(io, "], [")
+    join(io, s.assignments, ", ")
+    print(io, "], [")
+    join(io, s.funccalls, ", ")
+    print(io, "], [")
+    if isempty(s.funcdefs)
+        print(io, "]")
+    else
+        println(io)
+        for (k, v) in s.funcdefs
+            print(io, "    ", k, ": ", v)
+            println(io)
+        end
+        print(io, "]")
+    end
+    print(io, ")")
+end
+
+
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints."
 mutable struct ScopeState
     inglobalscope::Bool
@@ -179,6 +201,7 @@ function split_funcname(funcname_ex::Symbol)::FuncName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
 end
 
+# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
 function split_funcname(::Any)::FuncName
     Symbol[]
 end
@@ -291,6 +314,29 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate.inglobalscope = false
 
         return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+    elseif ex.head == :macrocall
+        # Does not create sccope
+        
+        funcname = ex.args[1] |> split_funcname
+        # Macros can transform the expression into anything - the best way to treat them is to macroexpand
+        # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
+        if (length(funcname) == 1 || (length(funcname) >= 2 && funcname[1] == :Base))
+            if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
+                # we macroexpand these, and recurse
+                expanded = macroexpand(PlutoRunner, ex; recursive=false)
+                return explore!(Expr(:call, ex.args[1], expanded), scopestate)
+            elseif funcname[end] == Symbol("@enum")
+                # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
+                # https://github.com/fonsp/Pluto.jl/issues/177
+                # this would mean that you can only define one enum per notebook :(
+                syms = filter(x -> x isa Symbol, ex.args[2:end])
+                rest = setdiff(ex.args[2:end], syms)
+                
+                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
+            end
+        end
+
+        return explore!(Expr(:call, ex.args...), scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -498,24 +544,6 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         else
             return SymbolsState(Set{Symbol}(), Set{Symbol}())
         end
-    # Some macros treat things differently, so we must too
-    # for the macros @bind and @md_str, we just explore the epxanded form
-    elseif ex.head == :macrocall && ex.args[1] isa Symbol && (ex.args[1] == Symbol("@md_str") || ex.args[1] == Symbol("@bind") || ex.args[1] == Symbol("@gensym"))
-        # Does not create scope
-
-        innersymstate = explore!(macroexpand(PlutoRunner, ex; recursive=false), scopestate)
-        push!(innersymstate.references, ex.args[1])
-
-        return innersymstate
-    elseif ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@enum")
-        # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
-        # https://github.com/fonsp/Pluto.jl/issues/177
-        # this would mean that you can only define one enum per notebook :(
-
-        syms = filter(x -> x isa Symbol, ex.args[2:end])
-        rest = setdiff(ex.args[2:end], syms)
-
-        return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}([Symbol("@enum")]), Set{Symbol}(syms)))
     elseif ex.head == :quote
         # We ignore contents
 
