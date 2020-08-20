@@ -1,5 +1,6 @@
 import HTTP
 import Markdown: htmlesc
+import UUIDs: UUID
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -109,6 +110,23 @@ function http_router_for(session::ServerSession)
         return try_launch_notebook_response(path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
+
+    function serve_notebookfile(req::HTTP.Request)
+        uri = HTTP.URI(req.target)        
+        try
+            query = HTTP.queryparams(uri)
+            id = UUID(query["id"])
+            notebook = session.notebooks[id]
+
+            response = HTTP.Response(200, sprint(save_notebook, notebook))
+            push!(response.headers, "Content-Type" => "text/plain; charset=utf-8")
+            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path))\"")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
     
     function serve_asset(req::HTTP.Request)
         reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI

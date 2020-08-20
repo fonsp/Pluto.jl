@@ -20,7 +20,7 @@ begin
 		import Pkg
 		Pkg.activate(env)
 		Pkg.Registry.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.6.0"))
+		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.6.1"))
 	end
 	using PlutoUI
 end

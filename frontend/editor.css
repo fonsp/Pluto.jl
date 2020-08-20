@@ -308,14 +308,82 @@ body > header {
     min-height: 60px;
 
     z-index: 5;
-    overflow: hidden;
+    /* overflow: hidden; */
     background-color: white;
-    transition: background-color 0.5s ease-in-out;
+    transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
 }
 
 body.loading > header {
     background-color: hsla(290, 10%, 59%, 0.14);
+}
+
+body > header.show_export {
+    position: fixed;
+    top: 130px;
+}
+
+aside#export {
+    position: absolute;
+    top: -1130px;
+    width: 100%;
+    height: 130px;
+    background: rgb(60, 67, 101);
+    color: rgba(255, 255, 255, 0.7);
+    padding-top: 1000px;
+}
+aside#export div#container {
+    flex-direction: row;
+    display: flex;
+    max-width: calc(960px + 20px);
+    padding-right: 20px;
+    margin: 0 auto;
+}
+header.show_export aside#export div#container {
+    overflow-x: auto;
+}
+a.export_card {
+    margin: 20px 5px;
+    flex: 0 0 auto;
+    width: 150px;
+    height: 80px;
+
+    border: 5px solid transparent;
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.7);
+    box-shadow: 0px 2px 10px #00000029;
+    text-decoration: none;
+}
+div.export_title {
+    flex: 0 0 auto;
+    height: 80px;
+    border-radius: 8px;
+    text-orientation: sideways-right;
+    /* Not supported by Chrome: */
+    /* writing-mode: sideways-lr; */
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+
+    margin-top: 20px;
+    font-family: "Roboto Mono", monospace;
+}
+a.export_card header {
+    margin-block: 0px;
+    font-family: "Vollkorn", sans;
+}
+a.export_card section {
+    font-size: 0.75rem;
+    font-family: "Roboto Mono", monospace;
+    color: rgba(0, 0, 0, 0.5);
+    font-weight: 500;
+}
+aside#export button.toggle_export {
+    margin-left: auto;
+    height: 60px;
+}
+body.loading button.toggle_export {
+    display: none;
 }
 
 nav#at_the_top h1 {
@@ -406,6 +474,27 @@ nav#at_the_top > pluto-filepicker button {
     cursor: pointer;
 }
 
+button.toggle_export {
+    border: none;
+    background: none;
+    cursor: pointer;
+    opacity: 0.5;
+}
+button.toggle_export span {
+    display: block;
+    content: " " !important;
+    background-size: 25px 25px;
+    height: 25px;
+    width: 25px;
+}
+
+nav#at_the_top button.toggle_export span {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/shapes-outline.svg);
+}
+aside#export button.toggle_export span {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-outline.svg);
+    filter: invert();
+}
 nav#at_the_top:after {
     margin-left: auto;
     align-self: center;
@@ -786,12 +875,15 @@ pluto-input > button > span {
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
     }
+    button.toggle_export,
     pluto-cell:hover > button,
     pluto-cell:hover > pluto-input > button,
     pluto-cell > pluto-runarea > button,
     pluto-cell:hover > pluto-shoulder > button {
         opacity: 0.25;
+        transition: opacity 0.25s ease-in-out;
     }
+    button.toggle_export:hover,
     preamble > button:hover,
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
@@ -980,7 +1072,7 @@ dropruler {
         display: flex;
         flex-direction: column;
         width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
-        height: min(50vh, 900px);
+        height: min(70vh, 900px);
         /* overflow: hidden; */
         background-color: white;
         /* border: 2px solid darkgray; */
@@ -1092,7 +1184,7 @@ footer input {
     border-right: none;
 }
 
-body > header button,
+body > header pluto-filepicker button,
 footer button {
     background: #896c6c;
     border-radius: 0 3px 3px 0;

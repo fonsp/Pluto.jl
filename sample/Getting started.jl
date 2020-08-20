@@ -32,7 +32,7 @@ else
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
-md"To edit any code, just click on it. When you're done programming, press the ▶️ in the lower-right to run the code. You can also use `Ctrl+Enter` if you are in a hurry."
+md"To edit any code, just click on it. When you're done programming, press the ▶️ in the lower-right to run the code. You can also use `Shift+Enter` if you are in a hurry."
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
 md"I feel like our cat needs a friend. Let's call them $(friend)."
