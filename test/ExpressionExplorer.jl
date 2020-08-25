@@ -29,8 +29,8 @@ using Test
             :a => ([], [], [], [])
             ])
 
-            @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
-        end
+        @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
+    end
     @testset "Types" begin
         @test testee(:(x::Foo = 3), [:Foo], [:x], [], [])
         @test testee(:(x::Foo), [:x, :Foo], [], [], [])
@@ -176,7 +176,9 @@ using Test
             :anon => ([:f], [], [:*], [])
         ])
 
-        @test testee(:(func(b)), [:b], [], [:func], [])
+        @test testee(:(func(a)), [:a], [], [:func], [])
+        @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
+        @test testee(:(func(a, b=c)), [:a, :c], [], [:func], [])
         @test testee(:(√ b), [:b], [], [:√], [])
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
@@ -248,6 +250,7 @@ using Test
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
         @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
+        @test testee(:(@f(x, y = z)), [:x, :z], [:y], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
         @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
         @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])

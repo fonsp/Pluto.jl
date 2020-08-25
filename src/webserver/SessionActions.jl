@@ -6,7 +6,7 @@ struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
-function open(session::ServerSession, path::AbstractString)
+function open(session::ServerSession, path::AbstractString; run_async=true)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
@@ -16,18 +16,30 @@ function open(session::ServerSession, path::AbstractString)
     nb = load_notebook(tamepath(path))
     session.notebooks[nb.notebook_id] = nb
     if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-        update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
+        update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
         # TODO: send message when initial run completed
     end
-    @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+
+    if run_async
+        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+    else
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+    end
+
     nb
 end
 
-function new(session::ServerSession)
+function new(session::ServerSession; run_async=true)
     nb = emptynotebook()
-    update_save_run!(session, nb, nb.cells; run_async=true, prerender_text=true)
+    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     session.notebooks[nb.notebook_id] = nb
-    @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+
+    if run_async
+        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+    else
+        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+    end
+
     nb
 end
 

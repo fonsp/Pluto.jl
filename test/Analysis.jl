@@ -30,11 +30,9 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
 
     @testset "Only-text detection" begin
         for c in notebook.cells[1:6]
-            @show new[c]
             @test is_just_text(new, c)
         end
         for c in notebook.cells[7:end]
-            @show new[c]
             @test !is_just_text(new, c)
         end
     end

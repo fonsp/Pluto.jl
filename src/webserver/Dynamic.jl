@@ -166,9 +166,9 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
         # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
         
         # check if the variable does not already have that value.
-        eq_tester = :(!ismissing($bound_sym) && ($bound_sym == $new_val)) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-        fetched_result = WorkspaceManager.eval_fetch_in_workspace(notebook, eq_tester, uuid1())
-        if fetched_result.output_formatted[1] === "true"
+        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        fetched_result = WorkspaceManager.eval_fetch_in_workspace(notebook, eq_tester)
+        if fetched_result === true
             # the initial value is already set, and we don't want to run cells again.
             false
         else

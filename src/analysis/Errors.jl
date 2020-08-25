@@ -38,7 +38,7 @@ function showerror(io::IO, mde::MultipleDefinitionsError)
 	print(io, "Multiple definitions for $(join(mde.syms, ", ", " and ")):\n$hint1") # TODO: hint about mutable globals
 end
 
-"Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_fetch_in_workspace` - this function is for Reactivity errors."
+"Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
 function relay_reactivity_error!(cell::Cell, error::Exception)
 	cell.errored = true
 	cell.runtime = missing
