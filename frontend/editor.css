@@ -206,6 +206,7 @@ pluto-output div.admonition .admonition-title ~ * {
     margin-block-end: 0.5em;
     margin-block-start: 0.5em;
     padding-left: 0.5em;
+    transition: filter linear 0.1s;
 }
 
 pluto-output div.admonition {
@@ -216,12 +217,14 @@ pluto-output div.admonition .admonition-title {
     background: rgba(68, 149, 28, 0.4);
 }
 pluto-output div.admonition.note,
-pluto-output div.admonition.info {
+pluto-output div.admonition.info,
+pluto-output div.admonition.hint {
     background: rgba(50, 115, 200, 0.2);
     border: 5px solid rgba(50, 115, 200, 0.4);
 }
 pluto-output div.admonition.note .admonition-title,
-pluto-output div.admonition.info .admonition-title {
+pluto-output div.admonition.info .admonition-title,
+pluto-output div.admonition.hint .admonition-title {
     background: rgba(50, 115, 200, 0.4);
 }
 pluto-output div.admonition.warning {
@@ -237,6 +240,14 @@ pluto-output div.admonition.danger {
 }
 pluto-output div.admonition.danger .admonition-title {
     background: rgba(200, 67, 50, 0.4);
+}
+
+pluto-output div.admonition.hint .admonition-title ~ * {
+    filter: blur(0.25em);
+}
+pluto-output div.admonition.hint:hover .admonition-title ~ *,
+pluto-output div.admonition.hint:focus-within .admonition-title ~ * {
+    filter: blur(0em);
 }
 
 pluto-output div.footnote {
