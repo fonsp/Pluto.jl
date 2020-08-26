@@ -196,20 +196,8 @@ end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 iocontext = let
-
-    width = try
-        parse(Int, get(ENV, "COLUMNS", "88"))
-    catch
-        88
-    end
-
-    height = try
-        parse(Int, get(ENV, "LINES", "18"))
-    catch
-        18
-    end
-
-    IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (height, width))
+    displaysz = (parse(Int, get(ENV, "LINES", "18")), parse(Int, get(ENV, "COLUMNS", "88")))::Tuple{Int, Int}
+    IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => displaysz)
 end
 iocontext_compact = IOContext(iocontext, :compact => true)
 
