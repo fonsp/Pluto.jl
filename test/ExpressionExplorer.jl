@@ -189,13 +189,16 @@ using Test
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
             :f => ([:String, :Int64, :a], [], [:string], [])
         ])
+        @test testee(:(f(a::A)::C = a.a;), [], [], [], [
+            :f => ([:A, :C], [], [], [])
+        ])
         @test testee(:(function f(x::T; k=1) where T return x + 1 end), [], [], [], [
             :f => ([], [], [:+], [])
         ])
         @test testee(:(function f(x::T; k=1) where {T,S <: R} return x + 1 end), [], [], [], [
             :f => ([:R], [], [:+], [])
         ])
-        @test_broken testee(:(f(x)::String = x), [], [], [], [
+        @test testee(:(f(x)::String = x), [], [], [], [
             :f => ([:String], [], [], [])
         ])
         @test testee(:(MIME"text/html"), [], [], [Symbol("@MIME_str")], [])

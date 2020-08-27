@@ -267,9 +267,8 @@ end
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     if ex.head == :(=)
         # Does not create scope
-
         
-        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where)
+        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
             # f(x, y) = x + y
             # Rewrite to:
             # function f(x, y) x + y end
