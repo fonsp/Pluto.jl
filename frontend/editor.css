@@ -718,12 +718,10 @@ pluto-cell.code_folded > pluto-input {
     display: none;
 }
 
-pluto-cell.output_notinsync > pluto-input,
 pluto-cell.code_differs > pluto-input {
     display: unset;
 }
 
-pluto-cell.output_notinsync > pluto-input > .CodeMirror,
 pluto-cell.code_differs > pluto-input > .CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
@@ -836,7 +834,6 @@ pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
 }
 
-pluto-cell.output_notinsync > pluto-trafficlight,
 pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
 }
@@ -1019,18 +1016,15 @@ pluto-cell.code_folded > pluto-runarea {
     display: none;
 }
 
-pluto-cell.output_notinsync > pluto-runarea,
 pluto-cell.code_differs > pluto-runarea {
     display: block;
 }
 
 pluto-cell:focus-within > pluto-runarea,
-pluto-cell.output_notinsync > pluto-runarea,
 pluto-cell.code_differs > pluto-runarea {
     opacity: 100%;
 }
 
-pluto-cell.output_notinsync > pluto-runarea > button,
 pluto-cell.code_differs > pluto-runarea > button {
     animation-name: 👀;
     animation-duration: 4s;
@@ -1343,7 +1337,6 @@ ul.CodeMirror-hints {
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
-pluto-cell.output_notinsync .cm-s-default .CodeMirror-gutters,
 pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     background: hsla(46, 70%, 88%, 1);
 }

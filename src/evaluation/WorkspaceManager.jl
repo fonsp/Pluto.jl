@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, get_pl_env
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env
 import ..PlutoRunner
 import Distributed
 
@@ -68,7 +68,11 @@ end
 function create_emptyworkspacemodule(pid::Integer)::Symbol
     id = (moduleworkspace_count[] += 1)
     
-    new_workspace_name = Symbol("workspace", id)
+    new_workspace_name = if Distributed.myid() == 1
+        Symbol("workspace", id)
+    else
+        Symbol("workspace", id, "_", Distributed.myid())
+    end
     workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
     
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
@@ -160,7 +164,9 @@ function eval_format_fetch_in_workspace(notebook::Union{Notebook,Workspace}, exp
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    return Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    end
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -203,6 +209,7 @@ function interrupt_workspace(notebook::Union{Notebook,Workspace}; verbose=true):
     end
     if workspace.pid == Distributed.myid()
         verbose && @warn """Cells in this workspace can't be stopped, because it is not running in a separate workspace. Use `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]` to control whether future workspaces are generated in a separate process."""
+        return false
     end
     if isready(workspace.dowork_token)
         verbose && @info "Tried to stop idle workspace - ignoring."
