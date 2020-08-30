@@ -68,6 +68,12 @@ stringify_keys(x::Any) = x
         # TODO: we need to wait for all above command to finish before we can do this:
         # send(:shutdown_notebook, Dict(:keep_in_session => false), Dict(:notebook_id => n))
     end
+
+    @testset "Docs" begin
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
+        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
+    end
 end
 
 # TODO: test returned data

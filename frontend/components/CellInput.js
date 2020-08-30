@@ -87,14 +87,22 @@ export const CellInput = ({
                 }
             } else {
                 const token = cm.getTokenAt(cm.getCursor())
-                if (token.type != null && token.type != "string") {
+                if(token.start === 0 && token.type === "operator" && token.string === "?"){
+                    // https://github.com/fonsp/Pluto.jl/issues/321
+                    const second_token = cm.getTokenAt({...cm.getCursor(), ch: 2})
+                    on_update_doc_query(second_token.string)
+                } else if (token.type != null && token.type !== "string") {
                     on_update_doc_query(token.string)
                 }
             }
         })
 
         cm.on("change", () => {
-            change_handler_ref.current(cm.getValue())
+            const new_value = cm.getValue()
+            if(new_value.length > 1 && new_value[0] === "?"){
+                window.dispatchEvent(new CustomEvent("open_live_docs"))
+            }
+            change_handler_ref.current(new_value)
         })
 
         // cm.on("focus", () => {

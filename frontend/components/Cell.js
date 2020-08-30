@@ -106,7 +106,6 @@ export const Cell = ({
         <pluto-cell
             class=${cl({
                 running: running,
-                // output_notinsync: output.body == null,
                 errored: errored,
                 selected: selected,
                 code_differs: remote_code.body !== local_code.body,

@@ -52,7 +52,7 @@ responses[:complete] = (session::ServerSession, body, notebook::Notebook; initia
     workspace = WorkspaceManager.get_workspace(notebook)
 
     results_text, loc, found = if isready(workspace.dowork_token)
-        # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
+        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
         # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
         Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher($query, $pos)))
     else

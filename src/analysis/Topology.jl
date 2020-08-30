@@ -127,14 +127,17 @@ end
 
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
 function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Number
-	if !isempty(cell.module_usings)
-		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
+	if :LOAD_PATH ∈ topology[cell].references
+		# https://github.com/fonsp/Pluto.jl/issues/323
 		1
+	elseif !isempty(cell.module_usings)
+		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
+		2
 	elseif [:include] ∈ topology[cell].funccalls
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
-		2
-	else
 		3
+	else
+		4
 	end
 end

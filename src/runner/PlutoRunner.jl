@@ -536,7 +536,7 @@ function binding_from(x::Expr, workspace::Module=current_module)
     if x.head == :macrocall
         Docs.Binding(workspace, x.args[1])
     elseif x.head == :.
-        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2])
+        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2].value)
     else
         error("Invalid @var syntax `$x`.")
     end

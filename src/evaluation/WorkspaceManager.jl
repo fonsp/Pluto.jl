@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, get_pl_env
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env
 import ..PlutoRunner
 import Distributed
 
@@ -26,8 +26,8 @@ const process_preamble = [
     :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
 ]
 
-moduleworkspace_count = 0
-workspaces = Dict{UUID,Workspace}()
+const moduleworkspace_count = Ref(0)
+const workspaces = Dict{UUID,Workspace}()
 
 
 """Create a workspace for the notebook, optionally in a separate process.
@@ -66,10 +66,13 @@ end
 
 # TODO: move to PlutoRunner
 function create_emptyworkspacemodule(pid::Integer)::Symbol
-    global moduleworkspace_count += 1
-    id = moduleworkspace_count
+    id = (moduleworkspace_count[] += 1)
     
-    new_workspace_name = Symbol("workspace", id)
+    new_workspace_name = if Distributed.myid() == 1
+        Symbol("workspace", id)
+    else
+        Symbol("workspace", id, "_", Distributed.myid())
+    end
     workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
     
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
@@ -96,17 +99,6 @@ function create_workspaceprocess()::Integer
     pid
 end
 
-"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-unmake_workspace(notebook::Notebook) = unmake_workspace(get_workspace(notebook))
-
-function unmake_workspace(workspace::Workspace)
-    filter!(p -> p.second.pid != workspace.pid, workspaces)
-    interrupt_workspace(workspace; verbose=false)
-    if workspace.pid != Distributed.myid()
-        Distributed.rmprocs(workspace.pid)
-    end
-end
-
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(notebook::Notebook)::Workspace
     if haskey(workspaces, notebook.notebook_id)
@@ -115,16 +107,33 @@ function get_workspace(notebook::Notebook)::Workspace
         workspaces[notebook.notebook_id] = make_workspace(notebook)
     end
 end
+get_workspace(workspace::Workspace)::Workspace = workspace
+
+"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
+function unmake_workspace(notebook::Union{Notebook,Workspace})
+    workspace = get_workspace(notebook)
+
+    if workspace.pid != Distributed.myid()
+        filter!(p -> p.second.pid != workspace.pid, workspaces)
+        interrupt_workspace(workspace; verbose=false)
+        if workspace.pid != Distributed.myid()
+            Distributed.rmprocs(workspace.pid)
+        end
+    end
+end
 
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
-    eval_fetch_in_workspace(get_workspace(notebook), expr, cell_id, ends_with_semicolon)
-end
+function eval_format_fetch_in_workspace(notebook::Union{Notebook,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    workspace = get_workspace(notebook)
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
+    if workspace.pid == Distributed.myid() && notebook isa Notebook
+        cd_workspace(workspace, notebook.path)
+    end
+    
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
     wrapped = trycatch_expr(expr, workspace.module_name, cell_id)
 
@@ -155,32 +164,30 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    return Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    end
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
-function eval_in_workspace(notebook::Notebook, expr)
-    eval_in_workspace(get_workspace(notebook), expr)
-end
-
-function eval_in_workspace(workspace::Workspace, expr)
-    # take!(workspace.dowork_token)
-    try
-        Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
-        # put!(workspace.dowork_token)
-    catch ex
-        # put!(workspace.dowork_token)
-        rethrow(ex)
-    end
+function eval_in_workspace(notebook::Union{Notebook,Workspace}, expr)
+    workspace = get_workspace(notebook)
+    
+    Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
     nothing
 end
 
-"Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
-    delete_vars(get_workspace(notebook), to_delete, funcs_to_delete, module_imports_to_move; kwargs...)
+"Evaluate expression inside the workspace - output is returned. For internal use."
+function eval_fetch_in_workspace(notebook::Union{Notebook,Workspace}, expr)
+    workspace = get_workspace(notebook)
+    
+    Distributed.remotecall_eval(Main, workspace.pid, :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
 end
 
-function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+"Fake deleting variables by moving to a new module without re-importing them."
+function delete_vars(notebook::Union{Notebook,Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+    workspace = get_workspace(notebook)
+
     old_workspace_name = workspace.module_name
     new_workspace_name = create_emptyworkspacemodule(workspace.pid)
 
@@ -191,11 +198,9 @@ function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, funcs_to_dele
 end
 
 "Force interrupt (SIGINT) a workspace, return whether succesful"
-function interrupt_workspace(notebook::Notebook; verbose=true)::Bool
-    interrupt_workspace(WorkspaceManager.get_workspace(notebook); verbose=verbose)
-end
+function interrupt_workspace(notebook::Union{Notebook,Workspace}; verbose=true)::Bool
+    workspace = get_workspace(notebook)
 
-function interrupt_workspace(workspace::Workspace; verbose=true)
     if Sys.iswindows()
         verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
         Maybe the Windows Subsystem for Linux is right for you:
@@ -204,6 +209,7 @@ function interrupt_workspace(workspace::Workspace; verbose=true)
     end
     if workspace.pid == Distributed.myid()
         verbose && @warn """Cells in this workspace can't be stopped, because it is not running in a separate workspace. Use `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]` to control whether future workspaces are generated in a separate process."""
+        return false
     end
     if isready(workspace.dowork_token)
         verbose && @info "Tried to stop idle workspace - ignoring."

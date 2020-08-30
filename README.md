@@ -111,12 +111,13 @@ Pluto.jl is built by gluing together open source software:
 -   `CodeMirror` - [license](https://github.com/codemirror/CodeMirror/blob/master/LICENSE)
 -   `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
 -   `MsgPack.jl` - [license](https://github.com/JuliaIO/MsgPack.jl)
+-   `msgpack-lite` - [license](https://github.com/kawanet/msgpack-lite/blob/master/LICENSE)
 -   `observablehq/stdlib` - [license](https://github.com/observablehq/stdlib/blob/master/LICENSE)
 -   `preact` - [license](https://github.com/preactjs/preact/blob/master/LICENSE)
 -   `developit/htm` - [license](https://github.com/developit/htm/blob/master/LICENSE)
 -   `MathJax` - [license](https://github.com/mathjax/MathJax-src/blob/master/LICENSE)
 
-Your notebook files are _yours_, you do not need to credit. Have fun!
+Your notebook files are _yours_, you do not need to credit us. Have fun!
 
 ## Note
 

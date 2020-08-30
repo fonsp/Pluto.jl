@@ -25,6 +25,9 @@ const gist_normalizer = (str) =>
 const link_open_auto = async (path_or_url) => {
     try {
         const u = new URL(path_or_url)
+        if (!["http:", "https:", "ftp:", "ftps:"].includes(u.protocol)) {
+            throw "Not a web URL"
+        }
         if (u.host === "gist.github.com") {
             console.log("Gist URL detected")
             const parts = u.pathname.substring(1).split("/")
