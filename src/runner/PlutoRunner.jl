@@ -29,9 +29,15 @@ current_module = Main
 
 function set_current_module(newname)
     global current_module = getfield(Main, newname)
-    global iocontext = IOContext(iocontext, :module => current_module)
+    global iocontext = IOContext(iocontext, :module => current_module, :displaysize => current_displaysize())
     global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
 end
+
+const default_displaysize = ("18", "88")
+current_displaysize() :: Tuple{Int, Int} = (
+    parse(Int, get(ENV, "LINES", default_displaysize[1])),
+    parse(Int, get(ENV, "COLUMNS", default_displaysize[2]))
+)
 
 const cell_results = Dict{UUID, WeakRef}()
 
@@ -195,10 +201,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = let
-    displaysz = (parse(Int, get(ENV, "LINES", "18")), parse(Int, get(ENV, "COLUMNS", "88")))::Tuple{Int, Int}
-    IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => displaysz)
-end
+iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => current_displaysize())
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
