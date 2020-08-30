@@ -195,7 +195,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 120))
+iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
@@ -530,7 +530,7 @@ function binding_from(x::Expr, workspace::Module=current_module)
     if x.head == :macrocall
         Docs.Binding(workspace, x.args[1])
     elseif x.head == :.
-        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2])
+        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2].value)
     else
         error("Invalid @var syntax `$x`.")
     end
