@@ -10,11 +10,23 @@ export class LiveDocs extends Component {
         this.state = {
             shown_query: null,
             searched_query: null,
-            body: "Start typing code to learn more!",
-            hidden: true,
+            body: "Start typing in a cell to learn more!",
+            hidden: false,
             loading: false,
         }
         this.updateDocTimer = undefined
+    }
+
+    componentDidMount() {
+        window.addEventListener("open_live_docs", () => {
+            // https://github.com/fonsp/Pluto.jl/issues/321
+            this.setState({
+                hidden: false,
+            })
+            if (window.getComputedStyle(this.base).display === "none") {
+                alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
+            }
+        })
     }
 
     componentDidUpdate() {
