@@ -149,15 +149,7 @@ export const Cell = ({
                 }}
                 on_delete=${() => {
                     const friends = selected_friends(cell_id)
-                    if (friends.length == 1 || confirm(`Delete ${friends.length} cells?`)) {
-                        if (friends.some((f) => f.running)) {
-                            if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                                requests.interrupt_remote(cell_id)
-                            }
-                        } else {
-                            friends.forEach((f) => requests.delete_cell(f.cell_id))
-                        }
-                    }
+                    requests.confirm_delete_multiple(friends)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")

@@ -11,7 +11,7 @@ export class LiveDocs extends Component {
             shown_query: null,
             searched_query: null,
             body: "Start typing in a cell to learn more!",
-            hidden: false,
+            hidden: true,
             loading: false,
         }
         this.updateDocTimer = undefined

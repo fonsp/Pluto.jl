@@ -7,6 +7,9 @@ const clear_selection = (cm) => {
     cm.setSelection(c, c, { scroll: false })
 }
 
+const last = (x) => x[x.length - 1]
+const all_equal = (x) => x.every((y) => y === x[0])
+
 export const CellInput = ({
     is_hidden,
     remote_code,
@@ -27,8 +30,13 @@ export const CellInput = ({
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
+    const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
+
+    useEffect(() => {
+        remote_code_ref.current = remote_code
+    }, [remote_code])
 
     useEffect(() => {
         const cm = (cm_ref.current = window.CodeMirror(
@@ -54,29 +62,70 @@ export const CellInput = ({
             }
         ))
 
-        cm.setOption("extraKeys", {
-            "Shift-Enter": () => on_submit(cm.getValue()),
-            "Ctrl-Enter": () => {
-                on_add_after()
-                // on_fold(true)
-                on_submit(cm.getValue())
-            },
-            "Shift-Delete": () => {
-                if (confirm("Delete cell?")) {
-                    on_delete()
+        const mac_keyboard = /Mac/.test(navigator.platform)
+
+        const keys = {}
+
+        keys["Shift-Enter"] = () => on_submit(cm.getValue())
+        keys["Ctrl-Enter"] = () => {
+            on_add_after()
+
+            const new_value = cm.getValue()
+            console.log(new_value)
+            console.log(remote_code_ref.current.body)
+            if (new_value !== remote_code_ref.current.body) {
+                on_submit(new_value)
+            }
+        }
+        keys["Shift-Delete"] = () => {
+            if (confirm("Delete cell?")) {
+                on_delete()
+            }
+        }
+        // these should be fn+Up and fn+Down on recent apple keyboards
+        // please confirm and change this comment <3
+        keys["PageUp"] = () => {
+            on_focus_neighbor(cell_id, -1)
+        }
+        keys["PageDown"] = () => {
+            on_focus_neighbor(cell_id, +1)
+        }
+        keys["Shift-Tab"] = "indentLess"
+        keys["Tab"] = on_tab_key
+        keys[mac_keyboard ? "Cmd-D" : "Ctrl-D"] = () => {
+            if (cm.somethingSelected()) {
+                const sels = cm.getSelections()
+                if (all_equal(sels)) {
+                    // TODO
                 }
-            },
-            // these should be fn+Up and fn+Down on recent apple keyboards
-            // please confirm and change this comment <3
-            "PageUp": () => {
+            } else {
+                const cursor = cm.getCursor()
+                const token = cm.getTokenAt(cursor)
+                console.log(cursor)
+                cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
+                console.log(token)
+            }
+        }
+        keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
+            if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
-            },
-            "PageDown": () => {
+                on_delete()
+                console.log("backspace!")
+            }
+            return window.CodeMirror.Pass
+        }
+        keys["Delete"] = keys[mac_keyboard ? "Cmd-Delete" : "Ctrl-Delete"] = () => {
+            if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
-            },
-            "Shift-Tab": "indentLess",
-            "Tab": on_tab_key,
-        })
+                on_delete()
+                console.log("delete!")
+            }
+            return window.CodeMirror.Pass
+        }
+
+        window.cm = cm
+
+        cm.setOption("extraKeys", keys)
 
         cm.on("cursorActivity", () => {
             if (cm.somethingSelected()) {
@@ -87,9 +136,9 @@ export const CellInput = ({
                 }
             } else {
                 const token = cm.getTokenAt(cm.getCursor())
-                if(token.start === 0 && token.type === "operator" && token.string === "?"){
+                if (token.start === 0 && token.type === "operator" && token.string === "?") {
                     // https://github.com/fonsp/Pluto.jl/issues/321
-                    const second_token = cm.getTokenAt({...cm.getCursor(), ch: 2})
+                    const second_token = cm.getTokenAt({ ...cm.getCursor(), ch: 2 })
                     on_update_doc_query(second_token.string)
                 } else if (token.type != null && token.type !== "string") {
                     on_update_doc_query(token.string)
@@ -99,7 +148,7 @@ export const CellInput = ({
 
         cm.on("change", () => {
             const new_value = cm.getValue()
-            if(new_value.length > 1 && new_value[0] === "?"){
+            if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
             change_handler_ref.current(new_value)

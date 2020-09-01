@@ -11,8 +11,27 @@ export class DropRuler extends Component {
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
         }
-        this.getDropIndexOf = (pageY) => {
-            const distances = this.cell_edges.map((p) => Math.abs(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
+        this.getDropIndexOf = ({ pageX, pageY }, always_round_nearest = false) => {
+            const notebook = document.querySelector("pluto-notebook")
+
+            const rounding_mode = always_round_nearest
+                ? "nearest"
+                : pageX < notebook.offsetLeft
+                ? "floor"
+                : pageX > notebook.offsetLeft + notebook.scrollWidth
+                ? "ceil"
+                : "nearest"
+
+            const f =
+                rounding_mode === "ceil"
+                    ? (x) => (x >= 0 ? x : Infinity)
+                    : rounding_mode === "floor"
+                    ? (x) => (x <= 0 ? -x : Infinity)
+                    : rounding_mode === "nearest"
+                    ? Math.abs
+                    : Math.abs
+
+            const distances = this.cell_edges.map((p) => f(p - pageY - 8)) // 8 is the magic computer number: https://en.wikipedia.org/wiki/8
             return argmin(distances)
         }
 
@@ -35,19 +54,20 @@ export class DropRuler extends Component {
                 })
                 this.dropee = null
             } else {
+                this.dropee = e.target.parentElement
+                this.precompute_cell_edges()
+
                 this.setState({
                     dragging: true,
+                    drop_index: this.getDropIndexOf(e, true),
                 })
-                this.dropee = e.target.parentElement
-
-                this.precompute_cell_edges()
             }
         })
 
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
             this.setState({
-                drop_index: this.getDropIndexOf(e.pageY),
+                drop_index: this.getDropIndexOf(e, true),
             })
             e.preventDefault()
         })
@@ -62,7 +82,7 @@ export class DropRuler extends Component {
                 return
             }
             // Called when drag-dropped somewhere on the page
-            const drop_index = this.getDropIndexOf(e.pageY)
+            const drop_index = this.getDropIndexOf(e, true)
             const friends = this.props.selected_friends(this.dropee.id)
             this.props.requests.move_remote_cells(friends, drop_index)
         })
@@ -70,9 +90,11 @@ export class DropRuler extends Component {
         /* SELECTIONS */
 
         document.addEventListener("mousedown", (e) => {
-            if (e.button === 0 && (e.target.tagName === "MAIN" || e.target.tagName === "PLUTO-NOTEBOOK" || e.target.tagName === "PREAMBLE")) {
+            const t = e.target.tagName
+            // TODO: also allow starting the selection in one codemirror and stretching it to another cell
+            if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
                 this.precompute_cell_edges()
-                const new_index = this.getDropIndexOf(e.pageY)
+                const new_index = this.getDropIndexOf(e)
                 this.setState({
                     selecting: true,
                     selection_start_index: new_index,
@@ -113,7 +135,7 @@ export class DropRuler extends Component {
 
         document.addEventListener("mousemove", (e) => {
             if (this.state.selecting) {
-                const new_stop_index = this.getDropIndexOf(e.pageY)
+                const new_stop_index = this.getDropIndexOf(e)
                 if (new_stop_index !== this.state.selection_stop_index) {
                     this.setState({
                         selection_stop_index: new_stop_index,
