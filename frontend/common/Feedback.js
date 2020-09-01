@@ -63,7 +63,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // timestamp (ms)
         screenWidthApprox: 100 * Math.round(document.body.clientWidth / 100),
         // number, rounded to nearest multiple of 100
-        docsOpen: parseFloat(window.getComputedStyle(document.querySelector("helpbox")).height) > 200,
+        docsOpen: parseFloat(window.getComputedStyle(document.querySelector("pluto-helpbox")).height) > 200,
         // bool
         hasFocus: document.hasFocus(),
         // bool

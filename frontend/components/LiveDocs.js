@@ -75,7 +75,7 @@ export class LiveDocs extends Component {
     render() {
         return html`
             <aside id="helpbox-wrapper">
-                <helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
+                <pluto-helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
                     <header onClick=${() => this.setState({ hidden: !this.state.hidden })}>
                         ${this.state.hidden || this.state.searched_query == null ? "Live docs" : this.state.searched_query}
                     </header>
@@ -87,7 +87,7 @@ export class LiveDocs extends Component {
                             on_render=${(n) => resolve_doc_reference_links(n, this.props.on_update_doc_query)}
                         />
                     </section>
-                </helpbox>
+                </pluto-helpbox>
             </aside>
         `
     }
