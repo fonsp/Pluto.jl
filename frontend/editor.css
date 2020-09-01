@@ -1076,7 +1076,9 @@ dropruler {
         position: absolute;
         display: flex;
         flex-direction: column;
+        width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
         width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
+        height: 70vh; /* compat */
         height: min(70vh, 900px);
         /* overflow: hidden; */
         background-color: white;
