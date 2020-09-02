@@ -19,7 +19,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
         if (ex isa Expr) && (ex.head == :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
-                Expr(:error, "extra token after end of expression")
+                Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
             else
                 ex
             end
@@ -35,7 +35,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
             # only whitespace or comments after the first expression
             parsed1
         else
-            Expr(:error, "extra token after end of expression")
+            Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
         end
     end
 
@@ -49,6 +49,24 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
 
     # 3.
     Expr(topleveled.head, topleveled.args[1], preprocess_expr(topleveled.args[2]))
+end
+
+"""Get the list of string indices that denote expression boundaries.
+
+# Examples
+
+`expression_boundaries("sqrt(1)") == [ncodeunits("sqrt(1)") + 1]`
+
+`expression_boundaries("sqrt(1)\n\n123") == [ncodeunits("sqrt(1)\n\n") + 1, ncodeunits("sqrt(1)\n\n123") + 1]`
+
+"""
+function expression_boundaries(code::String, start=1)::Array{<:Integer,1}
+    expr, next = Meta.parse(code, start, raise=false)
+    if next <= ncodeunits(code)
+        [next, expression_boundaries(code, next)...]
+    else
+        [next]
+    end
 end
 
 "Make some small adjustments to the `expr` to make it work nicely inside a timed, wrapped expression:

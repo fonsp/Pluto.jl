@@ -48,6 +48,7 @@ end
 responses[:delete_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     to_delete = cell
 
+    to_delete.code_folded = true
     # replace the cell's code with "" and do a reactive run
     change_remote_cellinput!(session, notebook, to_delete, "", initiator=initiator)
     runtask = update_save_run!(session, notebook, [to_delete]; run_async=true)::Task

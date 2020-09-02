@@ -14,6 +14,7 @@ import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
+import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 
 const default_path = "..."
 
@@ -35,30 +36,34 @@ export class Editor extends Component {
             loading: true,
         }
         // convenience method
-        const set_notebook_state = (updater, callback) => {
-            this.setState((prevstate) => {
-                return {
-                    notebook: {
-                        ...prevstate.notebook,
-                        ...updater(prevstate.notebook),
-                    },
-                }
-            }, callback)
+        const set_notebook_state = (updater) => {
+            return new Promise((resolve) => {
+                this.setState((prevstate) => {
+                    return {
+                        notebook: {
+                            ...prevstate.notebook,
+                            ...updater(prevstate.notebook),
+                        },
+                    }
+                }, resolve)
+            })
         }
         this.set_notebook_state = set_notebook_state.bind(this)
 
         // convenience method
-        const set_cell_state = (cell_id, new_state_props, callback) => {
-            this.setState((prevstate) => {
-                return {
-                    notebook: {
-                        ...prevstate.notebook,
-                        cells: prevstate.notebook.cells.map((c) => {
-                            return c.cell_id == cell_id ? { ...c, ...new_state_props } : c
-                        }),
-                    },
-                }
-            }, callback)
+        const set_cell_state = (cell_id, new_state_props) => {
+            return new Promise((resolve) => {
+                this.setState((prevstate) => {
+                    return {
+                        notebook: {
+                            ...prevstate.notebook,
+                            cells: prevstate.notebook.cells.map((c) => {
+                                return c.cell_id == cell_id ? { ...c, ...new_state_props } : c
+                            }),
+                        },
+                    }
+                }, resolve)
+            })
         }
         this.set_cell_state = set_cell_state.bind(this)
 
@@ -71,8 +76,8 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
-            add_local_cell: (cell, new_index, callback = undefined) => {
-                set_notebook_state((prevstate) => {
+            add_local_cell: (cell, new_index) => {
+                return set_notebook_state((prevstate) => {
                     if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
                         console.warn("Tried to add cell with existing cell_id. Canceled.")
                         console.log(cell)
@@ -84,45 +89,40 @@ export class Editor extends Component {
                     return {
                         cells: [...before.slice(0, new_index), cell, ...before.slice(new_index)],
                     }
-                }, callback)
+                })
             },
-            update_local_cell_output: (cell, { output, running, runtime, errored }, callback = undefined) => {
+            update_local_cell_output: (cell, { output, running, runtime, errored }) => {
                 this.counter_statistics.numRuns++
-                set_cell_state(
-                    cell.cell_id,
-                    {
-                        running: running,
-                        runtime: runtime,
-                        errored: errored,
-                        output: { ...output, timestamp: Date.now() },
-                    },
-                    callback
-                )
+                return set_cell_state(cell.cell_id, {
+                    running: running,
+                    runtime: runtime,
+                    errored: errored,
+                    output: { ...output, timestamp: Date.now() },
+                })
             },
-            update_local_cell_input: (cell, by_me, code, folded, callback = undefined) => {
-                set_cell_state(
-                    cell.cell_id,
-                    {
-                        remote_code: {
-                            body: code,
-                            submitted_by_me: by_me,
-                            timestamp: Date.now(),
-                        },
-                        code_folded: folded,
+            update_local_cell_input: (cell, by_me, code, folded) => {
+                return set_cell_state(cell.cell_id, {
+                    remote_code: {
+                        body: code,
+                        submitted_by_me: by_me,
+                        timestamp: Date.now(),
                     },
-                    callback
-                )
+                    local_code: {
+                        body: code,
+                    },
+                    code_folded: folded,
+                })
             },
-            delete_local_cell: (cell, callback = undefined) => {
+            delete_local_cell: (cell) => {
                 // TODO: event listeners? gc?
-                set_notebook_state((prevstate) => {
+                return set_notebook_state((prevstate) => {
                     return {
                         cells: prevstate.cells.filter((c) => c !== cell),
                     }
-                }, callback)
+                })
             },
-            move_local_cells: (cells, new_index, callback = undefined) => {
-                set_notebook_state((prevstate) => {
+            move_local_cells: (cells, new_index) => {
+                return set_notebook_state((prevstate) => {
                     // The set of moved cell can be scatter across the notebook (not necessarily contiguous)
                     // but this action will move all of them to a single cluster
                     // The first cell of that cluster will be at index `new_index`.
@@ -134,7 +134,7 @@ export class Editor extends Component {
                     return {
                         cells: [...before, ...cells, ...after],
                     }
-                }, callback)
+                })
             },
         }
 
@@ -363,14 +363,117 @@ export class Editor extends Component {
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
                 const new_code = block + "\n\t" + cell.local_code.body.replace(/\n/g, "\n\t") + "\n" + "end"
-                set_cell_state(cell_id, {
-                    remote_code: {
-                        body: new_code,
-                        submitted_by_me: false,
-                        timestamp: Date.now(),
-                    },
-                })
+                this.actions.update_local_cell_input(cell, false, new_code, cell.code_folded)
                 this.requests.change_remote_cell(cell_id, new_code)
+            },
+            // split_remote_cell_old: (cell_id, boundaries, submit = false) => {
+            //     return new Promise((resolve) => {
+            //         if (boundaries.length === 1) {
+            //             resolve([cell_id])
+            //         } else {
+            //             const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+            //             const cell = this.state.notebook.cells[index]
+
+            //             this.requests.add_remote_cell_at(index + 1, true).then((update) => {
+            //                 this.client.on_update(update, true)
+
+            //                 const old_code = cell.local_code.body
+            //                 const before = splice_utf8(old_code, boundaries[0], length_utf8(old_code), "").trim()
+            //                 const after = splice_utf8(old_code, 0, boundaries[0], "").trim()
+
+            //                 const promises = [[cell_id, before], [update.cell_id, after]].map(([id, code, ]) => {
+            //                     // we set the cell's remote_code to force its value
+            //                     this.actions.update_local_cell_input({ cell_id: id }, false, code, false).then(() => {
+            //                         // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
+            //                         const new_state = this.state.notebook.cells.find((c) => c.cell_id === id)
+            //                         this.set_cell_state(cell_id, {
+            //                             remote_code: {
+            //                                 ...new_state.remote_code,
+            //                                 body: old_code,
+            //                             },
+            //                         })
+            //                     })
+            //                 })
+            //                 // we set the cell's remote_code to force its value
+            //                 this.actions.update_local_cell_input({ cell_id: cell_id }, false, before, false).then(() => {
+            //                     // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
+            //                     const new_state = this.state.notebook.cells.find((c) => c.cell_id === cell_id)
+            //                     this.set_cell_state(cell_id, {
+            //                         remote_code: {
+            //                             ...new_state.remote_code,
+            //                             body: old_code,
+            //                         },
+            //                     })
+            //                 })
+            //                 this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, after, false).then(() => {
+            //                     // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
+            //                     const new_state = this.state.notebook.cells.find((c) => c.cell_id === update.cell_id)
+            //                     this.set_cell_state(update.cell_id, {
+            //                         remote_code: {
+            //                             ...new_state.remote_code,
+            //                             body: "",
+            //                         },
+            //                     })
+
+            //                     // recurse
+            //                     this.requests
+            //                         .split_remote_cell(
+            //                             update.cell_id,
+            //                             boundaries.slice(1).map((x) => x - boundaries[0]),
+            //                             false
+            //                         )
+            //                         .then((next_cell_ids) => {
+            //                             resolve([cell_id, ...next_cell_ids])
+            //                         })
+            //                     // TODO move focus to correct cell
+            //                 })
+            //             })
+            //         }
+            //     })
+            // },
+            split_remote_cell: async (cell_id, boundaries, submit = false) => {
+                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+                const cell = this.state.notebook.cells[index]
+
+                const old_code = cell.local_code.body
+                const padded_boundaries = [0, ...boundaries]
+                const parts = boundaries.map((b, i) => slice_utf8(old_code, padded_boundaries[i], b).trim()).filter((x) => x !== "")
+
+                const new_ids = []
+
+                // for loop because we need to wait for each addition to finish before adding the next, otherwise their order would be random
+                for (const [i, part] of parts.entries()) {
+                    if (i === 0) {
+                        new_ids.push(cell_id)
+                    } else {
+                        const update = await this.requests.add_remote_cell_at(index + i, true)
+                        this.client.on_update(update, true)
+                        new_ids.push(update.cell_id)
+                    }
+                }
+
+                await Promise.all(
+                    parts.map(async (part, i) => {
+                        const id = new_ids[i]
+
+                        // we set the cell's remote_code to force its value
+                        await this.actions.update_local_cell_input({ cell_id: id }, false, part, false)
+
+                        // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
+                        const new_state = this.state.notebook.cells.find((c) => c.cell_id === id)
+                        await this.set_cell_state(id, {
+                            remote_code: {
+                                ...new_state.remote_code,
+                                body: i === 0 ? old_code : "",
+                            },
+                        })
+                    })
+                )
+
+                if (submit) {
+                    const cells = new_ids.map((id) => this.state.notebook.cells.find((c) => c.cell_id == id))
+                    await this.requests.set_and_run_multiple(cells)
+                }
             },
             interrupt_remote: (cell_id) => {
                 set_notebook_state((prevstate) => {
@@ -425,19 +528,20 @@ export class Editor extends Component {
                     this.requests.add_remote_cell(cell_id, "after")
                 }
                 const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+                const cell = this.state.notebook.cells[index]
                 this.setState({
                     recently_deleted: {
                         index: index,
                         body: this.state.notebook.cells[index].local_code.body,
                     },
                 })
+
                 set_cell_state(cell_id, {
                     running: true,
-                    remote_code: {
-                        body: "",
-                        submitted_by_me: false,
-                    },
+                }).then(() => {
+                    this.actions.update_local_cell_input(cell, false, "", true)
                 })
+
                 this.client.send(
                     "delete_cell",
                     {},
@@ -865,7 +969,7 @@ export class Editor extends Component {
                 on_click=${() => {
                     this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
                         this.client.on_update(update, true)
-                        this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false, () => {
+                        this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false).then(() => {
                             this.requests.change_remote_cell(update.cell_id, this.state.recently_deleted.body)
                         })
                     })

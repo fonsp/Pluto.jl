@@ -39,16 +39,40 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
-            display: () =>
-                html`<p>Multiple expressions in one cell.</p>
-                    <a
-                        href="#"
-                        onClick=${(e) => {
-                            e.preventDefault()
-                            requests.wrap_remote_cell(cell_id, "begin")
-                        }}
-                        >Wrap all code in a <em>begin ... end</em> block.</a
-                    >`,
+            display: (x) => {
+                console.log(x)
+                const begin_hint = html`<a
+                    href="#"
+                    onClick=${(e) => {
+                        e.preventDefault()
+                        requests.wrap_remote_cell(cell_id, "begin")
+                    }}
+                    >Wrap all code in a <em>begin ... end</em> block.</a
+                >`
+                if (x.includes("\n\nBoundaries: ")) {
+                    const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index
+                    console.log(boundaries)
+                    const split_hint = html`<p>
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                requests.split_remote_cell(cell_id, boundaries, true)
+                            }}
+                            >Split this cell into ${boundaries.length} cells</a
+                        >, or
+                    </p>`
+                    return html`<p>Multiple expressions in one cell.</p>
+                        <p>How would you like to fix it?</p>
+                        <ul>
+                            <li>${split_hint}</li>
+                            <li>${begin_hint}</li>
+                        </ul>`
+                } else {
+                    return html`<p>Multiple expressions in one cell.</p>
+                        <p>${begin_hint}</p>`
+                }
+            },
         },
         {
             pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
