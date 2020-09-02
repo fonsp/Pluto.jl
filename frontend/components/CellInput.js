@@ -107,7 +107,15 @@ export const CellInput = ({
             }
         }
         keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {
+            const old_value = cm.getValue()
             cm.toggleComment()
+            const new_value = cm.getValue()
+            if (old_value === new_value) {
+                // the commenter failed for some reason
+                // this happens when lines start with `md"`, with no indent
+                cm.setValue(cm.lineCount() === 1 ? `# ${new_value}` : `#= ${new_value} =#`)
+                cm.execCommand("selectAll")
+            }
         }
         const swap = (a, i, j) => {
             ;[a[i], a[j]] = [a[j], a[i]]
