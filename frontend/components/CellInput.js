@@ -77,11 +77,6 @@ export const CellInput = ({
                 on_submit(new_value)
             }
         }
-        keys["Shift-Delete"] = () => {
-            if (confirm("Delete cell?")) {
-                on_delete()
-            }
-        }
         // these should be fn+Up and fn+Down on recent apple keyboards
         // please confirm and change this comment <3
         keys["PageUp"] = () => {

@@ -641,7 +641,7 @@ export class Editor extends Component {
         
         Shift+Enter:   run cell
         Ctrl+Enter:   run cell and add cell below
-        Shift+Delete:   delete cell
+        Delete or Backspace:   delete empty cell
 
         PageUp or fn+Up:   select cell above
         PageDown or fn+Down:   select cell below
