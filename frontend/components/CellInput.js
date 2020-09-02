@@ -109,6 +109,47 @@ export const CellInput = ({
         keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {
             cm.toggleComment()
         }
+        const swap = (a, i, j) => {
+            ;[a[i], a[j]] = [a[j], a[i]]
+        }
+        const range = (a, b) => {
+            const x = Math.min(a, b)
+            const y = Math.max(a, b)
+            return [...Array(y + 1 - x).keys()].map((i) => i + x)
+        }
+        const alt_move = (delta) => {
+            const selections = cm.listSelections()
+            const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
+            const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
+            if (!selected_lines.has(final_line_number)) {
+                Array.from(selected_lines)
+                    .sort((a, b) => delta * a < delta * b)
+                    .forEach((line_number) => {
+                        const lines = cm.getValue().split("\n")
+                        swap(lines, line_number, line_number + delta)
+                        cm.setValue(lines.join("\n"))
+                        cm.indentLine(line_number + delta, "smart")
+                        cm.indentLine(line_number, "smart")
+                    })
+                cm.setSelections(
+                    selections.map((sel) => {
+                        return {
+                            head: {
+                                line: sel.head.line + delta,
+                                ch: sel.head.ch,
+                            },
+                            anchor: {
+                                line: sel.anchor.line + delta,
+                                ch: sel.anchor.ch,
+                            },
+                        }
+                    })
+                )
+            }
+        }
+        keys["Alt-Up"] = () => alt_move(-1)
+        keys["Alt-Down"] = () => alt_move(+1)
+
         keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
@@ -125,8 +166,6 @@ export const CellInput = ({
             }
             return window.CodeMirror.Pass
         }
-
-        window.cm = cm
 
         cm.setOption("extraKeys", keys)
 
