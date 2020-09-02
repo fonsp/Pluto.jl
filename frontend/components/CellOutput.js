@@ -31,6 +31,7 @@ export class CellOutput extends Component {
                     inline_output:
                         !this.props.errored && !!this.props.body && (this.props.mime == "application/vnd.pluto.tree+xml" || this.props.mime == "text/plain"),
                 })}
+                mime=${this.props.mime}
             >
                 <assignee>${this.props.rootassignee}</assignee>
                 <${OutputBody} ...${this.props} />
@@ -62,7 +63,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/bmp":
         case "image/svg+xml":
             const src = URL.createObjectURL(new Blob([body], { type: mime }))
-            return html`<div><img src=${src} /></div>`
+            return html`<div><img type=${mime} src=${src} /></div>`
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
