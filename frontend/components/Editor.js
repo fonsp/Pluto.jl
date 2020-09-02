@@ -366,71 +366,6 @@ export class Editor extends Component {
                 this.actions.update_local_cell_input(cell, false, new_code, cell.code_folded)
                 this.requests.change_remote_cell(cell_id, new_code)
             },
-            // split_remote_cell_old: (cell_id, boundaries, submit = false) => {
-            //     return new Promise((resolve) => {
-            //         if (boundaries.length === 1) {
-            //             resolve([cell_id])
-            //         } else {
-            //             const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-            //             const cell = this.state.notebook.cells[index]
-
-            //             this.requests.add_remote_cell_at(index + 1, true).then((update) => {
-            //                 this.client.on_update(update, true)
-
-            //                 const old_code = cell.local_code.body
-            //                 const before = splice_utf8(old_code, boundaries[0], length_utf8(old_code), "").trim()
-            //                 const after = splice_utf8(old_code, 0, boundaries[0], "").trim()
-
-            //                 const promises = [[cell_id, before], [update.cell_id, after]].map(([id, code, ]) => {
-            //                     // we set the cell's remote_code to force its value
-            //                     this.actions.update_local_cell_input({ cell_id: id }, false, code, false).then(() => {
-            //                         // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
-            //                         const new_state = this.state.notebook.cells.find((c) => c.cell_id === id)
-            //                         this.set_cell_state(cell_id, {
-            //                             remote_code: {
-            //                                 ...new_state.remote_code,
-            //                                 body: old_code,
-            //                             },
-            //                         })
-            //                     })
-            //                 })
-            //                 // we set the cell's remote_code to force its value
-            //                 this.actions.update_local_cell_input({ cell_id: cell_id }, false, before, false).then(() => {
-            //                     // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
-            //                     const new_state = this.state.notebook.cells.find((c) => c.cell_id === cell_id)
-            //                     this.set_cell_state(cell_id, {
-            //                         remote_code: {
-            //                             ...new_state.remote_code,
-            //                             body: old_code,
-            //                         },
-            //                     })
-            //                 })
-            //                 this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, after, false).then(() => {
-            //                     // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
-            //                     const new_state = this.state.notebook.cells.find((c) => c.cell_id === update.cell_id)
-            //                     this.set_cell_state(update.cell_id, {
-            //                         remote_code: {
-            //                             ...new_state.remote_code,
-            //                             body: "",
-            //                         },
-            //                     })
-
-            //                     // recurse
-            //                     this.requests
-            //                         .split_remote_cell(
-            //                             update.cell_id,
-            //                             boundaries.slice(1).map((x) => x - boundaries[0]),
-            //                             false
-            //                         )
-            //                         .then((next_cell_ids) => {
-            //                             resolve([cell_id, ...next_cell_ids])
-            //                         })
-            //                     // TODO move focus to correct cell
-            //                 })
-            //             })
-            //         }
-            //     })
-            // },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
                 const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
                 const cell = this.state.notebook.cells[index]
@@ -918,7 +853,6 @@ export class Editor extends Component {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
                                         line: delta === -1 ? Infinity : -1,
-                                        // ch: delta === -1 ? Infinity : -1,
                                     },
                                 })
                             )

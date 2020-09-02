@@ -91,7 +91,12 @@ export const Cell = ({
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
                 if (e.detail.line != null) {
-                    set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                    const ch = e.detail.ch
+                    if (ch == null) {
+                        set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                    } else {
+                        set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+                    }
                 }
             }
         }
