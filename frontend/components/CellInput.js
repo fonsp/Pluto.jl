@@ -106,6 +106,9 @@ export const CellInput = ({
                 console.log(token)
             }
         }
+        keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {
+            cm.toggleComment()
+        }
         keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
