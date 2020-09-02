@@ -448,6 +448,17 @@ export class Editor extends Component {
                     false
                 )
             },
+            confirm_delete_multiple: (cells) => {
+                if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
+                    if (cells.some((f) => f.running)) {
+                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                            this.requests.interrupt_remote(cells[0].cell_id)
+                        }
+                    } else {
+                        cells.forEach((f) => this.requests.delete_cell(f.cell_id))
+                    }
+                }
+            },
             fold_remote_cell: (cell_id, newFolded) => {
                 this.client.send(
                     "fold_cell",
@@ -611,6 +622,13 @@ export class Editor extends Component {
                         e.preventDefault()
                     }
                     break
+                case 8: // backspace
+                // fall into:
+                case 46: // delete
+                    const selected = this.state.notebook.cells.filter((c) => c.selected)
+                    this.requests.confirm_delete_multiple(selected)
+                    e.preventDefault()
+                    break
                 case 191: // ? or /
                     if (!(e.ctrlKey && e.shiftKey)) {
                         break
@@ -623,7 +641,7 @@ export class Editor extends Component {
         
         Shift+Enter:   run cell
         Ctrl+Enter:   run cell and add cell below
-        Shift+Delete:   delete cell
+        Delete or Backspace:   delete empty cell
 
         PageUp or fn+Up:   select cell above
         PageDown or fn+Down:   select cell below
@@ -699,9 +717,7 @@ export class Editor extends Component {
             <header>
                 <aside id="export">
                     <div id="container">
-                        <div class="export_title">
-                            export
-                        </div>
+                        <div class="export_title">export</div>
                         <a href="./notebookfile?id=${this.state.notebook.notebook_id}" target="_blank" class="export_card">
                             <header>${triangle("#a270ba")} Notebook file</header>
                             <section>Download a copy of the <b>.jl</b> script.</section>
@@ -797,7 +813,8 @@ export class Editor extends Component {
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
-                                        line: -1,
+                                        line: delta === -1 ? Infinity : -1,
+                                        // ch: delta === -1 ? Infinity : -1,
                                     },
                                 })
                             )

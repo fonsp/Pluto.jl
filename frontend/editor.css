@@ -31,7 +31,7 @@ main {
     align-content: center;
 }
 
-/* | main=25px+700px+6px=731px | helpbox=350px - 500px | */
+/* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
@@ -1070,13 +1070,15 @@ dropruler {
         height: 0px;
         z-index: 5;
     }
-    helpbox {
+    pluto-helpbox {
         bottom: 0px;
         right: 20px;
         position: absolute;
         display: flex;
         flex-direction: column;
+        width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
         width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
+        height: 70vh; /* compat */
         height: min(70vh, 900px);
         /* overflow: hidden; */
         background-color: white;
@@ -1087,7 +1089,7 @@ dropruler {
         box-shadow: 0 0 11px 0px #00000010;
         font-family: "Alegreya Sans", sans-serif;
     }
-    helpbox > header {
+    pluto-helpbox > header {
         padding: 15px;
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
@@ -1098,37 +1100,40 @@ dropruler {
         border-top-right-radius: 6px;
         /* border-top: 4px solid #8a8a8a; */
     }
-    helpbox > section {
+    pluto-helpbox > section {
         height: 100%;
         overflow: auto;
         padding: 10px;
     }
-    helpbox > section h1,
-    helpbox > section h2,
-    helpbox > section h3,
-    helpbox > section h4,
-    helpbox > section h5,
-    helpbox > section h6 {
+    pluto-helpbox > section h1,
+    pluto-helpbox > section h2,
+    pluto-helpbox > section h3,
+    pluto-helpbox > section h4,
+    pluto-helpbox > section h5,
+    pluto-helpbox > section h6 {
         font-family: inherit;
         border-bottom: none;
         font-size: 1rem;
     }
-    helpbox > section h1 {
+    pluto-helpbox > section h1 {
         font-size: 1.3rem;
     }
-    helpbox.hidden {
+    pluto-helpbox > section pre {
+        overflow-x: auto;
+    }
+    pluto-helpbox.hidden {
         height: initial;
     }
-    helpbox.hidden > section {
+    pluto-helpbox.hidden > section {
         display: none;
     }
-    helpbox > header::before {
+    pluto-helpbox > header::before {
         content: "📖 ";
     }
-    /* helpbox.loading>header::before{
+    /* pluto-helpbox.loading>header::before{
                 content: "⌛ ";
             } */
-    helpbox.hidden > header::before {
+    pluto-helpbox.hidden > header::before {
         content: "📚 ";
     }
 }
