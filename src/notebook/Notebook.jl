@@ -59,7 +59,7 @@ function notebook_project(notebook::Notebook)
     
     # relative project path is always relative to
     # the notebook path.
-    return joinpath(notebook.path, notebook.project)
+    return joinpath(dirname(notebook.path), notebook.project)
 end
 
 """
