@@ -53,6 +53,15 @@ const _cell_suffix = "\n\n"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
+function notebook_project(notebook::Notebook)
+    isempty(notebook.project) && return ""
+    isabspath(notebook.project) && return notebook.project
+    
+    # relative project path is always relative to
+    # the notebook path.
+    return joinpath(notebook.path, notebook.project)
+end
+
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
 
