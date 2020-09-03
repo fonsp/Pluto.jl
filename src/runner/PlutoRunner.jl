@@ -375,10 +375,15 @@ function show_array_row(io::IO, pair::Tuple)
     print(io, "</v></r>")
 end
 
-function show_dict_row(io::IO, pair::Pair)
+function show_dict_row(io::IO, pair::Union{Pair,Tuple})
     k, el = pair
     print(io, "<r><k>")
-    show_richest(io, k; onlyhtml=true)
+    if pair isa Pair
+        show_richest(io, k; onlyhtml=true)
+    else
+        # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
+        print(io, k)
+    end
     print(io, "</k><v>")
     show_richest(io, el; onlyhtml=true)
     print(io, "</v></r>")
@@ -388,27 +393,35 @@ istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, eltype(x))
+    print(io, eltype(x) |> nameof)
     print(io, "<jlarray>")
     if length(x) <= tree_display_limit
-        show_array_row.([io], enumerate(x))
+        show_array_row.([io], zip(eachindex(x), x))
     else
         from_end = tree_display_limit > 20 ? 10 : 1
-        show_array_row.([io], enumerate(x[1:tree_display_limit-from_end]))
+        show_array_row.([io], zip(eachindex(x)[begin:begin-1+tree_display_limit-from_end], x[begin:begin-1+tree_display_limit-from_end]))
         
         print(io, "<r><more></more></r>")
         
         indices = 1+length(x)-from_end:length(x)
-        show_array_row.([io], zip(indices, x[indices]))
+        show_array_row.([io], zip(eachindex(x)[end+1-from_end:end], x[end+1-from_end:end]))
     end
     
     print(io, "</jlarray>")
     print(io, "</jltree>")
 end
 
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Tuple)
+    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+    print(io, """<jlarray class="Tuple">""")
+    show_array_row.([io], zip(eachindex(x), x))
+    print(io, "</jlarray>")
+    print(io, "</jltree>")
+end
+
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any, <:Any})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, "Dict")
+    print(io, typeof(x) |> nameof)
     print(io, "<jldict>")
     row_index = 1
     for pair in x
@@ -423,6 +436,24 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:
     print(io, "</jldict>")
     print(io, "</jltree>")
 end
+
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::NamedTuple)
+    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+    print(io, """<jldict class="NamedTuple">""")
+    show_dict_row.([io], zip(eachindex(x), x))
+    print(io, "</jldict>")
+    print(io, "</jltree>")
+end
+
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Pair)
+    # print(io, """<jltree>""")
+    print(io, """<jlpair>""")
+    show_dict_row(io, x)
+    print(io, "</jlpair>")
+    # print(io, "</jltree>")
+end
+
+
 
 # Based on Julia source code, but HTML-ified
 function show_struct(io::IO, @nospecialize(x))
