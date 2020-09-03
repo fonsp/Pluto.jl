@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env, default_env
 import ..PlutoRunner
 import Distributed
 
@@ -35,7 +35,7 @@ const workspaces = Dict{UUID,Workspace}()
 `new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED")`_"""
 function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED") == "true"))::Workspace
     pid = if new_process
-        create_workspaceprocess()
+        create_workspaceprocess(;project=notebook.project)
     else
         pid = Distributed.myid()
         # for some reason the PlutoRunner might not be available in Main unless we include the file
@@ -81,8 +81,14 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
-function create_workspaceprocess()::Integer
-    pid = Distributed.addprocs(1) |> first
+function create_workspaceprocess(;project::String="")::Integer
+    if isempty(project)
+        project = haskey(ENV, "PLUTO_PROJECT") ? ENV["PLUTO_PROJECT"]       :
+            haskey(ENV, "JULIA_PLUTO_PROJECT") ? ENV["JULIA_PLUTO_PROJECT"] :
+                                                 default_env()
+    end
+    # NOTE: notebook environment should not be the same as server process environment
+    pid = Distributed.addprocs(1;exeflags="--project=$project") |> first
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)

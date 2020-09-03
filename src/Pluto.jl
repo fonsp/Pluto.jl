@@ -26,6 +26,9 @@ const ENV_DEFAULTS = Dict(
         joinpath(preferred_dir, "") # must end with / or \
     end,
 )
+
+default_env() = joinpath(first(DEPOT_PATH), "environments", string("v", VERSION.major, ".", VERSION.minor))
+
 get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
 
 if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"

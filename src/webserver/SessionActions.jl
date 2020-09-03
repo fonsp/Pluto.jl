@@ -6,7 +6,7 @@ struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true)
+function open(session::ServerSession, path::AbstractString; run_async=true, project="")
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
@@ -14,6 +14,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true)
     end
     
     nb = load_notebook(tamepath(path))
+    nb.project = project
     session.notebooks[nb.notebook_id] = nb
     if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
