@@ -399,7 +399,8 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
         show_array_row.([io], zip(eachindex(x), x))
     else
         from_end = tree_display_limit > 20 ? 10 : 1
-        show_array_row.([io], zip(eachindex(x)[begin:begin-1+tree_display_limit-from_end], x[begin:begin-1+tree_display_limit-from_end]))
+        firsti = firstindex(x)
+        show_array_row.([io], zip(eachindex(x)[firsti:firsti-1+tree_display_limit-from_end], x[firsti:firsti-1+tree_display_limit-from_end]))
         
         print(io, "<r><more></more></r>")
         
@@ -446,11 +447,9 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::NamedTuple)
 end
 
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Pair)
-    # print(io, """<jltree>""")
     print(io, """<jlpair>""")
     show_dict_row(io, x)
     print(io, "</jlpair>")
-    # print(io, "</jltree>")
 end
 
 
