@@ -38,7 +38,7 @@ This will start the static HTTP server and a WebSocket server. The server runs _
 function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), project="")
     if !isempty(project)
         # NOTE: convert to absolute path in case we cd to other dir later
-        ENV["JULIA_PLUTO_PROJECT"] = abspath(project)
+        ENV["JULIA_PLUTO_PROJECT"] = tamepath(project)
     end
 
     pluto_router = http_router_for(session)
