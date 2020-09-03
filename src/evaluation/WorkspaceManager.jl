@@ -83,9 +83,7 @@ end
 
 function create_workspaceprocess(;project::String="")::Integer
     if isempty(project)
-        project = haskey(ENV, "PLUTO_PROJECT") ? ENV["PLUTO_PROJECT"]       :
-            haskey(ENV, "JULIA_PLUTO_PROJECT") ? ENV["JULIA_PLUTO_PROJECT"] :
-                                                 default_env()
+        project = default_env()
     end
     # NOTE: notebook environment should not be the same as server process environment
     pid = Distributed.addprocs(1;exeflags="--project=$project") |> first

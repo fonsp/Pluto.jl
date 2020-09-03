@@ -27,7 +27,15 @@ const ENV_DEFAULTS = Dict(
     end,
 )
 
-default_env() = joinpath(first(DEPOT_PATH), "environments", string("v", VERSION.major, ".", VERSION.minor))
+function default_env()
+    if haskey(ENV, "JULIA_PLUTO_PROJECT")
+        ENV["JULIA_PLUTO_PROJECT"]
+    elseif haskey(ENV, "PLUTO_PROJECT")
+        ENV["PLUTO_PROJECT"]
+    else
+        joinpath(first(DEPOT_PATH), "environments", string("v", VERSION.major, ".", VERSION.minor))
+    end
+end
 
 get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
 

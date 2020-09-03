@@ -35,7 +35,11 @@ The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession())
+function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), project="")
+    if !isempty(project)
+        ENV["JULIA_PLUTO_PROJECT"] = project
+    end
+
     pluto_router = http_router_for(session)
 
     hostIP = parse(Sockets.IPAddr, host)
