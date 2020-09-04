@@ -91,9 +91,10 @@ export class Editor extends Component {
                     }
                 })
             },
-            update_local_cell_output: (cell, { output, running, runtime, errored }) => {
+            update_local_cell_output: (cell, { output, queued, running, runtime, errored }) => {
                 this.counter_statistics.numRuns++
                 return set_cell_state(cell.cell_id, {
+                    queued: queued,
                     running: running,
                     runtime: runtime,
                     errored: errored,
@@ -167,10 +168,19 @@ export class Editor extends Component {
                                 this.actions.update_local_cell_output(cell, message)
                             }
                             break
+                        case "cell_queued":
+                            if (cell != null) {
+                                set_cell_state(update.cell_id, {
+                                    running: false,
+                                    queued: true
+                                })
+                            }
+                            break                            
                         case "cell_running":
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: true,
+                                    queued: false
                                 })
                             }
                             break
