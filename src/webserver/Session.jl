@@ -53,6 +53,7 @@ UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(ty
 function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     UpdateMessage(:cell_output, 
         Dict(
+            :queued => cell.queued,
             :running => cell.running,
             :runtime => cell.runtime,
             :errored => cell.errored,
@@ -88,6 +89,11 @@ function clientupdate_cells_moved(notebook::Notebook, cells::Vector{Cell}, new_i
             :cells => [cell.cell_id for cell in cells],
             :index => new_index - 1, # 1-based index (julia) to 0-based index (js)
         ), notebook, nothing, initiator)
+end
+
+function clientupdate_cell_queued(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
+    UpdateMessage(:cell_queued, 
+        Dict(), notebook, cell, initiator)
 end
 
 function clientupdate_cell_running(notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)

@@ -842,11 +842,18 @@ pluto-cell.errored > pluto-trafficlight {
     background: hsl(0, 100%, 71%);
 }
 
-pluto-cell.running > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 80%, 1), hsla(20, 20%, 80%, 1) 8px, hsla(20, 20%, 80%, 0.1) 8px, hsla(20, 20%, 80%, 0.1) 16px);
+pluto-cell.queued > pluto-trafficlight {
+    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 85%, 1), hsla(20, 20%, 85%, 1) 8px, hsla(20, 20%, 85%, 0.1) 8px, hsla(20, 20%, 85%, 0.1) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 2000s linear 0s infinite running scrollbackground;
+    animation: 3000s linear 0s infinite running scrollbackground;
+}
+
+pluto-cell.running > pluto-trafficlight {
+    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 75%, 1), hsla(20, 20%, 75%, 1) 8px, hsla(20, 20%, 75%, 0.1) 8px, hsla(20, 20%, 75%, 0.1) 16px);
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
+    animation: 700s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
