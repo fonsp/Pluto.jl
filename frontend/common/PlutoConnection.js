@@ -330,7 +330,7 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
                 on_socket_close: async () => {
                     on_connection_status(false)
     
-                    console.log(`Starting new websocket`)
+                    console.log(`Starting new websocket`, new Date().toLocaleTimeString())
                     await connect() // reconnect!
     
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
