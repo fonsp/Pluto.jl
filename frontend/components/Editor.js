@@ -295,7 +295,7 @@ export class Editor extends Component {
                                 this.setState({
                                     loading: false,
                                 })
-                                console.info("Workspace initialized")
+                                console.info("All cells loaded! 🚂 enjoy the ride")
                             })
                         }
                     )

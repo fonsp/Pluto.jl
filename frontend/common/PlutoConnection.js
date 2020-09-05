@@ -203,26 +203,30 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
             console.error(e)
 
-            // if (await socket_is_alright_with_grace_period(socket)) {
-            //     console.log("The socket somehow recovered from an error! Onbegrijpelijk")
-            //     console.log(socket)
-            //     console.log(socket.readyState)
-            // } else {
-            //     if(has_been_open) {
-            //         on_socket_close()
-            //         try_close_socket_connection(socket)
-            //     } else {
-            //         reject(e) // if it has not openened yet
-            //     }
-            // }
+            if (await socket_is_alright_with_grace_period(socket)) {
+                console.log("The socket somehow recovered from an error?! Onbegrijpelijk")
+                console.log(socket)
+                console.log(socket.readyState)
+            } else {
+                if(has_been_open) {
+                    on_socket_close()
+                    try_close_socket_connection(socket)
+                } else {
+                    reject(e)
+                }
+            }
         }
         socket.onclose = async (e) => {
             console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
             console.error(e)
             console.assert(has_been_open)
 
-            on_socket_close()
-            try_close_socket_connection(socket)
+            if(has_been_open) {
+                on_socket_close()
+                try_close_socket_connection(socket)
+            } else {
+                reject(e)
+            }
         }
         socket.onopen = () => {
             console.log("Socket opened", new Date().toLocaleTimeString())
@@ -346,9 +350,6 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
     
-            console.log(connect_metadata.notebook_id)
-            console.log(u.message.notebook_exists)
-
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
                 if(confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
