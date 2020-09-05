@@ -26,9 +26,9 @@ cat = "Ks*;lj"
 
 # ╔═╡ aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 if cat == "Ks*;lj"
-	md"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
+    md"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	md"**Well done, your cat is called $cat now.** This text gets updated every time you change the name. To see how the magic works, click on the 👁️ to the left of this text."
+    md"**Well done, your cat is called $cat now.** This text gets updated every time you change the name. To see how the magic works, click on the 👁️ to the left of this text."
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
@@ -39,9 +39,9 @@ md"I feel like our cat needs a friend. Let's call them $(friend)."
 
 # ╔═╡ a1a20314-9543-11ea-17de-0b658da18992
 if !@isdefined friend
-	md"Uh oh, what is this? I forgot to add a cell defining our friend. Can you do it for me?"
+    md"Uh oh, what is this? I forgot to add a cell defining our friend. Can you do it for me?"
 else
-	md"**Well done!** $cat and $friend are both happy with your performance."
+    md"**Well done!** $cat and $friend are both happy with your performance."
 end
 
 # ╔═╡ f112b662-9543-11ea-3dcb-2906a99b2188
@@ -65,9 +65,9 @@ cans_in_stock = "🥫🥫🥫🥫"
 
 # ╔═╡ 55ad7422-954e-11ea-0a33-a3b03febb56e
 if @isdefined cans_in_stock
-	md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can. Remember to run it after making the change!"
+    md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can. Remember to run it after making the change!"
 else
-	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` - Pluto will take care of updating everything."
+    md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` - Pluto will take care of updating everything."
 end
 
 # ╔═╡ eac62fea-954e-11ea-2768-39ce6f4059ab
@@ -82,9 +82,9 @@ scary_dog = "Piesio"
 
 # ╔═╡ bdd5d268-9550-11ea-1046-31efedc36872
 if @isdefined scary_dog
-	md" $scary_dog is terrorizing the neighborhood! We must do something about it!"
+    md" $scary_dog is terrorizing the neighborhood! We must do something about it!"
 else
-	md"You saved the neighborhood! Referencing `scary_dog` leads to an `UndefVarError`, as if it never even existed."
+    md"You saved the neighborhood! Referencing `scary_dog` leads to an `UndefVarError`, as if it never even existed."
 end
 
 # ╔═╡ 36cd006a-9551-11ea-3c0c-df8b7f2843c1
@@ -112,9 +112,9 @@ power = repeat(power_emoji, power_level)
 
 # ╔═╡ 784b1774-9557-11ea-315e-d1ea277ce0fd
 if !@isdefined power
-	md"Uh oh! Pluto doesn't support multiple expressions per cell. This is a conscious choice - this restriction helps you write less buggy code once you get used to it. To fix the code, you can either split the above cell, or wrap it in a `begin ... end` block. Both work."
+    md"Uh oh! Pluto doesn't support multiple expressions per cell. This is a conscious choice - this restriction helps you write less buggy code once you get used to it. To fix the code, you can either split the above cell, or wrap it in a `begin ... end` block. Both work."
 else
-	md"**Well done!** Your cats have powers now."
+    md"**Well done!** Your cats have powers now."
 end
 
 # ╔═╡ 5edadcd2-9554-11ea-1714-b5b7692c4797

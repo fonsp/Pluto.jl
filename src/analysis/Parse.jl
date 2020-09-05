@@ -15,11 +15,14 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     # 1.
     raw = if can_insert_filename
         filename = pluto_filename(notebook, cell)
-        ex = Base.parse_input_line(cell.code, filename=filename)
+        ex = Base.parse_input_line(cell.code, filename = filename)
         if (ex isa Expr) && (ex.head == :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
-                Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
+                Expr(
+                    :error,
+                    "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))",
+                )
             else
                 ex
             end
@@ -28,14 +31,17 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
         end
     else
         # Meta.parse returns the "extra token..." like we want, but also in cases like "\n\nx = 1\n# comment", so we need to do the multiple expressions check ourselves after all
-        parsed1, next_ind1 = Meta.parse(cell.code, 1, raise=false)
-        parsed2, next_ind2 = Meta.parse(cell.code, next_ind1, raise=false)
+        parsed1, next_ind1 = Meta.parse(cell.code, 1, raise = false)
+        parsed2, next_ind2 = Meta.parse(cell.code, next_ind1, raise = false)
 
         if parsed2 === nothing
             # only whitespace or comments after the first expression
             parsed1
         else
-            Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
+            Expr(
+                :error,
+                "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))",
+            )
         end
     end
 
@@ -60,8 +66,8 @@ end
 `expression_boundaries("sqrt(1)\n\n123") == [ncodeunits("sqrt(1)\n\n") + 1, ncodeunits("sqrt(1)\n\n123") + 1]`
 
 """
-function expression_boundaries(code::String, start=1)::Array{<:Integer,1}
-    expr, next = Meta.parse(code, start, raise=false)
+function expression_boundaries(code::String, start = 1)::Array{<:Integer,1}
+    expr, next = Meta.parse(code, start, raise = false)
     if next <= ncodeunits(code)
         [next, expression_boundaries(code, next)...]
     else
@@ -75,7 +81,7 @@ end
 2. If `expr` is a `:module` expression, wrap it in a `:toplevel` block - module creation needs to be at toplevel. Rule 1. is not applied."
 function preprocess_expr(expr::Expr)
     if expr.head == :toplevel
-		Expr(:block, expr.args...)
+        Expr(:block, expr.args...)
     elseif expr.head == :module
         Expr(:toplevel, expr)
     else
@@ -94,7 +100,8 @@ function timed_expr(expr::Expr)::Expr
     root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
 
     # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
-    Expr(:block, 
+    Expr(
+        :block,
         :(local elapsed_ns = time_ns()),
         linenumbernode,
         :(local result = $root),

@@ -12,19 +12,17 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
         @testset "Basic $(parallel ? "distributed" : "single-process")" for parallel in [false, true]
             withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => string(parallel)) do
                 @test ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"] == string(parallel)
-                
+
                 notebook = Notebook([
                     Cell("x = 1"),
                     Cell("y = x"),
                     Cell("f(x) = x + y"),
                     Cell("f(4)"),
-
                     Cell("""begin
                         g(a) = x
                         g(a,b) = y
                     end"""),
                     Cell("g(6) + g(6,6)"),
-
                     Cell("import Distributed"),
                     Cell("Distributed.myid()"),
                 ])
@@ -44,7 +42,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 update_run!(🍭, notebook, notebook.cells[3])
                 @test notebook.cells[3].errored == false
                 @test notebook.cells[3].rootassignee === nothing
-            
+
                 update_run!(🍭, notebook, notebook.cells[4])
                 @test notebook.cells[4].output_repr == "16"
                 @test notebook.cells[4].errored == false
@@ -86,7 +84,6 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             notebook = Notebook([
                 Cell("a\\"),
                 Cell("1 = 2"),
-                
                 Cell("b = 3.0\nb = 3"),
                 Cell("\n# uhm\n\nc = 4\n\n# wowie \n\n"),
                 Cell("d = 5;"),
@@ -96,23 +93,22 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 Cell("0 + 9; 9;\n\n\n"),
                 Cell("0 + 10;\n10;"),
                 Cell("0 + 11;\n11"),
-                
                 Cell("sqrt(-12)"),
                 Cell("\n\nsqrt(-13)"),
                 Cell("\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend"),
                 Cell("w(-15)"),
-                Cell("error(" * sprint(Base.print_quoted, escape_me) * ")")
+                Cell("error(" * sprint(Base.print_quoted, escape_me) * ")"),
             ])
             fakeclient.connected_notebook = notebook
 
-            @testset "Strange code"  begin
+            @testset "Strange code" begin
                 update_run!(🍭, notebook, notebook.cells[1])
                 update_run!(🍭, notebook, notebook.cells[2])
                 @test notebook.cells[1].errored == true
                 @test notebook.cells[2].errored == true
 
             end
-            @testset "Mutliple expressions & semicolon"  begin
+            @testset "Mutliple expressions & semicolon" begin
 
                 update_run!(🍭, notebook, notebook.cells[3:end])
                 @test occursinerror("syntax: extra token after", notebook.cells[3])
@@ -153,7 +149,10 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                     @test length(st["stacktrace"]) == 4 # check in REPL
                     if Pluto.can_insert_filename
                         @test st["stacktrace"][4]["line"] == 1
-                        @test occursin(notebook.cells[12].cell_id |> string, st["stacktrace"][4]["file"])
+                        @test occursin(
+                            notebook.cells[12].cell_id |> string,
+                            st["stacktrace"][4]["file"],
+                        )
                         @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
                     else
                         @test_broken false
@@ -166,7 +165,10 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                     @test length(st["stacktrace"]) == 4
                     if Pluto.can_insert_filename
                         @test st["stacktrace"][4]["line"] == 3
-                        @test occursin(notebook.cells[13].cell_id |> string, st["stacktrace"][4]["file"])
+                        @test occursin(
+                            notebook.cells[13].cell_id |> string,
+                            st["stacktrace"][4]["file"],
+                        )
                         @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
                     else
                         @test_broken false
@@ -180,11 +182,17 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
 
                     if Pluto.can_insert_filename
                         @test st["stacktrace"][4]["line"] == 3
-                        @test occursin(notebook.cells[14].cell_id |> string, st["stacktrace"][4]["file"])
+                        @test occursin(
+                            notebook.cells[14].cell_id |> string,
+                            st["stacktrace"][4]["file"],
+                        )
                         @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
 
                         @test st["stacktrace"][5]["line"] == 1
-                        @test occursin(notebook.cells[15].cell_id |> string, st["stacktrace"][5]["file"])
+                        @test occursin(
+                            notebook.cells[15].cell_id |> string,
+                            st["stacktrace"][5]["file"],
+                        )
                         @test occursin(notebook.path |> basename, st["stacktrace"][5]["file"])
                     else
                         @test_broken false
@@ -210,19 +218,19 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 Cell("g = 6"),
             ])
             fakeclient.connected_notebook = notebook
-        
+
 
             update_run!(🍭, notebook, notebook.cells[1])
             update_run!(🍭, notebook, notebook.cells[2])
             @test occursinerror("Multiple", notebook.cells[1])
             @test occursinerror("Multiple", notebook.cells[2])
-        
+
             setcode(notebook.cells[1], "")
             update_run!(🍭, notebook, notebook.cells[1])
             @test notebook.cells[1].errored == false
             @test notebook.cells[2].errored == false
-        
-        # https://github.com/fonsp/Pluto.jl/issues/26
+
+            # https://github.com/fonsp/Pluto.jl/issues/26
             setcode(notebook.cells[1], "x = 1")
             update_run!(🍭, notebook, notebook.cells[1])
             setcode(notebook.cells[2], "x")
@@ -234,17 +242,17 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             update_run!(🍭, notebook, notebook.cells[4])
             @test occursinerror("Multiple", notebook.cells[3])
             @test occursinerror("Multiple", notebook.cells[4])
-        
+
             setcode(notebook.cells[3], "")
             update_run!(🍭, notebook, notebook.cells[3])
             @test notebook.cells[3].errored == false
             @test notebook.cells[4].errored == false
-        
+
             update_run!(🍭, notebook, notebook.cells[5])
             update_run!(🍭, notebook, notebook.cells[6])
             @test occursinerror("Multiple", notebook.cells[5])
             @test occursinerror("Multiple", notebook.cells[6])
-        
+
             setcode(notebook.cells[5], "")
             update_run!(🍭, notebook, notebook.cells[5])
             @test notebook.cells[5].errored == false
@@ -254,31 +262,29 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
         end
 
         @testset "Mutliple assignments" begin
-            notebook = Notebook([
-                Cell("x = 1"),
-                Cell("z = 4 + y"),
-                Cell("y = x + 2"),
-                Cell("y = x + 3"),
-            ])
+            notebook =
+                Notebook([Cell("x = 1"), Cell("z = 4 + y"), Cell("y = x + 2"), Cell("y = x + 3")])
             Pluto.update_caches!(notebook, notebook.cells)
             notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
             let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
-                @test topo_order.runnable == notebook.cells[[1,2]]
-                @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
+                @test topo_order.runnable == notebook.cells[[1, 2]]
+                @test topo_order.errable |> keys == notebook.cells[[3, 4]] |> Set
             end
-            let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
-                @test topo_order.runnable == notebook.cells[[1,3,4,2]] # x first, y second and third, z last
+            let topo_order = Pluto.topological_order(
+                    notebook,
+                    notebook.topology,
+                    notebook.cells[[1]],
+                    allow_multiple_defs = true,
+                )
+                @test topo_order.runnable == notebook.cells[[1, 3, 4, 2]] # x first, y second and third, z last
                 # this also tests whether multiple defs run in page order
                 @test topo_order.errable == Dict()
             end
         end
 
         @testset "Cyclic" begin
-            notebook = Notebook([
-                Cell("x = y"),
-                Cell("y = x")
-            ])
+            notebook = Notebook([Cell("x = y"), Cell("y = x")])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells[1])
@@ -290,10 +296,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
         end
 
         @testset "Variable deletion" begin
-            notebook = Notebook([
-                Cell("x = 1"),
-                Cell("y = x")
-            ])
+            notebook = Notebook([Cell("x = 1"), Cell("y = x")])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells[1])
@@ -311,19 +314,18 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
         @testset "Recursion" begin
             notebook = Notebook([
                 Cell("f(n) = n * f(n-1)"),
-
                 Cell("k = 1"),
                 Cell("""begin
                     g(n) = h(n-1) + k
                     h(n) = n > 0 ? g(n-1) : 0
                 end"""),
-
                 Cell("h(4)"),
             ])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells[1])
-            @test notebook.cells[1].output_repr == "f" || startswith(notebook.cells[1].output_repr, "f (generic function with ")
+            @test notebook.cells[1].output_repr == "f" ||
+                  startswith(notebook.cells[1].output_repr, "f (generic function with ")
             @test notebook.cells[1].errored == false
 
             update_run!(🍭, notebook, notebook.cells[2:3])
@@ -343,9 +345,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
         end
 
         @testset "Variable cannot reference its previous value" begin
-            notebook = Notebook([
-            Cell("x = 3")
-        ])
+            notebook = Notebook([Cell("x = 3")])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells[1])
@@ -360,17 +360,13 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             Cell("y = 1"),
             Cell("f(x) = x + y"),
             Cell("f(3)"),
-
             Cell("g(a,b) = a+b"),
             Cell("g(5,6)"),
-
             Cell("h(x::Int64) = x"),
             Cell("h(7)"),
             Cell("h(8.0)"),
-
             Cell("p(x) = 9"),
             Cell("p isa Function"),
-
             Cell("module Something
                 export a
                 a(x::String) = \"🐟\"
@@ -379,7 +375,6 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             Cell("a(x::Int64) = x"),
             Cell("a(\"i am a \")"),
             Cell("a(15)"),
-            
             Cell("module Different
                 export b
                 b(x::String) = \"🐟\"
@@ -388,7 +383,6 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             Cell("b(x::Int64) = x"),
             Cell("b(\"i am a \")"),
             Cell("b(20)"),
-            
             Cell("module Wow
                 export c
                 c(x::String) = \"🐟\"
@@ -399,17 +393,14 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             end"),
             Cell("c(\"i am a \")"),
             Cell("c(24)"),
-
             Cell("Ref((25,:fish))"),
             Cell("begin
                 import Base: show
                 show(io::IO, x::Ref{Tuple{Int,Symbol}}) = write(io, \"🐟\")
             end"),
-
             Cell("Base.isodd(n::Integer) = \"🎈\""),
             Cell("Base.isodd(28)"),
             Cell("isodd(29)"),
-
             Cell("using Dates"),
             Cell("year(DateTime(31))"),
         ])
@@ -454,7 +445,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             @test notebook.cells[6].errored == false
             @test notebook.cells[7].errored == false
             @test notebook.cells[8].errored == true
-        
+
             setcode(notebook.cells[6], "h(x::Float64) = 2.0 * x")
             update_run!(🍭, notebook, notebook.cells[6])
             @test notebook.cells[6].errored == false
@@ -473,7 +464,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             update_run!(🍭, notebook, notebook.cells[9])
             @test notebook.cells[9].errored == false
             @test notebook.cells[10].output_repr == "false"
-            
+
             setcode(notebook.cells[9], "p(x) = 9")
             update_run!(🍭, notebook, notebook.cells[9])
             @test notebook.cells[9].errored == false
@@ -488,7 +479,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
             @test notebook.cells[15].output_repr == "15"
 
-            
+
             @test_nowarn update_run!(🍭, notebook, notebook.cells[13:15])
             @test notebook.cells[13].errored == false
             @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
@@ -565,12 +556,10 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             notebook = Notebook([
                 Cell("a = 1"),
                 Cell("map(2:2) do val; (global a = val; 2*val) end |> last"),
-
                 Cell("b = 3"),
                 Cell("g = f"),
                 Cell("f(x) = x + b"),
                 Cell("g(6)"),
-
                 Cell("h = [x -> x + b][1]"),
                 Cell("h(8)"),
             ])
@@ -605,12 +594,12 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             @test notebook.cells[8].output_repr == "11"
 
             WorkspaceManager.unmake_workspace(notebook)
-            
+
         end
 
         @testset "Immutable globals" begin
-        # We currently have a slightly relaxed version of immutable globals:
-        # globals can only be mutated/assigned _in a single cell_.
+            # We currently have a slightly relaxed version of immutable globals:
+            # globals can only be mutated/assigned _in a single cell_.
             notebook = Notebook([
                 Cell("x = 1"),
                 Cell("x = 2"),
@@ -630,12 +619,12 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             update_run!(🍭, notebook, notebook.cells[2])
             @test occursinerror("Multiple definitions for x", notebook.cells[1])
             @test occursinerror("Multiple definitions for x", notebook.cells[1])
-        
+
             setcode(notebook.cells[2], "x + 1")
             update_run!(🍭, notebook, notebook.cells[2])
             @test notebook.cells[1].output_repr == "1"
             @test notebook.cells[2].output_repr == "2"
-        
+
             update_run!(🍭, notebook, notebook.cells[3])
             @test notebook.cells[3].output_repr == "3"
 
@@ -643,11 +632,11 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             update_run!(🍭, notebook, notebook.cells[5])
             @test occursinerror("Multiple definitions for z", notebook.cells[4])
             @test occursinerror("Multiple definitions for z", notebook.cells[5])
-        
+
             update_run!(🍭, notebook, notebook.cells[6:7])
             @test occursinerror("UndefVarError", notebook.cells[6])
             @test notebook.cells[7].errored == false
-        
+
             update_run!(🍭, notebook, notebook.cells[8])
             @test occursinerror("UndefVarError", notebook.cells[6])
             @test occursinerror("Multiple definitions for w", notebook.cells[7])
@@ -673,25 +662,19 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 Cell("c = b + a; push!(x,3)"),
                 Cell("a = 1; push!(x,4)"),
                 Cell("a + b +c; push!(x,5)"),
-
                 Cell("a = 1; push!(x,6)"),
-
                 Cell("n = m; push!(x,7)"),
                 Cell("m = n; push!(x,8)"),
                 Cell("n = 1; push!(x,9)"),
-
                 Cell("push!(x,10)"),
                 Cell("push!(x,11)"),
                 Cell("push!(x,12)"),
                 Cell("push!(x,13)"),
                 Cell("push!(x,14)"),
-
                 Cell("join(x, '-')"),
-
                 Cell("φ(16)"),
                 Cell("φ(χ) = χ + υ"),
                 Cell("υ = 18"),
-
                 Cell("f(19)"),
                 Cell("f(x) = x + g(x)"),
                 Cell("g(x) = x + y"),
@@ -707,7 +690,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 update_run!(🍭, notebook, notebook.cells[15])
                 @test notebook.cells[15].output_repr == "\"4-2-3-5\""
             end
-            
+
             @testset "Errors" begin
                 update_run!(🍭, notebook, notebook.cells[6:9])
 
@@ -727,7 +710,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
                 update_run!(🍭, notebook, notebook.cells[15])
                 @test notebook.cells[15].output_repr == "\"10-11-12-13-14\""
             end
-            
+
 
             update_run!(🍭, notebook, notebook.cells[16:18])
             @test notebook.cells[16].errored == false
@@ -738,7 +721,7 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
             setcode(notebook.cells[18], "υ = 8")
             update_run!(🍭, notebook, notebook.cells[18])
             @test notebook.cells[16].output_repr == "24"
-            
+
             update_run!(🍭, notebook, notebook.cells[19:22])
             @test notebook.cells[19].errored == false
             @test notebook.cells[19].output_repr == "60"

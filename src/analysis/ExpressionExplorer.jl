@@ -1,5 +1,6 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
+export compute_symbolreferences,
+    try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -20,7 +21,8 @@ mutable struct SymbolsState
     funcdefs::Dict{FuncName,SymbolsState}
 end
 
-SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{FuncName,SymbolsState}())
+SymbolsState(references, assignments, funccalls) =
+    SymbolsState(references, assignments, funccalls, Dict{FuncName,SymbolsState}())
 SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
 SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
 
@@ -75,7 +77,12 @@ function union!(a::Dict{FuncName,SymbolsState}, bs::Dict{FuncName,SymbolsState}.
 end
 
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs)
+    SymbolsState(
+        a.references ∪ b.references,
+        a.assignments ∪ b.assignments,
+        a.funccalls ∪ b.funccalls,
+        a.funcdefs ∪ b.funcdefs,
+    )
 end
 
 function union!(a::SymbolsState, bs::SymbolsState...)
@@ -91,7 +98,11 @@ function union!(a::Tuple{FuncName,SymbolsState}, bs::Tuple{FuncName,SymbolsState
 end
 
 function union(a::ScopeState, b::ScopeState)
-    SymbolsState(a.inglobalscope && b.inglobalscope, a.exposedglobals ∪ b.exposedglobals, a.hiddenglobals ∪ b.hiddenglobals)
+    SymbolsState(
+        a.inglobalscope && b.inglobalscope,
+        a.exposedglobals ∪ b.exposedglobals,
+        a.hiddenglobals ∪ b.hiddenglobals,
+    )
 end
 
 function union!(a::ScopeState, bs::ScopeState...)
@@ -103,7 +114,10 @@ function union!(a::ScopeState, bs::ScopeState...)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    a.references == b.references && a.assignments == b.assignments && a.funccalls == b.funccalls && a.funcdefs == b.funcdefs 
+    a.references == b.references &&
+        a.assignments == b.assignments &&
+        a.funccalls == b.funccalls &&
+        a.funcdefs == b.funcdefs
 end
 
 Base.push!(x::Set) = x
@@ -113,11 +127,29 @@ Base.push!(x::Set) = x
 ###
 
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
-const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
+const modifiers = [
+    :(+=),
+    :(-=),
+    :(*=),
+    :(/=),
+    :(//=),
+    :(^=),
+    :(÷=),
+    :(%=),
+    :(<<=),
+    :(>>=),
+    :(>>>=),
+    :(&=),
+    :(⊻=),
+    :(≔),
+    :(⩴),
+    :(≕),
+]
 const modifiers_dotprefixed = [Symbol('.' * String(m)) for m in modifiers]
 
 function will_assign_global(assignee::Symbol, scopestate::ScopeState)::Bool
-    (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) && (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
+    (scopestate.inglobalscope || assignee ∈ scopestate.exposedglobals) &&
+        (assignee ∉ scopestate.hiddenglobals || assignee ∈ scopestate.definedfuncs)
 end
 
 function will_assign_global(assignee::Array{Symbol,1}, scopestate::ScopeState)::Bool
@@ -180,7 +212,7 @@ end
 
 uncurly!(ex::Expr)::Symbol = ex.args[1]
 
-uncurly!(s::Symbol, scopestate=nothing)::Symbol = s
+uncurly!(s::Symbol, scopestate = nothing)::Symbol = s
 
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
 function split_funcname(funcname_ex::Expr)::FuncName
@@ -198,7 +230,7 @@ function split_funcname(funcname_ex::QuoteNode)::FuncName
 end
 
 function split_funcname(funcname_ex::Symbol)::FuncName
-    Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
+    Symbol[funcname_ex|>without_dotprefix|>without_dotsuffix]
 end
 
 # this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
@@ -220,18 +252,18 @@ end
 function without_dotsuffix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[end] == '.'
-        Symbol(fn_str[1:end - 1])
+        Symbol(fn_str[1:end-1])
     else
         funcname
     end
 end
-        
+
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
 This is **not** the same as the expression `:(Module.func)`, but is used to identify the function name using a single `Symbol` (like normal variables).
 This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`."""
 function join_funcname_parts(parts::FuncName)::Symbol
-	join(parts .|> String, ".") |> Symbol
+    join(parts .|> String, ".") |> Symbol
 end
 
 
@@ -267,8 +299,16 @@ end
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     if ex.head == :(=)
         # Does not create scope
-        
-        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
+
+        if ex.args[1] isa Expr && (
+            ex.args[1].head == :call ||
+            ex.args[1].head == :where ||
+            (
+                ex.args[1].head == :(::) &&
+                ex.args[1].args[1] isa Expr &&
+                ex.args[1].args[1].head == :call
+            )
+        )
             # f(x, y) = x + y
             # Rewrite to:
             # function f(x, y) x + y end
@@ -278,12 +318,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         val = ex.args[2]
 
         global_assignees = get_global_assignees(assignees, scopestate)
-        
+
         symstate = innersymstate = explore!(val, scopestate)
         # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
         push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
         assigneesymstate = explore!(ex.args[1], scopestate)
-        
+
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
@@ -295,14 +335,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # We transform the modifier back to its operator
         # for when users redefine the + function
 
-        operator = Symbol(string(ex.head)[1:end - 1])
+        operator = Symbol(string(ex.head)[1:end-1])
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
     elseif ex.head in modifiers_dotprefixed
         # We change: a[1] .+= 123
         # to:        a[1] .= a[1] + 123
 
-        operator = Symbol(string(ex.head)[2:end - 1])
+        operator = Symbol(string(ex.head)[2:end-1])
         expanded_expr = Expr(:(.=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
     elseif ex.head == :let || ex.head == :for || ex.head == :while
@@ -312,17 +352,20 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate = deepcopy(scopestate)
         innerscopestate.inglobalscope = false
 
-        return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+        return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init = SymbolsState())
     elseif ex.head == :macrocall
         # Does not create sccope
-        
+
         funcname = ex.args[1] |> split_funcname
         # Macros can transform the expression into anything - the best way to treat them is to macroexpand
         # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
         if (length(funcname) == 1 || (length(funcname) >= 2 && funcname[1] == :Base))
-            if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
+            if funcname[end] == Symbol("@md_str") ||
+               funcname[end] == Symbol("@bind") ||
+               funcname[end] == Symbol("@gensym") ||
+               funcname[end] == Symbol("@kwdef")
                 # we macroexpand these, and recurse
-                expanded = macroexpand(PlutoRunner, ex; recursive=false)
+                expanded = macroexpand(PlutoRunner, ex; recursive = false)
                 return explore!(Expr(:call, ex.args[1], expanded), scopestate)
             elseif funcname[end] == Symbol("@enum")
                 # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
@@ -330,8 +373,17 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 # this would mean that you can only define one enum per notebook :(
                 syms = filter(x -> x isa Symbol, ex.args[2:end])
                 rest = setdiff(ex.args[2:end], syms)
-                
-                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
+
+                return mapfoldl(
+                    a -> explore!(a, scopestate),
+                    union!,
+                    rest,
+                    init = SymbolsState(
+                        Set{Symbol}(),
+                        Set{Symbol}(syms),
+                        Set{FuncName}([[Symbol("@enum")]]),
+                    ),
+                )
             end
         end
 
@@ -346,10 +398,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             if funcname[1] ∈ scopestate.hiddenglobals
                 SymbolsState()
             else
-            SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{FuncName}([funcname]))
+                SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{FuncName}([funcname]))
             end
         else
-            SymbolsState(Set{Symbol}([funcname[end - 1]]), Set{Symbol}(), Set{FuncName}([funcname]))
+            SymbolsState(Set{Symbol}([funcname[end-1]]), Set{Symbol}(), Set{FuncName}([funcname]))
         end
         # Explore code inside function arguments:
         union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
@@ -386,18 +438,18 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)
 
         union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
-        
+
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcname] = innersymstate
             if length(funcname) == 1
                 push!(scopestate.definedfuncs, funcname[end])
                 push!(scopestate.hiddenglobals, funcname[end])
             elseif length(funcname) > 1
-                push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
+                push!(symstate.references, funcname[end-1]) # reference the module of the extended function
             end
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
-            
+
             # let
             #     function f(x)
             #         global z = x + a
@@ -455,7 +507,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             @error "unknow global use" ex
             return explore!(globalisee, scopestate)
         end
-        
+
         return symstate
     elseif ex.head == :local
         # Does not create scope
@@ -474,11 +526,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         end
     elseif ex.head == :tuple
         # Does not create scope
-        
+
         # There are three (legal) cases:
         # 1. Creating a tupe:
         #   (a, b, c)
-        
+
         # 2. Creating a named tuple:
         #   (a=1, b=2, c=3)
 
@@ -499,7 +551,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
         if indexoffirstassignment !== nothing
             # we have one of two cases, see next `if`
-            indexofsecondassignment = findnext(a -> isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
+            indexofsecondassignment =
+                findnext(a -> isa(a, Expr) && a.head == :(=), ex.args, indexoffirstassignment + 1)
 
             if length(ex.args) == 1 || indexofsecondassignment !== nothing
                 # 2.
@@ -511,11 +564,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             else
                 # 3. 
                 # we have a tuple assignment, e.g. `a, (b, c) = [1, [2, 3]]`
-                before = ex.args[1:indexoffirstassignment - 1]
-                after = ex.args[indexoffirstassignment + 1:end]
+                before = ex.args[1:indexoffirstassignment-1]
+                after = ex.args[indexoffirstassignment+1:end]
 
                 symstate_middle = explore!(ex.args[indexoffirstassignment], scopestate)
-                symstate_outer = explore!(Expr(:(=), Expr(:tuple, before...), Expr(:block, after...)), scopestate)
+                symstate_outer =
+                    explore!(Expr(:(=), Expr(:tuple, before...), Expr(:block, after...)), scopestate)
 
                 return union!(symstate_middle, symstate_outer)
             end
@@ -534,7 +588,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             imports = if ex.args[1].head == :(:)
                 ex.args[1].args[2:end]
             else
-            ex.args
+                ex.args
             end
 
             packagenames = map(e -> e.args[end], imports)
@@ -555,10 +609,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # fallback, includes:
         # begin, block, do, toplevel, const
         # (and hopefully much more!)
-        
+
         # Does not create scope (probably)
 
-        return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
+        return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init = SymbolsState())
     end
 end
 
@@ -570,7 +624,12 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         # get the function name
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         # and explore the function arguments
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
+        return mapfoldl(
+            a -> explore_funcdef!(a, scopestate),
+            union!,
+            ex.args[2:end],
+            init = (name, symstate),
+        )
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # recurse
@@ -612,7 +671,12 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return Symbol[name], SymbolsState()
 
     elseif ex.head == :parameters || ex.head == :tuple
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args, init=(Symbol[], SymbolsState()))
+        return mapfoldl(
+            a -> explore_funcdef!(a, scopestate),
+            union!,
+            ex.args,
+            init = (Symbol[], SymbolsState()),
+        )
 
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
@@ -628,7 +692,7 @@ end
 
 function explore_funcdef!(ex::Symbol, scopestate::ScopeState)::Tuple{FuncName,SymbolsState}
     push!(scopestate.hiddenglobals, ex)
-    Symbol[ex |> without_dotprefix |> without_dotsuffix], SymbolsState()
+    Symbol[ex|>without_dotprefix|>without_dotsuffix], SymbolsState()
 end
 
 function explore_funcdef!(::Any, ::ScopeState)::Tuple{FuncName,SymbolsState}
@@ -656,13 +720,13 @@ function compute_symbolreferences(ex::Any)::SymbolsState
 end
 
 function try_compute_symbolreferences(ex::Any)
-	try
-		compute_symbolreferences(ex)
-	catch e
-		@error "Expression explorer failed on: " ex
-		showerror(stderr, e, stacktrace(backtrace()))
-		SymbolsState()
-	end
+    try
+        compute_symbolreferences(ex)
+    catch e
+        @error "Expression explorer failed on: " ex
+        showerror(stderr, e, stacktrace(backtrace()))
+        SymbolsState()
+    end
 end
 
 # TODO: this can be done during the `explore` recursion
@@ -670,7 +734,7 @@ end
 function compute_usings(ex::Any)::Set{Expr}
     if isa(ex, Expr)
         if ex.head == :using
-        Set{Expr}([ex])
+            Set{Expr}([ex])
         else
             union!(Set{Expr}(), compute_usings.(ex.args)...)
         end
@@ -687,7 +751,7 @@ end
 is_toplevel_expr(::Any)::Bool = false
 
 "If the expression is a (simple) assignemnt at its root, return the assignee as `Symbol`, return `nothing` otherwise."
-function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
+function get_rootassignee(ex::Expr, recurse::Bool = true)::Union{Symbol,Nothing}
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
     elseif ex.head == :(=) && ex.args[1] isa Symbol
@@ -697,6 +761,6 @@ function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
     end
 end
 
-get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
+get_rootassignee(ex::Any, recuse::Bool = true)::Union{Symbol,Nothing} = nothing
 
 end

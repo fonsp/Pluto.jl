@@ -72,14 +72,14 @@ Another good thing to check: no disks should have appeared or disappeared since 
 
 # ╔═╡ 512fa6d2-a2bd-11ea-3dbe-b935b536967b
 function islegal(stacks)
-	order_correct = all(issorted, stacks)
-	
-	#check if we use the same disk set that we started with
-	
-	disks_in_state = sort([disk for stack in stacks for disk in stack])
-	disks_complete = disks_in_state == all_disks
-	
-	order_correct && disks_complete
+    order_correct = all(issorted, stacks)
+
+    #check if we use the same disk set that we started with
+
+    disks_in_state = sort([disk for stack in stacks for disk in stack])
+    disks_complete = disks_in_state == all_disks
+
+    order_correct && disks_complete
 end
 
 # ╔═╡ c56a5858-a2bd-11ea-1d96-77eaf5e74925
@@ -89,7 +89,7 @@ Another function for states: check if we are done! We can assume that we already
 
 # ╔═╡ d5cc41e8-a2bd-11ea-39c7-b7df8de6ae3e
 function iscomplete(stacks)
-	last(stacks) == all_disks
+    last(stacks) == all_disks
 end
 
 # ╔═╡ 53374f0e-a2c0-11ea-0c91-97474780721e
@@ -107,17 +107,17 @@ So what should those instructions look like? It may seem intuitive to give a _di
 
 # ╔═╡ e915394e-a2c0-11ea-0cd9-1df6fd3c7adf
 function move(stacks, source::Int, target::Int)
-	#check if the from stack if not empty
-	if isempty(stacks[source])
-		error("Error: attempted to move disk from empty stack")
-	end
-	
-	new_stacks = deepcopy(stacks)
-	
-	disk = popfirst!(new_stacks[source]) #take disk
-	pushfirst!(new_stacks[target], disk) #put on new stack
-	
-	return new_stacks
+    #check if the from stack if not empty
+    if isempty(stacks[source])
+        error("Error: attempted to move disk from empty stack")
+    end
+
+    new_stacks = deepcopy(stacks)
+
+    disk = popfirst!(new_stacks[source]) #take disk
+    pushfirst!(new_stacks[target], disk) #put on new stack
+
+    return new_stacks
 end
 
 # ╔═╡ 87b2d164-a2c4-11ea-3095-916628943879
@@ -134,8 +134,8 @@ For example, it might look like this:
 """
 
 # ╔═╡ 29b410cc-a329-11ea-202a-795b31ce5ad5
-function wrong_solution(stacks)::Array{Tuple{Int, Int}}
-	return [(1,2), (2,3), (2,1), (1,3)]
+function wrong_solution(stacks)::Array{Tuple{Int,Int}}
+    return [(1, 2), (2, 3), (2, 1), (1, 3)]
 end
 
 # ╔═╡ ea24e778-a32e-11ea-3f11-dbe9d36b1011
@@ -147,11 +147,11 @@ Now you can work on building an actual solution. Some tips:
 """
 
 # ╔═╡ 010dbdbc-a2c5-11ea-34c3-837eae17416f
-function solve(stacks)::Array{Tuple{Int, Int}}
-	
-	#what to do?
-	
-	return []
+function solve(stacks)::Array{Tuple{Int,Int}}
+
+    #what to do?
+
+    return []
 end
 
 # ╔═╡ 3eb3c4c0-a2c5-11ea-0bcc-c9b52094f660
@@ -163,20 +163,20 @@ This is where we can check a solution. We start with a function that takes our r
 
 # ╔═╡ 4709db36-a327-11ea-13a3-bbfb18da84ce
 function run_solution(solver::Function, start = starting_stacks)
-	moves = solver(deepcopy(start)) #apply the solver
-	
-	all_states = Array{Any,1}(undef, length(moves) + 1)
-	all_states[1] = starting_stacks
-	
-	for (i, m) in enumerate(moves)
-		try
-			all_states[i + 1] = move(all_states[i], m[1], m[2])
-		catch
-			all_states[i + 1] = missing
-		end
-	end
-	
-	return all_states
+    moves = solver(deepcopy(start)) #apply the solver
+
+    all_states = Array{Any,1}(undef, length(moves) + 1)
+    all_states[1] = starting_stacks
+
+    for (i, m) in enumerate(moves)
+        try
+            all_states[i+1] = move(all_states[i], m[1], m[2])
+        catch
+            all_states[i+1] = missing
+        end
+    end
+
+    return all_states
 end
 
 # ╔═╡ 372824b4-a330-11ea-2f26-7b9a1ad018f1
@@ -199,21 +199,21 @@ Now that we have way to run a recipe, we can check if its output is correct. We 
 
 # ╔═╡ 10fb1c56-a2c5-11ea-2a06-0d8c36bfa138
 function check_solution(solver::Function, start = starting_stacks)
-	try
-		#run the solution
-		all_states = run_solution(solver, start)
-		
-		#check if each state is legal
-		all_legal = all(islegal, all_states)
-		
-		#check if the final state is is the completed puzzle
-		complete = (iscomplete ∘ last)(all_states)
-		
-		all_legal && complete
-	catch
-		#return false if we encountered an error
-		return false
-	end
+    try
+        #run the solution
+        all_states = run_solution(solver, start)
+
+        #check if each state is legal
+        all_legal = all(islegal, all_states)
+
+        #check if the final state is is the completed puzzle
+        complete = (iscomplete ∘ last)(all_states)
+
+        all_legal && complete
+    catch
+        #return false if we encountered an error
+        return false
+    end
 end
 
 # ╔═╡ 8ea7f944-a329-11ea-22cc-4dbd11ec0610
@@ -221,19 +221,19 @@ check_solution(solve)
 
 # ╔═╡ e54add0a-a330-11ea-2eeb-1d42f552ba38
 if check_solution(solve)
-	if num_disks >= 8
-		md"""
-		Congratulations, your solution works!
-		"""
-	else
-		md"""
-		Your solution works for $(num_disks) disks. Change `num_disks` to see if it works for 8 or more.
-		"""
-	end
+    if num_disks >= 8
+        md"""
+        Congratulations, your solution works!
+        """
+    else
+        md"""
+        Your solution works for $(num_disks) disks. Change `num_disks` to see if it works for 8 or more.
+        """
+    end
 else
-	md"""
-	The `solve` function doesn't work yet. Keep working on it!
-	"""
+    md"""
+    The `solve` function doesn't work yet. Keep working on it!
+    """
 end
 
 # ╔═╡ Cell order:

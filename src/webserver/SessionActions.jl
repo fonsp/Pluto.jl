@@ -1,22 +1,35 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, get_pl_env, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto:
+    ServerSession,
+    Notebook,
+    emptynotebook,
+    tamepath,
+    move_notebook!,
+    update_save_run!,
+    putnotebookupdates!,
+    putplutoupdates!,
+    load_notebook,
+    get_pl_env,
+    clientupdate_notebook_list,
+    WorkspaceManager,
+    @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true)
+function open(session::ServerSession, path::AbstractString; run_async = true)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
-    
+
     nb = load_notebook(tamepath(path))
     session.notebooks[nb.notebook_id] = nb
     if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
-        update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
+        update_save_run!(session, nb, nb.cells; run_async = run_async, prerender_text = true)
         # TODO: send message when initial run completed
     end
 
@@ -29,9 +42,9 @@ function open(session::ServerSession, path::AbstractString; run_async=true)
     nb
 end
 
-function new(session::ServerSession; run_async=true)
+function new(session::ServerSession; run_async = true)
     nb = emptynotebook()
-    update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
+    update_save_run!(session, nb, nb.cells; run_async = run_async, prerender_text = true)
     session.notebooks[nb.notebook_id] = nb
 
     if run_async
@@ -43,7 +56,7 @@ function new(session::ServerSession; run_async=true)
     nb
 end
 
-function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false)
+function shutdown(session::ServerSession, notebook::Notebook; keep_in_session = false)
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)

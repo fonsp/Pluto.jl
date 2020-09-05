@@ -20,8 +20,20 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
-    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function testee(
+    expr,
+    expected_references,
+    expected_definitions,
+    expected_funccalls,
+    expected_funcdefs;
+    verbose::Bool = true,
+)
+    expected = easy_symstate(
+        expected_references,
+        expected_definitions,
+        expected_funccalls,
+        expected_funcdefs,
+    )
     result = compute_symbolreferences(expr)
 
     # Anonymous function are given a random name, which looks like anon67387237861123
@@ -42,7 +54,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
         println("FAILED TEST")
         println(expr)
         println()
-        dump(expr, maxdepth=20)
+        dump(expr, maxdepth = 20)
         println()
         @show expected
         resulted = result
@@ -52,19 +64,29 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     return expected == result
 end
 
-function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function easy_symstate(
+    expected_references,
+    expected_definitions,
+    expected_funccalls,
+    expected_funcdefs,
+)
     new_expected_funccalls = map(expected_funccalls) do k
         new_k = k isa Symbol ? [k] : k
         return new_k
     end |> Set
-    
+
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
         new_v = v isa SymbolsState ? v : easy_symstate(v...)
         return new_k => new_v
     end |> Dict
 
-    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
+    SymbolsState(
+        Set(expected_references),
+        Set(expected_definitions),
+        new_expected_funccalls,
+        new_expected_funcdefs,
+    )
 end
 
 function setcode(cell, newcode)
@@ -82,25 +104,27 @@ function notebook_inputs_equal(nbA, nbB)
 
     to_compare(cell) = (cell.cell_id, cell.code)
     y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
-    
+
     x && y
 end
 
 "Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.
 
 If `only_undefvar` is `true`, all errors other than an `UndefVarError` will be ignored."
-function jl_is_runnable(path; only_undefvar=false)
+function jl_is_runnable(path; only_undefvar = false)
     🔖 = Symbol("lab", time_ns())
     🏡 = Core.eval(Main, :(module $(🔖) end))
     try
         Core.eval(🏡, :(include($path)))
         true
     catch ex
-        if (!only_undefvar) || ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
+        if (!only_undefvar) ||
+           ex isa UndefVarError ||
+           (ex isa LoadError && ex.error isa UndefVarError)
             println(stderr, "\n$(path) failed to run. File contents:")
 
             println(stderr, "\n\n\n")
-            println.(enumerate(readlines(path; keep=true)))
+            println.(enumerate(readlines(path; keep = true)))
             println(stderr, "\n\n\n")
 
             showerror(stderr, ex, stacktrace(catch_backtrace()))

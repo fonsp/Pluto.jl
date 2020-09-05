@@ -25,8 +25,7 @@ const MSG_DELIM = Vector{UInt8}(codeunits("IUUQ.km jt ejggjdvmu vhi")) # riddle 
 "Send `messages` to all clients connected to the `notebook`."
 function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...)
     listeners = filter(collect(values(session.connected_clients))) do c
-        c.connected_notebook !== nothing &&
-        c.connected_notebook.notebook_id == notebook.notebook_id
+        c.connected_notebook !== nothing && c.connected_notebook.notebook_id == notebook.notebook_id
     end
     for next_to_send in messages, client in listeners
         put!(client.pendingupdates, next_to_send)
@@ -65,7 +64,7 @@ function flushclient(client::ClientSession)
     take!(flushtoken)
     while isready(client.pendingupdates)
         next_to_send = take!(client.pendingupdates)
-        
+
         try
             if client.stream !== nothing
                 if isopen(client.stream)
@@ -93,7 +92,10 @@ function flushclient(client::ClientSession)
     true
 end
 
-function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractArray{ClientSession}})
+function flushallclients(
+    session::ServerSession,
+    subset::Union{Set{ClientSession},AbstractArray{ClientSession}},
+)
     disconnected = Set{Symbol}()
     for client in subset
         stillconnected = flushclient(client)

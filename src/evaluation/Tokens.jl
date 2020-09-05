@@ -1,11 +1,12 @@
 "A `Token` can only be held by one async process at one time. Use `Base.take!(token)` to claim the token, `Base.put!(token)` to give the token back."
 struct Token
     c::Channel{Nothing}
-    Token() = let
-        c = Channel{Nothing}(1)
-        push!(c, nothing)
-        new(c)
-    end
+    Token() =
+        let
+            c = Channel{Nothing}(1)
+            push!(c, nothing)
+            new(c)
+        end
 end
 
 Base.take!(token::Token) = Base.take!(token.c)

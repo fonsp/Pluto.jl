@@ -3,7 +3,7 @@ import .ExpressionExplorer: SymbolsState
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 struct NotebookTopology
-	symstates::Dict{Cell,SymbolsState}
+    symstates::Dict{Cell,SymbolsState}
     combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
 end
 NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
@@ -19,7 +19,7 @@ end
 mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells::Array{Cell,1}
-    
+
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
     notebook_id::UUID
@@ -32,10 +32,13 @@ mutable struct Notebook
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
+Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) =
     Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token())
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(
+    cells::Array{Cell,1},
+    path::AbstractString = numbered_until_new(joinpath(tempdir(), cutename())),
+) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
@@ -68,7 +71,10 @@ function save_notebook(io, notebook::Notebook)
     # Super Advanced Code Analysis™ to add the @bind macro to the saved file if it's used somewhere.
     if any(occursin("@bind", c.code) for c in notebook.cells)
         println(io, "")
-        println(io, "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).")
+        println(
+            io,
+            "# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).",
+        )
         println(io, PlutoRunner.fake_bind)
     end
     println(io)
@@ -147,7 +153,7 @@ function load_notebook_nobackup(io, path)::Notebook
         o, c = startswith(cell_id_str, _order_delimiter),
         if length(cell_id_str) >= 36
             cell_id = let
-                UUID(cell_id_str[end - 35:end])
+                UUID(cell_id_str[end-35:end])
             end
             next_cell = collected_cells[cell_id]
             next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
@@ -168,7 +174,7 @@ end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
 function load_notebook(path::String)::Notebook
-    backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
+    backup_path = numbered_until_new(path; sep = ".backup", suffix = "", create_file = false)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)

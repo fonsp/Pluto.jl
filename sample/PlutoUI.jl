@@ -15,14 +15,14 @@ end
 
 # ╔═╡ ae0936ee-c767-11ea-0cbc-3f58779113da
 begin
-	let
-		env = mktempdir()
-		import Pkg
-		Pkg.activate(env)
-		Pkg.Registry.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.6.1"))
-	end
-	using PlutoUI
+    let
+        env = mktempdir()
+        import Pkg
+        Pkg.activate(env)
+        Pkg.Registry.update()
+        Pkg.add(Pkg.PackageSpec(; name = "PlutoUI", version = v"0.6.1"))
+    end
+    using PlutoUI
 end
 
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
@@ -80,7 +80,7 @@ x
 md"The first argument is an `AbstractRange` object. You can set the _default value_ using a keyword argument:"
 
 # ╔═╡ d3811ac2-c760-11ea-0811-131d9f1d3910
-@bind y Slider(20:0.1:30, default=25)
+@bind y Slider(20:0.1:30, default = 25)
 
 # ╔═╡ dfe10b6c-c760-11ea-2f77-79cc4cfa8dc4
 y
@@ -94,7 +94,7 @@ md"## NumberField
 A `NumberField` can be used just like a `Slider`, it just looks differently:"
 
 # ╔═╡ 314cb85a-c761-11ea-1cba-b73f84a52be8
-@bind x_different NumberField(0:100, default=20)
+@bind x_different NumberField(0:100, default = 20)
 
 # ╔═╡ 104b55ce-cc4f-11ea-1273-092a1717e399
 
@@ -115,7 +115,7 @@ z
 md"Default value:"
 
 # ╔═╡ b53c8ffa-c761-11ea-38d1-2d4ad96a7bee
-@bind having_fun CheckBox(default=true)
+@bind having_fun CheckBox(default = true)
 
 # ╔═╡ adcf4e68-c761-11ea-00bb-c3b15c6dedc0
 having_fun
@@ -145,7 +145,7 @@ s
 md"With a default value:"
 
 # ╔═╡ f1f83980-c761-11ea-1e34-97c0ffca3f67
-@bind sentence TextField(default="te dansen omdat men leeft")
+@bind sentence TextField(default = "te dansen omdat men leeft")
 
 # ╔═╡ f985c8de-c761-11ea-126c-1fd79d547b79
 sentence
@@ -158,7 +158,10 @@ md"You can also create a **mutli-line** text box!"
 
 # ╔═╡ 0e6f0508-c762-11ea-0352-09bd694a9b35
 # gedicht van: Sanne de Kroon
-@bind poem TextField((30, 3), "Je opent en sluit je armen,\nMaar houdt niets vast.\nHet is net zwemmen")
+@bind poem TextField(
+    (30, 3),
+    "Je opent en sluit je armen,\nMaar houdt niets vast.\nHet is net zwemmen",
+)
 
 # ╔═╡ 3dcd7002-c765-11ea-323d-a1fb49409011
 split(poem, "\n")
@@ -212,8 +215,8 @@ The value does not change, but _any cell that references `clicked` will re-evalu
 
 # ╔═╡ bb356b12-c765-11ea-2c36-697f4314bb93
 let
-	go
-	md"I am $(rand(1:15)) years old!"
+    go
+    md"I am $(rand(1:15)) years old!"
 end
 
 # ╔═╡ 9276da28-cc4f-11ea-17b3-65eec41a181e

@@ -4,22 +4,23 @@ import HTTP
 import Sockets
 
 import Base: endswith
-function endswith(vec::Vector{T}, suffix::Vector{T}) where T
+function endswith(vec::Vector{T}, suffix::Vector{T}) where {T}
     local liv = lastindex(vec)
     local lis = lastindex(suffix)
-    liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
+    liv >= lis && (view(vec, (liv-lis+1):liv) == suffix)
 end
 
 
 # to fix lots of false error messages from HTTP
 # https://github.com/JuliaWeb/HTTP.jl/pull/546
 # we do HTTP.Stream{HTTP.Messages.Request,S} instead of just HTTP.Stream to prevent the Julia warning about incremental compilation
-function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: IO
+function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where {S<:IO}
     if http.writechunked
         http.writechunked = false
         try
             write(http.stream, "0\r\n\r\n")
-        catch end
+        catch
+        end
     end
 end
 
@@ -35,7 +36,12 @@ The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession())
+function run(
+    host,
+    port::Union{Nothing,Integer} = nothing;
+    launchbrowser::Bool = false,
+    session = ServerSession(),
+)
     pluto_router = http_router_for(session)
 
     hostIP = parse(Sockets.IPAddr, host)
@@ -50,7 +56,12 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
         end
     end
 
-    servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
+    servertask = @async HTTP.serve(
+        hostIP,
+        UInt16(port),
+        stream = true,
+        server = serversocket,
+    ) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
@@ -81,7 +92,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                                     append!(data, readavailable(clientstream))
                                 end
                                 # TODO: view to avoid memory allocation
-                                unpack(data[1:end - length(MSG_DELIM)])
+                                unpack(data[1:end-length(MSG_DELIM)])
                             end
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
@@ -95,7 +106,8 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                                 # TODO: remove this switch
                             else
                                 bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                                @warn "Reading WebSocket client stream failed for unknown reason:" exception =
+                                    (ex, bt)
                             end
                         end
                     end
@@ -116,7 +128,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
-    
+
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
                 # no request body
@@ -124,7 +136,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
             else
                 @warn "HTTP request contains a body, huh?" request_body
             end
-    
+
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
@@ -151,7 +163,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
-    
+
     launchbrowser && @warn "Not implemented yet"
 
     # create blocking call:
@@ -179,13 +191,13 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
     end
 end
 
-run(port::Union{Nothing,Integer}=nothing; kwargs...) = run("127.0.0.1", port; kwargs...)
+run(port::Union{Nothing,Integer} = nothing; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
-    
+
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
@@ -203,7 +215,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
                 client.connected_notebook = notebook
             end
         end
-        
+
         push!(args, notebook)
 
         if haskey(parentbody, "cell_id")
@@ -222,7 +234,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(session, body, args..., initiator=Initiator(client.id, request_id))
+            responsefunc(session, body, args..., initiator = Initiator(client.id, request_id))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

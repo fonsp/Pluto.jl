@@ -17,7 +17,7 @@ import UUIDs: UUID
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8}}, MIME}
+MimedOutput = Tuple{Union{String,Vector{UInt8}},MIME}
 
 ###
 # WORKSPACE MANAGER
@@ -33,13 +33,25 @@ function set_current_module(newname)
     global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
 end
 
-const cell_results = Dict{UUID, WeakRef}()
+const cell_results = Dict{UUID,WeakRef}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+function formatted_result_of(
+    id::UUID,
+    ends_with_semicolon::Bool,
+)::NamedTuple{
+    (:output_formatted, :errored, :interrupted, :runtime),
+    Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}},
+}
     ans = cell_results[id].value
     errored = ans isa CapturedException
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+    output_formatted =
+        (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
+    (
+        output_formatted = output_formatted,
+        errored = errored,
+        interrupted = false,
+        runtime = Main.runtime,
+    )
 end
 
 """
@@ -51,25 +63,37 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
+function move_vars(
+    old_workspace_name::Symbol,
+    new_workspace_name::Symbol,
+    vars_to_delete::Set{Symbol},
+    funcs_to_delete::Set{Vector{Symbol}},
+    module_imports_to_move::Set{Expr},
+)
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
     for expr in module_imports_to_move
         try
             Core.eval(new_workspace, expr)
-        catch; end # TODO catch specificallly
+        catch
+        end # TODO catch specificallly
     end
 
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
-    old_names = names(old_workspace, all=true, imported=true)
+    old_names = names(old_workspace, all = true, imported = true)
 
     for symbol in old_names
         if symbol ∉ vars_to_delete
             # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
+            if !(
+                symbol == :eval ||
+                symbol == :include ||
+                string(symbol)[1] == '#' ||
+                startswith(string(symbol), "workspace")
+            )
                 try
                     val = getfield(old_workspace, symbol)
 
@@ -95,7 +119,8 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     # it could be that `symbol ∈ vars_to_move`, but the _value_ has already been moved to the new reference in `new_module`.
                     # so clearing the value of this reference does not affect the reference in `new_workspace`.
                     Core.eval(old_workspace, :($(symbol) = nothing))
-                catch; end # sometimes impossible, eg. when $symbol was constant
+                catch
+                end # sometimes impossible, eg. when $symbol was constant
             end
         end
     end
@@ -133,7 +158,14 @@ function delete_toplevel_methods(f::Function)
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
             setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
-            ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
+            ccall(
+                :jl_method_table_insert,
+                Cvoid,
+                (Any, Any, Ptr{Cvoid}),
+                methods_table,
+                method,
+                C_NULL,
+            ) # i dont like doing this either!
         end
     end
 end
@@ -154,7 +186,8 @@ function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbo
             @warn "Failed to delete methods for $(name_parts)"
             showerror(stderr, ex, stacktrace(catch_backtrace()))
         end
-    catch; end
+    catch
+    end
 end
 
 # these deal with some inconsistencies in Julia's internal (undocumented!) variable names
@@ -195,10 +228,18 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
+iocontext =
+    IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
 iocontext_compact = IOContext(iocontext, :compact => true)
 
-const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
+const imagemimes = [
+    MIME"image/svg+xml"(),
+    MIME"image/png"(),
+    MIME"image/jpg"(),
+    MIME"image/jpeg"(),
+    MIME"image/bmp"(),
+    MIME"image/gif"(),
+]
 # in order of coolness
 # text/plain always matches
 """
@@ -206,7 +247,13 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [
+    MIME"application/vnd.pluto.tree+xml"()
+    MIME"text/html"()
+    imagemimes
+    MIME"text/latex"()
+    MIME"text/plain"()
+]
 
 
 """
@@ -216,7 +263,7 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output(@nospecialize(val))::MimedOutput
     try
-        result, mime = sprint_withreturned(show_richest, val; context=iocontext)
+        result, mime = sprint_withreturned(show_richest, val; context = iocontext)
         if mime ∈ imagemimes
             result, mime
         else
@@ -233,11 +280,11 @@ format_output(val::Nothing)::MimedOutput = "", MIME"text/plain"()
 
 function format_output(val::CapturedException)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s,_) in val.processed_bt]
+    stack = [s for (s, _) in val.processed_bt]
 
     for _ in 1:2
         until = findfirst(b -> b.func == :eval, reverse(stack))
-        stack = until === nothing ? stack : stack[1:(length(stack) - until)]
+        stack = until === nothing ? stack : stack[1:(length(stack)-until)]
     end
 
     pretty = map(stack[1:end]) do s
@@ -248,7 +295,8 @@ function format_output(val::CapturedException)::MimedOutput
             :line => s.line,
         )
     end
-    sprint(json, Dict(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty)), MIME"application/vnd.pluto.stacktrace+json"()
+    sprint(json, Dict(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty)),
+    MIME"application/vnd.pluto.stacktrace+json"()
 end
 
 # from the Julia source code:
@@ -273,8 +321,8 @@ function pretty_stackcall(frame::Base.StackFrame, linfo::Core.MethodInstance)
 end
 
 "Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
-function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
-    s = IOBuffer(sizehint=sizehint)
+function sprint_withreturned(f::Function, args...; context = nothing, sizehint::Integer = 0)
+    s = IOBuffer(sizehint = sizehint)
     val = if context !== nothing
         f(IOContext(s, context), args...)
     else
@@ -303,19 +351,19 @@ instead of (`onlyhtml=false`)
 data:image/png;base64,ahsdf87hf278hwh7823hr...
 ```
 """
-function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
+function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool = false)::MIME
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
     t = typeof(x)
 
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
-    isstruct = 
-        mime isa MIME"text/plain" && 
+    isstruct =
+        mime isa MIME"text/plain" &&
         t isa DataType &&
         # there are two ways to override the plaintext show method: 
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
-    
+
     if isstruct
         show_struct(io, x)
         return MIME"application/vnd.pluto.tree+xml"()
@@ -340,15 +388,15 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
         if onlyhtml || mime isa MIME"text/latex"
             # see onlyhtml description in docstring
             if mime isa MIME"text/plain"
-                withtag(io, :pre) do 
-                    htmlesc(io, repr(mime, x; context=iocontext_compact))
+                withtag(io, :pre) do
+                    htmlesc(io, repr(mime, x; context = iocontext_compact))
                 end
             elseif mime isa MIME"text/latex"
                 # LaTeXStrings prints $ at the start and end.
                 # We strip those, since Markdown.LaTeX only contains the math content
                 texed = repr(mime, x)
                 html(io, Markdown.LaTeX(strip(texed, '$')))
-            else                
+            else
                 show(io, mime, x)
             end
             return MIME"text/html"()
@@ -371,7 +419,7 @@ const tree_display_limit = 50
 function show_array_row(io::IO, pair::Tuple)
     i, el = pair
     print(io, "<r><k>", i, "</k><v>")
-    show_richest(io, el; onlyhtml=true)
+    show_richest(io, el; onlyhtml = true)
     print(io, "</v></r>")
 end
 
@@ -379,19 +427,19 @@ function show_dict_row(io::IO, pair::Union{Pair,Tuple})
     k, el = pair
     print(io, "<r><k>")
     if pair isa Pair
-        show_richest(io, k; onlyhtml=true)
+        show_richest(io, k; onlyhtml = true)
     else
         # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
         print(io, k)
     end
     print(io, "</k><v>")
-    show_richest(io, el; onlyhtml=true)
+    show_richest(io, el; onlyhtml = true)
     print(io, "</v></r>")
 end
 
 istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any,1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
     print(io, eltype(x) |> nameof)
     print(io, "<jlarray>")
@@ -400,14 +448,20 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
     else
         from_end = tree_display_limit > 20 ? 10 : 1
         firsti = firstindex(x)
-        show_array_row.([io], zip(eachindex(x)[firsti:firsti-1+tree_display_limit-from_end], x[firsti:firsti-1+tree_display_limit-from_end]))
-        
+        show_array_row.(
+            [io],
+            zip(
+                eachindex(x)[firsti:firsti-1+tree_display_limit-from_end],
+                x[firsti:firsti-1+tree_display_limit-from_end],
+            ),
+        )
+
         print(io, "<r><more></more></r>")
-        
+
         indices = 1+length(x)-from_end:length(x)
         show_array_row.([io], zip(eachindex(x)[end+1-from_end:end], x[end+1-from_end:end]))
     end
-    
+
     print(io, "</jlarray>")
     print(io, "</jltree>")
 end
@@ -420,7 +474,7 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Tuple)
     print(io, "</jltree>")
 end
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any, <:Any})
+function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any,<:Any})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
     print(io, typeof(x) |> nameof)
     print(io, "<jldict>")
@@ -433,7 +487,7 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:
         end
         row_index += 1
     end
-    
+
     print(io, "</jldict>")
     print(io, "</jltree>")
 end
@@ -463,10 +517,10 @@ function show_struct(io::IO, @nospecialize(x))
         print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
         show(io, t)
         print(io, "<jlstruct>")
-        
+
         if !Base.show_circular(io, x)
-            recur_io = IOContext(io, Pair{Symbol,Any}(:SHOWN_SET, x),
-                                 Pair{Symbol,Any}(:typeinfo, Any))
+            recur_io =
+                IOContext(io, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:typeinfo, Any))
             for i in 1:nf
                 f = fieldname(t, i)
                 if !isdefined(x, f)
@@ -493,14 +547,14 @@ end
 # Not designed/tested for use outside of Pluto
 
 struct ReplacePipe <: IO
-	outstream::IO
+    outstream::IO
 end
 
 # to get these character codes:
 # [c => UInt8(c) for c in "\"\\/\b\f\n\r\t"]
 # we can do this escaping per-byte because UTF-8 is backwards compatible with ASCII, i.e. these special characters are never part of a UTF-8 encoded character other than the ASCII characters they represent. Cool!
 function Base.write(rp::ReplacePipe, x::UInt8)
-	if x == 0x22 || x== 0x5c || x== 0x2f # https://www.json.org/json-en.html
+    if x == 0x22 || x == 0x5c || x == 0x2f # https://www.json.org/json-en.html
         write(rp.outstream, '\\')
         write(rp.outstream, x)
     elseif x < 0x10 # ish
@@ -510,7 +564,7 @@ function Base.write(rp::ReplacePipe, x::UInt8)
     end
 end
 function sanitize_pipe(func::Function, outstream::IO, args...)
-	func(ReplacePipe(outstream), args...)
+    func(ReplacePipe(outstream), args...)
 end
 
 
@@ -524,7 +578,7 @@ function json(io, arr::AbstractArray)
     write(io, ']')
 end
 
-function json(io, d::Dict{Symbol, T}) where T
+function json(io, d::Dict{Symbol,T}) where {T}
     write(io, '{')
     len = length(d)
     for (i, val) in enumerate(d)
@@ -535,7 +589,7 @@ function json(io, d::Dict{Symbol, T}) where T
     write(io, '}')
 end
 
-function json(io, str::T) where T<:AbstractString
+function json(io, str::T) where {T<:AbstractString}
     write(io, '"')
     sanitize_pipe(write, io, str)
     write(io, '"')
@@ -550,13 +604,13 @@ end
 ###
 
 "You say Linear, I say Algebra!"
-function completion_fetcher(query, pos, workspace::Module=current_module)
+function completion_fetcher(query, pos, workspace::Module = current_module)
     results, loc, found = completions(query, pos, workspace)
     (completion_text.(results), loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
-function binding_from(x::Expr, workspace::Module=current_module)
+function binding_from(x::Expr, workspace::Module = current_module)
     if x.head == :macrocall
         Docs.Binding(workspace, x.args[1])
     elseif x.head == :.
@@ -565,12 +619,12 @@ function binding_from(x::Expr, workspace::Module=current_module)
         error("Invalid @var syntax `$x`.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspace, s)
-binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
-binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
+binding_from(s::Symbol, workspace::Module = current_module) = Docs.Binding(workspace, s)
+binding_from(r::GlobalRef, workspace::Module = current_module) = Docs.Binding(r.mod, r.name)
+binding_from(other, workspace::Module = current_module) = error("Invalid @var syntax `$other`.")
 
 "You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
-function doc_fetcher(query, workspace::Module=current_module)
+function doc_fetcher(query, workspace::Module = current_module)
     try
         binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
         (repr(MIME"text/html"(), Docs.doc(binding)), :👍)
@@ -607,12 +661,13 @@ The actual reactive-interactive functionality is not done in Julia - it is handl
 struct Bond
     element::Any
     defines::Symbol
-    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
+    Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) :
+        error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do 
+    withtag(io, :bond, :def => bond.defines) do
         show(io, MIME"text/html"(), bond.element)
     end
 end
@@ -636,15 +691,15 @@ The first cell will show a slider as the cell's output, ranging from 0 until 100
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
 macro bind(def, element)
-	if def isa Symbol
-		quote
-			local el = $(esc(element))
+    if def isa Symbol
+        quote
+            local el = $(esc(element))
             global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
-			PlutoRunner.Bond(el, $(Meta.quot(def)))
-		end
-	else
-		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
-	end
+            PlutoRunner.Bond(el, $(Meta.quot(def)))
+        end
+    else
+        :(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+    end
 end
 
 """

@@ -2,7 +2,7 @@ using Test
 import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession
 
 @testset "Workspace manager" begin
-# basic functionality is already tested by the reactivity tests
+    # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
 
@@ -13,14 +13,10 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession
         🍭.connected_clients[fakeclientB.id] = fakeclientB
 
 
-        notebookA = Notebook([
-            Cell("x = 3")
-        ])
+        notebookA = Notebook([Cell("x = 3")])
         fakeclientA.connected_notebook = notebookA
 
-        notebookB = Notebook([
-            Cell("x")
-        ])
+        notebookB = Notebook([Cell("x")])
         fakeclientB.connected_notebook = notebookB
 
         @test notebookA.path != notebookB.path

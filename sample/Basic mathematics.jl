@@ -169,7 +169,7 @@ The area of a pizza is $$A = \pi r^2$$.  Lets try calculating the area of a pizz
 """
 
 # ╔═╡ 50f0f6d6-d471-11ea-304e-8f72e7ef9d7e
-A =  r^2
+A = r^2
 
 # ╔═╡ cb36a9ee-d472-11ea-1835-bf7963137e18
 area(d) = pi * (d / 2)^2
@@ -218,7 +218,7 @@ cuts5 = 1
 
 # ╔═╡ f5f89724-d507-11ea-0a93-6d904f36bbe4
 function pieces(n)
-	return n
+    return n
 end
 
 # ╔═╡ bd9f3d24-d509-11ea-165d-3d465a0b4542
@@ -231,16 +231,16 @@ hint(text) = Markdown.MD(Markdown.Admonition("hint", "Hint", [text]));
 
 # ╔═╡ 8700d986-d475-11ea-0d0e-790448cf92ba
 let
-	ans = (pi * (17 / 2)^2) / (pi * (9 / 2)^2)
-	if smalls_in_xl == 1
-		hint(md"""The diameter of the XL pizza is 17 inches while the diameter of the small pizza is 9 inches.  Use the **area()** function from before to find the area of each and divide them.""")
-	elseif smalls_in_xl < ans - 4 * eps(ans)
-		md"""Keep trying, your answer is too low."""
-	elseif smalls_in_xl > ans + 4 * eps(ans)
-		md"""Keep trying, your answer is too high."""
-	else
-		md"""**Great!** You got it right. Let's move on."""
-	end
+    ans = (pi * (17 / 2)^2) / (pi * (9 / 2)^2)
+    if smalls_in_xl == 1
+        hint(md"""The diameter of the XL pizza is 17 inches while the diameter of the small pizza is 9 inches.  Use the **area()** function from before to find the area of each and divide them.""")
+    elseif smalls_in_xl < ans - 4 * eps(ans)
+        md"""Keep trying, your answer is too low."""
+    elseif smalls_in_xl > ans + 4 * eps(ans)
+        md"""Keep trying, your answer is too high."""
+    else
+        md"""**Great!** You got it right. Let's move on."""
+    end
 end
 
 # ╔═╡ 2814a1d4-dcc0-11ea-3d42-f52765e478fe
@@ -251,104 +251,106 @@ hint(md"A new cut will create the maximum number of _new slices_ if it intersect
 
 # ╔═╡ 8cada086-daa5-11ea-220c-0f660938b604
 if cuts5 == 5 + 4 + 3 + 2 + 1 + 1
-	hint(md"To get the maximum number of pieces with 5 cuts it will be $$5 + 4 + 3 + 2 + 1$$, plus 1 extra for the original pizza with 0 cuts. To find the formula of a sequence of numbers group them like so: $$5 + (4 + 1) + (3 + 2) = 3 * 5$$.")
+    hint(md"To get the maximum number of pieces with 5 cuts it will be $$5 + 4 + 3 + 2 + 1$$, plus 1 extra for the original pizza with 0 cuts. To find the formula of a sequence of numbers group them like so: $$5 + (4 + 1) + (3 + 2) = 3 * 5$$.")
 else
-	md""
+    md""
 end
 
 # ╔═╡ 4119d19e-dcbc-11ea-3ec8-271e88e1afca
 almost(text) = Markdown.MD(Markdown.Admonition("warning", "Almost there!", [text]));
 
 # ╔═╡ 921bba30-dcbc-11ea-13c3-87554722da8a
-keep_working(text=md"The answer is not quite right.") = Markdown.MD(Markdown.Admonition("danger", "Keep working on it!", [text]));
+keep_working(text = md"The answer is not quite right.") =
+    Markdown.MD(Markdown.Admonition("danger", "Keep working on it!", [text]));
 
 # ╔═╡ 5a6d1a8e-dcbc-11ea-272a-6f769c8d309c
-correct(text=md"Great! You got the right answer! Let's move on to the next section.") = Markdown.MD(Markdown.Admonition("correct", "Got it!", [text]));
+correct(text = md"Great! You got the right answer! Let's move on to the next section.") =
+    Markdown.MD(Markdown.Admonition("correct", "Got it!", [text]));
 
 # ╔═╡ 33b1975c-d45c-11ea-035f-ab76e46a31ed
 if c == a * b
-	correct(md"""**Great!** The value of c = $c.  So you now have a simple computer!
-	
-	Now go back above and change the value of **a = $a** to **a = $(a + 3)** and press **`Shift-Enter`**.
-	What is the new value of **c**?  Notice how all the values get updated in this notebook!
-	""")
+    correct(md"""**Great!** The value of c = $c.  So you now have a simple computer!
+
+    Now go back above and change the value of **a = $a** to **a = $(a + 3)** and press **`Shift-Enter`**.
+    What is the new value of **c**?  Notice how all the values get updated in this notebook!
+    """)
 else
-	keep_working()
+    keep_working()
 end
 
 # ╔═╡ f26d50da-d46b-11ea-0c2d-77ca13532b3d
 if pizzas == people * avg / slices
-	almost(md"Yes that is right! But we should round $pizzas up to an integer, otherwise the restaurant will be confused. 
+    almost(md"Yes that is right! But we should round $pizzas up to an integer, otherwise the restaurant will be confused. 
 
-Try `ceil(...)`!")
+   Try `ceil(...)`!")
 elseif pizzas == ceil(people * avg / slices)
-	correct(md"Yes that is right, that's a lot of pizza! Excellent, you figured out we need to round up the number of pizzas!")
+    correct(md"Yes that is right, that's a lot of pizza! Excellent, you figured out we need to round up the number of pizzas!")
 else
-	keep_working()
+    keep_working()
 end
 
 # ╔═╡ 5c4a5f22-d471-11ea-260f-9338d8bfa2d6
 if A != pi * r^2
-	keep_working(md"Let's fix the above cell before we move on!  Find the formula to calculate the area using **pi** and **r**.")
+    keep_working(md"Let's fix the above cell before we move on!  Find the formula to calculate the area using **pi** and **r**.")
 else
-	correct(md"""**Great!**  You figured it out.  Keep going.""")
+    correct(md"""**Great!**  You figured it out.  Keep going.""")
 end
 
 # ╔═╡ a07e5c3e-d476-11ea-308c-718f8f128334
 if A2 != pi * (12 / 2)^2
-	hint(md"Keep trying to get the right answer.  
-	**Hint**: you need to multiply the radius by 2 to convert it into the diameter.")
+    hint(md"Keep trying to get the right answer.  
+    **Hint**: you need to multiply the radius by 2 to convert it into the diameter.")
 else
-	correct()
+    correct()
 end
 
 # ╔═╡ 1ba2c208-d4ff-11ea-0a8e-e75bf7e1c3e6
 if !isapprox(best_value, xl)
-	hint(md"No need to copy these digits yourself - what should we assign to **best_value**?")
+    hint(md"No need to copy these digits yourself - what should we assign to **best_value**?")
 else
-	correct()
+    correct()
 end
 
 # ╔═╡ 6ae748b2-d503-11ea-1c51-6b2df24fd212
-if cuts2 != 4 
-	hint(md"The cuts must go all the way across the pizza!")
+if cuts2 != 4
+    hint(md"The cuts must go all the way across the pizza!")
 else
-	correct(md"Awesome!")
+    correct(md"Awesome!")
 end
 
 # ╔═╡ a679bddc-d506-11ea-143a-6d4dcd70e918
-if cuts3 == 6 
-	almost(md"""Close but not quite. Who said that pizza slices need to look like pizza slices?""")
+if cuts3 == 6
+    almost(md"""Close but not quite. Who said that pizza slices need to look like pizza slices?""")
 elseif cuts3 == 7
-	correct(md"You got it right.  Now for something harder...")
+    correct(md"You got it right.  Now for something harder...")
 else
-	hint(md"Try drawing it out on a piece of paper.")
+    hint(md"Try drawing it out on a piece of paper.")
 end
 
 # ╔═╡ 5df7eefc-d507-11ea-0d1f-45b224a04774
 if cuts4 == 11
-	correct(md"That was a tough question.  How did you figure it out?  You tried hard.")
+    correct(md"That was a tough question.  How did you figure it out?  You tried hard.")
 elseif cuts4 < 10
-	hint(md"Draw it out on a piece of paper.  You can make more pieces with 4 cuts.")
+    hint(md"Draw it out on a piece of paper.  You can make more pieces with 4 cuts.")
 elseif cuts4 < 11
-	hint(md"Getting close but you can make more pieces with 4 cuts.")
+    hint(md"Getting close but you can make more pieces with 4 cuts.")
 else
-	hint(md"That is too high. Only straight lines!")
+    hint(md"That is too high. Only straight lines!")
 end
 
 # ╔═╡ e80986c6-d509-11ea-12e3-f79a54b5ab31
-if pieces(n) ==  n * (n + 1) / 2 + 1
-	md"""_Testing..._
-	
-	**For $n cuts, you predict $(pieces(n)) pieces.**
-	
-	$(correct(md"Well done!"))"""
+if pieces(n) == n * (n + 1) / 2 + 1
+    md"""_Testing..._
+
+    **For $n cuts, you predict $(pieces(n)) pieces.**
+
+    $(correct(md"Well done!"))"""
 else
-	md"""_Testing..._
-	
-	**For $n cuts, you predict $(pieces(n)) pieces.**
-	
-	$(keep_working(md"The answer should be $(Int(n*(n+1)/2+1))."))"""
+    md"""_Testing..._
+
+    **For $n cuts, you predict $(pieces(n)) pieces.**
+
+    $(keep_working(md"The answer should be $(Int(n*(n+1)/2+1))."))"""
 end
 
 # ╔═╡ Cell order:

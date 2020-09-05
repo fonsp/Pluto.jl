@@ -53,9 +53,9 @@ Alternatively, you can use `plot!()`. This function takes the same arguments, bu
 
 # ╔═╡ b2727d2e-9ada-11ea-23d3-bddab9ec8de1
 begin
-	plot(years, apples)
-	plot!(legend = false)
-	plot!(title =  "Number of apples per year")
+    plot(years, apples)
+    plot!(legend = false)
+    plot!(title = "Number of apples per year")
 end
 
 # ╔═╡ eb218bea-9adc-11ea-2f3a-298c41caf8a1
@@ -70,8 +70,8 @@ oranges = rand(1:100, 10)
 
 # ╔═╡ dc50d480-9add-11ea-2821-018a98fab262
 begin
-	plot(years, apples, label = "apples")
-	plot!(years, oranges, label = "oranges")
+    plot(years, apples, label = "apples")
+    plot!(years, oranges, label = "oranges")
 end
 
 # ╔═╡ c9a64e98-9b67-11ea-1d6a-3b1f7548cb8d
@@ -89,12 +89,12 @@ You can also plot a function instead of an output array!
 
 # ╔═╡ 69fa7744-9b67-11ea-26df-3b4446dfb3ea
 begin
-	function myfunction(x)
-		return sin(x/2)
-	end
-	
-	plot(years, sin, label = "sine")
-	plot!(years, myfunction, label = "my function")
+    function myfunction(x)
+        return sin(x / 2)
+    end
+
+    plot(years, sin, label = "sine")
+    plot!(years, myfunction, label = "my function")
 end
 
 # ╔═╡ af31a428-9adf-11ea-280a-45e2b891c4f9
@@ -105,12 +105,10 @@ Plots are also just a type of variable, so you can give them a name.
 """
 
 # ╔═╡ 5ed7c444-9adf-11ea-2925-8573f018e820
-apples_plot = plot(years, apples, 
-	legend = false, xlabel = "year", ylabel = "apples")
+apples_plot = plot(years, apples, legend = false, xlabel = "year", ylabel = "apples")
 
 # ╔═╡ 932b6b3c-a64d-11ea-2aba-2bf577ce3cf8
-apples_vs_oranges = scatter(apples, oranges, 
-	legend = false, xlabel = "apples", ylabel = "oranges")
+apples_vs_oranges = scatter(apples, oranges, legend = false, xlabel = "apples", ylabel = "oranges")
 
 # ╔═╡ 030c1d10-9b69-11ea-11b7-ff04c60892b9
 md"""
@@ -137,7 +135,7 @@ bananas = rand(1:100, 10)
 fruits = hcat(apples, oranges, pears, bananas)
 
 # ╔═╡ 69e045b0-9ade-11ea-0c55-05fa0da5893c
-plot(years, fruits, layout = (4,1), legend = false)
+plot(years, fruits, layout = (4, 1), legend = false)
 
 # ╔═╡ 054e0c4e-9adf-11ea-3deb-4daf2b6a2548
 md"""
@@ -185,8 +183,8 @@ So what if you do want to add things to a plot one at a time, instead of using a
 
 # ╔═╡ 8819edf0-9ae4-11ea-15f4-f17e9e9db8ea
 function plot_pears()
-	myplot = plot(years, pears, label = "pears")
-	return myplot
+    myplot = plot(years, pears, label = "pears")
+    return myplot
 end
 
 # ╔═╡ 9e4d1462-9ae4-11ea-3c0f-774d68a671c3
@@ -194,8 +192,8 @@ plot_pears()
 
 # ╔═╡ a7906786-9ae4-11ea-0175-4f860c05a8a2
 begin
-	plot_pears()
-	plot!(years, bananas, label = "bananas")
+    plot_pears()
+    plot!(years, bananas, label = "bananas")
 end
 
 # ╔═╡ d3cbc548-9ae4-11ea-261f-7fb956839e53

@@ -24,7 +24,7 @@ With the new `@bind` macro, Pluto.jl can listen to real-time events from HTML ob
 # ╔═╡ cf72c8a2-7ead-11ea-32b7-d31d5b2dacc2
 md"This syntax displays the HTML object as the cell's output, and uses its latest value as the definition of `x`. Of course, the variable `x` is _reactive_, and all references to `x` come to life ✨
 
-_Try it out!_ 👆" 
+_Try it out!_ 👆"
 
 # ╔═╡ cb1fd532-7eac-11ea-307c-ab16b1977819
 x
@@ -39,14 +39,14 @@ The `@bind` macro returns a `Bond` object, which can be used inside Markdown and
 
 # ╔═╡ fc99521c-7eae-11ea-269b-0d124b8cbe48
 begin
-	🐶slider = @bind 🐶 html"<input type=range>"
-	🐱slider = @bind 🐱 html"<input type=range>"
-	
-	md"""**How many pets do you have?**
-	
-	Dogs: $(🐶slider)
+    🐶slider = @bind 🐶 html"<input type=range>"
+    🐱slider = @bind 🐱 html"<input type=range>"
 
-	Cats: $(🐱slider)"""
+    md"""**How many pets do you have?**
+
+    Dogs: $(🐶slider)
+
+    Cats: $(🐱slider)"""
 end
 
 # ╔═╡ 1cf27d7c-7eaf-11ea-3ee3-456ed1e930ea
