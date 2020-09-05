@@ -6,7 +6,7 @@ struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true, project="")
+function open(session::ServerSession, path::AbstractString; run_async=true, project=nothing)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
@@ -15,7 +15,8 @@ function open(session::ServerSession, path::AbstractString; run_async=true, proj
     
     nb = load_notebook(tamepath(path))
 
-    if !isempty(project)
+    # overwrites the notebook environment if specified
+    if project !== nothing
         nb.project = project
     end
 
