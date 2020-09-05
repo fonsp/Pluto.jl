@@ -185,9 +185,12 @@ run(port::Union{Nothing,Integer}=nothing; kwargs...) = run("127.0.0.1", port; kw
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
+    client.stream = clientstream # it might change when the same client reconnects
     
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
+
+    @show messagetype
 
     args = []
     if haskey(parentbody, "notebook_id")

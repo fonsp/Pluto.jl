@@ -1,6 +1,10 @@
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 
+
+// https://github.com/denysdovhan/wtfjs/issues/61
+const different_Infinity_because_js_is_yuck = 2147483646
+
 /**
  * Return a promise that resolves to:
  *  - the resolved value of `promise`
@@ -27,7 +31,11 @@ export const timeout_promise = (promise, time_ms) =>
  * @param {Function} f Function that returns a promise
  * @param {Number} time_ms Timeout for each call to @see f
  */
-const retry_until_resolved = (f, time_ms) => timeout_promise(f(), time_ms).catch(() => retry_until_resolved(f, time_ms))
+const retry_until_resolved = (f, time_ms) => timeout_promise(f(), time_ms).catch((e) => {
+    console.error(e)
+    console.error("godverdomme")
+    return retry_until_resolved(f, time_ms)
+})
 
 /**
  * @returns {{current: Promise<any>, resolve: Function}}
@@ -152,10 +160,10 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
         var has_been_open = false
 
-        const timeout_handle = setInterval(() => {
+        const timeout_handle = setTimeout(() => {
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
             try_close_socket_connection(socket)
-            reject("timeout")
+            reject("Socket timeout")
         }, timeout_ms)
 
         const send_encoded = (message) => {
@@ -218,6 +226,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
         }
         socket.onopen = () => {
             console.log("Socket opened", new Date().toLocaleTimeString())
+            window.psocket = socket
             clearInterval(timeout_handle)
             has_been_open = true
             resolve({
@@ -246,16 +255,6 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  * @return {Promise<PlutoConnection>}
  */
 export const create_pluto_connection = async ({on_unrequested_update, on_reconnect, on_connection_status, connect_metadata={}}) => {
-    const secret = await (
-        await fetch("websocket_url_please", {
-            method: "GET",
-            cache: "no-cache",
-            redirect: "follow",
-            referrerPolicy: "no-referrer",
-        })
-    ).text()
-    const ws_address =
-        document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
     var ws_connection = null // will be defined later i promise
 
@@ -310,33 +309,57 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
     }
 
     const connect = async () => {
-        ws_connection = await retry_until_resolved(() => create_ws_connection(ws_address, {
-            on_message: handle_update,
-            on_socket_close: async () => {
-                on_connection_status(false)
+        const secret = await (
+            await fetch("websocket_url_please", {
+                method: "GET",
+                cache: "no-cache",
+                redirect: "follow",
+                referrerPolicy: "no-referrer",
+            })
+        ).text()
+        const ws_address =
+            document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
-                await connect() // reconnect!
-
-                const accept = on_reconnect()
-                console.log(`Recconnect ${accept ? "" : "not "} accepted`, new Date().toLocaleTimeString())
-                on_connection_status(accept)
-                if(!accept) {
-                    alert("Connection out of sync 😥\n\nRefresh the page to continue")
+        try{
+            ws_connection = await create_ws_connection(ws_address, {
+                on_message: handle_update,
+                on_socket_close: async () => {
+                    on_connection_status(false)
+    
+                    console.log(`Starting new websocket`)
+                    await connect() // reconnect!
+    
+                    console.log(`Starting state sync`, new Date().toLocaleTimeString())
+                    const accept = on_reconnect()
+                    console.log(`State sync ${accept ? "" : "not "}succesful`, new Date().toLocaleTimeString())
+                    on_connection_status(accept)
+                    if(!accept) {
+                        alert("Connection out of sync 😥\n\nRefresh the page to continue")
+                    }
                 }
+            }, 10000)
+    
+            console.log("New WS connection!")
+            console.log(ws_connection)
+    
+            // let's say hello
+            console.log("Hello?")
+            const u = await send("connect", {}, connect_metadata)
+            console.log("Hello!")
+    
+            if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                document.location.href = "./"
+                return {}
             }
-        }, 10000), Infinity)
-
-        // let's say hello
-        const u = await send("connect", {}, connect_metadata)
-
-        if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
-            // https://github.com/fonsp/Pluto.jl/issues/55
-            document.location.href = "./"
-            return {}
+            on_connection_status(true)
+    
+            return u.message
+        } catch(ex) {
+            console.error("connect() failed")
+            console.error(ex)
+            return await connect()
         }
-        on_connection_status(true)
-
-        return u.message
     }
     const connection_message = await connect()
     const plutoENV = connection_message.ENV
