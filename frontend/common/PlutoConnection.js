@@ -1,12 +1,12 @@
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 
-const do_next = async (queue) => {
+const do_all = async (queue) => {
     const next = queue[0]
     await next()
     queue.shift()
     if (queue.length > 0) {
-        await do_next(queue)
+        await do_all(queue)
     }
 }
 
@@ -24,6 +24,9 @@ export const resolvable_promise = () => {
     }
 }
 
+/**
+ * @returns {string}
+ */
 const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
 
 const socket_is_alright = (socket) => socket.readyState != WebSocket.OPEN && socket.readyState != WebSocket.CONNECTING
@@ -63,7 +66,7 @@ const try_close_socket_connection = (socket) => {
 //                 await this.handle_message(e)
 //             })
 //             if (this.task_queue.length == 1) {
-//                 do_next(this.task_queue)
+//                 do_all(this.task_queue)
 //             }
 //         }
 //         this.psocket.onerror = (e) => {
@@ -96,15 +99,23 @@ const try_close_socket_connection = (socket) => {
 //     })
 // }
 
+/**
+ * We append this after every message to say that the message is complete. This is necessary for sending WS messages larger than 1MB or something, since HTTP.jl splits those into multiple messages :(
+ */
 const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
 
 
-
-
-
+/**
+ * Open a 'raw' websocket connection to an API with MessagePack serialization. The method is asynchonous, and resolves to a @see WebsocketConnection when the connection is established.
+ * @typedef {{socket: WebSocket, send: Function, kill: Function}} WebsocketConnection
+ * @param {string} address The WebSocket URL
+ * @param {{on_message: Function, on_socket_failure:Function}} callbacks
+ * @return {Promise<WebsocketConnection>}
+ */
 const create_ws_connection = (address, { on_message, on_socket_failure }) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
+        const task_queue = []
 
         const send_encoded = (message) => {
             const encoded = pack(message)
@@ -113,21 +124,30 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
             to_send.set(MSG_DELIM, encoded.length)
             socket.send(to_send)
         }
-
-        socket.onmessage = async (event) => {
-            try {
-                const buffer = await event.data.arrayBuffer()
-                const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
-                const update = unpack(new Uint8Array(buffer_sliced))
-
-                on_message(update)
-            } catch (ex) {
-                console.error("Failed to process update!", ex)
-                console.log(event)
-
-                alert(
-                    `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
-                )
+        socket.onmessage = (event) => {
+            // we read and deserialize the incoming messages asynchronously
+            // they arrive in order (WS guarantees this), i.e. this socket.onmessage event gets fired with the message events in the right order
+            // but some message are read and deserialized much faster than others, because of varying sizes, so _after_ async read & deserialization, messages are no longer guaranteed to be in order
+            // 
+            // the solution is a task queue, where each task includes the deserialization and the update handler
+            task_queue.push(async () => {
+                try {
+                    const buffer = await event.data.arrayBuffer()
+                    const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
+                    const update = unpack(new Uint8Array(buffer_sliced))
+    
+                    on_message(update)
+                } catch (ex) {
+                    console.error("Failed to process update!", ex)
+                    console.log(event)
+    
+                    alert(
+                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+                    )
+                }
+            })
+            if (task_queue.length == 1) {
+                do_all(task_queue)
             }
         }
         socket.onerror = socket.onclose = async (e) => {
@@ -148,6 +168,10 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
             resolve({
                 socket: socket,
                 send: send_encoded,
+                kill: () => {
+                    socket.onclose = undefined
+                    try_close_socket_connection(socket)
+                }
             })
         }
         console.log("Waiting for socket to open...")
@@ -157,10 +181,16 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
 
 
 
-
-
-
-const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connection_status}) => {
+/**
+ * Open a connection with Pluto, that supports a question-response mechanism. The method is asynchonous, and resolves to a @see PlutoConnection when the connection is established.
+ * 
+ * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
+ * 
+ * @typedef {{plutoENV: Object, send: Function, kill: Function, pluto_version: String, julia_version: String}} PlutoConnection
+ * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
+ * @return {Promise<PlutoConnection>}
+ */
+export const create_pluto_connection = async ({on_unrequested_update, on_reconnect, on_connection_status, connect_metadata={}}) => {
     const secret = await (
         await fetch("websocket_url_please", {
             method: "GET",
@@ -169,7 +199,7 @@ const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connect
             referrerPolicy: "no-referrer",
         })
     ).text()
-    const websocket_address =
+    const ws_address =
         document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
     var ws_connection = null // will be defined later i promise
@@ -193,7 +223,7 @@ const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connect
     }
 
     /**
-     *
+     * Send a message to the Pluto backend, and return a promise that resolves when the backend sends a response. Not all messages receive a response.
      * @param {string} message_type
      * @param {Object} body
      * @param {{notebook_id?: string, cell_id?: string}} metadata
@@ -225,7 +255,7 @@ const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connect
     }
 
     const connect = async () => {
-        ws_connection = await create_ws_connection(websocket_address, {
+        ws_connection = await create_ws_connection(ws_address, {
             on_message: handle_update,
             on_socket_failure: () => {
                 on_connection_status(false)
@@ -239,10 +269,57 @@ const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connect
                 }
             }
         })
-        ws_connection.send()
-    }
 
-    await connect()
+        // let's say hello
+        const u = await send("connect", {}, connect_metadata)
+
+        if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
+            // https://github.com/fonsp/Pluto.jl/issues/55
+            document.location.href = "./"
+            return {}
+        }
+        on_connection_status(true)
+
+        return u.message
+    }
+    const connection_message = await connect()
+    const plutoENV = connection_message.ENV
+
+    return {
+        plutoENV: plutoENV,
+        send: send,
+        kill: ws_connection.kill,
+        pluto_version: "unknown",
+        julia_version: "unknown",
+    }
+}
+
+
+export const fetch_pluto_versions = (client) => {
+    const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+        method: "GET",
+        mode: "cors",
+        cache: "no-cache",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        redirect: "follow",
+        referrerPolicy: "no-referrer",
+    })
+        .then((response) => {
+            return response.json()
+        })
+        .then((response) => {
+            return response[0].tag_name
+        })
+
+    const pluto_promise = client.send("get_version").then((u) => {
+        client.pluto_version = u.message.pluto
+        client.julia_version = u.message.julia
+        return client.pluto_version
+    })
+
+    return Promise.all([github_promise, pluto_promise])
 }
 
 
@@ -319,222 +396,222 @@ const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connect
 //     const re
 // }
 
-const ping = async (address = "ping") => {
-    const response = await fetch(address, {
-        method: "GET",
-        cache: "no-cache",
-        redirect: "follow",
-        referrerPolicy: "no-referrer",
-    })
-    if (response.status === 200) {
-        return response
-    } else {
-        throw response
-    }
-}
+// const ping = async (address = "ping") => {
+//     const response = await fetch(address, {
+//         method: "GET",
+//         cache: "no-cache",
+//         redirect: "follow",
+//         referrerPolicy: "no-referrer",
+//     })
+//     if (response.status === 200) {
+//         return response
+//     } else {
+//         throw response
+//     }
+// }
 
-export class PlutoConnection {
-    start_waiting_for_connection() {
-        if (!socket_is_alright(this.psocket)) {
-            setTimeout(() => {
-                if (!socket_is_alright(this.psocket)) {
-                    // check twice with a 1sec interval because sometimes it just complains for a short while
+// export class PlutoConnection {
+//     start_waiting_for_connection() {
+//         if (!socket_is_alright(this.psocket)) {
+//             setTimeout(() => {
+//                 if (!socket_is_alright(this.psocket)) {
+//                     // check twice with a 1sec interval because sometimes it just complains for a short while
 
-                    const start_reconnecting = () => {
-                        this.on_connection_status(false)
-                        this.try_close_socket_connection()
-                        // TODO
-                    }
+//                     const start_reconnecting = () => {
+//                         this.on_connection_status(false)
+//                         this.try_close_socket_connection()
+//                         // TODO
+//                     }
 
-                    this.ping()
-                        .then(() => {
-                            if (this.psocket.readyState !== WebSocket.OPEN) {
-                                start_reconnecting()
-                            }
-                        })
-                        .catch(() => {
-                            console.error("Ping failed")
-                            start_reconnecting()
-                        })
-                }
-            }, 1000)
-        }
-    }
+//                     this.ping()
+//                         .then(() => {
+//                             if (this.psocket.readyState !== WebSocket.OPEN) {
+//                                 start_reconnecting()
+//                             }
+//                         })
+//                         .catch(() => {
+//                             console.error("Ping failed")
+//                             start_reconnecting()
+//                         })
+//                 }
+//             }, 1000)
+//         }
+//     }
 
-    /**
-     *
-     * @param {string} message_type
-     * @param {Object} body
-     * @param {{notebook_id?: string, cell_id?: string}} metadata
-     * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
-     * @returns {(undefined|Promise<Object>)}
-     */
-    send(message_type, body = {}, metadata = {}, create_promise = true) {
-        const request_id = get_unique_short_id()
+//     /**
+//      *
+//      * @param {string} message_type
+//      * @param {Object} body
+//      * @param {{notebook_id?: string, cell_id?: string}} metadata
+//      * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
+//      * @returns {(undefined|Promise<Object>)}
+//      */
+//     send(message_type, body = {}, metadata = {}, create_promise = true) {
+//         const request_id = get_unique_short_id()
 
-        const message = {
-            type: message_type,
-            client_id: this.client_id,
-            request_id: request_id,
-            body: body,
-            ...metadata,
-        }
+//         const message = {
+//             type: message_type,
+//             client_id: this.client_id,
+//             request_id: request_id,
+//             body: body,
+//             ...metadata,
+//         }
 
-        var p = undefined
+//         var p = undefined
 
-        if (create_promise) {
-            const rp = resolvable_promise()
-            p = rp.current
+//         if (create_promise) {
+//             const rp = resolvable_promise()
+//             p = rp.current
 
-            this.sent_requests[request_id] = rp.resolve
-        }
+//             this.sent_requests[request_id] = rp.resolve
+//         }
 
-        const encoded = pack(message)
-        const to_send = new Uint8Array(encoded.length + MSG_DELIM.length)
-        to_send.set(encoded, 0)
-        to_send.set(MSG_DELIM, encoded.length)
-        this.psocket.send(to_send)
+//         const encoded = pack(message)
+//         const to_send = new Uint8Array(encoded.length + MSG_DELIM.length)
+//         to_send.set(encoded, 0)
+//         to_send.set(MSG_DELIM, encoded.length)
+//         this.psocket.send(to_send)
 
-        return p
-    }
+//         return p
+//     }
 
-    async handle_message(event) {
-        try {
-            const buffer = await event.data.arrayBuffer()
-            const buffer_sliced = buffer.slice(0, buffer.byteLength - this.MSG_DELIM.length)
-            const update = unpack(new Uint8Array(buffer_sliced))
-            const by_me = "initiator_id" in update && update.initiator_id == this.client_id
-            const request_id = update.request_id
+//     async handle_message(event) {
+//         try {
+//             const buffer = await event.data.arrayBuffer()
+//             const buffer_sliced = buffer.slice(0, buffer.byteLength - this.MSG_DELIM.length)
+//             const update = unpack(new Uint8Array(buffer_sliced))
+//             const by_me = "initiator_id" in update && update.initiator_id == this.client_id
+//             const request_id = update.request_id
 
-            if (by_me && request_id) {
-                const request = this.sent_requests[request_id]
-                if (request) {
-                    request(update)
-                    delete this.sent_requests[request_id]
-                    return
-                }
-            }
-            this.on_update(update, by_me)
-        } catch (ex) {
-            console.error("Failed to process update!", ex)
-            console.log(event)
+//             if (by_me && request_id) {
+//                 const request = this.sent_requests[request_id]
+//                 if (request) {
+//                     request(update)
+//                     delete this.sent_requests[request_id]
+//                     return
+//                 }
+//             }
+//             this.on_update(update, by_me)
+//         } catch (ex) {
+//             console.error("Failed to process update!", ex)
+//             console.log(event)
 
-            alert(
-                `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
-            )
-        }
-    }
+//             alert(
+//                 `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+//             )
+//         }
+//     }
 
-    start_socket_connection(connect_metadata) {
-        return new Promise(async (res) => {
-            const secret = await (
-                await fetch("websocket_url_please", {
-                    method: "GET",
-                    cache: "no-cache",
-                    redirect: "follow",
-                    referrerPolicy: "no-referrer",
-                })
-            ).text()
-            this.psocket = new WebSocket(
-                document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
-            )
-            this.psocket.onmessage = (e) => {
-                this.task_queue.push(async () => {
-                    await this.handle_message(e)
-                })
-                if (this.task_queue.length == 1) {
-                    do_next(this.task_queue)
-                }
-            }
-            this.psocket.onerror = (e) => {
-                console.error("SOCKET ERROR", new Date().toLocaleTimeString())
-                console.error(e)
+//     start_socket_connection(connect_metadata) {
+//         return new Promise(async (res) => {
+//             const secret = await (
+//                 await fetch("websocket_url_please", {
+//                     method: "GET",
+//                     cache: "no-cache",
+//                     redirect: "follow",
+//                     referrerPolicy: "no-referrer",
+//                 })
+//             ).text()
+//             this.psocket = new WebSocket(
+//                 document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
+//             )
+//             this.psocket.onmessage = (e) => {
+//                 this.task_queue.push(async () => {
+//                     await this.handle_message(e)
+//                 })
+//                 if (this.task_queue.length == 1) {
+//                     do_all(this.task_queue)
+//                 }
+//             }
+//             this.psocket.onerror = (e) => {
+//                 console.error("SOCKET ERROR", new Date().toLocaleTimeString())
+//                 console.error(e)
 
-                this.start_waiting_for_connection()
-            }
-            this.psocket.onclose = (e) => {
-                console.warn("SOCKET CLOSED", new Date().toLocaleTimeString())
-                console.log(e)
+//                 this.start_waiting_for_connection()
+//             }
+//             this.psocket.onclose = (e) => {
+//                 console.warn("SOCKET CLOSED", new Date().toLocaleTimeString())
+//                 console.log(e)
 
-                this.start_waiting_for_connection()
-            }
-            this.psocket.onopen = () => {
-                console.log("Socket opened", new Date().toLocaleTimeString())
-                this.send("connect", {}, connect_metadata).then((u) => {
-                    this.plutoENV = u.message.ENV
-                    // TODO: don't check this here
-                    if (connect_metadata.notebook_id && !u.message.notebook_exists) {
-                        // https://github.com/fonsp/Pluto.jl/issues/55
-                        document.location.href = "./"
-                        return
-                    }
-                    this.on_connection_status(true)
-                    res(this)
-                })
-            }
-            console.log("Waiting for socket to open...")
-        })
-    }
+//                 this.start_waiting_for_connection()
+//             }
+//             this.psocket.onopen = () => {
+//                 console.log("Socket opened", new Date().toLocaleTimeString())
+//                 this.send("connect", {}, connect_metadata).then((u) => {
+//                     this.plutoENV = u.message.ENV
+//                     // TODO: don't check this here
+//                     if (connect_metadata.notebook_id && !u.message.notebook_exists) {
+//                         // https://github.com/fonsp/Pluto.jl/issues/55
+//                         document.location.href = "./"
+//                         return
+//                     }
+//                     this.on_connection_status(true)
+//                     res(this)
+//                 })
+//             }
+//             console.log("Waiting for socket to open...")
+//         })
+//     }
 
-    try_close_socket_connection() {
-        this.psocket.close(1000, "byebye")
-    }
+//     try_close_socket_connection() {
+//         this.psocket.close(1000, "byebye")
+//     }
 
-    initialize(on_establish_connection, connect_metadata = {}) {
-        this.psocket = create_ws()
-        this.ping()
-            .then(async () => {
-                await this.start_socket_connection(connect_metadata)
-                on_establish_connection(this)
-            })
-            .catch(() => {
-                this.on_connection_status(false)
-            })
+//     initialize(on_establish_connection, connect_metadata = {}) {
+//         this.psocket = create_ws()
+//         this.ping()
+//             .then(async () => {
+//                 await this.start_socket_connection(connect_metadata)
+//                 on_establish_connection(this)
+//             })
+//             .catch(() => {
+//                 this.on_connection_status(false)
+//             })
 
-        window.addEventListener("beforeunload", (e) => {
-            console.warn("unloading 👉 disconnecting websocket")
-            this.psocket.onclose = undefined
-            this.try_close_socket_connection()
-        })
-    }
+//         window.addEventListener("beforeunload", (e) => {
+//             console.warn("unloading 👉 disconnecting websocket")
+//             this.psocket.onclose = undefined
+//             this.try_close_socket_connection()
+//         })
+//     }
 
-    constructor(on_update, on_connection_status) {
-        this.on_update = on_update
-        this.on_connection_status = on_connection_status
+//     constructor(on_update, on_connection_status) {
+//         this.on_update = on_update
+//         this.on_connection_status = on_connection_status
 
-        this.task_queue = []
-        this.psocket = null
-        this.pluto_version = "unknown"
-        this.julia_version = "unknown"
-    }
+//         this.task_queue = []
+//         this.psocket = null
+//         this.pluto_version = "unknown"
+//         this.julia_version = "unknown"
+//     }
 
-    fetch_pluto_versions() {
-        const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
-            method: "GET",
-            mode: "cors",
-            cache: "no-cache",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            redirect: "follow",
-            referrerPolicy: "no-referrer",
-        })
-            .then((response) => {
-                return response.json()
-            })
-            .then((response) => {
-                return response[0].tag_name
-            })
+//     fetch_pluto_versions() {
+//         const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+//             method: "GET",
+//             mode: "cors",
+//             cache: "no-cache",
+//             headers: {
+//                 "Content-Type": "application/json",
+//             },
+//             redirect: "follow",
+//             referrerPolicy: "no-referrer",
+//         })
+//             .then((response) => {
+//                 return response.json()
+//             })
+//             .then((response) => {
+//                 return response[0].tag_name
+//             })
 
-        const pluto_promise = this.send("get_version").then((u) => {
-            this.pluto_version = u.message.pluto
-            this.julia_version = u.message.julia
-            return this.pluto_version
-        })
+//         const pluto_promise = this.send("get_version").then((u) => {
+//             this.pluto_version = u.message.pluto
+//             this.julia_version = u.message.julia
+//             return this.pluto_version
+//         })
 
-        return Promise.all([github_promise, pluto_promise])
-    }
-}
+//         return Promise.all([github_promise, pluto_promise])
+//     }
+// }
 
 // export class PlutoConnection {
 //     async ping() {
@@ -662,7 +739,7 @@ export class PlutoConnection {
 //                     await this.handle_message(e)
 //                 })
 //                 if (this.task_queue.length == 1) {
-//                     do_next(this.task_queue)
+//                     do_all(this.task_queue)
 //                 }
 //             }
 //             this.psocket.onerror = (e) => {

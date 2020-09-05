@@ -1,7 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { PlutoConnection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_pluto_versions } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
@@ -125,7 +125,72 @@ export class Welcome extends Component {
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
-        this.client = new PlutoConnection(on_update, on_connection_status)
+
+        create_pluto_connection({
+            on_unrequested_update: on_update,
+            on_connection_status: on_connection_status,
+            on_reconnect: () => true,
+        }).then(client => {
+            this.client = client
+            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
+                const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
+
+                // we are going to construct the combined list:
+                const combined_notebooks = [...running] // shallow copy but that's okay
+                get_stored_recent_notebooks().forEach((stored) => {
+                    if (!running.some((nb) => nb.path === stored.path)) {
+                        // if not already in the list...
+                        combined_notebooks.push(stored) // ...add it.
+                    }
+                })
+
+                this.setState({ combined_notebooks: combined_notebooks })
+            })
+
+            fetch_pluto_versions(this.client).then((versions) => {
+                const remote = versions[0]
+                const local = versions[1]
+
+                window.pluto_version = local
+
+                const base1 = (n) => "1".repeat(n)
+
+                console.log(`Pluto version ${local}`)
+                if (remote != local) {
+                    const rs = remote.slice(1).split(".").map(Number)
+                    const ls = local.slice(1).split(".").map(Number)
+
+                    // if the semver can't be parsed correctly, we always show it to the user
+                    if (rs.length == 3 && ls.length == 3) {
+                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
+                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
+                            if (rs.map(base1) <= ls.map(base1)) {
+                                return
+                            }
+                        }
+                    }
+                    console.log(`Newer version ${remote} is available`)
+                    alert(
+                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                            local +
+                            ", the latest is " +
+                            remote +
+                            ".\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update(\"Pluto\")\n\nAfterwards, exit Pluto.jl and restart julia."
+                    )
+                }
+            })
+
+            // to start JIT'ting
+            this.client.send(
+                "completepath",
+                {
+                    query: "nothinginparticular",
+                },
+                {}
+            )
+
+            document.body.classList.remove("loading")
+        })
 
         this.on_open_path = async (new_path) => {
             window.location.href = await link_open_auto(new_path)
@@ -179,33 +244,6 @@ export class Welcome extends Component {
 
     componentDidMount() {
         this.componentDidUpdate()
-        this.client.initialize(() => {
-            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
-                const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
-
-                // we are going to construct the combined list:
-                const combined_notebooks = [...running] // shallow copy but that's okay
-                get_stored_recent_notebooks().forEach((stored) => {
-                    if (!running.some((nb) => nb.path === stored.path)) {
-                        // if not already in the list...
-                        combined_notebooks.push(stored) // ...add it.
-                    }
-                })
-
-                this.setState({ combined_notebooks: combined_notebooks })
-            })
-
-            // to start JIT'ting
-            this.client.send(
-                "completepath",
-                {
-                    query: "nothinginparticular",
-                },
-                {}
-            )
-
-            document.body.classList.remove("loading")
-        })
     }
 
     componentDidUpdate() {
