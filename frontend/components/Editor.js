@@ -688,8 +688,8 @@ export class Editor extends Component {
                     alert(
                         `Shortcuts 🎹
         
-        Shift+Enter:   run cell
-        Ctrl+Enter:   run cell and add cell below
+        Ctrl+Enter:   run cell
+        Shift+Enter:   run cell and add cell below
         Delete or Backspace:   delete empty cell
 
         PageUp or fn+Up:   select cell above

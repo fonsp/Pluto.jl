@@ -66,8 +66,8 @@ export const CellInput = ({
 
         const keys = {}
 
-        keys["Shift-Enter"] = () => on_submit(cm.getValue())
-        keys["Ctrl-Enter"] = () => {
+        keys["Ctrl-Enter"] = () => on_submit(cm.getValue())
+        keys["Shift-Enter"] = () => {
             on_add_after()
 
             const new_value = cm.getValue()
