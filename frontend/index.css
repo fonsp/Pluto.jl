@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import url("juliamono.css");
+
 #title {
     /* position: absolute; */
     /* left: 0; */
@@ -55,7 +56,7 @@ main {
     margin-top: 20vh;
     margin-bottom: 10em;
     text-align: left;
-    font-family: "Roboto Mono", monospace;
+    font-family: JuliaMono, JuliaMono-Latin, monospace;
     color: hsl(0, 0%, 60%);
 }
 
@@ -110,7 +111,7 @@ pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace !important;
+    font-family: JuliaMono, JuliaMono-Latin, monospace !important;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -131,7 +132,7 @@ pluto-filepicker button {
     border: 2px solid #6c8489;
     color: white;
     /* border: none; */
-    font-family: "Roboto Mono";
+    font-family: JuliaMono, JuliaMono-Latin;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -159,7 +160,7 @@ ul.CodeMirror-hints {
 }
 
 ul.CodeMirror-hints {
-    font-family: "Roboto Mono", monospace !important;
+    font-family: JuliaMono, JuliaMono-Latin, monospace !important;
     font-size: 0.75em;
 }
 
