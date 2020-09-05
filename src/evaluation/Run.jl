@@ -35,15 +35,18 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "queued"
+	local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell))		
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
+	flushallclients(session, listeners)
+
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable

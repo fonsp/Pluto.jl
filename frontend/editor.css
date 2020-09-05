@@ -843,24 +843,43 @@ pluto-cell.errored > pluto-trafficlight {
 }
 
 pluto-cell.queued > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 85%, 1), hsla(20, 20%, 85%, 1) 8px, hsla(20, 20%, 85%, 0.1) 8px, hsla(20, 20%, 85%, 0.1) 16px);
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(20, 20%, 75%, 0.6),
+        hsla(20, 20%, 75%, 0.6) 8px,
+        hsla(20, 20%, 75%, 0.06) 8px,
+        hsla(20, 20%, 75%, 0.06) 16px
+    );
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     animation: 3000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 75%, 1), hsla(20, 20%, 75%, 1) 8px, hsla(20, 20%, 75%, 0.1) 8px, hsla(20, 20%, 75%, 0.1) 16px);
+    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 70%, 1), hsla(20, 20%, 70%, 1) 8px, hsla(20, 20%, 70%, 0.1) 8px, hsla(20, 20%, 70%, 0.1) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 700s linear 0s infinite running scrollbackground;
+    animation: 1500s linear 0s infinite running scrollbackground;
+}
+
+pluto-cell.queued.errored > pluto-trafficlight {
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(0, 100%, 71%, 0.7),
+        hsla(0, 100%, 71%, 0.7) 8px,
+        hsla(12, 71%, 47%, 0.2) 8px,
+        hsla(12, 71%, 47%, 0.2) 16px
+    );
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
+    animation: 3000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
     background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 2000s linear 0s infinite running scrollbackground;
+    animation: 1500s linear 0s infinite running scrollbackground;
 }
 
 @keyframes scrollbackground {

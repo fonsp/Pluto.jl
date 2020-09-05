@@ -23,7 +23,7 @@ end
 const MSG_DELIM = Vector{UInt8}(codeunits("IUUQ.km jt ejggjdvmu vhi")) # riddle me this, Julius
 
 "Send `messages` to all clients connected to the `notebook`."
-function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...)
+function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...; flush::Bool=true)
     listeners = filter(collect(values(session.connected_clients))) do c
         c.connected_notebook !== nothing &&
         c.connected_notebook.notebook_id == notebook.notebook_id
@@ -31,17 +31,17 @@ function putnotebookupdates!(session::ServerSession, notebook::Notebook, message
     for next_to_send in messages, client in listeners
         put!(client.pendingupdates, next_to_send)
     end
-    flushallclients(session, listeners)
+    flush && flushallclients(session, listeners)
     listeners
 end
 
 "Send `messages` to all connected clients."
-function putplutoupdates!(session::ServerSession, messages::UpdateMessage...)
+function putplutoupdates!(session::ServerSession, messages::UpdateMessage...; flush::Bool=true)
     listeners = collect(values(session.connected_clients))
     for next_to_send in messages, client in listeners
         put!(client.pendingupdates, next_to_send)
     end
-    flushallclients(session, listeners)
+    flush && flushallclients(session, listeners)
     listeners
 end
 
@@ -51,6 +51,7 @@ function putclientupdates!(client::ClientSession, messages::UpdateMessage...)
         put!(client.pendingupdates, next_to_send)
     end
     flushclient(client)
+    client
 end
 
 "Send `messages` to the `ClientSession` who initiated."

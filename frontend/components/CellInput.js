@@ -71,8 +71,6 @@ export const CellInput = ({
             on_add_after()
 
             const new_value = cm.getValue()
-            console.log(new_value)
-            console.log(remote_code_ref.current.body)
             if (new_value !== remote_code_ref.current.body) {
                 on_submit(new_value)
             }
@@ -96,9 +94,7 @@ export const CellInput = ({
             } else {
                 const cursor = cm.getCursor()
                 const token = cm.getTokenAt(cursor)
-                console.log(cursor)
                 cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
-                console.log(token)
             }
         }
         keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {

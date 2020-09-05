@@ -24,6 +24,134 @@ export const resolvable_promise = () => {
     }
 }
 
+const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+
+const socket_is_alright = (socket) => socket.readyState != WebSocket.OPEN && socket.readyState != WebSocket.CONNECTING
+
+
+
+
+
+
+
+
+
+
+start_socket_connection(connect_metadata) {
+    return new Promise(async (res) => {
+        const secret = await (
+            await fetch("websocket_url_please", {
+                method: "GET",
+                cache: "no-cache",
+                redirect: "follow",
+                referrerPolicy: "no-referrer",
+            })
+        ).text()
+        this.psocket = new WebSocket(
+            document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
+        )
+        this.psocket.onmessage = (e) => {
+            this.task_queue.push(async () => {
+                await this.handle_message(e)
+            })
+            if (this.task_queue.length == 1) {
+                do_next(this.task_queue)
+            }
+        }
+        this.psocket.onerror = (e) => {
+            console.error("SOCKET ERROR", new Date().toLocaleTimeString())
+            console.error(e)
+
+            this.start_waiting_for_connection()
+        }
+        this.psocket.onclose = (e) => {
+            console.warn("SOCKET CLOSED", new Date().toLocaleTimeString())
+            console.log(e)
+
+            this.start_waiting_for_connection()
+        }
+        this.psocket.onopen = () => {
+            console.log("Socket opened", new Date().toLocaleTimeString())
+            this.send("connect", {}, connect_metadata).then((u) => {
+                this.plutoENV = u.message.ENV
+                // TODO: don't check this here
+                if (connect_metadata.notebook_id && !u.message.notebook_exists) {
+                    // https://github.com/fonsp/Pluto.jl/issues/55
+                    document.location.href = "./"
+                    return
+                }
+                this.on_connection_status(true)
+                res(this)
+            })
+        }
+        console.log("Waiting for socket to open...")
+    })
+}
+
+
+const create_ws = (address, on_update) => {
+    const client_id = get_unique_short_id()
+    const sent_requests = {}
+
+    return new Promise((resolve_socket, reject_socket) => {
+        const socket = new WebSocket(address)
+        socket.onmessage = async (event) => {
+            try {
+                const buffer = await event.data.arrayBuffer()
+                const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
+                const update = msgpack.decode(new Uint8Array(buffer_sliced))
+                const by_me = update.initiator_id && update.initiator_id == client_id
+                const request_id = update.request_id
+                if (by_me && request_id) {
+                    const request = sent_requests[request_id]
+                    if (request) {
+                        request(update.body)
+                        delete sent_requests[request_id]
+                        return
+                    }
+                }
+                on_update(update, by_me)
+            } catch (ex) {
+                console.error("Failed to process update!", ex)
+                console.log(event)
+
+                alert(
+                    `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+                )
+            }
+        }
+        socket.onerror = (e) => {
+            console.warn("SOCKET ERROR")
+            console.log(e)
+            reject_socket(e)
+        }
+        socket.onclose = (e) => {
+            console.warn("SOCKET CLOSED")
+            console.log(e)
+            reject_socket(e)
+        }
+        socket.onopen = () => resolve_socket(socket)
+    })
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export class PlutoConnection {
     async ping() {
         const response = await (
@@ -41,26 +169,31 @@ export class PlutoConnection {
         }
     }
 
-    wait_for_online() {
-        this.on_connection_status(false)
+    start_waiting_for_connection() {
+        if (!socket_is_alright(this.psocket)) {
+            setTimeout(() => {
+                if (!socket_is_alright(this.psocket)) {
+                    // check twice with a 1sec interval because sometimes it just complains for a short while
 
-        setTimeout(() => {
-            this.ping()
-                .then(() => {
-                    if (this.psocket.readyState !== WebSocket.OPEN) {
-                        this.wait_for_online()
-                    } else {
-                        this.on_connection_status(true)
+                    const start_reconnecting = () => {
+                        this.on_connection_status(false)
+                        this.try_close_socket_connection()
+                        // TODO
                     }
-                })
-                .catch(() => {
-                    this.wait_for_online()
-                })
-        }, 1000)
-    }
 
-    get_short_unqiue_id() {
-        return crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+                    this.ping()
+                        .then(() => {
+                            if (this.psocket.readyState !== WebSocket.OPEN) {
+                                start_reconnecting()
+                            }
+                        })
+                        .catch(() => {
+                            console.error("Ping failed")
+                            start_reconnecting()
+                        })
+                }
+            }, 1000)
+        }
     }
 
     /**
@@ -72,7 +205,7 @@ export class PlutoConnection {
      * @returns {(undefined|Promise<Object>)}
      */
     send(message_type, body = {}, metadata = {}, create_promise = true) {
-        const request_id = this.get_short_unqiue_id()
+        const request_id = get_unique_short_id()
 
         const message = {
             type: message_type,
@@ -116,15 +249,14 @@ export class PlutoConnection {
                     return
                 }
             }
-            if (update.type === "reload") {
-                document.location = document.location
-            }
             this.on_update(update, by_me)
         } catch (ex) {
-            console.error("Failed to get update!", ex)
+            console.error("Failed to process update!", ex)
             console.log(event)
 
-            this.wait_for_online()
+            alert(
+                `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+            )
         }
     }
 
@@ -150,27 +282,19 @@ export class PlutoConnection {
                 }
             }
             this.psocket.onerror = (e) => {
-                console.error("SOCKET ERROR", e)
+                console.error("SOCKET ERROR", new Date().toLocaleTimeString())
+                console.error(e)
 
-                if (this.psocket.readyState != WebSocket.OPEN && this.psocket.readyState != WebSocket.CONNECTING) {
-                    this.wait_for_online()
-                    setTimeout(() => {
-                        if (this.psocket.readyState != WebSocket.OPEN) {
-                            this.try_close_socket_connection()
-
-                            res(this.start_socket_connection(connect_metadata))
-                        }
-                    }, 500)
-                }
+                this.start_waiting_for_connection()
             }
             this.psocket.onclose = (e) => {
-                console.warn("SOCKET CLOSED")
+                console.warn("SOCKET CLOSED", new Date().toLocaleTimeString())
                 console.log(e)
 
-                this.wait_for_online()
+                this.start_waiting_for_connection()
             }
             this.psocket.onopen = () => {
-                console.log("socket opened")
+                console.log("Socket opened", new Date().toLocaleTimeString())
                 this.send("connect", {}, connect_metadata).then((u) => {
                     this.plutoENV = u.message.ENV
                     // TODO: don't check this here
@@ -183,7 +307,7 @@ export class PlutoConnection {
                     res(this)
                 })
             }
-            console.log("waiting...")
+            console.log("Waiting for socket to open...")
         })
     }
 
@@ -215,7 +339,7 @@ export class PlutoConnection {
         this.task_queue = []
         this.psocket = null
         this.MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
-        this.client_id = this.get_short_unqiue_id()
+        this.client_id = get_unique_short_id()
         this.sent_requests = {}
         this.pluto_version = "unknown"
         this.julia_version = "unknown"

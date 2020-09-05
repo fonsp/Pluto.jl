@@ -172,15 +172,15 @@ export class Editor extends Component {
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: false,
-                                    queued: true
+                                    queued: true,
                                 })
                             }
-                            break                            
+                            break
                         case "cell_running":
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: true,
-                                    queued: false
+                                    queued: false,
                                 })
                             }
                             break
@@ -207,7 +207,7 @@ export class Editor extends Component {
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
-                            new_cell.running = false
+                            new_cell.queued = new_cell.running = false
                             new_cell.output.body = ""
                             this.actions.add_local_cell(new_cell, message.index)
                             break
@@ -308,7 +308,7 @@ export class Editor extends Component {
 
                 const base1 = (n) => "1".repeat(n)
 
-                console.log(local)
+                console.log(`Pluto version ${local}`)
                 if (remote != local) {
                     const rs = remote.slice(1).split(".").map(Number)
                     const ls = local.slice(1).split(".").map(Number)
@@ -322,6 +322,7 @@ export class Editor extends Component {
                             }
                         }
                     }
+                    console.log(`Newer version ${remote} is available`)
                     alert(
                         "A new version of Pluto.jl is available! 🎉\n\n    You have " +
                             local +
@@ -346,7 +347,7 @@ export class Editor extends Component {
             } else {
                 return // and don't prevent the unload
             }
-            console.log("preventing unload")
+            console.log("Preventing unload")
             event.stopImmediatePropagation()
             event.preventDefault()
             event.returnValue = ""
@@ -776,7 +777,6 @@ export class Editor extends Component {
                             class="export_card"
                             onClick=${(e) => {
                                 const a = e.composedPath().find((el) => el.tagName === "A")
-                                console.log(a)
                                 a.download = this.state.notebook.shortpath + ".html"
                                 a.href = URL.createObjectURL(
                                     new Blob([offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body })], {
