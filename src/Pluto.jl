@@ -9,7 +9,6 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
-export Notebook, Cell, run
 
 import Pkg
 
