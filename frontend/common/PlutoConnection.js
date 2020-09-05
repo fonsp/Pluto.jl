@@ -1,14 +1,33 @@
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 
-const do_all = async (queue) => {
-    const next = queue[0]
-    await next()
-    queue.shift()
-    if (queue.length > 0) {
-        await do_all(queue)
-    }
-}
+/**
+ * Return a promise that resolves to:
+ *  - the resolved value of `promise`
+ *  - an error after `time_ms` milliseconds
+ * whichever comes first.
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} time_ms
+ * @returns {Promise<T>}
+ */
+export const timeout_promise = (promise, time_ms) =>
+    Promise.race([
+        promise,
+        new Promise((res, rej) => {
+            setTimeout(() => {
+                rej(new Error("Promise timed out."))
+            }, time_ms)
+        }),
+    ])
+
+
+/**
+ * Keep calling @see f until it resolves, with a delay before each try.
+ * @param {Function} f Function that returns a promise
+ * @param {Number} time_ms Timeout for each call to @see f
+ */
+const retry_until_resolved = (f, time_ms) => timeout_promise(f(), time_ms).catch(() => retry_until_resolved(f, time_ms))
 
 /**
  * @returns {{current: Promise<any>, resolve: Function}}
@@ -24,12 +43,22 @@ export const resolvable_promise = () => {
     }
 }
 
+
+const do_all = async (queue) => {
+    const next = queue[0]
+    await next()
+    queue.shift()
+    if (queue.length > 0) {
+        await do_all(queue)
+    }
+}
+
 /**
  * @returns {string}
  */
 const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
 
-const socket_is_alright = (socket) => socket.readyState != WebSocket.OPEN && socket.readyState != WebSocket.CONNECTING
+const socket_is_alright = (socket) => socket.readyState == WebSocket.OPEN || socket.readyState == WebSocket.CONNECTING
 
 const socket_is_alright_with_grace_period = (socket) =>
     new Promise((res) => {
@@ -43,6 +72,10 @@ const socket_is_alright_with_grace_period = (socket) =>
     })
 
 const try_close_socket_connection = (socket) => {
+    socket.onopen = () => {
+        try_close_socket_connection(socket)
+    }
+    socket.onmessage = socket.onclose = socket.onerror = undefined
     try {
         socket.close(1000, "byebye")
     } catch (ex) {}
@@ -109,13 +142,21 @@ const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
  * Open a 'raw' websocket connection to an API with MessagePack serialization. The method is asynchonous, and resolves to a @see WebsocketConnection when the connection is established.
  * @typedef {{socket: WebSocket, send: Function, kill: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
- * @param {{on_message: Function, on_socket_failure:Function}} callbacks
+ * @param {{on_message: Function, on_socket_close:Function}} callbacks
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_failure }) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 60000) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
         const task_queue = []
+
+        var has_been_open = false
+
+        const timeout_handle = setInterval(() => {
+            console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
+            try_close_socket_connection(socket)
+            reject("timeout")
+        }, timeout_ms)
 
         const send_encoded = (message) => {
             const encoded = pack(message)
@@ -150,21 +191,35 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
                 do_all(task_queue)
             }
         }
-        socket.onerror = socket.onclose = async (e) => {
+        socket.onerror = async (e) => {
             console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
             console.error(e)
 
-            if (!(await socket_is_alright_with_grace_period(socket))) {
-                on_socket_failure()
-                try_close_socket_connection(socket)
-                
-                reject(e) // if it has not openened yet
-            } else {
-                console.log("The socket somehow recovered from an error! Onbegrijpelijk")
-            }
+            // if (await socket_is_alright_with_grace_period(socket)) {
+            //     console.log("The socket somehow recovered from an error! Onbegrijpelijk")
+            //     console.log(socket)
+            //     console.log(socket.readyState)
+            // } else {
+            //     if(has_been_open) {
+            //         on_socket_close()
+            //         try_close_socket_connection(socket)
+            //     } else {
+            //         reject(e) // if it has not openened yet
+            //     }
+            // }
+        }
+        socket.onclose = async (e) => {
+            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
+            console.error(e)
+            console.assert(has_been_open)
+
+            on_socket_close()
+            try_close_socket_connection(socket)
         }
         socket.onopen = () => {
             console.log("Socket opened", new Date().toLocaleTimeString())
+            clearInterval(timeout_handle)
+            has_been_open = true
             resolve({
                 socket: socket,
                 send: send_encoded,
@@ -174,7 +229,7 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
                 }
             })
         }
-        console.log("Waiting for socket to open...")
+        console.log("Waiting for socket to open...", new Date().toLocaleTimeString())
     })
 }
 
@@ -255,20 +310,21 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
     }
 
     const connect = async () => {
-        ws_connection = await create_ws_connection(ws_address, {
+        ws_connection = await retry_until_resolved(() => create_ws_connection(ws_address, {
             on_message: handle_update,
-            on_socket_failure: () => {
+            on_socket_close: async () => {
                 on_connection_status(false)
 
-                connect() // reconnect!
+                await connect() // reconnect!
 
                 const accept = on_reconnect()
+                console.log(`Recconnect ${accept ? "" : "not "} accepted`, new Date().toLocaleTimeString())
                 on_connection_status(accept)
                 if(!accept) {
                     alert("Connection out of sync 😥\n\nRefresh the page to continue")
                 }
             }
-        })
+        }, 10000), Infinity)
 
         // let's say hello
         const u = await send("connect", {}, connect_metadata)
@@ -339,7 +395,7 @@ export const fetch_pluto_versions = (client) => {
 //     const client_id = get_unique_short_id()
 //     const sent_requests = {}
 
-//     const create_ws = (address, { on_unrequested_update, on_socket_failure }) => {
+//     const create_ws = (address, { on_unrequested_update, on_socket_close }) => {
 //         return new Promise((resolve_socket, reject_socket) => {
 
 //             const socket = new WebSocket(address)
@@ -376,7 +432,7 @@ export const fetch_pluto_versions = (client) => {
 //                 console.error(e)
 
 //                 if (!(await socket_is_alright_with_grace_period(socket))) {
-//                     on_socket_failure()
+//                     on_socket_close()
 //                     try_close_socket_connection(socket)
                     
 //                     reject_socket(e) // if it has not openened yet

@@ -1,14 +1,5 @@
 import { code_differs } from "../components/Cell.js"
-
-const timeout_promise = (promise, time_ms) =>
-    Promise.race([
-        promise,
-        new Promise((res, rej) => {
-            setTimeout(() => {
-                rej(new Error("Promise timed out."))
-            }, time_ms)
-        }),
-    ])
+import { timeout_promise } from "./PlutoConnection.js"
 
 export const create_counter_statistics = () => {
     return {

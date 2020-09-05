@@ -309,10 +309,17 @@ export class Editor extends Component {
 
         const on_connection_status = (val) => this.setState({ connected: val })
 
+        const on_reconnect = () => {
+            console.warn("Reconnected! Checking states")
+
+            return true
+        }
+
+        this.client = {}
         create_pluto_connection({
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
-            on_reconnect: console.error,
+            on_reconnect: on_reconnect,
             connect_metadata: { notebook_id: this.state.notebook.notebook_id },
         }).then(on_establish_connection)
 
