@@ -33,6 +33,7 @@ function default_env()
     elseif haskey(ENV, "PLUTO_PROJECT")
         ENV["PLUTO_PROJECT"]
     else
+        # use ~/.julia/environments/v<major>.<minor> as fallback env
         joinpath(first(DEPOT_PATH), "environments", string("v", VERSION.major, ".", VERSION.minor))
     end
 end

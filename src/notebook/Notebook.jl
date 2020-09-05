@@ -30,12 +30,12 @@ mutable struct Notebook
 
     executetoken::Token
 
-    project::String
+    environment_path::Union{String, Nothing}
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), "")
+    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
@@ -53,13 +53,18 @@ const _cell_suffix = "\n\n"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
-function notebook_project(notebook::Notebook)
-    isempty(notebook.project) && return ""
-    isabspath(notebook.project) && return notebook.project
-    
+"""
+    environment_path(notebook)
+
+Return the environment path of given notebook.
+"""
+function environment_path(notebook::Notebook)
+    notebook.environment_path === nothing && return
+    isabspath(notebook.environment_path) && return notebook.environment_path
+
     # relative project path is always relative to
     # the notebook path.
-    return joinpath(dirname(notebook.path), notebook.project)
+    return joinpath(dirname(notebook.path), notebook.environment_path)
 end
 
 """
