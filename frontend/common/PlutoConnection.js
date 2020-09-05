@@ -102,12 +102,17 @@ const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
 
 
 
-
 const create_ws_connection = (address, { on_message, on_socket_failure }) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
-        const send_encoded
+        const send_encoded = (message) => {
+            const encoded = pack(message)
+            const to_send = new Uint8Array(encoded.length + MSG_DELIM.length)
+            to_send.set(encoded, 0)
+            to_send.set(MSG_DELIM, encoded.length)
+            socket.send(to_send)
+        }
 
         socket.onmessage = async (event) => {
             try {
@@ -115,18 +120,7 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
                 const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
                 const update = unpack(new Uint8Array(buffer_sliced))
 
-                const by_me = "initiator_id" in update && update.initiator_id == client_id
-                const request_id = update.request_id
-
-                if (by_me && request_id) {
-                    const request = sent_requests[request_id]
-                    if (request) {
-                        request(update)
-                        delete sent_requests[request_id]
-                        return
-                    }
-                }
-                on_unrequested_update(update, by_me)
+                on_message(update)
             } catch (ex) {
                 console.error("Failed to process update!", ex)
                 console.log(event)
@@ -166,9 +160,7 @@ const create_ws_connection = (address, { on_message, on_socket_failure }) => {
 
 
 
-
-
-const pluto_connection = async () => {
+const pluto_connection = async ({on_unrequested_update, on_reconnect, on_connection_status}) => {
     const secret = await (
         await fetch("websocket_url_please", {
             method: "GET",
@@ -180,65 +172,152 @@ const pluto_connection = async () => {
     const websocket_address =
         document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
+    var ws_connection = null // will be defined later i promise
+
     const client_id = get_unique_short_id()
     const sent_requests = {}
 
-    const create_ws = (address, { on_unrequested_update, on_socket_failure }) => {
-        return new Promise((resolve_socket, reject_socket) => {
+    const handle_update = (update) => {
+        const by_me = "initiator_id" in update && update.initiator_id == client_id
+        const request_id = update.request_id
 
-            const socket = new WebSocket(address)
-
-            socket.onmessage = async (event) => {
-                try {
-                    const buffer = await event.data.arrayBuffer()
-                    const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
-                    const update = unpack(new Uint8Array(buffer_sliced))
-
-                    const by_me = "initiator_id" in update && update.initiator_id == client_id
-                    const request_id = update.request_id
-
-                    if (by_me && request_id) {
-                        const request = sent_requests[request_id]
-                        if (request) {
-                            request(update)
-                            delete sent_requests[request_id]
-                            return
-                        }
-                    }
-                    on_unrequested_update(update, by_me)
-                } catch (ex) {
-                    console.error("Failed to process update!", ex)
-                    console.log(event)
-
-                    alert(
-                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
-                    )
-                }
+        if (by_me && request_id) {
+            const request = sent_requests[request_id]
+            if (request) {
+                request(update)
+                delete sent_requests[request_id]
+                return
             }
-            socket.onerror = socket.onclose = async (e) => {
-                console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
-                console.error(e)
-
-                if (!(await socket_is_alright_with_grace_period(socket))) {
-                    on_socket_failure()
-                    try_close_socket_connection(socket)
-                    
-                    reject_socket(e) // if it has not openened yet
-                } else {
-                    console.log("The socket somehow recovered from an error! Onbegrijpelijk")
-                }
-            }
-            socket.onopen = () => {
-                console.log("Socket opened", new Date().toLocaleTimeString())
-                resolve_socket(socket)
-            }
-            console.log("Waiting for socket to open...")
-        })
+        }
+        on_unrequested_update(update, by_me)
     }
 
-    var psocket = null
-    const re
+    /**
+     *
+     * @param {string} message_type
+     * @param {Object} body
+     * @param {{notebook_id?: string, cell_id?: string}} metadata
+     * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
+     * @returns {(undefined|Promise<Object>)}
+     */
+    const send = (message_type, body = {}, metadata = {}, create_promise = true) => {
+        const request_id = get_unique_short_id()
+
+        const message = {
+            type: message_type,
+            client_id: client_id,
+            request_id: request_id,
+            body: body,
+            ...metadata,
+        }
+
+        var p = undefined
+
+        if (create_promise) {
+            const rp = resolvable_promise()
+            p = rp.current
+
+            sent_requests[request_id] = rp.resolve
+        }
+
+        ws_connection.send(message)
+        return p
+    }
+
+    const connect = async () => {
+        ws_connection = await create_ws_connection(websocket_address, {
+            on_message: handle_update,
+            on_socket_failure: () => {
+                on_connection_status(false)
+
+                connect() // reconnect!
+
+                const accept = on_reconnect()
+                on_connection_status(accept)
+                if(!accept) {
+                    alert("Connection out of sync 😥\n\nRefresh the page to continue")
+                }
+            }
+        })
+        ws_connection.send()
+    }
+
+    await connect()
 }
+
+
+
+// const pluto_connection = async () => {
+//     const secret = await (
+//         await fetch("websocket_url_please", {
+//             method: "GET",
+//             cache: "no-cache",
+//             redirect: "follow",
+//             referrerPolicy: "no-referrer",
+//         })
+//     ).text()
+//     const websocket_address =
+//         document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
+
+//     const client_id = get_unique_short_id()
+//     const sent_requests = {}
+
+//     const create_ws = (address, { on_unrequested_update, on_socket_failure }) => {
+//         return new Promise((resolve_socket, reject_socket) => {
+
+//             const socket = new WebSocket(address)
+
+//             socket.onmessage = async (event) => {
+//                 try {
+//                     const buffer = await event.data.arrayBuffer()
+//                     const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
+//                     const update = unpack(new Uint8Array(buffer_sliced))
+
+//                     const by_me = "initiator_id" in update && update.initiator_id == client_id
+//                     const request_id = update.request_id
+
+//                     if (by_me && request_id) {
+//                         const request = sent_requests[request_id]
+//                         if (request) {
+//                             request(update)
+//                             delete sent_requests[request_id]
+//                             return
+//                         }
+//                     }
+//                     on_unrequested_update(update, by_me)
+//                 } catch (ex) {
+//                     console.error("Failed to process update!", ex)
+//                     console.log(event)
+
+//                     alert(
+//                         `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+//                     )
+//                 }
+//             }
+//             socket.onerror = socket.onclose = async (e) => {
+//                 console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
+//                 console.error(e)
+
+//                 if (!(await socket_is_alright_with_grace_period(socket))) {
+//                     on_socket_failure()
+//                     try_close_socket_connection(socket)
+                    
+//                     reject_socket(e) // if it has not openened yet
+//                 } else {
+//                     console.log("The socket somehow recovered from an error! Onbegrijpelijk")
+//                 }
+//             }
+//             socket.onopen = () => {
+//                 console.log("Socket opened", new Date().toLocaleTimeString())
+//                 resolve_socket(socket)
+//             }
+//             console.log("Waiting for socket to open...")
+//         })
+//     }
+
+//     var psocket = null
+//     const re
+// }
 
 const ping = async (address = "ping") => {
     const response = await fetch(address, {
