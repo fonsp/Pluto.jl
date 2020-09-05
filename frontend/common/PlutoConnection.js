@@ -339,7 +339,6 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
                 }
             }, 10000)
     
-            console.log("New WS connection!")
             console.log(ws_connection)
     
             // let's say hello
@@ -347,9 +346,15 @@ export const create_pluto_connection = async ({on_unrequested_update, on_reconne
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
     
+            console.log(connect_metadata.notebook_id)
+            console.log(u.message.notebook_exists)
+
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
-                document.location.href = "./"
+                if(confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
+                    document.location.href = "./"
+                }
+                on_connection_status(false)
                 return {}
             }
             on_connection_status(true)

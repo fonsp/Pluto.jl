@@ -557,7 +557,7 @@ nav:after {
 }
 
 body.disconnected > header > nav#at_the_top:after {
-    content: "DISCONNECTED";
+    content: "Reconnecting...";
 }
 
 body.loading > header > nav:after {
