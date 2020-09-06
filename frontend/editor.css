@@ -336,6 +336,7 @@ body > header.show_export {
 }
 
 aside#export {
+    overflow-x: hidden;
     position: absolute;
     top: -1130px;
     width: 100%;

@@ -64,18 +64,23 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         ...counter_statistics,
     }
 
-    let { message } = await client.send("get_all_notebooks")
-    statistics.numConcurrentNotebooks = message.notebooks.length
+    try {
+        let { message } = await client.send("get_all_notebooks")
+        statistics.numConcurrentNotebooks = message.notebooks.length
 
-    await fetch("ping")
-    const ticHTTP = Date.now()
-    await fetch("ping")
-    statistics.pingTimeHTTP = Date.now() - ticHTTP
+        await fetch("ping")
+        const ticHTTP = Date.now()
+        await fetch("ping")
+        statistics.pingTimeHTTP = Date.now() - ticHTTP
 
-    await client.send("get_version")
-    const ticWS = Date.now()
-    await client.send("get_version")
-    statistics.pingTimeWS = Date.now() - ticWS
+        await client.send("get_version")
+        const ticWS = Date.now()
+        await client.send("get_version")
+        statistics.pingTimeWS = Date.now() - ticWS
+    } catch (ex) {
+        console.log("Failed to measure ping times")
+        console.log(ex)
+    }
 
     return statistics
 }

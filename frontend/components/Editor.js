@@ -241,7 +241,8 @@ export class Editor extends Component {
                                 ...this.state.notebook,
                                 cells: update.message.cells.map((cell) => {
                                     const cell_data = empty_cell_data(cell.cell_id)
-                                    cell_data.running = run_all
+                                    cell_data.running = false
+                                    cell_data.queued = run_all
                                     cell_data.code_folded = true
                                     return cell_data
                                 }),
@@ -264,7 +265,7 @@ export class Editor extends Component {
                             ).then((updates) => {
                                 updates.forEach((u, i) => {
                                     const cell_data = this.state.notebook.cells[i]
-                                    if (!run_all || cell_data.running) {
+                                    if (!run_all || cell_data.running || cell_data.queued) {
                                         this.actions.update_local_cell_output(cell_data, u.message)
                                     } else {
                                         // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
@@ -393,7 +394,7 @@ export class Editor extends Component {
                 set_notebook_state((prevstate) => {
                     return {
                         cells: prevstate.cells.map((c) => {
-                            return { ...c, errored: c.errored || c.running }
+                            return { ...c, errored: c.errored || c.running || c.queued }
                         }),
                     }
                 })
@@ -451,7 +452,7 @@ export class Editor extends Component {
                 })
 
                 set_cell_state(cell_id, {
-                    running: true,
+                    queued: true,
                 }).then(() => {
                     this.actions.update_local_cell_input(cell, false, "", true)
                 })
@@ -468,7 +469,7 @@ export class Editor extends Component {
             },
             confirm_delete_multiple: (cells) => {
                 if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
-                    if (cells.some((f) => f.running)) {
+                    if (cells.some((f) => f.running || f.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cells[0].cell_id)
                         }
@@ -494,7 +495,7 @@ export class Editor extends Component {
             },
             set_and_run_multiple: (cells) => {
                 const promises = cells.map((cell) => {
-                    set_cell_state(cell.cell_id, { running: true })
+                    set_cell_state(cell.cell_id, { queued: true })
                     return this.client
                         .send(
                             "set_input",
@@ -614,7 +615,7 @@ export class Editor extends Component {
             switch (e.keyCode) {
                 case 81: // q
                     if (e.ctrlKey) {
-                        if (this.state.notebook.cells.some((c) => c.running)) {
+                        if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                             this.requests.interrupt_remote()
                         }
                         e.preventDefault()
@@ -721,7 +722,7 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
-        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running)
+        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running || cell.queued)
         if (all_completed_now && !this.all_completed) {
             this.all_completed = true
             this.all_completed_promise.resolve()
