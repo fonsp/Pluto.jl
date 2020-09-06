@@ -1403,7 +1403,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 }
 
 .cm-s-default .CodeMirror-cursor {
-    border-left: 1px solid #776e71;
+    border-left: 1.5px solid #776e71;
 }
 
 .cm-s-default span.cm-comment {
