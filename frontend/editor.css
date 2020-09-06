@@ -780,7 +780,7 @@ pluto-shoulder > button {
     position: sticky;
     top: 0px;
     margin-top: 5px;
-    margin-right: 5px;
+    margin-right: 9px;
     padding: 0px 1px;
 }
 
@@ -808,7 +808,7 @@ pluto-trafficlight {
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
     background: rgba(0, 0, 0, 0.1);
-    transition: background 0.15s ease-in-out;
+    transition: background 0.05s ease-in;
 }
 
 /* in ascending order of severity: */
@@ -820,46 +820,58 @@ pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     pluto-cell:hover > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
-        transition: background 0.05s ease-in-out;
+        transition: background 0.05s ease-in;
     }
 }
 
-@media screen and (any-pointer: coarse) {
-    pluto-cell:focus-within > pluto-trafficlight {
-        background: rgba(0, 0, 0, 0.1);
-        transition: background 0.05s ease-in-out;
-    }
+pluto-cell:focus-within > pluto-trafficlight {
+    border-left: 4px solid rgba(0, 0, 0, 0.2);
+    margin-left: -4px;
+    background-clip: content-box;
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.errored > pluto-trafficlight {
     background: hsl(0, 100%, 71%);
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.queued > pluto-trafficlight {
     background: repeating-linear-gradient(
         -45deg,
-        hsla(20, 20%, 75%, 0.6),
-        hsla(20, 20%, 75%, 0.6) 8px,
-        hsla(20, 20%, 75%, 0.06) 8px,
-        hsla(20, 20%, 75%, 0.06) 16px
+        hsla(20, 20%, 75%, 1), 
+        hsla(20, 20%, 75%, 1) 8px, 
+        hsla(20, 20%, 75%, 0.1) 8px, 
+        hsla(20, 20%, 75%, 0.1) 16px
     );
+    background-clip: content-box;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 3000s linear 0s infinite running scrollbackground;
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.running > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 70%, 1), hsla(20, 20%, 70%, 1) 8px, hsla(20, 20%, 70%, 0.1) 8px, hsla(20, 20%, 70%, 0.1) 16px);
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(20, 20%, 75%, 1), 
+        hsla(20, 20%, 75%, 1) 8px, 
+        hsla(20, 20%, 75%, 0.1) 8px, 
+        hsla(20, 20%, 75%, 0.1) 16px
+    );
+    background-clip: content-box;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
+    transition: background 0.05s ease-in;
     animation: 1500s linear 0s infinite running scrollbackground;
 }
 
@@ -871,15 +883,24 @@ pluto-cell.queued.errored > pluto-trafficlight {
         hsla(12, 71%, 47%, 0.2) 8px,
         hsla(12, 71%, 47%, 0.2) 16px
     );
+    background-clip: content-box;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 3000s linear 0s infinite running scrollbackground;
+    transition: background 0.05s ease-in;
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
+    background: repeating-linear-gradient(
+        -45deg, 
+        hsl(0, 100%, 71%), 
+        hsl(0, 100%, 71%) 8px, 
+        hsla(12, 71%, 47%, 0.33) 8px, 
+        hsla(12, 71%, 47%, 0.33) 16px
+    );
+    background-clip: content-box;
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
+    transition: background 0.05s ease-in;
     animation: 1500s linear 0s infinite running scrollbackground;
 }
 
