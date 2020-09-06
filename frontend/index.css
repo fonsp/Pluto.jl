@@ -56,7 +56,7 @@ main {
     margin-top: 20vh;
     margin-bottom: 10em;
     text-align: left;
-    font-family: JuliaMono-Latin, JuliaMono, monospace;
+    font-family: JuliaMono, monospace;
     color: hsl(0, 0%, 60%);
 }
 
@@ -111,7 +111,7 @@ pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: JuliaMono-Latin, JuliaMono, monospace !important;
+    font-family: JuliaMono, monospace !important;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -132,7 +132,7 @@ pluto-filepicker button {
     border: 2px solid #6c8489;
     color: white;
     /* border: none; */
-    font-family: JuliaMono-Latin, JuliaMono;
+    font-family: JuliaMono;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -160,7 +160,7 @@ ul.CodeMirror-hints {
 }
 
 ul.CodeMirror-hints {
-    font-family: JuliaMono-Latin, JuliaMono, monospace !important;
+    font-family: JuliaMono, monospace !important;
     font-size: 0.75em;
 }
 
