@@ -225,7 +225,8 @@ export class Editor extends Component {
         }
 
         const on_establish_connection = (client) => {
-            this.client = client
+            // nasty
+            Object.assign(this.client, client)
 
             const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] === "true"
             // on socket success

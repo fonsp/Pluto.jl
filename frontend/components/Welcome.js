@@ -126,12 +126,14 @@ export class Welcome extends Component {
 
         const on_connection_status = (val) => this.setState({ connected: val })
 
+        this.client = {}
         create_pluto_connection({
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
-        }).then(client => {
-            this.client = client
+        }).then((client) => {
+            Object.assign(this.client, client)
+
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
@@ -175,7 +177,7 @@ export class Welcome extends Component {
                             local +
                             ", the latest is " +
                             remote +
-                            ".\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update(\"Pluto\")\n\nAfterwards, exit Pluto.jl and restart julia."
+                            '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
                     )
                 }
             })

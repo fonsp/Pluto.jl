@@ -211,35 +211,36 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     background: rgba(68, 149, 28, 0.2);
-    border: 5px solid rgba(68, 149, 28, 0.4);
+    border: 5px solid rgb(158, 200, 137);
 }
 pluto-output div.admonition .admonition-title {
-    background: rgba(68, 149, 28, 0.4);
+    background: rgb(158, 200, 137);
+    margin: -1px; /* Fixes a rendering glitch in Chrome */
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
 pluto-output div.admonition.hint {
     background: rgba(50, 115, 200, 0.2);
-    border: 5px solid rgba(50, 115, 200, 0.4);
+    border: 5px solid rgb(148, 182, 226);
 }
 pluto-output div.admonition.note .admonition-title,
 pluto-output div.admonition.info .admonition-title,
 pluto-output div.admonition.hint .admonition-title {
-    background: rgba(50, 115, 200, 0.4);
+    background: rgb(148, 182, 226);
 }
 pluto-output div.admonition.warning {
     background: rgba(162, 148, 30, 0.2);
-    border: 5px solid rgba(162, 148, 30, 0.4);
+    border: 5px solid rgb(207, 199, 138);
 }
 pluto-output div.admonition.warning .admonition-title {
-    background: rgba(162, 148, 30, 0.4);
+    background: rgb(207, 199, 138);
 }
 pluto-output div.admonition.danger {
     background: rgba(200, 67, 50, 0.2);
-    border: 5px solid rgba(200, 67, 50, 0.4);
+    border: 5px solid rgb(226, 157, 148);
 }
 pluto-output div.admonition.danger .admonition-title {
-    background: rgba(200, 67, 50, 0.4);
+    background: rgb(226, 157, 148);
 }
 
 pluto-output div.admonition.hint .admonition-title ~ * {
