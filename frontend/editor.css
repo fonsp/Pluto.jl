@@ -151,7 +151,7 @@ a {
 }
 
 pluto-output code {
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75em;
 }
 
@@ -162,7 +162,7 @@ pluto-output pre {
     word-break: break-all;
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
 }
 
 pluto-output hr {
@@ -262,7 +262,7 @@ pluto-output div.footnote p.footnote-title::after {
 }
 pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75rem;
     font-weight: bold;
     margin-block-end: 0px;
@@ -297,7 +297,7 @@ pluto-output table > thead {
 
 pluto-output table > tbody td {
     font-size: 0.75rem;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
 }
 
 pluto-output table td,
@@ -376,7 +376,7 @@ div.export_title {
     transform: rotate(180deg);
 
     margin-top: 20px;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
 }
 a.export_card header {
     margin-block: 0px;
@@ -384,7 +384,7 @@ a.export_card header {
 }
 a.export_card section {
     font-size: 0.75rem;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     color: rgba(0, 0, 0, 0.5);
     font-weight: 500;
 }
@@ -465,7 +465,7 @@ nav#at_the_top > pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: JuliaMono, JuliaMono-Latin, monospace !important;
+    font-family: JuliaMono-Latin, JuliaMono, monospace !important;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -551,7 +551,7 @@ body.disconnected > header {
 }
 
 nav:after {
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     padding: 10px;
 }
 
@@ -623,7 +623,7 @@ pluto-output.inline_output {
 }
 
 pluto-output > assignee {
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75rem;
 }
 
@@ -743,7 +743,7 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: black;
-    font-family: "Segoe UI Emoji", JuliaMono, JuliaMono-Latin, monospace;
+    font-family: "Segoe UI Emoji", JuliaMono-Latin, JuliaMono, monospace;
     z-index: 3;
     /* CodeMirror is 2 */
 }
@@ -998,7 +998,7 @@ pluto-runarea > span {
     left: 22px;
     width: 45px;
 
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.6em;
     font-style: italic;
     color: hsl(353, 5%, 64%);
@@ -1099,7 +1099,7 @@ dropruler {
         padding: 15px;
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
-        font-family: JuliaMono, JuliaMono-Latin, monospace;
+        font-family: JuliaMono-Latin, JuliaMono, monospace;
         font-weight: 500;
         cursor: pointer;
         border-top-left-radius: 6px;
@@ -1149,7 +1149,7 @@ dropruler {
 footer {
     width: 100%;
     height: 3.5rem;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75rem;
     background-color: #d7dcd3;
     color: #333333;
@@ -1194,7 +1194,7 @@ footer a {
 
 footer input {
     border: 2px solid #818181;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     border-radius: 3px 0 0 3px;
     padding: 3px;
     border-right: none;
@@ -1207,7 +1207,7 @@ footer button {
     border: 2px solid #896c6c;
     color: white;
     /* border: none; */
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -1230,7 +1230,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
 
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75rem;
 
     background: white;
@@ -1318,7 +1318,7 @@ ul.CodeMirror-hints {
 
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
-    font-family: JuliaMono, JuliaMono-Latin, monospace !important;
+    font-family: JuliaMono-Latin, JuliaMono, monospace !important;
     font-size: 0.75em;
 }
 

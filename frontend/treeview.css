@@ -5,7 +5,7 @@
 
 jltree,
 jlpair {
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
     font-size: 0.75rem;
 }
 jltree {
@@ -161,7 +161,7 @@ jlerror > header > p:first-child {
 jlerror > section > ol > li > mark {
     background: #f3f2f1;
     border-radius: 6px;
-    font-family: JuliaMono, JuliaMono-Latin, monospace;
+    font-family: JuliaMono-Latin, JuliaMono, monospace;
 }
 jlerror > section > ol > li > em > a {
     background: #f5efd9;
