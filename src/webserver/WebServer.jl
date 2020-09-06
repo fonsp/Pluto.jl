@@ -50,6 +50,8 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
         end
     end
 
+    kill_server = Ref{Function}(identity)
+
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
@@ -62,6 +64,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                     if !isopen(clientstream)
                         return
                     end
+                    try
                     while !eof(clientstream)
                         # This stream contains data received over the WebSocket.
                         # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
@@ -86,8 +89,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException
-                                rethrow(ex)
-                                # TODO: this won't work, `upgrade` wraps our function in a try without catch
+                                kill_server[]()
                             elseif ex isa HTTP.WebSockets.WebSocketError
                                 # that's fine!
                             elseif ex isa InexactError
@@ -99,10 +101,18 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                             end
                         end
                     end
+                    catch ex
+                        if ex isa InterruptException
+                            kill_server[]()
+                        else
+                            bt = stacktrace(catch_backtrace())
+                            @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                        end
+                    end
                 end
             catch ex
                 if ex isa InterruptException
-                    rethrow(ex)
+                    kill_server[]()
                 elseif ex isa Base.IOError
                     # that's fine!
                 elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
@@ -154,25 +164,28 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
     
     launchbrowser && @warn "Not implemented yet"
 
-    # create blocking call:
+    kill_server[] = () -> @sync begin
+        println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+        @async close(serversocket)
+        # TODO: HTTP has a kill signal?
+        # TODO: put do_work tokens back 
+        for client in values(session.connected_clients)
+            @async close(client.stream)
+        end
+        empty!(session.connected_clients)
+        for (notebook_id, ws) in WorkspaceManager.workspaces
+            @async WorkspaceManager.unmake_workspace(ws)
+        end
+    end
+
     try
+        # create blocking call and switch the scheduler back to the server task, so that interrupts land there
         wait(servertask)
     catch e
-        if isa(e, InterruptException)
-            @sync begin
-                println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
-                @async close(serversocket)
-                # TODO: HTTP has a kill signal?
-                # TODO: put do_work tokens back 
-                empty!(session.notebooks)
-                for client in values(session.connected_clients)
-                    @async close(client.stream)
-                end
-                empty!(session.connected_clients)
-                for (notebook_id, ws) in WorkspaceManager.workspaces
-                    @async WorkspaceManager.unmake_workspace(ws)
-                end
-            end
+        if e isa InterruptException
+            kill_server[]()
+        elseif e isa TaskFailedException
+            # nice!
         else
             rethrow(e)
         end
@@ -185,6 +198,7 @@ run(port::Union{Nothing,Integer}=nothing; kwargs...) = run("127.0.0.1", port; kw
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
+    client.stream = clientstream # it might change when the same client reconnects
     
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])

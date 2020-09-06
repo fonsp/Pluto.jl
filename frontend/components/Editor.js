@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
 
-import { PlutoConnection, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_pluto_versions, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -172,15 +172,15 @@ export class Editor extends Component {
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: false,
-                                    queued: true
+                                    queued: true,
                                 })
                             }
-                            break                            
+                            break
                         case "cell_running":
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: true,
-                                    queued: false
+                                    queued: false,
                                 })
                             }
                             break
@@ -207,7 +207,7 @@ export class Editor extends Component {
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
-                            new_cell.running = false
+                            new_cell.queued = new_cell.running = false
                             new_cell.output.body = ""
                             this.actions.add_local_cell(new_cell, message.index)
                             break
@@ -224,7 +224,10 @@ export class Editor extends Component {
             }
         }
 
-        const on_establish_connection = () => {
+        const on_establish_connection = (client) => {
+            // nasty
+            Object.assign(this.client, client)
+
             const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] === "true"
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
@@ -293,67 +296,33 @@ export class Editor extends Component {
                                 this.setState({
                                     loading: false,
                                 })
-                                console.info("Workspace initialized")
+                                console.info("All cells loaded! 🚂 enjoy the ride")
                             })
                         }
                     )
                 })
                 .catch(console.error)
 
-            this.client.fetch_pluto_versions().then((versions) => {
-                const remote = versions[0]
-                const local = versions[1]
-
-                window.pluto_version = local
-
-                const base1 = (n) => "1".repeat(n)
-
-                console.log(local)
-                if (remote != local) {
-                    const rs = remote.slice(1).split(".").map(Number)
-                    const ls = local.slice(1).split(".").map(Number)
-
-                    // if the semver can't be parsed correctly, we always show it to the user
-                    if (rs.length == 3 && ls.length == 3) {
-                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
-                            if (rs.map(base1) <= ls.map(base1)) {
-                                return
-                            }
-                        }
-                    }
-                    alert(
-                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                            local +
-                            ", the latest is " +
-                            remote +
-                            ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia."
-                    )
-                }
+            fetch_pluto_versions(this.client).then((versions) => {
+                window.pluto_version = versions[1]
             })
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
 
-        // add me _before_ intializing client - it also attaches a listener to beforeunload
-        window.addEventListener("beforeunload", (event) => {
-            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
-            if (first_unsaved != null) {
-                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
-                // } else if (this.state.notebook.in_temp_dir) {
-                //     window.scrollTo(0, 0)
-                //     // TODO: focus file picker
-            } else {
-                return // and don't prevent the unload
-            }
-            console.log("preventing unload")
-            event.stopImmediatePropagation()
-            event.preventDefault()
-            event.returnValue = ""
-        })
+        const on_reconnect = () => {
+            console.warn("Reconnected! Checking states")
 
-        this.client = new PlutoConnection(on_update, on_connection_status)
-        this.client.initialize(on_establish_connection, { notebook_id: this.state.notebook.notebook_id })
+            return true
+        }
+
+        this.client = {}
+        create_pluto_connection({
+            on_unrequested_update: on_update,
+            on_connection_status: on_connection_status,
+            on_reconnect: on_reconnect,
+            connect_metadata: { notebook_id: this.state.notebook.notebook_id },
+        }).then(on_establish_connection)
 
         // these are things that can be done to the remote notebook
         this.requests = {
@@ -706,6 +675,24 @@ export class Editor extends Component {
             }
         })
 
+        window.addEventListener("beforeunload", (event) => {
+            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
+            if (first_unsaved != null) {
+                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
+                // } else if (this.state.notebook.in_temp_dir) {
+                //     window.scrollTo(0, 0)
+                //     // TODO: focus file picker
+            } else {
+                console.warn("unloading 👉 disconnecting websocket")
+                this.client.kill()
+                return // and don't prevent the unload
+            }
+            console.log("Preventing unload")
+            event.stopImmediatePropagation()
+            event.preventDefault()
+            event.returnValue = ""
+        })
+
         setTimeout(() => {
             init_feedback()
             finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
@@ -776,7 +763,6 @@ export class Editor extends Component {
                             class="export_card"
                             onClick=${(e) => {
                                 const a = e.composedPath().find((el) => el.tagName === "A")
-                                console.log(a)
                                 a.download = this.state.notebook.shortpath + ".html"
                                 a.href = URL.createObjectURL(
                                     new Blob([offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body })], {
