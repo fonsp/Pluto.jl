@@ -934,9 +934,14 @@ pluto-input > button > span {
 
 @media screen and (any-pointer: coarse) {
     pluto-cell > button,
+    pluto-cell > pluto-runarea
+    {
+        opacity: 0;
+        /* to make it feel smooth: */
+        transition: opacity 0.25s ease-in-out;
+    }
     pluto-input > button,
-    pluto-shoulder > button,
-    pluto-cell > pluto-runarea {
+    pluto-shoulder > button {
         opacity: 0.25;
     }
     pluto-cell:focus-within > button,
