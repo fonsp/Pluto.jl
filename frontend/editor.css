@@ -911,8 +911,8 @@ pluto-cell.running.errored > pluto-trafficlight {
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     transition: background 0.05s ease-in;
-    animation: 500s linear 0s infinite running scrollbackground;
-}
+    animation: 1000s linear 0s infinite running scrollbackground;
+
 
 @keyframes scrollbackground {
     0% {
