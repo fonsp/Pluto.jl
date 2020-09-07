@@ -80,6 +80,13 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
 
+	# reformat outputs if a show method is (re)defined
+	# WIP: just reformat every time.
+	for cell in new_order.runnable
+		format_single!(notebook, cell)
+		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+	end
+
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
@@ -93,6 +100,15 @@ function run_single!(notebook::Union{Notebook,WorkspaceManager.Workspace}, cell:
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
 	cell.errored = run.errored
+
+	return run
+end
+
+function format_single!(notebook::Union{Notebook,WorkspaceManager.Workspace}, cell::Cell)
+	run = WorkspaceManager.format_fetch_in_workspace(notebook, cell.cell_id, ends_with_semicolon(cell.code))
+
+	cell.output_repr = run.output_formatted[1]
+	cell.repr_mime = run.output_formatted[2]
 
 	return run
 end

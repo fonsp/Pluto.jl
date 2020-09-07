@@ -752,6 +752,26 @@ withenv("PLUTO_WORKSPACE_USE_DISTRIBUTED" => "false") do
 
             WorkspaceManager.unmake_workspace(notebook)
         end
+
+        @testset "#326 update display when `show()` methods defined" begin
+            notebook = Notebook([
+                Cell("1"),
+                Cell("""Base.show(io::IO, x::Int) = print(io, "Wat")"""),
+            ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells[1])
+            @test notebook.cells[1].output_repr == "1"
+
+            update_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[1].output_repr == "Wat"
+
+            setcode(notebook.cells[2], "")
+            update_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[1].output_repr == "1"
+
+            WorkspaceManager.unmake_workspace(notebook)
+        end
     end
 
 end

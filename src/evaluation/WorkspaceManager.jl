@@ -169,6 +169,19 @@ function eval_format_fetch_in_workspace(notebook::Union{Notebook,Workspace}, exp
     end
 end
 
+function format_fetch_in_workspace(notebook::Union{Notebook,Workspace}, cell_id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    workspace = get_workspace(notebook)
+
+    # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
+    if workspace.pid == Distributed.myid() && notebook isa Notebook
+        cd_workspace(workspace, notebook.path)
+    end
+
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    end
+end
+
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
 function eval_in_workspace(notebook::Union{Notebook,Workspace}, expr)
     workspace = get_workspace(notebook)
