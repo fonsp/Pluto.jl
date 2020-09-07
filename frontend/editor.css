@@ -934,8 +934,7 @@ pluto-input > button > span {
 
 @media screen and (any-pointer: coarse) {
     pluto-cell > button,
-    pluto-cell > pluto-runarea
-    {
+    pluto-cell > pluto-runarea {
         opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
@@ -1039,7 +1038,8 @@ pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
 }
 
-pluto-cell.running > pluto-runarea > button.runcell > span::after {
+pluto-cell.running > pluto-runarea > button.runcell > span::after,
+pluto-cell.queued > pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/stop-circle-outline.svg);
 }
 
