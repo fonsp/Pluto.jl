@@ -807,6 +807,7 @@ pluto-trafficlight {
     pointer-events: none;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
+    border-left-color: rgba(0, 0, 0, 0.1);
     background: rgba(0, 0, 0, 0.1);
     transition: background 0.05s ease-in;
 }
@@ -825,7 +826,8 @@ pluto-cell.code_folded > pluto-trafficlight {
 }
 
 pluto-cell:focus-within > pluto-trafficlight {
-    border-left: 4px solid rgba(0, 0, 0, 0.2);
+    border-left-width: 4px;
+    border-left-style: solid;
     margin-left: -4px;
     background-clip: content-box;
     transition: background 0.05s ease-in;
@@ -833,16 +835,22 @@ pluto-cell:focus-within > pluto-trafficlight {
 
 pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
+    border-left-color: rgba(40, 78, 189, 0.4);
+    background-clip: content-box;
     transition: background 0.05s ease-in;
 }
 
 pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
+    border-left-color: hsla(46, 70%, 37%, 0.68);
+    background-clip: content-box;
     transition: background 0.05s ease-in;
 }
 
 pluto-cell.errored > pluto-trafficlight {
     background: hsl(0, 100%, 71%);
+    border-left-color: hsl(0, 100%, 71%);
+    background-clip: content-box;
     transition: background 0.05s ease-in;
 }
 
@@ -858,6 +866,7 @@ pluto-cell.queued > pluto-trafficlight {
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     transition: background 0.05s ease-in;
+    animation: 3000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running > pluto-trafficlight {
@@ -872,7 +881,7 @@ pluto-cell.running > pluto-trafficlight {
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     transition: background 0.05s ease-in;
-    animation: 1500s linear 0s infinite running scrollbackground;
+    animation: 1000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.queued.errored > pluto-trafficlight {
@@ -887,6 +896,7 @@ pluto-cell.queued.errored > pluto-trafficlight {
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     transition: background 0.05s ease-in;
+    animation: 3000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
@@ -901,7 +911,7 @@ pluto-cell.running.errored > pluto-trafficlight {
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
     transition: background 0.05s ease-in;
-    animation: 1500s linear 0s infinite running scrollbackground;
+    animation: 500s linear 0s infinite running scrollbackground;
 }
 
 @keyframes scrollbackground {
