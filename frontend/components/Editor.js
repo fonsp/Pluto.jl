@@ -765,16 +765,23 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                const a = e.composedPath().find((el) => el.tagName === "A")
-                                console.log(a)
-                                a.download = this.state.notebook.shortpath + ".html"
-                                offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body }).then((blob) => {
-                                    a.download = this.state.notebook.shortpath + ".html"
-                                    a.href = URL.createObjectURL(
-                                        new Blob([blob], {
+                                const export_card = e.composedPath().find((el) => el.tagName === "A")     
+                                export_card.classList.add("export_in_progress");                                                           
+                                offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body }).then((html) => {
+                                    if (html === null) return;
+
+                                    var download_link = document.createElement('a'); 
+                                    download_link.download = this.state.notebook.shortpath + ".html"
+                                    download_link.href = URL.createObjectURL(
+                                        new Blob([html], {
                                             type: "text/html",
                                         })
                                     )
+                                    document.body.appendChild(download_link);               
+                                    download_link.click();                                   
+                                    document.body.removeChild(download_link); 
+                                }).finally(() => {
+                                    export_card.classList.remove("export_in_progress");                                                                                           
                                 });
                             }}
                         >

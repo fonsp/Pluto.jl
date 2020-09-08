@@ -3,12 +3,11 @@ const CDNified = (version, file) => `https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@
 export const offline_html = ({ pluto_version, body, head }) => {
     
     Array.from(body.querySelectorAll(".CodeMirror-sizer")).forEach((s) => (s.style.minHeight = "24px"))
-    console.log('offline_html ', body);
 
-    var promises = [];
+    var blob_to_base64_promises = [];
     Array.from(body.querySelectorAll("img")).forEach((img) => {
         if (img.src.match(/^blob:/)) {            
-            promises.push(new Promise((resolve) => {
+            blob_to_base64_promises.push(new Promise((resolve) => {
                 var xhr = new XMLHttpRequest();
                 xhr.responseType = 'blob';   
             
@@ -28,7 +27,7 @@ export const offline_html = ({ pluto_version, body, head }) => {
         }
     });
 
-    return Promise.all(promises).then(() => {
+    return Promise.all(blob_to_base64_promises).then(() => {
         return `<!DOCTYPE html>
             <html lang="en">
             <head>
@@ -50,5 +49,12 @@ export const offline_html = ({ pluto_version, body, head }) => {
                 ${body.querySelector("svg#MJX-SVG-global-cache").outerHTML}
             </body>
         </html>`
+    }).catch((error) => {
+        let message =
+        "Whoops, failed to export to HTML 😢\nWe would really like to hear from you! Please go to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
+        console.error(message)
+        console.error(error)
+        alert(message + error)
+        return null;
     })
 }
