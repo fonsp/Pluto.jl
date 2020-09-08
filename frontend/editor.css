@@ -322,6 +322,10 @@ body > header {
     background-color: white;
     transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
+
+    font-family: JuliaMono, monospace;
+    font-weight: 400;
+    font-size: 0.75rem;
 }
 
 body.loading > header {
@@ -376,15 +380,15 @@ div.export_title {
     transform: rotate(180deg);
 
     margin-top: 20px;
-    font-family: JuliaMono, monospace;
+    font-weight: 700;
+    font-size: 1rem;
 }
 a.export_card header {
     margin-block: 0px;
     font-family: "Vollkorn", sans;
+    font-size: 1rem;
 }
 a.export_card section {
-    font-size: 0.75rem;
-    font-family: JuliaMono, monospace;
     color: rgba(0, 0, 0, 0.5);
     font-weight: 500;
 }
@@ -466,7 +470,7 @@ nav#at_the_top > pluto-filepicker .CodeMirror {
     font-style: normal;
     font-weight: 500;
     font-family: JuliaMono, monospace !important;
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     letter-spacing: 1px;
     background: none;
     border: 2px solid #818181;
@@ -551,7 +555,8 @@ body.disconnected > header {
 }
 
 nav:after {
-    font-family: JuliaMono, monospace;
+    font-size: 1rem;
+    font-weight: 500;
     padding: 10px;
 }
 
@@ -1100,7 +1105,7 @@ dropruler {
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
         font-family: JuliaMono, monospace;
-        font-weight: 500;
+        font-weight: 700;
         cursor: pointer;
         border-top-left-radius: 6px;
         border-top-right-radius: 6px;
@@ -1194,7 +1199,8 @@ footer a {
 
 footer input {
     border: 2px solid #818181;
-    font-family: JuliaMono, monospace;
+    font-family: inherit;
+    font-size: inherit;
     border-radius: 3px 0 0 3px;
     padding: 3px;
     border-right: none;
@@ -1361,7 +1367,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 }
 
 .cm-s-default .CodeMirror-linenumber {
-    color: #8d8687;
+    color: #8d86875e;
 }
 
 .cm-s-default .CodeMirror-linenumber::before {
