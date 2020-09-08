@@ -211,35 +211,36 @@ pluto-output div.admonition .admonition-title ~ * {
 
 pluto-output div.admonition {
     background: rgba(68, 149, 28, 0.2);
-    border: 5px solid rgba(68, 149, 28, 0.4);
+    border: 5px solid rgb(158, 200, 137);
 }
 pluto-output div.admonition .admonition-title {
-    background: rgba(68, 149, 28, 0.4);
+    background: rgb(158, 200, 137);
+    margin: -1px; /* Fixes a rendering glitch in Chrome */
 }
 pluto-output div.admonition.note,
 pluto-output div.admonition.info,
 pluto-output div.admonition.hint {
     background: rgba(50, 115, 200, 0.2);
-    border: 5px solid rgba(50, 115, 200, 0.4);
+    border: 5px solid rgb(148, 182, 226);
 }
 pluto-output div.admonition.note .admonition-title,
 pluto-output div.admonition.info .admonition-title,
 pluto-output div.admonition.hint .admonition-title {
-    background: rgba(50, 115, 200, 0.4);
+    background: rgb(148, 182, 226);
 }
 pluto-output div.admonition.warning {
     background: rgba(162, 148, 30, 0.2);
-    border: 5px solid rgba(162, 148, 30, 0.4);
+    border: 5px solid rgb(207, 199, 138);
 }
 pluto-output div.admonition.warning .admonition-title {
-    background: rgba(162, 148, 30, 0.4);
+    background: rgb(207, 199, 138);
 }
 pluto-output div.admonition.danger {
     background: rgba(200, 67, 50, 0.2);
-    border: 5px solid rgba(200, 67, 50, 0.4);
+    border: 5px solid rgb(226, 157, 148);
 }
 pluto-output div.admonition.danger .admonition-title {
-    background: rgba(200, 67, 50, 0.4);
+    background: rgb(226, 157, 148);
 }
 
 pluto-output div.admonition.hint .admonition-title ~ * {
@@ -335,6 +336,7 @@ body > header.show_export {
 }
 
 aside#export {
+    overflow-x: hidden;
     position: absolute;
     top: -1130px;
     width: 100%;
@@ -557,7 +559,7 @@ nav:after {
 }
 
 body.disconnected > header > nav#at_the_top:after {
-    content: "DISCONNECTED";
+    content: "Reconnecting...";
 }
 
 body.loading > header > nav:after {
@@ -842,18 +844,44 @@ pluto-cell.errored > pluto-trafficlight {
     background: hsl(0, 100%, 71%);
 }
 
-pluto-cell.running > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 80%, 1), hsla(20, 20%, 80%, 1) 8px, hsla(20, 20%, 80%, 0.1) 8px, hsla(20, 20%, 80%, 0.1) 16px);
+pluto-cell.queued > pluto-trafficlight {
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(20, 20%, 75%, 0.6),
+        hsla(20, 20%, 75%, 0.6) 8px,
+        hsla(20, 20%, 75%, 0.06) 8px,
+        hsla(20, 20%, 75%, 0.06) 16px
+    );
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 2000s linear 0s infinite running scrollbackground;
+    animation: 3000s linear 0s infinite running scrollbackground;
+}
+
+pluto-cell.running > pluto-trafficlight {
+    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 70%, 1), hsla(20, 20%, 70%, 1) 8px, hsla(20, 20%, 70%, 0.1) 8px, hsla(20, 20%, 70%, 0.1) 16px);
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
+    animation: 1500s linear 0s infinite running scrollbackground;
+}
+
+pluto-cell.queued.errored > pluto-trafficlight {
+    background: repeating-linear-gradient(
+        -45deg,
+        hsla(0, 100%, 71%, 0.7),
+        hsla(0, 100%, 71%, 0.7) 8px,
+        hsla(12, 71%, 47%, 0.2) 8px,
+        hsla(12, 71%, 47%, 0.2) 16px
+    );
+    background-size: 4px 22.62741699797px;
+    /* 16 * sqrt(2) */
+    animation: 3000s linear 0s infinite running scrollbackground;
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
     background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
     background-size: 4px 22.62741699797px;
     /* 16 * sqrt(2) */
-    animation: 2000s linear 0s infinite running scrollbackground;
+    animation: 1500s linear 0s infinite running scrollbackground;
 }
 
 @keyframes scrollbackground {
@@ -906,12 +934,14 @@ pluto-input > button > span {
 
 @media screen and (any-pointer: coarse) {
     pluto-cell > button,
-    pluto-input > button,
-    pluto-shoulder > button,
     pluto-cell > pluto-runarea {
         opacity: 0;
         /* to make it feel smooth: */
         transition: opacity 0.25s ease-in-out;
+    }
+    pluto-input > button,
+    pluto-shoulder > button {
+        opacity: 0.25;
     }
     pluto-cell:focus-within > button,
     pluto-cell:focus-within > pluto-input > button,
@@ -1008,7 +1038,8 @@ pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
 }
 
-pluto-cell.running > pluto-runarea > button.runcell > span::after {
+pluto-cell.running > pluto-runarea > button.runcell > span::after,
+pluto-cell.queued > pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/stop-circle-outline.svg);
 }
 

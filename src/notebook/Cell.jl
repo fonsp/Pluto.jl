@@ -12,6 +12,7 @@ mutable struct Cell
     errored::Bool
     runtime::Union{Missing,UInt64}
     code_folded::Bool
+    queued::Bool
     running::Bool
     
     parsedcode::Union{Nothing,Expr}
@@ -19,6 +20,6 @@ mutable struct Cell
     rootassignee::Union{Nothing,Symbol}
 end
 
-Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, Set{Expr}(), nothing)
+Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, false, nothing, Set{Expr}(), nothing)
 Cell(code) = Cell(uuid1(), code)
 Cell() = Cell("")

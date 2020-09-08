@@ -2,7 +2,8 @@
 
 /*  */
 
-jltree {
+jltree,
+jlpair {
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
 }
@@ -81,11 +82,13 @@ jltree jlarray::after {
     content: "]";
 }
 
+jltree jlarray.Tuple::before,
 jltree jldict::before,
 jltree jlstruct::before {
     content: "(";
 }
 
+jltree jlarray.Tuple::after,
 jltree jldict::after,
 jltree jlstruct::after {
     content: ")";
@@ -97,10 +100,12 @@ jltree jlarray > r > k::after {
     content: ":";
 }
 
+jlpair > r > k::after,
 jltree jldict > r > k::after {
     content: " => ";
 }
 
+jltree jldict.NamedTuple > r > k::after,
 jltree jlstruct > r > k::after {
     content: " = ";
 }

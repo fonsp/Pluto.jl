@@ -70,9 +70,6 @@ export class FilePicker extends Component {
             }
         )
 
-        // YAY (dit kan weg als Editor ook een react component is)
-        window.filePickerCodeMirror = this.cm
-
         this.cm.setOption("extraKeys", {
             "Ctrl-Enter": this.on_submit,
             "Ctrl-Shift-Enter": this.on_submit,
@@ -131,6 +128,7 @@ export class FilePicker extends Component {
         }
     }
 }
+
 const pathhints = (cm, options) => {
     const cursor = cm.getCursor()
     const oldLine = cm.getLine(cursor.line)

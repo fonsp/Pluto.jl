@@ -3,7 +3,7 @@
 var CACHE_NAME = "pluto-cache-v1"
 
 self.addEventListener("install", function (event) {
-    console.log("hello from sw")
+    console.log("Hello from service worker 👋")
     // Perform install steps
     event.waitUntil(
         caches.open(CACHE_NAME).then(function (cache) {

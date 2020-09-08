@@ -19,6 +19,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {CodeState} remote_code
  * @property {CodeState} local_code
  * @property {boolean} code_folded
+ * @property {boolean} queued
  * @property {boolean} running
  * @property {?number} runtime
  * @property {boolean} errored
@@ -43,7 +44,8 @@ export const empty_cell_data = (cell_id) => {
             body: "",
         },
         code_folded: false,
-        running: true,
+        queued: true,
+        running: false,
         runtime: null,
         errored: false,
         output: {
@@ -68,6 +70,7 @@ export const Cell = ({
     remote_code,
     local_code,
     code_folded,
+    queued,
     running,
     runtime,
     errored,
@@ -110,6 +113,7 @@ export const Cell = ({
     return html`
         <pluto-cell
             class=${cl({
+                queued: queued,
                 running: running,
                 errored: errored,
                 selected: selected,
@@ -174,7 +178,7 @@ export const Cell = ({
             />
             <${RunArea}
                 onClick=${() => {
-                    if (running) {
+                    if (running || queued) {
                         requests.interrupt_remote(cell_id)
                     } else {
                         const friends = selected_friends(cell_id)
