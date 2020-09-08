@@ -1,5 +1,5 @@
 using Test
-import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession
+import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
@@ -30,4 +30,6 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession
 
         @test notebookB.cells[1].errored == true
     end
+
+
 end

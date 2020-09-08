@@ -393,7 +393,7 @@ istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, eltype(x) |> nameof)
+    print(io, eltype(x) |> trynameof)
     print(io, "<jlarray>")
     if length(x) <= tree_display_limit
         show_array_row.([io], zip(eachindex(x), x))
@@ -422,7 +422,7 @@ end
 
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any, <:Any})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, typeof(x) |> nameof)
+    print(io, typeof(x) |> trynameof)
     print(io, "<jldict>")
     row_index = 1
     for pair in x
@@ -483,6 +483,9 @@ function show_struct(io::IO, @nospecialize(x))
         Base.show_default(io, x)
     end
 end
+
+trynameof(x::DataType) = nameof(x)
+trynameof(x::Any) = Symbol()
 
 ###
 # JSON SERIALIZER
