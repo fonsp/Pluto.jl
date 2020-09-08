@@ -4,3 +4,5 @@
 precompile.jl
 build
 Manifest.toml
+
+e2e/node_modules
