@@ -768,11 +768,14 @@ export class Editor extends Component {
                                 const a = e.composedPath().find((el) => el.tagName === "A")
                                 console.log(a)
                                 a.download = this.state.notebook.shortpath + ".html"
-                                a.href = URL.createObjectURL(
-                                    new Blob([offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body })], {
-                                        type: "text/html",
-                                    })
-                                )
+                                offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body }).then((blob) => {
+                                    a.download = this.state.notebook.shortpath + ".html"
+                                    a.href = URL.createObjectURL(
+                                        new Blob([blob], {
+                                            type: "text/html",
+                                        })
+                                    )
+                                });
                             }}
                         >
                             <header>${circle("#E86F51")} Static HTML</header>
