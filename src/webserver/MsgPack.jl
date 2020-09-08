@@ -4,7 +4,7 @@
 import UUIDs: UUID
 import MsgPack
 
-# MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
+# MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we write these ourselves:
 MsgPack.msgpack_type(m::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(u::Type{UUID}) = MsgPack.StringType()
 MsgPack.to_msgpack(::MsgPack.StringType, m::MIME) = string(m)

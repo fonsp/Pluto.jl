@@ -1,11 +1,8 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.11.12
 
 using Markdown
 using InteractiveUtils
-
-# ╔═╡ a0f0ae42-9ad8-11ea-2475-a735df64aa28
-using Plots
 
 # ╔═╡ 7b93882c-9ad8-11ea-0288-0941e163f9d5
 md"""
@@ -15,8 +12,38 @@ Pluto is an excellent enviroment to visualise your data. This notebook shows a f
 
 I wrote this notebook so you can understand it even if you have never used `Plots`. However, it is not intend as a complete tutorial for the package. If you want to start making your own plots, I recommend looking at the package [documentation](https://docs.juliaplots.org/latest/) for a full tutorial as well.
 
-Let's start by importing the `Plots` package. You can just put a cell like this anywhere in your notebook.
+Let's start by importing the `Plots` package. We do this in a special way, which guarantees that anyone who opens the notebook can use the package.
 """
+
+# ╔═╡ d889e13e-f0ff-11ea-3306-57491904d83f
+md"_First, we set up a clean package environment:_"
+
+# ╔═╡ aefb6004-f0ff-11ea-10c9-c504c7aa9fe5
+begin
+	import Pkg
+	Pkg.activate(mktempdir())
+end
+
+# ╔═╡ a0f0ae42-9ad8-11ea-2475-a735df64aa28
+begin
+	Pkg.add("Plots")
+	using Plots
+end
+
+# ╔═╡ e48a0e78-f0ff-11ea-2852-2f4eee1a7d2d
+md"_Next, we add the `Plots` package to our environment, and we import it._"
+
+# ╔═╡ a9a3c640-f100-11ea-2e86-5f0e81a37ebd
+md"You can just put a cell like this anywhere in your notebook, if you want to add+import more packages."
+
+# ╔═╡ c042d3d2-f100-11ea-3833-af1f19afd400
+md"(If you already had Plots installed, then this will just use the globally installed version! Neat)"
+
+# ╔═╡ e5abaf40-f105-11ea-1494-2da858d7db5b
+md"We need to choose a _backend_ for Plots.jl. We choose `plotly` because it works with no additional dependencies. You can [read more about backends](http://docs.juliaplots.org/latest/backends/#backends) in Plots.jl - it's one of its coolest features!"
+
+# ╔═╡ 9414a092-f105-11ea-10cd-23f84e47d876
+plotly()
 
 # ╔═╡ 5ae65950-9ad9-11ea-2e14-35119d369acd
 md"""
@@ -44,7 +71,7 @@ You can change the properties of the plot by giving different arguments to the f
 """
 
 # ╔═╡ 5410faba-9ada-11ea-2fc5-35f0bdd40d96
-plot(years, apples, legend = false, title = "Number of apples per year")
+plot(years, apples, legend=false, title="Number of apples per year")
 
 # ╔═╡ 90c47cae-9ada-11ea-10da-91f4dcf0f2d6
 md"""
@@ -54,8 +81,8 @@ Alternatively, you can use `plot!()`. This function takes the same arguments, bu
 # ╔═╡ b2727d2e-9ada-11ea-23d3-bddab9ec8de1
 begin
 	plot(years, apples)
-	plot!(legend = false)
-	plot!(title =  "Number of apples per year")
+	plot!(legend=false)
+	plot!(title="Number of apples per year")
 end
 
 # ╔═╡ eb218bea-9adc-11ea-2f3a-298c41caf8a1
@@ -70,8 +97,8 @@ oranges = rand(1:100, 10)
 
 # ╔═╡ dc50d480-9add-11ea-2821-018a98fab262
 begin
-	plot(years, apples, label = "apples")
-	plot!(years, oranges, label = "oranges")
+	plot(years, apples, label="apples")
+	plot!(years, oranges, label="oranges")
 end
 
 # ╔═╡ c9a64e98-9b67-11ea-1d6a-3b1f7548cb8d
@@ -80,7 +107,7 @@ Different plot types have their own functions.
 """
 
 # ╔═╡ 13428812-9ade-11ea-3865-1d293993203d
-scatter(apples, oranges, legend = false)
+scatter(apples, oranges, legend=false)
 
 # ╔═╡ d76fd0f6-9b67-11ea-0a73-e9ddb60ca291
 md"""
@@ -90,11 +117,11 @@ You can also plot a function instead of an output array!
 # ╔═╡ 69fa7744-9b67-11ea-26df-3b4446dfb3ea
 begin
 	function myfunction(x)
-		return sin(x/2)
+		return sin(x / 2)
 	end
 	
-	plot(years, sin, label = "sine")
-	plot!(years, myfunction, label = "my function")
+	plot(years, sin, label="sine")
+	plot!(years, myfunction, label="my function")
 end
 
 # ╔═╡ af31a428-9adf-11ea-280a-45e2b891c4f9
@@ -106,11 +133,11 @@ Plots are also just a type of variable, so you can give them a name.
 
 # ╔═╡ 5ed7c444-9adf-11ea-2925-8573f018e820
 apples_plot = plot(years, apples, 
-	legend = false, xlabel = "year", ylabel = "apples")
+	legend=false, xlabel="year", ylabel="apples")
 
 # ╔═╡ 932b6b3c-a64d-11ea-2aba-2bf577ce3cf8
 apples_vs_oranges = scatter(apples, oranges, 
-	legend = false, xlabel = "apples", ylabel = "oranges")
+	legend=false, xlabel="apples", ylabel="oranges")
 
 # ╔═╡ 030c1d10-9b69-11ea-11b7-ff04c60892b9
 md"""
@@ -137,7 +164,7 @@ bananas = rand(1:100, 10)
 fruits = hcat(apples, oranges, pears, bananas)
 
 # ╔═╡ 69e045b0-9ade-11ea-0c55-05fa0da5893c
-plot(years, fruits, layout = (4,1), legend = false)
+plot(years, fruits, layout=(4, 1), legend=false)
 
 # ╔═╡ 054e0c4e-9adf-11ea-3deb-4daf2b6a2548
 md"""
@@ -145,7 +172,7 @@ This works when we have a nice output matrix. For more complicated options, name
 """
 
 # ╔═╡ 91b4eedc-9adf-11ea-37aa-250ceec26640
-plot(apples_plot, apples_vs_oranges, layout = (1, 2))
+plot(apples_plot, apples_vs_oranges, layout=(1, 2))
 
 # ╔═╡ a7abf64e-9adb-11ea-2ae4-47886125fe60
 md"""
@@ -159,7 +186,7 @@ For the sake of demonstration, here is what happens if you use `plot!()` in its 
 """
 
 # ╔═╡ 2617a7b6-9ae2-11ea-1461-d914c7cfdb09
-pears_plot = plot(years, pears, label = "pears")
+pears_plot = plot(years, pears, label="pears")
 
 # ╔═╡ 46388876-9ae2-11ea-2c5f-073698e45d44
 md"""
@@ -169,7 +196,7 @@ Maybe that's not so bad. It seems like we could use this to build a plot one ste
 """
 
 # ╔═╡ 2598a29a-9ae2-11ea-02cc-21f3fa5a9472
-plot!(pears_plot, years, bananas, label = "bananas")
+plot!(pears_plot, years, bananas, label="bananas")
 
 # ╔═╡ a9cdba00-9ae2-11ea-3bf9-41d07e7a785f
 md"""
@@ -185,7 +212,7 @@ So what if you do want to add things to a plot one at a time, instead of using a
 
 # ╔═╡ 8819edf0-9ae4-11ea-15f4-f17e9e9db8ea
 function plot_pears()
-	myplot = plot(years, pears, label = "pears")
+	myplot = plot(years, pears, label="pears")
 	return myplot
 end
 
@@ -195,7 +222,7 @@ plot_pears()
 # ╔═╡ a7906786-9ae4-11ea-0175-4f860c05a8a2
 begin
 	plot_pears()
-	plot!(years, bananas, label = "bananas")
+	plot!(years, bananas, label="bananas")
 end
 
 # ╔═╡ d3cbc548-9ae4-11ea-261f-7fb956839e53
@@ -205,7 +232,14 @@ Try changing the function for the base plot, or the addition in the bottom cell.
 
 # ╔═╡ Cell order:
 # ╟─7b93882c-9ad8-11ea-0288-0941e163f9d5
+# ╟─d889e13e-f0ff-11ea-3306-57491904d83f
+# ╠═aefb6004-f0ff-11ea-10c9-c504c7aa9fe5
+# ╟─e48a0e78-f0ff-11ea-2852-2f4eee1a7d2d
 # ╠═a0f0ae42-9ad8-11ea-2475-a735df64aa28
+# ╟─a9a3c640-f100-11ea-2e86-5f0e81a37ebd
+# ╟─c042d3d2-f100-11ea-3833-af1f19afd400
+# ╟─e5abaf40-f105-11ea-1494-2da858d7db5b
+# ╠═9414a092-f105-11ea-10cd-23f84e47d876
 # ╟─5ae65950-9ad9-11ea-2e14-35119d369acd
 # ╠═aaa805d4-9ad8-11ea-21c2-3b20580fea0e
 # ╠═c02bc44a-9ad8-11ea-117d-3997e1f3cab0

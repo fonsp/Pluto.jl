@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
 
-import { PlutoConnection, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_pluto_versions, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -91,9 +91,10 @@ export class Editor extends Component {
                     }
                 })
             },
-            update_local_cell_output: (cell, { output, running, runtime, errored }) => {
+            update_local_cell_output: (cell, { output, queued, running, runtime, errored }) => {
                 this.counter_statistics.numRuns++
                 return set_cell_state(cell.cell_id, {
+                    queued: queued,
                     running: running,
                     runtime: runtime,
                     errored: errored,
@@ -167,10 +168,19 @@ export class Editor extends Component {
                                 this.actions.update_local_cell_output(cell, message)
                             }
                             break
+                        case "cell_queued":
+                            if (cell != null) {
+                                set_cell_state(update.cell_id, {
+                                    running: false,
+                                    queued: true,
+                                })
+                            }
+                            break
                         case "cell_running":
                             if (cell != null) {
                                 set_cell_state(update.cell_id, {
                                     running: true,
+                                    queued: false,
                                 })
                             }
                             break
@@ -197,7 +207,7 @@ export class Editor extends Component {
                             break
                         case "cell_added":
                             const new_cell = empty_cell_data(update.cell_id)
-                            new_cell.running = false
+                            new_cell.queued = new_cell.running = false
                             new_cell.output.body = ""
                             this.actions.add_local_cell(new_cell, message.index)
                             break
@@ -213,8 +223,12 @@ export class Editor extends Component {
                 }
             }
         }
+        this.on_update = on_update
 
-        const on_establish_connection = () => {
+        const on_establish_connection = (client) => {
+            // nasty
+            Object.assign(this.client, client)
+
             const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] === "true"
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
@@ -228,7 +242,8 @@ export class Editor extends Component {
                                 ...this.state.notebook,
                                 cells: update.message.cells.map((cell) => {
                                     const cell_data = empty_cell_data(cell.cell_id)
-                                    cell_data.running = run_all
+                                    cell_data.running = false
+                                    cell_data.queued = run_all
                                     cell_data.code_folded = true
                                     return cell_data
                                 }),
@@ -251,7 +266,7 @@ export class Editor extends Component {
                             ).then((updates) => {
                                 updates.forEach((u, i) => {
                                     const cell_data = this.state.notebook.cells[i]
-                                    if (!run_all || cell_data.running) {
+                                    if (!run_all || cell_data.running || cell_data.queued) {
                                         this.actions.update_local_cell_output(cell_data, u.message)
                                     } else {
                                         // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
@@ -283,67 +298,33 @@ export class Editor extends Component {
                                 this.setState({
                                     loading: false,
                                 })
-                                console.info("Workspace initialized")
+                                console.info("All cells loaded! 🚂 enjoy the ride")
                             })
                         }
                     )
                 })
                 .catch(console.error)
 
-            this.client.fetch_pluto_versions().then((versions) => {
-                const remote = versions[0]
-                const local = versions[1]
-
-                window.pluto_version = local
-
-                const base1 = (n) => "1".repeat(n)
-
-                console.log(local)
-                if (remote != local) {
-                    const rs = remote.slice(1).split(".").map(Number)
-                    const ls = local.slice(1).split(".").map(Number)
-
-                    // if the semver can't be parsed correctly, we always show it to the user
-                    if (rs.length == 3 && ls.length == 3) {
-                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
-                            if (rs.map(base1) <= ls.map(base1)) {
-                                return
-                            }
-                        }
-                    }
-                    alert(
-                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                            local +
-                            ", the latest is " +
-                            remote +
-                            ".\n\nYou can update Pluto.jl using the julia package manager.\nAfterwards, exit Pluto.jl and restart julia."
-                    )
-                }
+            fetch_pluto_versions(this.client).then((versions) => {
+                window.pluto_version = versions[1]
             })
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
 
-        // add me _before_ intializing client - it also attaches a listener to beforeunload
-        window.addEventListener("beforeunload", (event) => {
-            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
-            if (first_unsaved != null) {
-                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
-                // } else if (this.state.notebook.in_temp_dir) {
-                //     window.scrollTo(0, 0)
-                //     // TODO: focus file picker
-            } else {
-                return // and don't prevent the unload
-            }
-            console.log("preventing unload")
-            event.stopImmediatePropagation()
-            event.preventDefault()
-            event.returnValue = ""
-        })
+        const on_reconnect = () => {
+            console.warn("Reconnected! Checking states")
 
-        this.client = new PlutoConnection(on_update, on_connection_status)
-        this.client.initialize(on_establish_connection, { notebook_id: this.state.notebook.notebook_id })
+            return true
+        }
+
+        this.client = {}
+        create_pluto_connection({
+            on_unrequested_update: on_update,
+            on_connection_status: on_connection_status,
+            on_reconnect: on_reconnect,
+            connect_metadata: { notebook_id: this.state.notebook.notebook_id },
+        }).then(on_establish_connection)
 
         // these are things that can be done to the remote notebook
         this.requests = {
@@ -382,7 +363,7 @@ export class Editor extends Component {
                         new_ids.push(cell_id)
                     } else {
                         const update = await this.requests.add_remote_cell_at(index + i, true)
-                        this.client.on_update(update, true)
+                        on_update(update, true)
                         new_ids.push(update.cell_id)
                     }
                 }
@@ -414,7 +395,7 @@ export class Editor extends Component {
                 set_notebook_state((prevstate) => {
                     return {
                         cells: prevstate.cells.map((c) => {
-                            return { ...c, errored: c.errored || c.running }
+                            return { ...c, errored: c.errored || c.running || c.queued }
                         }),
                     }
                 })
@@ -472,7 +453,7 @@ export class Editor extends Component {
                 })
 
                 set_cell_state(cell_id, {
-                    running: true,
+                    queued: true,
                 }).then(() => {
                     this.actions.update_local_cell_input(cell, false, "", true)
                 })
@@ -489,7 +470,7 @@ export class Editor extends Component {
             },
             confirm_delete_multiple: (cells) => {
                 if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
-                    if (cells.some((f) => f.running)) {
+                    if (cells.some((f) => f.running || f.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cells[0].cell_id)
                         }
@@ -515,7 +496,7 @@ export class Editor extends Component {
             },
             set_and_run_multiple: (cells) => {
                 const promises = cells.map((cell) => {
-                    set_cell_state(cell.cell_id, { running: true })
+                    set_cell_state(cell.cell_id, { queued: true })
                     return this.client
                         .send(
                             "set_input",
@@ -635,7 +616,7 @@ export class Editor extends Component {
             switch (e.keyCode) {
                 case 81: // q
                     if (e.ctrlKey) {
-                        if (this.state.notebook.cells.some((c) => c.running)) {
+                        if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                             this.requests.interrupt_remote()
                         }
                         e.preventDefault()
@@ -696,6 +677,24 @@ export class Editor extends Component {
             }
         })
 
+        window.addEventListener("beforeunload", (event) => {
+            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
+            if (first_unsaved != null) {
+                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
+                // } else if (this.state.notebook.in_temp_dir) {
+                //     window.scrollTo(0, 0)
+                //     // TODO: focus file picker
+            } else {
+                console.warn("unloading 👉 disconnecting websocket")
+                this.client.kill()
+                return // and don't prevent the unload
+            }
+            console.log("Preventing unload")
+            event.stopImmediatePropagation()
+            event.preventDefault()
+            event.returnValue = ""
+        })
+
         setTimeout(() => {
             init_feedback()
             finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
@@ -724,7 +723,7 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
-        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running)
+        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running || cell.queued)
         if (all_completed_now && !this.all_completed) {
             this.all_completed = true
             this.all_completed_promise.resolve()
@@ -912,7 +911,7 @@ export class Editor extends Component {
                 recently_deleted=${this.state.recently_deleted}
                 on_click=${() => {
                     this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
-                        this.client.on_update(update, true)
+                        this.on_update(update, true)
                         this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false).then(() => {
                             this.requests.change_remote_cell(update.cell_id, this.state.recently_deleted.body)
                         })

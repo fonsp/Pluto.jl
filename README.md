@@ -1,3 +1,5 @@
+> _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://mitmath.github.io/18S191/Fall20/), fall 2020.
+<br>
 <p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
@@ -11,7 +13,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 
 -   **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
 -   **_lightweight_** - Pluto is written in pure Julia and is easy to install.
--   **_simple_** - no hidden workspace state; intuitive UI.
+-   **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
 <p align="center"><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
@@ -77,6 +79,8 @@ For one tasty notebook 🥞 you will need:
 
 ### Installation
 
+<p align="center"><a href="https://www.youtube.com/watch?v=OOjKEgbt8AI">🎈 How to install <b>Julia & Pluto</b> (6 min) 🎈</a></p>
+
 Run Julia and add the package:
 
 ```julia
@@ -97,7 +101,7 @@ Then go to [`http://localhost:1234/`](http://localhost:1234/) to start coding!
 
 ### To developers
 
-Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/dev_instructions.md) to start working on the package.
+Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/CONTRIBUTING.md) to start working on the package.
 
 <img src="https://raw.githubusercontent.com/gist/fonsp/9a36c183e2cad7c8fc30290ec95eb104/raw/ca3a38a61f95cd58d79d00b663a3c114d21e284e/cute.svg">
 
@@ -119,7 +123,7 @@ Pluto.jl is built by gluing together open source software:
 
 Your notebook files are _yours_, you do not need to credit us. Have fun!
 
-## Note
+## From the authors
 
 We are happy to say that Pluto.jl runs smoothly for most users, and is **ready to be used in your next project**!
 

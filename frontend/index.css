@@ -203,3 +203,30 @@ body.nosessions ul#new ~ * {
 #recent li.transitioning button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
 }
+
+loading-bar {
+    height: 6px;
+    width: 100vw;
+    background-color: #b1c9dd;
+    position: fixed;
+    top: 0px;
+    display: none;
+}
+
+body.loading loading-bar {
+    animation: 10s ease-in-out load;
+    display: block;
+}
+
+@keyframes load {
+    0% {
+        right: 100vw;
+    }
+    20% {
+        right: 30vw;
+    }
+
+    100% {
+        right: 0vw;
+    }
+}

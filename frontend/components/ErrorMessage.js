@@ -40,7 +40,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
         {
             pattern: /syntax: extra token after end of expression/,
             display: (x) => {
-                console.log(x)
                 const begin_hint = html`<a
                     href="#"
                     onClick=${(e) => {
@@ -51,7 +50,6 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
                 >`
                 if (x.includes("\n\nBoundaries: ")) {
                     const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index
-                    console.log(boundaries)
                     const split_hint = html`<p>
                         <a
                             href="#"
@@ -97,9 +95,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
     const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg))
 
     return html`<jlerror>
-        <header>
-            ${matched_rewriter.display(msg)}
-        </header>
+        <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0
             ? null
             : html`<section>
