@@ -26,14 +26,20 @@ end
 # SERVER
 ###
 
-struct ServerSession
-    connected_clients::Dict{Symbol,ClientSession}
-    notebooks::Dict{UUID,Notebook}
-    secret::UUID
+"""
+The `ServerSession` keeps track of:
+
+- `connected_clients`: connected (web) clients
+- `notebooks`: running notebooks
+- `secret`: the web acces token
+- `default_environment_path`: specifiy the project/package environment to start new notebooks in. Set to `nothing` to default to the global environment.
+"""
+Base.@kwdef struct ServerSession
+    connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
+    notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
+    secret::UUID = uuid1()
+    default_environment_path::Union{Nothing,AbstractString} = nothing
 end
-
-ServerSession() = ServerSession(Dict{Symbol,ClientSession}(), Dict{UUID,Notebook}(), uuid1())
-
 
 ###
 # UPDATE MESSAGE

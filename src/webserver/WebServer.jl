@@ -37,20 +37,17 @@ Start Pluto! Are you excited? I am!
 ## Kwargs
 
 - `launchbrowser`: launch browser directly. (not implemented yet)
-- `session`: specifiy the Pluto session to run.
-- `project`: specifiy the project environment to start with.
+- `session`: specifiy the `Pluto.ServerSession` to run the web server on.
+- `security`: specifiy the `Pluto.ServerSecurity` options for the web server.
+
+Different configurations are possible by creating a custom [`ServerSession`](@ref) or [`ServerSecurity`](@ref) object. Have a look at their documentation.
 
 ## Technobabble
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
 Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), security=ServerSecurity(true), project=nothing)
-    if !isempty(project)
-        # NOTE: convert to absolute path in case we cd to other dir later
-        ENV["JULIA_PLUTO_PROJECT"] = tamepath(project)
-    end
-
+function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), security=ServerSecurity(true))
     pluto_router = http_router_for(session, security)
 
     hostIP = parse(Sockets.IPAddr, host)
