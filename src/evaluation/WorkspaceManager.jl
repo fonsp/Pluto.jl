@@ -92,7 +92,7 @@ default_environment_path(s) = s
 Return the packge environment path of given notebook.
 """
 function resolved_environment_path(notebook::Notebook)
-    if isnothing(notebook.environment_path)
+    if notebook.environment_path === nothing
         nothing
     else
         if isabspath(notebook.environment_path)
