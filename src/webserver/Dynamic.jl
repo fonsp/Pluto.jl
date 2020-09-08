@@ -5,7 +5,7 @@ import UUIDs: uuid1
 const responses = Dict{Symbol,Function}()
 
 function change_remote_cellinput!(session::ServerSession, notebook::Notebook, cell::Cell, newcode; initiator::Union{Initiator,Missing}=missing)
-    # i.e. Ctrl+Enter was pressed on this cell
+    # i.e. Shift+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
     # don't reparse when code is identical (?)
@@ -89,7 +89,7 @@ responses[:change_cell] = (session::ServerSession, body, notebook::Notebook, cel
     newcode = body["code"]
 
     change_remote_cellinput!(session, notebook, cell, newcode, initiator=initiator)
-    putnotebookupdates!(session, notebook, clientupdate_cell_running(notebook, cell, initiator=initiator))
+    putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell, initiator=initiator))
     update_save_run!(session, notebook, [cell]; run_async=true)
 end
 

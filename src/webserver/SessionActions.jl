@@ -6,6 +6,11 @@ struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
+function open_url(session::ServerSession, url::AbstractString; kwargs...)
+    path = download(url, emptynotebook().path)
+    open(session, path; kwargs...)
+end
+
 function open(session::ServerSession, path::AbstractString; run_async=true)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))

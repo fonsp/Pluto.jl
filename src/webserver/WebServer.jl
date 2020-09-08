@@ -35,8 +35,8 @@ The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession())
-    pluto_router = http_router_for(session)
+function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), security=ServerSecurity(true))
+    pluto_router = http_router_for(session, security)
 
     hostIP = parse(Sockets.IPAddr, host)
     if port === nothing
@@ -90,7 +90,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
                         catch ex
                             if ex isa InterruptException
                                 kill_server[]()
-                            elseif ex isa HTTP.WebSockets.WebSocketError
+                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
                                 # that's fine!
                             elseif ex isa InexactError
                                 # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471

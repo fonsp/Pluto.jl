@@ -223,6 +223,7 @@ export class Editor extends Component {
                 }
             }
         }
+        this.on_update = on_update
 
         const on_establish_connection = (client) => {
             // nasty
@@ -362,7 +363,7 @@ export class Editor extends Component {
                         new_ids.push(cell_id)
                     } else {
                         const update = await this.requests.add_remote_cell_at(index + i, true)
-                        this.client.on_update(update, true)
+                        on_update(update, true)
                         new_ids.push(update.cell_id)
                     }
                 }
@@ -899,7 +900,7 @@ export class Editor extends Component {
                 recently_deleted=${this.state.recently_deleted}
                 on_click=${() => {
                     this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
-                        this.client.on_update(update, true)
+                        this.on_update(update, true)
                         this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false).then(() => {
                             this.requests.change_remote_cell(update.cell_id, this.state.recently_deleted.body)
                         })

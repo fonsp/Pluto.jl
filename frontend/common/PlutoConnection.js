@@ -196,12 +196,20 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{plutoENV: Object, send: Function, kill: Function, pluto_version: String, julia_version: String}} PlutoConnection
+ * @typedef {{plutoENV: Object, send: Function, kill: Function, pluto_version: String, julia_version: String, secret: String}} PlutoConnection
  * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
  * @return {Promise<PlutoConnection>}
  */
 export const create_pluto_connection = async ({ on_unrequested_update, on_reconnect, on_connection_status, connect_metadata = {} }) => {
     var ws_connection = null // will be defined later i promise
+    const client = {
+        send: null,
+        kill: null,
+        plutoENV: null,
+        secret: null,
+        pluto_version: "unknown",
+        julia_version: "unknown",
+    } // same
 
     const client_id = get_unique_short_id()
     const sent_requests = {}
@@ -262,6 +270,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                 referrerPolicy: "no-referrer",
             })
         ).text()
+        client.secret = secret
         const ws_address =
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
@@ -294,6 +303,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
+            client.plutoENV = u.message.ENV
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
@@ -312,16 +322,12 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             return await connect()
         }
     }
-    const connection_message = await connect()
-    const plutoENV = connection_message.ENV
+    await connect()
 
-    return {
-        plutoENV: plutoENV,
-        send: send,
-        kill: ws_connection.kill,
-        pluto_version: "unknown",
-        julia_version: "unknown",
-    }
+    client.send = send
+    client.kill = ws_connection.kill
+
+    return client
 }
 
 export const fetch_pluto_versions = (client) => {

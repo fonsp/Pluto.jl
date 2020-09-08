@@ -14,7 +14,7 @@ const create_empty_notebook = (path, notebook_id = null) => {
 
 const shortpath = (path) => path.split("/").pop().split("\\").pop()
 
-// should strip characters similar to how github converts filenames into the #file-... URL hash
+// should strip characters similar to how github converts filenames into the #file-... URL hash.
 // test on: https://gist.github.com/fonsp/f7d230da4f067a11ad18de15bff80470
 const gist_normalizer = (str) =>
     str
@@ -22,7 +22,7 @@ const gist_normalizer = (str) =>
         .normalize("NFD")
         .replace(/[^a-z1-9]/g, "")
 
-const link_open_auto = async (path_or_url) => {
+export const process_path_or_url = async (path_or_url) => {
     try {
         const u = new URL(path_or_url)
         if (!["http:", "https:", "ftp:", "ftps:"].includes(u.protocol)) {
@@ -42,27 +42,35 @@ const link_open_auto = async (path_or_url) => {
 
             const selected = files.find((f) => gist_normalizer("#file-" + f.filename) === gist_normalizer(u.hash))
             if (selected != null) {
-                return link_open_url(selected.raw_url)
+                return {
+                    type: "url",
+                    path_or_url: selected.raw_url,
+                }
             }
 
-            return link_open_url(files[0].raw_url)
+            return {
+                type: "url",
+                path_or_url: files[0].raw_url,
+            }
         } else if (u.host === "github.com") {
-            u.search = "raw=true"
+            u.host = "raw.githubusercontent.com"
+            u.pathname = u.pathname.replace("/blob", "")
         }
-        return link_open_url(u.href)
+        return {
+            type: "url",
+            path_or_url: u.href,
+        }
     } catch (ex) {
-        return link_open_path(path_or_url)
+        return {
+            type: "path",
+            path_or_url: path_or_url,
+        }
     }
 }
-export const link_open_url = (url) => {
-    if (confirm("Are you sure? This will download and run the file at\n\n" + url)) {
-        console.log("open?url=" + encodeURIComponent(url))
-        return "open?url=" + encodeURIComponent(url)
-    } else {
-        return "#"
-    }
-}
-export const link_open_path = (path) => "open?path=" + encodeURIComponent(path)
+
+// /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
+export const link_open_path = (path, secret) => "open?" + new URLSearchParams({ path: path, secret: secret }).toString()
+export const link_open_url = (url, secret) => "open?" + new URLSearchParams({ url: url, secret: secret }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -147,6 +155,8 @@ export class Welcome extends Component {
                 })
 
                 this.setState({ combined_notebooks: combined_notebooks })
+
+                document.body.classList.remove("loading")
             })
 
             fetch_pluto_versions(this.client).then((versions) => {
@@ -190,12 +200,19 @@ export class Welcome extends Component {
                 },
                 {}
             )
-
-            document.body.classList.remove("loading")
         })
 
         this.on_open_path = async (new_path) => {
-            window.location.href = await link_open_auto(new_path)
+            const processed = await process_path_or_url(new_path)
+            if (processed.type === "path") {
+                document.body.classList.add("loading")
+                window.location.href = link_open_path(processed.path_or_url, this.client.secret)
+            } else {
+                if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
+                    document.body.classList.add("loading")
+                    window.location.href = link_open_url(processed.path_or_url, this.client.secret)
+                }
+            }
         }
 
         this.on_session_click = (nb) => {
@@ -224,7 +241,7 @@ export class Welcome extends Component {
                 set_notebook_state(nb.path, {
                     transitioning: true,
                 })
-                fetch(link_open_path(nb.path), {
+                fetch(link_open_path(nb.path, this.client.secret), {
                     method: "GET",
                 })
                     .then((r) => {
@@ -272,7 +289,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortpath(nb.path)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path, this.client.secret)} title=${nb.path}>${shortpath(nb.path)}</a>
                 </li>`
             })
         }
