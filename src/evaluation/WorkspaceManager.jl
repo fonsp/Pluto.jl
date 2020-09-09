@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env
+import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env, tamepath
 import ..PlutoRunner
 import Distributed
 
@@ -35,7 +35,7 @@ const workspaces = Dict{UUID,Workspace}()
 `new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED")`_"""
 function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED") == "true"))::Workspace
     pid = if new_process
-        create_workspaceprocess()
+        create_workspaceprocess(;environment_path=resolved_environment_path(notebook))
     else
         pid = Distributed.myid()
         # for some reason the PlutoRunner might not be available in Main unless we include the file
@@ -81,8 +81,32 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
-function create_workspaceprocess()::Integer
-    pid = Distributed.addprocs(1) |> first
+function default_environment_path(::Nothing)
+    get_pl_env("PLUTO_DEFAULT_ENVIRONMENT_PATH")
+end
+default_environment_path(s) = s
+
+"""
+    resolved_environment_path(notebook)
+
+Return the packge environment path of given notebook.
+"""
+function resolved_environment_path(notebook::Notebook)
+    if notebook.environment_path === nothing
+        nothing
+    else
+        if isabspath(notebook.environment_path)
+            tamepath(notebook.environment_path)
+        else
+            # relative project path is always relative to
+            # the notebook path.
+            tamepath(joinpath(dirname(notebook.path), notebook.environment_path))
+        end
+    end
+end
+
+function create_workspaceprocess(;environment_path::Union{String, Nothing}=nothing)::Integer
+    pid = Distributed.addprocs(1; exeflags="--project=$(default_environment_path(environment_path))") |> first
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)

@@ -25,15 +25,27 @@ end
 
 
 """
-    run([host,] port=1234)
+    run([host,] port=1234[; kwargs...])
 
 Start Pluto! Are you excited? I am!
 
+## Arguments
+
+- `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
+- `port`: Optional. The default `port` is `1234`.
+
+## Kwargs
+
+- `launchbrowser`: launch browser directly. (not implemented yet)
+- `session`: specifiy the `Pluto.ServerSession` to run the web server on.
+- `security`: specifiy the `Pluto.ServerSecurity` options for the web server.
+
+Different configurations are possible by creating a custom [`ServerSession`](@ref) or [`ServerSecurity`](@ref) object. Have a look at their documentation.
+
 ## Technobabble
 
-The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
-
-This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
+This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
+Pluto notebooks can be started from the main menu in the web browser.
 """
 function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), security=ServerSecurity(true))
     pluto_router = http_router_for(session, security)

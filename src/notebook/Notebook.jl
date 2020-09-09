@@ -29,11 +29,13 @@ mutable struct Notebook
     pendingupdates::Channel
 
     executetoken::Token
+
+    environment_path::Union{String,Nothing}
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token())
+    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
