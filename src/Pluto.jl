@@ -27,18 +27,6 @@ const ENV_DEFAULTS = Dict(
 )
 get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
 
-if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
-@info """\n
-    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
-    Start a notebook server using:
-
-  julia> Pluto.run()
-
-    Have a look at the FAQ:
-    https://github.com/fonsp/Pluto.jl/wiki
-\n"""
-end
-
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
@@ -64,5 +52,17 @@ include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
+
+if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
+@info """\n
+    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
+    Start a notebook server using:
+
+  julia> Pluto.run()
+
+    Have a look at the FAQ:
+    https://github.com/fonsp/Pluto.jl/wiki
+\n"""
+end
 
 end
