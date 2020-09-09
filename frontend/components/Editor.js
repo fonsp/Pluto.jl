@@ -646,8 +646,10 @@ export class Editor extends Component {
                 // fall into:
                 case 46: // delete
                     const selected = this.state.notebook.cells.filter((c) => c.selected)
-                    this.requests.confirm_delete_multiple(selected)
-                    e.preventDefault()
+                    if (selected.length > 0) {
+                        this.requests.confirm_delete_multiple(selected)
+                        e.preventDefault()
+                    }
                     break
                 case 191: // ? or /
                     if (!(e.ctrlKey && e.shiftKey)) {
