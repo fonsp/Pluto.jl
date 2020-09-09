@@ -45,7 +45,6 @@ function open_in_default_browser(url::AbstractString)::Bool
             false
         end
     catch ex
-        showerror(stderr, ex, catch_backtrace())
         false
     end
 end

@@ -68,6 +68,8 @@ using Test
         @test testee(:(f(a, b=c, d=e; f=g)), [:a, :c, :e, :g], [], [:f], [])
         
         @test testee(:(a += 1), [:a], [:a], [:+], [])
+        @test testee(:(a >>>= 1), [:a], [:a], [:>>>], [])
+        @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
     end
