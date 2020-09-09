@@ -661,7 +661,7 @@ function try_compute_symbolreferences(ex::Any)
 	catch e
 		@error "Expression explorer failed on: " ex
 		showerror(stderr, e, stacktrace(backtrace()))
-		SymbolsState()
+		SymbolsState(Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]), Set{Symbol}())
 	end
 end
 
