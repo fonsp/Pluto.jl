@@ -108,6 +108,42 @@ export const CellInput = ({
                 cm.execCommand("selectAll")
             }
         }
+        keys[mac_keyboard ? "Cmd-M" : "Ctrl-M"] = () => {
+            const value = cm.getValue()
+            const trimmed = value.trim()
+            const offset = value.length - value.trimStart().length
+            if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
+                // Markdown cell, change to code
+                let start, end
+                if (trimmed.startsWith('md"""') && trimmed.endsWith('"""')) {
+                    // Block markdown
+                    start = 5
+                    end = trimmed.length - 3
+                } else {
+                    // Inline markdown
+                    start = 3
+                    end = trimmed.length - 1
+                }
+                if (start >= end || trimmed.substring(start, end).trim() == "") {
+                    // Corner case: block is empty after removing markdown
+                    cm.setValue("")
+                } else {
+                    while (/\s/.test(trimmed[start])) {
+                        ++start
+                    }
+                    while (/\s/.test(trimmed[end - 1])) {
+                        --end
+                    }
+                    // Keep the selection from [start, end) while maintaining cursor position
+                    cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
+                    cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
+                }
+            } else {
+                // Code cell, change to markdown
+                cm.replaceRange(`\n"""`, { line: cm.lineCount() })
+                cm.replaceRange('md"""\n', { line: 0, ch: 0 })
+            }
+        }
         const swap = (a, i, j) => {
             ;[a[i], a[j]] = [a[j], a[i]]
         }
