@@ -22,7 +22,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, proj
 
     # overwrites the notebook environment if specified
     if project !== nothing
-        nb.project = project
+        nb.environment_path = project
     end
 
     session.notebooks[nb.notebook_id] = nb
