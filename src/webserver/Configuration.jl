@@ -4,13 +4,14 @@ end
 
 # ServerSecurity(val::Bool) = ServerSecurity(val, val, val)
 
-# THIS IS NOT USED YET
+"(More options coming...)"
 Base.@kwdef struct ServerConfiguration
-    host::AbstractString = "127.0.0.1"
-    port::Integer = 1234
-    skip_main_menu::Bool = false
-    show_file_system::Bool = true
+    root_url::Union{Nothing,String} = nothing
+    # host::AbstractString = "127.0.0.1"
+    # port::Union{Nothing,Integer} = nothing
+    launch_browser::Bool = true
+    # single_notebook_mode::Union{Nothing,Notebook} = nothing
+    # show_file_system::Bool = true
 end
 
-# ServerSecurity(val::Bool) = ServerSecurity(val)
 
