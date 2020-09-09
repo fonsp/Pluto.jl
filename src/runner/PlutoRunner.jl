@@ -14,8 +14,9 @@ import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
 import UUIDs: UUID
+import Pkg
 
-export @bind
+export @bind, @activate_repo_env
 
 MimedOutput = Tuple{Union{String,Vector{UInt8}}, MIME}
 
@@ -660,5 +661,30 @@ const fake_bind = """macro bind(def, element)
         el
     end
 end"""
+
+###
+# ENVIRONMENT
+###
+
+"""
+    `@activate_repo_env`
+
+A macro which searches for the parent Git repository (if one exists), 
+and activates the project environment at the top level of the repository.
+
+"""
+macro activate_repo_env() 
+    quote
+        let 
+            local repo_path = nothing
+            try
+                repo_path = read(`git rev-parse --show-toplevel`, String)
+                Pkg.activate(convert(String, strip(repo_path,['\n'])))
+            catch
+                error("@activate_repo_env call failed.\nThings to try:\n\tIs `git` in your path?\n\tDoes .git/ exist in a parent directory of your notebook?")
+            end
+        end
+    end
+end
 
 end
