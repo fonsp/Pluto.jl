@@ -1,32 +1,11 @@
-import JSON
+import UUIDs: uuid1
 
-# JSON.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
-import JSON: lower
-JSON.lower(m::MIME) = string(m)
-JSON.lower(u::UUID) = string(u)
 
-function serialize_message_to_stream(io::IO, message::UpdateMessage)
-    to_send = Dict(:type => message.type, :message => message.message)
-    if message.notebook !== nothing
-        to_send[:notebook_id] = message.notebook.notebook_id
-    end
-    if message.cell !== nothing
-        to_send[:cell_id] = message.cell.cell_id
-    end
-    if message.initiator !== missing
-        to_send[:initiator_id] = message.initiator.client_id
-        to_send[:request_id] = message.initiator.request_id
-    end
+"Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
+const responses = Dict{Symbol,Function}()
 
-    JSON.print(io, to_send)
-end
-
-function serialize_message(message::UpdateMessage)
-    sprint(serialize_message_to_stream, message)
-end
-
-function change_remote_cellinput!(notebook, cell, newcode; initiator::Union{Initiator, Missing}=missing)
-    # i.e. Ctrl+Enter was pressed on this cell
+function change_remote_cellinput!(session::ServerSession, notebook::Notebook, cell::Cell, newcode; initiator::Union{Initiator,Missing}=missing)
+    # i.e. Shift+Enter was pressed on this cell
     # we update our `Notebook` and start execution
 
     # don't reparse when code is identical (?)
@@ -34,22 +13,19 @@ function change_remote_cellinput!(notebook, cell, newcode; initiator::Union{Init
         cell.code = newcode
         cell.parsedcode = nothing
     end
-
-    # TODO: feedback to user about File IO
-    save_notebook(notebook)
     
-    putnotebookupdates!(notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
+    putnotebookupdates!(session, notebook, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-responses[:connect] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, UpdateMessage(:👋, Dict(
-        :notebookExists => (notebook != nothing),
-        :ENV => filter(p -> startswith(p.first, "PLUTO"), ENV),
+responses[:connect] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    putclientupdates!(session, initiator, UpdateMessage(:👋, Dict(
+        :notebook_exists => (notebook !== nothing),
+        :ENV => merge(ENV_DEFAULTS, filter(p -> startswith(p.first, "PLUTO"), ENV)),
     ), nothing, nothing, initiator))
 end
 
-responses[:getversion] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, UpdateMessage(:versioninfo, Dict(
+responses[:get_version] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    putclientupdates!(session, initiator, UpdateMessage(:versioninfo, Dict(
         :pluto => PLUTO_VERSION_STR,
         :julia => JULIA_VERSION_STR,
     ), nothing, nothing, initiator))
@@ -57,161 +33,166 @@ end
 
 
 # TODO: actions on the notebook are not thread safe
-responses[:addcell] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:add_cell] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
 
     new_cell = Cell("")
     new_cell.output_repr = "" # we 'run' the code and get this output
 
     insert!(notebook.cells, new_index, new_cell)
-
-    putnotebookupdates!(notebook, clientupdate_cell_added(notebook, new_cell, new_index, initiator=initiator))
+    
+    putnotebookupdates!(session, notebook, clientupdate_cell_added(notebook, new_cell, new_index, initiator=initiator))
+    save_notebook(notebook)
 end
 
-responses[:deletecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:delete_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     to_delete = cell
 
+    to_delete.code_folded = true
     # replace the cell's code with "" and do a reactive run
-    change_remote_cellinput!(notebook, to_delete, "", initiator=initiator)
-    runtask = run_reactive_async!(notebook, cell)
+    change_remote_cellinput!(session, notebook, to_delete, "", initiator=initiator)
+    runtask = update_save_run!(session, notebook, [to_delete]; run_async=true)::Task
     
     # wait for the reactive run to finish, then delete the cells
     # we wait async, to make sure that the web server remains responsive
-    @async begin
+    @asynclog begin
         wait(runtask)
 
-        filter!(c->c.cell_id ≠ to_delete.cell_id, notebook.cells)
-        putnotebookupdates!(notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
+        filter!(c -> c.cell_id ≠ to_delete.cell_id, notebook.cells)
+        putnotebookupdates!(session, notebook, clientupdate_cell_deleted(notebook, to_delete, initiator=initiator))
         save_notebook(notebook) # this might be "too late", but it will save the latest version of `notebook` anyways
     end
 end
 
-responses[:movecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    to_move = cell
+responses[:move_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+    indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
+    cells = [notebook.cells[i] for i in indices if i !== nothing]
 
     # Indexing works as if a new cell is added.
     # e.g. if the third cell (at julia-index 3) of [0, 1, 2, 3, 4]
     # is moved to the end, that would be new julia-index 6
 
     new_index = body["index"] + 1 # 0-based index (js) to 1-based index (julia)
-    old_index = findfirst(isequal(to_move), notebook.cells)
+    old_first_index = findfirst(in(cells), notebook.cells)
 
     # Because our cells run in _topological_ order, we don't need to reevaluate anything.
-    if new_index < old_index
-        deleteat!(notebook.cells, old_index)
-        insert!(notebook.cells, new_index, to_move)
-    elseif new_index > old_index + 1
-        insert!(notebook.cells, new_index, to_move)
-        deleteat!(notebook.cells, old_index)
-    end
+    before = setdiff(notebook.cells[1:new_index - 1], cells)
+    after = setdiff(notebook.cells[new_index:end], cells)
 
-    putnotebookupdates!(notebook, clientupdate_cell_moved(notebook, to_move, new_index, initiator=initiator))
+    notebook.cells = [before; cells; after]
+    
+    putnotebookupdates!(session, notebook, clientupdate_cells_moved(notebook, cells, new_index, initiator=initiator))
+    save_notebook(notebook)
 end
 
-responses[:changecell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:change_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     newcode = body["code"]
 
-    change_remote_cellinput!(notebook, cell, newcode, initiator=initiator)
-    run_reactive_async!(notebook, cell)
+    change_remote_cellinput!(session, notebook, cell, newcode, initiator=initiator)
+    putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell, initiator=initiator))
+    update_save_run!(session, notebook, [cell]; run_async=true)
 end
 
-responses[:foldcell] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:fold_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     newfolded = body["folded"]
     cell.code_folded = newfolded
     save_notebook(notebook)
 
-    putnotebookupdates!(notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
+    putnotebookupdates!(session, notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
 end
 
-responses[:run] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    run_reactive_async!(notebook, cell)
+responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    update_save_run!(session, notebook, [cell]; run_async=true, save=false)
 end
 
-responses[:runmultiple] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
-    indices = cellindex_fromID.([notebook], UUID.(body["cells"]))
+responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+    indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
-    run_reactive_async!(notebook, cells)
+    # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
+    update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
 
-responses[:getinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
+responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    putclientupdates!(session, initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
-responses[:setinput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    change_remote_cellinput!(notebook, cell, body["code"], initiator=initiator)
+responses[:set_input] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    change_remote_cellinput!(session, notebook, cell, body["code"], initiator=initiator)
 end
 
-responses[:getoutput] = (body, notebook::Notebook, cell::Cell; initiator::Union{Initiator, Missing}=missing) -> begin
-    putclientupdates!(initiator, clientupdate_cell_output(notebook, cell, initiator=initiator))
+responses[:get_output] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    putclientupdates!(session, initiator, clientupdate_cell_output(notebook, cell, initiator=initiator))
 end
 
-responses[:getallcells] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:get_all_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     # TODO: the client's update channel might get full
     update = UpdateMessage(:cell_list,
         Dict(:cells => [Dict(
                 :cell_id => string(cell.cell_id),
                 ) for cell in notebook.cells]), nothing, nothing, initiator)
     
-    putclientupdates!(initiator, update)
+    putclientupdates!(session, initiator, update)
 end
 
-responses[:getallnotebooks] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    putplutoupdates!(clientupdate_notebook_list(notebooks, initiator=initiator))
+responses[:get_all_notebooks] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    putplutoupdates!(session, clientupdate_notebook_list(session.notebooks, initiator=initiator))
 end
 
-responses[:movenotebookfile] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     newpath = tamepath(body["path"])
-    result = try
-        if isfile(newpath)
-            (success=false,reason="File exists already - you need to delete the old file manually.")
-        else
-            move_notebook(notebook, newpath)
-            putplutoupdates!(clientupdate_notebook_list(notebooks))
-            (success=true, reason="")
-        end
-    catch ex
-        showerror(stderr, stacktrace(catch_backtrace()))
-        (success=false, reason=sprint(showerror, ex))
-    end
-
+    result = SessionActions.move(session, notebook, newpath)
     update = UpdateMessage(:move_notebook_result, result, notebook, nothing, initiator)
-    putclientupdates!(initiator, update)
+    putclientupdates!(session, initiator, update)
 end
 
-responses[:interruptall] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     success = WorkspaceManager.interrupt_workspace(notebook)
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
-responses[:shutdownworkspace] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
-    toshutdown = notebooks[UUID(body["id"])]
-    listeners = putnotebookupdates!(toshutdown) # TODO: shutdown message
-    if body["remove_from_list"]
-        delete!(notebooks, toshutdown.notebook_id)
-        putplutoupdates!(clientupdate_notebook_list(notebooks))
-        for client in listeners
-            @async close(client.stream)
-        end
-    end
-    success = WorkspaceManager.unmake_workspace(toshutdown)
+responses[:shutdown_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+    SessionActions.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
 end
 
-
-responses[:bond_set] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
-    body["any_dependents"] = any_dependents = !isempty(where_assigned(notebook, Set{Symbol}([bound_sym])))
-    putnotebookupdates!(notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
+    any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
     
-    if any_dependents
-        function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell, 1})
+    # assume body["is_first_value"] == false if you want to skip an edge case in this code
+    
+    triggered_other_cells = if body["is_first_value"]
+        # fix for https://github.com/fonsp/Pluto.jl/issues/275
+        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+        
+        # check if the variable does not already have that value.
+        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        fetched_result = WorkspaceManager.eval_fetch_in_workspace(notebook, eq_tester)
+        if fetched_result === true
+            # the initial value is already set, and we don't want to run cells again.
+            false
+        else
+            any_dependents
+        end
+    else
+        any_dependents
+    end
+
+    # we re-use `body` as our response message :)
+    body["triggered_other_cells"] = triggered_other_cells
+
+    putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
+    
+    if triggered_other_cells
+        function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
             push!(to_delete_vars, bound_sym) # also delete the bound symbol
             WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)
             WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
         end
-        to_reeval = where_referenced(notebook, Set{Symbol}([bound_sym]))
-        run_reactive_async!(notebook, to_reeval; deletion_hook=custom_deletion_hook)
+        to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+
+        update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false)
     end
 
 end

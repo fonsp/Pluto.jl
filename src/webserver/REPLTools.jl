@@ -6,7 +6,7 @@ function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
 
-responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:completepath] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     path = body["query"]
     pos = lastindex(path)
 
@@ -42,17 +42,17 @@ responses[:completepath] = (body, notebook=nothing; initiator::Union{Initiator, 
             :results => sort(format_path_completion.(results), by=s -> (!isdirpath(s), s))
             ), notebook, nothing, initiator)
 
-    putclientupdates!(initiator, msg)
+    putclientupdates!(session, initiator, msg)
 end
 
-responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:complete] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     query = body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 
     workspace = WorkspaceManager.get_workspace(notebook)
 
     results_text, loc, found = if isready(workspace.dowork_token)
-        # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
+        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
         # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
         Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher($query, $pos)))
     else
@@ -70,10 +70,10 @@ responses[:complete] = (body, notebook::Notebook; initiator::Union{Initiator, Mi
             :results => results_text
             ), notebook, nothing, initiator)
 
-    putclientupdates!(initiator, msg)
+    putclientupdates!(session, initiator, msg)
 end
 
-responses[:docs] = (body, notebook::Notebook; initiator::Union{Initiator, Missing}=missing) -> begin
+responses[:docs] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     query = body["query"]
 
     doc_html, status = if haskey(Docs.keywords, query |> Symbol)
@@ -96,5 +96,5 @@ responses[:docs] = (body, notebook::Notebook; initiator::Union{Initiator, Missin
             :doc => doc_html,
             ), notebook, nothing, initiator)
 
-    putclientupdates!(initiator, msg)
+    putclientupdates!(session, initiator, msg)
 end

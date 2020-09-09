@@ -1,28 +1,35 @@
-import Pluto: Notebook, Client, run_reactive!, Cell, WorkspaceManager
+using Test
+import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
 
     @testset "Multiple notebooks" begin
-        fakeclientA = Client(:fakeA, nothing)
-        fakeclientB = Client(:fakeB, nothing)
-        Pluto.connectedclients[fakeclientA.id] = fakeclientA
-        Pluto.connectedclients[fakeclientB.id] = fakeclientB
+
+        fakeclientA = ClientSession(:fakeA, nothing)
+        fakeclientB = ClientSession(:fakeB, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclientA.id] = fakeclientA
+        🍭.connected_clients[fakeclientB.id] = fakeclientB
 
 
-        notebookA = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebookA = Notebook([
             Cell("x = 3")
         ])
         fakeclientA.connected_notebook = notebookA
 
-        notebookB = Notebook(joinpath(tempdir(), "test.jl"), [
+        notebookB = Notebook([
             Cell("x")
         ])
         fakeclientB.connected_notebook = notebookB
 
-        @test_nowarn run_reactive!(notebookA, notebookA.cells[1])
-        @test_nowarn run_reactive!(notebookB, notebookB.cells[1])
+        @test notebookA.path != notebookB.path
+
+        update_save_run!(🍭, notebookA, notebookA.cells[1])
+        update_save_run!(🍭, notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].errored == true
     end
+
+
 end

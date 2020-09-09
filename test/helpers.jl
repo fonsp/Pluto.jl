@@ -1,7 +1,7 @@
 import Pluto
-import Pluto.ExploreExpression: SymbolsState, compute_symbolreferences
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences
 
-"Calls `ExploreExpression.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
+"Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
 # Example
 
@@ -31,7 +31,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     result.assignments = Set(new_name.(result.assignments))
     result.funcdefs = let
         newfuncdefs = Dict()
-        for (k,v) in result.funcdefs
+        for (k, v) in result.funcdefs
             newfuncdefs[new_name.(k)] = v
         end
         newfuncdefs
@@ -42,7 +42,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
         println("FAILED TEST")
         println(expr)
         println()
-        dump(expr, maxdepth = 20)
+        dump(expr, maxdepth=20)
         println()
         @show expected
         resulted = result
@@ -67,6 +67,11 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
 end
 
+function setcode(cell, newcode)
+    cell.parsedcode = nothing
+    cell.code = newcode
+end
+
 function occursinerror(needle, haystack::Pluto.Cell)
     return haystack.errored && occursin(needle, haystack.output_repr)
 end
@@ -81,21 +86,40 @@ function notebook_inputs_equal(nbA, nbB)
     x && y
 end
 
-"Whether the given .jl file can be run without an `UndefVarError`. While notebooks cells can be in arbitrary order, their order in the save file must be topological."
-function jl_is_runnable(path)
-    🔖 = Symbol("lab", hash(path))
+"Whether the given .jl file can be run without any errors. While notebooks cells can be in arbitrary order, their order in the save file must be topological.
+
+If `only_undefvar` is `true`, all errors other than an `UndefVarError` will be ignored."
+function jl_is_runnable(path; only_undefvar=false)
+    🔖 = Symbol("lab", time_ns())
     🏡 = Core.eval(Main, :(module $(🔖) end))
     try
         Core.eval(🏡, :(include($path)))
         true
     catch ex
-        if ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
+        if (!only_undefvar) || ex isa UndefVarError || (ex isa LoadError && ex.error isa UndefVarError)
+            println(stderr, "\n$(path) failed to run. File contents:")
+
+            println(stderr, "\n\n\n")
+            println.(enumerate(readlines(path; keep=true)))
+            println(stderr, "\n\n\n")
+
             showerror(stderr, ex, stacktrace(catch_backtrace()))
+            println(stderr)
             false
         else
             true
         end
     end
+end
+
+"Whether the `notebook` runs without errors."
+function nb_is_runnable(session::Pluto.ServerSession, notebook::Pluto.Notebook)
+    Pluto.update_run!(session, notebook, notebook.cells)
+    errored = filter(c -> c.errored, notebook.cells)
+    if !isempty(errored)
+        @show errored
+    end
+    isempty(errored)
 end
 
 "The converse of Julia's `Base.sprint`."
@@ -111,5 +135,3 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
-
-Pluto.set_ENV_defaults()

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>⚡ Pluto.jl ⚡</title>
+    <meta charset="utf-8" />
+    <script>
+        console.log("Pluto.jl, by Fons van der Plas (https://github.com/fonsp) and Mikołaj Bochenski (https://github.com/malyvsen) 🌈");
+    </script>
+    <meta name="author" content="Fons van der Plas; Mikołaj Bochenski" />
+    <link rel="license" href="https://github.com/fonsp/Pluto.jl/blob/master/LICENSE" />
+    <meta name="theme-color" content="#ffffff" />
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
+    <meta name="description" content="Pluto.jl notebooks" />
+
+    <script src="common/RegisterSW.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/lib/codemirror.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/addon/hint/show-hint.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/addon/display/placeholder.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/addon/hint/show-hint.min.css">
+
+
+    <link rel="stylesheet" href="index.css">
+
+    <script src="index.js" type="module" defer></script>
+    <script src="warn_old_browsers.js"></script>
+</head>
+
+<body class="loading nosessions">
+    <loading-bar></loading-bar>
+    <div id="title">
+        <h1>welcome to <img src="img/logo.svg"></h1>
+        <main>
+            <p>New session:</p>
+            <ul id="new">
+                <li>Open a <a href="sample">sample notebook</a></li>
+                <li>Create a <a href="new">new notebook</a></li>
+                <li>
+                    Open from file:
+                    <p><em>Loading...</em></p>
+                </li>
+            </ul>
+        </main>
+    </div>
+</body>
+
+</html>
