@@ -5,4 +5,6 @@ precompile.jl
 build
 Manifest.toml
 
-e2e/node_modules
+test/frontend/node_modules
+test/frontend/artefacts/*
+!test/frontend/artefacts/.gitkeep

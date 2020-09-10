@@ -10,4 +10,4 @@
 
 Before starting the tests run:
 
-`export HEADLESS=false`
+`HEADLESS=false npm run test`

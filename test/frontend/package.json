@@ -2,16 +2,18 @@
   "name": "e2e",
   "version": "1.0.0",
   "description": "",
-  "dependencies": {
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@babel/core": "^7.11.6",
+    "@babel/preset-env": "^7.11.5",
+    "babel-jest": "^26.3.0",
     "jest": "^26.4.2",
     "jest-puppeteer": "^4.4.0",
     "puppeteer": "^5.2.1"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest --runInBand"
   },
   "author": "",
-  "license": "ISC"
+  "license": "MIT"
 }
