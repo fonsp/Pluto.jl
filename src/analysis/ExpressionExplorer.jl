@@ -337,12 +337,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
             elseif any(a isa Expr && a.head == :(:=) for a in ex.args)
                 # macros like `@einsum x[i] := y[i,j] * z[j]` define x, and don't depend on i,j
-                for arg in ex.args
-                    if arg isa Expr && arg.head == :(:=)
-                        ex_post, has_ref = einsum_strip(arg)
-                        has_ref && return explore!(ex_post, scopestate)
-                        # other arguments are assumed to be weird options/keywords & ignored
-                    end
+                ex_post, has_ref = einsum_strip(ex.args...)
+                if has_ref
+                    res = explore!(ex_post, scopestate)
+                    push!(res.funccalls, funcname)
+                    return res
                 end
             end
         end
@@ -583,7 +582,6 @@ function einsum_strip(ex::Expr)
         elseif ex.args[1] isa Expr && ex.args[1].head == :ref # @einsum A[i,j] := ...
             ex.args[1].args[1], true
         else
-            @warn "confused by := in this" ex
             return ex, false
         end
         right, β = einsum_strip(ex.args[2])
@@ -593,12 +591,35 @@ function einsum_strip(ex::Expr)
         return Expr(:call, :+, ex.args[1], newargs...), true
     elseif ex.head == :$
         return ex.args[1], false
+    elseif ex.head == :call
+        newargs_plus = map(einsum_strip, ex.args[2:end])
+        return Expr(ex.head, ex.args[1], map(first, newargs_plus)...), any(last, newargs_plus)
     else
         newargs_plus = map(einsum_strip, ex.args)
         return Expr(ex.head, map(first, newargs_plus)...), any(last, newargs_plus)
     end
 end
+function einsum_strip(exs...) # @reduce s := sum(i,j)  A[i,j]^2  lazy # is 3 expressions
+    assign, flag = :(), false
+    extras = []
+    for ex in exs
+        if ex isa Expr && ex.head == :(:=)
+            assign, α = einsum_strip(ex)
+            flag = flag | α
+        else
+            other, β = einsum_strip(ex)
+            β && push!(extras, other)
+            flag = flag | β
+        end
+    end
+    if isempty(extras)
+        return assign, flag
+    else
+        return Expr(:(=), assign.args[1], Expr(:call, :+, assign.args[2], extras...)), flag
+    end
+end
 einsum_strip(sym) = 0, false
+einsum_strip(x::Number) = x, false
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
