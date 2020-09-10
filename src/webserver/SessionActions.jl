@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, get_pl_env, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -11,22 +11,22 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     open(session, path; kwargs...)
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true, project=nothing)
+function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
     
-    nb = load_notebook(tamepath(path))
+    nb = load_notebook(tamepath(path), session.configs.run_notebook_on_load)
 
     # overwrites the notebook environment if specified
-    if project !== nothing
-        nb.environment_path = project
+    if compiler_options !== nothing
+        nb.compiler_options = compiler_options
     end
 
     session.notebooks[nb.notebook_id] = nb
-    if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
+    if session.configs.run_notebook_on_load
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
         # TODO: send message when initial run completed
     end

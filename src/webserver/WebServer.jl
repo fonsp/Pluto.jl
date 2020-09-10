@@ -61,19 +61,15 @@ Start Pluto! Are you excited? I am!
 
 ## Kwargs
 
-- `configuration`: specifiy the `Pluto.ServerConfiguration` to change the HTTP server behavior.
-- `session`: specifiy the `Pluto.ServerSession` to run the web server on.
-- `security`: specifiy the `Pluto.ServerSecurity` options for the web server.
-
-Different configurations are possible by creating a custom [`ServerConfiguration`](@ref), [`ServerSession`](@ref) or [`ServerSecurity`](@ref) object. Have a look at their documentation.
+- `session`: specifiy the [`Pluto.ServerSession`](@ref) to run the web server on.
 
 ## Technobabble
 
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
 Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; configuration=ServerConfiguration(), session=ServerSession(), security=ServerSecurity(true))
-    pluto_router = http_router_for(session, security)
+function run(host, port::Union{Nothing,Integer}=nothing; session=ServerSession())
+    pluto_router = http_router_for(session)
 
     hostIP = parse(Sockets.IPAddr, host)
     if port === nothing
@@ -188,16 +184,16 @@ function run(host, port::Union{Nothing,Integer}=nothing; configuration=ServerCon
         end
     end
 
-    address = if configuration.root_url === nothing
+    address = if session.configs.server.root_url === nothing
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
     else
-        configuration.root_url
+        session.configs.server.root_url
     end
     Sys.set_process_title("Pluto server - $address")
 
-    if configuration.launch_browser && open_in_default_browser(address)
+    if session.configs.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
     else
         println("Go to $address in your browser to start writing ~ have fun!")

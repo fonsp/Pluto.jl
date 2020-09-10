@@ -1,5 +1,24 @@
 import UUIDs: UUID, uuid1
 
+Base.@kwdef struct ServerConfiguration <: AbstractPlutoConfiguration
+    root_url::Union{Nothing,String} = nothing
+    host::String = "127.0.0.1"
+    port::Union{Nothing,Integer} = nothing
+    launch_browser::Bool = true
+    single_notebook_mode::Union{Nothing,Notebook} = nothing
+    show_file_system::Bool = true
+end
+
+Base.@kwdef struct PlutoConfiguration <: AbstractPlutoConfiguration
+    working_directory::String = default_working_directory()
+    run_notebook_on_load::Bool = true
+    workspace_use_distributed::Bool = true
+    require_token_for_open_links::Bool = true
+
+    compiler::CompilerOptions = CompilerOptions()
+    server::ServerConfiguration = ServerConfiguration()
+end
+
 ###
 # CLIENT
 ###
@@ -32,13 +51,13 @@ The `ServerSession` keeps track of:
 - `connected_clients`: connected (web) clients
 - `notebooks`: running notebooks
 - `secret`: the web acces token
-- `default_environment_path`: specifiy the project/package environment to start new notebooks in. Set to `nothing` to default to the global environment.
+- `configs`: global pluto configuration `PlutoConfiguration` for this session.
 """
 Base.@kwdef struct ServerSession
     connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
     notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
     secret::UUID = uuid1()
-    default_environment_path::Union{Nothing,AbstractString} = nothing
+    configs::PlutoConfiguration = PlutoConfiguration()
 end
 
 ###

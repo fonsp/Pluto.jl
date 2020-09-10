@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, get_pl_env, tamepath
+import ..Pluto: Notebook, Cell, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, CompilerOptions, PlutoConfiguration, pluto_path
 import ..PlutoRunner
 import Distributed
 
@@ -23,7 +23,7 @@ const workspace_preamble = [
 "These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
+    :(include($(pluto_path("src", "runner", "PlutoRunner.jl")))),
 ]
 
 const moduleworkspace_count = Ref(0)
@@ -32,10 +32,13 @@ const workspaces = Dict{UUID,Workspace}()
 
 """Create a workspace for the notebook, optionally in a separate process.
 
-`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED")`_"""
-function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED") == "true"))::Workspace
-    pid = if new_process
-        create_workspaceprocess(;environment_path=resolved_environment_path(notebook))
+`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)?
+Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
+only partially: you can't stop cells on Windows.
+"""
+function make_workspace(notebook::Notebook, configs::PlutoConfiguration=PlutoConfiguration())::Workspace
+    pid = if configs.workspace_use_distributed
+        create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, configs.compiler))
     else
         pid = Distributed.myid()
         # for some reason the PlutoRunner might not be available in Main unless we include the file
@@ -81,32 +84,73 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
-function default_environment_path(::Nothing)
-    get_pl_env("PLUTO_DEFAULT_ENVIRONMENT_PATH")
-end
-default_environment_path(s) = s
+function _merge_notebook_compiler_options(notebook::Notebook, options::CompilerOptions)
+    if notebook.compiler_options === nothing
+        return options
+    end
 
-"""
-    resolved_environment_path(notebook)
-
-Return the packge environment path of given notebook.
-"""
-function resolved_environment_path(notebook::Notebook)
-    if notebook.environment_path === nothing
-        nothing
-    else
-        if isabspath(notebook.environment_path)
-            tamepath(notebook.environment_path)
+    kwargs = Dict{Symbol, Any}()
+    for each in fieldnames(CompilerOptions)
+        # 1. not specified by notebook options
+        # 2. notebook specified project options
+        # 3. general notebook specified options
+        if getfield(notebook.compiler_options, each) === nothing
+            kwargs[each] = getfield(options, each)
+        elseif each === :project
+            # some specified processing for notebook project
+            # paths
+            kwargs[:project] = _resolve_project_path(notebook.path, notebook.compiler_options.project)
         else
-            # relative project path is always relative to
-            # the notebook path.
-            tamepath(joinpath(dirname(notebook.path), notebook.environment_path))
+            kwargs[each] = getfield(notebook.compiler_options, each)
         end
+    end
+    return CompilerOptions(;kwargs...)
+end
+
+function _resolve_notebook_project_path(notebook_path::String, path::String)
+    # 1. notebook project specified as abspath, return
+    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
+    # 3. notebook project specified as relative path, always assume it's relative to
+    #    the notebook.
+    if isabspath(path)
+        return tamepath(path)
+    elseif startswith(path, "@")
+        return Base.load_path_expand(path)
+    else
+        return tamepath(joinpath(dirname(notebook_path), path))
     end
 end
 
-function create_workspaceprocess(;environment_path::Union{String, Nothing}=nothing)::Integer
-    pid = Distributed.addprocs(1; exeflags="--project=$(default_environment_path(environment_path))") |> first
+function _push_flag!(flags::Vector, name::String, value)
+    if value === nothing
+        return flags
+    else
+        return push!(flags, string(name, "=", value))
+    end
+end
+
+function _convert_to_flags(opt::CompilerOptions)
+    option_list = []
+
+    for each in fieldnames(CompilerOptions)
+        if each == :startup_file
+            name = "--startup-file"
+        elseif each == :history_file
+            name = "--history-file"
+        else
+            name = string("--", each)
+        end
+        _push_flag!(option_list, name, getfield(opt, each))
+    end
+
+    return join(option_list, " ")
+end
+
+# NOTE: this function only start a worker process using given
+# compiler options, it does not resolve paths for notebooks
+# compiler configurations passed to it should be resolved before this
+function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
+    pid = Distributed.addprocs(1; exeflags=_convert_to_flags(compiler_options)) |> first
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)

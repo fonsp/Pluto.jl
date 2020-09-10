@@ -30,7 +30,9 @@ mutable struct Notebook
 
     executetoken::Token
 
-    environment_path::Union{String,Nothing}
+    # per notebook compiler options
+    # nothing means to use global session compiler options
+    compiler_options::Union{Nothing, CompilerOptions}
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
@@ -169,7 +171,7 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String)::Notebook
+function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
     # local backup_num = 1
     # backup_path = path
@@ -185,7 +187,7 @@ function load_notebook(path::String)::Notebook
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") != "true"
+    if run_notebook_on_load
         loaded.topology = NotebookTopology()
     end
 

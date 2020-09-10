@@ -12,26 +12,65 @@ module Pluto
 
 import Pkg
 
-const PKG_ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
-include_dependency(joinpath(PKG_ROOT_DIR, "Project.toml"))
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.toml"))["version"])
+function default_working_directory()
+    preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
+    return joinpath(preferred_dir, "") # must end with / or \
+end
+
+pluto_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
+
+const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(pluto_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
-const ENV_DEFAULTS = Dict(
-    "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
-    "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
-    "PLUTO_WORKING_DIRECTORY" => let
-        preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-        joinpath(preferred_dir, "") # must end with / or \
-    end,
-    "PLUTO_DEFAULT_ENVIRONMENT_PATH" => let
-        # Use the global environment, ~/.julia/environments/v<major>.<minor> as fallback environment.
-        # The package environment for new notebooks does not inherit from the environment in which the server was launched - this is intentional.
-        Base.load_path_expand("@v#.#")
-    end,
-)
 
-get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
+abstract type AbstractPlutoConfiguration end
+
+Base.@kwdef struct CompilerOptions <: AbstractPlutoConfiguration
+    compile::Union{Nothing, String} = nothing
+    sysimage::Union{Nothing, String} = nothing
+    banner::Union{Nothing, String} = nothing
+    optimize::Union{Nothing, Int} = nothing
+    math_mode::Union{Nothing, String} = nothing
+
+    # notebook specified configs
+    # the followings are different from
+    # the default julia compiler options
+
+    # we use nothing to represent "@v#.#"
+    project::Union{Nothing, String} = "@."
+    # we don't load startup file in notebook
+    startup_file::Union{Nothing, String} = "no"
+    # we don't load history file in notebook
+    history_file::Union{Nothing, String} = "no"
+
+@static if VERSION > v"1.5.0-"
+    threads::Union{Nothing, String} = nothing
+end
+
+end # struct CompilerOptions
+
+function simlar_options(options::AbstractPlutoConfiguration; kwargs...)
+    new_kwargs = Dict()
+    for each in fieldnames(typeof(options))
+        new_kwargs[each] = get(kwargs, each, getfield(options, each))
+    end
+    return typeof(options)(;new_kwargs...)
+end
+
+# NOTE: printings are copy-pastable
+function Base.show(io::IO, x::AbstractPlutoConfiguration)
+    indent = get(io, :indent, 0)
+
+    summary(io, x)
+    println(io, "(")
+    fnames = fieldnames(typeof(x))
+    for each in fieldnames(typeof(x))
+        print(IOContext(io, :indent=>2), " "^indent, " "^2, each, " = ", getfield(x, each))
+        println(io, ", ")
+    end
+    print(io, " "^indent, ")")
+    return
+end
 
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
@@ -50,7 +89,6 @@ include("./evaluation/WorkspaceManager.jl")
 include("./evaluation/Update.jl")
 include("./evaluation/Run.jl")
 
-include("./webserver/Configuration.jl")
 include("./webserver/MsgPack.jl")
 include("./webserver/PutUpdates.jl")
 include("./webserver/SessionActions.jl")

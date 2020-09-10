@@ -20,7 +20,6 @@ end
 responses[:connect] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (notebook !== nothing),
-        :ENV => merge(ENV_DEFAULTS, filter(p -> startswith(p.first, "PLUTO"), ENV)),
     ), nothing, nothing, initiator))
 end
 

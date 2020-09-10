@@ -115,7 +115,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	else
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
-		offline_workspace = WorkspaceManager.make_workspace(notebook, false)
+		offline_workspace = WorkspaceManager.make_workspace(notebook, simlar_options(session.configs; workspace_use_distributed=false))
 		
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
