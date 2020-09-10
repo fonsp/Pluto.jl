@@ -26,6 +26,7 @@ include("./runner/PlutoRunner.jl")
 # @eval Main begin
 #   PlutoRunner = $(PlutoRunner)
 # end
+include("./analysis/MacroZoo.jl")
 include("./analysis/ExpressionExplorer.jl")
 
 include("./notebook/PathHelpers.jl")

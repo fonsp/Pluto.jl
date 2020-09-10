@@ -276,10 +276,10 @@ using Test
         @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
         @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
 
-        @test testee(:(@einsum a[i] := f(x[i,k])), [:x], [:a], [[:f], [Symbol("@einsum")], [:+]], [])
-        @test testee(:(@reduce s := prod(i,j) x[i,j]^2 lazy), [:x], [:s], [[:^], [:prod], [Symbol("@reduce")], [:+]], [])
-        @test testee(:(@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]), [:A,:B,:C], [:D], [[:*], [Symbol("@tensoropt")], [:+]], [])
-        @test_broken testee(:(@tullio n[j] := x[i,j]^2 |> sqrt  grad=false), [:x], [:n], [[:sqrt], [:|>], [:^], [Symbol("@tullio")], [:+]], [])
+        @test testee(:(@einsum a[i] := f(x[i,k])), [:x], [:a], [[:f], [Symbol("@einsum")]], [])
+        @test_broken testee(:(@reduce s := prod(i,j) x[i,j]^2 lazy), [:x], [:s], [[:^], [:prod], [Symbol("@reduce")]], [])
+        @test testee(:(@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]), [:A,:B,:C], [:D], [[:*], [Symbol("@tensoropt")]], [])
+        @test_broken testee(:(@tullio n[j] := x[i,j]^2 |> sqrt  grad=false), [:x], [:n], [[:sqrt], [:|>], [:^], [Symbol("@tullio")]], [])
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])

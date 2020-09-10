@@ -333,20 +333,17 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 # this would mean that you can only define one enum per notebook :(
                 syms = filter(x -> x isa Symbol, ex.args[2:end])
                 rest = setdiff(ex.args[2:end], syms)
-                
+
                 return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
-            elseif any(a isa Expr && a.head == :(:=) for a in ex.args)
-                # macros like `@einsum x[i] := y[i,j] * z[j]` define x, and don't depend on i,j
-                ex_post, has_ref = einsum_strip(ex.args...)
-                if has_ref
-                    res = explore!(ex_post, scopestate)
-                    push!(res.funccalls, funcname)
-                    return res
-                end
             end
         end
+        zoo_fun = MacroZoo.expand(funcname, ex.args[2:end]...)
+        if zoo_fun !== nothing
+            return explore!(zoo_fun, scopestate)
+        else
+            return explore!(Expr(:call, ex.args...), scopestate)
+        end
 
-        return explore!(Expr(:call, ex.args...), scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -572,54 +569,6 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
-
-"Recursive function for stripping dummy indices from the argument of @einsum and friends,
-returns `expr, flag` where `flag==true` means it contains indexing `A[i,j]`."
-function einsum_strip(ex::Expr)
-    if ex.head == :(:=)
-        left, α = if ex.args[1] isa Symbol # @einsum s := A[i,j]
-            ex.args[1], false
-        elseif ex.args[1] isa Expr && ex.args[1].head == :ref # @einsum A[i,j] := ...
-            ex.args[1].args[1], true
-        else
-            return ex, false
-        end
-        right, β = einsum_strip(ex.args[2])
-        return Expr(:(=), left, right), (α|β)
-    elseif ex.head == :ref # A[i,:,j,2,$k] -> A+0+0+0+2+k
-        newargs = map(first∘einsum_strip, ex.args[2:end])
-        return Expr(:call, :+, ex.args[1], newargs...), true
-    elseif ex.head == :$
-        return ex.args[1], false
-    elseif ex.head == :call
-        newargs_plus = map(einsum_strip, ex.args[2:end])
-        return Expr(ex.head, ex.args[1], map(first, newargs_plus)...), any(last, newargs_plus)
-    else
-        newargs_plus = map(einsum_strip, ex.args)
-        return Expr(ex.head, map(first, newargs_plus)...), any(last, newargs_plus)
-    end
-end
-function einsum_strip(exs...) # @reduce s := sum(i,j)  A[i,j]^2  lazy # is 3 expressions
-    assign, flag = :(), false
-    extras = []
-    for ex in exs
-        if ex isa Expr && ex.head == :(:=)
-            assign, α = einsum_strip(ex)
-            flag = flag | α
-        else
-            other, β = einsum_strip(ex)
-            β && push!(extras, other)
-            flag = flag | β
-        end
-    end
-    if isempty(extras)
-        return assign, flag
-    else
-        return Expr(:(=), assign.args[1], Expr(:call, :+, assign.args[2], extras...)), flag
-    end
-end
-einsum_strip(sym) = 0, false
-einsum_strip(x::Number) = x, false
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
