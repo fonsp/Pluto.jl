@@ -337,9 +337,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
             end
         end
-        zoo_fun = MacroZoo.expand(funcname, ex.args[2:end]...)
-        if zoo_fun !== nothing
-            return explore!(zoo_fun, scopestate)
+        zoomaybe = MacroZoo.expand(funcname, ex.args[2:end]...)
+        if zoomaybe !== nothing
+            return explore!(Expr(:call, ex.args[1], zoomaybe...), scopestate)
         else
             return explore!(Expr(:call, ex.args...), scopestate)
         end
