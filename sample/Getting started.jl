@@ -67,7 +67,7 @@ cans_in_stock = "🥫🥫🥫🥫"
 if @isdefined cans_in_stock
 	md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can. Remember to run it after making the change!"
 else
-	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` - Pluto will take care of updating everything."
+	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` — Pluto will take care of updating everything."
 end
 
 # ╔═╡ eac62fea-954e-11ea-2768-39ce6f4059ab
