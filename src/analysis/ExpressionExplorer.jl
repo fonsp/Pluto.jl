@@ -335,6 +335,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 rest = setdiff(ex.args[2:end], syms)
                 
                 return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
+            elseif any(a isa Expr && a.head == :(:=) for a in ex.args)
+                # macros like `@einsum x[i] := y[i,j] * z[j]` define x, and don't depend on i,j
+                for arg in ex.args
+                    if arg isa Expr && arg.head == :(:=)
+                        ex_post, has_ref = einsum_strip(arg)
+                        has_ref && return explore!(ex_post, scopestate)
+                        # other arguments are assumed to be weird options/keywords & ignored
+                    end
+                end
             end
         end
 
@@ -564,6 +573,32 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
+
+"Recursive function for stripping dummy indices from the argument of @einsum and friends,
+returns `expr, flag` where `flag==true` means it contains indexing `A[i,j]`."
+function einsum_strip(ex::Expr)
+    if ex.head == :(:=)
+        left, α = if ex.args[1] isa Symbol # @einsum s := A[i,j]
+            ex.args[1], false
+        elseif ex.args[1] isa Expr && ex.args[1].head == :ref # @einsum A[i,j] := ...
+            ex.args[1].args[1], true
+        else
+            @warn "confused by := in this" ex
+            return ex, false
+        end
+        right, β = einsum_strip(ex.args[2])
+        return Expr(:(=), left, right), (α|β)
+    elseif ex.head == :ref # A[i,:,j,2,$k] -> A+0+0+0+2+k
+        newargs = map(first∘einsum_strip, ex.args[2:end])
+        return Expr(:call, :+, ex.args[1], newargs...), true
+    elseif ex.head == :$
+        return ex.args[1], false
+    else
+        newargs_plus = map(einsum_strip, ex.args)
+        return Expr(ex.head, map(first, newargs_plus)...), any(last, newargs_plus)
+    end
+end
+einsum_strip(sym) = 0, false
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
