@@ -32,7 +32,9 @@ end
 
 function open_in_default_browser(url::AbstractString)::Bool
     try
-        if Sys.isapple()
+        if isfile(".dockerenv")
+            false
+        elseif Sys.isapple()
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
