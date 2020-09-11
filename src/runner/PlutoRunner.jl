@@ -28,9 +28,20 @@ MimedOutput = Tuple{Union{String,Vector{UInt8}}, MIME}
 current_module = Main
 
 function set_current_module(newname)
-    global current_module = getfield(Main, newname)
+    # Revise.jl support
+    if isdefined(current_module, :Revise) && 
+        isdefined(current_module.Revise, :revise) && current_module.Revise.revise isa Function &&
+        isdefined(current_module.Revise, :revision_queue) && current_module.Revise.revision_queue isa AbstractSet
+
+        if !isempty(current_module.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
+            current_module.Revise.revise()
+        end
+    end
+    
     global iocontext = IOContext(iocontext, :module => current_module)
     global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
+    
+    global current_module = getfield(Main, newname)
 end
 
 const cell_results = Dict{UUID, WeakRef}()

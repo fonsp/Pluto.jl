@@ -16,7 +16,6 @@ Workspace(pid::Integer, module_name::Symbol) = Workspace(pid, module_name, Token
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
     :(using Markdown, InteractiveUtils, Main.PlutoRunner), 
-    :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
@@ -24,6 +23,8 @@ const workspace_preamble = [
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
     :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
+    :(ENV["GKSwstype"] = "nul"), 
+    :(ENV["JULIA_REVISE_ON_WORKER"] = "1"), 
 ]
 
 const moduleworkspace_count = Ref(0)
