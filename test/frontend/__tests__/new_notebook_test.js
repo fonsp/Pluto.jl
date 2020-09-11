@@ -1,5 +1,5 @@
 import { waitForContent, lastElement, dismissBeforeUnloadDialogs } from '../helpers/common'
-import { createNewNotebook, getCellIds, waitForCellOutput } from '../helpers/pluto'
+import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl } from '../helpers/pluto'
 
 describe('PlutoNewNotebook', () => {
     beforeAll(async () => {
@@ -7,7 +7,7 @@ describe('PlutoNewNotebook', () => {
     })
 
     beforeEach(async () => {
-        await page.goto('http://localhost:1234', { waitUntil: 'networkidle0' })
+        await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
         await createNewNotebook(page)
     })
 

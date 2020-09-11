@@ -1,24 +1,8 @@
-import fs from 'fs'
 import {
-    clickAndWaitForNavigation,
     lastElement,
-    getFixtureNotebookPath,
-    getTemporaryNotebookPath,
     dismissBeforeUnloadDialogs
 } from '../helpers/common'
-import { getCellIds, waitForCellOutput } from '../helpers/pluto'
-
-const importNotebook = async (notebookName) => {
-    // Copy notebook before using it, so we don't mess it up with test changes
-    const notebookPath = getFixtureNotebookPath(notebookName)
-    const artefactsPath = getTemporaryNotebookPath()
-    fs.copyFileSync(notebookPath, artefactsPath)
-
-    const openFileInputSelector = 'pluto-filepicker textarea'
-    await page.type(openFileInputSelector, artefactsPath)
-    const openFileButton = 'pluto-filepicker button'
-    return clickAndWaitForNavigation(page, openFileButton)
-}
+import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl } from '../helpers/pluto'
 
 describe('PlutoImportNotebook', () => {
     beforeAll(async () => {
@@ -26,7 +10,7 @@ describe('PlutoImportNotebook', () => {
     })
 
     beforeEach(async () => {
-        await page.goto('http://localhost:1234', { waitUntil: 'networkidle0' })
+        await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
     })
 
     test.each([

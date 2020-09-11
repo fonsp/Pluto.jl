@@ -18,8 +18,8 @@ export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.w
 
 export const dismissBeforeUnloadDialogs = page => {
     page.on('dialog', async dialog => {
-        if (dialog.type === 'beforeunload') {
-            await dialog.dismiss()
+        if (dialog.type() === 'beforeunload') {
+            await dialog.accept()
         }
     })
 }

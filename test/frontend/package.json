@@ -12,7 +12,7 @@
     "puppeteer": "^5.2.1"
   },
   "scripts": {
-    "test": "jest --runInBand"
+    "test": "jest --verbose --runInBand"
   },
   "author": "",
   "license": "MIT"
