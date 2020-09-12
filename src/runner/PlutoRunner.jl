@@ -375,15 +375,12 @@ function show_array_row(io::IO, pair::Tuple)
     print(io, "</v></r>")
 end
 
-function show_array_row(io::IO, idxs::AbstractVector{<:Integer}, ary::AbstractArray{<:Any, 1})
+function show_array_els(io::IO, idxs::AbstractVector{<:Integer}, ary::AbstractArray{<:Any, 1})
     for i in idxs
         if isassigned(ary, i)
             show_array_row(io, (i, ary[i]))
         else
-            # such that #undef is not confused with "#undef"
-            print(io, "<r><k>", i, "</k><v>")
-            print(io, Base.undef_ref_str)
-            print(io, "</v></r>")
+            show_array_row(io, (i, Text(Base.undef_ref_str)))
         end
     end
 end
@@ -411,17 +408,17 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
     idxs = eachindex(x)
 
     if length(x) <= tree_display_limit
-        show_array_row(io, idxs, x)
+        show_array_els(io, idxs, x)
     else
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
 
-        show_array_row(io, idxs[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
+        show_array_els(io, idxs[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
         
         print(io, "<r><more></more></r>")
         
         indices = 1+length(x)-from_end:length(x)
-        show_array_row(io, idxs[end+1-from_end:end], @view x[end+1-from_end:end])
+        show_array_els(io, idxs[end+1-from_end:end], @view x[end+1-from_end:end])
     end
     
     print(io, "</jlarray>")
