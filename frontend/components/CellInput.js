@@ -78,10 +78,10 @@ export const CellInput = ({
         // these should be fn+Up and fn+Down on recent apple keyboards
         // please confirm and change this comment <3
         keys["PageUp"] = () => {
-            on_focus_neighbor(cell_id, -1)
+            on_focus_neighbor(cell_id, -1, 0, 0)
         }
         keys["PageDown"] = () => {
-            on_focus_neighbor(cell_id, +1)
+            on_focus_neighbor(cell_id, +1, 0, 0)
         }
         keys["Shift-Tab"] = "indentLess"
         keys["Tab"] = on_tab_key
@@ -187,7 +187,7 @@ export const CellInput = ({
 
         keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
-                on_focus_neighbor(cell_id, -1)
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 on_delete()
                 console.log("backspace!")
             }
@@ -195,11 +195,25 @@ export const CellInput = ({
         }
         keys["Delete"] = keys[mac_keyboard ? "Cmd-Delete" : "Ctrl-Delete"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
-                on_focus_neighbor(cell_id, +1)
+                on_focus_neighbor(cell_id, +1, 0, 0)
                 on_delete()
                 console.log("delete!")
             }
             return window.CodeMirror.Pass
+        }
+        keys["Up"] = () => {
+            if (cm.getCursor().line == 0) {
+                on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
+            } else {
+                return window.CodeMirror.Pass
+            }
+        }
+        keys["Down"] = () => {
+            if (cm.getCursor().line == cm.lastLine()) {
+                on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
+            } else {
+                return window.CodeMirror.Pass
+            }
         }
 
         cm.setOption("extraKeys", keys)
@@ -262,6 +276,7 @@ export const CellInput = ({
             clear_selection(cm_ref.current)
         } else {
             cm_ref.current.focus()
+            cm_forced_focus = cm_forced_focus.map(x => (x.line == Infinity) ? {...x, line: cm_ref.current.lastLine()} : x)
             cm_ref.current.setSelection(...cm_forced_focus)
         }
     }, [cm_forced_focus])
