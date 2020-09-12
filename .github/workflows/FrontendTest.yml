@@ -58,7 +58,7 @@ jobs:
               working-directory: ./test/frontend
               run: |
                 julia --project=$GITHUB_WORKSPACE -e "import Pluto; Pluto.run($PLUTO_PORT)" & # Run Pluto.jl server in the background
-                sleep 10 # Wait for Pluto to initialize
+                sleep 20 # Wait for Pluto to initialize
                 npm run test
               env:
                 PLUTO_PORT: 1235
