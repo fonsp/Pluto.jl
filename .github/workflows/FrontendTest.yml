@@ -34,8 +34,8 @@ jobs:
 
             - name: Install Chrome dependencies
               run: |
-                apt-get update
-                apt-get -y install sudo
+                which sudo || apt-get update && apt-get -y install sudo
+                sudo apt-get update
                 # See https://crbug.com/795759
                 sudo apt-get install -yq libgconf-2-4
                 # Install latest chrome dev package, which installs the necessary libs to

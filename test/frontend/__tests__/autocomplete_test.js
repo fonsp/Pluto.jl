@@ -54,7 +54,7 @@ describe('PlutoAutocomplete', () => {
 
         // Trigger autocomplete
         await page.keyboard.press('Tab')
-        await page.waitFor(500)
+        await page.waitFor(750)
 
         // Get suggestions
         const autocompletedInput = await page.evaluate((selector) => document.querySelector(selector).textContent.trim(), `pluto-cell[id="${lastPlutoCellId}"] pluto-input .CodeMirror-line`)
