@@ -369,16 +369,16 @@ end
 const tree_display_limit = 50
 
 function show_array_row(io::IO, pair::Tuple)
-    i, el = pair
+    i, element = pair
     print(io, "<r><k>", i, "</k><v>")
-    show_richest(io, el; onlyhtml=true)
+    show_richest(io, element; onlyhtml=true)
     print(io, "</v></r>")
 end
 
-function show_array_els(io::IO, idxs::AbstractVector{<:Integer}, ary::AbstractArray{<:Any, 1})
-    for i in idxs
-        if isassigned(ary, i)
-            show_array_row(io, (i, ary[i]))
+function show_array_elements(io::IO, indices::AbstractVector{<:Integer}, x::AbstractArray{<:Any, 1})
+    for i in indices
+        if isassigned(x, i)
+            show_array_row(io, (i, x[i]))
         else
             show_array_row(io, (i, Text(Base.undef_ref_str)))
         end
@@ -386,7 +386,7 @@ function show_array_els(io::IO, idxs::AbstractVector{<:Integer}, ary::AbstractAr
 end
 
 function show_dict_row(io::IO, pair::Union{Pair,Tuple})
-    k, el = pair
+    k, element = pair
     print(io, "<r><k>")
     if pair isa Pair
         show_richest(io, k; onlyhtml=true)
@@ -395,7 +395,7 @@ function show_dict_row(io::IO, pair::Union{Pair,Tuple})
         print(io, k)
     end
     print(io, "</k><v>")
-    show_richest(io, el; onlyhtml=true)
+    show_richest(io, element; onlyhtml=true)
     print(io, "</v></r>")
 end
 
@@ -405,20 +405,19 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
     summary(io, x)
     print(io, "<jlarray>")
-    idxs = eachindex(x)
+    indices = eachindex(x)
 
     if length(x) <= tree_display_limit
-        show_array_els(io, idxs, x)
+        show_array_elements(io, indices, x)
     else
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
 
-        show_array_els(io, idxs[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
+        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
         
         print(io, "<r><more></more></r>")
         
-        indices = 1+length(x)-from_end:length(x)
-        show_array_els(io, idxs[end+1-from_end:end], @view x[end+1-from_end:end])
+        show_array_elements(io, indices[end+1-from_end:end], @view x[end+1-from_end:end])
     end
     
     print(io, "</jlarray>")
