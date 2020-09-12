@@ -34,7 +34,6 @@ jobs:
 
             - name: Install Chrome dependencies
               run: |
-                which sudo || apt-get update && apt-get -y install sudo
                 sudo apt-get update
                 # See https://crbug.com/795759
                 sudo apt-get install -yq libgconf-2-4
