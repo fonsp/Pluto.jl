@@ -24,7 +24,7 @@ const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
     :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
     :(ENV["GKSwstype"] = "nul"), 
-    :(ENV["JULIA_REVISE_ON_WORKER"] = "1"), 
+    :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
 ]
 
 const moduleworkspace_count = Ref(0)
