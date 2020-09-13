@@ -4,9 +4,30 @@ module MacroZoo
 and returns a tuple of fake arguments, for Pluto to digest."
 const mock_macros = Dict{Symbol,Function}()
 
+# These functions must accept many arguments, and probably shouldn't give an error
+# even on input that the real macro can't accept.
+
 ###
 # THE ZOO
 ###
+
+# https://www.queryverse.org/VegaLite.jl/stable/examples/examples_maps/
+function vegalite_expand(exs...)
+    map(exs) do ex
+        postwalk(ex) do x
+            if x isa Expr && x.head == :(=) # keyword argument, not assignment
+                x.args[2]
+            elseif x isa Expr && x.head == :braces
+                Expr(:block, x.args...)
+            else
+                x
+            end
+        end
+    end
+end
+
+mock_macros[Symbol("@vlplot")] = vegalite_expand
+mock_macros[Symbol("@pgf")] = vegalite_expand # close enough?
 
 query_list = [
     # https://www.queryverse.org/Query.jl/stable/standalonequerycommands/

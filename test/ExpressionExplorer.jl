@@ -286,6 +286,19 @@ using Test
 end
 
 @testset "Macro Zoo" begin
+    cleanup! =  Base.remove_linenums!
+    @testset "Vegalite + PGFPlotsX" begin
+        @test testee(:(@vlplot(x={"x", axis={title="t$n"}})), [:n], [], [[Symbol("@vlplot")]], [])
+
+        import Pluto.MacroZoo: vegalite_expand
+
+        vex1 = :(x={"foo:q", axis={title="some title"}}) # @vlplot
+        @test vegalite_expand(vex1)[1] == cleanup!(:("foo:q"; begin "some title" end))
+
+        pex1 = :(Axis({xlabel = "Cost", ylabel = "Error",}, Plot({color = "red", mark  = "x"}))) # @pgf
+        @test vegalite_expand(pex1)[1] == cleanup!(:(Axis(begin "Cost"; "Error"end, Plot(begin "red"; "x" end))))
+
+    end
     @testset "Einsum" begin
         @test testee(:(@einsum a[i] := f(x[i,k])), [:x], [:a], [[:f], [Symbol("@einsum")]], [])
         @test testee(:(@reduce s := prod(i,j) x[i,j]^2 lazy), [:x], [:s], [[:^], [:prod], [Symbol("@reduce")]], [])
