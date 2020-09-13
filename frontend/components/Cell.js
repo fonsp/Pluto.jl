@@ -77,6 +77,7 @@ export const Cell = ({
     output,
     selected,
     on_change,
+    on_update,    
     on_update_doc_query,
     on_focus_neighbor,
     disable_input,
@@ -145,7 +146,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
+            <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} on_render=${on_update} />
             <${CellInput}
                 is_hidden=${!errored && code_folded && cm_forced_focus == null}
                 remote_code=${remote_code}

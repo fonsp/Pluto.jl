@@ -22,7 +22,7 @@ export class CellOutput extends Component {
 
     componentWillUpdate() {
         this.old_height = this.base.scrollHeight
-    }
+    }    
 
     render() {
         return html`
@@ -54,7 +54,7 @@ export class CellOutput extends Component {
     }
 }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
+const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, requests }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -67,7 +67,11 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
+            return html`<${RawHTMLContainer}  \
+                            body=${body} 
+                            all_completed_promise=${all_completed_promise} \
+                            on_render=${on_render} \
+                            requests=${requests} />`
             break
         case "application/vnd.pluto.stacktrace+json":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
@@ -113,7 +117,7 @@ const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
         try {
             const result = Function(next_node.innerHTML).bind(root_node)()
             if (result != null) {
-                console.log(result)
+                // console.log(result)
                 if (result.nodeType === Node.ELEMENT_NODE) {
                     next_node.parentElement.insertBefore(result, next_node.nextSibling)
                 }
@@ -146,8 +150,9 @@ export class RawHTMLContainer extends Component {
             }
 
             if (this.props.on_render != null) {
+                console.log('running on_render')
                 this.props.on_render(this.base)
-            }
+            }           
         })
     }
 

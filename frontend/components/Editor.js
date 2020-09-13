@@ -844,6 +844,11 @@ export class Editor extends Component {
                             },
                         })
                     }}
+                    on_cell_output_changed=${(cell) => {
+                        // TODO: add to queue for subscribers
+                        console.log('on_cell_output_changed', this.state)
+                        console.log('on_cell_output_changed', cell)                        
+                    }}
                     on_focus_neighbor=${(cell_id, delta) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta
