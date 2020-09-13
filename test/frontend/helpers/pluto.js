@@ -12,7 +12,7 @@ export const prewarmPluto = async (page) => {
     await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
     await createNewNotebook(page)
     const cellInputSelector = 'pluto-input textarea'
-    await page.waitForSelector(cellInputSelector)
+    await page.waitForSelector(cellInputSelector, { visible: true })
     await page.type(cellInputSelector, '21*2')
 
     const runSelector = '.runcell'
@@ -24,7 +24,7 @@ export const prewarmPluto = async (page) => {
 export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
-    return clickAndWaitForNavigation(page, newNotebookSelector)
+    await clickAndWaitForNavigation(page, newNotebookSelector)
 }
 
 export const importNotebook = async (notebookName) => {
@@ -41,4 +41,8 @@ export const importNotebook = async (notebookName) => {
 
 export const getCellIds = page => page.evaluate(() => Array.from(document.querySelectorAll('pluto-cell')).map(cell => cell.id))
 
-export const waitForCellOutput = (page, cellId) => waitForContent(page, `pluto-cell[id="${cellId}"] pluto-output`)
+export const waitForCellOutput = async (page, cellId) => {
+    const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
+    await page.waitForSelector(cellOutputSelector, { visible: true })
+    return waitForContent(page, cellOutputSelector)
+}

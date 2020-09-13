@@ -10,7 +10,7 @@ describe('PlutoNewNotebook', () => {
     beforeEach(async () => {
         await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
         await createNewNotebook(page)
-        await page.waitFor(30000)
+        await page.waitForSelector('pluto-input', { visible: true })
     })
 
     it('should create new notebook', async () => {

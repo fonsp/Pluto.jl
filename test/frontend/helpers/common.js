@@ -3,7 +3,10 @@ import path from 'path'
 export const waitForContent = async (page, selector, intervalMs=100) => {
     return new Promise((resolve, _reject) => {
         const poll = async () => {
-            const content = await page.evaluate(selector => document.querySelector(selector).textContent, selector)
+            const content = await page.evaluate(selector => {
+                const element = document.querySelector(selector)
+                return element !== null ? element.textContent : null
+            }, selector)
             if (content && content.length > 0) {
                 resolve(content)
             } else {
