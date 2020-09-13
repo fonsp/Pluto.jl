@@ -57,18 +57,15 @@ function einsum_expand(exs...)
             # then this is assignment
             left = einsum_name(ex.args[1])
             left === nothing && continue
-            right = if ex.args[2] isa Expr &&
-                ex.args[2].head == :call && all(i->i isa Symbol, ex.args[2].args)
-                einsum_undummy(ex.args[2], true) # first expr of A[i] := sum(j) B[i,j]
-            else
+            right = if einsum_hasref(ex.args[2])
                 einsum_undummy(ex.args[2]) # RHS of simple @einsum
+            else
+                einsum_undummy(ex.args[2], true) # first expr of A[i] := sum(j) B[i,j]
             end
-            ex_new = Expr(:(=), left, right)
-            push!(out, ex_new)
+            push!(out, Expr(:(=), left, right))
         elseif einsum_hasref(ex)
             # scalar assignment, in-place update, or RHS of @reduce
-            ex_new = einsum_undummy(ex)
-            push!(out, ex_new)
+            push!(out, einsum_undummy(ex))
         end
     end
     isempty(out) ? exs : out
@@ -120,10 +117,6 @@ end
 ###
 # HELPER FUNCTIONS
 ###
-
-# from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
-const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
-const modifiers_dotprefixed = [Symbol('.' * String(m)) for m in modifiers]
 
 # Copied verbatim from here:
 # https://github.com/MikeInnes/MacroTools.jl/blob/master/src/utils.jl
