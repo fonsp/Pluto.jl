@@ -44,12 +44,16 @@ describe('PlutoNewNotebook', () => {
         for (const cell of cells) {
             plutoCellId = lastElement(await getCellIds(page))
             await page.type(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`, cell)
+
+            const runSelector = `pluto-cell[id="${plutoCellId}"] .runcell`
+            await page.waitForSelector(runSelector, { visible: true })
+            await page.click(runSelector)
+            await waitForCellOutput(page, plutoCellId)
+
             await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
             await page.waitFor(500)
         }
 
-        await page.waitForSelector('.runallchanged', { visible: true })
-        await page.click('.runallchanged')
         const content = await waitForCellOutput(page, plutoCellId)
         expect(content).toBe('6')
     })
@@ -67,12 +71,16 @@ describe('PlutoNewNotebook', () => {
             const plutoCellId = lastElement(await getCellIds(page))
             plutoCellIds.push(plutoCellId)
             await page.type(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`, cell)
+
+            const runSelector = `pluto-cell[id="${plutoCellId}"] .runcell`
+            await page.waitForSelector(runSelector, { visible: true })
+            await page.click(runSelector)
+            await waitForCellOutput(page, plutoCellId)
+
             await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
             await page.waitFor(500)
         }
 
-        await page.waitForSelector('.runallchanged', { visible: true })
-        await page.click('.runallchanged')
         const initialLastCellContent = await waitForCellOutput(page, lastElement(plutoCellIds))
         expect(initialLastCellContent).toBe('6')
 
