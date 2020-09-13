@@ -2,15 +2,15 @@ import {
     lastElement,
     dismissBeforeUnloadDialogs
 } from '../helpers/common'
-import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl } from '../helpers/pluto'
+import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
 
 describe('PlutoAutocomplete', () => {
     beforeAll(async () => {
         dismissBeforeUnloadDialogs(page)
+        await prewarmPluto(page)
     })
 
     beforeEach(async () => {
-        process.env.PLUTO_PORT
         await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
     })
 
@@ -30,8 +30,7 @@ describe('PlutoAutocomplete', () => {
 
         // Trigger autocomplete suggestions
         await page.keyboard.press('Tab')
-        await page.waitFor(500)
-
+        await page.waitForSelector('.CodeMirror-hints')
         // Get suggestions
         const suggestions = await page.evaluate(() => Array.from(document.querySelectorAll('.CodeMirror-hints li')).map(suggestion => suggestion.textContent))
         suggestions.sort()

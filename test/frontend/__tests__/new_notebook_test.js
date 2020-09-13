@@ -1,9 +1,10 @@
 import { waitForContent, lastElement, dismissBeforeUnloadDialogs } from '../helpers/common'
-import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl } from '../helpers/pluto'
+import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
 
 describe('PlutoNewNotebook', () => {
     beforeAll(async () => {
         dismissBeforeUnloadDialogs(page)
+        await prewarmPluto(page)
     })
 
     beforeEach(async () => {

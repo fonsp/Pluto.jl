@@ -2,11 +2,12 @@ import {
     lastElement,
     dismissBeforeUnloadDialogs
 } from '../helpers/common'
-import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl } from '../helpers/pluto'
+import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
 
 describe('PlutoImportNotebook', () => {
     beforeAll(async () => {
         dismissBeforeUnloadDialogs(page)
+        await prewarmPluto(page)
     })
 
     beforeEach(async () => {

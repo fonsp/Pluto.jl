@@ -8,6 +8,19 @@ import {
 
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
+export const prewarmPluto = async (page) => {
+    await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
+    await createNewNotebook(page)
+    const cellInputSelector = 'pluto-input textarea'
+    await page.waitForSelector(cellInputSelector)
+    await page.type(cellInputSelector, '21*2')
+
+    const runSelector = '.runcell'
+    await page.waitForSelector(runSelector)
+    await page.click(runSelector)
+    await waitForContent(page, 'pluto-output')
+}
+
 export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
