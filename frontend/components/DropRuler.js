@@ -158,19 +158,15 @@ export class DropRuler extends Component {
 
         // Ctrl+A to select all cells
         document.addEventListener("keydown", (e) => {
-            switch (e.keyCode) {
-                case 65: // a
-                    if (e.ctrlKey) {
-                        // if you are not writing text somewhere else
-                        if (document.activeElement === document.body && window.getSelection().isCollapsed) {
-                            this.props.on_selection({
-                                selection_start_index: 0,
-                                selection_stop_index: Infinity,
-                            })
-                            e.preventDefault()
-                        }
-                    }
-                    break
+            if (e.key === "a" && e.ctrlKey) {
+                // if you are not writing text somewhere else
+                if (document.activeElement === document.body && window.getSelection().isCollapsed) {
+                    this.props.on_selection({
+                        selection_start_index: 0,
+                        selection_stop_index: Infinity,
+                    })
+                    e.preventDefault()
+                }
             }
         })
     }
