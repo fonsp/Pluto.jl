@@ -1,25 +1,14 @@
 module MacroZoo
 
-"Given a macro's name and its arguments, this may return a new list of arguments
-for use by Pluto's expression explorer. Or `nothing`, if not recogniased / confusing."
-function expand(func, expr...)
-    length(func) > 0 || return nothing
-    if func[end] in query_list
-        [query_expand(expr...)]
-    elseif func[end] in einsum_list
-        [einsum_expand(expr...)]
-    elseif func[end] in reduce_list
-        reduce_expand(expr...)
-    else
-        nothing
-    end
-end
+"Each entry is a function, which takes the macro's arguments,
+and returns a tuple of fake arguments, for Pluto to digest."
+const mock_macros = Dict{Symbol,Function}()
 
 ###
 # THE ZOO
 ###
 
-query_list = map(Symbol, [
+query_list = [
     # https://www.queryverse.org/Query.jl/stable/standalonequerycommands/
     "@map",
     "@filter",
@@ -47,54 +36,69 @@ query_list = map(Symbol, [
     "@where",
     "@select",
     "@collect",
-    ])
+]
+for str in query_list
+    mock_macros[Symbol(str)] = (exs...) -> (0,)
+end
 
-query_expand(exs...) = 0
-
-einsum_list = map(Symbol, [
+einsum_list = [
     "@einsum", "@einsimd", "@vielsum", "@vielsimd", # Einsum.jl
-    "@tensor", "@tensoropt", # TensorOperations.jl
-    "@cast", # TensorCast.jl
+    "@tensor", "@tensoropt", "@cutensor", # TensorOperations.jl
+    "@cast", "@reduce", "@matmul", # TensorCast.jl
     "@ein", # OMEinsum.jl
     "@tullio", # Tullio.jl
-    ])
+]
 
 function einsum_expand(exs...)
+    out = []
     for ex in exs
-        # this assumes that only one expression is of interest
-        ex isa Expr || continue
-        if ex.head == :(:=)  # then this is assignment
+        ex isa Expr || continue # skip LineNumberNode etc
+        if ex.head == :(:=)
+            # then this is assignment
             left = einsum_name(ex.args[1])
-            left === nothing && return nothing
-            return Expr(:(=), left, einsum_undummy(ex.args[2]))
-        elseif ex.head in vcat(:(=), modifiers) && einsum_hasref(ex)
-            # then either scalar assignment, or in-place
-            return einsum_undummy(ex)
+            left === nothing && continue
+            right = if ex.args[2] isa Expr &&
+                ex.args[2].head == :call && all(i->i isa Symbol, ex.args[2].args)
+                einsum_undummy(ex.args[2], true) # first expr of A[i] := sum(j) B[i,j]
+            else
+                einsum_undummy(ex.args[2]) # RHS of simple @einsum
+            end
+            ex_new = Expr(:(=), left, right)
+            push!(out, ex_new)
+        elseif einsum_hasref(ex)
+            # scalar assignment, in-place update, or RHS of @reduce
+            ex_new = einsum_undummy(ex)
+            push!(out, ex_new)
         end
-        # ignore other expressions, including e.g. keyword options
     end
-    nothing
+    isempty(out) ? exs : out
+end
+
+for str in einsum_list # must be below function definition
+    mock_macros[Symbol(str)] = einsum_expand
 end
 
 einsum_name(s::Symbol) = s
 einsum_name(ex::Expr) = ex.head == :(.) ? ex :  # case A.x[i] := ...
-    ex.head == :ref ? einsum_name(ex.args[1]) : # allow for A[i][j] := ...
+    ex.head == :ref ? einsum_name(ex.args[1]) : # recursive for A[i][j] := ...
     nothing
 
-# @cast six[n][c, h,w] := npy[n, h,w, c]
-
-einsum_undummy(s, inref=false) = inref ? 0 : s
+einsum_undummy(s, inref=false) = (inref || s == :_) ? 0 : s
 einsum_undummy(ex::Expr, inref=false) =
     if ex.head == :ref
         # inside indexing, all loose symbols are dummy indices
         args = map(i -> einsum_undummy(i, true), ex.args[2:end])
         Expr(:ref, ex.args[1], args...)
+    elseif ex.head == :call && ex.args[1] in [:(|>), :(<|)]
+        # don't keep this as function name, but "... |> sqrt" should keep sqrt(0)
+        args = map(a -> a isa Symbol ? :($a(0)) : einsum_undummy(a, inref), ex.args[2:end])
+        Expr(:call, :+, args...)
     elseif ex.head == :call
         # function calls keep the function name
         args = map(i -> einsum_undummy(i, inref), ex.args[2:end])
         Expr(:call, ex.args[1], args...)
     elseif ex.head == :$
-        # interpted $ as interpolation
+        # interpet $ as interpolation
         ex.args[1]
     else
         args = map(i -> einsum_undummy(i, inref), ex.args)
@@ -110,28 +114,6 @@ function einsum_hasref(ex) # this serves to exclude keyword options
         x
     end
     out
-end
-
-reduce_list = map(Symbol, ["@reduce", "@matmul"])
-
-reduce_expand(::LineNumberNode, exs...) = reduce_expand(exs...)
-function reduce_expand(exs...)
-    length(exs) < 2 && return nothing
-    ex1, ex2 = exs[1:2]
-    ex1 isa Expr && ex2 isa Expr || return nothing
-    # first expression is like A[i] := sum(j), treat like @einsum but delete indices
-    out1 = if ex1.head == :(:=)
-        left = einsum_name(ex1.args[1])
-        left === nothing && return nothing
-        Expr(:(=), left, einsum_undummy(ex1.args[2], true))
-    elseif ex1.head in vcat(:(=), modifiers) || ex1.head == :call # allow @reduce sum(i)
-        einsum_undummy(ex, true)
-    else
-        return nothing
-    end
-    # second expression is the right hand side, treat as before
-    out2 = einsum_undummy(ex2)
-    return [out1, out2]
 end
 
 

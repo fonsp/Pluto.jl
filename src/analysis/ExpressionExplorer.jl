@@ -337,12 +337,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
             end
         end
-        zoomaybe = MacroZoo.expand(funcname, ex.args[2:end]...)
-        if zoomaybe !== nothing
-            return explore!(Expr(:call, ex.args[1], zoomaybe...), scopestate)
-        else
-            return explore!(Expr(:call, ex.args...), scopestate)
-        end
+        # Some package macros have simplified versions:
+        zoofun = get(MacroZoo.mock_macros, funcname[end], identity∘tuple)
+        zooargs = zoofun(ex.args[2:end]...)
+        return explore!(Expr(:call, ex.args[1], zooargs...), scopestate)
 
     elseif ex.head == :call
         # Does not create scope
