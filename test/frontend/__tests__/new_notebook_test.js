@@ -24,7 +24,7 @@ describe('PlutoNewNotebook', () => {
         await page.type(cellInputSelector, '1+1')
 
         const runSelector = '.runcell'
-        await page.waitForSelector(runSelector)
+        await page.waitForSelector(runSelector, { visible: true })
         await page.click(runSelector)
 
         const content = await waitForContent(page, 'pluto-output')
@@ -47,6 +47,7 @@ describe('PlutoNewNotebook', () => {
             await page.waitFor(500)
         }
 
+        await page.waitForSelector('.runallchanged', { visible: true })
         await page.click('.runallchanged')
         const content = await waitForCellOutput(page, plutoCellId)
         expect(content).toBe('6')
@@ -69,6 +70,7 @@ describe('PlutoNewNotebook', () => {
             await page.waitFor(500)
         }
 
+        await page.waitForSelector('.runallchanged', { visible: true })
         await page.click('.runallchanged')
         const initialLastCellContent = await waitForCellOutput(page, lastElement(plutoCellIds))
         expect(initialLastCellContent).toBe('6')

@@ -16,7 +16,7 @@ export const prewarmPluto = async (page) => {
     await page.type(cellInputSelector, '21*2')
 
     const runSelector = '.runcell'
-    await page.waitForSelector(runSelector)
+    await page.waitForSelector(runSelector, { visible: true })
     await page.click(runSelector)
     await waitForContent(page, 'pluto-output')
 }
