@@ -3,7 +3,8 @@ import {
     clickAndWaitForNavigation,
     getFixtureNotebookPath,
     getTemporaryNotebookPath,
-    waitForContent
+    waitForContent,
+    waitForContentToChange
 } from './common'
 
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
@@ -41,8 +42,12 @@ export const importNotebook = async (notebookName) => {
 
 export const getCellIds = page => page.evaluate(() => Array.from(document.querySelectorAll('pluto-cell')).map(cell => cell.id))
 
-export const waitForCellOutput = async (page, cellId) => {
+export const waitForCellOutput = (page, cellId) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
-    await page.waitForSelector(cellOutputSelector, { visible: true })
     return waitForContent(page, cellOutputSelector)
+}
+
+export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
+    const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
+    return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }

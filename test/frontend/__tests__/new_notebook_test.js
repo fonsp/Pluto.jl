@@ -1,5 +1,5 @@
 import { waitForContent, lastElement, dismissBeforeUnloadDialogs } from '../helpers/common'
-import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
+import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl, prewarmPluto, waitForCellOutputToChange } from '../helpers/pluto'
 
 const manuallyEnterCells = async (page, cells) => {
     const plutoCellIds = []
@@ -87,7 +87,7 @@ describe('PlutoNewNotebook', () => {
 
         // Re-evaluate
         await page.click('.runallchanged')
-        const reactiveLastCellContent = await waitForCellOutput(page, lastElement(plutoCellIds))
+        const reactiveLastCellContent = await waitForCellOutputToChange(page, lastElement(plutoCellIds), '6')
         expect(reactiveLastCellContent).toBe('14')
     })
 })

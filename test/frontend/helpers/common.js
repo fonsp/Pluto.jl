@@ -1,20 +1,21 @@
 import path from 'path'
 
-export const waitForContent = async (page, selector, intervalMs=100) => {
-    return new Promise((resolve, _reject) => {
-        const poll = async () => {
-            const content = await page.evaluate(selector => {
-                const element = document.querySelector(selector)
-                return element !== null ? element.textContent : null
-            }, selector)
-            if (content && content.length > 0) {
-                resolve(content)
-            } else {
-                setTimeout(poll, intervalMs)
-            }
-        }
-        setTimeout(poll, intervalMs)
-    })
+export const waitForContent = async (page, selector) => {
+    await page.waitForSelector(selector, { visible: true })
+    await page.waitFor((selector) => {
+        const element = document.querySelector(selector)
+        return element !== null && element.textContent.length > 0
+    }, {}, selector)
+    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+}
+
+export const waitForContentToChange = async (page, selector, currentContent) => {
+    await page.waitForSelector(selector, { visible: true })
+    await page.waitFor((selector, currentContent) => {
+        const element = document.querySelector(selector)
+        return element !== null && element.textContent !== currentContent
+    }, {}, selector, currentContent)
+    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
 }
 
 export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click(selector)])
