@@ -163,7 +163,13 @@ function run(host, port::Union{Nothing,Integer}=nothing; configuration=ServerCon
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
-    
+
+            # If a "token" url parameter is passed in, do save that the first time
+            params = HTTP.queryparams(HTTP.URI(request.target))
+            if haskey(params, "token") && session.token === nothing 
+                session.token = params["token"]
+            end
+
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
                 # no request body

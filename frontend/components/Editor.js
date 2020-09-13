@@ -27,7 +27,7 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
-                notebook_id: document.location.search.split("id=")[1],
+                notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
             },
             desired_doc_query: null,
