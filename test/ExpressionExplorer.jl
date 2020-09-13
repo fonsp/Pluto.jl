@@ -287,16 +287,20 @@ end
 
 @testset "Macro Zoo" begin
     cleanup! =  Base.remove_linenums!
+    @testset "Test" begin
+        @test testee(:(@test π ≈ 3.14 atol=0.01), [:π], [], [[Symbol("@test")], [:≈]], [])
+        @test testee(:(@test Array{Int}(undef,3) isa Vector), [:Vector, :undef, :Int, :Array], [], [[Symbol("@test")], [:isa]], [])
+    end
     @testset "Vegalite + PGFPlotsX" begin
         @test testee(:(@vlplot(x={"x", axis={title="t$n"}})), [:n], [], [[Symbol("@vlplot")]], [])
 
-        import Pluto.MacroZoo: vegalite_expand
+        import Pluto.MacroZoo: curly_and_keywords
 
         vex1 = :(x={"foo:q", axis={title="some title"}}) # @vlplot
-        @test vegalite_expand(vex1)[1] == cleanup!(:("foo:q"; begin "some title" end))
+        @test curly_and_keywords(vex1)[1] == cleanup!(:("foo:q"; begin "some title" end))
 
         pex1 = :(Axis({xlabel = "Cost", ylabel = "Error",}, Plot({color = "red", mark  = "x"}))) # @pgf
-        @test vegalite_expand(pex1)[1] == cleanup!(:(Axis(begin "Cost"; "Error"end, Plot(begin "red"; "x" end))))
+        @test curly_and_keywords(pex1)[1] == cleanup!(:(Axis(begin "Cost"; "Error"end, Plot(begin "red"; "x" end))))
 
     end
     @testset "Einsum" begin

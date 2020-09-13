@@ -11,13 +11,12 @@ const mock_macros = Dict{Symbol,Function}()
 # THE ZOO
 ###
 
-# https://www.queryverse.org/VegaLite.jl/stable/examples/examples_maps/
-function vegalite_expand(exs...)
+function curly_and_keywords(exs...)
     map(exs) do ex
         postwalk(ex) do x
             if x isa Expr && x.head == :(=) # keyword argument, not assignment
                 x.args[2]
-            elseif x isa Expr && x.head == :braces
+            elseif x isa Expr && x.head == :braces # replace {} with begin end
                 Expr(:block, x.args...)
             else
                 x
@@ -26,8 +25,13 @@ function vegalite_expand(exs...)
     end
 end
 
-mock_macros[Symbol("@vlplot")] = vegalite_expand
-mock_macros[Symbol("@pgf")] = vegalite_expand # close enough?
+mock_macros[Symbol("@vlplot")] = curly_and_keywords # VegaLite.jl
+
+mock_macros[Symbol("@pgf")] = curly_and_keywords # PGFPlotsX.jl
+
+first_then_keywords(exs...) = (first(exs), curly_and_keywords(Base.tail(exs)...)...)
+
+mock_macros[Symbol("@test")] = first_then_keywords
 
 query_list = [
     # https://www.queryverse.org/Query.jl/stable/standalonequerycommands/
