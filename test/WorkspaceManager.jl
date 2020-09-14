@@ -1,5 +1,7 @@
 using Test
-import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
+using Pluto.Configuration: CompilerOptions
+using Pluto.WorkspaceManager: _merge_notebook_compiler_options
+import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
