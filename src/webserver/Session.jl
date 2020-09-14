@@ -1,4 +1,5 @@
 import UUIDs: UUID, uuid1
+import .Configuration
 
 ###
 # CLIENT
@@ -32,13 +33,13 @@ The `ServerSession` keeps track of:
 - `connected_clients`: connected (web) clients
 - `notebooks`: running notebooks
 - `secret`: the web acces token
-- `default_environment_path`: specifiy the project/package environment to start new notebooks in. Set to `nothing` to default to the global environment.
+- `options`: global pluto configuration `Options` for this session.
 """
 Base.@kwdef struct ServerSession
     connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
     notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
     secret::UUID = uuid1()
-    default_environment_path::Union{Nothing,AbstractString} = nothing
+    options::Configuration.Options = Configuration.Options()
 end
 
 ###
