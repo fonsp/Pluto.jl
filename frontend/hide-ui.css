@@ -2,10 +2,6 @@ main {
     margin-top: 20px;
 }
 
-body {
-    font-size: 14px;
-}
-
 body > header,
 preamble > button,
 pluto-cell > button,
@@ -15,11 +11,4 @@ footer,
 pluto-runarea,
 #helpbox-wrapper {
     display: none !important;
-}
-
-pluto-output img {
-    max-width: 80%;
-    display: block;
-    margin: 0 auto;
-    margin-block-end: 1rem;
 }

@@ -260,6 +260,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         ws_connection.send(message)
         return p
     }
+    client.send = send
 
     const connect = async () => {
         const secret = await (
@@ -298,6 +299,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             )
 
             console.log(ws_connection)
+            client.kill = ws_connection.kill
 
             // let's say hello
             console.log("Hello?")
@@ -323,9 +325,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
     }
     await connect()
-
-    client.send = send
-    client.kill = ws_connection.kill
 
     return client
 }

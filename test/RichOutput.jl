@@ -21,6 +21,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("Ref(9)"),
                 Cell("struct Ten x end"),
                 Cell("Ten(11)"),
+                Cell("Vector(undef, 12)"),
             ])
             fakeclient.connected_notebook = notebook
 
@@ -35,9 +36,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.tree+xml"
         @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.tree+xml"
         @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-
         @test notebook.cells[11].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        
+        @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.tree+xml"
+            
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     

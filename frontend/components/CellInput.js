@@ -212,13 +212,14 @@ export const CellInput = ({
                     on_update_doc_query(sel)
                 }
             } else {
-                const token = cm.getTokenAt(cm.getCursor())
+                const cursor = cm.getCursor()
+                const token = cm.getTokenAt(cursor)
                 if (token.start === 0 && token.type === "operator" && token.string === "?") {
                     // https://github.com/fonsp/Pluto.jl/issues/321
-                    const second_token = cm.getTokenAt({ ...cm.getCursor(), ch: 2 })
+                    const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
                     on_update_doc_query(second_token.string)
                 } else if (token.type != null && token.type !== "string") {
-                    on_update_doc_query(token.string)
+                    on_update_doc_query(module_expanded_selection(cm, token.string, cursor.line, token.start))
                 }
             }
         })
@@ -321,7 +322,24 @@ const juliahints = (cm, options) => {
                 from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
                 to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
-            window.CodeMirror.on(completions, "select", options.on_update_doc_query)
+            window.CodeMirror.on(completions, "select", (val) => {
+                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+            })
             return completions
         })
+}
+
+// https://github.com/fonsp/Pluto.jl/issues/239
+const module_expanded_selection = (cm, current, line, ch) => {
+    const next1 = cm.getTokenAt({ line: line, ch: ch })
+    if (next1.string === ".") {
+        const next2 = cm.getTokenAt({ line: line, ch: ch - 1 })
+        if (next2.type === "variable") {
+            return module_expanded_selection(cm, next2.string + "." + current, line, next2.start)
+        } else {
+            return current
+        }
+    } else {
+        return current
+    }
 }

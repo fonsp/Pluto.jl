@@ -613,69 +613,42 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            switch (e.keyCode) {
-                case 81: // q
-                    if (e.ctrlKey) {
-                        if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
-                            this.requests.interrupt_remote()
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 82: // r
-                    // I commonly have a test notebook that I want to re-run after changing something to the backend
-                    // if I would just reload the page, then the new Pluto session would be asked to open notebook with uuid=b1d2cbdb1c2bb12d, which does not exist in the new session
-                    if (e.ctrlKey) {
-                        if (this.state.notebook.path !== default_path) {
-                            document.location.href = link_open_path(this.state.notebook.path)
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 83: // s
-                    if (e.ctrlKey) {
-                        const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
-                        if (!some_cells_ran) {
-                            // all cells were in sync allready
-                            // TODO: let user know that the notebook autosaves
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 8: // backspace
-                // fall into:
-                case 46: // delete
-                    const selected = this.state.notebook.cells.filter((c) => c.selected)
-                    if (selected.length > 0) {
-                        this.requests.confirm_delete_multiple(selected)
-                        e.preventDefault()
-                    }
-                    break
-                case 191: // ? or /
-                    if (!(e.ctrlKey && e.shiftKey)) {
-                        break
-                    }
-                // fall into:
-                case 112: // F1
-                    // TODO: show help
-                    alert(
-                        `Shortcuts 🎹
-        
-        Shift+Enter:   run cell
-        Ctrl+Enter:   run cell and add cell below
-        Delete or Backspace:   delete empty cell
-
-        PageUp or fn+Up:   select cell above
-        PageDown or fn+Down:   select cell below
-
-        Ctrl+Q:   interrupt notebook
-        Ctrl+S:   submit all changes
-        
-        The notebook file saves every time you run`
-                    )
-
+            console.log(e)
+            if (e.code === "KeyQ" && e.ctrlKey) {
+                if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
+                    this.requests.interrupt_remote()
+                }
+                e.preventDefault()
+            } else if (e.code === "KeyS" && e.ctrlKey) {
+                const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
+                if (!some_cells_ran) {
+                    // all cells were in sync allready
+                    // TODO: let user know that the notebook autosaves
+                }
+                e.preventDefault()
+            } else if (e.code === "Backspace" || e.code === "Delete") {
+                const selected = this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length > 0) {
+                    this.requests.confirm_delete_multiple(selected)
                     e.preventDefault()
-                    break
+                }
+            } else if ((e.key === "?" && e.ctrlKey) || e.key === "F1") {
+                alert(
+                    `Shortcuts 🎹
+    
+    Shift+Enter:   run cell
+    Ctrl+Enter:   run cell and add cell below
+    Delete or Backspace:   delete empty cell
+
+    PageUp or fn+Up:   select cell above
+    PageDown or fn+Down:   select cell below
+
+    Ctrl+Q:   interrupt notebook
+    Ctrl+S:   submit all changes
+    
+    The notebook file saves every time you run`
+                )
+                e.preventDefault()
             }
         })
 
