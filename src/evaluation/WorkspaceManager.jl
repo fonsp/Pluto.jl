@@ -263,7 +263,7 @@ function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Works
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
-"Force interrupt (SIGINT) a workspace, return whether succesful"
+"Force interrupt (SIGINT) a workspace, return whether successful"
 function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}; verbose=true)::Bool
     workspace = get_workspace(session_notebook)
 

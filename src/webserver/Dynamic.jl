@@ -20,14 +20,16 @@ end
 responses[:connect] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (notebook !== nothing),
+        :options => session.options,
+        :version_info => Dict(
+            :pluto => PLUTO_VERSION_STR,
+            :julia => JULIA_VERSION_STR,
+        ),
     ), nothing, nothing, initiator))
 end
 
-responses[:get_version] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
-    putclientupdates!(session, initiator, UpdateMessage(:versioninfo, Dict(
-        :pluto => PLUTO_VERSION_STR,
-        :julia => JULIA_VERSION_STR,
-    ), nothing, nothing, initiator))
+responses[:ping] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    putclientupdates!(session, initiator, UpdateMessage(:pong, Dict(), nothing, nothing, initiator))
 end
 
 

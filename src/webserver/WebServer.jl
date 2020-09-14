@@ -50,7 +50,7 @@ function open_in_default_browser(url::AbstractString)::Bool
 end
 
 """
-    run([host,] port=1234[; kwargs...])
+    run(; kwargs...)
 
 Start Pluto! Are you excited? I am!
 

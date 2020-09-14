@@ -42,7 +42,7 @@ Base.@kwdef mutable struct ServerOptions
     port::Union{Nothing,Integer} = nothing
     launch_browser::Bool = true
     show_file_system::Bool = true
-    working_directory::String = notebook_path_suggestion()
+    notebook_path_suggestion::String = notebook_path_suggestion()
 end
 
 """
