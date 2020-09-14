@@ -1,33 +1,5 @@
 module Configuration
 
-"""
-These options will be passed as command line argument to newly launched processes.
-
-The ServerSession contains a global version of this configuration, and each notebook can also have its own version.
-"""
-Base.@kwdef mutable struct CompilerOptions
-    compile::Union{Nothing,String} = nothing
-    sysimage::Union{Nothing,String} = nothing
-    banner::Union{Nothing,String} = nothing
-    optimize::Union{Nothing,Int} = nothing
-    math_mode::Union{Nothing,String} = nothing
-
-    # notebook specified options
-    # the followings are different from
-    # the default julia compiler options
-
-    # we use nothing to represent "@v#.#"
-    project::Union{Nothing,String} = "@."
-    # we don't load startup file in notebook
-    startup_file::Union{Nothing,String} = "no"
-    # we don't load history file in notebook
-    history_file::Union{Nothing,String} = "no"
-
-    @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = nothing
-    end
-end # struct CompilerOptions
-
 function notebook_path_suggestion()
     preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
     return joinpath(preferred_dir, "") # so that it ends with / or \
@@ -58,15 +30,43 @@ Base.@kwdef mutable struct EvaluationOptions
 end
 
 """
+These options will be passed as command line argument to newly launched processes.
+
+The ServerSession contains a global version of this configuration, and each notebook can also have its own version.
+"""
+Base.@kwdef mutable struct CompilerOptions
+    compile::Union{Nothing,String} = nothing
+    sysimage::Union{Nothing,String} = nothing
+    banner::Union{Nothing,String} = nothing
+    optimize::Union{Nothing,Int} = nothing
+    math_mode::Union{Nothing,String} = nothing
+
+    # notebook specified options
+    # the followings are different from
+    # the default julia compiler options
+
+    # we use nothing to represent "@v#.#"
+    project::Union{Nothing,String} = "@."
+    # we don't load startup file in notebook
+    startup_file::Union{Nothing,String} = "no"
+    # we don't load history file in notebook
+    history_file::Union{Nothing,String} = "no"
+
+    @static if VERSION > v"1.5.0-"
+        threads::Union{Nothing,String} = nothing
+    end
+end # struct CompilerOptions
+
+"""
 Collection of all settings that configure a Pluto session. 
 
 `ServerSession` contains a `Configuration`.
 """
 Base.@kwdef struct Options
-    evaluation::EvaluationOptions = EvaluationOptions()
-    compiler::CompilerOptions = CompilerOptions()
     server::ServerOptions = ServerOptions()
     security::SecurityOptions = SecurityOptions()
+    evaluation::EvaluationOptions = EvaluationOptions()
+    compiler::CompilerOptions = CompilerOptions()
 end
 
 # We don't us an abstract type because Base.@kwdef does not support subtyping in Julia 1.0, only in ≥1.1
@@ -96,14 +96,14 @@ function Base.show(io::IO, x::AbstractOptions)
 end
 
 function from_flat_kwargs(; kwargs...)::Options
-    eval_options = Dict()
-    compiler_options = Dict()
     server_options = Dict()
     security_options = Dict()
+    evaluation_options = Dict()
+    compiler_options = Dict()
 
     for (k, v) in kwargs
         if k in fieldnames(EvaluationOptions)
-            eval_options[k] = v
+            evaluation_options[k] = v
         elseif k in fieldnames(CompilerOptions)
             compiler_options[k] = v
         elseif k in fieldnames(ServerOptions)
@@ -111,19 +111,24 @@ function from_flat_kwargs(; kwargs...)::Options
         elseif k in fieldnames(SecurityOptions)
             security_options[k] = v
         else
-            throw(ArgumentError("Key $k not recognised. Options are:\n$(join(
-            [fieldnames(EvaluationOptions)...,
-            fieldnames(CompilerOptions)...,
-            fieldnames(ServerOptions)...,
-            fieldnames(SecurityOptions)...], '\n'))"))
+            throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
+            [
+                fieldnames(ServerOptions)...,
+                "",
+                fieldnames(SecurityOptions)...,
+                "",
+                fieldnames(EvaluationOptions)...,
+                "",
+                fieldnames(CompilerOptions)...,
+            ], '\n'))"""))
         end
     end
 
     return Options(
-        evaluation=EvaluationOptions(; eval_options...),
-        compiler=CompilerOptions(; compiler_options...),
         server=ServerOptions(; server_options...),
         security=SecurityOptions(; security_options...),
+        evaluation=EvaluationOptions(; evaluation_options...),
+        compiler=CompilerOptions(; compiler_options...),
     )
 end
 
