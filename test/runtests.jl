@@ -1,5 +1,5 @@
 include("./helpers.jl")
-
+include("./Configuration.jl")
 include("./Dynamic.jl")
 include("./Analysis.jl")
 include("./ExpressionExplorer.jl")
