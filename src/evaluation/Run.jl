@@ -117,6 +117,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
+		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
 			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
 			notebook)
@@ -127,6 +128,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 			run_single!(offline_workspace, cell)
 		end
 		
+		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
 
