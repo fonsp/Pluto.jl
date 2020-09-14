@@ -68,8 +68,18 @@ Start Pluto! Are you excited? I am!
 This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
 Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; session=ServerSession())
+function run(; kwargs...)
+    session = ServerSession(;options=Configuration.parse_kwargs(kwargs))
+    return run(session)
+end
+
+# NOTE: this is just to make things compatible with previous versions
+run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) = run(;host=host, port=port, kwargs...)
+
+function run(session::ServerSession)
     pluto_router = http_router_for(session)
+    host = session.options.server.host
+    port = session.options.server.port
 
     hostIP = parse(Sockets.IPAddr, host)
     if port === nothing
@@ -184,7 +194,7 @@ function run(host, port::Union{Nothing,Integer}=nothing; session=ServerSession()
         end
     end
 
-    address = if session.options.server.server.root_url === nothing
+    address = if session.options.server.root_url === nothing
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
@@ -229,8 +239,6 @@ function run(host, port::Union{Nothing,Integer}=nothing; session=ServerSession()
         end
     end
 end
-
-run(port::Union{Nothing,Integer}=nothing; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)

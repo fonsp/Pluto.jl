@@ -140,7 +140,7 @@ function _convert_to_flags(options::CompilerOptions)
         end
     end
 
-    return join(option_list, " ")
+    return option_list
 end
 
 # NOTE: this function only start a worker process using given

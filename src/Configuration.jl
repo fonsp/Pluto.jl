@@ -95,4 +95,36 @@ function Base.show(io::IO, x::AbstractOptions)
     return
 end
 
+function parse_kwargs(kawrgs)
+    eval_options = Dict()
+    compiler_options = Dict()
+    server_options = Dict()
+    security_options = Dict()
+
+    for (k, v) in kawrgs
+        if k in fieldnames(EvaluationOptions)
+            eval_options[k] = v
+        end
+
+        if k in fieldnames(CompilerOptions)
+            compiler_options[k] = v
+        end
+
+        if k in fieldnames(ServerOptions)
+            server_options[k] = v
+        end
+
+        if k in fieldnames(SecurityOptions)
+            security_options[k] = v
+        end
+    end
+
+    return Options(
+        EvaluationOptions(;eval_options...),
+        CompilerOptions(; compiler_options...),
+        ServerOptions(; server_options...),
+        SecurityOptions(; security_options...),
+    )
+end
+
 end
