@@ -88,7 +88,7 @@ function Base.show(io::IO, x::AbstractOptions)
     println(io, "(")
     fnames = fieldnames(typeof(x))
     for each in fieldnames(typeof(x))
-        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", getfield(x, each))
+        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", repr(getfield(x, each)))
         println(io, ", ")
     end
     print(io, " "^indent, ")")
