@@ -101,7 +101,7 @@ function _merge_notebook_compiler_options(notebook::Notebook, options::CompilerO
         elseif each === :project
             # some specified processing for notebook project
             # paths
-            kwargs[:project] = _resolve_project_path(notebook.path, notebook.compiler_options.project)
+            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
         else
             kwargs[each] = getfield(notebook.compiler_options, each)
         end
