@@ -31,7 +31,7 @@ mock_macros[Symbol("@pgf")] = curly_and_keywords # PGFPlotsX.jl
 
 first_then_keywords(exs...) = (first(exs), curly_and_keywords(Base.tail(exs)...)...)
 
-mock_macros[Symbol("@test")] = first_then_keywords
+mock_macros[Symbol("@test")] = first_then_keywords # allow e.g. @test π ≈ 3.14 atol=0.01
 
 query_list = [
     # https://www.queryverse.org/Query.jl/stable/standalonequerycommands/
@@ -62,9 +62,9 @@ query_list = [
     "@select",
     "@collect",
 ]
-for str in query_list
-    mock_macros[Symbol(str)] = (exs...) -> (0,)
-end
+# for str in query_list
+#     mock_macros[Symbol(str)] = (exs...) -> (0,) # this might be too strong.
+# end
 
 einsum_list = [
     "@einsum", "@einsimd", "@vielsum", "@vielsimd", # Einsum.jl
