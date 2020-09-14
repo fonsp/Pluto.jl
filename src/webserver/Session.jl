@@ -31,7 +31,7 @@ The `ServerSession` keeps track of:
 
 - `connected_clients`: connected (web) clients
 - `notebooks`: running notebooks
-- `secret`: the web acces token
+- `secret`: the web access token
 - `default_environment_path`: specifiy the project/package environment to start new notebooks in. Set to `nothing` to default to the global environment.
 """
 Base.@kwdef mutable struct ServerSession
@@ -39,7 +39,7 @@ Base.@kwdef mutable struct ServerSession
     notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
     secret::UUID = uuid1()
     default_environment_path::Union{Nothing,AbstractString} = nothing
-    token::Union{String,Nothing} = nothing
+    binder_token::Union{String,Nothing} = nothing
 end
 
 ###

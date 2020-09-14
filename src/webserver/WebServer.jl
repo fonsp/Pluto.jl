@@ -164,10 +164,10 @@ function run(host, port::Union{Nothing,Integer}=nothing; configuration=ServerCon
             request.body = read(http)
             HTTP.closeread(http)
 
-            # If a "token" url parameter is passed in, do save that the first time
+            # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
             params = HTTP.queryparams(HTTP.URI(request.target))
-            if haskey(params, "token") && session.token === nothing 
-                session.token = params["token"]
+            if haskey(params, "token") && session.binder_token === nothing 
+                session.binder_token = params["token"]
             end
 
             request_body = IOBuffer(HTTP.payload(request))
