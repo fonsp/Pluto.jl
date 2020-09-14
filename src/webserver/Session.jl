@@ -32,13 +32,14 @@ The `ServerSession` keeps track of:
 
 - `connected_clients`: connected (web) clients
 - `notebooks`: running notebooks
-- `secret`: the web acces token
+- `secret`: the web access token
 - `options`: global pluto configuration `Options` for this session.
 """
-Base.@kwdef struct ServerSession
+Base.@kwdef mutable struct ServerSession
     connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
     notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
     secret::UUID = uuid1()
+    binder_token::Union{String,Nothing} = nothing
     options::Configuration.Options = Configuration.Options()
 end
 

@@ -274,6 +274,21 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             })
         ).text()
         client.secret = secret
+
+        let update_url_with_binder_token = async () => {
+            try {
+                const url = new URL(window.location.href)
+                const possible_binder_token = await (await fetch("possible_binder_token_please")).text()
+                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                    url.searchParams.set("token", possible_binder_token)
+                    history.replaceState({}, "", url.toString())
+                }
+            } catch (error) {
+                console.error("Error while setting binder url:", error)
+            }
+        }
+        update_url_with_binder_token()
+
         const ws_address =
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
