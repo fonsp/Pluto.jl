@@ -18,7 +18,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         end
     end
     
-    nb = load_notebook(tamepath(path), session.configs.run_notebook_on_load)
+    nb = load_notebook(tamepath(path), session.options.evaluation.run_notebook_on_load)
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
@@ -26,7 +26,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     session.notebooks[nb.notebook_id] = nb
-    if session.configs.run_notebook_on_load
+    if session.options.evaluation.run_notebook_on_load
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
         # TODO: send message when initial run completed
     end
@@ -63,7 +63,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
             @async close(client.stream)
         end
     end
-    success = WorkspaceManager.unmake_workspace(notebook)
+    success = WorkspaceManager.unmake_workspace((session, notebook))
 end
 
 function move(session::ServerSession, notebook::Notebook, newpath::AbstractString)
@@ -73,7 +73,7 @@ function move(session::ServerSession, notebook::Notebook, newpath::AbstractStrin
         else
             move_notebook!(notebook, newpath)
             putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace(notebook, newpath)
+            WorkspaceManager.cd_workspace((session, notebook), newpath)
             (success = true, reason = "")
         end
     catch ex

@@ -184,16 +184,16 @@ function run(host, port::Union{Nothing,Integer}=nothing; session=ServerSession()
         end
     end
 
-    address = if session.configs.server.root_url === nothing
+    address = if session.options.server.server.root_url === nothing
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
     else
-        session.configs.server.root_url
+        session.options.server.root_url
     end
     Sys.set_process_title("Pluto server - $address")
 
-    if session.configs.server.launch_browser && open_in_default_browser(address)
+    if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
     else
         println("Go to $address in your browser to start writing ~ have fun!")

@@ -145,7 +145,7 @@ responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebo
 end
 
 responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
-    success = WorkspaceManager.interrupt_workspace(notebook)
+    success = WorkspaceManager.interrupt_workspace((session, notebook))
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
@@ -167,7 +167,7 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
         
         # check if the variable does not already have that value.
         eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-        fetched_result = WorkspaceManager.eval_fetch_in_workspace(notebook, eq_tester)
+        fetched_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
         if fetched_result === true
             # the initial value is already set, and we don't want to run cells again.
             false
@@ -186,8 +186,8 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
     if triggered_other_cells
         function custom_deletion_hook(notebook::Notebook, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
             push!(to_delete_vars, bound_sym) # also delete the bound symbol
-            WorkspaceManager.delete_vars(notebook, to_delete_vars, funcs_to_delete, to_reimport)
-            WorkspaceManager.eval_in_workspace(notebook, :($bound_sym = $new_val))
+            WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+            WorkspaceManager.eval_in_workspace((session, notebook), :($bound_sym = $new_val))
         end
         to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
 
