@@ -72,7 +72,7 @@ end
 # We don't us an abstract type because Base.@kwdef does not support subtyping in Julia 1.0, only in ≥1.1
 AbstractOptions = Union{EvaluationOptions,CompilerOptions,ServerOptions,SecurityOptions,Options}
 
-function overlayed(original::AbstractOptions, changes...)
+function overlayed(original::AbstractOptions; changes...)
     new_kwargs = Dict()
     for name in fieldnames(typeof(original))
         new_kwargs[name] = get(changes, name, getfield(original, name))
@@ -113,13 +113,17 @@ function from_flat_kwargs(; kwargs...)::Options
         else
             throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
             [
-                fieldnames(ServerOptions)...,
+                "Server Options:",
+                map(x->" "^2 * string(x), fieldnames(ServerOptions))...,
                 "",
-                fieldnames(SecurityOptions)...,
+                "Security Options:",
+                map(x->" "^2 * string(x), fieldnames(SecurityOptions))...,
                 "",
-                fieldnames(EvaluationOptions)...,
+                "Evaluation Options:",
+                map(x->" "^2 * string(x), fieldnames(EvaluationOptions))...,
                 "",
-                fieldnames(CompilerOptions)...,
+                "Compiler Options:",
+                map(x->" "^2 * string(x), fieldnames(CompilerOptions))...,
             ], '\n'))"""))
         end
     end
