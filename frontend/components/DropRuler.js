@@ -6,6 +6,7 @@ export class DropRuler extends Component {
         this.elementRef = null
         this.dropee = null
         this.cell_edges = []
+        this.mouse_position = {}
         this.precompute_cell_edges = () => {
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
@@ -57,15 +58,40 @@ export class DropRuler extends Component {
                 this.dropee = e.target.parentElement
                 this.precompute_cell_edges()
 
-                this.setState({
-                    dragging: true,
-                    drop_index: this.getDropIndexOf(e, true),
-                })
+                this.setState(
+                    {
+                        dragging: true,
+                        drop_index: this.getDropIndexOf(e, true),
+                    },
+                    () => {
+                        let prev_time = null
+                        const scroll_update = (timestamp) => {
+                            if (prev_time == null) {
+                                prev_time = timestamp
+                            }
+                            const dt = timestamp - prev_time
+                            prev_time = timestamp
+
+                            const y_ratio = this.mouse_position.clientY / window.innerHeight
+                            if (y_ratio < 0.3) {
+                                window.scrollBy(0, (((-1200 * (0.3 - y_ratio)) / 0.3) * dt) / 1000)
+                            }
+                            if (y_ratio > 0.7) {
+                                window.scrollBy(0, (((1200 * (y_ratio - 0.7)) / 0.3) * dt) / 1000)
+                            }
+                            if (this.state.dragging) {
+                                window.requestAnimationFrame(scroll_update)
+                            }
+                        }
+                        window.requestAnimationFrame(scroll_update)
+                    }
+                )
             }
         })
-
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
+            this.mouse_position = e
+
             this.setState({
                 drop_index: this.getDropIndexOf(e, true),
             })
@@ -134,6 +160,7 @@ export class DropRuler extends Component {
         })
 
         document.addEventListener("mousemove", (e) => {
+            this.mouse_position = e
             if (this.state.selecting) {
                 const new_stop_index = this.getDropIndexOf(e)
                 if (new_stop_index !== this.state.selection_stop_index) {
