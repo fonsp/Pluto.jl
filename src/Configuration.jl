@@ -95,35 +95,35 @@ function Base.show(io::IO, x::AbstractOptions)
     return
 end
 
-function parse_kwargs(kawrgs)
+function from_flat_kwargs(; kwargs...)::Options
     eval_options = Dict()
     compiler_options = Dict()
     server_options = Dict()
     security_options = Dict()
 
-    for (k, v) in kawrgs
+    for (k, v) in kwargs
         if k in fieldnames(EvaluationOptions)
             eval_options[k] = v
-        end
-
-        if k in fieldnames(CompilerOptions)
+        elseif k in fieldnames(CompilerOptions)
             compiler_options[k] = v
-        end
-
-        if k in fieldnames(ServerOptions)
+        elseif k in fieldnames(ServerOptions)
             server_options[k] = v
-        end
-
-        if k in fieldnames(SecurityOptions)
+        elseif k in fieldnames(SecurityOptions)
             security_options[k] = v
+        else
+            throw(ArgumentError("Key $k not recognised. Options are:\n$(join(
+            [fieldnames(EvaluationOptions)...,
+            fieldnames(CompilerOptions)...,
+            fieldnames(ServerOptions)...,
+            fieldnames(SecurityOptions)...], '\n'))"))
         end
     end
 
     return Options(
-        EvaluationOptions(;eval_options...),
-        CompilerOptions(; compiler_options...),
-        ServerOptions(; server_options...),
-        SecurityOptions(; security_options...),
+        evaluation=EvaluationOptions(; eval_options...),
+        compiler=CompilerOptions(; compiler_options...),
+        server=ServerOptions(; server_options...),
+        security=SecurityOptions(; security_options...),
     )
 end
 

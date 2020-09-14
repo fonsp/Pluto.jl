@@ -69,7 +69,7 @@ This will start the static HTTP server and a WebSocket server. The server runs _
 Pluto notebooks can be started from the main menu in the web browser.
 """
 function run(; kwargs...)
-    session = ServerSession(;options=Configuration.parse_kwargs(kwargs))
+    session = ServerSession(;options=Configuration.from_flat_kwargs(; kwargs...))
     return run(session)
 end
 
