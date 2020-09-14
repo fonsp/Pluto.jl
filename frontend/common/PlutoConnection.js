@@ -196,7 +196,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{plutoENV: Object, send: Function, kill: Function, pluto_version: String, julia_version: String, secret: String}} PlutoConnection
+ * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}, secret: String}} PlutoConnection
  * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
  * @return {Promise<PlutoConnection>}
  */
@@ -205,10 +205,12 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     const client = {
         send: null,
         kill: null,
-        plutoENV: null,
+        session_options: null,
         secret: null,
-        pluto_version: "unknown",
-        julia_version: "unknown",
+        version_info: {
+            julia: "unknown",
+            pluto: "unknown",
+        },
     } // same
 
     const client_id = get_unique_short_id()
@@ -303,7 +305,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
 
                         console.log(`Starting state sync`, new Date().toLocaleTimeString())
                         const accept = on_reconnect()
-                        console.log(`State sync ${accept ? "" : "not "}succesful`, new Date().toLocaleTimeString())
+                        console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
                         on_connection_status(accept)
                         if (!accept) {
                             alert("Connection out of sync 😥\n\nRefresh the page to continue")
@@ -313,14 +315,16 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                 10000
             )
 
-            console.log(ws_connection)
             client.kill = ws_connection.kill
 
             // let's say hello
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
-            client.plutoENV = u.message.ENV
+            client.session_options = u.message.options
+            client.version_info = u.message.version_info
+
+            console.log(client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
@@ -344,8 +348,8 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     return client
 }
 
-export const fetch_pluto_versions = (client) => {
-    const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+export const fetch_latest_pluto_version = () => {
+    return fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
         cache: "no-cache",
@@ -361,12 +365,4 @@ export const fetch_pluto_versions = (client) => {
         .then((response) => {
             return response[0].tag_name
         })
-
-    const pluto_promise = client.send("get_version").then((u) => {
-        client.pluto_version = u.message.pluto
-        client.julia_version = u.message.julia
-        return client.pluto_version
-    })
-
-    return Promise.all([github_promise, pluto_promise])
 }

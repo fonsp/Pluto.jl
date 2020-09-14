@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
 
-import { create_pluto_connection, fetch_pluto_versions, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -228,8 +228,9 @@ export class Editor extends Component {
         const on_establish_connection = (client) => {
             // nasty
             Object.assign(this.client, client)
+            window.version_info = this.client.version_info // for debugging
 
-            const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] === "true"
+            const run_all = this.client.session_options.evaluation.run_notebook_on_load
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
 
@@ -304,10 +305,6 @@ export class Editor extends Component {
                     )
                 })
                 .catch(console.error)
-
-            fetch_pluto_versions(this.client).then((versions) => {
-                window.pluto_version = versions[1]
-            })
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -613,7 +610,6 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            console.log(e)
             if (e.code === "KeyQ" && e.ctrlKey) {
                 if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
@@ -742,7 +738,7 @@ export class Editor extends Component {
                                 const a = e.composedPath().find((el) => el.tagName === "A")
                                 a.download = this.state.notebook.shortpath + ".html"
                                 a.href = URL.createObjectURL(
-                                    new Blob([offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body })], {
+                                    new Blob([offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body })], {
                                         type: "text/html",
                                     })
                                 )
@@ -790,7 +786,7 @@ export class Editor extends Component {
                         value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
-                            base: this.client.plutoENV == null ? "" : this.client.plutoENV["PLUTO_WORKING_DIRECTORY"],
+                            base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
                             name: this.state.notebook.shortpath,
                         }}
                         placeholder="Save notebook..."
