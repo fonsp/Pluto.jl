@@ -7,7 +7,7 @@ using Pluto.WorkspaceManager: _convert_to_flags
 @testset "Configurations" begin
 
 cd(Pluto.project_relative_path("test")) do
-    @test notebook_path_suggestion() == "/Users/roger/julia_code/Pluto/test/"
+    @test endswith(notebook_path_suggestion(), "Pluto.jl/test/")
 end
 
 @testset "overlayed" begin
