@@ -15,6 +15,7 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 const default_path = "..."
 
@@ -610,37 +611,41 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            if (e.code === "KeyQ" && e.ctrlKey) {
+            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+                // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.code === "KeyS" && e.ctrlKey) {
+            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
-            } else if (e.code === "Backspace" || e.code === "Delete") {
+            } else if (e.key === "Backspace" || e.key === "Delete") {
                 const selected = this.state.notebook.cells.filter((c) => c.selected)
                 if (selected.length > 0) {
                     this.requests.confirm_delete_multiple(selected)
                     e.preventDefault()
                 }
-            } else if ((e.key === "?" && e.ctrlKey) || e.key === "F1") {
+            } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
+                // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
+                // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
+                // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
     
     Shift+Enter:   run cell
-    Ctrl+Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
     PageUp or fn+Up:   select cell above
     PageDown or fn+Down:   select cell below
 
-    Ctrl+Q:   interrupt notebook
-    Ctrl+S:   submit all changes
+    ${ctrl_or_cmd_name}+Q:   interrupt notebook
+    ${ctrl_or_cmd_name}+S:   submit all changes
     
     The notebook file saves every time you run`
                 )
