@@ -54,14 +54,13 @@ end
 
 Start Pluto! Are you excited? I am!
 
-## Arguments
+## Keyword arguments
 
+For the full list, see the [`Configuration`](@ref) module. Some **common parameters**:
+
+- `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
 - `port`: Optional. The default `port` is `1234`.
-
-## Kwargs
-
-- `session`: specifiy the [`Pluto.ServerSession`](@ref) to run the web server on.
 
 ## Technobabble
 
@@ -73,9 +72,14 @@ function run(; kwargs...)
     return run(session)
 end
 
-# NOTE: this is just to make things compatible with previous versions
-run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) = run(;host=host, port=port, kwargs...)
+@deprecate run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) run(;host=host, port=port, kwargs...) false
+@deprecate run(port::Integer; kwargs...) run(;port=port, kwargs...) false
 
+"""
+    run(session::ServerSession)
+
+Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
+"""
 function run(session::ServerSession)
     pluto_router = http_router_for(session)
     host = session.options.server.host
