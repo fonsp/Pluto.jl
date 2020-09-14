@@ -610,7 +610,6 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            console.log(e)
             if (e.code === "KeyQ" && e.ctrlKey) {
                 if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
