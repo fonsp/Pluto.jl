@@ -2,6 +2,7 @@ module ExpressionExplorer
 export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
 
 import ..PlutoRunner
+import ..MacroZoo
 import Markdown
 import Base: union, union!, ==, push!
 
