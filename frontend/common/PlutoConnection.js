@@ -99,7 +99,7 @@ const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 60000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
         const task_queue = []
@@ -293,27 +293,23 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
         try {
-            ws_connection = await create_ws_connection(
-                ws_address,
-                {
-                    on_message: handle_update,
-                    on_socket_close: async () => {
-                        on_connection_status(false)
+            ws_connection = await create_ws_connection(ws_address, {
+                on_message: handle_update,
+                on_socket_close: async () => {
+                    on_connection_status(false)
 
-                        console.log(`Starting new websocket`, new Date().toLocaleTimeString())
-                        await connect() // reconnect!
+                    console.log(`Starting new websocket`, new Date().toLocaleTimeString())
+                    await connect() // reconnect!
 
-                        console.log(`Starting state sync`, new Date().toLocaleTimeString())
-                        const accept = on_reconnect()
-                        console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
-                        on_connection_status(accept)
-                        if (!accept) {
-                            alert("Connection out of sync 😥\n\nRefresh the page to continue")
-                        }
-                    },
+                    console.log(`Starting state sync`, new Date().toLocaleTimeString())
+                    const accept = on_reconnect()
+                    console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
+                    on_connection_status(accept)
+                    if (!accept) {
+                        alert("Connection out of sync 😥\n\nRefresh the page to continue")
+                    }
                 },
-                10000
-            )
+            })
 
             client.kill = ws_connection.kill
 
@@ -335,6 +331,16 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                 return {}
             }
             on_connection_status(true)
+
+            const ping = () => {
+                console.info("ping")
+                send("ping", {}, {})
+                    .then(() => {
+                        console.info("pong")
+                        setInterval(ping, 30 * 1000)
+                    })
+                    .catch()
+            }
 
             return u.message
         } catch (ex) {
