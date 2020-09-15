@@ -14,6 +14,7 @@ import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
 import UUIDs: UUID
+import Logging
 
 export @bind
 
@@ -689,5 +690,30 @@ end"""
 
 const log_channel = Channel{Any}(10)
 
+struct PlutoLogger <: Logging.AbstractLogger end
+
+const to_pluto_html(@nospecialize(x)) = sprint() do io
+    show_richest(io, x; onlyhtml=true)
+end
+
+Logging.shouldlog(::PlutoLogger, args...) = true
+Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
+Logging.catch_exceptions(::PlutoLogger) = false
+function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+    put!(log_channel, (
+        level=string(level),
+        msg=(msg isa String) ? msg : to_pluto_html(msg),
+        group=group,
+        # id=id,
+        file=file,
+        line=line,
+        kwargs=Dict((k=>to_pluto_html(v) for (k,v) in kwargs)...),
+    ))
+end
+
+# we put this in __init__ to fix a world age problem
+function __init__()
+    Logging.global_logger(PlutoLogger())
+end
 
 end
