@@ -1294,6 +1294,35 @@ nav#undo_delete.hidden {
     }
 }
 
+/* LOGS */
+
+pluto-logs {
+    position: absolute;
+    right: 0px;
+    top: 0px;
+}
+
+pluto-log-dot {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    border-radius: 100%;
+    background: rgb(132, 171, 190);
+    border: 3px solid #cbe5ff;
+}
+pluto-log-dot.Warn {
+    background: rgb(235, 183, 138);
+    border: 3px solid #fae5ce;
+}
+pluto-log-dot.Error {
+    background: rgb(239, 139, 139);
+    border: 3px solid #ffd5cb;
+}
+
+pluto-log-dot div {
+    display: none;
+}
+
 /* PRESENTATION MODE */
 
 body.presentation pluto-output h1,
