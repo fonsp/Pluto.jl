@@ -339,7 +339,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             end
         end
         # Some package macros have simplified versions:
-        zoofun = get(MacroZoo.mock_macros, length(funcname)>0 ? funcname[end] : "", identity∘tuple)
+        zoofun = get(MacroZoo.mock_macros, length(funcname)>0 ? funcname[end] : "", tuple)
         zooargs = zoofun(ex.args[2:end]...)
         return explore!(Expr(:call, ex.args[1], zooargs...), scopestate)
 

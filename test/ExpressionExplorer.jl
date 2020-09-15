@@ -323,4 +323,8 @@ end
         @test einsum_undummy(:(A.x[i,j] |> tanh)) == :(A.x[0, 0] + tanh(0)) # @tullio
         @test einsum_undummy(:(sum(i,j,k)), true) == :(sum(0, 0, 0)) # @reduce
     end
+    @testset "pass-through" begin
+        @test testee(:(@unknown [sqrt(s) for s in 1:n]), [:n], [], [[:sqrt], [:(:)], [Symbol("@unknown")]], [])
+        @test testee(:([sqrt(@unknown A[s]) for s in 1:n]), [:A, :n], [], [[:sqrt], [:(:)], [Symbol("@unknown")]], [])
+    end
 end
