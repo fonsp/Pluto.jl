@@ -683,4 +683,11 @@ const fake_bind = """macro bind(def, element)
     end
 end"""
 
+###
+# LOGGING
+###
+
+const log_channel = Channel{Any}(10)
+
+
 end
