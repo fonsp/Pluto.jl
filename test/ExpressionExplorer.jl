@@ -308,12 +308,15 @@ end
         @test testee(:(@reduce s := prod(i,j) x[i,j]^2 lazy), [:x], [:s], [[:^], [:prod], [Symbol("@reduce")]], [])
         @test testee(:(@tensoropt (a=>χ,b=>χ^2,c=>2*χ,e=>5) D[a,b,c,d] := A[a,e,c,f]*B[g,d,e]*C[g,f,b]), [:A,:B,:C], [:D], [[:*], [Symbol("@tensoropt")]], [])
         @test testee(:(@tullio n[j] := x[i,j]^2 |> sqrt  grad=false), [:x], [:n], [[:sqrt], [:+], [:^], [Symbol("@tullio")]], [])
+        # in-place updates:
+        @test testee(:(@einsum a[i] = f(x[i,2])), [:x, :a], [], [[:f], [Symbol("@einsum")]], [])
+        @test testee(:(@tullio a[i] += f(x[i,$(Expr(:$, :j))])), [:x, :a, :j], [], [[:f], [:+], [Symbol("@tullio")]], [])
 
         import Pluto.MacroZoo: einsum_expand, einsum_undummy
 
         @test einsum_expand(:(x[n][h,w] := y[n,h,w]')) == [:(x = y[0, 0, 0]')]
         @test einsum_expand(:(x.x[(n,c),h,w] := y[n,(h,w),c])) == [:(x.x = y[0, (0, 0), 0])]
-        @test einsum_expand(:(x[n⊗c,h,w] := f(y)[n,h⊗w,c])) == [:(x = f(y)[0, 0 ⊗ 0, 0])]
+        @test einsum_expand(:(x[n⊗c,h,w] := f(y)[n,h⊗w,c]), :lazy) == [:(x = f(y)[0, 0 ⊗ 0, 0])]
         @test einsum_expand(:(threads=false), :(x[i] := y[i,j]), :(j in axes(y,2))) == [:(x = y[0, 0])]
 
         @test einsum_undummy(:(A[i,j,k]^2)) == :(A[0, 0, 0] ^ 2)
@@ -321,6 +324,7 @@ end
         @test einsum_undummy(:(A[i+j, 2j-1, K[i] + j])) == :(A[0 + 0, 0 * 0 - 0, K[0] + 0])
         @test einsum_undummy(:(rand(m,n,d[3])[i,j,k])) == :((rand(m, n, d[3]))[0, 0, 0])
         @test einsum_undummy(:(A.x[i,j] |> tanh)) == :(A.x[0, 0] + tanh(0)) # @tullio
+        @test einsum_undummy(:(log(_,2) <| 2^A[i,j])) == :(log(0,2) + 2^A[0, 0]) # @tullio
         @test einsum_undummy(:(sum(i,j,k)), true) == :(sum(0, 0, 0)) # @reduce
     end
     @testset "pass-through" begin
