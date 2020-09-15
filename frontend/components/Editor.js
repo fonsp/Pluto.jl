@@ -682,7 +682,7 @@ export class Editor extends Component {
                 })
                 this.counter_statistics = create_counter_statistics()
             }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+        }, 20 * 1000) // 20 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {
