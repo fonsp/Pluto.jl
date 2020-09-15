@@ -333,10 +333,9 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             on_connection_status(true)
 
             const ping = () => {
-                console.info("Ping?")
                 send("ping", {}, {})
                     .then(() => {
-                        console.info("Pong!")
+                        console.info("🏓")
                         setTimeout(ping, 30 * 1000)
                     })
                     .catch()
