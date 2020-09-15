@@ -1,6 +1,7 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -62,8 +63,6 @@ export const CellInput = ({
             }
         ))
 
-        const mac_keyboard = /Mac/.test(navigator.platform)
-
         const keys = {}
 
         keys["Shift-Enter"] = () => on_submit(cm.getValue())
@@ -75,8 +74,7 @@ export const CellInput = ({
                 on_submit(new_value)
             }
         }
-        // these should be fn+Up and fn+Down on recent apple keyboards
-        // please confirm and change this comment <3
+        // Page up and page down are fn+Up and fn+Down on recent apple keyboards
         keys["PageUp"] = () => {
             on_focus_neighbor(cell_id, -1)
         }
@@ -85,7 +83,7 @@ export const CellInput = ({
         }
         keys["Shift-Tab"] = "indentLess"
         keys["Tab"] = on_tab_key
-        keys[mac_keyboard ? "Cmd-D" : "Ctrl-D"] = () => {
+        keys["Ctrl-D"] = () => {
             if (cm.somethingSelected()) {
                 const sels = cm.getSelections()
                 if (all_equal(sels)) {
@@ -97,7 +95,7 @@ export const CellInput = ({
                 cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
             }
         }
-        keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {
+        keys["Ctrl-/"] = () => {
             const old_value = cm.getValue()
             cm.toggleComment()
             const new_value = cm.getValue()
@@ -108,7 +106,7 @@ export const CellInput = ({
                 cm.execCommand("selectAll")
             }
         }
-        keys[mac_keyboard ? "Cmd-M" : "Ctrl-M"] = () => {
+        keys["Ctrl-M"] = () => {
             const value = cm.getValue()
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
@@ -185,7 +183,7 @@ export const CellInput = ({
         keys["Alt-Up"] = () => alt_move(-1)
         keys["Alt-Down"] = () => alt_move(+1)
 
-        keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
+        keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
                 on_delete()
@@ -193,7 +191,7 @@ export const CellInput = ({
             }
             return window.CodeMirror.Pass
         }
-        keys["Delete"] = keys[mac_keyboard ? "Cmd-Delete" : "Ctrl-Delete"] = () => {
+        keys["Delete"] = keys["Ctrl-Delete"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
@@ -202,7 +200,7 @@ export const CellInput = ({
             return window.CodeMirror.Pass
         }
 
-        cm.setOption("extraKeys", keys)
+        cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
 
         cm.on("cursorActivity", () => {
             if (cm.somethingSelected()) {

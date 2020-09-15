@@ -1,5 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
+import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+
 export class DropRuler extends Component {
     constructor() {
         super()
@@ -185,7 +187,7 @@ export class DropRuler extends Component {
 
         // Ctrl+A to select all cells
         document.addEventListener("keydown", (e) => {
-            if (e.key === "a" && e.ctrlKey) {
+            if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
                 if (document.activeElement === document.body && window.getSelection().isCollapsed) {
                     this.props.on_selection({
