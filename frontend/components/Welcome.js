@@ -1,7 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { PlutoConnection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
@@ -14,7 +14,7 @@ const create_empty_notebook = (path, notebook_id = null) => {
 
 const shortpath = (path) => path.split("/").pop().split("\\").pop()
 
-// should strip characters similar to how github converts filenames into the #file-... URL hash
+// should strip characters similar to how github converts filenames into the #file-... URL hash.
 // test on: https://gist.github.com/fonsp/f7d230da4f067a11ad18de15bff80470
 const gist_normalizer = (str) =>
     str
@@ -22,7 +22,7 @@ const gist_normalizer = (str) =>
         .normalize("NFD")
         .replace(/[^a-z1-9]/g, "")
 
-const link_open_auto = async (path_or_url) => {
+export const process_path_or_url = async (path_or_url) => {
     try {
         const u = new URL(path_or_url)
         if (!["http:", "https:", "ftp:", "ftps:"].includes(u.protocol)) {
@@ -42,27 +42,35 @@ const link_open_auto = async (path_or_url) => {
 
             const selected = files.find((f) => gist_normalizer("#file-" + f.filename) === gist_normalizer(u.hash))
             if (selected != null) {
-                return link_open_url(selected.raw_url)
+                return {
+                    type: "url",
+                    path_or_url: selected.raw_url,
+                }
             }
 
-            return link_open_url(files[0].raw_url)
+            return {
+                type: "url",
+                path_or_url: files[0].raw_url,
+            }
         } else if (u.host === "github.com") {
-            u.search = "raw=true"
+            u.host = "raw.githubusercontent.com"
+            u.pathname = u.pathname.replace("/blob", "")
         }
-        return link_open_url(u.href)
+        return {
+            type: "url",
+            path_or_url: u.href,
+        }
     } catch (ex) {
-        return link_open_path(path_or_url)
+        return {
+            type: "path",
+            path_or_url: path_or_url,
+        }
     }
 }
-export const link_open_url = (url) => {
-    if (confirm("Are you sure? This will download and run the file at\n\n" + url)) {
-        console.log("open?url=" + encodeURIComponent(url))
-        return "open?url=" + encodeURIComponent(url)
-    } else {
-        return "#"
-    }
-}
-export const link_open_path = (path) => "open?path=" + encodeURIComponent(path)
+
+// /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
+export const link_open_path = (path, secret) => "open?" + new URLSearchParams({ path: path, secret: secret }).toString()
+export const link_open_url = (url, secret) => "open?" + new URLSearchParams({ url: url, secret: secret }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -125,10 +133,84 @@ export class Welcome extends Component {
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
-        this.client = new PlutoConnection(on_update, on_connection_status)
+
+        this.client = {}
+        create_pluto_connection({
+            on_unrequested_update: on_update,
+            on_connection_status: on_connection_status,
+            on_reconnect: () => true,
+        }).then((client) => {
+            Object.assign(this.client, client)
+
+            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
+                const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
+
+                // we are going to construct the combined list:
+                const combined_notebooks = [...running] // shallow copy but that's okay
+                get_stored_recent_notebooks().forEach((stored) => {
+                    if (!running.some((nb) => nb.path === stored.path)) {
+                        // if not already in the list...
+                        combined_notebooks.push(stored) // ...add it.
+                    }
+                })
+
+                this.setState({ combined_notebooks: combined_notebooks })
+
+                document.body.classList.remove("loading")
+            })
+
+            fetch_latest_pluto_version().then((version) => {
+                const remote = version
+                const local = this.client.version_info.pluto
+
+                const base1 = (n) => "1".repeat(n)
+
+                console.log(`Pluto version ${local}`)
+                if (remote != local) {
+                    const rs = remote.slice(1).split(".").map(Number)
+                    const ls = local.slice(1).split(".").map(Number)
+
+                    // if the semver can't be parsed correctly, we always show it to the user
+                    if (rs.length == 3 && ls.length == 3) {
+                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
+                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
+                            if (rs.map(base1) <= ls.map(base1)) {
+                                return
+                            }
+                        }
+                    }
+                    console.log(`Newer version ${remote} is available`)
+                    alert(
+                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                            local +
+                            ", the latest is " +
+                            remote +
+                            '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
+                    )
+                }
+            })
+
+            // to start JIT'ting
+            this.client.send(
+                "completepath",
+                {
+                    query: "nothinginparticular",
+                },
+                {}
+            )
+        })
 
         this.on_open_path = async (new_path) => {
-            window.location.href = await link_open_auto(new_path)
+            const processed = await process_path_or_url(new_path)
+            if (processed.type === "path") {
+                document.body.classList.add("loading")
+                window.location.href = link_open_path(processed.path_or_url, this.client.secret)
+            } else {
+                if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
+                    document.body.classList.add("loading")
+                    window.location.href = link_open_url(processed.path_or_url, this.client.secret)
+                }
+            }
         }
 
         this.on_session_click = (nb) => {
@@ -157,7 +239,7 @@ export class Welcome extends Component {
                 set_notebook_state(nb.path, {
                     transitioning: true,
                 })
-                fetch(link_open_path(nb.path), {
+                fetch(link_open_path(nb.path, this.client.secret), {
                     method: "GET",
                 })
                     .then((r) => {
@@ -179,33 +261,6 @@ export class Welcome extends Component {
 
     componentDidMount() {
         this.componentDidUpdate()
-        this.client.initialize(() => {
-            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
-                const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
-
-                // we are going to construct the combined list:
-                const combined_notebooks = [...running] // shallow copy but that's okay
-                get_stored_recent_notebooks().forEach((stored) => {
-                    if (!running.some((nb) => nb.path === stored.path)) {
-                        // if not already in the list...
-                        combined_notebooks.push(stored) // ...add it.
-                    }
-                })
-
-                this.setState({ combined_notebooks: combined_notebooks })
-            })
-
-            // to start JIT'ting
-            this.client.send(
-                "completepath",
-                {
-                    query: "nothinginparticular",
-                },
-                {}
-            )
-
-            document.body.classList.remove("loading")
-        })
     }
 
     componentDidUpdate() {
@@ -232,7 +287,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortpath(nb.path)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path, this.client.secret)} title=${nb.path}>${shortpath(nb.path)}</a>
                 </li>`
             })
         }

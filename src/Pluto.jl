@@ -12,35 +12,20 @@ module Pluto
 
 import Pkg
 
-const PKG_ROOT_DIR = normpath(joinpath(@__DIR__, ".."))
-include_dependency(joinpath(PKG_ROOT_DIR, "Project.toml"))
-const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(joinpath(PKG_ROOT_DIR, "Project.toml"))["version"])
+project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
+
+const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
-const ENV_DEFAULTS = Dict(
-    "PLUTO_WORKSPACE_USE_DISTRIBUTED" => "true",
-    "PLUTO_RUN_NOTEBOOK_ON_LOAD" => "true",
-    "PLUTO_WORKING_DIRECTORY" => let
-        preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
-        joinpath(preferred_dir, "") # must end with / or \
-    end,
-)
-get_pl_env(key::String) = haskey(ENV, key) ? ENV[key] : ENV_DEFAULTS[key]
 
-if get(ENV, "PLUTO_SHOW_BANNER", "true") == "true"
-@info """\n
-    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
-    Start a notebook server using:
-
-  julia> Pluto.run()
-
-    Have a look at the FAQ:
-    https://github.com/fonsp/Pluto.jl/wiki
-\n"""
-end
+include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
+# import .PlutoRunner
+# @eval Main begin
+#   PlutoRunner = $(PlutoRunner)
+# end
 include("./analysis/ExpressionExplorer.jl")
 
 include("./notebook/PathHelpers.jl")
@@ -63,5 +48,17 @@ include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
+
+if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
+@info """\n
+    Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
+    Start a notebook server using:
+
+  julia> Pluto.run()
+
+    Have a look at the FAQ:
+    https://github.com/fonsp/Pluto.jl/wiki
+\n"""
+end
 
 end

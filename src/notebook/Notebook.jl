@@ -1,5 +1,6 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState
+import .Configuration
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 struct NotebookTopology
@@ -29,17 +30,24 @@ mutable struct Notebook
     pendingupdates::Channel
 
     executetoken::Token
+
+    # per notebook compiler options
+    # nothing means to use global session compiler options
+    compiler_options::Union{Nothing,Configuration.CompilerOptions}
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token())
+    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
 end
+
+
+
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
@@ -167,7 +175,7 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String)::Notebook
+function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
     # local backup_num = 1
     # backup_path = path
@@ -183,7 +191,7 @@ function load_notebook(path::String)::Notebook
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") != "true"
+    if run_notebook_on_load
         loaded.topology = NotebookTopology()
     end
 
@@ -194,6 +202,19 @@ function load_notebook(path::String)::Notebook
     end
 
     loaded
+end
+
+"""
+Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
+
+If a notebook has not yet had all of its cells analysed, we can't deduce the topological cell order. (but can we ever??) (no)
+"""
+function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)::Bool
+    Set(readlines(pathA)[3:end]) == Set(readlines(pathB)[3:end])
+end
+
+function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
+    readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
@@ -213,17 +234,4 @@ function move_notebook!(notebook::Notebook, newpath::String)
         rm(oldpath_tame)
     end
     notebook
-end
-
-"""
-Check if two savefiles are identical, up to their version numbers and a possible line shuffle.
-
-If a notebook has not yet had all of its cells analysed, we can't deduce the topological cell order. (but can we ever??) (no)
-"""
-function only_versions_or_lineorder_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    Set(readlines(pathA)[3:end]) == Set(readlines(pathB)[3:end])
-end
-
-function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Bool
-    readlines(pathA)[3:end] == readlines(pathB)[3:end]
 end

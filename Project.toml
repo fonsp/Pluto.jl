@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fonsvdplas@gmail.com>", "Mikołaj Bochenski <iceflamecode@gmail.com>"]
-version = "0.11.12"
+version = "0.11.14"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -23,9 +23,9 @@ julia = "^1.0.0"
 
 [extras]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 
 [targets]
 test = ["Test", "Dates", "Random", "JSON"]

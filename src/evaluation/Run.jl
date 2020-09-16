@@ -1,4 +1,5 @@
 import REPL: ends_with_semicolon
+import .Configuration
 
 Base.push!(x::Set{Cell}) = x
 
@@ -35,15 +36,18 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "queued"
+	local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell))		
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
+	flushallclients(session, listeners)
+
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -57,7 +61,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
-	deletion_hook(notebook, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
@@ -69,7 +73,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!(notebook, cell)
+			run = run_single!((session, notebook), cell)
 			any_interrupted |= run.interrupted
 		end
 		
@@ -83,8 +87,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 end
 
 "Run a single cell non-reactively, return run information."
-function run_single!(notebook::Union{Notebook,WorkspaceManager.Workspace}, cell::Cell)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
@@ -112,13 +116,19 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	else
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
 		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
-		offline_workspace = WorkspaceManager.make_workspace(notebook, false)
-		
+		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
+		original_pwd = pwd()
+		offline_workspace = WorkspaceManager.make_workspace(
+			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
+			notebook)
+			)
+
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell)
 		end
 		
+		cd(original_pwd)
 		setdiff(cells, to_run_offline)
 	end
 

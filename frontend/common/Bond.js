@@ -30,7 +30,7 @@ const transformed_val = async (val) => {
     } else if (val instanceof File) {
         return await new Promise((res) => {
             const reader = new FileReader()
-            reader.onload = () => res({ name: val.name, type: val.type, data: Array.from(new Uint8Array(reader.result)) })
+            reader.onload = () => res({ name: val.name, type: val.type, data: new Uint8Array(reader.result) })
             reader.onerror = () => res({ name: val.name, type: val.type, data: null })
             reader.readAsArrayBuffer(val)
         })

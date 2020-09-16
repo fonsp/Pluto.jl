@@ -153,7 +153,7 @@ instead of
 @bind x html"<input type=range min=5 max=15>"
 ```
 
-Have a look at the [sample notebook about PlutoUI](./sample/PlutoUI.jl)!
+Have a look at the [sample notebook about PlutoUI](./sample/PlutoUI.jl.jl)!
 
 _The `@bind` syntax in not limited to `html"..."` objects, but **can be used for any HTML-showable object!**_
 """

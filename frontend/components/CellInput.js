@@ -1,6 +1,7 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -62,8 +63,6 @@ export const CellInput = ({
             }
         ))
 
-        const mac_keyboard = /Mac/.test(navigator.platform)
-
         const keys = {}
 
         keys["Shift-Enter"] = () => on_submit(cm.getValue())
@@ -71,14 +70,11 @@ export const CellInput = ({
             on_add_after()
 
             const new_value = cm.getValue()
-            console.log(new_value)
-            console.log(remote_code_ref.current.body)
             if (new_value !== remote_code_ref.current.body) {
                 on_submit(new_value)
             }
         }
-        // these should be fn+Up and fn+Down on recent apple keyboards
-        // please confirm and change this comment <3
+        // Page up and page down are fn+Up and fn+Down on recent apple keyboards
         keys["PageUp"] = () => {
             on_focus_neighbor(cell_id, -1)
         }
@@ -87,7 +83,7 @@ export const CellInput = ({
         }
         keys["Shift-Tab"] = "indentLess"
         keys["Tab"] = on_tab_key
-        keys[mac_keyboard ? "Cmd-D" : "Ctrl-D"] = () => {
+        keys["Ctrl-D"] = () => {
             if (cm.somethingSelected()) {
                 const sels = cm.getSelections()
                 if (all_equal(sels)) {
@@ -96,12 +92,10 @@ export const CellInput = ({
             } else {
                 const cursor = cm.getCursor()
                 const token = cm.getTokenAt(cursor)
-                console.log(cursor)
                 cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
-                console.log(token)
             }
         }
-        keys[mac_keyboard ? "Cmd-/" : "Ctrl-/"] = () => {
+        keys["Ctrl-/"] = () => {
             const old_value = cm.getValue()
             cm.toggleComment()
             const new_value = cm.getValue()
@@ -110,6 +104,42 @@ export const CellInput = ({
                 // this happens when lines start with `md"`, with no indent
                 cm.setValue(cm.lineCount() === 1 ? `# ${new_value}` : `#= ${new_value} =#`)
                 cm.execCommand("selectAll")
+            }
+        }
+        keys["Ctrl-M"] = () => {
+            const value = cm.getValue()
+            const trimmed = value.trim()
+            const offset = value.length - value.trimStart().length
+            if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
+                // Markdown cell, change to code
+                let start, end
+                if (trimmed.startsWith('md"""') && trimmed.endsWith('"""')) {
+                    // Block markdown
+                    start = 5
+                    end = trimmed.length - 3
+                } else {
+                    // Inline markdown
+                    start = 3
+                    end = trimmed.length - 1
+                }
+                if (start >= end || trimmed.substring(start, end).trim() == "") {
+                    // Corner case: block is empty after removing markdown
+                    cm.setValue("")
+                } else {
+                    while (/\s/.test(trimmed[start])) {
+                        ++start
+                    }
+                    while (/\s/.test(trimmed[end - 1])) {
+                        --end
+                    }
+                    // Keep the selection from [start, end) while maintaining cursor position
+                    cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
+                    cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
+                }
+            } else {
+                // Code cell, change to markdown
+                cm.replaceRange(`\n"""`, { line: cm.lineCount() })
+                cm.replaceRange('md"""\n', { line: 0, ch: 0 })
             }
         }
         const swap = (a, i, j) => {
@@ -153,7 +183,7 @@ export const CellInput = ({
         keys["Alt-Up"] = () => alt_move(-1)
         keys["Alt-Down"] = () => alt_move(+1)
 
-        keys["Backspace"] = keys[mac_keyboard ? "Cmd-Backspace" : "Ctrl-Backspace"] = () => {
+        keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
                 on_delete()
@@ -161,7 +191,7 @@ export const CellInput = ({
             }
             return window.CodeMirror.Pass
         }
-        keys["Delete"] = keys[mac_keyboard ? "Cmd-Delete" : "Ctrl-Delete"] = () => {
+        keys["Delete"] = keys["Ctrl-Delete"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
@@ -170,7 +200,7 @@ export const CellInput = ({
             return window.CodeMirror.Pass
         }
 
-        cm.setOption("extraKeys", keys)
+        cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
 
         cm.on("cursorActivity", () => {
             if (cm.somethingSelected()) {
@@ -180,13 +210,14 @@ export const CellInput = ({
                     on_update_doc_query(sel)
                 }
             } else {
-                const token = cm.getTokenAt(cm.getCursor())
+                const cursor = cm.getCursor()
+                const token = cm.getTokenAt(cursor)
                 if (token.start === 0 && token.type === "operator" && token.string === "?") {
                     // https://github.com/fonsp/Pluto.jl/issues/321
-                    const second_token = cm.getTokenAt({ ...cm.getCursor(), ch: 2 })
+                    const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
                     on_update_doc_query(second_token.string)
                 } else if (token.type != null && token.type !== "string") {
-                    on_update_doc_query(token.string)
+                    on_update_doc_query(module_expanded_selection(cm, token.string, cursor.line, token.start))
                 }
             }
         })
@@ -289,7 +320,24 @@ const juliahints = (cm, options) => {
                 from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
                 to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
-            window.CodeMirror.on(completions, "select", options.on_update_doc_query)
+            window.CodeMirror.on(completions, "select", (val) => {
+                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+            })
             return completions
         })
+}
+
+// https://github.com/fonsp/Pluto.jl/issues/239
+const module_expanded_selection = (cm, current, line, ch) => {
+    const next1 = cm.getTokenAt({ line: line, ch: ch })
+    if (next1.string === ".") {
+        const next2 = cm.getTokenAt({ line: line, ch: ch - 1 })
+        if (next2.type === "variable") {
+            return module_expanded_selection(cm, next2.string + "." + current, line, next2.start)
+        } else {
+            return current
+        }
+    } else {
+        return current
+    }
 }

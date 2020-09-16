@@ -295,7 +295,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # We transform the modifier back to its operator
         # for when users redefine the + function
 
-        operator = Symbol(string(ex.head)[1:end - 1])
+        operator = let
+            s = string(ex.head)
+            Symbol(s[1:prevind(s, lastindex(s))])
+        end
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
     elseif ex.head in modifiers_dotprefixed
@@ -660,8 +663,8 @@ function try_compute_symbolreferences(ex::Any)
 		compute_symbolreferences(ex)
 	catch e
 		@error "Expression explorer failed on: " ex
-		showerror(stderr, e, stacktrace(backtrace()))
-		SymbolsState()
+		showerror(stderr, e, stacktrace(catch_backtrace()))
+		SymbolsState(Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]), Set{Symbol}())
 	end
 end
 

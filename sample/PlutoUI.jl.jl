@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.7
+# v0.11.12
 
 using Markdown
 using InteractiveUtils
@@ -91,7 +91,7 @@ y
 # ╔═╡ e49623ac-c760-11ea-3689-c15f2e2f6081
 md"## NumberField
 
-A `NumberField` can be used just like a `Slider`, it just looks differently:"
+A `NumberField` can be used just like a `Slider`, it just looks different:"
 
 # ╔═╡ 314cb85a-c761-11ea-1cba-b73f84a52be8
 @bind x_different NumberField(0:100, default=20)
@@ -190,6 +190,18 @@ fruit
 # ╔═╡ 0c3ab1f8-cc4f-11ea-0cfb-8f076d2c9836
 
 
+# ╔═╡ 62c6f866-f0fe-11ea-0961-319f28d040d4
+md"## MultiSelect"
+
+# ╔═╡ a01c8096-f0fe-11ea-3e78-ad8551e84fa1
+@bind vegetable_basket MultiSelect(["potato", "carrot", "boerenkool"])
+
+# ╔═╡ a20e30f2-f0fe-11ea-0ca7-c5195c9eb24a
+vegetable_basket
+
+# ╔═╡ c819ef3e-f0fe-11ea-1213-9df7597e4e89
+md"Just like `Select`, you can also give an array of pairs."
+
 # ╔═╡ 0b1ce22e-c764-11ea-3d60-e799d58aee30
 md"## Button"
 
@@ -249,7 +261,7 @@ t
 
 
 # ╔═╡ 67709812-c760-11ea-2bda-9756ead35749
-md"You can set interval (`5.0` seconds), and disable the UI (`true`):"
+md"You can set the interval (`5.0` seconds), and disable the UI (`true`):"
 
 # ╔═╡ 4c2b45a0-c760-11ea-2b64-3fefc820cd5b
 @bind t_slow Clock(5.0, true)
@@ -525,6 +537,10 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╠═ac8c4dee-c763-11ea-1b2d-c590a2d50d7e
 # ╠═dcda9ad2-c763-11ea-3ec6-093b823ba66d
 # ╟─0c3ab1f8-cc4f-11ea-0cfb-8f076d2c9836
+# ╟─62c6f866-f0fe-11ea-0961-319f28d040d4
+# ╠═a01c8096-f0fe-11ea-3e78-ad8551e84fa1
+# ╠═a20e30f2-f0fe-11ea-0ca7-c5195c9eb24a
+# ╟─c819ef3e-f0fe-11ea-1213-9df7597e4e89
 # ╟─0b1ce22e-c764-11ea-3d60-e799d58aee30
 # ╠═6d9108a8-c765-11ea-0a38-09a1364998b1
 # ╠═7a14e496-c765-11ea-20a1-6fb960009251

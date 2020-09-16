@@ -3,13 +3,20 @@
 
 import UUIDs: UUID
 import MsgPack
+import .Configuration
 
-# MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we these ourselves:
+# MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we write these ourselves:
 MsgPack.msgpack_type(m::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(u::Type{UUID}) = MsgPack.StringType()
 MsgPack.to_msgpack(::MsgPack.StringType, m::MIME) = string(m)
 MsgPack.to_msgpack(::MsgPack.StringType, u::UUID) = string(u)
 
+# Our Configuration types:
+MsgPack.msgpack_type(::Type{Configuration.Options}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{Configuration.EvaluationOptions}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{Configuration.CompilerOptions}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{Configuration.ServerOptions}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{Configuration.SecurityOptions}) = MsgPack.StructType()
 
 # We want typed integer arrays to arrive as JS typed integer arrays:
 const JSTypedIntSupport = [Int8, UInt8, Int16, UInt16, Int32, UInt32, Float32, Float64]
