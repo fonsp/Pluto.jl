@@ -15,7 +15,7 @@ const prettytime = (time_ns) => {
     }
     const prefices = ["n", "μ", "m", ""]
     let i = 0
-    while (i < prefices.length && time_ns >= 1000.0) {
+    while (i < prefices.length - 1 && time_ns >= 1000.0) {
         i += 1
         time_ns /= 1000
     }
