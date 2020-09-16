@@ -1,4 +1,6 @@
 import { html, Component } from "../common/Preact.js"
+import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
+import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -7,6 +9,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 
@@ -840,29 +843,21 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler}
-                    requests=${this.requests}
-                    selected_friends=${this.selected_friends}
-                    on_selection=${(s) => {
-                        const from = Math.min(s.selection_start_index, s.selection_stop_index)
-                        const to = Math.max(s.selection_start_index, s.selection_stop_index)
-                        this.set_notebook_state((prevstate) => {
-                            return {
-                                cells: prevstate.cells.map((c, i) => {
-                                    if (from <= i && i < to) {
-                                        return {
-                                            ...c,
-                                            selected: true,
-                                        }
-                                    } else {
-                                        return {
-                                            ...c,
-                                            selected: false,
-                                        }
+                <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
+
+                <${SelectionArea}
+                    cells=${this.state.notebook.cells}
+                    on_selection=${(selected_cell_ids) => {
+                        let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
+                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                            this.setState(
+                                immer((state) => {
+                                    for (let cell of state.notebook.cells) {
+                                        cell.selected = selected_cell_ids.includes(cell.cell_id)
                                     }
-                                }),
-                            }
-                        })
+                                })
+                            )
+                        }
                     }}
                 />
             </main>
