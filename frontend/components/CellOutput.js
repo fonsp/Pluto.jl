@@ -68,7 +68,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, req
         case "text/html":
         case "application/vnd.pluto.tree+xml":
             return html`<${RawHTMLContainer}  \
-                            body=${body} 
+                            body=${body} \
                             all_completed_promise=${all_completed_promise} \
                             on_render=${on_render} \
                             requests=${requests} />`

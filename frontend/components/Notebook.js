@@ -16,12 +16,7 @@ export const Notebook = ({
     client,
     notebook_id,
 }) => {
-
-    // window.addEventListener("notebook-message", (e) => {
-    //     console.log('notebook-message received ', e.detail.name)
-    //     if (e.detail.callback) e.detail.callback()
-    // })
-
+    
     return html`
         <pluto-notebook>
             ${cells.map(
