@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("juliamono.css");
 
 #title {
@@ -56,7 +57,7 @@ main {
     margin-top: 20vh;
     margin-bottom: 10em;
     text-align: left;
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     color: hsl(0, 0%, 60%);
 }
 
@@ -132,7 +133,7 @@ pluto-filepicker button {
     border: 2px solid #6c8489;
     color: white;
     /* border: none; */
-    font-family: JuliaMono;
+    font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
 }

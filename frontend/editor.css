@@ -1,4 +1,5 @@
 @import url("https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("juliamono.css");
@@ -324,7 +325,7 @@ body > header {
     transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
 
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-weight: 400;
     font-size: 0.75rem;
 }
@@ -1186,7 +1187,7 @@ dropruler {
 footer {
     width: 100%;
     height: 3.5rem;
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     background-color: #d7dcd3;
     color: #333333;
@@ -1245,7 +1246,7 @@ footer button {
     border: 2px solid #896c6c;
     color: white;
     /* border: none; */
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -1268,7 +1269,7 @@ nav#undo_delete {
     margin: 0.75rem;
     padding: 0.5rem;
 
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
 
     background: white;

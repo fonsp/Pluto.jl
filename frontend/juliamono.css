@@ -1,10 +1,3 @@
-/* @font-face {
-    font-family: JuliaMono;
-    src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono@0.013/webfonts/JuliaMono-Light.woff2") format("woff2");
-    font-display: swap;
-    font-weight: 200;
-} */
-
 @font-face {
     font-family: JuliaMono;
     src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono@0.013/webfonts/JuliaMono-Regular.woff2") format("woff2");
@@ -26,10 +19,3 @@
     font-display: swap;
     font-weight: 700;
 }
-/* 
-@font-face {
-    font-family: JuliaMono;
-    src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono@0.013/webfonts/JuliaMono-ExtraBold.woff2") format("woff2");
-    font-display: swap;
-    font-weight: 900;
-} */
