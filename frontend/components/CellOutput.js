@@ -150,7 +150,6 @@ export class RawHTMLContainer extends Component {
             }
 
             if (this.props.on_render != null) {
-                console.log('running on_render')
                 this.props.on_render(this.base)
             }           
         })
