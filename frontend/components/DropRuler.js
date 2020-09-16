@@ -1,11 +1,8 @@
 import { html, Component } from "../common/Preact.js"
 
-import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
-
 export class DropRuler extends Component {
     constructor() {
         super()
-        this.elementRef = null
         this.dropee = null
         this.cell_edges = []
         this.mouse_position = {}
@@ -41,15 +38,10 @@ export class DropRuler extends Component {
         this.state = {
             dragging: false,
             drop_index: 0,
-
-            selecting: false,
-            selection_start_index: 0,
-            selection_stop_index: 0,
         }
     }
 
     componentDidMount() {
-        this.elementRef = this.base
         document.addEventListener("dragstart", (e) => {
             if (!e.target.matches("pluto-shoulder")) {
                 this.setState({
@@ -113,90 +105,6 @@ export class DropRuler extends Component {
             const drop_index = this.getDropIndexOf(e, true)
             const friends = this.props.selected_friends(this.dropee.id)
             this.props.requests.move_remote_cells(friends, drop_index)
-        })
-
-        /* SELECTIONS */
-
-        document.addEventListener("mousedown", (e) => {
-            const t = e.target.tagName
-            // TODO: also allow starting the selection in one codemirror and stretching it to another cell
-            if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
-                this.precompute_cell_edges()
-                const new_index = this.getDropIndexOf(e)
-                this.setState({
-                    selecting: true,
-                    selection_start_index: new_index,
-                    selection_stop_index: new_index,
-                })
-                // the setState callback seems to be broken (uses the outdated state)
-                // so we do it ourselves:
-                this.props.on_selection({
-                    selection_start_index: new_index,
-                    selection_stop_index: new_index,
-                })
-            }
-        })
-
-        document.addEventListener("mouseup", (e) => {
-            if (this.state.selecting) {
-                this.setState({
-                    selecting: false,
-                    selection_start_index: null,
-                    selection_stop_index: null,
-                })
-            } else {
-                // if you didn't click on a UI element...
-                if (
-                    !e.composedPath().some((e) => {
-                        const tag = e.tagName
-                        return tag === "PLUTO-SHOULDER" || tag === "BUTTON"
-                    })
-                ) {
-                    // ...clear the selection
-                    this.props.on_selection({
-                        selection_start_index: null,
-                        selection_stop_index: null,
-                    })
-                }
-            }
-        })
-
-        document.addEventListener("mousemove", (e) => {
-            this.mouse_position = e
-            if (this.state.selecting) {
-                const new_stop_index = this.getDropIndexOf(e)
-                if (new_stop_index !== this.state.selection_stop_index) {
-                    this.setState({
-                        selection_stop_index: new_stop_index,
-                    })
-                    // the setState callback seems to be broken (uses the outdated state)
-                    // so we do it ourselves:
-                    this.props.on_selection({
-                        selection_start_index: this.state.selection_start_index,
-                        selection_stop_index: new_stop_index,
-                    })
-                }
-            }
-        })
-
-        document.addEventListener("selectstart", (e) => {
-            if (this.state.selecting) {
-                e.preventDefault()
-            }
-        })
-
-        // Ctrl+A to select all cells
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
-                // if you are not writing text somewhere else
-                if (document.activeElement === document.body && window.getSelection().isCollapsed) {
-                    this.props.on_selection({
-                        selection_start_index: 0,
-                        selection_stop_index: Infinity,
-                    })
-                    e.preventDefault()
-                }
-            }
         })
     }
 
