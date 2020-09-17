@@ -673,6 +673,27 @@ import JSON
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    @testset "No top level return" begin
+        notebook = Notebook([
+            Cell("return 10"),
+            Cell("return (0, 0)"),
+            Cell("return (0, 0, 0)"),
+            Cell("begin return \"a string\" end"),
+            Cell("""
+                let
+                    return []
+                end
+            """),
+        ])
+
+        for cell in notebook.cells
+            update_run!(🍭, notebook, cell)
+            @test occursinerror("can't use the return keyword in the top level", cell)
+        end
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
     @testset "Run multiple" begin
         notebook = Notebook([
             Cell("x = []"),
