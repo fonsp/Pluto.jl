@@ -114,17 +114,19 @@ function from_flat_kwargs(; kwargs...)::Options
             throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
             [
                 "Server Options:",
-                map(x->" "^2 * string(x), fieldnames(ServerOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(ServerOptions))...,
                 "",
                 "Security Options:",
-                map(x->" "^2 * string(x), fieldnames(SecurityOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(SecurityOptions))...,
                 "",
                 "Evaluation Options:",
-                map(x->" "^2 * string(x), fieldnames(EvaluationOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(EvaluationOptions))...,
                 "",
                 "Compiler Options:",
-                map(x->" "^2 * string(x), fieldnames(CompilerOptions))...,
-            ], '\n'))"""))
+                map(x -> " "^2 * string(x), fieldnames(CompilerOptions))...,
+            ], '\n'))
+            
+            These can be used as keywords arguments to Pluto.run, or to Pluto.from_flat_kwargs to create a Pluto.Options object."""))
         end
     end
 
