@@ -1,6 +1,8 @@
 import {
     lastElement,
-    dismissBeforeUnloadDialogs
+    dismissBeforeUnloadDialogs,
+    saveScreenshot,
+    getTestScreenshotPath,
 } from '../helpers/common'
 import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
 
@@ -12,6 +14,10 @@ describe('PlutoImportNotebook', () => {
 
     beforeEach(async () => {
         await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
+    })
+
+    afterEach(async () => {
+        await saveScreenshot(page, getTestScreenshotPath())
     })
 
     test.each([

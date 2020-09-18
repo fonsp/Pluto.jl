@@ -64,4 +64,8 @@ jobs:
                 PLUTO_PORT: 1235
                 PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
                 PUPPETEER_EXECUTABLE_PATH: '/usr/bin/google-chrome-stable'
- 
+
+            - uses: actions/upload-artifact@v2
+              with:
+                name: test-screenshot-artefacts
+                path: ${{ github.workspace }}/test/frontend/artefacts/*.png

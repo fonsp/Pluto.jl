@@ -1,6 +1,6 @@
 import {
     lastElement,
-    dismissBeforeUnloadDialogs
+    dismissBeforeUnloadDialogs, saveScreenshot, getTestScreenshotPath
 } from '../helpers/common'
 import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto } from '../helpers/pluto'
 
@@ -12,6 +12,10 @@ describe('PlutoAutocomplete', () => {
 
     beforeEach(async () => {
         await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
+    })
+
+    afterEach(async () => {
+        await saveScreenshot(page, getTestScreenshotPath())
     })
 
     it('should get the correct autocomplete suggestions', async () => {

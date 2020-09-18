@@ -1,4 +1,9 @@
-import { waitForContent, lastElement, dismissBeforeUnloadDialogs } from '../helpers/common'
+import { waitForContent, 
+    lastElement, 
+    dismissBeforeUnloadDialogs,
+    saveScreenshot,
+    getTestScreenshotPath
+} from '../helpers/common'
 import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl, prewarmPluto, waitForCellOutputToChange } from '../helpers/pluto'
 
 const manuallyEnterCells = async (page, cells) => {
@@ -30,6 +35,10 @@ describe('PlutoNewNotebook', () => {
         await page.goto(getPlutoUrl(), { waitUntil: 'networkidle0' })
         await createNewNotebook(page)
         await page.waitForSelector('pluto-input', { visible: true })
+    })
+
+    afterEach(async () => {
+        await saveScreenshot(page, getTestScreenshotPath())
     })
 
     it('should create new notebook', async () => {

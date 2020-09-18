@@ -37,3 +37,7 @@ const getArtefactsDir = () => path.join(__dirname, '..', 'artefacts')
 export const getFixtureNotebookPath = name => path.join(getFixturesDir(), name)
 
 export const getTemporaryNotebookPath = () => path.join(getArtefactsDir(), 'temporary_notebook_' + Date.now() + '.jl')
+
+export const getTestScreenshotPath = () => path.join(getArtefactsDir(), 'test_screenshot_' + Date.now() + '.png')
+
+export const saveScreenshot = (page, path) => page.screenshot({ path: path })
