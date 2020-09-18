@@ -688,7 +688,7 @@ import JSON
 
         for cell in notebook.cells
             update_run!(🍭, notebook, cell)
-            @test occursinerror("can't use the return keyword in the top level", cell)
+            @test occursinerror("You can only use return inside a function.", cell)
         end
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
