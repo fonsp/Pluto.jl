@@ -1,5 +1,5 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
 @import url("juliamono.css");
 
 #title {
@@ -112,7 +112,7 @@ pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: JuliaMono, monospace !important;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;

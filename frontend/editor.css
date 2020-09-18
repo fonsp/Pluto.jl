@@ -1,5 +1,4 @@
-@import url("https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("juliamono.css");
@@ -153,7 +152,7 @@ a {
 
 pluto-output code {
     font-family: JuliaMono, monospace;
-    font-size: 0.75em;
+    font-size: 0.75rem;
 }
 
 pluto-output pre {
@@ -264,9 +263,9 @@ pluto-output div.footnote p.footnote-title::after {
 }
 pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
-    font-weight: bold;
+    font-weight: 700;
     margin-block-end: 0px;
     letter-spacing: -0.05em;
     /* font-variant: small-caps; */
@@ -472,7 +471,7 @@ nav#at_the_top > pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: JuliaMono, monospace !important;
+    font-family: inherit;
     font-size: 0.8rem;
     letter-spacing: 1px;
     background: none;
@@ -1035,7 +1034,7 @@ pluto-runarea > span {
     left: 22px;
     width: 45px;
 
-    font-family: JuliaMono, monospace;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.6em;
     font-style: italic;
     color: hsl(353, 5%, 64%);
@@ -1137,7 +1136,7 @@ dropruler {
         padding: 15px;
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
-        font-family: JuliaMono, monospace;
+        font-family: "Roboto Mono", monospace;
         font-weight: 700;
         cursor: pointer;
         border-top-left-radius: 6px;
@@ -1246,7 +1245,7 @@ footer button {
     border: 2px solid #896c6c;
     color: white;
     /* border: none; */
-    font-family: "Roboto Mono", monospace;
+    font-family: inherit;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -1453,12 +1452,12 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .cm-s-default span.cm-builtin {
     color: #5e7ad3;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .cm-s-default span.cm-variable-2 {
