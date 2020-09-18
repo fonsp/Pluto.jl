@@ -42,7 +42,6 @@ stringify_keys(x::Any) = x
         c(cell) = cell.cell_id |> string
 
         @test_nowarn send(:connect, Dict(), Dict(:notebook_id => n))
-        @test_nowarn send(:get_version, Dict(), Dict())
 
         @test_nowarn send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
         send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
