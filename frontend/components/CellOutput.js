@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useEffect } from "../common/Preact.js"
 
 import { resolvable_promise } from "../common/PlutoConnection.js"
 
@@ -11,13 +11,8 @@ import "../common/SetupCellEnvironment.js"
 import "../treeview.js"
 
 export class CellOutput extends Component {
-    constructor() {
-        super()
-        this.displayed_timestamp = 0
-    }
-
-    shouldComponentUpdate({ timestamp }) {
-        return timestamp > this.displayed_timestamp
+    shouldComponentUpdate({ last_run_timestamp }) {
+        return last_run_timestamp !== this.props.last_run_timestamp
     }
 
     componentWillUpdate() {
@@ -40,8 +35,6 @@ export class CellOutput extends Component {
     }
 
     componentDidUpdate() {
-        this.displayed_timestamp = this.props.timestamp
-
         // Scroll the page to compensate for change in page height:
         const new_height = this.base.scrollHeight
 
@@ -54,6 +47,20 @@ export class CellOutput extends Component {
     }
 }
 
+let PlutoImage = ({ body, mime }) => {
+    // I know I know, this looks stupid.
+    // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
+    // and is removed when we are detatching from the DOM
+    let imgref = useRef()
+    useLayoutEffect(() => {
+        let url = URL.createObjectURL(new Blob([body], { type: mime }))
+        imgref.current.src = url
+        return () => URL.revokeObjectURL(url)
+    }, [body])
+
+    return html`<div><img ref=${imgref} type=${mime} src=${""} /></div>`
+}
+
 const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
     switch (mime) {
         case "image/png":
@@ -62,8 +69,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            const src = URL.createObjectURL(new Blob([body], { type: mime }))
-            return html`<div><img type=${mime} src=${src} /></div>`
+            return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
@@ -86,69 +92,110 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
     }
 }
 
-const execute_scripttags = (root_node, [next_node, ...remaining_nodes]) => {
-    const rp = resolvable_promise()
-
-    if (next_node == null) {
-        rp.resolve()
-        return rp.current
-    }
-    const load_next = () => execute_scripttags(root_node, remaining_nodes).then(rp.resolve)
-
-    root_node.currentScript = next_node
-    if (next_node.src != "") {
-        if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === next_node.src)) {
-            const new_el = document.createElement("script")
-            new_el.src = next_node.src
-            new_el.type = next_node.type === "module" ? "module" : "text/javascript"
-
-            // new_el.async = false
-            new_el.addEventListener("load", load_next)
-            new_el.addEventListener("error", load_next)
-            document.head.appendChild(new_el)
-        } else {
-            load_next()
+let execute_dynamic_function = async ({ environment, code }) => {
+    const wrapped_code = `
+        "use strict";
+        let fn = async () => {
+            ${code}
         }
-    } else {
-        try {
-            const result = Function(next_node.innerHTML).bind(root_node)()
-            if (result != null) {
-                console.log(result)
-                if (result.nodeType === Node.ELEMENT_NODE) {
-                    next_node.parentElement.insertBefore(result, next_node.nextSibling)
-                }
+        return fn()
+    `
+
+    let { ["this"]: this_value, ...args } = environment
+    let arg_names = Object.keys(args)
+    let arg_values = Object.values(args)
+    const result = await Function(...arg_names, wrapped_code).bind(this_value)(...arg_values)
+    return result
+}
+
+const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
+    let results_map = new Map()
+
+    for (let node of script_nodes) {
+        root_node.currentScript = node
+        if (node.src != "") {
+            if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === node.src)) {
+                const new_el = document.createElement("script")
+                new_el.src = node.src
+                new_el.type = node.type === "module" ? "module" : "text/javascript"
+
+                // new_el.async = false
+                await new Promise((resolve) => {
+                    new_el.addEventListener("load", resolve)
+                    new_el.addEventListener("error", resolve)
+                    document.head.appendChild(new_el)
+                })
+            } else {
+                continue
             }
-        } catch (err) {
-            console.log("Couldn't execute script:")
-            console.error(err)
-            // TODO: relay to user
+        } else {
+            try {
+                let script_id = node.id
+                let result = await execute_dynamic_function({
+                    environment: {
+                        this: script_id ? previous_results_map.get(script_id) : undefined,
+                        currentScript: node,
+                        invalidation: invalidation,
+                    },
+                    code: node.innerHTML,
+                })
+                if (script_id != null) {
+                    results_map.set(script_id, result)
+                }
+                if (result instanceof HTMLElement && result.nodeType === Node.ELEMENT_NODE) {
+                    node.parentElement.insertBefore(result, node.nextSibling)
+                }
+            } catch (err) {
+                console.log("Couldn't execute script:", node)
+                console.error(err)
+                // TODO: relay to user
+            }
         }
-        load_next()
     }
-    return rp.current
+    return results_map
 }
 
 export class RawHTMLContainer extends Component {
-    render_DOM() {
+    constructor() {
+        super()
+        this.previous_results_map = new Map()
+    }
+    async render_DOM() {
+        this.invalidate_scripts?.()
+        console.log("Render DOM")
+
         this.base.innerHTML = this.props.body
 
-        execute_scripttags(this.base, Array.from(this.base.querySelectorAll("script"))).then(() => {
-            if (this.props.all_completed_promise != null && this.props.requests != null) {
-                connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
-            }
-
-            // convert LaTeX to svg
-            try {
-                window.MathJax.typeset([this.base])
-            } catch (err) {
-                console.info("Failed to typeset TeX:")
-                console.info(err)
-            }
-
-            if (this.props.on_render != null) {
-                this.props.on_render(this.base)
+        let invalidation = new Promise((resolve) => {
+            this.invalidate_scripts = () => {
+                resolve()
+                invalidation.isInvalidated = true
             }
         })
+        invalidation.isInvalidated = false
+
+        this.previous_results_map = await execute_scripttags({
+            root_node: this.base,
+            script_nodes: Array.from(this.base.querySelectorAll("script")),
+            invalidation: invalidation,
+            previous_results_map: this.previous_results_map,
+        })
+
+        if (this.props.all_completed_promise != null && this.props.requests != null) {
+            connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
+        }
+
+        // convert LaTeX to svg
+        try {
+            window.MathJax.typeset([this.base])
+        } catch (err) {
+            console.info("Failed to typeset TeX:")
+            console.info(err)
+        }
+
+        if (this.props.on_render != null) {
+            this.props.on_render(this.base)
+        }
     }
 
     shouldComponentUpdate(new_props) {
@@ -166,6 +213,10 @@ export class RawHTMLContainer extends Component {
 
     componentDidMount() {
         this.render_DOM()
+    }
+
+    componentWillUnmount() {
+        this.invalidate_scripts?.()
     }
 
     render() {

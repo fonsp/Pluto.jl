@@ -17,13 +17,14 @@ html {
 body {
     margin: 0px;
     overflow-anchor: none;
+    position: relative;
 }
 
 main {
     min-height: calc(100vh - 80px - 3.5rem - 4rem);
     max-width: 700px;
     margin: 0 auto;
-    margin-top: 80px;
+    /* margin-top: 80px; */
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
@@ -313,8 +314,8 @@ pluto-output table > tbody tr:hover {
 /* HEADER */
 
 body > header {
-    position: absolute;
-    top: 0px;
+    /* position: absolute;
+    top: 0px; */
     width: 100%;
     min-height: 60px;
 
@@ -334,19 +335,19 @@ body.loading > header {
 }
 
 body > header.show_export {
-    position: fixed;
+    position: sticky;
     top: 130px;
 }
 
 aside#export {
     overflow-x: hidden;
     position: absolute;
-    top: -1130px;
+    top: 0;
     width: 100%;
     height: 130px;
     background: rgb(60, 67, 101);
     color: rgba(255, 255, 255, 0.7);
-    padding-top: 1000px;
+    transform: translateY(-100%);
 }
 aside#export div#container {
     flex-direction: row;
@@ -1382,12 +1383,14 @@ ul.CodeMirror-hints {
 }
 
 .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 90%, 98%, 1);
+    /* background: hsla(46, 90%, 98%, 1); */
+    background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
 pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 70%, 88%, 1);
+    /* background: hsla(46, 70%, 88%, 1); */
+    background-color: rgba(214, 172, 35, 0.2);
 }
 
 .cm-s-default .CodeMirror-guttermarker {

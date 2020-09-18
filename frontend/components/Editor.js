@@ -159,7 +159,7 @@ export class Editor extends Component {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now() },
+                    output: output,
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
