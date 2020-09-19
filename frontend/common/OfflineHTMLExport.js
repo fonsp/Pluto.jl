@@ -1,34 +1,27 @@
 const CDNified = (version, file) => `https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@${version.substr(1)}/frontend/${file}`
 
 export const offline_html = ({ pluto_version, body, head }) => {
-    
     Array.from(body.querySelectorAll(".CodeMirror-sizer")).forEach((s) => (s.style.minHeight = "24px"))
 
-    var blob_to_base64_promises = [];
-    Array.from(body.querySelectorAll("img")).forEach((img) => {
-        if (img.src.match(/^blob:/)) {            
-            blob_to_base64_promises.push(new Promise((resolve) => {
-                var xhr = new XMLHttpRequest();
-                xhr.responseType = 'blob';   
-            
-                xhr.onload = () => {
-                    var blob = xhr.response;            
-                    var reader = new FileReader();            
+    const blob_to_base64_promises = Array.from(body.querySelectorAll("img"))
+        .filter((img) => img.src.match(/^blob:/))
+        .map(
+            (img) =>
+                new Promise(async (resolve) => {
+                    const blob = await (await fetch(img.src)).blob()
+                    const reader = new FileReader()
                     reader.onload = () => {
-                        var data = reader.result;
-                        body.querySelector('img[src="' + img.src + '"]').setAttribute('src', data);
-                        resolve(data);
-                    };            
-                    reader.readAsDataURL(blob);
-                };
-                xhr.open('GET', img.src);
-                xhr.send();
-            }));
-        }
-    });
+                        var data = reader.result
+                        img.src = data
+                        resolve()
+                    }
+                    reader.readAsDataURL(blob)
+                })
+        )
 
-    return Promise.all(blob_to_base64_promises).then(() => {
-        return `<!DOCTYPE html>
+    return Promise.all(blob_to_base64_promises)
+        .then(() => {
+            return `<!DOCTYPE html>
             <html lang="en">
             <head>
                 <meta name="viewport" content="width=device-width" />
@@ -49,12 +42,13 @@ export const offline_html = ({ pluto_version, body, head }) => {
                 ${body.querySelector("svg#MJX-SVG-global-cache").outerHTML}
             </body>
         </html>`
-    }).catch((error) => {
-        let message =
-        "Whoops, failed to export to HTML 😢\nWe would really like to hear from you! Please go to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
-        console.error(message)
-        console.error(error)
-        alert(message + error)
-        return null;
-    })
+        })
+        .catch((error) => {
+            let message =
+                "Whoops, failed to export to HTML 😢\nWe would really like to hear from you! Please go to https://github.com/fonsp/Pluto.jl/issues to report this failure:\n\n"
+            console.error(message)
+            console.error(error)
+            alert(message + error)
+            return null
+        })
 }
