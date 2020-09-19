@@ -743,13 +743,20 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                const a = e.composedPath().find((el) => el.tagName === "A")
-                                a.download = this.state.notebook.shortpath + ".html"
-                                a.href = URL.createObjectURL(
-                                    new Blob([offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body })], {
-                                        type: "text/html",
-                                    })
-                                )
+                                offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body }).then((html) => {
+                                    if (html != null) {
+                                        const fake_anchor = document.createElement("a")
+                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
+                                        fake_anchor.href = URL.createObjectURL(
+                                            new Blob([html], {
+                                                type: "text/html",
+                                            })
+                                        )
+                                        document.body.appendChild(fake_anchor)
+                                        fake_anchor.click()
+                                        document.body.removeChild(fake_anchor)
+                                    }
+                                })
                             }}
                         >
                             <header>${circle("#E86F51")} Static HTML</header>
