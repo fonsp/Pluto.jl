@@ -17,6 +17,9 @@ codec.addExtPacker(0x12, Uint8ClampedArray, packTypedArray)
 codec.addExtPacker(0x12, ArrayBuffer, (x) => new Uint8Array(x))
 codec.addExtPacker(0x12, DataView, packTypedArray)
 
+codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(d)]))
+// codec.addExtPacker(0x0d, Date, (d) => new BigInt64Array([BigInt(d) - BigInt(d.getTimezoneOffset() * 60 * 1000)]))
+
 codec.addExtUnpacker(0x11, (buffer) => new Int8Array(buffer))
 codec.addExtUnpacker(0x12, (buffer) => new Uint8Array(buffer))
 codec.addExtUnpacker(0x13, (buffer) => new Int16Array(buffer))
