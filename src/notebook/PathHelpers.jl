@@ -6,7 +6,9 @@ const adjectives = [
 	"interesting"
 	"fascinating"
 	"surprising"
-	"unexpected"
+	"remarkable"
+	"wonderful"
+	"stunning"
 ]
 
 const nouns = [

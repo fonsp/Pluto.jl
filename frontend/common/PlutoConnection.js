@@ -99,7 +99,7 @@ const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 60000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
         const task_queue = []
@@ -196,7 +196,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{plutoENV: Object, send: Function, kill: Function, pluto_version: String, julia_version: String, secret: String}} PlutoConnection
+ * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}, secret: String}} PlutoConnection
  * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
  * @return {Promise<PlutoConnection>}
  */
@@ -205,10 +205,12 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     const client = {
         send: null,
         kill: null,
-        plutoENV: null,
+        session_options: null,
         secret: null,
-        pluto_version: "unknown",
-        julia_version: "unknown",
+        version_info: {
+            julia: "unknown",
+            pluto: "unknown",
+        },
     } // same
 
     const client_id = get_unique_short_id()
@@ -260,6 +262,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         ws_connection.send(message)
         return p
     }
+    client.send = send
 
     const connect = async () => {
         const secret = await (
@@ -271,39 +274,53 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             })
         ).text()
         client.secret = secret
+
+        let update_url_with_binder_token = async () => {
+            try {
+                const url = new URL(window.location.href)
+                const possible_binder_token = await (await fetch("possible_binder_token_please")).text()
+                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                    url.searchParams.set("token", possible_binder_token)
+                    history.replaceState({}, "", url.toString())
+                }
+            } catch (error) {
+                console.error("Error while setting binder url:", error)
+            }
+        }
+        update_url_with_binder_token()
+
         const ws_address =
             document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
 
         try {
-            ws_connection = await create_ws_connection(
-                ws_address,
-                {
-                    on_message: handle_update,
-                    on_socket_close: async () => {
-                        on_connection_status(false)
+            ws_connection = await create_ws_connection(ws_address, {
+                on_message: handle_update,
+                on_socket_close: async () => {
+                    on_connection_status(false)
 
-                        console.log(`Starting new websocket`, new Date().toLocaleTimeString())
-                        await connect() // reconnect!
+                    console.log(`Starting new websocket`, new Date().toLocaleTimeString())
+                    await connect() // reconnect!
 
-                        console.log(`Starting state sync`, new Date().toLocaleTimeString())
-                        const accept = on_reconnect()
-                        console.log(`State sync ${accept ? "" : "not "}succesful`, new Date().toLocaleTimeString())
-                        on_connection_status(accept)
-                        if (!accept) {
-                            alert("Connection out of sync 😥\n\nRefresh the page to continue")
-                        }
-                    },
+                    console.log(`Starting state sync`, new Date().toLocaleTimeString())
+                    const accept = on_reconnect()
+                    console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
+                    on_connection_status(accept)
+                    if (!accept) {
+                        alert("Connection out of sync 😥\n\nRefresh the page to continue")
+                    }
                 },
-                10000
-            )
+            })
 
-            console.log(ws_connection)
+            client.kill = ws_connection.kill
 
             // let's say hello
             console.log("Hello?")
             const u = await send("connect", {}, connect_metadata)
             console.log("Hello!")
-            client.plutoENV = u.message.ENV
+            client.session_options = u.message.options
+            client.version_info = u.message.version_info
+
+            console.log(client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
@@ -315,6 +332,16 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             }
             on_connection_status(true)
 
+            const ping = () => {
+                send("ping", {}, {})
+                    .then(() => {
+                        console.info("🏓")
+                        setTimeout(ping, 30 * 1000)
+                    })
+                    .catch()
+            }
+            ping()
+
             return u.message
         } catch (ex) {
             console.error("connect() failed")
@@ -324,14 +351,11 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     }
     await connect()
 
-    client.send = send
-    client.kill = ws_connection.kill
-
     return client
 }
 
-export const fetch_pluto_versions = (client) => {
-    const github_promise = fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+export const fetch_latest_pluto_version = () => {
+    return fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
         cache: "no-cache",
@@ -347,12 +371,4 @@ export const fetch_pluto_versions = (client) => {
         .then((response) => {
             return response[0].tag_name
         })
-
-    const pluto_promise = client.send("get_version").then((u) => {
-        client.pluto_version = u.message.pluto
-        client.julia_version = u.message.julia
-        return client.pluto_version
-    })
-
-    return Promise.all([github_promise, pluto_promise])
 }

@@ -46,7 +46,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // where `runtime` is log10, rounded
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
         // integer
-        versionPluto: client.pluto_version,
+        versionPluto: client.version_info == null ? "unkown" : client.version_info.pluto,
         // string, e.g. "v0.7.10"
         // versionJulia: client.julia_version,
         //     // string, e.g. "v1.0.5"
@@ -73,9 +73,9 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         await fetch("ping")
         statistics.pingTimeHTTP = Date.now() - ticHTTP
 
-        await client.send("get_version")
+        await client.send("ping")
         const ticWS = Date.now()
-        await client.send("get_version")
+        await client.send("ping")
         statistics.pingTimeWS = Date.now() - ticWS
     } catch (ex) {
         console.log("Failed to measure ping times")

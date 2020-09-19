@@ -28,7 +28,7 @@ function asset_response(path)
 end
 
 function error_response(status_code::Integer, title, advice, body="")
-    template = read(joinpath(PKG_ROOT_DIR, "frontend", "error.jl.html"), String)
+    template = read(project_relative_path("frontend", "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
     filled_in = replace(replace(replace(replace(template, "\$TITLE" => title), "\$ADVICE" => advice), "\$BODYTITLE" => body_title), "\$BODY" => htmlesc(body))
@@ -44,19 +44,20 @@ function notebook_redirect_response(notebook; home_url="./")
     return response
 end
 
-function http_router_for(session::ServerSession, security::ServerSecurity)
+function http_router_for(session::ServerSession)
     router = HTTP.Router()
     
     function create_serve_onefile(path)
         return request::HTTP.Request -> asset_response(normpath(path))
     end
     
-    HTTP.@register(router, "GET", "/", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "index.html")))
-    HTTP.@register(router, "GET", "/edit", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "editor.html")))
+    HTTP.@register(router, "GET", "/", create_serve_onefile(project_relative_path("frontend", "index.html")))
+    HTTP.@register(router, "GET", "/edit", create_serve_onefile(project_relative_path("frontend", "editor.html")))
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
     HTTP.@register(router, "GET", "/websocket_url_please", r -> HTTP.Response(200, string(session.secret)))
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(joinpath(PKG_ROOT_DIR, "frontend", "img", "favicon.ico")))
+    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> HTTP.Response(200, session.binder_token === nothing ? "" : session.binder_token))
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
     
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./")
         try
@@ -82,7 +83,7 @@ function http_router_for(session::ServerSession, security::ServerSecurity)
         try
             query = HTTP.queryparams(uri)
 
-            if security.require_token_for_open_links && (UUID(get(query, "secret", string(uuid1()))) != session.secret)
+            if session.options.security.require_token_for_open_links && (UUID(get(query, "secret", string(uuid1()))) != session.secret)
                 error_response(405, "Functionality disabled", "This Pluto server does not allow the requested action. If you are running the server yourself, have a look at the <em>security</em> keyword argument to <em>Pluto.run</em>. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
             else
                 if haskey(query, "path")
@@ -112,7 +113,7 @@ function http_router_for(session::ServerSession, security::ServerSecurity)
         sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
         
         path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
-        readwrite(joinpath(PKG_ROOT_DIR, "sample", sample_path), path)
+        readwrite(project_relative_path("sample", sample_path), path)
         
         return try_launch_notebook_response(SessionActions.open, path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
@@ -138,7 +139,7 @@ function http_router_for(session::ServerSession, security::ServerSecurity)
     function serve_asset(req::HTTP.Request)
         reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
         
-        filepath = joinpath(PKG_ROOT_DIR, "frontend", relpath(reqURI.path, "/"))
+        filepath = project_relative_path("frontend", relpath(reqURI.path, "/"))
         asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)

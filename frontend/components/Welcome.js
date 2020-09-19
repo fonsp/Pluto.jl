@@ -1,7 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { create_pluto_connection, fetch_pluto_versions } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
@@ -159,11 +159,9 @@ export class Welcome extends Component {
                 document.body.classList.remove("loading")
             })
 
-            fetch_pluto_versions(this.client).then((versions) => {
-                const remote = versions[0]
-                const local = versions[1]
-
-                window.pluto_version = local
+            fetch_latest_pluto_version().then((version) => {
+                const remote = version
+                const local = this.client.version_info.pluto
 
                 const base1 = (n) => "1".repeat(n)
 

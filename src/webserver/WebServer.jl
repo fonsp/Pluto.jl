@@ -23,20 +23,67 @@ function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: I
     end
 end
 
+# from https://github.com/JuliaLang/julia/pull/36425
+function detectwsl()
+    Sys.islinux() &&
+    isfile("/proc/sys/kernel/osrelease") &&
+    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
+end
+
+function open_in_default_browser(url::AbstractString)::Bool
+    try
+        if Sys.isapple()
+            Base.run(`open $url`)
+            true
+        elseif Sys.iswindows() || detectwsl()
+            Base.run(`cmd.exe /s /c start "" /b $url`)
+            true
+        elseif Sys.islinux()
+            Base.run(`xdg-open $url`)
+            true
+        else
+            false
+        end
+    catch ex
+        false
+    end
+end
 
 """
-    run([host,] port=1234)
+    run(; kwargs...)
 
 Start Pluto! Are you excited? I am!
 
+## Keyword arguments
+
+For the full list, see the [`Configuration`](@ref) module. Some **common parameters**:
+
+- `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
+- `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
+- `port`: Optional. The default `port` is `1234`.
+
 ## Technobabble
 
-The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
-
-This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`. Pluto notebooks can be started from the main menu in the web browser.
+This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
+Pluto notebooks can be started from the main menu in the web browser.
 """
-function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=false, session=ServerSession(), security=ServerSecurity(true))
-    pluto_router = http_router_for(session, security)
+function run(; kwargs...)
+    session = ServerSession(;options=Configuration.from_flat_kwargs(; kwargs...))
+    return run(session)
+end
+
+@deprecate run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) run(;host=host, port=port, kwargs...) false
+@deprecate run(port::Integer; kwargs...) run(;port=port, kwargs...) false
+
+"""
+    run(session::ServerSession)
+
+Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
+"""
+function run(session::ServerSession)
+    pluto_router = http_router_for(session)
+    host = session.options.server.host
+    port = session.options.server.port
 
     hostIP = parse(Sockets.IPAddr, host)
     if port === nothing
@@ -126,7 +173,13 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
-    
+
+            # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
+            params = HTTP.queryparams(HTTP.URI(request.target))
+            if haskey(params, "token") && session.binder_token === nothing 
+                session.binder_token = params["token"]
+            end
+
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
                 # no request body
@@ -151,18 +204,23 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
         end
     end
 
-    address = let
+    address = if session.options.server.root_url === nothing
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
+    else
+        session.options.server.root_url
     end
     Sys.set_process_title("Pluto server - $address")
-    println("Go to $address to start writing ~ have fun!")
+
+    if session.options.server.launch_browser && open_in_default_browser(address)
+        println("Opening $address in your default browser... ~ have fun!")
+    else
+        println("Go to $address in your browser to start writing ~ have fun!")
+    end
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
-    
-    launchbrowser && @warn "Not implemented yet"
 
     kill_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
@@ -191,8 +249,6 @@ function run(host, port::Union{Nothing,Integer}=nothing; launchbrowser::Bool=fal
         end
     end
 end
-
-run(port::Union{Nothing,Integer}=nothing; kwargs...) = run("127.0.0.1", port; kwargs...)
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
 function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)

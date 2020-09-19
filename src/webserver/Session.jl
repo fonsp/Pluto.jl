@@ -1,4 +1,5 @@
 import UUIDs: UUID, uuid1
+import .Configuration
 
 ###
 # CLIENT
@@ -26,14 +27,21 @@ end
 # SERVER
 ###
 
-struct ServerSession
-    connected_clients::Dict{Symbol,ClientSession}
-    notebooks::Dict{UUID,Notebook}
-    secret::UUID
+"""
+The `ServerSession` keeps track of:
+
+- `connected_clients`: connected (web) clients
+- `notebooks`: running notebooks
+- `secret`: the web access token
+- `options`: global pluto configuration `Options` for this session.
+"""
+Base.@kwdef mutable struct ServerSession
+    connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
+    notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
+    secret::UUID = uuid1()
+    binder_token::Union{String,Nothing} = nothing
+    options::Configuration.Options = Configuration.Options()
 end
-
-ServerSession() = ServerSession(Dict{Symbol,ClientSession}(), Dict{UUID,Notebook}(), uuid1())
-
 
 ###
 # UPDATE MESSAGE

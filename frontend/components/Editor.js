@@ -1,12 +1,15 @@
 import { html, Component } from "../common/Preact.js"
+import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
+import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
 
-import { create_pluto_connection, fetch_pluto_versions, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 
@@ -15,6 +18,7 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 const default_path = "..."
 
@@ -27,7 +31,7 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
-                notebook_id: document.location.search.split("id=")[1],
+                notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
             },
             desired_doc_query: null,
@@ -228,8 +232,9 @@ export class Editor extends Component {
         const on_establish_connection = (client) => {
             // nasty
             Object.assign(this.client, client)
+            window.version_info = this.client.version_info // for debugging
 
-            const run_all = this.client.plutoENV["PLUTO_RUN_NOTEBOOK_ON_LOAD"] === "true"
+            const run_all = this.client.session_options.evaluation.run_notebook_on_load
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
 
@@ -304,10 +309,6 @@ export class Editor extends Component {
                     )
                 })
                 .catch(console.error)
-
-            fetch_pluto_versions(this.client).then((versions) => {
-                window.pluto_version = versions[1]
-            })
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -613,67 +614,45 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            switch (e.keyCode) {
-                case 81: // q
-                    if (e.ctrlKey) {
-                        if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
-                            this.requests.interrupt_remote()
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 82: // r
-                    // I commonly have a test notebook that I want to re-run after changing something to the backend
-                    // if I would just reload the page, then the new Pluto session would be asked to open notebook with uuid=b1d2cbdb1c2bb12d, which does not exist in the new session
-                    if (e.ctrlKey) {
-                        if (this.state.notebook.path !== default_path) {
-                            document.location.href = link_open_path(this.state.notebook.path)
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 83: // s
-                    if (e.ctrlKey) {
-                        const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
-                        if (!some_cells_ran) {
-                            // all cells were in sync allready
-                            // TODO: let user know that the notebook autosaves
-                        }
-                        e.preventDefault()
-                    }
-                    break
-                case 8: // backspace
-                // fall into:
-                case 46: // delete
-                    const selected = this.state.notebook.cells.filter((c) => c.selected)
+            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+                // This one can't be done as cmd+q on mac, because that closes chrome - Dral
+                if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
+                    this.requests.interrupt_remote()
+                }
+                e.preventDefault()
+            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
+                const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
+                if (!some_cells_ran) {
+                    // all cells were in sync allready
+                    // TODO: let user know that the notebook autosaves
+                }
+                e.preventDefault()
+            } else if (e.key === "Backspace" || e.key === "Delete") {
+                const selected = this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length > 0) {
                     this.requests.confirm_delete_multiple(selected)
                     e.preventDefault()
-                    break
-                case 191: // ? or /
-                    if (!(e.ctrlKey && e.shiftKey)) {
-                        break
-                    }
-                // fall into:
-                case 112: // F1
-                    // TODO: show help
-                    alert(
-                        `Shortcuts 🎹
-        
-        Shift+Enter:   run cell
-        Ctrl+Enter:   run cell and add cell below
-        Delete or Backspace:   delete empty cell
+                }
+            } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
+                // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
+                // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
+                // I hope we can find a better solution for this later - Dral
+                alert(
+                    `Shortcuts 🎹
+    
+    Shift+Enter:   run cell
+    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
+    Delete or Backspace:   delete empty cell
 
-        PageUp or fn+Up:   select cell above
-        PageDown or fn+Down:   select cell below
+    PageUp or fn+Up:   select cell above
+    PageDown or fn+Down:   select cell below
 
-        Ctrl+Q:   interrupt notebook
-        Ctrl+S:   submit all changes
-        
-        The notebook file saves every time you run`
-                    )
-
-                    e.preventDefault()
-                    break
+    ${ctrl_or_cmd_name}+Q:   interrupt notebook
+    ${ctrl_or_cmd_name}+S:   submit all changes
+    
+    The notebook file saves every time you run`
+                )
+                e.preventDefault()
             }
         })
 
@@ -706,7 +685,7 @@ export class Editor extends Component {
                 })
                 this.counter_statistics = create_counter_statistics()
             }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+        }, 20 * 1000) // 20 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {
@@ -822,7 +801,7 @@ export class Editor extends Component {
                         value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
-                            base: this.client.plutoENV == null ? "" : this.client.plutoENV["PLUTO_WORKING_DIRECTORY"],
+                            base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
                             name: this.state.notebook.shortpath,
                         }}
                         placeholder="Save notebook..."
@@ -871,29 +850,21 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler}
-                    requests=${this.requests}
-                    selected_friends=${this.selected_friends}
-                    on_selection=${(s) => {
-                        const from = Math.min(s.selection_start_index, s.selection_stop_index)
-                        const to = Math.max(s.selection_start_index, s.selection_stop_index)
-                        this.set_notebook_state((prevstate) => {
-                            return {
-                                cells: prevstate.cells.map((c, i) => {
-                                    if (from <= i && i < to) {
-                                        return {
-                                            ...c,
-                                            selected: true,
-                                        }
-                                    } else {
-                                        return {
-                                            ...c,
-                                            selected: false,
-                                        }
+                <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
+
+                <${SelectionArea}
+                    cells=${this.state.notebook.cells}
+                    on_selection=${(selected_cell_ids) => {
+                        let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
+                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                            this.setState(
+                                immer((state) => {
+                                    for (let cell of state.notebook.cells) {
+                                        cell.selected = selected_cell_ids.includes(cell.cell_id)
                                     }
-                                }),
-                            }
-                        })
+                                })
+                            )
+                        }
                     }}
                 />
             </main>

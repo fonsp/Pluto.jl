@@ -1,4 +1,5 @@
 import { html, render } from "./common/Preact.js"
+import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Editor } from "./components/Editor.js"
 

@@ -1,8 +1,7 @@
-@import url("https://fonts.googleapis.com/css?family=Roboto+Slab:700&display=swap");
-/* @import url('https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese'); */
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:300,300i,400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import url("juliamono.css");
 
 /* VARIABLES */
 
@@ -152,8 +151,8 @@ a {
 }
 
 pluto-output code {
-    font-family: "Roboto Mono", monospace;
-    font-size: 0.75em;
+    font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
 }
 
 pluto-output pre {
@@ -163,7 +162,7 @@ pluto-output pre {
     word-break: break-all;
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
-    font-family: "Roboto Mono", monospace;
+    font-family: JuliaMono, monospace;
 }
 
 pluto-output hr {
@@ -266,7 +265,7 @@ pluto-output a.footnote,
 pluto-output div.footnote p.footnote-title {
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
-    font-weight: bold;
+    font-weight: 700;
     margin-block-end: 0px;
     letter-spacing: -0.05em;
     /* font-variant: small-caps; */
@@ -299,7 +298,7 @@ pluto-output table > thead {
 
 pluto-output table > tbody td {
     font-size: 0.75rem;
-    font-family: "Roboto Mono", monospace;
+    font-family: JuliaMono, monospace;
 }
 
 pluto-output table td,
@@ -324,6 +323,10 @@ body > header {
     background-color: white;
     transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
+
+    font-family: "Roboto Mono", monospace;
+    font-weight: 400;
+    font-size: 0.75rem;
 }
 
 body.loading > header {
@@ -379,15 +382,15 @@ div.export_title {
     transform: rotate(180deg);
 
     margin-top: 20px;
-    font-family: "Roboto Mono", monospace;
+    font-weight: 700;
+    font-size: 1rem;
 }
 a.export_card header {
     margin-block: 0px;
     font-family: "Vollkorn", sans;
+    font-size: 1rem;
 }
 a.export_card section {
-    font-size: 0.75rem;
-    font-family: "Roboto Mono", monospace;
     color: rgba(0, 0, 0, 0.5);
     font-weight: 500;
 }
@@ -468,8 +471,8 @@ nav#at_the_top > pluto-filepicker .CodeMirror {
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace !important;
-    font-size: 0.75rem;
+    font-family: inherit;
+    font-size: 0.8rem;
     letter-spacing: 1px;
     background: none;
     border: 2px solid #818181;
@@ -554,7 +557,8 @@ body.disconnected > header {
 }
 
 nav:after {
-    font-family: "Roboto Mono", monospace;
+    font-size: 1rem;
+    font-weight: 500;
     padding: 10px;
 }
 
@@ -626,7 +630,7 @@ pluto-output.inline_output {
 }
 
 pluto-output > assignee {
-    font-family: "Roboto Mono", monospace;
+    font-family: JuliaMono, monospace;
     font-size: 0.75rem;
 }
 
@@ -640,7 +644,9 @@ pluto-output > assignee:empty {
 }
 
 pluto-output > div {
+    width: 100%;
     overflow-x: auto;
+    overflow-y: hidden;
 }
 
 pluto-output.inline_output > div > pre {
@@ -746,7 +752,7 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: black;
-    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-family: "Segoe UI Emoji", JuliaMono, monospace;
     z-index: 3;
     /* CodeMirror is 2 */
 }
@@ -785,6 +791,11 @@ pluto-shoulder > button {
     padding: 0px 1px;
 }
 
+pluto-cell:focus-within > pluto-shoulder > button {
+    /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
+    padding-right: 4px;
+}
+
 /* pluto-cell.code_folded.inline-output > pluto-shoulder > button {
     margin-top: 3px;
 } */
@@ -808,8 +819,8 @@ pluto-trafficlight {
     pointer-events: none;
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
+    border-left-color: rgba(0, 0, 0, 0.1);
     background: rgba(0, 0, 0, 0.1);
-    transition: background 0.15s ease-in-out;
 }
 
 /* in ascending order of severity: */
@@ -821,67 +832,68 @@ pluto-cell.code_folded > pluto-trafficlight {
 @media screen and (any-pointer: fine) {
     pluto-cell:hover > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
-        transition: background 0.05s ease-in-out;
+        transition: background 0.05s ease-in;
     }
 }
 
-@media screen and (any-pointer: coarse) {
-    pluto-cell:focus-within > pluto-trafficlight {
-        background: rgba(0, 0, 0, 0.1);
-        transition: background 0.05s ease-in-out;
-    }
+pluto-cell:focus-within > pluto-trafficlight {
+    border-left-width: 4px;
+    border-left-style: solid;
+    margin-left: -4px;
+    background-clip: content-box;
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
+    border-left-color: rgba(40, 78, 189, 0.4);
+    background-clip: content-box;
 }
 
 pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
+    border-left-color: hsla(46, 70%, 37%, 0.68);
+    background-clip: content-box;
 }
 
 pluto-cell.errored > pluto-trafficlight {
-    background: hsl(0, 100%, 71%);
+    background: hsla(0, 70%, 80%, 0.7);
+    border-left-color: hsla(0, 70%, 80%, 0.7);
+    background-clip: content-box;
 }
 
 pluto-cell.queued > pluto-trafficlight {
-    background: repeating-linear-gradient(
-        -45deg,
-        hsla(20, 20%, 75%, 0.6),
-        hsla(20, 20%, 75%, 0.6) 8px,
-        hsla(20, 20%, 75%, 0.06) 8px,
-        hsla(20, 20%, 75%, 0.06) 16px
-    );
-    background-size: 4px 22.62741699797px;
-    /* 16 * sqrt(2) */
-    animation: 3000s linear 0s infinite running scrollbackground;
+    background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
+    background-clip: content-box;
+    animation: 1000s linear 0s infinite running scrollbackground;
+    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
 }
 
 pluto-cell.running > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsla(20, 20%, 70%, 1), hsla(20, 20%, 70%, 1) 8px, hsla(20, 20%, 70%, 0.1) 8px, hsla(20, 20%, 70%, 0.1) 16px);
-    background-size: 4px 22.62741699797px;
-    /* 16 * sqrt(2) */
-    animation: 1500s linear 0s infinite running scrollbackground;
+    background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
+    background-clip: content-box;
+    animation: 1000s linear 0s infinite running scrollbackground;
+    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
 }
 
 pluto-cell.queued.errored > pluto-trafficlight {
     background: repeating-linear-gradient(
         -45deg,
-        hsla(0, 100%, 71%, 0.7),
-        hsla(0, 100%, 71%, 0.7) 8px,
-        hsla(12, 71%, 47%, 0.2) 8px,
-        hsla(12, 71%, 47%, 0.2) 16px
+        hsla(0, 70%, 80%, 0.7),
+        hsla(0, 70%, 80%, 0.7) 8px,
+        hsla(0, 70%, 80%, 0.05) 8px,
+        hsla(0, 70%, 80%, 0.05) 16px
     );
-    background-size: 4px 22.62741699797px;
-    /* 16 * sqrt(2) */
-    animation: 3000s linear 0s infinite running scrollbackground;
+    background-clip: content-box;
+    animation: 1000s linear 0s infinite running scrollbackground;
+    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
 }
 
 pluto-cell.running.errored > pluto-trafficlight {
-    background: repeating-linear-gradient(-45deg, hsl(0, 100%, 71%), hsl(0, 100%, 71%) 8px, hsla(12, 71%, 47%, 0.33) 8px, hsla(12, 71%, 47%, 0.33) 16px);
-    background-size: 4px 22.62741699797px;
-    /* 16 * sqrt(2) */
-    animation: 1500s linear 0s infinite running scrollbackground;
+    background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
+    background-clip: content-box;
+    animation: 1000s linear 0s infinite running scrollbackground;
+    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
 }
 
 @keyframes scrollbackground {
@@ -1125,7 +1137,7 @@ dropruler {
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
         font-family: "Roboto Mono", monospace;
-        font-weight: 500;
+        font-weight: 700;
         cursor: pointer;
         border-top-left-radius: 6px;
         border-top-right-radius: 6px;
@@ -1219,7 +1231,8 @@ footer a {
 
 footer input {
     border: 2px solid #818181;
-    font-family: "Roboto Mono", monospace;
+    font-family: inherit;
+    font-size: inherit;
     border-radius: 3px 0 0 3px;
     padding: 3px;
     border-right: none;
@@ -1232,7 +1245,7 @@ footer button {
     border: 2px solid #896c6c;
     color: white;
     /* border: none; */
-    font-family: "Roboto Mono", monospace;
+    font-family: inherit;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -1343,7 +1356,7 @@ ul.CodeMirror-hints {
 
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
-    font-family: "Roboto Mono", monospace !important;
+    font-family: JuliaMono, monospace !important;
     font-size: 0.75em;
 }
 
@@ -1386,7 +1399,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 }
 
 .cm-s-default .CodeMirror-linenumber {
-    color: #8d8687;
+    color: #8d86875e;
 }
 
 .cm-s-default .CodeMirror-linenumber::before {
@@ -1407,7 +1420,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 }
 
 .cm-s-default .CodeMirror-cursor {
-    border-left: 1px solid #776e71;
+    border-left: 1.5px solid #776e71;
 }
 
 .cm-s-default span.cm-comment {
@@ -1439,12 +1452,12 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .cm-s-default span.cm-builtin {
     color: #5e7ad3;
-    font-weight: 500;
+    font-weight: 700;
 }
 
 .cm-s-default span.cm-variable-2 {

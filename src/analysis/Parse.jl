@@ -87,7 +87,7 @@ end
 preprocess_expr(val::Any) = val
 
 "Wrap `expr` inside a timing block."
-function timed_expr(expr::Expr)::Expr
+function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     # @assert ExpressionExplorer.is_toplevel_expr(expr)
 
     linenumbernode = expr.args[1]
@@ -99,16 +99,29 @@ function timed_expr(expr::Expr)::Expr
         linenumbernode,
         :(local result = $root),
         :(elapsed_ns = time_ns() - elapsed_ns),
-        :((result, elapsed_ns)),
+        :((result, elapsed_ns, $return_proof)),
     )
 end
 
 "Wrap `expr` inside a timing block, and then inside a try ... catch block."
 function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+    return_proof = Ref(123)
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
     quote
         ans, runtime = try
             # We eval `expr` in the global scope of the workspace module:
-            Core.eval($(module_name), $(timed_expr(expr) |> QuoteNode))
+            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+
+            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
+                throw("Pluto: You can only use return inside a function.")
+            else
+                local ans, runtime, _ = invocation
+                (ans, runtime)
+            end
         catch ex
             bt = stacktrace(catch_backtrace())
             (CapturedException(ex, bt), missing)

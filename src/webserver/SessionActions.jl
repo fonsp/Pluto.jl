@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, get_pl_env, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -11,16 +11,22 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     open(session, path; kwargs...)
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true)
+function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing)
     for nb in values(session.notebooks)
         if realpath(nb.path) == realpath(tamepath(path))
             throw(NotebookIsRunningException(nb))
         end
     end
     
-    nb = load_notebook(tamepath(path))
+    nb = load_notebook(tamepath(path), session.options.evaluation.run_notebook_on_load)
+
+    # overwrites the notebook environment if specified
+    if compiler_options !== nothing
+        nb.compiler_options = compiler_options
+    end
+
     session.notebooks[nb.notebook_id] = nb
-    if get_pl_env("PLUTO_RUN_NOTEBOOK_ON_LOAD") == "true"
+    if session.options.evaluation.run_notebook_on_load
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
         # TODO: send message when initial run completed
     end
@@ -57,7 +63,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
             @async close(client.stream)
         end
     end
-    success = WorkspaceManager.unmake_workspace(notebook)
+    success = WorkspaceManager.unmake_workspace((session, notebook))
 end
 
 function move(session::ServerSession, notebook::Notebook, newpath::AbstractString)
@@ -67,7 +73,7 @@ function move(session::ServerSession, notebook::Notebook, newpath::AbstractStrin
         else
             move_notebook!(notebook, newpath)
             putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace(notebook, newpath)
+            WorkspaceManager.cd_workspace((session, notebook), newpath)
             (success = true, reason = "")
         end
     catch ex
