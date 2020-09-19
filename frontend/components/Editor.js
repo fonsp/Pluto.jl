@@ -743,7 +743,7 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                offline_html({ pluto_version: window.pluto_version, head: document.head, body: document.body }).then((html) => {
+                                offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body }).then((html) => {
                                     if (html != null) {
                                         const fake_anchor = document.createElement("a")
                                         fake_anchor.download = this.state.notebook.shortpath + ".html"
