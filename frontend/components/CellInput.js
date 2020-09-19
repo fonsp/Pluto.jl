@@ -137,20 +137,18 @@ export const CellInput = ({
                     cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
                 }
             } else {
+                window.cm = cm
                 // Code cell, change to markdown
-                const old_cursor = cm.getCursor()
-                // HACK(ekzhang):
-                //   Pressing Ctrl+M when main cursor is at the end of a cell can cause
-                //   CodeMirror to insert the trailing '\n"""' _before_ the cursor, leading
-                //   to an awkwardly positioned cursor (such as when starting with a blank
-                //   cell) - this conditional call fixes it for most cases. May have unwanted
-                //   effects (removing user selection, not working with multiple cursors).
-                const is_end_of_cell = cm.indexFromPos(old_cursor) == value.length
-                cm.replaceRange('\n"""', { line: cm.lineCount() })
-                if (is_end_of_cell) {
-                    cm.setCursor(old_cursor)
-                }
-                cm.replaceRange('md"""\n', { line: 0, ch: 0 })
+                const old_selections = cm.listSelections()
+                cm.setValue(`md"""\n${value}\n"""`)
+                // Move all selections down a line
+                const new_selections = old_selections.map(({ anchor, head }) => {
+                    return {
+                        anchor: { ...anchor, line: anchor.line + 1 },
+                        head: { ...head, line: head.line + 1 },
+                    }
+                })
+                cm.setSelections(new_selections)
             }
         }
         const swap = (a, i, j) => {
