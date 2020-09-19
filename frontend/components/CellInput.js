@@ -137,9 +137,18 @@ export const CellInput = ({
                     cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
                 }
             } else {
+                window.cm = cm
                 // Code cell, change to markdown
-                cm.replaceRange(`\n"""`, { line: cm.lineCount() })
-                cm.replaceRange('md"""\n', { line: 0, ch: 0 })
+                const old_selections = cm.listSelections()
+                cm.setValue(`md"""\n${value}\n"""`)
+                // Move all selections down a line
+                const new_selections = old_selections.map(({ anchor, head }) => {
+                    return {
+                        anchor: { ...anchor, line: anchor.line + 1 },
+                        head: { ...head, line: head.line + 1 },
+                    }
+                })
+                cm.setSelections(new_selections)
             }
         }
         const swap = (a, i, j) => {
