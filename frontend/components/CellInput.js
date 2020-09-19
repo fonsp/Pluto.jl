@@ -138,7 +138,18 @@ export const CellInput = ({
                 }
             } else {
                 // Code cell, change to markdown
-                cm.replaceRange(`\n"""`, { line: cm.lineCount() })
+                const old_cursor = cm.getCursor()
+                // HACK(ekzhang):
+                //   Pressing Ctrl+M when main cursor is at the end of a cell can cause
+                //   CodeMirror to insert the trailing '\n"""' _before_ the cursor, leading
+                //   to an awkwardly positioned cursor (such as when starting with a blank
+                //   cell) - this conditional call fixes it for most cases. May have unwanted
+                //   effects (removing user selection, not working with multiple cursors).
+                const is_end_of_cell = cm.indexFromPos(old_cursor) == value.length
+                cm.replaceRange('\n"""', { line: cm.lineCount() })
+                if (is_end_of_cell) {
+                    cm.setCursor(old_cursor)
+                }
                 cm.replaceRange('md"""\n', { line: 0, ch: 0 })
             }
         }
