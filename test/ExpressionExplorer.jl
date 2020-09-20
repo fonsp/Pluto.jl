@@ -23,8 +23,10 @@ using Test
     @testset "Lists and structs" begin
         @test testee(:(1:3), [], [], [:(:)], [])
         @test testee(:(a[1:3,4]), [:a], [], [:(:)], [])
+        @test testee(:(a[b]), [:a, :b], [], [], [])
         @test testee(:([a[1:3,4]; b[5]]), [:b, :a], [], [:(:)], [])
-        @test testee(:(a.property), [:a], [], [], []) # `a` can also be a module
+        @test testee(:(a.someproperty), [:a], [], [], []) # `a` can also be a module
+        @test testee(:([a..., b]), [:a, :b], [], [], [])
         @test testee(:(struct a; b; c; end), [], [], [], [
             :a => ([], [], [], [])
             ])
@@ -212,6 +214,15 @@ using Test
         ])
         @test testee(:(a(a::AbstractArray{T,R}) where {T,S} = a + b), [], [], [], [
             :a => ([:AbstractArray, :b, :R], [], [:+], [])
+        ])
+        @test testee(:(f(::A) = 1), [], [], [], [
+            :f => ([:A], [], [], [])
+        ])
+        @test testee(:(f(::A, ::B) = 1), [], [], [], [
+            :f => ([:A, :B], [], [], [])
+        ])
+        @test testee(:(f(a::A, ::B, c::C...) = a + c), [], [], [], [
+            :f => ([:A, :B, :C], [], [:+], [])
         ])
     end
     @testset "Scope modifiers" begin
