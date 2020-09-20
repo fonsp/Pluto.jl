@@ -23,8 +23,10 @@ using Test
     @testset "Lists and structs" begin
         @test testee(:(1:3), [], [], [:(:)], [])
         @test testee(:(a[1:3,4]), [:a], [], [:(:)], [])
+        @test testee(:(a[b]), [:a, :b], [], [], [])
         @test testee(:([a[1:3,4]; b[5]]), [:b, :a], [], [:(:)], [])
-        @test testee(:(a.property), [:a], [], [], []) # `a` can also be a module
+        @test testee(:(a.someproperty), [:a], [], [], []) # `a` can also be a module
+        @test testee(:([a..., b]), [:a, :b], [], [], [])
         @test testee(:(struct a; b; c; end), [], [], [], [
             :a => ([], [], [], [])
             ])
