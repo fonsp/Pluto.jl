@@ -213,6 +213,9 @@ using Test
         @test testee(:(a(a::AbstractArray{T,R}) where {T,S} = a + b), [], [], [], [
             :a => ([:AbstractArray, :b, :R], [], [:+], [])
         ])
+        @test testee(:(f(::A) = 1), [], [], [], [
+            :f => ([:A], [], [], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])

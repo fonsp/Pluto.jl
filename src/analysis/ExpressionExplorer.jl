@@ -576,6 +576,13 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
+        # account for unnamed params, like in f(::Example) = 1
+        if ex.head == :(::) && length(ex.args) == 1
+            symstate = explore!(ex.args[1], scopestate)
+
+            return Symbol[], symstate
+        end
+        
         # recurse
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         if length(ex.args) > 1
@@ -620,6 +627,8 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
 
+    elseif ex.head == :(...)
+        return explore_funcdef!(ex.args[1], scopestate)
     else
         return Symbol[], explore!(ex, scopestate)
     end
