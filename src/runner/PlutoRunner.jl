@@ -423,11 +423,11 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
 
-        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
+        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
         
         print(io, "<r><more></more></r>")
         
-        show_array_elements(io, indices[end+1-from_end:end], @view x[end+1-from_end:end])
+        show_array_elements(io, indices[end+1-from_end:end], x)
     end
     
     print(io, "</jlarray>")
