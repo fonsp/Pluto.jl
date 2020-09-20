@@ -216,6 +216,12 @@ using Test
         @test testee(:(f(::A) = 1), [], [], [], [
             :f => ([:A], [], [], [])
         ])
+        @test testee(:(f(::A, ::B) = 1), [], [], [], [
+            :f => ([:A, :B], [], [], [])
+        ])
+        @test testee(:(f(a::A, ::B, c::C...) = a + c), [], [], [], [
+            :f => ([:A, :B, :C], [], [:+], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
