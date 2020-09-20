@@ -604,7 +604,7 @@ body.code_differs > main > preamble > button {
 pluto-cell {
     display: block;
     /* CodeMirror line height (defined by their JS somehow) + 1px border top + 1px border bottom */
-    min-height: calc(24px + 1px + 1px);
+    min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
 }
@@ -786,7 +786,7 @@ pluto-shoulder > button {
     flex: 0 0 auto;
     position: sticky;
     top: 0px;
-    margin-top: 5px;
+    margin-top: 4px;
     margin-right: 5px;
     padding: 0px 1px;
 }

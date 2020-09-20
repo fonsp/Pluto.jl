@@ -137,7 +137,6 @@ export const CellInput = ({
                     cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
                 }
             } else {
-                window.cm = cm
                 // Code cell, change to markdown
                 const old_selections = cm.listSelections()
                 cm.setValue(`md"""\n${value}\n"""`)

@@ -1,7 +1,7 @@
 const CDNified = (version, file) => `https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@${version.substr(1)}/frontend/${file}`
 
 export const offline_html = ({ pluto_version, body, head }) => {
-    Array.from(body.querySelectorAll(".CodeMirror-sizer")).forEach((s) => (s.style.minHeight = "24px"))
+    Array.from(body.querySelectorAll(".CodeMirror-sizer")).forEach((s) => (s.style.minHeight = "23px"))
 
     const blob_to_base64_promises = Array.from(body.querySelectorAll("img"))
         .filter((img) => img.src.match(/^blob:/))
