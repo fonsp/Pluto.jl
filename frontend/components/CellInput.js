@@ -97,7 +97,7 @@ export const CellInput = ({
         }
         keys["Ctrl-/"] = () => {
             const old_value = cm.getValue()
-            cm.toggleComment()
+            cm.toggleComment({indent: true})
             const new_value = cm.getValue()
             if (old_value === new_value) {
                 // the commenter failed for some reason
