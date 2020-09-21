@@ -18,9 +18,36 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 
 const default_path = "..."
+
+/**
+ * Serialize an array of cells into a string form (similar to the .jl file).
+ *
+ * Used for implementing clipboard functionality. This isn't in topological
+ * order, so you won't necessarily be able to run it directly.
+ *
+ * @param {Array<import("./Cell.js").CellState>} cells
+ * @return {String}
+ */
+function serialize_cells(cells) {
+    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.local_code.body + "\n").join("\n")
+}
+
+/**
+ * Deserialize a Julia program or output from `serialize_cells`.
+ *
+ * If a Julia program, it will return a single String containing it. Otherwise,
+ * it will split the string into cells based on the special delimiter.
+ *
+ * @param {String} serialized_cells
+ * @return {Array<String>}
+ */
+function deserialize_cells(serialized_cells) {
+    const segments = serialized_cells.split(/# ╔═╡ \S+\n/)
+    return segments.map((s) => s.trim()).filter((s) => s.length > 0)
+}
 
 export class Editor extends Component {
     constructor() {
@@ -653,6 +680,46 @@ export class Editor extends Component {
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
+            }
+        })
+
+        document.addEventListener("copy", (e) => {
+            if (!in_textarea_or_input()) {
+                const selected = this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length) {
+                    const serialized = serialize_cells(selected)
+                    navigator.clipboard.writeText(serialized).catch((err) => {
+                        alert(`Error copying cells: ${err}`)
+                    })
+                }
+            }
+        })
+
+        document.addEventListener("paste", async (e) => {
+            if (!in_textarea_or_input()) {
+                // Deselect everything first, to clean things up
+                this.setState(
+                    immer((state) => {
+                        for (let cell of state.notebook.cells) {
+                            cell.selected = false
+                        }
+                    })
+                )
+
+                // Paste in the cells at the end of the notebook
+                const data = e.clipboardData.getData("text/plain")
+                const new_code = deserialize_cells(data)
+                let index = this.state.notebook.cells.length
+                for (const new_block of new_code) {
+                    const update = await this.requests.add_remote_cell_at(index++, true)
+                    const new_cell = empty_cell_data(update.cell_id)
+                    new_cell.queued = new_cell.running = false
+                    new_cell.output.body = ""
+                    new_cell.local_code.body = new_block
+                    new_cell.remote_code.submitted_by_me = true
+                    new_cell.selected = true
+                    this.actions.add_local_cell(new_cell, update.message.index)
+                }
             }
         })
 

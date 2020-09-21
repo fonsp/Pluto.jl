@@ -15,3 +15,8 @@ export let map_cmd_to_ctrl_on_mac = (keymap) => {
     }
     return keymap_with_cmd
 }
+
+export let in_textarea_or_input = () => {
+    const { tagName } = document.activeElement
+    return tagName === "INPUT" || tagName === "TEXTAREA"
+}

@@ -13,6 +13,7 @@ const all_equal = (x) => x.every((y) => y === x[0])
 
 export const CellInput = ({
     is_hidden,
+    local_code,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -45,7 +46,7 @@ export const CellInput = ({
                 dom_node_ref.current.appendChild(el)
             },
             {
-                value: remote_code.body,
+                value: local_code.body,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
