@@ -31,6 +31,11 @@ const process_preamble = [
 const moduleworkspace_count = Ref(0)
 const workspaces = Dict{UUID,Workspace}()
 
+# automatically using Revise for the workspaces if available in the LOAD_PATH
+if Base.locate_package(Base.PkgId(Base.UUID("295af30f-e4ad-537b-8983-00126c2a3abe"), "Revise")) !== nothing # see https://discourse.julialang.org/t/how-to-check-if-a-package-is-installed-in-the-load-path/31610/3
+    pushfirst!(workspace_preamble, :(using Revise))
+    @info "Revise found and initialized for Pluto notebooks"
+end
 
 """Create a workspace for the notebook, optionally in a separate process.
 
