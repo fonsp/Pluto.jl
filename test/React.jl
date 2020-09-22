@@ -280,6 +280,64 @@ import JSON
             @test topo_order.errable == Dict()
         end
     end
+    
+    @testset "Extended multiple assignments" begin
+        function testformultipleassignmenterror(def1, def2, prep=Cell(""))
+            notebook = Notebook([prep, def1, def2])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, prep)
+
+            update_run!(🍭, notebook, def1)
+            update_run!(🍭, notebook, def2)
+            @test occursinerror("Multiple", def1)
+            @test occursinerror("Multiple", def2)
+
+            setcode(def1, "")
+            update_run!(🍭, notebook, def1)
+            @test def1.errored == false
+            @test def2.errored == false
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+
+        # function using build in type synonyms
+        # like Int and Int64
+        @test Int === Int64
+        testformultipleassignmenterror(Cell("f(x::Int) = 3"),
+            Cell("f(x::Int64) = 4"))
+
+        # function using dynamic types
+        testformultipleassignmenterror(
+            Cell("f(x::A) = 3"),
+            Cell("f(x::Number) = 4"),
+            Cell("A = Number"),
+        )
+
+        # variables vs methods
+        testformultipleassignmenterror(
+            Cell("f = 3"),
+            Cell("f(x) = 4")
+        )
+
+        # multiple methods per cell
+        testformultipleassignmenterror(
+            Cell("f(x::Int) = 1; f(x::String) = 2"),
+            Cell("f(x::String) = 3; f(x::Vector) = 4")
+        )
+
+        # methods only differing in key word arguments
+        testformultipleassignmenterror(
+            Cell("f() = 1"),
+            Cell("f(; x) = 3")
+        )
+
+        # what is this called again?
+        testformultipleassignmenterror(
+            Cell("f(x::T) where T = 1"),
+            Cell("f(x) = 2")
+        )
+    end
 
     @testset "Cyclic" begin
         notebook = Notebook([
