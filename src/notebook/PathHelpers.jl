@@ -37,6 +37,9 @@ const nouns = [
 	"program"
 	"notes"
 	"lecture"
+	"theory"
+	"proof"
+	"conjecture"
 ]
 
 function cutename()
