@@ -844,15 +844,6 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    on_cell_output_changed=${(cell) => {
-                        window.dispatchEvent(
-                            new CustomEvent("cell_output_changed", {
-                                detail: {
-                                    "cell": cell
-                                }
-                            })
-                        )
-                    }}
                     on_focus_neighbor=${(cell_id, delta) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta

@@ -54,7 +54,7 @@ export class CellOutput extends Component {
     }
 }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, requests }) => {
+const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, on_delete, requests }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -71,6 +71,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, req
                             body=${body} \
                             all_completed_promise=${all_completed_promise} \
                             on_render=${on_render} \
+                            on_delete=${on_delete} \
                             requests=${requests} />`
             break
         case "application/vnd.pluto.stacktrace+json":
@@ -170,6 +171,13 @@ export class RawHTMLContainer extends Component {
 
     componentDidMount() {
         this.render_DOM()
+    }
+
+    componentWillUnmount() {
+        this.base.innerHTML = ""
+        if (this.props.on_delete != null) {
+            this.props.on_delete(this.base)
+        }  
     }
 
     render() {

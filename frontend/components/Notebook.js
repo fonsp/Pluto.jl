@@ -6,7 +6,6 @@ export const Notebook = ({
     cells,
     on_update_doc_query,
     on_cell_input,
-    on_cell_output_changed,
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
@@ -25,7 +24,6 @@ export const Notebook = ({
                     key=${d.cell_id}
                     on_update_doc_query=${on_update_doc_query}
                     on_change=${(val) => on_cell_input(d, val)}
-                    on_update=${on_cell_output_changed}
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${focus_after_creation}
