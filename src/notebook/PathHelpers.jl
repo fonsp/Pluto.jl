@@ -1,14 +1,22 @@
 const adjectives = [
 	"groundbreaking"
+	"revolutionary"
 	"important"
 	"novel"
 	"fun"
 	"interesting"
 	"fascinating"
+	"exciting"
 	"surprising"
 	"remarkable"
 	"wonderful"
 	"stunning"
+	"mini"
+	"small"
+	"tiny"
+	"cute"
+	"friendly"
+	"wild"
 ]
 
 const nouns = [
@@ -24,6 +32,11 @@ const nouns = [
 	"invention"
 	"blueprint"
 	"report"
+	"science"
+	"magic"
+	"program"
+	"notes"
+	"lecture"
 ]
 
 function cutename()
