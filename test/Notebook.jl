@@ -96,7 +96,7 @@ end
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
         for file in ["Basic.jl", "Tower of Hanoi.jl", "Interactivity.jl"]
-            path = normpath(joinpath(Pluto.PKG_ROOT_DIR, "sample", file))
+            path = normpath(Pluto.project_relative_path("sample", file))
 
             @testset "$(file)" begin
                 nb = @test_nowarn load_notebook_nobackup(path)

@@ -1,5 +1,7 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
+@import url("juliamono.css");
+
 #title {
     /* position: absolute; */
     /* left: 0; */
@@ -97,20 +99,20 @@ a {
             margin-block-start: .7em;
         } */
 
-filepicker {
+pluto-filepicker {
     display: flex;
     flex-direction: row;
     margin-top: 0.3rem;
 }
 
-filepicker .CodeMirror {
+pluto-filepicker .CodeMirror {
     height: calc(1rem + 4px + 4px);
     display: inline-block;
     width: 100%;
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace !important;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -121,22 +123,22 @@ filepicker .CodeMirror {
     border-bottom-right-radius: 0;
 }
 
-filepicker .CodeMirror-scroll {
+pluto-filepicker .CodeMirror-scroll {
     overflow: hidden !important;
 }
 
-filepicker button {
+pluto-filepicker button {
     background: #6c8489;
     border-radius: 3px;
     border: 2px solid #6c8489;
     color: white;
     /* border: none; */
-    font-family: "Roboto Mono";
+    font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
 }
 
-filepicker button {
+pluto-filepicker button {
     cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
@@ -159,7 +161,7 @@ ul.CodeMirror-hints {
 }
 
 ul.CodeMirror-hints {
-    font-family: "Roboto Mono", monospace !important;
+    font-family: JuliaMono, monospace !important;
     font-size: 0.75em;
 }
 
@@ -183,11 +185,6 @@ body.nosessions ul#new ~ * {
     color: black;
 }
 
-#recent button {
-    /* still WIP */
-    /* display: none;  */
-}
-
 #recent button > span::after {
     display: block;
     content: " ";
@@ -207,4 +204,31 @@ body.nosessions ul#new ~ * {
 
 #recent li.transitioning button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
+}
+
+loading-bar {
+    height: 6px;
+    width: 100vw;
+    background-color: #b1c9dd;
+    position: fixed;
+    top: 0px;
+    display: none;
+}
+
+body.loading loading-bar {
+    animation: 12s ease-in-out load;
+    display: block;
+}
+
+@keyframes load {
+    0% {
+        right: 100vw;
+    }
+    20% {
+        right: 30vw;
+    }
+
+    100% {
+        right: 0vw;
+    }
 }

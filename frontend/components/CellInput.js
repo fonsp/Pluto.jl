@@ -1,13 +1,18 @@
-import { html, useState, useEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
     cm.setSelection(c, c, { scroll: false })
 }
 
+const last = (x) => x[x.length - 1]
+const all_equal = (x) => x.every((y) => y === x[0])
+
 export const CellInput = ({
+    is_hidden,
     remote_code,
     disable_input,
     focus_after_creation,
@@ -26,8 +31,13 @@ export const CellInput = ({
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
+    const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
+
+    useEffect(() => {
+        remote_code_ref.current = remote_code
+    }, [remote_code])
 
     useEffect(() => {
         const cm = (cm_ref.current = window.CodeMirror(
@@ -53,29 +63,152 @@ export const CellInput = ({
             }
         ))
 
-        cm.setOption("extraKeys", {
-            "Shift-Enter": () => on_submit(cm.getValue()),
-            "Ctrl-Enter": () => {
-                on_add_after()
-                // on_fold(true)
-                on_submit(cm.getValue())
-            },
-            "Shift-Delete": () => {
-                if (confirm("Delete cell?")) {
-                    on_delete()
+        const keys = {}
+
+        keys["Shift-Enter"] = () => on_submit(cm.getValue())
+        keys["Ctrl-Enter"] = () => {
+            on_add_after()
+
+            const new_value = cm.getValue()
+            if (new_value !== remote_code_ref.current.body) {
+                on_submit(new_value)
+            }
+        }
+        // Page up and page down are fn+Up and fn+Down on recent apple keyboards
+        keys["PageUp"] = () => {
+            on_focus_neighbor(cell_id, -1)
+        }
+        keys["PageDown"] = () => {
+            on_focus_neighbor(cell_id, +1)
+        }
+        keys["Shift-Tab"] = "indentLess"
+        keys["Tab"] = on_tab_key
+        keys["Ctrl-D"] = () => {
+            if (cm.somethingSelected()) {
+                const sels = cm.getSelections()
+                if (all_equal(sels)) {
+                    // TODO
                 }
-            },
-            // these should be fn+Up and fn+Down on recent apple keyboards
-            // please confirm and change this comment <3
-            "PageUp": () => {
+            } else {
+                const cursor = cm.getCursor()
+                const token = cm.getTokenAt(cursor)
+                cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
+            }
+        }
+        keys["Ctrl-/"] = () => {
+            const old_value = cm.getValue()
+            cm.toggleComment({indent: true})
+            const new_value = cm.getValue()
+            if (old_value === new_value) {
+                // the commenter failed for some reason
+                // this happens when lines start with `md"`, with no indent
+                cm.setValue(cm.lineCount() === 1 ? `# ${new_value}` : `#= ${new_value} =#`)
+                cm.execCommand("selectAll")
+            }
+        }
+        keys["Ctrl-M"] = () => {
+            const value = cm.getValue()
+            const trimmed = value.trim()
+            const offset = value.length - value.trimStart().length
+            if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
+                // Markdown cell, change to code
+                let start, end
+                if (trimmed.startsWith('md"""') && trimmed.endsWith('"""')) {
+                    // Block markdown
+                    start = 5
+                    end = trimmed.length - 3
+                } else {
+                    // Inline markdown
+                    start = 3
+                    end = trimmed.length - 1
+                }
+                if (start >= end || trimmed.substring(start, end).trim() == "") {
+                    // Corner case: block is empty after removing markdown
+                    cm.setValue("")
+                } else {
+                    while (/\s/.test(trimmed[start])) {
+                        ++start
+                    }
+                    while (/\s/.test(trimmed[end - 1])) {
+                        --end
+                    }
+                    // Keep the selection from [start, end) while maintaining cursor position
+                    cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
+                    cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
+                }
+            } else {
+                // Code cell, change to markdown
+                const old_selections = cm.listSelections()
+                cm.setValue(`md"""\n${value}\n"""`)
+                // Move all selections down a line
+                const new_selections = old_selections.map(({ anchor, head }) => {
+                    return {
+                        anchor: { ...anchor, line: anchor.line + 1 },
+                        head: { ...head, line: head.line + 1 },
+                    }
+                })
+                cm.setSelections(new_selections)
+            }
+        }
+        const swap = (a, i, j) => {
+            ;[a[i], a[j]] = [a[j], a[i]]
+        }
+        const range = (a, b) => {
+            const x = Math.min(a, b)
+            const y = Math.max(a, b)
+            return [...Array(y + 1 - x).keys()].map((i) => i + x)
+        }
+        const alt_move = (delta) => {
+            const selections = cm.listSelections()
+            const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
+            const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
+            if (!selected_lines.has(final_line_number)) {
+                Array.from(selected_lines)
+                    .sort((a, b) => delta * a < delta * b)
+                    .forEach((line_number) => {
+                        const lines = cm.getValue().split("\n")
+                        swap(lines, line_number, line_number + delta)
+                        cm.setValue(lines.join("\n"))
+                        cm.indentLine(line_number + delta, "smart")
+                        cm.indentLine(line_number, "smart")
+                    })
+                cm.setSelections(
+                    selections.map((sel) => {
+                        return {
+                            head: {
+                                line: sel.head.line + delta,
+                                ch: sel.head.ch,
+                            },
+                            anchor: {
+                                line: sel.anchor.line + delta,
+                                ch: sel.anchor.ch,
+                            },
+                        }
+                    })
+                )
+            }
+        }
+        keys["Alt-Up"] = () => alt_move(-1)
+        keys["Alt-Down"] = () => alt_move(+1)
+
+        keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
+            if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, -1)
-            },
-            "PageDown": () => {
+                on_delete()
+                console.log("backspace!")
+            }
+            return window.CodeMirror.Pass
+        }
+        keys["Delete"] = keys["Ctrl-Delete"] = () => {
+            if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
-            },
-            "Shift-Tab": "indentLess",
-            "Tab": on_tab_key,
-        })
+                on_delete()
+                console.log("delete!")
+            }
+            return window.CodeMirror.Pass
+        }
+
+        cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
 
         cm.on("cursorActivity", () => {
             if (cm.somethingSelected()) {
@@ -85,20 +218,25 @@ export const CellInput = ({
                     on_update_doc_query(sel)
                 }
             } else {
-                const token = cm.getTokenAt(cm.getCursor())
-                if (token.type != null && token.type != "string") {
-                    on_update_doc_query(token.string)
+                const cursor = cm.getCursor()
+                const token = cm.getTokenAt(cursor)
+                if (token.start === 0 && token.type === "operator" && token.string === "?") {
+                    // https://github.com/fonsp/Pluto.jl/issues/321
+                    const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
+                    on_update_doc_query(second_token.string)
+                } else if (token.type != null && token.type !== "string") {
+                    on_update_doc_query(module_expanded_selection(cm, token.string, cursor.line, token.start))
                 }
             }
         })
 
         cm.on("change", () => {
-            change_handler_ref.current(cm.getValue())
+            const new_value = cm.getValue()
+            if (new_value.length > 1 && new_value[0] === "?") {
+                window.dispatchEvent(new CustomEvent("open_live_docs"))
+            }
+            change_handler_ref.current(new_value)
         })
-
-        // cm.on("focus", () => {
-        //     window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
-        // })
 
         cm.on("blur", () => {
             // NOT a debounce:
@@ -135,12 +273,19 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
+    // if the CodeMirror initialized/changed while it was hidden, and it suddely became unhidden, we need to refresh it to fix a layout bug where the gutter takes no horizontal space.
+    useLayoutEffect(() => {
+        if (!is_hidden) {
+            cm_ref.current && cm_ref.current.refresh()
+        }
+    }, [is_hidden])
+
     // TODO effect hook for disable_input?
 
     return html`
-        <cellinput ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref}>
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
-        </cellinput>
+        </pluto-input>
     `
     // TODO: confirm delete
 }
@@ -183,7 +328,24 @@ const juliahints = (cm, options) => {
                 from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
                 to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
-            window.CodeMirror.on(completions, "select", options.on_update_doc_query)
+            window.CodeMirror.on(completions, "select", (val) => {
+                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+            })
             return completions
         })
+}
+
+// https://github.com/fonsp/Pluto.jl/issues/239
+const module_expanded_selection = (cm, current, line, ch) => {
+    const next1 = cm.getTokenAt({ line: line, ch: ch })
+    if (next1.string === ".") {
+        const next2 = cm.getTokenAt({ line: line, ch: ch - 1 })
+        if (next2.type === "variable") {
+            return module_expanded_selection(cm, next2.string + "." + current, line, next2.start)
+        } else {
+            return current
+        }
+    } else {
+        return current
+    }
 }

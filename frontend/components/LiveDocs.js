@@ -10,11 +10,23 @@ export class LiveDocs extends Component {
         this.state = {
             shown_query: null,
             searched_query: null,
-            body: "Start typing code to learn more!",
+            body: "Start typing in a cell to learn more!",
             hidden: true,
             loading: false,
         }
         this.updateDocTimer = undefined
+    }
+
+    componentDidMount() {
+        window.addEventListener("open_live_docs", () => {
+            // https://github.com/fonsp/Pluto.jl/issues/321
+            this.setState({
+                hidden: false,
+            })
+            if (window.getComputedStyle(this.base).display === "none") {
+                alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
+            }
+        })
     }
 
     componentDidUpdate() {
@@ -62,17 +74,35 @@ export class LiveDocs extends Component {
 
     render() {
         return html`
-            <div id="helpbox-wrapper">
-                <helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
+            <aside id="helpbox-wrapper">
+                <pluto-helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
                     <header onClick=${() => this.setState({ hidden: !this.state.hidden })}>
                         ${this.state.hidden || this.state.searched_query == null ? "Live docs" : this.state.searched_query}
                     </header>
                     <section>
                         <h1><code>${this.state.shown_query}</code></h1>
-                        <${RawHTMLContainer} body=${this.state.body} />
+                        <${RawHTMLContainer}
+                            body=${this.state.body}
+                            pure=${true}
+                            on_render=${(n) => resolve_doc_reference_links(n, this.props.on_update_doc_query)}
+                        />
                     </section>
-                </helpbox>
-            </div>
+                </pluto-helpbox>
+            </aside>
         `
     }
+}
+
+const resolve_doc_reference_links = (node, on_update_doc_query) => {
+    const as = node.querySelectorAll("a")
+    as.forEach((a) => {
+        const href = a.getAttribute("href")
+        if (href != null && href.startsWith("@ref")) {
+            const query = href.length > 4 ? href.substr(5) : a.textContent
+            a.onclick = (e) => {
+                on_update_doc_query(query)
+                e.preventDefault()
+            }
+        }
+    })
 }

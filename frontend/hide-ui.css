@@ -2,24 +2,13 @@ main {
     margin-top: 20px;
 }
 
-body {
-    font-size: 14px;
-}
-
 body > header,
 preamble > button,
-cell > button,
-cellinput > button,
-cellshoulder,
+pluto-cell > button,
+pluto-input > button,
+pluto-shoulder,
 footer,
-runarea,
+pluto-runarea,
 #helpbox-wrapper {
     display: none !important;
-}
-
-celloutput img {
-    max-width: 80%;
-    display: block;
-    margin: 0 auto;
-    margin-block-end: 1rem;
 }

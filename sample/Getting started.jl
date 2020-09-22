@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.11.14
 
 using Markdown
 using InteractiveUtils
@@ -15,7 +15,10 @@ end
 
 # ╔═╡ b129ba7c-953a-11ea-3379-17adae34924c
 md"# _Welcome to Pluto!_
-We're here to help you tell stories with your code. Let's go! 🚀"
+
+Pluto is a programming environment for _Julia_, designed to be **interactive** and **helpful**. 
+
+In this introduction, we will go through the basics of using Pluto. To make it interesting, this notebook does something special: it **changes while you work on it**. Computer magic ✨"
 
 # ╔═╡ 4d88b926-9543-11ea-293a-1379b1b5ae64
 md"## Cats
@@ -28,11 +31,11 @@ cat = "Ks*;lj"
 if cat == "Ks*;lj"
 	md"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	md"**Well done, your cat is called $cat now.** This text gets updated every time you change the name. To see how the magic works, click on the 👁️ to the left of this text."
+	HTML("""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>""")
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
-md"To edit any code, just click on it. When you're done programming, press the ▶️ in the lower-right to run the code. You can also use `Ctrl+Enter` if you are in a hurry."
+html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corned of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
 md"I feel like our cat needs a friend. Let's call them $(friend)."
@@ -45,7 +48,7 @@ else
 end
 
 # ╔═╡ f112b662-9543-11ea-3dcb-2906a99b2188
-md"A cell is a container for code & output. To add one, click on the ➕ above or below another cell. You can do it wherever you like. After you're done writing code in your cell, remember to run it!"
+html"""<p>A cell is a container for code & output. To add one, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> above or below another cell. You can do it wherever you like. After you're done writing code in your cell, remember to run it!</p>"""
 
 # ╔═╡ e0642f42-9545-11ea-14ee-fde52cb54ccc
 md"## Feeding neighbors
@@ -58,7 +61,9 @@ neighbors = [cat, friend, "Smerfetka", "Latte"]
 md"Now, if you're like my grandma, you're feeding the entire neigborhood by yourself. Let's see how many cans of cat food you need to prepare."
 
 # ╔═╡ 270ac49e-9549-11ea-3ffd-71ddaee9f134
-md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs** in the lower right, and then place your cursor on the code you need help with. It... usually works, we're polishing it right now!"
+md"But what does `confusing_function` do? If you ever need help, click on 📚 **Live docs** in the lower right, and then place your cursor on the code you need help with. 
+
+If you don't see it, then your screen is too small! Maybe you need to zoom out?"
 
 # ╔═╡ 745a4584-954a-11ea-028e-59011f268ec6
 cans_in_stock = "🥫🥫🥫🥫"
@@ -67,7 +72,7 @@ cans_in_stock = "🥫🥫🥫🥫"
 if @isdefined cans_in_stock
 	md"Actually, I have a hunch there will be another cat coming. Uncomment the code below (remove the #) to add one more can. Remember to run it after making the change!"
 else
-	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` - Pluto will take care of updating everything."
+	md"**Whoopsie!** Because Pluto figures out execution order for you, it doesn't really make sense to assign to the same variable twice. A smarter way to plan ahead is to write `cans_in_stock = consumption` — Pluto will take care of updating everything."
 end
 
 # ╔═╡ eac62fea-954e-11ea-2768-39ce6f4059ab
@@ -88,7 +93,7 @@ else
 end
 
 # ╔═╡ 36cd006a-9551-11ea-3c0c-df8b7f2843c1
-md"To delete a cell like the one defining $scary_dog, click on the ❌ to the right of its code."
+HTML("""<p>To delete a cell like the one defining $scary_dog, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> on the right of its code.</p>""")
 
 # ╔═╡ fb4e471c-9551-11ea-1ab5-41bbd5de76b8
 md"Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is $(tempdir()), a special directory that gets _emptied_ when you restart your computer. To change the save location to something more permanent, scroll to the top - you'll see it next to the Pluto logo."
@@ -118,7 +123,7 @@ else
 end
 
 # ╔═╡ 5edadcd2-9554-11ea-1714-b5b7692c4797
-md"We're almost done! It's time to share your amazing story. Press `Ctrl+P` to \"print\" this page to pdf - or you can always share this notebook's save file. (The file is pure Julia, by the way, and it's runnable! You'll learn more about this in the advanced introduction.)"
+html"""<p>We're almost done! It's time to share your amazing story. Scroll to the top of the notebook, and click on <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/shapes-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to see the export options - or you can always share this notebook's save file. (The file is pure Julia, by the way, and it's runnable! You'll learn more about this in the advanced introduction.)</p>"""
 
 # ╔═╡ 4634c856-9553-11ea-008d-3539195970ea
 md"## Final notes"
@@ -147,7 +152,7 @@ md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
 md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
 
 # ╔═╡ 1deaaf36-9554-11ea-3dae-85851f73dbc6
-md"_Have fun using Pluto!_
+md"**Have fun using Pluto!**
 
 _~ Fons van der Plas & Nicholas Bochenski_"
 

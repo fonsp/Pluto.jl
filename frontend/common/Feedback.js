@@ -1,14 +1,5 @@
 import { code_differs } from "../components/Cell.js"
-
-const timeout_promise = (promise, time_ms) =>
-    Promise.race([
-        promise,
-        new Promise((res, rej) => {
-            setTimeout(() => {
-                rej(new Error("Promise timed out."))
-            }, time_ms)
-        }),
-    ])
+import { timeout_promise } from "./PlutoConnection.js"
 
 export const create_counter_statistics = () => {
     return {
@@ -55,7 +46,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // where `runtime` is log10, rounded
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
         // integer
-        versionPluto: client.pluto_version,
+        versionPluto: client.version_info == null ? "unkown" : client.version_info.pluto,
         // string, e.g. "v0.7.10"
         // versionJulia: client.julia_version,
         //     // string, e.g. "v1.0.5"
@@ -63,7 +54,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // timestamp (ms)
         screenWidthApprox: 100 * Math.round(document.body.clientWidth / 100),
         // number, rounded to nearest multiple of 100
-        docsOpen: parseFloat(window.getComputedStyle(document.querySelector("helpbox")).height) > 200,
+        docsOpen: parseFloat(window.getComputedStyle(document.querySelector("pluto-helpbox")).height) > 200,
         // bool
         hasFocus: document.hasFocus(),
         // bool
@@ -73,18 +64,23 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         ...counter_statistics,
     }
 
-    let { message } = await client.send("get_all_notebooks")
-    statistics.numConcurrentNotebooks = message.notebooks.length
+    try {
+        let { message } = await client.send("get_all_notebooks")
+        statistics.numConcurrentNotebooks = message.notebooks.length
 
-    await fetch("ping")
-    const ticHTTP = Date.now()
-    await fetch("ping")
-    statistics.pingTimeHTTP = Date.now() - ticHTTP
+        await fetch("ping")
+        const ticHTTP = Date.now()
+        await fetch("ping")
+        statistics.pingTimeHTTP = Date.now() - ticHTTP
 
-    await client.send("get_version")
-    const ticWS = Date.now()
-    await client.send("get_version")
-    statistics.pingTimeWS = Date.now() - ticWS
+        await client.send("ping")
+        const ticWS = Date.now()
+        await client.send("ping")
+        statistics.pingTimeWS = Date.now() - ticWS
+    } catch (ex) {
+        console.log("Failed to measure ping times")
+        console.log(ex)
+    }
 
     return statistics
 }

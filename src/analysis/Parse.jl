@@ -19,7 +19,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
         if (ex isa Expr) && (ex.head == :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
-                Expr(:error, "extra token after end of expression")
+                Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
             else
                 ex
             end
@@ -35,7 +35,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
             # only whitespace or comments after the first expression
             parsed1
         else
-            Expr(:error, "extra token after end of expression")
+            Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
         end
     end
 
@@ -49,6 +49,24 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
 
     # 3.
     Expr(topleveled.head, topleveled.args[1], preprocess_expr(topleveled.args[2]))
+end
+
+"""Get the list of string indices that denote expression boundaries.
+
+# Examples
+
+`expression_boundaries("sqrt(1)") == [ncodeunits("sqrt(1)") + 1]`
+
+`expression_boundaries("sqrt(1)\n\n123") == [ncodeunits("sqrt(1)\n\n") + 1, ncodeunits("sqrt(1)\n\n123") + 1]`
+
+"""
+function expression_boundaries(code::String, start=1)::Array{<:Integer,1}
+    expr, next = Meta.parse(code, start, raise=false)
+    if next <= ncodeunits(code)
+        [next, expression_boundaries(code, next)...]
+    else
+        [next]
+    end
 end
 
 "Make some small adjustments to the `expr` to make it work nicely inside a timed, wrapped expression:
@@ -69,7 +87,7 @@ end
 preprocess_expr(val::Any) = val
 
 "Wrap `expr` inside a timing block."
-function timed_expr(expr::Expr)::Expr
+function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     # @assert ExpressionExplorer.is_toplevel_expr(expr)
 
     linenumbernode = expr.args[1]
@@ -81,16 +99,29 @@ function timed_expr(expr::Expr)::Expr
         linenumbernode,
         :(local result = $root),
         :(elapsed_ns = time_ns() - elapsed_ns),
-        :((result, elapsed_ns)),
+        :((result, elapsed_ns, $return_proof)),
     )
 end
 
 "Wrap `expr` inside a timing block, and then inside a try ... catch block."
 function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+    return_proof = Ref(123)
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
     quote
         ans, runtime = try
             # We eval `expr` in the global scope of the workspace module:
-            Core.eval($(module_name), $(timed_expr(expr) |> QuoteNode))
+            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+
+            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
+                throw("Pluto: You can only use return inside a function.")
+            else
+                local ans, runtime, _ = invocation
+                (ans, runtime)
+            end
         catch ex
             bt = stacktrace(catch_backtrace())
             (CapturedException(ex, bt), missing)

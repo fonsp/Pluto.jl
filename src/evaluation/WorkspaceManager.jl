@@ -1,6 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Notebook, Cell, PKG_ROOT_DIR, ExpressionExplorer, pluto_filename, trycatch_expr, Token, get_pl_env
+import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path
+import ..Configuration: CompilerOptions
 import ..PlutoRunner
 import Distributed
 
@@ -16,55 +17,67 @@ Workspace(pid::Integer, module_name::Symbol) = Workspace(pid, module_name, Token
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
     :(using Markdown, InteractiveUtils, Main.PlutoRunner), 
-    :(ENV["GKSwstype"] = "nul"), 
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(joinpath(PKG_ROOT_DIR, "src", "runner", "PlutoRunner.jl")))),
+    :(include($(project_relative_path("src", "runner", "PlutoRunner.jl")))),
+    :(ENV["GKSwstype"] = "nul"), 
+    :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
 ]
 
-moduleworkspace_count = 0
-workspaces = Dict{UUID,Workspace}()
+const moduleworkspace_count = Ref(0)
+const workspaces = Dict{UUID,Workspace}()
 
 
 """Create a workspace for the notebook, optionally in a separate process.
 
-`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)? Only workspaces on a separate process can be stopped during execution. Windows currently supports `true` only partially: you can't stop cells on Windows. _Defaults to `get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED")`_"""
-function make_workspace(notebook::Notebook, new_process=(get_pl_env("PLUTO_WORKSPACE_USE_DISTRIBUTED") == "true"))::Workspace
-    pid = if new_process
-        create_workspaceprocess()
+`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)?
+Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
+only partially: you can't stop cells on Windows.
+"""
+function make_workspace(session_notebook::Tuple{ServerSession, Notebook})::Workspace
+    session, notebook = session_notebook
+    pid = if session.options.evaluation.workspace_use_distributed
+        create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
         pid = Distributed.myid()
-        # for some reason the PlutoRunner might not be available in Main unless we include the file
-        # (even though this is the main process)
-        if !Distributed.remotecall_eval(Main, pid, :(isdefined(Main, :PlutoRunner) && PlutoRunner isa Module))
-            for expr in process_preamble
-                Distributed.remotecall_eval(Main, [pid], expr)
+        if !(isdefined(Main, :PlutoRunner) && Main.PlutoRunner isa Module)
+            # we make PlutoRunner available in Main, right now it's only defined inside this Pluto module.
+            @eval Main begin
+                PlutoRunner = $(PlutoRunner)
             end
         end
         pid
     end
     
     module_name = create_emptyworkspacemodule(pid)
-    
     workspace = Workspace(pid, module_name)
-    workspaces[notebook.notebook_id] = workspace
 
-    # We call cd("path of notebook file"). This is also done when the filename is changed.
-    eval_in_workspace(workspace, :(cd($(notebook.path |> dirname))))
+    cd_workspace(workspace, notebook.path)
 
     return workspace
 end
 
+"Call `cd(\$path)` inside the workspace. This is done when creating a workspace, and whenever the notebook changes path."
+function cd_workspace(workspace, path::AbstractString)
+    eval_in_workspace(workspace, quote
+        cd($(path |> dirname))
+        Sys.set_process_title("Pluto - " * $(path |> basename))
+    end)
+end
+
 # TODO: move to PlutoRunner
 function create_emptyworkspacemodule(pid::Integer)::Symbol
-    global moduleworkspace_count += 1
-    id = moduleworkspace_count
+    id = (moduleworkspace_count[] += 1)
     
-    new_workspace_name = Symbol("workspace", id)
+    new_workspace_name = if Distributed.myid() == 1
+        Symbol("workspace", id)
+    else
+        Symbol("workspace", id, "_", Distributed.myid())
+    end
     workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
     
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
@@ -73,8 +86,68 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
-function create_workspaceprocess()::Integer
-    pid = Distributed.addprocs(1) |> first
+function _merge_notebook_compiler_options(notebook::Notebook, options::CompilerOptions)
+    if notebook.compiler_options === nothing
+        return options
+    end
+
+    kwargs = Dict{Symbol, Any}()
+    for each in fieldnames(CompilerOptions)
+        # 1. not specified by notebook options
+        # 2. notebook specified project options
+        # 3. general notebook specified options
+        if getfield(notebook.compiler_options, each) === nothing
+            kwargs[each] = getfield(options, each)
+        elseif each === :project
+            # some specified processing for notebook project
+            # paths
+            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
+        else
+            kwargs[each] = getfield(notebook.compiler_options, each)
+        end
+    end
+    return CompilerOptions(;kwargs...)
+end
+
+function _resolve_notebook_project_path(notebook_path::String, path::String)
+    # 1. notebook project specified as abspath, return
+    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
+    # 3. notebook project specified as relative path, always assume it's relative to
+    #    the notebook.
+    if isabspath(path)
+        return tamepath(path)
+    elseif startswith(path, "@")
+        return Base.load_path_expand(path)
+    else
+        return tamepath(joinpath(dirname(notebook_path), path))
+    end
+end
+
+function _convert_to_flags(options::CompilerOptions)
+    option_list = []
+
+    for name in fieldnames(CompilerOptions)
+        flagname = if name == :startup_file
+            "--startup-file"
+        elseif name == :history_file
+            "--history-file"
+        else
+            string("--", name)
+        end
+        value = getfield(options, name)
+        if value !== nothing
+            push!(option_list, string(flagname, "=", value))
+        end
+    end
+
+    return option_list
+end
+
+# NOTE: this function only start a worker process using given
+# compiler options, it does not resolve paths for notebooks
+# compiler configurations passed to it should be resolved before this
+function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
+    pid = Distributed.addprocs(1; exeflags=_convert_to_flags(compiler_options)) |> first
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)
@@ -91,23 +164,27 @@ function create_workspaceprocess()::Integer
     pid
 end
 
-"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-unmake_workspace(notebook::Notebook) = unmake_workspace(get_workspace(notebook))
-
-function unmake_workspace(workspace::Workspace)
-    filter!(p -> p.second.pid != workspace.pid, workspaces)
-    interrupt_workspace(workspace; verbose=false)
-    if workspace.pid != Distributed.myid()
-        Distributed.rmprocs(workspace.pid)
-    end
-end
-
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
-function get_workspace(notebook::Notebook)::Workspace
+function get_workspace(session_notebook::Tuple{ServerSession, Notebook})::Workspace
+    session, notebook = session_notebook
     if haskey(workspaces, notebook.notebook_id)
         workspaces[notebook.notebook_id]
     else
-        workspaces[notebook.notebook_id] = make_workspace(notebook)
+        workspaces[notebook.notebook_id] = make_workspace(session_notebook)
+    end
+end
+get_workspace(workspace::Workspace)::Workspace = workspace
+
+"Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
+function unmake_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace})
+    workspace = get_workspace(session_notebook)
+
+    if workspace.pid != Distributed.myid()
+        filter!(p -> p.second.pid != workspace.pid, workspaces)
+        interrupt_workspace(workspace; verbose=false)
+        if workspace.pid != Distributed.myid()
+            Distributed.rmprocs(workspace.pid)
+        end
     end
 end
 
@@ -115,11 +192,14 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_fetch_in_workspace(notebook::Notebook, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64,Missing}}}
-    eval_fetch_in_workspace(get_workspace(notebook), expr, cell_id, ends_with_semicolon)
-end
+function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    workspace = get_workspace(session_notebook)
 
-function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{Tuple{String,MIME},Bool,Bool,Union{UInt64,Missing}}}
+    # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
+    if workspace.pid == Distributed.myid() && session_notebook isa Tuple
+        cd_workspace(workspace, session_notebook[2].path)
+    end
+    
     # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
     wrapped = trycatch_expr(expr, workspace.module_name, cell_id)
 
@@ -150,32 +230,30 @@ function eval_fetch_in_workspace(workspace::Workspace, expr::Expr, cell_id::UUID
 
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     # This also means that very big objects are not duplicated in RAM.
-    return Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.fetch_formatted_result($cell_id, $ends_with_semicolon)))
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
+    end
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
-function eval_in_workspace(notebook::Notebook, expr)
-    eval_in_workspace(get_workspace(notebook), expr)
-end
-
-function eval_in_workspace(workspace::Workspace, expr)
-    # take!(workspace.dowork_token)
-    try
-        Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
-        # put!(workspace.dowork_token)
-    catch ex
-        # put!(workspace.dowork_token)
-        rethrow(ex)
-    end
+function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr)
+    workspace = get_workspace(session_notebook)
+    
+    Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
     nothing
 end
 
-"Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(notebook::Notebook, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
-    delete_vars(get_workspace(notebook), to_delete, funcs_to_delete, module_imports_to_move; kwargs...)
+"Evaluate expression inside the workspace - output is returned. For internal use."
+function eval_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr)
+    workspace = get_workspace(session_notebook)
+    
+    Distributed.remotecall_eval(Main, workspace.pid, :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
 end
 
-function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+"Fake deleting variables by moving to a new module without re-importing them."
+function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+    workspace = get_workspace(session_notebook)
+
     old_workspace_name = workspace.module_name
     new_workspace_name = create_emptyworkspacemodule(workspace.pid)
 
@@ -185,12 +263,10 @@ function delete_vars(workspace::Workspace, to_delete::Set{Symbol}, funcs_to_dele
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
-"Force interrupt (SIGINT) a workspace, return whether succesful"
-function interrupt_workspace(notebook::Notebook; verbose=true)::Bool
-    interrupt_workspace(WorkspaceManager.get_workspace(notebook); verbose=verbose)
-end
+"Force interrupt (SIGINT) a workspace, return whether successful"
+function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}; verbose=true)::Bool
+    workspace = get_workspace(session_notebook)
 
-function interrupt_workspace(workspace::Workspace; verbose=true)
     if Sys.iswindows()
         verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
         Maybe the Windows Subsystem for Linux is right for you:
@@ -199,6 +275,7 @@ function interrupt_workspace(workspace::Workspace; verbose=true)
     end
     if workspace.pid == Distributed.myid()
         verbose && @warn """Cells in this workspace can't be stopped, because it is not running in a separate workspace. Use `ENV["PLUTO_WORKSPACE_USE_DISTRIBUTED"]` to control whether future workspaces are generated in a separate process."""
+        return false
     end
     if isready(workspace.dowork_token)
         verbose && @info "Tried to stop idle workspace - ignoring."

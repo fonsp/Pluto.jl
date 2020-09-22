@@ -1,6 +1,7 @@
 import { html, Component } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
+import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
 const deselect = (cm) => {
     cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
@@ -12,7 +13,27 @@ export class FilePicker extends Component {
         this.forced_value = ""
         this.cm = null
 
+        this.suggest_not_tmp = () => {
+            const suggest = this.props.suggest_new_file
+            if (suggest != null && this.cm.getValue() === "") {
+                this.cm.setValue(suggest.base)
+                this.cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity })
+                this.cm.focus()
+                this.request_path_completions.bind(this)()
+
+                // this.cm.setValue(suggest.base + suggest.name)
+                // this.cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
+                // this.cm.focus()
+            }
+            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+        }
+
         this.on_submit = () => {
+            const my_val = this.cm.getValue()
+            if (my_val === this.forced_value) {
+                this.suggest_not_tmp()
+                return
+            }
             this.props.on_submit(this.cm.getValue(), () => {
                 this.cm.setValue(this.props.value)
                 deselect(this.cm)
@@ -50,21 +71,21 @@ export class FilePicker extends Component {
             }
         )
 
-        // YAY (dit kan weg als Editor ook een react component is)
-        window.filePickerCodeMirror = this.cm
-
-        this.cm.setOption("extraKeys", {
-            "Ctrl-Enter": this.on_submit,
-            "Ctrl-Shift-Enter": this.on_submit,
-            "Enter": this.on_submit,
-            "Esc": (cm) => {
-                cm.closeHint()
-                cm.setValue(this.props.value)
-                deselect(cm)
-                document.activeElement.blur()
-            },
-            "Tab": this.request_path_completions.bind(this),
-        })
+        this.cm.setOption(
+            "extraKeys",
+            map_cmd_to_ctrl_on_mac({
+                "Ctrl-Enter": this.on_submit,
+                "Ctrl-Shift-Enter": this.on_submit,
+                "Enter": this.on_submit,
+                "Esc": (cm) => {
+                    cm.closeHint()
+                    cm.setValue(this.props.value)
+                    deselect(cm)
+                    document.activeElement.blur()
+                },
+                "Tab": this.request_path_completions.bind(this),
+            })
+        )
 
         this.cm.on("change", (cm, e) => {
             if (e.origin !== "setValue") {
@@ -83,12 +104,7 @@ export class FilePicker extends Component {
             }, 250)
         })
         this.cm.on("focus", (cm, e) => {
-            const suggest = this.props.suggest_new_file
-            if (suggest != null && cm.getValue() === "") {
-                cm.setValue(suggest.base + suggest.name)
-                cm.setSelection({ line: 0, ch: suggest.base.length }, { line: 0, ch: Infinity })
-            }
-            window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
+            this.suggest_not_tmp()
         })
 
         window.addEventListener("resize", () => {
@@ -99,9 +115,9 @@ export class FilePicker extends Component {
     }
     render() {
         return html`
-            <filepicker>
+            <pluto-filepicker>
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
-            </filepicker>
+            </pluto-filepicker>
         `
     }
 
@@ -116,6 +132,7 @@ export class FilePicker extends Component {
         }
     }
 }
+
 const pathhints = (cm, options) => {
     const cursor = cm.getCursor()
     const oldLine = cm.getLine(cursor.line)

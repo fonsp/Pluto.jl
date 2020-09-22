@@ -49,10 +49,10 @@ responses[:complete] = (session::ServerSession, body, notebook::Notebook; initia
     query = body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 
-    workspace = WorkspaceManager.get_workspace(notebook)
+    workspace = WorkspaceManager.get_workspace((session, notebook))
 
     results_text, loc, found = if isready(workspace.dowork_token)
-        # we don't use eval_fetch_in_workspace because we don't want the output to be string-formatted.
+        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
         # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
         Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher($query, $pos)))
     else
@@ -81,7 +81,7 @@ responses[:docs] = (session::ServerSession, body, notebook::Notebook; initiator:
         doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
         (repr(MIME("text/html"), doc_md), :👍)
     else
-        workspace = WorkspaceManager.get_workspace(notebook)
+        workspace = WorkspaceManager.get_workspace((session, notebook))
 
         if isready(workspace.dowork_token)
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher($query)))

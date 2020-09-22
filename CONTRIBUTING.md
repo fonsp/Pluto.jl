@@ -59,12 +59,7 @@ Open a terminal (why do programming guides always start with that 😡) and laun
 
 ```bash
 cd ~/pluto_tests
-julia
-```
-
-then `]` to enter the package manager, and type
-```bash
-julia --project="." -e "import Pluto; Pluto.run(1234)"
+julia --optimize=0 --project="." -e "import Pluto; Pluto.run()"
 ```
 
 When changing **JavaScript code**, just save and refresh the browser. When changing **Julia code**, press `Ctrl+C` in the terminal, then `Arrow up`, then `Return` to restart Pluto. 

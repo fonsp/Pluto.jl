@@ -39,25 +39,52 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
-            display: () =>
-                html`<p>Multiple expressions in one cell.</p>
-                    <a
-                        href="#"
-                        onClick=${(e) => {
-                            e.preventDefault()
-                            requests.wrap_remote_cell(cell_id, "begin")
-                        }}
-                        >Wrap all code in a <em>begin ... end</em> block.</a
-                    >`,
+            display: (x) => {
+                const begin_hint = html`<a
+                    href="#"
+                    onClick=${(e) => {
+                        e.preventDefault()
+                        requests.wrap_remote_cell(cell_id, "begin")
+                    }}
+                    >Wrap all code in a <em>begin ... end</em> block.</a
+                >`
+                if (x.includes("\n\nBoundaries: ")) {
+                    const boundaries = JSON.parse(x.split("\n\nBoundaries: ")[1]).map((x) => x - 1) // Julia to JS index
+                    const split_hint = html`<p>
+                        <a
+                            href="#"
+                            onClick=${(e) => {
+                                e.preventDefault()
+                                requests.split_remote_cell(cell_id, boundaries, true)
+                            }}
+                            >Split this cell into ${boundaries.length} cells</a
+                        >, or
+                    </p>`
+                    return html`<p>Multiple expressions in one cell.</p>
+                        <p>How would you like to fix it?</p>
+                        <ul>
+                            <li>${split_hint}</li>
+                            <li>${begin_hint}</li>
+                        </ul>`
+                } else {
+                    return html`<p>Multiple expressions in one cell.</p>
+                        <p>${begin_hint}</p>`
+                }
+            },
         },
         {
             pattern: /LoadError: cannot assign a value to variable workspace\d+\..+ from module workspace\d+/,
             display: () =>
-                html`<p>Tried to reevaluate an <code>include</code> call, this is not yet supported 😢.</p>
+                html`<p>Tried to reevaluate an <code>include</code> call, this is not supported. You might need to restart this notebook from the main menu.</p>
                     <p>
-                        As a workaround, develop the code <em>inside</em> this notebook, or restart the notebook process in the
-                        <a href="./">Pluto home screen</a>.
-                    </p>`,
+                        For a workaround, use the alternative version of <code>include</code> described here:
+                        <a href="https://github.com/fonsp/Pluto.jl/issues/115#issuecomment-661722426">GH issue 115</a>
+                    </p>
+                    <p>In the future, <code>include</code> will be deprecated, and this will be the default.</p>`,
+        },
+        {
+            pattern: /MethodError: no method matching .*\nClosest candidates are:/,
+            display: (x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
         },
         {
             pattern: /.?/,
@@ -68,9 +95,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
     const matched_rewriter = rewriters.find(({ pattern }) => pattern.test(msg))
 
     return html`<jlerror>
-        <header>
-            ${matched_rewriter.display(msg)}
-        </header>
+        <header>${matched_rewriter.display(msg)}</header>
         ${stacktrace.length == 0
             ? null
             : html`<section>

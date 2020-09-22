@@ -42,7 +42,6 @@ stringify_keys(x::Any) = x
         c(cell) = cell.cell_id |> string
 
         @test_nowarn send(:connect, Dict(), Dict(:notebook_id => n))
-        @test_nowarn send(:get_version, Dict(), Dict())
 
         @test_nowarn send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
         send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
@@ -51,7 +50,7 @@ stringify_keys(x::Any) = x
         @test_nowarn send(:set_input, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:run_multiple_cells, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
         @test_nowarn send(:run, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9), Dict(:notebook_id => n))
+        @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9, :is_first_value => true), Dict(:notebook_id => n))
         @test_nowarn send(:change_cell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
         @test_nowarn send(:delete_cell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
 
@@ -66,7 +65,13 @@ stringify_keys(x::Any) = x
         @test_nowarn send(:move_notebook_file, Dict(:path => tempname()), Dict(:notebook_id => n))
         
         # TODO: we need to wait for all above command to finish before we can do this:
-        # send(:shut_down_workspace, Dict(:remove_from_list => true), Dict(:notebook_id => n))
+        # send(:shutdown_notebook, Dict(:keep_in_session => false), Dict(:notebook_id => n))
+    end
+
+    @testset "Docs" begin
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
+        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
     end
 end
 

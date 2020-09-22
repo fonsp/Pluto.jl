@@ -1,8 +1,9 @@
 import REPL: ends_with_semicolon
+import .Configuration
 
 Base.push!(x::Set{Cell}) = x
 
-"Like @async except it prints errors to the terminal."
+"Like @async except it prints errors to the terminal. 👶"
 macro asynclog(expr)
 	quote
 		@async begin
@@ -34,16 +35,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
-	# change the bar on the sides of cells to "running"
+	# change the bar on the sides of cells to "queued"
+	local listeners = ClientSession[]
 	for cell in to_run
-		cell.running = true
-		putnotebookupdates!(session, notebook, clientupdate_cell_running(notebook, cell))
+		cell.queued = true
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
+	flushallclients(session, listeners)
+
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -57,16 +61,22 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
-	deletion_hook(notebook, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
+		
+		cell.queued = false
+		cell.running = true
+		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!(notebook, cell)
+			run = run_single!((session, notebook), cell)
 			any_interrupted |= run.interrupted
 		end
+		
 		cell.running = false
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
@@ -77,8 +87,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 end
 
 "Run a single cell non-reactively, return run information."
-function run_single!(notebook::Notebook, cell::Cell)
-	run = WorkspaceManager.eval_fetch_in_workspace(notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
@@ -86,22 +96,46 @@ function run_single!(notebook::Notebook, cell::Cell)
 	cell.errored = run.errored
 
 	return run
-	# TODO: capture stdout and display it somehwere, but let's keep using the actual terminal for now
 end
 
 ###
 # CONVENIENCE FUNCTIONS
 ###
 
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, kwargs...)
+"Do all the things!"
+function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
-	if run_async
-		@asynclog run_reactive!(session, notebook, old, new, cells; kwargs...)
+	
+	# _assume `prerender_text == false` if you want to skip some details_
+
+	to_run_online = if !prerender_text
+		cells
 	else
-		run_reactive!(session, notebook, old, new, cells; kwargs...)
+		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
+		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
+		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
+		original_pwd = pwd()
+		offline_workspace = WorkspaceManager.make_workspace(
+			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
+			notebook)
+			)
+
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		for cell in to_run_offline
+			run_single!(offline_workspace, cell)
+		end
+		
+		cd(original_pwd)
+		setdiff(cells, to_run_offline)
+	end
+
+	if run_async
+		@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+	else
+		run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
 	end
 end
 

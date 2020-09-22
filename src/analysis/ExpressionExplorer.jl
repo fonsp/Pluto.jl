@@ -1,6 +1,7 @@
 module ExpressionExplorer
 export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
 
+import ..PlutoRunner
 import Markdown
 import Base: union, union!, ==, push!
 
@@ -8,6 +9,7 @@ import Base: union, union!, ==, push!
 # TWO STATE OBJECTS
 ###
 
+# TODO: use GlobalRef instead
 FuncName = Array{Symbol,1}
 
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
@@ -21,6 +23,28 @@ end
 SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{FuncName,SymbolsState}())
 SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
 SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
+
+function Base.show(io::IO, s::SymbolsState)
+    print(io, "SymbolsState([")
+    join(io, s.references, ", ")
+    print(io, "], [")
+    join(io, s.assignments, ", ")
+    print(io, "], [")
+    join(io, s.funccalls, ", ")
+    print(io, "], [")
+    if isempty(s.funcdefs)
+        print(io, "]")
+    else
+        println(io)
+        for (k, v) in s.funcdefs
+            print(io, "    ", k, ": ", v)
+            println(io)
+        end
+        print(io, "]")
+    end
+    print(io, ")")
+end
+
 
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints."
 mutable struct ScopeState
@@ -88,6 +112,14 @@ Base.push!(x::Set) = x
 # HELPER FUNCTIONS
 ###
 
+function explore_inner_scoped(ex::Expr, scopestate::ScopeState)::SymbolsState
+    # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
+    innerscopestate = deepcopy(scopestate)
+    innerscopestate.inglobalscope = false
+
+    return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+end
+
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
 const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
 const modifiers_dotprefixed = [Symbol('.' * String(m)) for m in modifiers]
@@ -151,7 +183,7 @@ get_assignees(::Any) = Symbol[]
 function uncurly!(ex::Expr, scopestate::ScopeState)::Symbol
     @assert ex.head == :curly
     push!(scopestate.hiddenglobals, (a for a in ex.args[2:end] if a isa Symbol)...)
-    ex.args[1]
+    Symbol(ex.args[1])
 end
 
 uncurly!(ex::Expr)::Symbol = ex.args[1]
@@ -177,6 +209,7 @@ function split_funcname(funcname_ex::Symbol)::FuncName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
 end
 
+# this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
 function split_funcname(::Any)::FuncName
     Symbol[]
 end
@@ -242,9 +275,8 @@ end
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     if ex.head == :(=)
         # Does not create scope
-
         
-        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where)
+        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
             # f(x, y) = x + y
             # Rewrite to:
             # function f(x, y) x + y end
@@ -271,7 +303,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # We transform the modifier back to its operator
         # for when users redefine the + function
 
-        operator = Symbol(string(ex.head)[1:end - 1])
+        operator = let
+            s = string(ex.head)
+            Symbol(s[1:prevind(s, lastindex(s))])
+        end
         expanded_expr = Expr(:(=), ex.args[1], Expr(:call, operator, ex.args[1], ex.args[2]))
         return explore!(expanded_expr, scopestate)
     elseif ex.head in modifiers_dotprefixed
@@ -283,12 +318,30 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return explore!(expanded_expr, scopestate)
     elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
+        return explore_inner_scoped(ex, scopestate)
+    elseif ex.head == :macrocall
+        # Does not create sccope
+        
+        funcname = ex.args[1] |> split_funcname
+        # Macros can transform the expression into anything - the best way to treat them is to macroexpand
+        # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
+        if (length(funcname) == 1 || (length(funcname) >= 2 && funcname[1] == :Base))
+            if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
+                # we macroexpand these, and recurse
+                expanded = macroexpand(PlutoRunner, ex; recursive=false)
+                return explore!(Expr(:call, ex.args[1], expanded), scopestate)
+            elseif funcname[end] == Symbol("@enum")
+                # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
+                # https://github.com/fonsp/Pluto.jl/issues/177
+                # this would mean that you can only define one enum per notebook :(
+                syms = filter(x -> x isa Symbol, ex.args[2:end])
+                rest = setdiff(ex.args[2:end], syms)
+                
+                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
+            end
+        end
 
-        # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scopestate)
-        innerscopestate.inglobalscope = false
-
-        return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+        return explore!(Expr(:call, ex.args...), scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -360,6 +413,27 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
             # so we insert the function's inner symbol state here, as if it was a `let` block.
             symstate = innersymstate
+        end
+
+        return symstate
+    elseif ex.head == :try
+        symstate = SymbolsState()
+
+        # Handle catch first
+        if ex.args[3] != false
+            union!(symstate, explore_inner_scoped(ex.args[3], scopestate))
+            # If we catch a symbol, it could shadow a global reference, remove it
+            if ex.args[2] != false
+                setdiff!(symstate.references, Symbol[ex.args[2]])
+            end
+        end
+
+        # Handle the try block
+        union!(symstate, explore_inner_scoped(ex.args[1], scopestate))
+
+        # Finally, handle finally
+        if length(ex.args) == 4
+            union!(symstate, explore_inner_scoped(ex.args[4], scopestate))
         end
 
         return symstate
@@ -496,25 +570,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         else
             return SymbolsState(Set{Symbol}(), Set{Symbol}())
         end
-    elseif ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@md_str")
-        # Does not create scope
-        # The Markdown macro treats things differently, so we must too
-
-        innersymstate = explore!(Markdown.toexpr(Markdown.parse(ex.args[3])), scopestate)
-        push!(innersymstate.references, Symbol("@md_str"))
-        
-        return innersymstate
-    elseif (ex.head == :macrocall && ex.args[1] isa Symbol && ex.args[1] == Symbol("@bind")
-        && length(ex.args) == 4 && ex.args[3] isa Symbol)
-        
-        # Rewrite `@bind a b` to the "equivalent" expression `global a = b; @bind;`
-        return explore!(Expr(:global, Expr(:(=), ex.args[3], Expr(:block, ex.args[4], ex.args[1]))), scopestate)
     elseif ex.head == :quote
         # We ignore contents
 
         return SymbolsState()
     elseif ex.head == :module
-        # We ignore contents
+        # We ignore contents; the module name is a definition
 
         return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
     else
@@ -539,6 +600,13 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
+        # account for unnamed params, like in f(::Example) = 1
+        if ex.head == :(::) && length(ex.args) == 1
+            symstate = explore!(ex.args[1], scopestate)
+
+            return Symbol[], symstate
+        end
+        
         # recurse
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         if length(ex.args) > 1
@@ -583,6 +651,8 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
 
+    elseif ex.head == :(...)
+        return explore_funcdef!(ex.args[1], scopestate)
     else
         return Symbol[], explore!(ex, scopestate)
     end
@@ -626,8 +696,8 @@ function try_compute_symbolreferences(ex::Any)
 		compute_symbolreferences(ex)
 	catch e
 		@error "Expression explorer failed on: " ex
-		showerror(stderr, e, stacktrace(backtrace()))
-		SymbolsState()
+		showerror(stderr, e, stacktrace(catch_backtrace()))
+		SymbolsState(Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]), Set{Symbol}())
 	end
 end
 

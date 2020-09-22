@@ -1,4 +1,4 @@
-import JSON
+import MsgPack
 import UUIDs: UUID
 import HTTP
 import Sockets
@@ -23,144 +23,121 @@ function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: I
     end
 end
 
-
-"Send `messages` to all clients connected to the `notebook`."
-function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...)
-    listeners = filter(collect(values(session.connected_clients))) do c
-        c.connected_notebook !== nothing &&
-        c.connected_notebook.notebook_id == notebook.notebook_id
-    end
-    for next_to_send in messages, client in listeners
-        put!(client.pendingupdates, next_to_send)
-    end
-    flushallclients(session, listeners)
-    listeners
+# from https://github.com/JuliaLang/julia/pull/36425
+function detectwsl()
+    Sys.islinux() &&
+    isfile("/proc/sys/kernel/osrelease") &&
+    occursin(r"Microsoft|WSL"i, read("/proc/sys/kernel/osrelease", String))
 end
 
-"Send `messages` to all connected clients."
-function putplutoupdates!(session::ServerSession, messages::UpdateMessage...)
-    listeners = collect(values(session.connected_clients))
-    for next_to_send in messages, client in listeners
-        put!(client.pendingupdates, next_to_send)
-    end
-    flushallclients(session, listeners)
-    listeners
-end
-
-"Send `messages` to a `client`."
-function putclientupdates!(client::ClientSession, messages::UpdateMessage...)
-    for next_to_send in messages
-        put!(client.pendingupdates, next_to_send)
-    end
-    flushclient(client)
-end
-
-"Send `messages` to the `ClientSession` who initiated."
-function putclientupdates!(session::ServerSession, initiator::Initiator, messages::UpdateMessage...)
-    putclientupdates!(session.connected_clients[initiator.client_id], messages...)
-end
-
-# https://github.com/JuliaWeb/HTTP.jl/issues/382
-const flushtoken = Token()
-
-function flushclient(client::ClientSession)
-    take!(flushtoken)
-    while isready(client.pendingupdates)
-        next_to_send = take!(client.pendingupdates)
-        
-        try
-            if client.stream !== nothing
-                if isopen(client.stream)
-                    if client.stream isa HTTP.WebSockets.WebSocket
-                        client.stream.frame_type = HTTP.WebSockets.WS_BINARY
-                    end
-                    write(client.stream, serialize_message(next_to_send) |> codeunits)
-                else
-                    put!(flushtoken)
-                    return false
-                end
-            end
-        catch ex
-            bt = stacktrace(catch_backtrace())
-            if ex isa Base.IOError
-                # client socket closed, so we return false (about 5 lines after this one)
-            else
-                @warn "Failed to write to WebSocket of $(client.id) " exception = (ex, bt)
-            end
-            put!(flushtoken)
-            return false
+function open_in_default_browser(url::AbstractString)::Bool
+    try
+        if Sys.isapple()
+            Base.run(`open $url`)
+            true
+        elseif Sys.iswindows() || detectwsl()
+            Base.run(`cmd.exe /s /c start "" /b $url`)
+            true
+        elseif Sys.islinux()
+            Base.run(`xdg-open $url`)
+            true
+        else
+            false
         end
-    end
-    put!(flushtoken)
-    true
-end
-
-function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractArray{ClientSession}})
-    disconnected = Set{Symbol}()
-    for client in subset
-        stillconnected = flushclient(client)
-        if !stillconnected
-            push!(disconnected, client.id)
-        end
-    end
-    for to_deleteID in disconnected
-        delete!(session.connected_clients, to_deleteID)
+    catch ex
+        false
     end
 end
 
-function flushallclients(session::ServerSession)
-    flushallclients(session, values(session.connected_clients))
+"""
+    run(; kwargs...)
+
+Start Pluto! Are you excited? I am!
+
+## Keyword arguments
+
+For the full list, see the [`Configuration`](@ref) module. Some **common parameters**:
+
+- `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
+- `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
+- `port`: Optional. The default `port` is `1234`.
+
+## Technobabble
+
+This will start the static HTTP server and a WebSocket server. The server runs _synchronously_ (i.e. blocking call) on `http://[host]:[port]/`.
+Pluto notebooks can be started from the main menu in the web browser.
+"""
+function run(; kwargs...)
+    session = ServerSession(;options=Configuration.from_flat_kwargs(; kwargs...))
+    return run(session)
 end
 
+@deprecate run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) run(;host=host, port=port, kwargs...) false
+@deprecate run(port::Integer; kwargs...) run(;port=port, kwargs...) false
 
-"Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
-const responses = Dict{Symbol,Function}()
+"""
+    run(session::ServerSession)
 
-const MSG_DELIM = "IUUQ.km jt ejggjdvmu vhi" # riddle me this, Julius
-
-"""Start a Pluto server _synchronously_ (i.e. blocking call) on `http://localhost:[port]/`.
-
-This will start the static HTTP server and a WebSocket server. Pluto Notebooks will be started dynamically (by user input)."""
-function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSession())
+Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
+"""
+function run(session::ServerSession)
     pluto_router = http_router_for(session)
+    host = session.options.server.host
+    port = session.options.server.port
 
     hostIP = parse(Sockets.IPAddr, host)
-    serversocket = Sockets.listen(hostIP, UInt16(port))
+    if port === nothing
+        port, serversocket = Sockets.listenany(hostIP, UInt16(1234))
+    else
+        try
+            serversocket = Sockets.listen(hostIP, UInt16(port))
+        catch e
+            @error "Port with number $port is already in use. Use Pluto.run() to automatically select an available port."
+            return
+        end
+    end
+
+    kill_server = Ref{Function}(identity)
+
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
             try
+                requestURI = http.message.target |> HTTP.URIs.unescapeuri |> HTTP.URI
+                @assert endswith(requestURI.path, string(session.secret))
+
                 HTTP.WebSockets.upgrade(http) do clientstream
                     if !isopen(clientstream)
                         return
                     end
+                    try
                     while !eof(clientstream)
                         # This stream contains data received over the WebSocket.
-                        # It is formatted and JSON-encoded by send(...) in editor.html
+                        # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
                         try
                             parentbody = let
                                 # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
-                                data = ""
+                                data = UInt8[]
                                 while !endswith(data, MSG_DELIM)
                                     if eof(clientstream)
-                                        if data == ""
+                                        if isempty(data)
                                             return
                                         end
                                         @warn "Unexpected eof after" data
-                                        data = data * MSG_DELIM
+                                        append!(data, MSG_DELIM)
                                         break
                                     end
-                                    data = data * String(readavailable(clientstream))
+                                    append!(data, readavailable(clientstream))
                                 end
-                                JSON.parse(SubString(data, 1:(lastindex(data) - length(MSG_DELIM))))
+                                # TODO: view to avoid memory allocation
+                                unpack(data[1:end - length(MSG_DELIM)])
                             end
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException
-                                rethrow(ex)
-                                # TODO: this won't work, `upgrade` wraps our function in a try without catch
-                            elseif ex isa HTTP.WebSockets.WebSocketError
+                                kill_server[]()
+                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
                                 # that's fine!
                             elseif ex isa InexactError
                                 # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471
@@ -171,10 +148,18 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
                             end
                         end
                     end
+                    catch ex
+                        if ex isa InterruptException
+                            kill_server[]()
+                        else
+                            bt = stacktrace(catch_backtrace())
+                            @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                        end
+                    end
                 end
             catch ex
                 if ex isa InterruptException
-                    rethrow(ex)
+                    kill_server[]()
                 elseif ex isa Base.IOError
                     # that's fine!
                 elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
@@ -188,14 +173,19 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
             request::HTTP.Request = http.message
             request.body = read(http)
             HTTP.closeread(http)
-    
+
+            # If a "token" url parameter is passed in from binder, then we store it to add to every URL (so that you can share the URL to collaborate).
+            params = HTTP.queryparams(HTTP.URI(request.target))
+            if haskey(params, "token") && session.binder_token === nothing 
+                session.binder_token = params["token"]
+            end
+
             request_body = IOBuffer(HTTP.payload(request))
             if eof(request_body)
                 # no request body
                 response_body = HTTP.handle(pluto_router, request)
             else
-                # there's a body, so pass it on to the handler we dispatch to
-                response_body = HTTP.handle(pluto_router, request, JSON.parse(request_body))
+                @warn "HTTP request contains a body, huh?" request_body
             end
     
             request.response::HTTP.Response = response_body
@@ -214,50 +204,57 @@ function run(host, port::Integer; launchbrowser::Bool=false, session=ServerSessi
         end
     end
 
-    address = if get_pl_env("PLUTO_ROOT_URL") == "/"
+    address = if session.options.server.root_url === nothing
         hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
         portPretty = Int(port)
         "http://$(hostPretty):$(portPretty)/"
     else
-        get_pl_env("PLUTO_ROOT_URL")
+        session.options.server.root_url
     end
-    println("Go to $address to start writing ~ have fun!")
+    Sys.set_process_title("Pluto server - $address")
+
+    if session.options.server.launch_browser && open_in_default_browser(address)
+        println("Opening $address in your default browser... ~ have fun!")
+    else
+        println("Go to $address in your browser to start writing ~ have fun!")
+    end
     println()
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
-    
-    launchbrowser && @warn "Not implemented yet"
 
-    # create blocking call:
+    kill_server[] = () -> @sync begin
+        println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
+        @async close(serversocket)
+        # TODO: HTTP has a kill signal?
+        # TODO: put do_work tokens back 
+        for client in values(session.connected_clients)
+            @async close(client.stream)
+        end
+        empty!(session.connected_clients)
+        for (notebook_id, ws) in WorkspaceManager.workspaces
+            @async WorkspaceManager.unmake_workspace(ws)
+        end
+    end
+
     try
+        # create blocking call and switch the scheduler back to the server task, so that interrupts land there
         wait(servertask)
     catch e
-        if isa(e, InterruptException)
-            @sync begin
-                println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
-                @async close(serversocket)
-                # TODO: HTTP has a kill signal?
-                # TODO: put do_work tokens back 
-                empty!(session.notebooks)
-                for client in values(session.connected_clients)
-                    @async close(client.stream)
-                end
-                empty!(session.connected_clients)
-                for (notebook_id, ws) in WorkspaceManager.workspaces
-                    @async WorkspaceManager.unmake_workspace(ws)
-                end
-            end
+        if e isa InterruptException
+            kill_server[]()
+        elseif e isa TaskFailedException
+            # nice!
         else
             rethrow(e)
         end
     end
 end
 
-run(port::Integer=1234; kwargs...) = run("127.0.0.1", port; kwargs...)
-
-function process_ws_message(session::ServerSession, parentbody::Dict{String,Any}, clientstream::IO)
+"All messages sent over the WebSocket get decoded+deserialized and end up here."
+function process_ws_message(session::ServerSession, parentbody::Dict, clientstream::IO)
     client_id = Symbol(parentbody["client_id"])
     client = get!(session.connected_clients, client_id, ClientSession(client_id, clientstream))
+    client.stream = clientstream # it might change when the same client reconnects
     
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])

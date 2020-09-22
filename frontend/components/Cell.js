@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -19,6 +19,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {CodeState} remote_code
  * @property {CodeState} local_code
  * @property {boolean} code_folded
+ * @property {boolean} queued
  * @property {boolean} running
  * @property {?number} runtime
  * @property {boolean} errored
@@ -43,7 +44,8 @@ export const empty_cell_data = (cell_id) => {
             body: "",
         },
         code_folded: false,
-        running: true,
+        queued: true,
+        running: false,
         runtime: null,
         errored: false,
         output: {
@@ -68,6 +70,7 @@ export const Cell = ({
     remote_code,
     local_code,
     code_folded,
+    queued,
     running,
     runtime,
     errored,
@@ -91,7 +94,12 @@ export const Cell = ({
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
                 if (e.detail.line != null) {
-                    set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                    const ch = e.detail.ch
+                    if (ch == null) {
+                        set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                    } else {
+                        set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+                    }
                 }
             }
         }
@@ -103,20 +111,18 @@ export const Cell = ({
     }, [])
 
     return html`
-        <cell
+        <pluto-cell
             class=${cl({
-                "running": running,
-                "output-notinsync": output.body == null,
-                "has-assignee": !output.errored && output.rootassignee != null,
-                "inline-output": !output.errored && !!output.body && (output.mime == "application/vnd.pluto.tree+xml" || output.mime == "text/plain"),
-                "errored": errored,
-                "selected": selected,
-                "code-differs": remote_code.body !== local_code.body,
-                "code-folded": code_folded && cm_forced_focus == null,
+                queued: queued,
+                running: running,
+                errored: errored,
+                selected: selected,
+                code_differs: remote_code.body !== local_code.body,
+                code_folded: code_folded && cm_forced_focus == null,
             })}
             id=${cell_id}
         >
-            <cellshoulder draggable="true" title="Drag to move cell">
+            <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
                         selected_friends(cell_id).forEach((friend) => {
@@ -128,8 +134,8 @@ export const Cell = ({
                 >
                     <span></span>
                 </button>
-            </cellshoulder>
-            <trafficlight></trafficlight>
+            </pluto-shoulder>
+            <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
                     requests.add_remote_cell(cell_id, "before")
@@ -141,6 +147,7 @@ export const Cell = ({
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
+                is_hidden=${!errored && code_folded && cm_forced_focus == null}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
@@ -151,15 +158,7 @@ export const Cell = ({
                 }}
                 on_delete=${() => {
                     const friends = selected_friends(cell_id)
-                    if (friends.length == 1 || confirm(`Delete ${friends.length} cells?`)) {
-                        if (friends.some((f) => f.running)) {
-                            if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                                requests.interrupt_remote(cell_id)
-                            }
-                        } else {
-                            friends.forEach((f) => requests.delete_cell(f.cell_id))
-                        }
-                    }
+                    requests.confirm_delete_multiple(friends)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")
@@ -179,7 +178,7 @@ export const Cell = ({
             />
             <${RunArea}
                 onClick=${() => {
-                    if (running) {
+                    if (running || queued) {
                         requests.interrupt_remote(cell_id)
                     } else {
                         const friends = selected_friends(cell_id)
@@ -202,6 +201,6 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-        </cell>
+        </pluto-cell>
     `
 }

@@ -1,18 +1,18 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState
-import JSON: lower
 
-"The building block of `Notebook`s. Contains code, output and reactivity data."
+"The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
 mutable struct Cell
-    "because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
+    "Because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
     cell_id::UUID
     code::String
     
-    output_repr::Union{String,Nothing}
+    output_repr::Union{Vector{UInt8},String,Nothing}
     repr_mime::MIME
     errored::Bool
     runtime::Union{Missing,UInt64}
     code_folded::Bool
+    queued::Bool
     running::Bool
     
     parsedcode::Union{Nothing,Expr}
@@ -20,6 +20,6 @@ mutable struct Cell
     rootassignee::Union{Nothing,Symbol}
 end
 
-Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, nothing, Set{Expr}(), nothing)
+Cell(cell_id, code) = Cell(cell_id, code, nothing, MIME("text/plain"), false, missing, false, false, false, nothing, Set{Expr}(), nothing)
 Cell(code) = Cell(uuid1(), code)
 Cell() = Cell("")

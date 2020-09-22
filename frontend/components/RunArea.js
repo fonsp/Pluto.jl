@@ -2,10 +2,10 @@ import { html } from "../common/Preact.js"
 
 export const RunArea = ({ runtime, onClick }) => {
     return html`
-        <runarea>
-            <span class="runtime">${prettytime(runtime)}</span>
+        <pluto-runarea>
             <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
-        </runarea>
+            <span class="runtime">${prettytime(runtime)}</span>
+        </pluto-runarea>
     `
 }
 
@@ -15,7 +15,7 @@ const prettytime = (time_ns) => {
     }
     const prefices = ["n", "μ", "m", ""]
     let i = 0
-    while (i < prefices.length && time_ns >= 1000.0) {
+    while (i < prefices.length - 1 && time_ns >= 1000.0) {
         i += 1
         time_ns /= 1000
     }
