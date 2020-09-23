@@ -109,6 +109,30 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            set_scroller: (enabled) => {
+                this.setState({ scroller: enabled })
+            },
+            serialize_selected: (cell) => {
+                const selected = cell ? this.selected_friends(cell.id) : this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length) {
+                    return serialize_cells(selected)
+                }
+            },
+            add_deserialized_cells: async (data, index) => {
+                const new_code = deserialize_cells(data)
+                if (index === -1) index = this.state.notebook.cells.length
+                for (const new_block of new_code) {
+                    const update = await this.requests.add_remote_cell_at(index++, true)
+                    const new_cell = empty_cell_data(update.cell_id)
+                    new_cell.pasted = true
+                    new_cell.queued = new_cell.running = false
+                    new_cell.output.body = ""
+                    new_cell.local_code.body = new_block
+                    new_cell.remote_code.submitted_by_me = true
+                    new_cell.selected = true
+                    this.actions.add_local_cell(new_cell, update.message.index)
+                }
+            },
             add_local_cell: (cell, new_index) => {
                 return set_notebook_state((prevstate) => {
                     if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
@@ -358,9 +382,6 @@ export class Editor extends Component {
 
         // these are things that can be done to the remote notebook
         this.requests = {
-            set_scroller: (enabled) => {
-                this.setState({ scroller: enabled })
-            },
             change_remote_cell: (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
                 // set_cell_state(cell_id, { running: true })
@@ -696,29 +717,28 @@ export class Editor extends Component {
             }
         })
 
-        this.copy_selected = async () => {
-            const selected = this.state.notebook.cells.filter((c) => c.selected)
-            if (selected.length) {
-                const serialized = serialize_cells(selected)
-                await navigator.clipboard.writeText(serialized)
-            }
-        }
-
         document.addEventListener("copy", (e) => {
             if (!in_textarea_or_input()) {
-                this.copy_selected().catch((err) => {
-                    alert(`Error copying cells: ${e}`)
-                })
+                const serialized = this.actions.serialize_selected()
+                if (serialized) {
+                    navigator.clipboard.writeText(serialized).catch((err) => {
+                        alert(`Error copying cells: ${e}`)
+                    })
+                }
             }
         })
 
         document.addEventListener("cut", (e) => {
             if (!in_textarea_or_input()) {
-                this.copy_selected()
-                    .then(() => this.delete_selected("Cut"))
-                    .catch((err) => {
-                        alert(`Error cutting cells: ${e}`)
-                    })
+                const serialized = this.actions.serialize_selected()
+                if (serialized) {
+                    navigator.clipboard
+                        .writeText(serialized)
+                        .then(() => this.delete_selected("Cut"))
+                        .catch((err) => {
+                            alert(`Error cutting cells: ${e}`)
+                        })
+                }
             }
         })
 
@@ -735,19 +755,7 @@ export class Editor extends Component {
 
                 // Paste in the cells at the end of the notebook
                 const data = e.clipboardData.getData("text/plain")
-                const new_code = deserialize_cells(data)
-                let index = this.state.notebook.cells.length
-                for (const new_block of new_code) {
-                    const update = await this.requests.add_remote_cell_at(index++, true)
-                    const new_cell = empty_cell_data(update.cell_id)
-                    new_cell.pasted = true
-                    new_cell.queued = new_cell.running = false
-                    new_cell.output.body = ""
-                    new_cell.local_code.body = new_block
-                    new_cell.remote_code.submitted_by_me = true
-                    new_cell.selected = true
-                    this.actions.add_local_cell(new_cell, update.message.index)
-                }
+                this.actions.add_deserialized_cells(data, -1)
             }
         })
 
@@ -960,10 +968,10 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
+                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />
 
                 <${SelectionArea}
-                    requests=${this.requests}
+                    actions=${this.actions}
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)

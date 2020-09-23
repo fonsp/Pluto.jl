@@ -54,7 +54,7 @@ export class SelectionArea extends Component {
                     selection_start: { x: e.pageX, y: e.pageY },
                     selection_end: { x: e.pageX, y: e.pageY },
                 })
-                this.props.requests.set_scroller(true)
+                this.props.actions.set_scroller(true)
             }
         })
 
@@ -64,7 +64,7 @@ export class SelectionArea extends Component {
                     selection_start: null,
                     selection_end: null,
                 })
-                this.props.requests.set_scroller(false)
+                this.props.actions.set_scroller(false)
             } else {
                 // if you didn't click on a UI element...
                 if (

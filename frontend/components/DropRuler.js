@@ -37,7 +37,8 @@ export class DropRuler extends Component {
         }
 
         this.state = {
-            dragging: false,
+            drag_start: false,
+            drag_target: false,
             drop_index: 0,
         }
     }
@@ -46,20 +47,32 @@ export class DropRuler extends Component {
         document.addEventListener("dragstart", (e) => {
             if (!e.target.matches("pluto-shoulder")) {
                 this.setState({
-                    dragging: false,
+                    drag_start: false,
+                    drag_target: false,
                 })
-                this.props.requests.set_scroller(false)
+                this.props.actions.set_scroller(false)
                 this.dropee = null
             } else {
                 this.dropee = e.target.parentElement
+                e.dataTransfer.setData("text/plain", this.props.actions.serialize_selected(this.dropee))
                 this.dropped = false
                 this.precompute_cell_edges()
 
                 this.setState({
-                    dragging: true,
+                    drag_start: true,
                     drop_index: this.getDropIndexOf(e, true),
                 })
-                this.props.requests.set_scroller(true)
+                this.props.actions.set_scroller(true)
+            }
+        })
+        document.addEventListener("dragenter", (e) => {
+            if (!this.state.drag_target) this.precompute_cell_edges()
+            this.lastenter = e.target
+            this.setState({ drag_target: true })
+        })
+        document.addEventListener("dragleave", (e) => {
+            if (e.target === this.lastenter) {
+                this.setState({ drag_target: false })
             }
         })
         document.addEventListener("dragover", (e) => {
@@ -74,9 +87,10 @@ export class DropRuler extends Component {
         document.addEventListener("dragend", (e) => {
             // Called after drag, also when dropped outside of the browser or when ESC is pressed
             this.setState({
-                dragging: false,
+                drag_start: false,
+                drag_target: false,
             })
-            this.props.requests.set_scroller(false)
+            this.props.actions.set_scroller(false)
             if (!this.dropped) {
                 // This means that the cells were dropped off of the page; delete them
                 const friends = this.props.selected_friends(this.dropee.id)
@@ -85,20 +99,26 @@ export class DropRuler extends Component {
         })
         document.addEventListener("drop", (e) => {
             // Guaranteed to fire before the 'dragend' event
-            console.log("dropped!")
+            this.setState({
+                drag_target: false,
+            })
             this.dropped = true
-            if (!this.dropee) {
-                return
+            if (this.dropee && this.state.drag_start) {
+                // Called when drag-dropped somewhere on the page
+                const drop_index = this.getDropIndexOf(e, true)
+                const friends = this.props.selected_friends(this.dropee.id)
+                this.props.requests.move_remote_cells(friends, drop_index)
+            } else {
+                // Called when cell(s) from another window are dragged onto the page
+                const drop_index = this.getDropIndexOf(e, true)
+                const data = e.dataTransfer.getData("text/plain")
+                this.props.actions.add_deserialized_cells(data, drop_index)
             }
-            // Called when drag-dropped somewhere on the page
-            const drop_index = this.getDropIndexOf(e, true)
-            const friends = this.props.selected_friends(this.dropee.id)
-            this.props.requests.move_remote_cells(friends, drop_index)
         })
     }
 
     render() {
-        const styles = this.state.dragging
+        const styles = this.state.drag_target
             ? {
                   display: "block",
                   top: this.cell_edges[this.state.drop_index] + "px",
