@@ -640,6 +640,13 @@ export class Editor extends Component {
             }
         }
 
+        this.delete_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            if (selected.length > 0) {
+                this.requests.confirm_delete_multiple(selected)
+            }
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -655,11 +662,8 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                const selected = this.state.notebook.cells.filter((c) => c.selected)
-                if (selected.length > 0) {
-                    this.requests.confirm_delete_multiple(selected)
-                    e.preventDefault()
-                }
+                this.delete_selected()
+                e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -683,15 +687,29 @@ export class Editor extends Component {
             }
         })
 
+        this.copy_selected = async () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            if (selected.length) {
+                const serialized = serialize_cells(selected)
+                await navigator.clipboard.writeText(serialized)
+            }
+        }
+
         document.addEventListener("copy", (e) => {
             if (!in_textarea_or_input()) {
-                const selected = this.state.notebook.cells.filter((c) => c.selected)
-                if (selected.length) {
-                    const serialized = serialize_cells(selected)
-                    navigator.clipboard.writeText(serialized).catch((err) => {
-                        alert(`Error copying cells: ${err}`)
+                this.copy_selected().catch((err) => {
+                    alert(`Error copying cells: ${e}`)
+                })
+            }
+        })
+
+        document.addEventListener("cut", (e) => {
+            if (!in_textarea_or_input()) {
+                this.copy_selected()
+                    .then(() => this.delete_selected())
+                    .catch((err) => {
+                        alert(`Error cutting cells: ${e}`)
                     })
-                }
             }
         })
 
