@@ -411,9 +411,20 @@ end
 
 istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
+function array_prefix(io, x::Array{<:Any, 1})
+    print(io, eltype(x))
+end
+function array_prefix(io, x)
+    original = sprint(Base.showarg, x, false)
+    print(io, lstrip(original, ':'))
+    print(io, ": ")
+end
+
+Base.showable(::MIME"application/vnd.pluto.tree+xml", x::AbstractRange) = false
+
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    summary(io, x)
+    array_prefix(io, x)
     print(io, "<jlarray>")
     indices = eachindex(x)
 
