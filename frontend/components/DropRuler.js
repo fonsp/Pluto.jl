@@ -4,6 +4,7 @@ export class DropRuler extends Component {
     constructor() {
         super()
         this.dropee = null
+        this.dropped = null
         this.cell_edges = []
         this.mouse_position = {}
         this.precompute_cell_edges = () => {
@@ -51,6 +52,7 @@ export class DropRuler extends Component {
                 this.dropee = null
             } else {
                 this.dropee = e.target.parentElement
+                this.dropped = false
                 this.precompute_cell_edges()
 
                 this.setState({
@@ -75,8 +77,16 @@ export class DropRuler extends Component {
                 dragging: false,
             })
             this.props.requests.set_scroller(false)
+            if (!this.dropped) {
+                // This means that the cells were dropped off of the page; delete them
+                const friends = this.props.selected_friends(this.dropee.id)
+                this.props.requests.confirm_delete_multiple("Remove", friends)
+            }
         })
         document.addEventListener("drop", (e) => {
+            // Guaranteed to fire before the 'dragend' event
+            console.log("dropped!")
+            this.dropped = true
             if (!this.dropee) {
                 return
             }
