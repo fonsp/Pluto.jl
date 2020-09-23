@@ -496,8 +496,8 @@ export class Editor extends Component {
                     false
                 )
             },
-            confirm_delete_multiple: (cells) => {
-                if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
+            confirm_delete_multiple: (verb, cells) => {
+                if (cells.length <= 1 || confirm(`${verb} ${cells.length} cells?`)) {
                     if (cells.some((f) => f.running || f.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cells[0].cell_id)
@@ -640,10 +640,10 @@ export class Editor extends Component {
             }
         }
 
-        this.delete_selected = () => {
+        this.delete_selected = (verb) => {
             const selected = this.state.notebook.cells.filter((c) => c.selected)
             if (selected.length > 0) {
-                this.requests.confirm_delete_multiple(selected)
+                this.requests.confirm_delete_multiple(verb, selected)
             }
         }
 
@@ -662,7 +662,7 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                this.delete_selected()
+                this.delete_selected("Delete")
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
@@ -706,7 +706,7 @@ export class Editor extends Component {
         document.addEventListener("cut", (e) => {
             if (!in_textarea_or_input()) {
                 this.copy_selected()
-                    .then(() => this.delete_selected())
+                    .then(() => this.delete_selected("Cut"))
                     .catch((err) => {
                         alert(`Error cutting cells: ${e}`)
                     })
