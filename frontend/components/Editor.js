@@ -680,7 +680,11 @@ export class Editor extends Component {
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
-    
+
+    ${ctrl_or_cmd_name}+C:   copy selected cells
+    ${ctrl_or_cmd_name}+X:   cut selected cells
+    ${ctrl_or_cmd_name}+V:   paste selected cells
+
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
