@@ -295,8 +295,8 @@ import JSON
 
             setcode(def1, "")
             update_run!(🍭, notebook, def1)
-            @test def1.errored == false
-            @test def2.errored == false
+            @test_broken def1.errored == true
+            @test_broken def2.errored == true
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
