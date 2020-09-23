@@ -731,6 +731,7 @@ export class Editor extends Component {
                 for (const new_block of new_code) {
                     const update = await this.requests.add_remote_cell_at(index++, true)
                     const new_cell = empty_cell_data(update.cell_id)
+                    new_cell.pasted = true
                     new_cell.queued = new_cell.running = false
                     new_cell.output.body = ""
                     new_cell.local_code.body = new_block

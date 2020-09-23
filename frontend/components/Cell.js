@@ -25,6 +25,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
  * @property {boolean} selected
+ * @property {boolean} pasted
  */
 
 /**
@@ -55,6 +56,7 @@ export const empty_cell_data = (cell_id) => {
             rootassignee: null,
         },
         selected: false,
+        pasted: false,
     }
 }
 
