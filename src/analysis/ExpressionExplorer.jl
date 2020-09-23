@@ -379,7 +379,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         # This is not strictly the normal form of a `for` but that's okay
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
-    elseif ex.head == :function || ex.head == :abstract
+    elseif ex.head == :function || ex.head == :macro || ex.head == :abstract
         symstate = SymbolsState()
         # Creates local scope
 
@@ -390,6 +390,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         innerscopestate.inglobalscope = false
 
         funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)
+        # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
+        if ex.head == :macro
+            setdiff!(innerscopestate.hiddenglobals, funcname)
+            funcname = Symbol[Symbol("@$(funcname[1])")]
+            push!(innerscopestate.hiddenglobals, funcname...)
+        end
 
         union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
         
