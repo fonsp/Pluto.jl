@@ -47,39 +47,17 @@ export class DropRuler extends Component {
                 this.setState({
                     dragging: false,
                 })
+                this.props.requests.set_scroller(false)
                 this.dropee = null
             } else {
                 this.dropee = e.target.parentElement
                 this.precompute_cell_edges()
 
-                this.setState(
-                    {
-                        dragging: true,
-                        drop_index: this.getDropIndexOf(e, true),
-                    },
-                    () => {
-                        let prev_time = null
-                        const scroll_update = (timestamp) => {
-                            if (prev_time == null) {
-                                prev_time = timestamp
-                            }
-                            const dt = timestamp - prev_time
-                            prev_time = timestamp
-
-                            const y_ratio = this.mouse_position.clientY / window.innerHeight
-                            if (y_ratio < 0.3) {
-                                window.scrollBy(0, (((-1200 * (0.3 - y_ratio)) / 0.3) * dt) / 1000)
-                            }
-                            if (y_ratio > 0.7) {
-                                window.scrollBy(0, (((1200 * (y_ratio - 0.7)) / 0.3) * dt) / 1000)
-                            }
-                            if (this.state.dragging) {
-                                window.requestAnimationFrame(scroll_update)
-                            }
-                        }
-                        window.requestAnimationFrame(scroll_update)
-                    }
-                )
+                this.setState({
+                    dragging: true,
+                    drop_index: this.getDropIndexOf(e, true),
+                })
+                this.props.requests.set_scroller(true)
             }
         })
         document.addEventListener("dragover", (e) => {
@@ -96,6 +74,7 @@ export class DropRuler extends Component {
             this.setState({
                 dragging: false,
             })
+            this.props.requests.set_scroller(false)
         })
         document.addEventListener("drop", (e) => {
             if (!this.dropee) {
@@ -109,7 +88,13 @@ export class DropRuler extends Component {
     }
 
     render() {
-        return html`<dropruler style=${this.state.dragging ? { display: "block", top: this.cell_edges[this.state.drop_index] + "px" } : {}}></dropruler>`
+        const styles = this.state.dragging
+            ? {
+                  display: "block",
+                  top: this.cell_edges[this.state.drop_index] + "px",
+              }
+            : {}
+        return html`<dropruler style=${styles}></dropruler>`
     }
 }
 

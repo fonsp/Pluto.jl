@@ -12,6 +12,7 @@ import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
+import { Scroller } from "./Scroller.js"
 
 import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
@@ -65,6 +66,7 @@ export class Editor extends Component {
             recently_deleted: null,
             connected: false,
             loading: true,
+            scroller: false,
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -356,6 +358,9 @@ export class Editor extends Component {
 
         // these are things that can be done to the remote notebook
         this.requests = {
+            set_scroller: (enabled) => {
+                this.setState({ scroller: enabled })
+            },
             change_remote_cell: (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
                 // set_cell_state(cell_id, { running: true })
@@ -804,7 +809,17 @@ export class Editor extends Component {
     }
 
     render() {
-        const circle = (fill) => html`<svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em;">
+        const circle = (fill) => html` <svg
+            width="48"
+            height="48"
+            viewBox="0 0 48 48"
+            style="
+                height: .7em;
+                width: .7em;
+                margin-left: .3em;
+                margin-right: .2em;
+            "
+        >
             <circle cx="24" cy="24" r="24" fill=${fill}></circle>
         </svg>`
         const triangle = (fill) => html`<svg
@@ -821,6 +836,7 @@ export class Editor extends Component {
             />
         </svg>`
         return html`
+            <${Scroller} active=${this.state.scroller} />
             <header>
                 <aside id="export">
                     <div id="container">
@@ -833,7 +849,11 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body }).then((html) => {
+                                offline_html({
+                                    pluto_version: this.client.version_info.pluto,
+                                    head: document.head,
+                                    body: document.body,
+                                }).then((html) => {
                                     if (html != null) {
                                         const fake_anchor = document.createElement("a")
                                         fake_anchor.download = this.state.notebook.shortpath + ".html"
@@ -943,6 +963,7 @@ export class Editor extends Component {
                 <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
 
                 <${SelectionArea}
+                    requests=${this.requests}
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
