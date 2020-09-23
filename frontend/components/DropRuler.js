@@ -91,11 +91,6 @@ export class DropRuler extends Component {
                 drag_target: false,
             })
             this.props.actions.set_scroller(false)
-            if (!this.dropped) {
-                // This means that the cells were dropped off of the page; delete them
-                const friends = this.props.selected_friends(this.dropee.id)
-                this.props.requests.confirm_delete_multiple("Remove", friends)
-            }
         })
         document.addEventListener("drop", (e) => {
             // Guaranteed to fire before the 'dragend' event
