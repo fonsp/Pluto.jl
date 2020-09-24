@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Redirecting.../title>
+        <meta charset="utf-8" />
+        <script type="module">
+            fetch("session_secret_please").then(r => {
+                if (!r.ok) {
+                    throw (new Error("asdf"))
+                }
+                return r.text()
+            }).then(secret => {
+                const new_url = new URL(window.location.href)
+                const new_search = new URLSearchParams(new_url.search)
+                new_search.set("secret", secret)
+                new_url.search = String(new_search)
+                console.log("Redirecting to ", new_url)
+                window.location.href = String(new_url)
+            }).catch(e => {
+                document.body.innerText = "Something went wrong. Try open Pluto again."
+                console.error(e)
+            })
+        </script>
+</head>
+
+<body style="font-family: sans-serif;">
+    Redirecting...
+</body>
+
+
+</html>

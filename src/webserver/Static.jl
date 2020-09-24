@@ -80,6 +80,7 @@ end
 
 function http_router_for(session::ServerSession)
     router = HTTP.Router()
+    security = session.options.security
 
     function add_set_secret_cookie!(response::HTTP.Response)
         push!(response.headers, "Set-Cookie" => "secret=$(session.secret); SameSite=Strict; HttpOnly")
@@ -94,14 +95,14 @@ function http_router_for(session::ServerSession)
     2. Call your `f(request)` to create the response message.
     3. Add a `Set-Cookie` header to the response with the session's `secret`.
     """
-    function with_authentication(f::Function)
+    function with_authentication(f::Function; required::Bool)::Function
         return function (request::HTTP.Request)
-            if session.options.security.require_secret_for_access && !is_authenticated(session, request)
-                error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
-            else
+            if !required || is_authenticated(session, request)
                 response = f(request)
                 add_set_secret_cookie!(response)
                 response
+            else
+                error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
             end
         end
     end
@@ -110,13 +111,19 @@ function http_router_for(session::ServerSession)
         return request::HTTP.Request -> asset_response(normpath(path))
     end
     
-    HTTP.@register(router, "GET", "/", with_authentication(create_serve_onefile(project_relative_path("frontend", "index.html"))))
-    HTTP.@register(router, "GET", "/edit", with_authentication(create_serve_onefile(project_relative_path("frontend", "editor.html"))))
+    HTTP.@register(router, "GET", "/", with_authentication(
+        create_serve_onefile(project_relative_path("frontend", "index.html"));
+        required=security.require_secret_for_access
+        ))
+    HTTP.@register(router, "GET", "/edit", with_authentication(
+        create_serve_onefile(project_relative_path("frontend", "editor.html"));
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links,
+    ))
     # the /edit page also uses with_authentication, but this is not how access to notebooks is secured: this is done by requiring the WS connection to be authenticated.
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/websocket_url_please", with_authentication(r -> HTTP.Response(200, session.secret)))
     HTTP.@register(router, "GET", "/possible_binder_token_please", r -> HTTP.Response(200, session.binder_token === nothing ? "" : session.binder_token))
     
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./")
@@ -132,14 +139,20 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    serve_newfile = with_authentication() do request::HTTP.Request
+    serve_newfile = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         notebook_redirect_response(SessionActions.new(session))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
 
     # TODO:
     #  if (session.options.security.require_secret_for_access || session.options.security.require_token_for_open_links) && !is_authenticated(session, request)
-    serve_openfile = with_authentication() do request::HTTP.Request
+    serve_openfile = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         try
             uri = to_uri(request.target)
             query = HTTP.queryparams(uri)
@@ -163,7 +176,10 @@ function http_router_for(session::ServerSession)
 
     HTTP.@register(router, "GET", "/open", serve_openfile)
     
-    serve_sample = with_authentication() do request::HTTP.Request
+    serve_sample = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         uri = to_uri(request.target)
         sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
         sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
@@ -175,7 +191,10 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
 
-    serve_notebookfile = with_authentication() do request::HTTP.Request
+    serve_notebookfile = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         try
             uri = to_uri(request.target)        
             query = HTTP.queryparams(uri)

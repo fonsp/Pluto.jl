@@ -21,6 +21,7 @@ end
 Security settings for the HTTP server.
 """
 Base.@kwdef mutable struct SecurityOptions
+    require_secret_for_open_links::Bool = true
     require_secret_for_access::Bool = true
 end
 

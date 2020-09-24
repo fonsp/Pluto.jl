@@ -196,7 +196,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}, secret: String}} PlutoConnection
+ * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}}} PlutoConnection
  * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
  * @return {Promise<PlutoConnection>}
  */
@@ -206,7 +206,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         send: null,
         kill: null,
         session_options: null,
-        secret: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
@@ -265,97 +264,79 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     client.send = send
 
     const connect = async () => {
-        const secret_response = await fetch("websocket_url_please", {
-            method: "GET",
-            cache: "no-cache",
-            redirect: "follow",
-        })
-        if (secret_response.ok) {
-            const secret = await secret_response.text()
-            client.secret = secret
-
-            let update_url_with_binder_token = async () => {
-                try {
-                    const url = new URL(window.location.href)
-                    const possible_binder_token = await (await fetch("possible_binder_token_please")).text()
-                    if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
-                        url.searchParams.set("token", possible_binder_token)
-                        history.replaceState({}, "", url.toString())
-                    }
-                } catch (error) {
-                    console.error("Error while setting binder url:", error)
-                }
-            }
-            update_url_with_binder_token()
-
-            const ws_address = new URL(document.location.href)
-            ws_address.protocol = ws_address.protocol.replace("http", "ws")
-            ws_address.pathname = ws_address.pathname.replace("/edit", "/")
-            ws_address.pathname = ws_address.pathname.replace("/edit", "/")
-            const new_search = new URLSearchParams(ws_address.search)
-            new_search.set("secret", secret)
-            ws_address.search = String(new_search)
-
+        let update_url_with_binder_token = async () => {
             try {
-                ws_connection = await create_ws_connection(String(ws_address), {
-                    on_message: handle_update,
-                    on_socket_close: async () => {
-                        on_connection_status(false)
-
-                        console.log(`Starting new websocket`, new Date().toLocaleTimeString())
-                        await connect() // reconnect!
-
-                        console.log(`Starting state sync`, new Date().toLocaleTimeString())
-                        const accept = on_reconnect()
-                        console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
-                        on_connection_status(accept)
-                        if (!accept) {
-                            alert("Connection out of sync 😥\n\nRefresh the page to continue")
-                        }
-                    },
-                })
-
-                client.kill = ws_connection.kill
-
-                // let's say hello
-                console.log("Hello?")
-                const u = await send("connect", {}, connect_metadata)
-                console.log("Hello!")
-                client.session_options = u.message.options
-                client.version_info = u.message.version_info
-
-                console.log(client)
-
-                if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
-                    // https://github.com/fonsp/Pluto.jl/issues/55
-                    if (confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
-                        document.location.href = "./"
-                    }
-                    on_connection_status(false)
-                    return {}
+                const url = new URL(window.location.href)
+                const possible_binder_token = await (await fetch("possible_binder_token_please")).text()
+                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                    url.searchParams.set("token", possible_binder_token)
+                    history.replaceState({}, "", url.toString())
                 }
-                on_connection_status(true)
-
-                const ping = () => {
-                    send("ping", {}, {})
-                        .then(() => {
-                            console.info("🏓")
-                            setTimeout(ping, 30 * 1000)
-                        })
-                        .catch()
-                }
-                ping()
-
-                return u.message
-            } catch (ex) {
-                console.error("connect() failed")
-                console.error(ex)
-                return await connect()
+            } catch (error) {
+                console.error("Error while setting binder url:", error)
             }
-        } else {
-            alert(
-                "Not yet authenticated.\n\nOpen the link that was printed in the terminal where you launched Pluto. It includes a secret, which is needed to access this server."
-            )
+        }
+        update_url_with_binder_token()
+
+        const ws_address = new URL(document.location.href)
+        ws_address.protocol = ws_address.protocol.replace("http", "ws")
+        ws_address.pathname = ws_address.pathname.replace("/edit", "/")
+
+        try {
+            ws_connection = await create_ws_connection(String(ws_address), {
+                on_message: handle_update,
+                on_socket_close: async () => {
+                    on_connection_status(false)
+
+                    console.log(`Starting new websocket`, new Date().toLocaleTimeString())
+                    await connect() // reconnect!
+
+                    console.log(`Starting state sync`, new Date().toLocaleTimeString())
+                    const accept = on_reconnect()
+                    console.log(`State sync ${accept ? "" : "not "}successful`, new Date().toLocaleTimeString())
+                    on_connection_status(accept)
+                    if (!accept) {
+                        alert("Connection out of sync 😥\n\nRefresh the page to continue")
+                    }
+                },
+            })
+
+            client.kill = ws_connection.kill
+
+            // let's say hello
+            console.log("Hello?")
+            const u = await send("connect", {}, connect_metadata)
+            console.log("Hello!")
+            client.session_options = u.message.options
+            client.version_info = u.message.version_info
+
+            console.log(client)
+
+            if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
+                // https://github.com/fonsp/Pluto.jl/issues/55
+                if (confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
+                    document.location.href = "./"
+                }
+                on_connection_status(false)
+                return {}
+            }
+            on_connection_status(true)
+
+            const ping = () => {
+                send("ping", {}, {})
+                    .then(() => {
+                        console.info("🏓")
+                        setTimeout(ping, 30 * 1000)
+                    })
+                    .catch()
+            }
+            ping()
+
+            return u.message
+        } catch (ex) {
+            console.error("connect() failed")
+            console.error(ex)
+            return await connect()
         }
     }
     await connect()
