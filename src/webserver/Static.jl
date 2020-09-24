@@ -111,6 +111,12 @@ function http_router_for(session::ServerSession)
         return request::HTTP.Request -> asset_response(normpath(path))
     end
     
+    # / does not need security.require_secret_for_open_links
+    # because this is how we handle the case:
+    #    require_secret_for_open_links == true
+    #    require_secret_for_access == false
+    # Access to all 'risky' endpoints is still restricted to requests that have the secret cookie, but visiting `/` is allowed, and it will set the cookie. From then on the security situation is identical to 
+    #    secret_for_access == true
     HTTP.@register(router, "GET", "/", with_authentication(
         create_serve_onefile(project_relative_path("frontend", "index.html"));
         required=security.require_secret_for_access
@@ -147,8 +153,6 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
 
-    # TODO:
-    #  if (session.options.security.require_secret_for_access || session.options.security.require_token_for_open_links) && !is_authenticated(session, request)
     serve_openfile = with_authentication(;
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
