@@ -96,7 +96,7 @@ function http_router_for(session::ServerSession)
     """
     function with_authentication(f::Function)
         return function (request::HTTP.Request)
-            if session.options.security.require_token_for_access && !is_authenticated(session, request)
+            if session.options.security.require_secret_for_access && !is_authenticated(session, request)
                 error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
             else
                 response = f(request)
@@ -138,7 +138,7 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/new", serve_newfile)
 
     # TODO:
-    #  if (session.options.security.require_token_for_access || session.options.security.require_token_for_open_links) && !is_authenticated(session, request)
+    #  if (session.options.security.require_secret_for_access || session.options.security.require_token_for_open_links) && !is_authenticated(session, request)
     serve_openfile = with_authentication() do request::HTTP.Request
         try
             uri = to_uri(request.target)

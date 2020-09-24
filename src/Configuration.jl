@@ -21,7 +21,7 @@ end
 Security settings for the HTTP server.
 """
 Base.@kwdef mutable struct SecurityOptions
-    require_token_for_access::Bool = true
+    require_secret_for_access::Bool = true
 end
 
 Base.@kwdef mutable struct EvaluationOptions

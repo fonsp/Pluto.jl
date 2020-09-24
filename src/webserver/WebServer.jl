@@ -216,7 +216,7 @@ function run(session::ServerSession)
 
         Sys.set_process_title("Pluto server - $root")
 
-        if session.options.security.require_token_for_access
+        if session.options.security.require_secret_for_access
             root * "?secret=$(session.secret)"
         else
             root
