@@ -294,6 +294,18 @@ using Test
         @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
         @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
         @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
+        @test testee(:(macro a() end), [], [], [], [
+            Symbol("@a") => ([], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int); b end), [], [], [], [
+            Symbol("@a") => ([:Int], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int=c) end), [], [], [], [
+            Symbol("@a") => ([:Int, :c], [], [], [])
+        ])
+        @test testee(:(macro a(); b = c; return b end), [], [], [], [
+            Symbol("@a") => ([:c], [], [], [])
+        ])
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
