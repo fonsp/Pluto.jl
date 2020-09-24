@@ -69,8 +69,8 @@ export const process_path_or_url = async (path_or_url) => {
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
-export const link_open_path = (path, secret) => "open?" + new URLSearchParams({ path: path, secret: secret }).toString()
-export const link_open_url = (url, secret) => "open?" + new URLSearchParams({ url: url, secret: secret }).toString()
+export const link_open_path = (path) => "open?" + new URLSearchParams({ path: path }).toString()
+export const link_open_url = (url) => "open?" + new URLSearchParams({ url: url }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -205,11 +205,11 @@ export class Welcome extends Component {
             const processed = await process_path_or_url(new_path)
             if (processed.type === "path") {
                 document.body.classList.add("loading")
-                window.location.href = link_open_path(processed.path_or_url, (await this.client_promise).secret)
+                window.location.href = link_open_path(processed.path_or_url)
             } else {
                 if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
                     document.body.classList.add("loading")
-                    window.location.href = link_open_url(processed.path_or_url, (await this.client_promise).secret)
+                    window.location.href = link_open_url(processed.path_or_url)
                 }
             }
         }
@@ -240,7 +240,7 @@ export class Welcome extends Component {
                 set_notebook_state(nb.path, {
                     transitioning: true,
                 })
-                fetch(link_open_path(nb.path, this.client.secret), {
+                fetch(link_open_path(nb.path), {
                     method: "GET",
                 })
                     .then((r) => {

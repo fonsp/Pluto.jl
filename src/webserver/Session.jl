@@ -38,7 +38,7 @@ The `ServerSession` keeps track of:
 Base.@kwdef mutable struct ServerSession
     connected_clients::Dict{Symbol,ClientSession} = Dict{Symbol,ClientSession}()
     notebooks::Dict{UUID,Notebook} = Dict{UUID,Notebook}()
-    secret::UUID = uuid1()
+    secret::String = String(rand(('a':'z') ∪ ('A':'Z') ∪ ('0':'9'), 8))
     binder_token::Union{String,Nothing} = nothing
     options::Configuration.Options = Configuration.Options()
 end
