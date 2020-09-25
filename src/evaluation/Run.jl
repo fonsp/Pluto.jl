@@ -72,7 +72,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
-		else
+		elseif cell.parsedcode !== nothing
 			run = run_single!((session, notebook), cell)
 			any_interrupted |= run.interrupted
 		end
