@@ -55,6 +55,7 @@ export const process_path_or_url = async (path_or_url) => {
         } else if (u.host === "github.com") {
             u.host = "raw.githubusercontent.com"
             u.pathname = u.pathname.replace("/blob", "")
+            u.pathname = u.pathname.replace("/raw", "")
         }
         return {
             type: "url",
