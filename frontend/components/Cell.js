@@ -3,6 +3,7 @@ import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Pr
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
+import { cl } from "../common/ClassTable.js"
 
 /**
  * @typedef {Object} CodeState
