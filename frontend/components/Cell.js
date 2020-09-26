@@ -76,7 +76,7 @@ export const Cell = ({
     errored,
     output,
     selected,
-    on_change,  
+    on_change,
     on_update_doc_query,
     on_focus_neighbor,
     disable_input,
@@ -89,15 +89,15 @@ export const Cell = ({
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-    
-    const cell_ref = useRef(cell_id);
+
+    const cell_ref = useRef(cell_id)
     const on_output_changed = () => {
         cell_ref.current.dispatchEvent(
             new CustomEvent("cell_output_changed", {
                 bubbles: true,
                 detail: {
-                    "cell_id": cell_id
-                }
+                    cell_id: cell_id,
+                },
             })
         )
     }
@@ -158,12 +158,14 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} 
-                all_completed_promise=${all_completed_promise} 
-                requests=${requests} 
-                cell_id=${cell_id} 
+            <${CellOutput}
+                ...${output}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                cell_id=${cell_id}
                 on_render=${on_output_changed}
-                on_delete=${on_output_changed} />
+                on_delete=${on_output_changed}
+            />
             <${CellInput}
                 is_hidden=${!errored && code_folded && cm_forced_focus == null}
                 remote_code=${remote_code}

@@ -22,7 +22,7 @@ export class CellOutput extends Component {
 
     componentWillUpdate() {
         this.old_height = this.base.scrollHeight
-    }    
+    }
 
     render() {
         return html`
@@ -67,12 +67,13 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, on_render, on_
             break
         case "text/html":
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer}  \
-                            body=${body} \
-                            all_completed_promise=${all_completed_promise} \
-                            on_render=${on_render} \
-                            on_delete=${on_delete} \
-                            requests=${requests} />`
+            return html`<${RawHTMLContainer}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                on_render=${on_render}
+                on_delete=${on_delete}
+                requests=${requests}
+            />`
             break
         case "application/vnd.pluto.stacktrace+json":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
@@ -152,7 +153,7 @@ export class RawHTMLContainer extends Component {
 
             if (this.props.on_render != null) {
                 this.props.on_render(this.base)
-            }           
+            }
         })
     }
 
@@ -177,7 +178,7 @@ export class RawHTMLContainer extends Component {
         this.base.innerHTML = ""
         if (this.props.on_delete != null) {
             this.props.on_delete(this.base)
-        }  
+        }
     }
 
     render() {

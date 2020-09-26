@@ -15,7 +15,6 @@ export const Notebook = ({
     client,
     notebook_id,
 }) => {
-    
     return html`
         <pluto-notebook>
             ${cells.map(
