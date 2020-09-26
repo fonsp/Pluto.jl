@@ -146,8 +146,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             }
         }
         socket.onerror = async (e) => {
-            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
-            console.error(e)
+            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
 
             if (await socket_is_alright_with_grace_period(socket)) {
                 console.log("The socket somehow recovered from an error?! Onbegrijpelijk")
@@ -163,8 +162,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             }
         }
         socket.onclose = async (e) => {
-            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString())
-            console.error(e)
+            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
             console.assert(has_been_open)
 
             if (has_been_open) {
@@ -343,8 +341,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
 
             return u.message
         } catch (ex) {
-            console.error("connect() failed")
-            console.error(ex)
+            console.error("connect() failed", ex)
             return await connect()
         }
     }
