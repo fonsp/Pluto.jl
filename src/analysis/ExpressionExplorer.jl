@@ -112,6 +112,14 @@ Base.push!(x::Set) = x
 # HELPER FUNCTIONS
 ###
 
+function explore_inner_scoped(ex::Expr, scopestate::ScopeState)::SymbolsState
+    # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
+    innerscopestate = deepcopy(scopestate)
+    innerscopestate.inglobalscope = false
+
+    return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+end
+
 # from the source code: https://github.com/JuliaLang/julia/blob/master/src/julia-parser.scm#L9
 const modifiers = [:(+=), :(-=), :(*=), :(/=), :(//=), :(^=), :(÷=), :(%=), :(<<=), :(>>=), :(>>>=), :(&=), :(⊻=), :(≔), :(⩴), :(≕)]
 const modifiers_dotprefixed = [Symbol('.' * String(m)) for m in modifiers]
@@ -310,12 +318,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return explore!(expanded_expr, scopestate)
     elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
-
-        # Because we are entering a new scope, we create a copy of the current scope state, and run it through the expressions.
-        innerscopestate = deepcopy(scopestate)
-        innerscopestate.inglobalscope = false
-
-        return mapfoldl(a -> explore!(a, innerscopestate), union!, ex.args, init=SymbolsState())
+        return explore_inner_scoped(ex, scopestate)
     elseif ex.head == :macrocall
         # Does not create sccope
         
@@ -410,6 +413,27 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
             # so we insert the function's inner symbol state here, as if it was a `let` block.
             symstate = innersymstate
+        end
+
+        return symstate
+    elseif ex.head == :try
+        symstate = SymbolsState()
+
+        # Handle catch first
+        if ex.args[3] != false
+            union!(symstate, explore_inner_scoped(ex.args[3], scopestate))
+            # If we catch a symbol, it could shadow a global reference, remove it
+            if ex.args[2] != false
+                setdiff!(symstate.references, Symbol[ex.args[2]])
+            end
+        end
+
+        # Handle the try block
+        union!(symstate, explore_inner_scoped(ex.args[1], scopestate))
+
+        # Finally, handle finally
+        if length(ex.args) == 4
+            union!(symstate, explore_inner_scoped(ex.args[4], scopestate))
         end
 
         return symstate
@@ -576,6 +600,13 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
+        # account for unnamed params, like in f(::Example) = 1
+        if ex.head == :(::) && length(ex.args) == 1
+            symstate = explore!(ex.args[1], scopestate)
+
+            return Symbol[], symstate
+        end
+        
         # recurse
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
         if length(ex.args) > 1
@@ -620,6 +651,8 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
     elseif ex.head == :(.)
         return split_funcname(ex), SymbolsState()
 
+    elseif ex.head == :(...)
+        return explore_funcdef!(ex.args[1], scopestate)
     else
         return Symbol[], explore!(ex, scopestate)
     end

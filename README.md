@@ -16,7 +16,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 -   **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
-<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
+<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/pluto-on-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 ### Input
 
@@ -137,6 +137,6 @@ The Pluto project is an ambition to [_rethink what a programming environment sho
 
 <img alt="feedback screencap" src="https://user-images.githubusercontent.com/6933510/84502876-6f08db00-acb9-11ea-84c3-f5daaba29273.png" width="100%">
 
-Questions? Have a look at the [FAQ](https://www.notion.so/3ce1c1cff62f4f97815891cdaa3daa7d?v=b5824fb6bc804d2c90d34c4d49a1c295).
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._

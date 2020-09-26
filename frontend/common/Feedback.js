@@ -46,7 +46,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // where `runtime` is log10, rounded
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
         // integer
-        versionPluto: client.version_info.pluto,
+        versionPluto: client.version_info == null ? "unkown" : client.version_info.pluto,
         // string, e.g. "v0.7.10"
         // versionJulia: client.julia_version,
         //     // string, e.g. "v1.0.5"

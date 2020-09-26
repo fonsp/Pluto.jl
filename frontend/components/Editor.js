@@ -1,4 +1,6 @@
 import { html, Component } from "../common/Preact.js"
+import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
+import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -7,6 +9,7 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 
@@ -16,6 +19,7 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { handle_log } from "../common/Logging.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
 const default_path = "..."
 
@@ -614,37 +618,41 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
-            if (e.code === "KeyQ" && e.ctrlKey) {
+            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+                // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.code === "KeyS" && e.ctrlKey) {
+            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
-            } else if (e.code === "Backspace" || e.code === "Delete") {
+            } else if (e.key === "Backspace" || e.key === "Delete") {
                 const selected = this.state.notebook.cells.filter((c) => c.selected)
                 if (selected.length > 0) {
                     this.requests.confirm_delete_multiple(selected)
                     e.preventDefault()
                 }
-            } else if ((e.key === "?" && e.ctrlKey) || e.key === "F1") {
+            } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
+                // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
+                // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
+                // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
     
     Shift+Enter:   run cell
-    Ctrl+Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
     PageUp or fn+Up:   select cell above
     PageDown or fn+Down:   select cell below
 
-    Ctrl+Q:   interrupt notebook
-    Ctrl+S:   submit all changes
+    ${ctrl_or_cmd_name}+Q:   interrupt notebook
+    ${ctrl_or_cmd_name}+S:   submit all changes
     
     The notebook file saves every time you run`
                 )
@@ -681,7 +689,7 @@ export class Editor extends Component {
                 })
                 this.counter_statistics = create_counter_statistics()
             }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+        }, 20 * 1000) // 20 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {
@@ -739,13 +747,20 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                const a = e.composedPath().find((el) => el.tagName === "A")
-                                a.download = this.state.notebook.shortpath + ".html"
-                                a.href = URL.createObjectURL(
-                                    new Blob([offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body })], {
-                                        type: "text/html",
-                                    })
-                                )
+                                offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body }).then((html) => {
+                                    if (html != null) {
+                                        const fake_anchor = document.createElement("a")
+                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
+                                        fake_anchor.href = URL.createObjectURL(
+                                            new Blob([html], {
+                                                type: "text/html",
+                                            })
+                                        )
+                                        document.body.appendChild(fake_anchor)
+                                        fake_anchor.click()
+                                        document.body.removeChild(fake_anchor)
+                                    }
+                                })
                             }}
                         >
                             <header>${circle("#E86F51")} Static HTML</header>
@@ -839,29 +854,21 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler}
-                    requests=${this.requests}
-                    selected_friends=${this.selected_friends}
-                    on_selection=${(s) => {
-                        const from = Math.min(s.selection_start_index, s.selection_stop_index)
-                        const to = Math.max(s.selection_start_index, s.selection_stop_index)
-                        this.set_notebook_state((prevstate) => {
-                            return {
-                                cells: prevstate.cells.map((c, i) => {
-                                    if (from <= i && i < to) {
-                                        return {
-                                            ...c,
-                                            selected: true,
-                                        }
-                                    } else {
-                                        return {
-                                            ...c,
-                                            selected: false,
-                                        }
+                <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
+
+                <${SelectionArea}
+                    cells=${this.state.notebook.cells}
+                    on_selection=${(selected_cell_ids) => {
+                        let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
+                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                            this.setState(
+                                immer((state) => {
+                                    for (let cell of state.notebook.cells) {
+                                        cell.selected = selected_cell_ids.includes(cell.cell_id)
                                     }
-                                }),
-                            }
-                        })
+                                })
+                            )
+                        }
                     }}
                 />
             </main>
