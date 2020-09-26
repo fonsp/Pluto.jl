@@ -1,10 +1,8 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
-import { cl } from "../common/ClassTable.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
-import { Logs } from "./Logs.js"
 
 /**
  * @typedef {Object} CodeState
@@ -25,7 +23,6 @@ import { Logs } from "./Logs.js"
  * @property {?number} runtime
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
- * @property {Array} logs
  * @property {boolean} selected
  */
 
@@ -56,7 +53,6 @@ export const empty_cell_data = (cell_id) => {
             mime: "text/plain",
             rootassignee: null,
         },
-        logs: [],
         selected: false,
     }
 }
@@ -78,7 +74,6 @@ export const Cell = ({
     runtime,
     errored,
     output,
-    logs,
     selected,
     on_change,
     on_update_doc_query,
@@ -180,7 +175,6 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />
-            <${Logs} logs=${logs} />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {

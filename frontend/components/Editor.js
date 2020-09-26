@@ -137,16 +137,16 @@ export class Editor extends Component {
                     }
                 })
             },
-            handle_log: (log) => {
-                // TODO
-                if (true || log.file.startsWith(this.state.notebook.path)) {
-                    const cell_id = log.file.substring(log.file.indexOf("#==#") + 4)
-                    const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
-                    set_cell_state(cell_id, {
-                        logs: [...cell.logs, log],
-                    })
-                }
-            },
+            // handle_log: (log) => {
+            //     // TODO
+            //     if (true || log.file.startsWith(this.state.notebook.path)) {
+            //         const cell_id = log.file.substring(log.file.indexOf("#==#") + 4)
+            //         const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
+            //         set_cell_state(cell_id, {
+            //             logs: [...cell.logs, log],
+            //         })
+            //     }
+            // },
         }
 
         const on_remote_notebooks = ({ message }) => {
@@ -225,7 +225,7 @@ export class Editor extends Component {
                             // by someone else
                             break
                         case "log":
-                            this.actions.handle_log(message)
+                            // this.actions.handle_log(message)
                             console.log(message)
                             break
                         default:
