@@ -689,12 +689,9 @@ end"""
 ###
 
 const log_channel = Channel{Any}(10)
+const old_logger = Ref{Any}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger end
-
-const to_pluto_html(@nospecialize(x)) = sprint() do io
-    show_richest(io, x; onlyhtml=true)
-end
 
 Logging.shouldlog(::PlutoLogger, args...) = true
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
@@ -702,17 +699,20 @@ Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     put!(log_channel, (
         level=string(level),
-        msg=(msg isa String) ? msg : to_pluto_html(msg),
+        msg=(msg isa String) ? msg : repr(msg),
         group=group,
         # id=id,
         file=file,
         line=line,
-        kwargs=Dict((k=>to_pluto_html(v) for (k,v) in kwargs)...),
+        kwargs=Dict((k=>repr(v) for (k,v) in kwargs)...),
     ))
+    # also print to console
+    Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
 end
 
 # we put this in __init__ to fix a world age problem
 function __init__()
+    old_logger[] = Logging.global_logger()
     Logging.global_logger(PlutoLogger())
 end
 
