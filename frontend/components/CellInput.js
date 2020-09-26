@@ -34,14 +34,13 @@ export const CellInput = ({
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
-    const cm_enabled = !is_hidden
 
     useEffect(() => {
         remote_code_ref.current = remote_code
     }, [remote_code])
 
     useEffect(() => {
-        if(cm_enabled){
+        if (!is_hidden) {
             const cm = (cm_ref.current = window.CodeMirror(
                 (el) => {
                     dom_node_ref.current.appendChild(el)
@@ -70,7 +69,7 @@ export const CellInput = ({
             keys["Shift-Enter"] = () => on_submit(cm.getValue())
             keys["Ctrl-Enter"] = () => {
                 on_add_after()
-    
+
                 const new_value = cm.getValue()
                 if (new_value !== remote_code_ref.current.body) {
                     on_submit(new_value)
@@ -99,7 +98,7 @@ export const CellInput = ({
             }
             keys["Ctrl-/"] = () => {
                 const old_value = cm.getValue()
-                cm.toggleComment({indent: true})
+                cm.toggleComment({ indent: true })
                 const new_value = cm.getValue()
                 if (old_value === new_value) {
                     // the commenter failed for some reason
@@ -192,7 +191,7 @@ export const CellInput = ({
             }
             keys["Alt-Up"] = () => alt_move(-1)
             keys["Alt-Down"] = () => alt_move(+1)
-    
+
             keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
                 if (cm.lineCount() === 1 && cm.getValue() === "") {
                     on_focus_neighbor(cell_id, -1)
@@ -209,9 +208,9 @@ export const CellInput = ({
                 }
                 return window.CodeMirror.Pass
             }
-    
+
             cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
-    
+
             cm.on("cursorActivity", () => {
                 if (cm.somethingSelected()) {
                     const sel = cm.getSelection()
@@ -231,7 +230,7 @@ export const CellInput = ({
                     }
                 }
             })
-    
+
             cm.on("change", () => {
                 const new_value = cm.getValue()
                 if (new_value.length > 1 && new_value[0] === "?") {
@@ -239,7 +238,7 @@ export const CellInput = ({
                 }
                 change_handler_ref.current(new_value)
             })
-    
+
             cm.on("blur", () => {
                 // NOT a debounce:
                 setTimeout(() => {
@@ -249,30 +248,25 @@ export const CellInput = ({
                     }
                 }, 100)
             })
-    
+
             if (focus_after_creation) {
                 cm.focus()
             }
-    
+
             document.fonts.ready.then(() => {
                 cm.refresh()
             })
+        } else {
+            if (cm_ref.current != null) {
+                const cm_wrapper = cm_ref.current.getWrapperElement()
+                cm_wrapper.parentNode.removeChild(cm_wrapper)
+                cm_ref.current = null
+            }
         }
-        else{
-            const cm = cm_ref.current
-
-            if (!cm) return
-
-            var cm_wrapper = cm.getWrapperElement()
-
-            cm_wrapper.parentNode.removeChild(cm_wrapper)
-
-            cm_ref.current = null
-        }
-    }, [cm_enabled])
+    }, [is_hidden])
 
     useEffect(() => {
-        if(cm_enabled){
+        if (!is_hidden) {
             if (!remote_code.submitted_by_me) {
                 cm_ref.current.setValue(remote_code.body)
             }
@@ -281,7 +275,7 @@ export const CellInput = ({
     }, [remote_code.timestamp])
 
     useEffect(() => {
-        if(cm_enabled){
+        if (!is_hidden) {
             if (cm_forced_focus == null) {
                 clear_selection(cm_ref.current)
             } else {
