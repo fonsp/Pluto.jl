@@ -285,13 +285,6 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
-    // if the CodeMirror initialized/changed while it was hidden, and it suddely became unhidden, we need to refresh it to fix a layout bug where the gutter takes no horizontal space.
-    useLayoutEffect(() => {
-        if (!is_hidden) {
-            cm_ref.current && cm_ref.current.refresh()
-        }
-    }, [is_hidden])
-
     // TODO effect hook for disable_input?
 
     return html`
@@ -299,7 +292,6 @@ export const CellInput = ({
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
         </pluto-input>
     `
-    // TODO: confirm delete
 }
 
 const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
