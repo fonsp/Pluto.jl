@@ -723,8 +723,10 @@ end
 
 # we put this in __init__ to fix a world age problem
 function __init__()
-    old_logger[] = Logging.global_logger()
-    Logging.global_logger(PlutoLogger())
+    if Distributed.myid() != 1
+        old_logger[] = Logging.global_logger()
+        Logging.global_logger(PlutoLogger())
+    end
 end
 
 end
