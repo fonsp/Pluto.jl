@@ -22,7 +22,8 @@ export const Scroller = ({ active }) => {
     }, [])
 
     useEffect(() => {
-        if (active) {
+        if (active.up || active.down) {
+            console.log(active)
             let prev_time = null
             let current = true
             const scroll_update = (timestamp) => {
@@ -35,9 +36,9 @@ export const Scroller = ({ active }) => {
 
                     if (mouse.current) {
                         const y_ratio = mouse.current.y / window.innerHeight
-                        if (y_ratio < 0.3) {
+                        if (active.up && y_ratio < 0.3) {
                             window.scrollBy(0, (((-1200 * (0.3 - y_ratio)) / 0.3) * dt) / 1000)
-                        } else if (y_ratio > 0.7) {
+                        } else if (active.down && y_ratio > 0.7) {
                             window.scrollBy(0, (((1200 * (y_ratio - 0.7)) / 0.3) * dt) / 1000)
                         }
                     }
@@ -48,7 +49,7 @@ export const Scroller = ({ active }) => {
             window.requestAnimationFrame(scroll_update)
             return () => (current = false)
         }
-    }, [active])
+    }, [active.up, active.down])
 
     return null
 }

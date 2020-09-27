@@ -67,7 +67,10 @@ export class Editor extends Component {
             recently_deleted: null,
             connected: false,
             loading: true,
-            scroller: false,
+            scroller: {
+                up: false,
+                down: false,
+            },
         }
         // convenience method
         const set_notebook_state = (updater) => {
