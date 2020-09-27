@@ -52,7 +52,7 @@ function make_workspace((session, notebook)::Tuple{ServerSession, Notebook})::Wo
     end
 
     log_channel = Core.eval(Main, quote
-        Main.Pluto.Distributed.RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
     workspace = Workspace(pid, log_channel, module_name, Token())
