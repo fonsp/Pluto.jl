@@ -53,8 +53,7 @@ export const process_path_or_url = async (path_or_url) => {
                 path_or_url: files[0].raw_url,
             }
         } else if (u.host === "github.com") {
-            u.host = "raw.githubusercontent.com"
-            u.pathname = u.pathname.replace("/blob", "")
+            u.searchParams.set("raw", "true")
         }
         return {
             type: "url",
