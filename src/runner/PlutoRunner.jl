@@ -704,7 +704,12 @@ const old_logger = Ref{Any}(nothing)
 
 struct PlutoLogger <: Logging.AbstractLogger end
 
-Logging.shouldlog(::PlutoLogger, args...) = true
+function Logging.shouldlog(::PlutoLogger, level, _module, _...)
+    # Accept logs
+    # - From the user's workspace module
+    # - Info level and above for other modules
+    _module === current_module || convert(Logging.LogLevel, level) >= Logging.Info
+end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)

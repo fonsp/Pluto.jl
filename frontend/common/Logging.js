@@ -6,7 +6,7 @@ const log_functions = {
 }
 
 export const handle_log = ({ level, msg, file, line, kwargs }, filename) => {
-    const f = log_functions[level]
+    const f = log_functions[level] || console.log
     const args = [`%c┌ ${level}:\n`, `font-weight: bold`, msg]
     if (Object.keys(kwargs).length !== 0) {
         args.push(kwargs)
