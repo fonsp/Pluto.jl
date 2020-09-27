@@ -69,6 +69,9 @@ function start_relaying_logs((session, notebook)::Tuple{ServerSession, Notebook}
             next_log = take!(log_channel)
             putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
         catch e
+            if !isopen(log_channel)
+                break
+            end
             @error "Failed to relay log" exception=(e, catch_backtrace())
         end
     end
