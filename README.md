@@ -16,7 +16,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 -   **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
-<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/vscode-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
+<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/pluto-on-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 ### Input
 

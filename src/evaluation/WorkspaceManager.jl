@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path
+import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
 import ..PlutoRunner
 import Distributed
@@ -8,11 +8,10 @@ import Distributed
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 mutable struct Workspace
     pid::Integer
+    log_channel::Distributed.RemoteChannel
     module_name::Symbol
     dowork_token::Token
 end
-
-Workspace(pid::Integer, module_name::Symbol) = Workspace(pid, module_name, Token())
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
@@ -38,8 +37,7 @@ const workspaces = Dict{UUID,Workspace}()
 Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
 only partially: you can't stop cells on Windows.
 """
-function make_workspace(session_notebook::Tuple{ServerSession, Notebook})::Workspace
-    session, notebook = session_notebook
+function make_workspace((session, notebook)::Tuple{ServerSession, Notebook})::Workspace
     pid = if session.options.evaluation.workspace_use_distributed
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
@@ -52,13 +50,31 @@ function make_workspace(session_notebook::Tuple{ServerSession, Notebook})::Works
         end
         pid
     end
-    
-    module_name = create_emptyworkspacemodule(pid)
-    workspace = Workspace(pid, module_name)
 
+    log_channel = Core.eval(Main, quote
+        Main.Pluto.Distributed.RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
+    end)
+    module_name = create_emptyworkspacemodule(pid)
+    workspace = Workspace(pid, log_channel, module_name, Token())
+
+    @async start_relaying_logs((session, notebook), log_channel)
     cd_workspace(workspace, notebook.path)
 
     return workspace
+end
+
+function start_relaying_logs((session, notebook)::Tuple{ServerSession, Notebook}, log_channel::Distributed.RemoteChannel)
+    while true
+        try
+            next_log = take!(log_channel)
+            putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
+        catch e
+            if !isopen(log_channel)
+                break
+            end
+            @error "Failed to relay log" exception=(e, catch_backtrace())
+        end
+    end
 end
 
 "Call `cd(\$path)` inside the workspace. This is done when creating a workspace, and whenever the notebook changes path."

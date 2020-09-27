@@ -101,6 +101,14 @@ using Test
         @test testee(:(for k in 1:2, r in 3:4; global z = k + r; end), [], [:z], [:+, :(:)], [])
         @test testee(:(while k < 2; r = w; global z = k + r; end), [:k, :w], [:z], [:+, :(<)], [])
     end
+    @testset "`try` & `catch`" begin
+        @test testee(:(try a = b + 1 catch; end), [:b], [], [:+], [])
+        @test testee(:(try a() catch e; e end), [], [], [:a], [])
+        @test testee(:(try a() catch; e end), [:e], [], [:a], [])
+        @test testee(:(try a + 1 catch a; a end), [:a], [], [:+], [])
+        @test testee(:(try 1 catch e; e finally a end), [:a], [], [], [])
+        @test testee(:(try 1 finally a end), [:a], [], [], [])
+    end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
         @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
@@ -286,6 +294,18 @@ using Test
         @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
         @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
         @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
+        @test testee(:(macro a() end), [], [], [], [
+            Symbol("@a") => ([], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int); b end), [], [], [], [
+            Symbol("@a") => ([:Int], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int=c) end), [], [], [], [
+            Symbol("@a") => ([:Int, :c], [], [], [])
+        ])
+        @test testee(:(macro a(); b = c; return b end), [], [], [], [
+            Symbol("@a") => ([:c], [], [], [])
+        ])
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])

@@ -135,11 +135,12 @@ export class Welcome extends Component {
         const on_connection_status = (val) => this.setState({ connected: val })
 
         this.client = {}
-        create_pluto_connection({
+        this.client_promise = create_pluto_connection({
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
-        }).then((client) => {
+        })
+        this.client_promise.then((client) => {
             Object.assign(this.client, client)
 
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
@@ -204,11 +205,11 @@ export class Welcome extends Component {
             const processed = await process_path_or_url(new_path)
             if (processed.type === "path") {
                 document.body.classList.add("loading")
-                window.location.href = link_open_path(processed.path_or_url, this.client.secret)
+                window.location.href = link_open_path(processed.path_or_url, (await this.client_promise).secret)
             } else {
                 if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
                     document.body.classList.add("loading")
-                    window.location.href = link_open_url(processed.path_or_url, this.client.secret)
+                    window.location.href = link_open_url(processed.path_or_url, (await this.client_promise).secret)
                 }
             }
         }

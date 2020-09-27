@@ -20,6 +20,7 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { handle_log } from "../common/Logging.js"
 
 const default_path = "..."
 
@@ -270,6 +271,9 @@ export class Editor extends Component {
                             break
                         case "bond_update":
                             // by someone else
+                            break
+                        case "log":
+                            handle_log(message, this.state.notebook.path)
                             break
                         default:
                             console.error("Received unknown update type!")
