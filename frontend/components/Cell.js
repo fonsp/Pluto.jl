@@ -5,6 +5,22 @@ import { CellInput } from "./CellInput.js"
 import { RunArea } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
+const observeViewport = () => {
+
+  const cellReference = useRef(null)
+  const [cell_in_viewport, set_cell_in_viewport] = useState(null)
+
+  useEffect(() => {
+    let observer = new IntersectionObserver((entries, observer) => {
+      set_cell_in_viewport(entries[0].isIntersecting)
+    }, {})
+
+    observer.observe(cellReference.current)
+  }, [])
+
+  return { cellReference, cell_in_viewport }
+}
+
 /**
  * @typedef {Object} CodeState
  * @property {string} body
@@ -110,6 +126,8 @@ export const Cell = ({
         }
     }, [])
 
+    const { cellReference, cell_in_viewport } = observeViewport()
+
     const class_code_differs = remote_code.body !== local_code.body
     const class_code_folded = code_folded && cm_forced_focus == null
 
@@ -149,8 +167,9 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
+            <div ref=${cellReference}>
             <${CellInput}
-                is_hidden=${!errored && !class_code_folded && class_code_folded}
+                is_hidden=${!errored && !class_code_folded && class_code_folded && !cell_in_viewport}
                 local_code=${local_code}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
@@ -180,6 +199,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />
+            </div>
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {
