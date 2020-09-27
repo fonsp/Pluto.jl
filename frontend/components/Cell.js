@@ -110,6 +110,9 @@ export const Cell = ({
         }
     }, [])
 
+    const class_code_differs = remote_code.body !== local_code.body
+    const class_code_folded = code_folded && cm_forced_focus == null
+
     return html`
         <pluto-cell
             class=${cl({
@@ -117,8 +120,8 @@ export const Cell = ({
                 running: running,
                 errored: errored,
                 selected: selected,
-                code_differs: remote_code.body !== local_code.body,
-                code_folded: code_folded && cm_forced_focus == null,
+                code_differs: class_code_differs,
+                code_folded: class_code_folded,
             })}
             id=${cell_id}
         >
@@ -147,7 +150,8 @@ export const Cell = ({
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
-                is_hidden=${!errored && code_folded && cm_forced_focus == null}
+                is_hidden=${!errored && !class_code_folded && class_code_folded}
+                local_code=${local_code}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
