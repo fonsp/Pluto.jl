@@ -445,9 +445,6 @@ export class Editor extends Component {
                 return this.requests.add_remote_cell_at(index + delta, create_promise)
             },
             delete_cell: (cell_id) => {
-                if (this.state.notebook.cells.length <= 1) {
-                    this.requests.add_remote_cell(cell_id, "after")
-                }
                 const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
                 const cell = this.state.notebook.cells[index]
                 this.setState({
@@ -473,6 +470,14 @@ export class Editor extends Component {
                     false
                 )
             },
+            delete_multiple_cells: (cells) => {
+              if (this.state.notebook.cells.length <= cells.length) {
+                  const first_cell_id = cells[0].cell_id
+                  this.requests.add_remote_cell(first_cell_id, "after")
+              }
+
+              cells.forEach((f) => this.requests.delete_cell(f.cell_id));
+            },
             confirm_delete_multiple: (cells) => {
                 if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
                     if (cells.some((f) => f.running || f.queued)) {
@@ -480,7 +485,7 @@ export class Editor extends Component {
                             this.requests.interrupt_remote(cells[0].cell_id)
                         }
                     } else {
-                        cells.forEach((f) => this.requests.delete_cell(f.cell_id))
+                        this.requests.delete_multiple_cells(cells)
                     }
                 }
             },
@@ -643,7 +648,7 @@ export class Editor extends Component {
                 // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
@@ -653,7 +658,7 @@ export class Editor extends Component {
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
-    
+
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
