@@ -444,39 +444,13 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
                 return this.requests.add_remote_cell_at(index + delta, create_promise)
             },
-            delete_cell: (cell_id) => {
-                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-                const cell = this.state.notebook.cells[index]
-                this.setState({
-                    recently_deleted: {
-                        index: index,
-                        body: this.state.notebook.cells[index].local_code.body,
-                    },
-                })
-
-                set_cell_state(cell_id, {
-                    queued: true,
-                }).then(() => {
-                    this.actions.update_local_cell_input(cell, false, "", true)
-                })
-
-                this.client.send(
-                    "delete_cell",
-                    {},
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
-                    false
-                )
-            },
-            delete_multiple_cells: (cells) => {
+            delete_cells: (cells) => {
               if (this.state.notebook.cells.length <= cells.length) {
                   const first_cell_id = cells[0].cell_id
                   this.requests.add_remote_cell(first_cell_id, "after")
               }
 
-              cells.forEach((f) => this.requests.delete_cell(f.cell_id));
+              cells.forEach((f) => this.delete_cell(f.cell_id));
             },
             confirm_delete_multiple: (cells) => {
                 if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
@@ -485,7 +459,7 @@ export class Editor extends Component {
                             this.requests.interrupt_remote(cells[0].cell_id)
                         }
                     } else {
-                        this.requests.delete_multiple_cells(cells)
+                        this.requests.delete_cells(cells)
                     }
                 }
             },
@@ -621,6 +595,33 @@ export class Editor extends Component {
                 reset_cm_value()
             }
         }
+
+        this.delete_cell = (cell_id) => {
+            const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+            const cell = this.state.notebook.cells[index]
+            this.setState({
+                recently_deleted: {
+                    index: index,
+                    body: this.state.notebook.cells[index].local_code.body,
+                },
+            })
+
+            set_cell_state(cell_id, {
+                queued: true,
+            }).then(() => {
+                this.actions.update_local_cell_input(cell, false, "", true)
+            })
+
+            this.client.send(
+                "delete_cell",
+                {},
+                {
+                    notebook_id: this.state.notebook.notebook_id,
+                    cell_id: cell_id,
+                },
+                false
+            )
+        },
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
