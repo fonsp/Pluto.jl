@@ -36,7 +36,7 @@ export class DropRuler extends Component {
                 this.dropee = null
             } else {
                 this.dropee = e.target.parentElement
-                e.dataTransfer.setData("text/plain", this.props.actions.serialize_selected(this.dropee))
+                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -88,7 +88,7 @@ export class DropRuler extends Component {
             } else {
                 // Called when cell(s) from another window are dragged onto the page
                 const drop_index = this.getDropIndexOf(e)
-                const data = e.dataTransfer.getData("text/plain")
+                const data = e.dataTransfer.getData("text/pluto-cell")
                 this.props.actions.add_deserialized_cells(data, drop_index)
             }
         })
