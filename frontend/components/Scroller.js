@@ -23,7 +23,6 @@ export const Scroller = ({ active }) => {
 
     useEffect(() => {
         if (active.up || active.down) {
-            console.log(active)
             let prev_time = null
             let current = true
             const scroll_update = (timestamp) => {

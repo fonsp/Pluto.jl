@@ -48,7 +48,6 @@ export class SelectionArea extends Component {
         /* SELECTIONS */
         document.addEventListener("mousedown", (e) => {
             const t = e.target.tagName
-            console.log("downnn", t)
             // TODO: also allow starting the selection in one codemirror and stretching it to another cell
             if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
                 this.props.on_selection([])
