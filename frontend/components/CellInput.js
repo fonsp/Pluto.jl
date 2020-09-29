@@ -2,6 +2,7 @@ import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Pr
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.44.0/addon/search/searchcursor.min.js'
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -38,6 +39,30 @@ export const CellInput = ({
     useEffect(() => {
         remote_code_ref.current = remote_code
     }, [remote_code])
+
+    useEffect(() => {
+      const selectSameWordsListener = (e) => {
+        if(!is_hidden){
+          var cursor = cm_ref.current.getSearchCursor(e.detail.word)
+          var selections = []
+
+          while(cursor.findNext()){
+            selections.push(
+              { anchor: cursor.from(), head: cursor.to() }
+            )
+          }
+
+          cm_ref.current.setSelections(selections)
+
+
+          // update with cm.getRange and replaceRange for cells that are not in focus
+        }
+      }
+
+      window.addEventListener("select_same_words", selectSameWordsListener)
+
+      return () => { window.removeEventListener("select_same_words", selectSameWordsListener) }
+    }, [])
 
     useEffect(() => {
         if (!is_hidden) {
@@ -88,7 +113,17 @@ export const CellInput = ({
                 if (cm.somethingSelected()) {
                     const sels = cm.getSelections()
                     if (all_equal(sels)) {
-                        // TODO
+                        window.dispatchEvent(
+                          new CustomEvent("select_same_words", {
+                            detail:{
+                              word: sels[0]
+                            }
+                          })
+                        )
+
+                        cm.on("keydown", (cm, e) => { if(cm.somethingSelected()){
+                          
+                        } })
                     }
                 } else {
                     const cursor = cm.getCursor()
