@@ -53,9 +53,6 @@ export const CellInput = ({
           }
 
           cm_ref.current.setSelections(selections)
-
-
-          // update with cm.getRange and replaceRange for cells that are not in focus
         }
       }
 
@@ -120,10 +117,6 @@ export const CellInput = ({
                             }
                           })
                         )
-
-                        cm.on("keydown", (cm, e) => { if(cm.somethingSelected()){
-                          
-                        } })
                     }
                 } else {
                     const cursor = cm.getCursor()
