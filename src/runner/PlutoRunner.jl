@@ -702,7 +702,9 @@ end"""
 const log_channel = Channel{Any}(10)
 const old_logger = Ref{Any}(nothing)
 
-struct PlutoLogger <: Logging.AbstractLogger end
+struct PlutoLogger <: Logging.AbstractLogger
+    stream
+end
 
 function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
@@ -735,7 +737,7 @@ end
 function __init__()
     if Distributed.myid() != 1
         old_logger[] = Logging.global_logger()
-        Logging.global_logger(PlutoLogger())
+        Logging.global_logger(PlutoLogger(nothing))
     end
 end
 
