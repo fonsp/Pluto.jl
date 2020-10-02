@@ -12,6 +12,7 @@ import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
+import { FindReplace } from "./FindReplace.js"
 
 import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
@@ -637,13 +638,20 @@ export class Editor extends Component {
                     this.requests.confirm_delete_multiple(selected)
                     e.preventDefault()
                 }
+              } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
+                document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
+                document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")
+                //document.body.querySelector("main").classList.toggle("show_findreplace")
+                //document.body.querySelector("div.fr_title").classList.toggle("show_findreplace")
+                e.preventDefault()
+
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
@@ -653,7 +661,7 @@ export class Editor extends Component {
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
-    
+
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
@@ -811,10 +819,25 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => document.body.querySelector("header").classList.toggle("show_export")}>
+                    <aside id="findreplace_container">
+                      <form id="findform">
+                        <input/>
+                        <button>Next</button>
+                      </form>
+                      <form id="replaceform">
+                        <input/>
+                        <button>Replace</button>
+                        <button>All</button>
+                      </form>
+                    </aside>
+                    <button class="toggle_export" title="Export..." onClick=${() => {
+                        document.body.querySelector("header").classList.toggle("show_export")
+                      }}>
                         <span></span>
                     </button>
+
                 </nav>
+
             </header>
             <main>
                 <preamble>

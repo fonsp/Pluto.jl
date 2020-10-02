@@ -338,6 +338,39 @@ body > header.show_export {
     top: 130px;
 }
 
+aside#findreplace_container {
+  display: none;
+  flex-direction: row;
+  padding-right: 25px;
+}
+aside#findreplace_container.show_findreplace {
+  display: flex;
+}
+
+aside#findreplace_container > form {
+  display: flex;
+  flex-direction: row;
+  font-family: "Roboto Mono", monospace;
+  font-size: 0.75rem;
+}
+aside#findreplace_container > form > input {
+  border: 2px solid #818181;
+  font-family: inherit;
+  font-size: inherit;
+  border-radius: 3px 0 0 3px;
+  padding: 3px;
+  border-right: none;
+}
+aside#findreplace_container > form > button {
+  cursor: pointer;
+  background: #896c6c;
+  border-radius: 0 3px 3px 0;
+  border: 2px solid #896c6c;
+  color: white;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
 aside#export {
     overflow-x: hidden;
     position: absolute;
@@ -416,6 +449,10 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
+}
+
+nav#at_the_top.show_findreplace {
+  max-width: inherit;
 }
 
 nav#at_the_top > * {
