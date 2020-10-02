@@ -83,6 +83,7 @@ export const Cell = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     all_completed_promise,
     selected_friends,
     requests,
@@ -157,6 +158,7 @@ export const Cell = ({
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
+                scroll_into_view_after_creation=${scroll_into_view_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_submit=${(new_code) => {

@@ -17,6 +17,7 @@ export const CellInput = ({
     remote_code,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
     on_submit,
@@ -252,6 +253,9 @@ export const CellInput = ({
 
             if (focus_after_creation) {
                 cm.focus()
+            }
+            if (scroll_into_view_after_creation) {
+                dom_node_ref.current.scrollIntoView()
             }
 
             document.fonts.ready.then(() => {

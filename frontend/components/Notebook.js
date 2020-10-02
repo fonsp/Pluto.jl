@@ -26,6 +26,7 @@ export const Notebook = ({
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${focus_after_creation && !d.pasted}
+                    scroll_into_view_after_creation=${d.pasted}
                     all_completed_promise=${all_completed_promise}
                     selected_friends=${selected_friends}
                     requests=${requests}
