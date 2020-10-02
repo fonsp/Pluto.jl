@@ -30,6 +30,9 @@ using Test
         @test testee(:(struct a; b; c; end), [], [], [], [
             :a => ([], [], [], [])
             ])
+        @test testee(:(let struct a; b; c; end end), [], [], [], [
+            :a => ([], [], [], [])
+            ])
 
         @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
     end
