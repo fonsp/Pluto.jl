@@ -370,7 +370,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         equiv_func = Expr(:function, Expr(:call, structname, structfields...), Expr(:block, nothing))
 
-        return explore!(equiv_func, scopestate)
+        # struct should always be in Global state
+        globalscopestate = deepcopy(scopestate)
+        globalscopestate.inglobalscope = true
+
+        return explore!(equiv_func, globalscopestate)
     elseif ex.head == :generator
         # Creates local scope
 
