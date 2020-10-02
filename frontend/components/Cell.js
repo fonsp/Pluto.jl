@@ -164,7 +164,7 @@ export const Cell = ({
                 }}
                 on_delete=${() => {
                     const friends = selected_friends(cell_id)
-                    requests.confirm_delete_multiple(friends)
+                    requests.confirm_delete_multiple("Delete", friends)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")
