@@ -11,7 +11,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import REPL.REPLCompletions: completions, complete_path, completion_text, Completion
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -586,10 +586,15 @@ end
 # REPL THINGS
 ###
 
+function transform_completion(completions::Vector{Completion})
+    completion_texts = completion_text.(completions)
+    sort(completion_texts, rev=true)
+end
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (completion_text.(results), loc, found)
+    (transform_completion(results), loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
