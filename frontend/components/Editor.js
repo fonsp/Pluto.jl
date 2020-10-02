@@ -47,7 +47,7 @@ function serialize_cells(cells) {
  * @return {Array<String>}
  */
 function deserialize_cells(serialized_cells) {
-    const segments = serialized_cells.split(/# ╔═╡ \S+\r?\n/)
+    const segments = serialized_cells.replace("\r\n", "\n").split(/# ╔═╡ \S+\n/)
     return segments.map((s) => s.trim()).filter((s) => s.length > 0)
 }
 
@@ -735,19 +735,24 @@ export class Editor extends Component {
             }
         })
 
-        document.addEventListener("cut", (e) => {
-            if (!in_textarea_or_input()) {
-                const serialized = this.actions.serialize_selected()
-                if (serialized) {
-                    navigator.clipboard
-                        .writeText(serialized)
-                        .then(() => this.delete_selected("Cut"))
-                        .catch((err) => {
-                            alert(`Error cutting cells: ${e}`)
-                        })
-                }
-            }
-        })
+        // Disabled until we solve https://github.com/fonsp/Pluto.jl/issues/482
+        // or we can enable it with a prompt
+
+        // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
+
+        // document.addEventListener("cut", (e) => {
+        //     if (!in_textarea_or_input()) {
+        //         const serialized = this.actions.serialize_selected()
+        //         if (serialized) {
+        //             navigator.clipboard
+        //                 .writeText(serialized)
+        //                 .then(() => this.delete_selected("Cut"))
+        //                 .catch((err) => {
+        //                     alert(`Error cutting cells: ${e}`)
+        //                 })
+        //         }
+        //     }
+        // })
 
         document.addEventListener("paste", async (e) => {
             if (!in_textarea_or_input()) {
