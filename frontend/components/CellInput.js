@@ -43,22 +43,63 @@ export const CellInput = ({
     useEffect(() => {
       const selectSameWordsListener = (e) => {
         if(!is_hidden){
-          var cursor = cm_ref.current.getSearchCursor(e.detail.word)
-          var selections = []
 
+          // makes sure everything is deselected first
+          cm_ref.current.getAllMarks().forEach((mark) => mark.clear())
+
+          const current_cursor = cm_ref.current.getCursor()
+          const after_current = (c) => {
+            return c.line > current_cursor.line || (c.line == current_cursor.line && c.ch >= current_cursor.ch)
+          }
+          var found = false
+
+          var cursor = cm_ref.current.getSearchCursor(e.detail.word)
           while(cursor.findNext()){
-            selections.push(
-              { anchor: cursor.from(), head: cursor.to() }
-            )
+            cm_ref.current.markText(cursor.from(), cursor.to(), { css: "color: orange" })
+
+            if (!found && cell_id == e.detail.selecting_cell) {
+              if (after_current(cursor.from())){
+
+                if(e.detail.replace_with){
+                  cm_ref.current.replaceRange(e.detail.replace_with, cursor.from(), cursor.to())
+                }
+                else {
+                  cm_ref.current.markText(cursor.from(), cursor.to(), { css: "border: 2px solid blue" })
+                }
+
+                cm_ref.current.focus()
+                cm_ref.current.setCursor(cursor.to())
+                found = true
+
+
+              }
+            }
           }
 
-          cm_ref.current.setSelections(selections)
+          if(found){
+            e.preventDefault()
+          }
+          else{
+            cm_ref.current.setCursor({line:0, ch:0})
+          }
+        }
+      }
+
+      const replaceSelectedWordListener = (e) => {
+        if(!is_hidden){
+          if (cell_id == e.detail.selecting_cell) {
+            cm_ref.current.replaceSelection(e.detail.word)
+          }
         }
       }
 
       window.addEventListener("select_same_words", selectSameWordsListener)
+      window.addEventListener("replace_selected_word", replaceSelectedWordListener)
 
-      return () => { window.removeEventListener("select_same_words", selectSameWordsListener) }
+      return () => {
+        window.removeEventListener("select_same_words", selectSameWordsListener)
+        window.removeEventListener("replace_selected_word", replaceSelectedWordListener)
+      }
     }, [])
 
     useEffect(() => {

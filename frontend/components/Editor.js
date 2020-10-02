@@ -819,17 +819,9 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <aside id="findreplace_container">
-                      <form id="findform">
-                        <input/>
-                        <button>Next</button>
-                      </form>
-                      <form id="replaceform">
-                        <input/>
-                        <button>Replace</button>
-                        <button>All</button>
-                      </form>
-                    </aside>
+                    <${FindReplace}
+                      cells=${this.state.notebook.cells}
+                    />
                     <button class="toggle_export" title="Export..." onClick=${() => {
                         document.body.querySelector("header").classList.toggle("show_export")
                       }}>

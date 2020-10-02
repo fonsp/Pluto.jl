@@ -347,13 +347,14 @@ aside#findreplace_container.show_findreplace {
   display: flex;
 }
 
-aside#findreplace_container > form {
+aside#findreplace_container > div {
   display: flex;
   flex-direction: row;
   font-family: "Roboto Mono", monospace;
   font-size: 0.75rem;
+  padding-right: 5px;
 }
-aside#findreplace_container > form > input {
+aside#findreplace_container > div > input {
   border: 2px solid #818181;
   font-family: inherit;
   font-size: inherit;
@@ -361,7 +362,7 @@ aside#findreplace_container > form > input {
   padding: 3px;
   border-right: none;
 }
-aside#findreplace_container > form > button {
+aside#findreplace_container > div > button {
   cursor: pointer;
   background: #896c6c;
   border-radius: 0 3px 3px 0;
@@ -370,6 +371,7 @@ aside#findreplace_container > form > button {
   font-family: inherit;
   font-weight: 600;
   font-size: 0.75rem;
+  margin-right: 2px;
 }
 aside#export {
     overflow-x: hidden;
