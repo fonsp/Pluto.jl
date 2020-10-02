@@ -1,6 +1,6 @@
 # Will be evaluated _inside_ the workspace process.
 
-# Pluto does most things on process 1 (the server), and it uses little wokrpsace processes to evaluate notebook code in.
+# Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
 # These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
