@@ -47,7 +47,7 @@ function serialize_cells(cells) {
  * @return {Array<String>}
  */
 function deserialize_cells(serialized_cells) {
-    const segments = serialized_cells.split(/# ╔═╡ \S+\n/)
+    const segments = serialized_cells.split(/# ╔═╡ \S+\r?\n/)
     return segments.map((s) => s.trim()).filter((s) => s.length > 0)
 }
 
