@@ -32,9 +32,11 @@ Security settings for the HTTP server. Options are:
 
     If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
 
-    Use `true` on a computer used by multiple people simultaneously.
+    Use `true` on a computer used by multiple people simultaneously. Only use `false` if necessary.
 
 **Leave these options on `true` for the most secure setup.**
+
+Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
 """
 Base.@kwdef mutable struct SecurityOptions
     require_secret_for_open_links::Bool = true
