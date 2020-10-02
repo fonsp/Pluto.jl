@@ -40,7 +40,7 @@ end
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
     Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
@@ -64,7 +64,7 @@ Save the notebook to `io`, `file` or to `notebook.path`.
 
 In the produced file, cells are not saved in the notebook order. If `notebook.topolgy` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
 
-Have a look at or [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
+Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)

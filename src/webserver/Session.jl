@@ -121,7 +121,7 @@ function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Missin
                 Dict(
                     :notebook_id => notebook.notebook_id,
                     :path => notebook.path,
-                    :in_temp_dir => startswith(notebook.path, tempdir()),
+                    :in_temp_dir => startswith(notebook.path, new_notebooks_directory()),
                     :shortpath => basename(notebook.path)
                 ) for notebook in values(notebooks)
             ]

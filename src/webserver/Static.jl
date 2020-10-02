@@ -188,7 +188,7 @@ function http_router_for(session::ServerSession)
         sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
         sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
         
-        path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
+        path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
         readwrite(project_relative_path("sample", sample_path), path)
         
         try_launch_notebook_response(SessionActions.open, path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
