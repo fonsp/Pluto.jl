@@ -282,12 +282,19 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # function f(x, y) x + y end
             return explore!(Expr(:function, ex.args...), scopestate)
         end
-        assignees = get_assignees(ex.args[1])
+
         val = ex.args[2]
+        # Handle generic types assignments A{B} = C{B, Int}
+        if ex.args[1] isa Expr && ex.args[1].head == :curly
+            assignees, symstate = explore_funcdef!(ex.args[1], scopestate)
+            innersymstate = union!(symstate, explore!(val, scopestate))
+        else
+            assignees = get_assignees(ex.args[1])
+            symstate = innersymstate = explore!(val, scopestate)
+        end
 
         global_assignees = get_global_assignees(assignees, scopestate)
-        
-        symstate = innersymstate = explore!(val, scopestate)
+
         # If we are _not_ assigning a global variable, then this symbol hides any global definition with that name
         push!(scopestate.hiddenglobals, setdiff(assignees, global_assignees)...)
         assigneesymstate = explore!(ex.args[1], scopestate)
@@ -370,7 +377,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         equiv_func = Expr(:function, Expr(:call, structname, structfields...), Expr(:block, nothing))
 
-        return explore!(equiv_func, scopestate)
+        # struct should always be in Global state
+        globalscopestate = deepcopy(scopestate)
+        globalscopestate.inglobalscope = true
+
+        return explore!(equiv_func, globalscopestate)
     elseif ex.head == :generator
         # Creates local scope
 

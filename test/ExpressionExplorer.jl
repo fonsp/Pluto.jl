@@ -30,6 +30,9 @@ using Test
         @test testee(:(struct a; b; c; end), [], [], [], [
             :a => ([], [], [], [])
             ])
+        @test testee(:(let struct a; b; c; end end), [], [], [], [
+            :a => ([], [], [], [])
+            ])
 
         @test testee(:(module a; f(x) = x; z = r end), [], [:a], [], [])
     end
@@ -39,6 +42,9 @@ using Test
         @test testee(:(a::Foo, b::String = 1, "2"), [:Foo, :String], [:a, :b], [], [])
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
+
+        @test testee(:(A{B} = B), [], [:A], [], [])
+        @test testee(:(A{T} = Union{T, Int}), [:Int, :Union], [:A], [], [])
 
         @test testee(:(abstract type a end), [], [], [], [:a => ([], [], [], [])])
         @test testee(:(abstract type a <: b end), [], [], [], [:a => ([:b], [], [], [])])

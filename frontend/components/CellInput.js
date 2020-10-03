@@ -14,9 +14,11 @@ const all_equal = (x) => x.every((y) => y === x[0])
 
 export const CellInput = ({
     is_hidden,
+    local_code,
     remote_code,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
     on_submit,
@@ -90,7 +92,7 @@ export const CellInput = ({
                     dom_node_ref.current.appendChild(el)
                 },
                 {
-                    value: remote_code.body,
+                    value: local_code.body,
                     lineNumbers: true,
                     mode: "julia",
                     lineWrapping: true,
@@ -301,6 +303,9 @@ export const CellInput = ({
 
             if (focus_after_creation) {
                 cm.focus()
+            }
+            if (scroll_into_view_after_creation) {
+                dom_node_ref.current.scrollIntoView()
             }
 
             document.fonts.ready.then(() => {

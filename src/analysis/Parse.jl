@@ -72,12 +72,15 @@ end
 "Make some small adjustments to the `expr` to make it work nicely inside a timed, wrapped expression:
 
 1. If `expr` is a `:toplevel` expression (this is the case iff the expression is a combination of expressions using semicolons, like `a = 1; b` or `123;`), then it gets turned into a `:block` expression. The reason for this transformation is that `:toplevel` does not return/relay the output of its last argument, unlike `begin`, `let`, `if`, etc. (But we want it!)
-2. If `expr` is a `:module` expression, wrap it in a `:toplevel` block - module creation needs to be at toplevel. Rule 1. is not applied."
+2. If `expr` is a `:module` expression, wrap it in a `:toplevel` block - module creation needs to be at toplevel. Rule 1. is not applied.
+3. If `expr` is a `:(=)` expression with a curly assignment, wrap it in a `:const` to allow execution - see https://github.com/fonsp/Pluto.jl/issues/517 "
 function preprocess_expr(expr::Expr)
     if expr.head == :toplevel
 		Expr(:block, expr.args...)
     elseif expr.head == :module
         Expr(:toplevel, expr)
+    elseif expr.head == :(=) && (expr.args[1] isa Expr && expr.args[1].head == :curly)
+        Expr(:const, expr)
     else
         expr
     end
