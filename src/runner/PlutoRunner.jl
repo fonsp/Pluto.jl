@@ -586,15 +586,28 @@ end
 # REPL THINGS
 ###
 
-function transform_completion(completions::Vector{Completion})
-    completion_texts = completion_text.(completions)
-    sort(completion_texts, rev=true)
+not(pred) = value -> !pred(value)
+select_if_at(pos, predicate, texts) = filter(
+    text -> pos <= length(text) && predicate(text[pos]),
+    texts
+)
+
+function sort_completion(texts, pos = 1, acc = [])
+    if isempty(texts)
+        acc
+    else
+        lowercases = select_if_at(pos, islowercase, texts)
+        uppercases = select_if_at(pos, isuppercase, texts)
+        non_letters = select_if_at(pos, not(isletter), texts)
+        sort_completion(non_letters, pos + 1, [acc; lowercases; uppercases])
+    end
 end
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (transform_completion(results), loc, found)
+    sorted_completion = completion_text.(results) |> sort_completion
+    (sorted_completion, loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
