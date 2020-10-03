@@ -85,6 +85,7 @@ export const Cell = ({
     selected_friends,
     requests,
     client,
+    dispatch_mark,
     notebook_id,
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -178,6 +179,7 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 client=${client}
                 cell_id=${cell_id}
+                dispatch_mark=${dispatch_mark}
                 notebook_id=${notebook_id}
             />
             <${RunArea}

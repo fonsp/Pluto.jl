@@ -40,6 +40,7 @@ export class Editor extends Component {
             recently_deleted: null,
             connected: false,
             loading: true,
+            dispatch_find_replace: null
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -821,6 +822,7 @@ export class Editor extends Component {
                     />
                     <${FindReplace}
                       cells=${this.state.notebook.cells}
+                      dispatch=${this.state.dispatch_find_replace}
                     />
                     <button class="toggle_export" title="Export..." onClick=${() => {
                         document.body.querySelector("header").classList.toggle("show_export")
@@ -866,6 +868,7 @@ export class Editor extends Component {
                     all_completed_promise=${this.all_completed_promise}
                     selected_friends=${this.selected_friends}
                     requests=${this.requests}
+                    set_dispatch_find_replace=${(dispatch) => this.setState( { dispatch_find_replace: dispatch } )}
                     client=${this.client}
                 />
 

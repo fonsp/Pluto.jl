@@ -1,40 +1,25 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 export const FindReplace = ({
-  cells
+  cells,
+  dispatch
 }) => {
 
   const [find_value, set_find_value] = useState(null)
   const [replace_value, set_replace_value] = useState(null)
-  const [cell_idx, set_cell_idx] = useState(0)
 
   const handle_find_value_change = (event) => {
     const word = event.target.value
-
     set_find_value(word)
-    fire_select_same_words(word)
-  }
-
-  const select_at_idx = (current_cell_idx, replace_with = null) => {
-    if (fire_select_same_words(find_value, cells[current_cell_idx].cell_id), replace_with) {
-
-      if(current_cell_idx + 1 == cells.length){
-        set_cell_idx(0)
-        select_at_idx(0)
-      }
-      else{
-        set_cell_idx(current_cell_idx + 1)
-        select_at_idx(current_cell_idx + 1)
-      }
-    }
+    dispatch( { type: 'word', word: word } )
   }
 
   const select_next = () => {
-    select_at_idx(cell_idx)
+    dispatch( { type: 'next' } )
   }
 
   const replace = () => {
-    select_at_idx(cell_idx, replace_value)
+    dispatch( { type: 'replace', replace_with: replace_value } )
   }
 
   return html`
@@ -50,9 +35,4 @@ export const FindReplace = ({
       </div>
   </aside>
   `
-}
-
-const fire_select_same_words = (word, selecting_cell = null, replace_with = null) => {
-  const event = new CustomEvent("select_same_words", { detail: { word, selecting_cell, replace_with }, cancelable: true })
-  return window.dispatchEvent(event)
 }

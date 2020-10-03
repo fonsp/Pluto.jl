@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useReducer } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
@@ -29,6 +29,7 @@ export const CellInput = ({
     client,
     cell_id,
     notebook_id,
+    dispatch_mark
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
@@ -47,58 +48,38 @@ export const CellInput = ({
           // makes sure everything is deselected first
           cm_ref.current.getAllMarks().forEach((mark) => mark.clear())
 
-          const current_cursor = cm_ref.current.getCursor()
-          const after_current = (c) => {
-            return c.line > current_cursor.line || (c.line == current_cursor.line && c.ch >= current_cursor.ch)
-          }
-          var found = false
+          var markers = []
 
           var cursor = cm_ref.current.getSearchCursor(e.detail.word)
           while(cursor.findNext()){
             cm_ref.current.markText(cursor.from(), cursor.to(), { css: "color: orange" })
 
-            if (!found && cell_id == e.detail.selecting_cell) {
-              if (after_current(cursor.from())){
-
-                if(e.detail.replace_with){
-                  cm_ref.current.replaceRange(e.detail.replace_with, cursor.from(), cursor.to())
-                }
-                else {
-                  cm_ref.current.markText(cursor.from(), cursor.to(), { css: "border: 2px solid blue" })
-                }
-
+            const from = cursor.from()
+            const to = cursor.to()
+            const textmarker = {
+              select: () => {
+                textmarker.marker = cm_ref.current.markText(from, to, { css: "border: 2px solid blue" })
                 cm_ref.current.focus()
-                cm_ref.current.setCursor(cursor.to())
-                found = true
-
-
+                cm_ref.current.setCursor(to)
+              },
+              deselect: () => {
+                textmarker.marker.clear()
+              },
+              replace_with: (word) => {
+                cm_ref.current.replaceRange(word, from, to)
               }
             }
+            markers.push(textmarker)
           }
 
-          if(found){
-            e.preventDefault()
-          }
-          else{
-            cm_ref.current.setCursor({line:0, ch:0})
-          }
-        }
-      }
-
-      const replaceSelectedWordListener = (e) => {
-        if(!is_hidden){
-          if (cell_id == e.detail.selecting_cell) {
-            cm_ref.current.replaceSelection(e.detail.word)
-          }
+          dispatch_mark({ type: 'add_textmarkers', textmarkers: markers })
         }
       }
 
       window.addEventListener("select_same_words", selectSameWordsListener)
-      window.addEventListener("replace_selected_word", replaceSelectedWordListener)
 
       return () => {
         window.removeEventListener("select_same_words", selectSameWordsListener)
-        window.removeEventListener("replace_selected_word", replaceSelectedWordListener)
       }
     }, [])
 
