@@ -696,7 +696,7 @@ export class Editor extends Component {
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 this.delete_selected("Delete")
-                e.preventDefault()
+
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
