@@ -677,6 +677,7 @@ export class Editor extends Component {
             const selected = this.state.notebook.cells.filter((c) => c.selected)
             if (selected.length > 0) {
                 this.requests.confirm_delete_multiple(verb, selected)
+                return true
             }
         }
 
@@ -695,7 +696,9 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                this.delete_selected("Delete")
+                if(this.delete_selected("Delete")){
+                  e.preventDefault()
+                }
 
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
@@ -703,7 +706,7 @@ export class Editor extends Component {
                 // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
