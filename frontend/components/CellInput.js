@@ -83,7 +83,7 @@ export const CellInput = ({
       return () => {
         window.removeEventListener("select_same_words", selectSameWordsListener)
       }
-    }, [])
+    }, [is_hidden])
 
     useEffect(() => {
         if (!is_hidden) {

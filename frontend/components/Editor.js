@@ -698,7 +698,7 @@ export class Editor extends Component {
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
                 this.delete_selected("Delete")
-                e.preventDefault()
+                //e.preventDefault()
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
                 document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
                 document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")

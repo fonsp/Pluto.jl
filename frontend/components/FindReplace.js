@@ -19,7 +19,11 @@ export const FindReplace = ({
   }
 
   const replace = () => {
-    dispatch( { type: 'replace', replace_with: replace_value } )
+    dispatch( { type: 'replace', replace_with: replace_value, all: false } )
+  }
+
+  const replace_all = () => {
+    dispatch( { type: 'replace', replace_with: replace_value, all: true } )
   }
 
   return html`
@@ -31,7 +35,7 @@ export const FindReplace = ({
       <div id="replaceform">
         <input type="text" value=${replace_value} onKeyUp=${(e) => {set_replace_value(event.target.value)}}/>
         <button onClick=${replace}>Replace</button>
-        <button>All</button>
+        <button onClick=${replace_all}>All</button>
       </div>
   </aside>
   `
