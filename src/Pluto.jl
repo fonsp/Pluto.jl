@@ -36,6 +36,7 @@ include("./webserver/PutUpdates.jl")
 
 include("./analysis/Errors.jl")
 include("./analysis/Parse.jl")
+include("./analysis/Methods.jl")
 include("./analysis/Topology.jl")
 
 include("./evaluation/WorkspaceManager.jl")

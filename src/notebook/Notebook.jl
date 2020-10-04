@@ -1,13 +1,26 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, Signature
 import .Configuration
+
+export FunctionDefs, NotebookTopology
+
+struct FunctionDefs
+    combined_symstates::SymbolsState
+    # Cell => Definition
+    signatures::Dict{UUID,Signature}
+end
+
+FunctionDefs() = FunctionDefs(SymbolsState(), [])
+FunctionDefs(symstate::SymbolsState, definition::Pair{UUID,Signature}) = FunctionDefs(symstate, Dict(definition))
+
+Base.union(f1::FunctionDefs, f2::FunctionDefs) = FunctionDefs(union(f1.combined_symstates, f2.combined_symstates), merge(f1.signatures, f2.signatures))
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 struct NotebookTopology
 	symstates::Dict{Cell,SymbolsState}
-    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+    combined_funcdefs::Dict{Vector{Symbol},FunctionDefs}
 end
-NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
+NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},FunctionDefs}())
 
 # `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
 # with the performance benefit of only generating SymbolsState() when needed

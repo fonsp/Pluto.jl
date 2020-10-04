@@ -18,6 +18,14 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
 
+	# NOTE: it currently runs the duplicate methods detection on all cells
+	# Maybe it can run it on a subset of functions which have been updated
+  errable_cells_id_syms = detect_duplicated_methods(topology)
+  for (cell_id, func) in errable_cells_id_syms
+	  cell_idx = findfirst(cell -> cell.cell_id == cell_id, notebook.cells)
+	  errable[notebook.cells[cell_idx]] = MultipleDefinitionsError(Set([func]))
+	end
+
 	function dfs(cell::Cell)
 		if cell in exits
 			return
@@ -57,6 +65,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
 	ordered = reverse(exits)
+
 	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
 end
 
@@ -68,7 +77,7 @@ function where_referenced(notebook::Notebook, topology::NotebookTopology, symbol
 		end
         for func in topology[cell].funccalls
             if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].references)
+                if !disjoint(symbols, topology.combined_funcdefs[func].combined_symstates.references)
                     return true
                 end
             end
@@ -85,7 +94,7 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, symbols:
 		end
         for func in topology[cell].funccalls
             if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].assignments)
+                if !disjoint(symbols, topology.combined_funcdefs[func].combined_symstates.assignments)
                     return true
                 end
             end
@@ -103,7 +112,7 @@ function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, 
 			push!(found, func)
             if haskey(topology.combined_funcdefs, func)
                 inner_symstate = topology.combined_funcdefs[func]
-                all_indirect_calls(topology, inner_symstate, found)
+                all_indirect_calls(topology, inner_symstate.combined_symstates, found)
             end
 		end
 	end

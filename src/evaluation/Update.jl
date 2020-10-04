@@ -17,8 +17,21 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	updated_symstates = Dict(cell => ExpressionExplorer.try_compute_symbolreferences(cell.parsedcode) for cell in cells)
 	new_symstates = merge(old_topology.symstates, updated_symstates)
 
+	function reduce_funcdefs(acc::Dict{Array{Symbol,1},FunctionDefs}, cell::Tuple{UUID, Dict{Array{Symbol,1},SymbolsState}})
+		(cell_id, funcdefs) = cell
+		for (name, symstate) in funcdefs
+			if haskey(acc, name)
+				acc[name] = union(acc[name], FunctionDefs(symstate, cell_id => symstate.signature))
+			else
+				acc[name] = FunctionDefs(symstate, cell_id => symstate.signature)
+			end
+		end
+
+		acc
+	end
+
 	# Update the combined collection of function definitions, where multiple specialisations of a function are combined into a single `SymbolsState`.
-	new_funcdefs = union((symstate.funcdefs for (k, symstate) in new_symstates)...)
+	new_funcdefs = foldl(reduce_funcdefs, [(cell.cell_id, symstate.funcdefs) for (cell, symstate) in new_symstates], init=Dict{Array{Symbol,1}, FunctionDefs}())
 	new_topology = NotebookTopology(new_symstates, new_funcdefs)
 
 	for cell in cells
@@ -34,8 +47,8 @@ function finish_cache!(topology::NotebookTopology, cell::Cell)
 	calls = union!(calls, keys(topology[cell].funcdefs)) # _assume_ that all defined functions are called inside the cell to trigger eager reactivity.
 	filter!(in(keys(topology.combined_funcdefs)), calls)
 
-	union!(topology[cell].references, (topology.combined_funcdefs[func].references for func in calls)...)
-	union!(topology[cell].assignments, (topology.combined_funcdefs[func].assignments for func in calls)...)
+	union!(topology[cell].references, (topology.combined_funcdefs[func].combined_symstates.references for func in calls)...)
+	union!(topology[cell].assignments, (topology.combined_funcdefs[func].combined_symstates.assignments for func in calls)...)
 
 	add_funcnames!(topology, cell, calls)
 end
@@ -45,8 +58,8 @@ end
 Will add `Module.func` (stored as `Symbol[:Module, :func]`) as Symbol("Module.func") (which is not the same as the expression `:(Module.func)`)."""
 function add_funcnames!(topology::NotebookTopology, cell::Cell, calls::Set{Vector{Symbol}})
 	push!(topology[cell].references, (topology[cell].funccalls .|> join_funcname_parts)...)
-	push!(topology[cell].assignments, (keys(topology[cell].funcdefs) .|> join_funcname_parts)...)
+	# push!(topology[cell].assignments, (keys(topology[cell].funcdefs) .|> join_funcname_parts)...)
 
-	union!(topology[cell].references, (topology.combined_funcdefs[func].funccalls .|> join_funcname_parts for func in calls)...)
-	union!(topology[cell].assignments, (keys(topology.combined_funcdefs[func].funcdefs) .|> join_funcname_parts for func in calls)...)
+	union!(topology[cell].references, (topology.combined_funcdefs[func].combined_symstates.funccalls .|> join_funcname_parts for func in calls)...)
+	# union!(topology[cell].assignments, (keys(topology.combined_funcdefs[func].combined_symstates.funcdefs) .|> join_funcname_parts for func in calls)...)
 end

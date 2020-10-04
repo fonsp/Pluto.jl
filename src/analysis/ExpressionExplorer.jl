@@ -1,5 +1,5 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, Signature, Parameter, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -12,14 +12,49 @@ import Base: union, union!, ==, push!
 # TODO: use GlobalRef instead
 FuncName = Array{Symbol,1}
 
+struct Parameter
+    name::FuncName
+    optional::Bool
+end
+
+Parameter(name::FuncName) = Parameter(name, false)
+Parameter(name::Union{Symbol, Expr}) = Parameter(split_funcname(name))
+
+function Base.show(io::IO, p::Parameter)
+    print(io, "::")
+    for (i, s) in enumerate(p.name)
+        if i > 1
+            print(io, ".")
+        end
+        print(io, string(s))
+    end
+    if p.optional
+        print(io, "?")
+    end
+end
+
+Signature = Array{Parameter, 1}
+
+function Base.show(io::IO, s::Signature)
+    for (i, p) in enumerate(s)
+        if i > 1
+            print(io, ", ")
+        end
+        print(io, p)
+    end
+end
+
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
 mutable struct SymbolsState
     references::Set{Symbol}
     assignments::Set{Symbol}
     funccalls::Set{FuncName}
     funcdefs::Dict{FuncName,SymbolsState}
+    # Used only for funcdefs
+    signature::Signature
 end
 
+SymbolsState(references, assignments, funccalls, funcdefs) = SymbolsState(references, assignments, funccalls, funcdefs, [])
 SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{FuncName,SymbolsState}())
 SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
 SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
@@ -41,6 +76,9 @@ function Base.show(io::IO, s::SymbolsState)
             println(io)
         end
         print(io, "]")
+    end
+    if length(s.signature) > 0
+        print(io, ", signature[", s.signature, "]")
     end
     print(io, ")")
 end
@@ -75,7 +113,7 @@ function union!(a::Dict{FuncName,SymbolsState}, bs::Dict{FuncName,SymbolsState}.
 end
 
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs)
+    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs, a.signature ∪ b.signature)
 end
 
 function union!(a::SymbolsState, bs::SymbolsState...)
@@ -83,6 +121,7 @@ function union!(a::SymbolsState, bs::SymbolsState...)
     union!(a.assignments, (b.assignments for b in bs)...)
     union!(a.funccalls, (b.funccalls for b in bs)...)
     union!(a.funcdefs, (b.funcdefs for b in bs)...)
+    union!(a.signature, (b.signature for b in bs)...)
     return a
 end
 
@@ -620,12 +659,30 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
             symstate = explore!(ex.args[1], scopestate)
+            name = split_funcname(ex.args[1])
+
+            if !isnothing(symstate.signature)
+                push!(symstate.signature, Parameter(name))
+            else
+                symstate.signature = [Parameter(name)]
+            end
 
             return Symbol[], symstate
         end
-        
+
+
         # recurse
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
+
+        if ex.head == :(::)
+            name = split_funcname(ex.args[2])
+
+            if !isnothing(symstate.signature)
+                push!(symstate.signature, Parameter(name))
+            else
+                symstate.signature = [Parameter(name)]
+            end
+        end
         if length(ex.args) > 1
             # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
             union!(symstate, explore!(ex.args[2], scopestate))
