@@ -68,12 +68,34 @@ This will start the static HTTP server and a WebSocket server. The server runs _
 Pluto notebooks can be started from the main menu in the web browser.
 """
 function run(; kwargs...)
-    session = ServerSession(;options=Configuration.from_flat_kwargs(; kwargs...))
-    return run(session)
+    options = Configuration.from_flat_kwargs(; kwargs...)
+    run(options)
 end
 
-@deprecate run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) run(;host=host, port=port, kwargs...) false
-@deprecate run(port::Integer; kwargs...) run(;port=port, kwargs...) false
+function run(options::Configuration.Options)
+    session = ServerSession(;options=options)
+    run(session)
+end
+
+# Deprecation errors
+
+function run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...)
+    @error "Deprecated in favor of:
+    
+        run(;host=$host, port=$port)
+    "
+end
+
+function run(port::Integer; kwargs...)
+    @error "Oopsie! This is the old command to launch Pluto. The new command is:
+    
+        Pluto.run()
+    
+    without the port as argument - it will choose one automatically. If you need to specify the port, use:
+
+        Pluto.run(port=$port)
+    "
+end
 
 """
     run(session::ServerSession)
@@ -104,8 +126,7 @@ function run(session::ServerSession)
 
         if HTTP.WebSockets.is_upgrade(http.message)
             try
-                requestURI = http.message.target |> HTTP.URIs.unescapeuri |> HTTP.URI
-                @assert endswith(requestURI.path, string(session.secret))
+                @assert is_authenticated(session, http.message)
 
                 HTTP.WebSockets.upgrade(http) do clientstream
                     if !isopen(clientstream)
@@ -204,14 +225,23 @@ function run(session::ServerSession)
         end
     end
 
-    address = if session.options.server.root_url === nothing
-        hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
-        portPretty = Int(port)
-        "http://$(hostPretty):$(portPretty)/"
-    else
-        session.options.server.root_url
+    address = let
+        root = if session.options.server.root_url === nothing
+            hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
+            portPretty = Int(port)
+            "http://$(hostPretty):$(portPretty)/"
+        else
+            session.options.server.root_url
+        end
+
+        Sys.set_process_title("Pluto server - $root")
+
+        if session.options.security.require_secret_for_access
+            root * "?secret=$(session.secret)"
+        else
+            root
+        end
     end
-    Sys.set_process_title("Pluto server - $address")
 
     if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
