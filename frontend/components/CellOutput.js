@@ -106,10 +106,25 @@ let IframeContainer = ({ body }) => {
     useLayoutEffect(() => {
         let url = URL.createObjectURL(new Blob([body], { type: "text/html" }))
         imgref.current.src = url
+
+        run(async () => {
+            await new Promise((resolve) => imgref.current.addEventListener("load", () => resolve()))
+            let iframeDocument = imgref.current.contentWindow.document
+
+            let x = iframeDocument.createElement("script")
+            x.src = "https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.contentWindow.min.js"
+            x.integrity = "sha256-EH+7IdRixWtW5tdBwMkTXL+HvW5tAqV4of/HbAZ7nEc="
+            x.crossOrigin = "anonymous"
+            iframeDocument.head.appendChild(x)
+
+            new Promise((resolve) => x.addEventListener("load", () => resolve()))
+            window.iFrameResize({ checkOrigin: false }, imgref.current)
+        })
+
         return () => URL.revokeObjectURL(url)
     }, [body])
 
-    return html`<iframe style=${{ width: "100%" }} src="" ref=${imgref}></div>`
+    return html`<iframe style=${{ width: "100%", border: "none" }} src="" ref=${imgref}></div>`
 }
 
 let execute_dynamic_function = async ({ environment, code }) => {
