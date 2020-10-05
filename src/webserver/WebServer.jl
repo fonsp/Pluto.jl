@@ -50,13 +50,16 @@ function open_in_default_browser(url::AbstractString)::Bool
 end
 
 """
-    run(; kwargs...)
+    Pluto.run()
 
-Start Pluto! Are you excited? I am!
+Start Pluto! Yayo!
 
 ## Keyword arguments
+You can configure some of Pluto's more technical behaviour using keyword arguments, but this is mostly meant to support testing and strange setups like Docker. If you want to do something exciting with Pluto, you can probably write a creative notebook to do it!
 
-For the full list, see the [`Configuration`](@ref) module. Some **common parameters**:
+    Pluto.run(; kwargs...)
+
+For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common parameters**:
 
 - `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
