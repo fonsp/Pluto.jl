@@ -72,7 +72,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
-            if (body.startsWith("<!DOCTYPE")) {
+            if (body.startsWith("<!DOCTYPE ") || body.startsWith("<html>")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
                 return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
