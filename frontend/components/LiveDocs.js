@@ -11,12 +11,11 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
     const [hidden, set_hidden] = useState(true)
     const [loading, set_loading] = useState(false)
 
-    const liveDocRef = useRef()
+    const helpboxRef = useRef()
+    const liveDocSearchRef = useRef()
 
-    const fetch_docs = () => {
-        const new_query = desired_doc_query
+    const fetch_docs = (new_query) => {
         set_loading(true)
-        set_searched_query(new_query)
 
         Promise.race([
             observablehq.Promises.delay(2000, false),
@@ -39,7 +38,7 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
         window.addEventListener("open_live_docs", () => {
             // https://github.com/fonsp/Pluto.jl/issues/321
             set_hidden(false)
-            if (window.getComputedStyle(liveDocRef.current).display === "none") {
+            if (window.getComputedStyle(helpboxRef.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
         })
@@ -58,11 +57,12 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
             return
         }
 
-        fetch_docs()
+        set_searched_query(desired_doc_query)
+        fetch_docs(desired_doc_query)
     })
 
     return html`
-        <aside id="helpbox-wrapper">
+        <aside id="helpbox-wrapper" ref=${helpboxRef}>
             <pluto-helpbox class=${cl({ hidden, loading })}>
                 <header id="live-docs-search" onClick=${() => set_hidden(false)} contenteditable>
                     ${hidden || searched_query == null ? "Live docs" : searched_query}
