@@ -72,6 +72,12 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
+            if (body.startsWith("<!DOCTYPE")) {
+                return html`<${IframeContainer} body=${body} />`
+            } else {
+                return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
+            }
+            break
         case "application/vnd.pluto.tree+xml":
             return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
             break
@@ -90,6 +96,20 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             }
             break
     }
+}
+
+let IframeContainer = ({ body }) => {
+    // I know I know, this looks stupid.
+    // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
+    // and is removed when we are detatching from the DOM
+    let imgref = useRef()
+    useLayoutEffect(() => {
+        let url = URL.createObjectURL(new Blob([body], { type: "text/html" }))
+        imgref.current.src = url
+        return () => URL.revokeObjectURL(url)
+    }, [body])
+
+    return html`<iframe style=${{ width: "100%" }} src="" ref=${imgref}></div>`
 }
 
 let execute_dynamic_function = async ({ environment, code }) => {
