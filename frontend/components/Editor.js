@@ -694,7 +694,7 @@ export class Editor extends Component {
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
-            } else if (e.key === "Backspace" || e.key === "Delete") {
+            } else if (e.target.id !== "live-docs-search" && (e.key === "Backspace" || e.key === "Delete")) {
                 this.delete_selected("Delete")
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {

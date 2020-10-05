@@ -64,7 +64,9 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
     return html`
         <aside id="helpbox-wrapper">
             <pluto-helpbox class=${cl({ hidden, loading })}>
-                <header onClick=${() => set_hidden(!hidden)}>${hidden || searched_query == null ? "Live docs" : searched_query}</header>
+                <header id="live-docs-search" onClick=${() => set_hidden(false)} contenteditable>
+                    ${hidden || searched_query == null ? "Live docs" : searched_query}
+                </header>
                 <section>
                     <h1><code>${shown_query}</code></h1>
                     <${RawHTMLContainer} body=${body} pure=${true} on_render=${(n) => resolve_doc_reference_links(n, on_update_doc_query)} />
