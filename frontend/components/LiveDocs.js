@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useRef } from "../common/Preact.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
@@ -7,7 +7,7 @@ import { RawHTMLContainer } from "./CellOutput.js"
 export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, notebook }) => {
     const [shown_query, set_shown_query] = useState(null)
     const [searched_query, set_searched_query] = useState(null)
-    const [body, set_body] = useState("Start typing in a cell to learn more!")
+    const [body, set_body] = useState("Start typing in a cell or search box above to learn more!")
     const [hidden, set_hidden] = useState(true)
     const [loading, set_loading] = useState(false)
 
@@ -34,6 +34,7 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
         })
     }
 
+    // useOpenLiveDocsFromCell
     useEffect(() => {
         window.addEventListener("open_live_docs", () => {
             // https://github.com/fonsp/Pluto.jl/issues/321
@@ -44,6 +45,7 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
         })
     }, [])
 
+    // useQueryFromCell
     useEffect(() => {
         if (hidden || loading) {
             return
@@ -57,15 +59,31 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
             return
         }
 
+        liveDocSearchRef.current.innerText = desired_doc_query
         set_searched_query(desired_doc_query)
         fetch_docs(desired_doc_query)
-    })
+    }, [desired_doc_query])
 
     return html`
         <aside id="helpbox-wrapper" ref=${helpboxRef}>
             <pluto-helpbox class=${cl({ hidden, loading })}>
-                <header id="live-docs-search" onClick=${() => set_hidden(false)} contenteditable>
-                    ${hidden || searched_query == null ? "Live docs" : searched_query}
+                <header
+                    id="live-docs-search"
+                    ref=${liveDocSearchRef}
+                    onClick=${() => {
+                        set_hidden(false)
+                        setTimeout(() => liveDocSearchRef.current.focus(), 0)
+                    }}
+                    onInput=${(e) => {
+                        if(e.target.innerText === "") {
+                            e.target.innerText = ZERO_WIDTH_SPACE
+                        }
+                        const cleanedText = e.target.innerText.replace(ZERO_WIDTH_SPACE, "").trim()
+                        fetch_docs(cleanedText)
+                    }}
+                    contenteditable=${!hidden}
+                >
+                    ${hidden ? "Live docs" : ZERO_WIDTH_SPACE}
                 </header>
                 <section>
                     <h1><code>${shown_query}</code></h1>
@@ -89,3 +107,5 @@ const resolve_doc_reference_links = (node, on_update_doc_query) => {
         }
     })
 }
+
+const ZERO_WIDTH_SPACE = "⁣"
