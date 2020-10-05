@@ -71,7 +71,7 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
                     id="live-docs-search"
                     ref=${liveDocSearchRef}
                     onClick=${() => {
-                        set_hidden(false)
+                        set_hidden(!hidden)
                         setTimeout(() => liveDocSearchRef.current.focus(), 0)
                     }}
                     onInput=${(e) => {
