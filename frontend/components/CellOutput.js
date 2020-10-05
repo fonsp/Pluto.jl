@@ -7,7 +7,7 @@ import { ErrorMessage } from "./ErrorMessage.js"
 import { connect_bonds } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
-import "../common/SetupCellEnvironment.js"
+import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import "../treeview.js"
 
 export class CellOutput extends Component {
@@ -15,8 +15,20 @@ export class CellOutput extends Component {
         return last_run_timestamp !== this.props.last_run_timestamp
     }
 
-    componentWillUpdate() {
-        this.old_height = this.base.scrollHeight
+    getSnapshotBeforeUpdate() {
+        return this.base.scrollHeight
+    }
+
+    componentDidUpdate(prevProps, prevState, snapshot) {
+        // Scroll the page to compensate for change in page height:
+        const new_height = this.base.scrollHeight
+
+        if (document.body.querySelector("pluto-cell:focus-within")) {
+            const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
+            if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                window.scrollBy(0, new_height - snapshot)
+            }
+        }
     }
 
     render() {
@@ -32,18 +44,6 @@ export class CellOutput extends Component {
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `
-    }
-
-    componentDidUpdate() {
-        // Scroll the page to compensate for change in page height:
-        const new_height = this.base.scrollHeight
-
-        if (document.body.querySelector("pluto-cell:focus-within")) {
-            const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-            if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
-                window.scrollBy(0, new_height - this.old_height)
-            }
-        }
     }
 }
 
@@ -136,6 +136,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                         this: script_id ? previous_results_map.get(script_id) : undefined,
                         currentScript: node,
                         invalidation: invalidation,
+                        ...observablehq_for_cells,
                     },
                     code: node.innerHTML,
                 })
@@ -143,7 +144,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     results_map.set(script_id, result)
                 }
                 if (result instanceof HTMLElement && result.nodeType === Node.ELEMENT_NODE) {
-                    node.parentElement.insertBefore(result, node.nextSibling)
+                    node.parentElement.insertBefore(result, node)
                 }
             } catch (err) {
                 console.log("Couldn't execute script:", node)
@@ -155,71 +156,51 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
     return results_map
 }
 
-export class RawHTMLContainer extends Component {
-    constructor() {
-        super()
-        this.previous_results_map = new Map()
-    }
-    async render_DOM() {
-        this.invalidate_scripts?.()
-        console.log("Render DOM")
+let run = (f) => f()
 
-        this.base.innerHTML = this.props.body
+export let RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
+    let previous_results_map = useRef(new Map())
 
+    let invalidate_scripts = useRef(() => {})
+
+    let container = useRef()
+
+    useLayoutEffect(() => {
+        // Invalidate current scripts and create a new invalidation token immediately
         let invalidation = new Promise((resolve) => {
-            this.invalidate_scripts = () => {
+            invalidate_scripts.current = () => {
                 resolve()
-                invalidation.isInvalidated = true
             }
         })
-        invalidation.isInvalidated = false
 
-        this.previous_results_map = await execute_scripttags({
-            root_node: this.base,
-            script_nodes: Array.from(this.base.querySelectorAll("script")),
-            invalidation: invalidation,
-            previous_results_map: this.previous_results_map,
+        // Actually "load" the html
+        container.current.innerHTML = body
+
+        run(async () => {
+            previous_results_map.current = await execute_scripttags({
+                root_node: container.current,
+                script_nodes: Array.from(container.current.querySelectorAll("script")),
+                invalidation: invalidation,
+                previous_results_map: previous_results_map.current,
+            })
+
+            if (all_completed_promise != null && requests != null) {
+                connect_bonds(container.current, all_completed_promise, requests)
+            }
+
+            // convert LaTeX to svg
+            try {
+                window.MathJax.typeset([container.current])
+            } catch (err) {
+                console.info("Failed to typeset TeX:")
+                console.info(err)
+            }
         })
 
-        if (this.props.all_completed_promise != null && this.props.requests != null) {
-            connect_bonds(this.base, this.props.all_completed_promise, this.props.requests)
+        return () => {
+            invalidate_scripts.current?.()
         }
+    })
 
-        // convert LaTeX to svg
-        try {
-            window.MathJax.typeset([this.base])
-        } catch (err) {
-            console.info("Failed to typeset TeX:")
-            console.info(err)
-        }
-
-        if (this.props.on_render != null) {
-            this.props.on_render(this.base)
-        }
-    }
-
-    shouldComponentUpdate(new_props) {
-        const pure = this.props.pure === true && new_props.pure === true
-        if (pure) {
-            return this.props.body !== new_props.body
-        } else {
-            return true
-        }
-    }
-
-    componentDidUpdate() {
-        this.render_DOM()
-    }
-
-    componentDidMount() {
-        this.render_DOM()
-    }
-
-    componentWillUnmount() {
-        this.invalidate_scripts?.()
-    }
-
-    render() {
-        return html`<div></div>`
-    }
+    return html`<div ref=${container}></div>`
 }
