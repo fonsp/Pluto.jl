@@ -1,5 +1,5 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FuncName, join_funcname_parts
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FunctionName, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -10,19 +10,20 @@ import Base: union, union!, ==, push!
 ###
 
 # TODO: use GlobalRef instead
-FuncName = Array{Symbol,1}
+FunctionName = Array{Symbol,1}
 
-"SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
-mutable struct SymbolsState
-    references::Set{Symbol}
-    assignments::Set{Symbol}
-    funccalls::Set{FuncName}
-    funcdefs::Dict{FuncName,SymbolsState}
+struct FunctionNameSignaturePair
+    name::FunctionName
+    canonicalized_head::Any
 end
 
-SymbolsState(references, assignments, funccalls) = SymbolsState(references, assignments, funccalls, Dict{FuncName,SymbolsState}())
-SymbolsState(references, assignments) = SymbolsState(references, assignments, Set{Symbol}())
-SymbolsState() = SymbolsState(Set{Symbol}(), Set{Symbol}())
+"SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
+Base.@kwdef mutable struct SymbolsState
+    references::Set{Symbol} = Set{Symbol}()
+    assignments::Set{Symbol} = Set{Symbol}()
+    funccalls::Set{FunctionName} = Set{FunctionName}()
+    funcdefs::Dict{FunctionName,SymbolsState} = Dict{FunctionName,SymbolsState}()
+end
 
 function Base.show(io::IO, s::SymbolsState)
     print(io, "SymbolsState([")
@@ -56,11 +57,11 @@ end
 
 # The `union` and `union!` overloads define how two `SymbolsState`s or two `ScopeState`s are combined.
 
-function union(a::Dict{FuncName,SymbolsState}, bs::Dict{FuncName,SymbolsState}...)
-    union!(Dict{FuncName,SymbolsState}(), a, bs...)
+function union(a::Dict{FunctionName,SymbolsState}, bs::Dict{FunctionName,SymbolsState}...)
+    union!(Dict{FunctionName,SymbolsState}(), a, bs...)
 end
 
-function union!(a::Dict{FuncName,SymbolsState}, bs::Dict{FuncName,SymbolsState}...)
+function union!(a::Dict{FunctionName,SymbolsState}, bs::Dict{FunctionName,SymbolsState}...)
     for b in bs
         for (k, v) in b
             if haskey(a, k)
@@ -86,7 +87,7 @@ function union!(a::SymbolsState, bs::SymbolsState...)
     return a
 end
 
-function union!(a::Tuple{FuncName,SymbolsState}, bs::Tuple{FuncName,SymbolsState}...)
+function union!(a::Tuple{FunctionName,SymbolsState}, bs::Tuple{FunctionName,SymbolsState}...)
     a[1], union!(a[2], (b[2] for b in bs)...)
 end
 
@@ -154,7 +155,7 @@ function get_global_assignees(assignee_exprs, scopestate::ScopeState)::Set{Symbo
     return global_assignees
 end
 
-function get_assignees(ex::Expr)::FuncName
+function get_assignees(ex::Expr)::FunctionName
     if ex.head == :tuple
         # e.g. (x, y) in the ex (x, y) = (1, 23)
         union!(Symbol[], get_assignees.(ex.args)...)
@@ -178,7 +179,7 @@ get_assignees(ex::Symbol) = Symbol[ex]
 # This is parsable code, so we have to treat it
 get_assignees(::Any) = Symbol[]
 
-# TODO: this should return a FuncName, and use `split_funcname`.
+# TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
 function uncurly!(ex::Expr, scopestate::ScopeState)::Symbol
     @assert ex.head == :curly
@@ -191,7 +192,7 @@ uncurly!(ex::Expr)::Symbol = ex.args[1]
 uncurly!(s::Symbol, scopestate=nothing)::Symbol = s
 
 "Turn `:(Base.Submodule.f)` into `[:Base, :Submodule, :f]` and `:f` into `[:f]`."
-function split_funcname(funcname_ex::Expr)::FuncName
+function split_funcname(funcname_ex::Expr)::FunctionName
     if funcname_ex.head == :(.)
         vcat(split_funcname.(funcname_ex.args)...)
     else
@@ -201,16 +202,16 @@ function split_funcname(funcname_ex::Expr)::FuncName
     end
 end
 
-function split_funcname(funcname_ex::QuoteNode)::FuncName
+function split_funcname(funcname_ex::QuoteNode)::FunctionName
     split_funcname(funcname_ex.value)
 end
 
-function split_funcname(funcname_ex::Symbol)::FuncName
+function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
 end
 
 # this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
-function split_funcname(::Any)::FuncName
+function split_funcname(::Any)::FunctionName
     Symbol[]
 end
 
@@ -238,7 +239,7 @@ end
 
 This is **not** the same as the expression `:(Module.func)`, but is used to identify the function name using a single `Symbol` (like normal variables).
 This means that it is only the inverse of `ExpressionExplorer.split_funcname` iff `length(parts) ≤ 1`."""
-function join_funcname_parts(parts::FuncName)::Symbol
+function join_funcname_parts(parts::FunctionName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
 
@@ -264,9 +265,9 @@ end
 # Therefore, this method only handles _references_, which are added to the symbolstate, depending on the scopestate.
 function explore!(sym::Symbol, scopestate::ScopeState)::SymbolsState
     if sym ∈ scopestate.hiddenglobals
-        SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{Symbol}(), Dict{FuncName,SymbolsState}())
+        SymbolsState()
     else
-        SymbolsState(Set([sym]), Set{Symbol}(), Set{Symbol}(), Dict{FuncName,SymbolsState}())
+        SymbolsState(references=Set([sym]))
     end
 end
 
@@ -344,7 +345,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 syms = filter(x -> x isa Symbol, ex.args[2:end])
                 rest = setdiff(ex.args[2:end], syms)
                 
-                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(Set{Symbol}(), Set{Symbol}(syms), Set{FuncName}([[Symbol("@enum")]])))
+                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(assignments=Set{Symbol}(syms), funccalls=Set{FunctionName}([[Symbol("@enum")]])))
             end
         end
 
@@ -359,10 +360,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             if funcname[1] ∈ scopestate.hiddenglobals
                 SymbolsState()
             else
-            SymbolsState(Set{Symbol}(), Set{Symbol}(), Set{FuncName}([funcname]))
+            SymbolsState(funccalls=Set{FunctionName}([funcname]))
             end
         else
-            SymbolsState(Set{Symbol}([funcname[end - 1]]), Set{Symbol}(), Set{FuncName}([funcname]))
+            SymbolsState(references=Set{Symbol}([funcname[end - 1]]), funccalls=Set{FunctionName}([funcname]))
         end
         # Explore code inside function arguments:
         union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
@@ -583,9 +584,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
             packagenames = map(e -> e.args[end], imports)
 
-            return SymbolsState(Set{Symbol}(), Set{Symbol}(packagenames))
+            return SymbolsState(assignments=Set{Symbol}(packagenames))
         else
-            return SymbolsState(Set{Symbol}(), Set{Symbol}())
+            return SymbolsState()
         end
     elseif ex.head == :quote
         # We ignore contents
@@ -594,7 +595,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :module
         # We ignore contents; the module name is a definition
 
-        return SymbolsState(Set{Symbol}(), Set{Symbol}([ex.args[2]]))
+        return SymbolsState(assignments=Set{Symbol}([ex.args[2]]))
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
@@ -609,7 +610,7 @@ end
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
 Is also used for `struct` and `abstract`."
-function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,SymbolsState}
+function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
         # get the function name
         name, symstate = explore_funcdef!(ex.args[1], scopestate)
@@ -675,16 +676,16 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FuncName,Symb
     end
 end
 
-function explore_funcdef!(ex::QuoteNode, scopestate::ScopeState)::Tuple{FuncName,SymbolsState}
+function explore_funcdef!(ex::QuoteNode, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     explore_funcdef!(ex.value, scopestate)
 end
 
-function explore_funcdef!(ex::Symbol, scopestate::ScopeState)::Tuple{FuncName,SymbolsState}
+function explore_funcdef!(ex::Symbol, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     push!(scopestate.hiddenglobals, ex)
     Symbol[ex |> without_dotprefix |> without_dotsuffix], SymbolsState()
 end
 
-function explore_funcdef!(::Any, ::ScopeState)::Tuple{FuncName,SymbolsState}
+function explore_funcdef!(::Any, ::ScopeState)::Tuple{FunctionName,SymbolsState}
     Symbol[], SymbolsState()
 end
 
@@ -714,7 +715,7 @@ function try_compute_symbolreferences(ex::Any)
 	catch e
 		@error "Expression explorer failed on: " ex
 		showerror(stderr, e, stacktrace(catch_backtrace()))
-		SymbolsState(Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]), Set{Symbol}())
+		SymbolsState(references=Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]))
 	end
 end
 
