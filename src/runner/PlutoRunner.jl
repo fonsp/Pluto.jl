@@ -63,7 +63,7 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -115,16 +115,16 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."
-isfromtoplevel(method::Method) = startswith(nameof(method.module) |> string, "workspace")
+isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
 "Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂"
-function delete_toplevel_methods(f::Function)
+function delete_toplevel_methods(f::Function, cell_id::UUID)
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromtoplevel(method) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
             push!(deleted_sigs, method.sig)
         end
@@ -138,7 +138,7 @@ function delete_toplevel_methods(f::Function)
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
-            if !isfromtoplevel(method) && method.sig ∈ deleted_sigs
+            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
                 push!(to_insert, method)
             end
         end
@@ -150,18 +150,18 @@ function delete_toplevel_methods(f::Function)
     end
 end
 
-function try_delete_toplevel_methods(workspace::Module, name::Symbol)
-    try_delete_toplevel_methods(workspace, [name])
-end
+# function try_delete_toplevel_methods(workspace::Module, name::Symbol)
+#     try_delete_toplevel_methods(workspace, [name])
+# end
 
-function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbol})
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})
     try
         val = workspace
         for name in name_parts
             val = getfield(val, name)
         end
         try
-            (val isa Function) && delete_toplevel_methods(val)
+            (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
             showerror(stderr, ex, stacktrace(catch_backtrace()))
