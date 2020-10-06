@@ -2,6 +2,7 @@ module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
+import ..Pluto.ExpressionExplorer: FunctionNameSignaturePair
 import ..PlutoRunner
 import Distributed
 
@@ -267,7 +268,7 @@ function eval_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Not
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{FunctionNameSignaturePair}, module_imports_to_move::Set{Expr}; kwargs...)
     workspace = get_workspace(session_notebook)
 
     old_workspace_name = workspace.module_name
@@ -276,7 +277,7 @@ function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Works
     workspace.module_name = new_workspace_name
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
 
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $(Set(ns.name for ns in funcs_to_delete)), $module_imports_to_move)))
 end
 
 "Force interrupt (SIGINT) a workspace, return whether successful"

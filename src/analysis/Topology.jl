@@ -1,4 +1,4 @@
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, FunctionName
 
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
@@ -66,13 +66,13 @@ function where_referenced(notebook::Notebook, topology::NotebookTopology, symbol
 		if !disjoint(symbols, topology[cell].references)
 			return true
 		end
-        for func in topology[cell].funccalls
-            if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].references)
-                    return true
-                end
-            end
-		end
+        # for func in topology[cell].funccalls
+        #     if haskey(topology.combined_funcdefs, func)
+        #         if !disjoint(symbols, topology.combined_funcdefs[func].references)
+        #             return true
+        #         end
+        #     end
+		# end
 		return false
 	end
 end
@@ -83,33 +83,33 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, symbols:
 		if !disjoint(symbols, topology[cell].assignments)
 			return true
 		end
-        for func in topology[cell].funccalls
-            if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].assignments)
-                    return true
-                end
-            end
-		end
+        # for func in topology[cell].funccalls
+        #     if haskey(topology.combined_funcdefs, func)
+        #         if !disjoint(symbols, topology.combined_funcdefs[func].assignments)
+        #             return true
+        #         end
+        #     end
+		# end
 		return false
 	end
 end
 
-"Return all functions called by a cell, and all functions called by those functions, et cetera."
-function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
-	for func in symstate.funccalls
-		if func in found
-			# done
-		else
-			push!(found, func)
-            if haskey(topology.combined_funcdefs, func)
-                inner_symstate = topology.combined_funcdefs[func]
-                all_indirect_calls(topology, inner_symstate, found)
-            end
-		end
-	end
+# "Return all functions called by a cell, and all functions called by those functions, et cetera."
+# function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, found::Set{FunctionName}=Set{FunctionName}())::Set{FunctionName}
+# 	for func in symstate.funccalls
+# 		if func in found
+# 			# done
+# 		else
+# 			push!(found, func)
+#             if haskey(topology.combined_funcdefs, func)
+#                 inner_symstate = topology.combined_funcdefs[func]
+#                 all_indirect_calls(topology, inner_symstate, found)
+#             end
+# 		end
+# 	end
 
-	return found
-end
+# 	return found
+# end
 
 const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 

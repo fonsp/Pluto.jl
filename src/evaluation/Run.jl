@@ -1,5 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
+import .ExpressionExplorer: FunctionNameSignaturePair
 
 Base.push!(x::Set{Cell}) = x
 
@@ -29,7 +30,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	old_runnable = old_order.runnable
 	to_delete_vars = union!(Set{Symbol}(), (old_topology[cell].assignments for cell in old_runnable)...)
-	to_delete_funcs = union!(Set{Vector{Symbol}}(), (keys(old_topology[cell].funcdefs) for cell in old_runnable)...)
+	to_delete_funcs = union!(Set{FunctionNameSignaturePair}(), (keys(old_topology[cell].funcdefs) for cell in old_runnable)...)
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
