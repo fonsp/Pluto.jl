@@ -1,5 +1,6 @@
 include("./helpers.jl")
 include("./React.jl")
+@test false
 include("./ExpressionExplorer.jl")
 include("./Configuration.jl")
 include("./Dynamic.jl")

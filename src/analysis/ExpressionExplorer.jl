@@ -714,7 +714,7 @@ function compute_symbolreferences(ex::Any)::SymbolsState
     symstate
 end
 
-function try_compute_symbolreferences(ex::Any)
+function try_compute_symbolreferences(ex::Any)::SymbolsState
 	try
 		compute_symbolreferences(ex)
 	catch e

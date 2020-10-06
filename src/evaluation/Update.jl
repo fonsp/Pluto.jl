@@ -1,5 +1,5 @@
 import .ExpressionExplorer
-import .ExpressionExplorer: join_funcname_parts
+import .ExpressionExplorer: join_funcname_parts, FunctionNameSignaturePair
 
 "Update the cell's caches, i.e. parse code and collect metadata."
 function update_caches!(notebook::Notebook, cells)
@@ -14,33 +14,17 @@ end
 
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
 function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
-	updated_symstates = Dict(cell => ExpressionExplorer.try_compute_symbolreferences(cell.parsedcode) for cell in cells)
-	new_symstates = merge(old_topology.symstates, updated_symstates)
+	# TODO (performance): deleted cells should not stay in the topology
 
-	new_topology = NotebookTopology(new_symstates)
-
-	for cell in cells
-		merge_functions_into_symstate!(new_topology[cell])
-	end
+	updated_nodes = Dict(cell => (
+			cell.parsedcode |> 
+			ExpressionExplorer.try_compute_symbolreferences |> 
+			ReactiveNode
+		) for cell in cells)::Dict{Cell,ReactiveNode}
 	
+	new_nodes = merge(old_topology.nodes, updated_nodes)
+
+	new_topology = NotebookTopology(new_nodes)
+
 	new_topology
-end
-
-"Account for globals referenced in function calls by including `SymbolsState`s from defined functions in the cell itself."
-function merge_functions_into_symstate!(symstate::SymbolsState)
-	# re c   u     r         s                            e
-	for (_, body_symstate) in symstate.funcdefs
-		merge_functions_into_symstate!(body_symstate)
-	end
-
-	add_funcnames!(symstate)
-	union!(symstate, (symstate for (_, symstate) in symstate.funcdefs)...)
-end
-
-"""Add method calls and definitions as symbol references and definition, resp.
-
-Will add `Module.func` (stored as `Symbol[:Module, :func]`) as Symbol("Module.func") (which is not the same as the expression `:(Module.func)`)."""
-function add_funcnames!(symstate::SymbolsState)
-	push!(symstate.references, (symstate.funccalls .|> join_funcname_parts)...)
-	push!(symstate.assignments, (join_funcname_parts(namesig.name) for namesig ∈ keys(symstate.funcdefs))...)
 end

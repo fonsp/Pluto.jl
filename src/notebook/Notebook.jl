@@ -2,18 +2,30 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-"The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-	symstates::Dict{Cell,SymbolsState} = Dict{Cell,SymbolsState}()
+
+Base.@kwdef struct ReactiveNode
+	references::Set{Symbol} = Set{Symbol}()
+	definitions_with_signatures::Set{Symbol} = Set{Symbol}()
+    definitions_without_signatures::Set{Symbol} = Set{Symbol}()
+    funcdef_names::Set{FunctionName} = Set{FunctionName}()
 end
 
-# `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
-# with the performance benefit of only generating SymbolsState() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)
-    # get(SymbolsState, topology.symstates, cell)
-    result = get(topology.symstates, cell, nothing)
-    result === nothing ? SymbolsState() : result
+"The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
+Base.@kwdef struct NotebookTopology
+	nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
 end
+
+# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
+# with the performance benefit of only generating ReactiveNode() when needed
+function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
+    # get(ReactiveNode, topology.nodes, cell)
+    result = get(topology.nodes, cell, nothing)
+    result === nothing ? ReactiveNode() : result
+end
+
+# function Base.setindex!(topology::NotebookTopology, node::ReactiveNode, cell::Cell)
+#     setindex!(topology.nodes, node, cell)
+# end
 
 "Like a [`Diary`](@ref) but more serious. 📓"
 mutable struct Notebook
