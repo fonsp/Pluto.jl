@@ -1,11 +1,11 @@
 include("./helpers.jl")
-include("./React.jl")
 include("./MethodSignatures.jl")
+include("./React.jl")
+include("./Notebook.jl")
 include("./Dynamic.jl")
 include("./ExpressionExplorer.jl")
 include("./Configuration.jl")
 include("./Analysis.jl")
-include("./Notebook.jl")
 include("./RichOutput.jl")
 include("./WorkspaceManager.jl")
 
