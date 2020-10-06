@@ -1,5 +1,5 @@
 import Pluto
-import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
@@ -32,7 +32,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     result.funcdefs = let
         newfuncdefs = Dict()
         for (k, v) in result.funcdefs
-            newfuncdefs[new_name.(k)] = v
+            newfuncdefs[FunctionNameSignaturePair(new_name.(k.name), k.canonicalized_head)] = v
         end
         newfuncdefs
     end
@@ -61,7 +61,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
         new_v = v isa SymbolsState ? v : easy_symstate(v...)
-        return new_k => new_v
+        return FunctionNameSignaturePair(new_k, "hello") => new_v
     end |> Dict
 
     SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)

@@ -17,12 +17,15 @@ struct FunctionNameSignaturePair
     canonicalized_head::Any
 end
 
+Base.:(==)(a::FunctionNameSignaturePair, b::FunctionNameSignaturePair) = a.name == b.name && a.canonicalized_head == b.canonicalized_head
+Base.hash(a::FunctionNameSignaturePair, h::UInt) = hash(a.name, hash(a.canonicalized_head, h))
+
 "SymbolsState trickles _down_ the ASTree: it carries referenced and defined variables from endpoints down to the root."
 Base.@kwdef mutable struct SymbolsState
     references::Set{Symbol} = Set{Symbol}()
     assignments::Set{Symbol} = Set{Symbol}()
     funccalls::Set{FunctionName} = Set{FunctionName}()
-    funcdefs::Dict{FunctionName,SymbolsState} = Dict{FunctionName,SymbolsState}()
+    funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
 end
 
 function Base.show(io::IO, s::SymbolsState)
@@ -57,11 +60,11 @@ end
 
 # The `union` and `union!` overloads define how two `SymbolsState`s or two `ScopeState`s are combined.
 
-function union(a::Dict{FunctionName,SymbolsState}, bs::Dict{FunctionName,SymbolsState}...)
-    union!(Dict{FunctionName,SymbolsState}(), a, bs...)
+function union(a::Dict{FunctionNameSignaturePair,SymbolsState}, bs::Dict{FunctionNameSignaturePair,SymbolsState}...)
+    union!(Dict{FunctionNameSignaturePair,SymbolsState}(), a, bs...)
 end
 
-function union!(a::Dict{FunctionName,SymbolsState}, bs::Dict{FunctionName,SymbolsState}...)
+function union!(a::Dict{FunctionNameSignaturePair,SymbolsState}, bs::Dict{FunctionNameSignaturePair,SymbolsState}...)
     for b in bs
         for (k, v) in b
             if haskey(a, k)
@@ -411,8 +414,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
         
+        funcnamesig = FunctionNameSignaturePair(funcname, "hello")
+
         if will_assign_global(funcname, scopestate)
-            symstate.funcdefs[funcname] = innersymstate
+            symstate.funcdefs[funcnamesig] = innersymstate
             if length(funcname) == 1
                 push!(scopestate.definedfuncs, funcname[end])
                 push!(scopestate.hiddenglobals, funcname[end])
