@@ -35,16 +35,20 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		end
 
 		push!(entries, cell)
-		assigners = where_assigned(notebook, topology, topology[cell].assignments)
-		if !allow_multiple_defs && length(assigners) > 1
-			for c in assigners
-				errable[c] = MultipleDefinitionsError(topology, c, assigners)
+		if any_funcdef_assigns_global(topology[cell])
+			errable[cell] = FunctionAssignsGlobalError(topology, cell)
+		else
+			assigners = where_assigned(notebook, topology, topology[cell].assignments)
+			if !allow_multiple_defs && length(assigners) > 1
+				for c in assigners
+					errable[c] = MultipleDefinitionsError(topology, c, assigners)
+				end
 			end
-		end
-		referencers = where_referenced(notebook, topology, topology[cell].assignments) |> Iterators.reverse
-		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
-			if c != cell
-				dfs(c)
+			referencers = where_referenced(notebook, topology, topology[cell].assignments) |> Iterators.reverse
+			for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
+				if c != cell
+					dfs(c)
+				end
 			end
 		end
 		push!(exits, cell)
@@ -102,5 +106,11 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Numb
 		3
 	else
 		4
+	end
+end
+
+function any_funcdef_assigns_global(symstate::SymbolsState)
+	any(symstate.funcdefs) do (_, body)
+		!isempty(body.assignments)
 	end
 end

@@ -571,7 +571,7 @@ import JSON
     @testset "Functional programming" begin
         notebook = Notebook([
             Cell("a = 1"),
-            Cell("map(2:2) do val; (global a = val; 2*val) end |> last"),
+            Cell("map(2:2) do val; (a = val; 2*val) end |> last"),
 
             Cell("b = 3"),
             Cell("g = f"),
@@ -584,12 +584,7 @@ import JSON
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
-        @test occursinerror("Multiple definitions for a", notebook.cells[1])
-        @test occursinerror("Multiple definitions for a", notebook.cells[2])
-
-        setcode(notebook.cells[1], "a")
-        update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == "2"
+        @test notebook.cells[1].output_repr == "1"
         @test notebook.cells[2].output_repr == "4"
 
         update_run!(🍭, notebook, notebook.cells[3:6])
@@ -624,12 +619,20 @@ import JSON
             Cell("y = -3; y = 3"),
             Cell("z = 4"),
             Cell("let global z = 5 end"),
-            Cell("w"),
-            Cell("function f(x) global w = x end"),
-            Cell("f(8)"),
+            Cell("wowow"),
+            Cell("function floep(x) global wowow = x end"),
+            Cell("floep(8)"),
             Cell("v"),
             Cell("function g(x) global v = x end; g(10)"),
             Cell("g(11)"),
+            Cell("let
+                    local r = 0
+                    function f()
+                        r = 12
+                    end
+                    f()
+                    r
+                end")
         ])
         fakeclient.connected_notebook = notebook
 
@@ -653,22 +656,27 @@ import JSON
     
         update_run!(🍭, notebook, notebook.cells[6:7])
         @test occursinerror("UndefVarError", notebook.cells[6])
-        @test notebook.cells[7].errored == false
+        @test notebook.cells[7].errored == true
+        @test occursinerror("assigns to global", notebook.cells[7])
+        @test occursinerror("wowow", notebook.cells[7])
+        @test occursinerror("floep", notebook.cells[7])
     
         update_run!(🍭, notebook, notebook.cells[8])
         @test occursinerror("UndefVarError", notebook.cells[6])
-        @test occursinerror("Multiple definitions for w", notebook.cells[7])
-        @test occursinerror("Multiple definitions for w", notebook.cells[8])
+        @test notebook.cells[8].errored == true
 
         update_run!(🍭, notebook, notebook.cells[9:10])
-        @test notebook.cells[9].output_repr == "10"
-        @test notebook.cells[9].errored == false
-        @test notebook.cells[10].errored == false
+        @test occursinerror("UndefVarError", notebook.cells[9])
+        @test notebook.cells[9].errored == true
+        @test notebook.cells[10].errored == true
 
         update_run!(🍭, notebook, notebook.cells[11])
-        @test occursinerror("UndefVarError", notebook.cells[9])
-        @test occursinerror("Multiple definitions for v", notebook.cells[10])
-        @test occursinerror("Multiple definitions for v", notebook.cells[11])
+        @test notebook.cells[9].errored == true
+        @test notebook.cells[10].errored == true
+        @test notebook.cells[11].errored == true
+
+        update_run!(🍭, notebook, notebook.cells[12])
+        @test notebook.cells[12].output_repr == "12"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
