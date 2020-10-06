@@ -24,7 +24,5 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 
-	new_topology = NotebookTopology(new_nodes)
-
-	new_topology
+	NotebookTopology(new_nodes)
 end

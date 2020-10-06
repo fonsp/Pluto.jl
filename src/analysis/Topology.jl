@@ -1,52 +1,5 @@
 import .ExpressionExplorer: SymbolsState, FunctionName
 
-function disjoint(a::Set, b::Set)
-	!any(x in a for x in b)
-end
-
-function Base.union!(a::ReactiveNode, bs::ReactiveNode...)
-	union!(a.references, (b.references for b in bs)...)
-	union!(a.definitions, (b.definitions for b in bs)...)
-	union!(a.funcdefs_with_signatures, (b.funcdefs_with_signatures for b in bs)...)
-	union!(a.funcdefs_without_signatures, (b.funcdefs_without_signatures for b in bs)...)
-	union!(a.funcdef_names, (b.funcdef_names for b in bs)...)
-	return a
-end
-
-"Account for globals referenced in function calls by including `SymbolsState`s from defined functions in the cell itself."
-function ReactiveNode(symstate::SymbolsState)
-	result = ReactiveNode(
-		references=Set{Symbol}(symstate.references), 
-		definitions=Set{Symbol}(symstate.assignments),
-		)
-	
-	# defined functions are 'exploded' into the cell's reactive node
-	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
-
-	# now we will add the function names to our edges:
-	push!(result.references, (symstate.funccalls .|> join_funcname_parts)...)
-
-	for (namesig, body_symstate) in symstate.funcdefs
-		push!(result.funcdef_names, namesig.name)
-
-		just_the_name = join_funcname_parts(namesig.name)
-		push!(result.funcdefs_without_signatures, just_the_name)
-
-		with_hashed_sig = Symbol(just_the_name, hash(namesig.canonicalized_head))
-		push!(result.funcdefs_with_signatures, with_hashed_sig)
-	end
-
-	return result
-end
-
-# """Add method calls and definitions as symbol references and definition, resp.
-
-# Will add `Module.func` (stored as `Symbol[:Module, :func]`) as Symbol("Module.func") (which is not the same as the expression `:(Module.func)`)."""
-# function add_funcnames!(symstate::SymbolsState)
-# 	push!(symstate.references, (symstate.funccalls .|> join_funcname_parts)...)
-# 	push!(symstate.assignments, (join_funcname_parts(namesig.name) for namesig ∈ keys(symstate.funcdefs))...)
-# end
-
 "Information container about the cells to run in a reactive call and any cells that will err."
 struct TopologicalOrder
 	"Cells that form a directed acyclic graph, in topological order."
@@ -78,20 +31,16 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		end
 
 		push!(entries, cell)
-		if any_funcdef_assigns_global(topology[cell])
-			errable[cell] = FunctionAssignsGlobalError(topology, cell)
-		else
-			assigners = where_assigned(notebook, topology, cell)
-			if !allow_multiple_defs && length(assigners) > 1
-				for c in assigners
-					errable[c] = MultipleDefinitionsError(topology, c, assigners)
-				end
+		assigners = where_assigned(notebook, topology, cell)
+		if !allow_multiple_defs && length(assigners) > 1
+			for c in assigners
+				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
-			referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
-			for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
-				if c != cell
-					dfs(c)
-				end
+		end
+		referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
+		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
+			if c != cell
+				dfs(c)
 			end
 		end
 		push!(exits, cell)
@@ -105,6 +54,10 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	dfs.(prelim_order_2)
 	ordered = reverse(exits)
 	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
+end
+
+function disjoint(a::Set, b::Set)
+	!any(x in a for x in b)
 end
 
 "Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
@@ -130,19 +83,6 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 		)
 	end
 end
-
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
-
-"""Does the cell only contain md"..." and html"..."?
-
-This is used to run these cells first."""
-function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
-	# https://github.com/fonsp/Pluto.jl/issues/209
-	isempty(topology[cell].definitions) && isempty(topology[cell].funcdef_names) && 
-		length(topology[cell].references) <= 2 && 
-		topology[cell].references ⊆ md_and_friends
-end
-
 """Assigns a number to a cell - cells with a lower number might run first. 
 
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
@@ -162,12 +102,14 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Numb
 	end
 end
 
-# TODO
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 
-any_funcdef_assigns_global(x) = false
+"""Does the cell only contain md"..." and html"..."?
 
-# function any_funcdef_assigns_global(symstate::SymbolsState)
-# 	any(symstate.funcdefs) do (_, body)
-# 		!isempty(body.assignments)
-# 	end
-# end
+This is used to run these cells first."""
+function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
+	# https://github.com/fonsp/Pluto.jl/issues/209
+	isempty(topology[cell].definitions) && isempty(topology[cell].funcdef_names) && 
+		length(topology[cell].references) <= 2 && 
+		topology[cell].references ⊆ md_and_friends
+end

@@ -2,18 +2,9 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-
-Base.@kwdef struct ReactiveNode
-    references::Set{Symbol} = Set{Symbol}()
-    definitions::Set{Symbol} = Set{Symbol}()
-	funcdefs_with_signatures::Set{Symbol} = Set{Symbol}()
-    funcdefs_without_signatures::Set{Symbol} = Set{Symbol}()
-    funcdef_names::Set{FunctionName} = Set{FunctionName}()
-end
-
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 Base.@kwdef struct NotebookTopology
-	nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
+    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
 end
 
 # `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
@@ -24,9 +15,6 @@ function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
     result === nothing ? ReactiveNode() : result
 end
 
-# function Base.setindex!(topology::NotebookTopology, node::ReactiveNode, cell::Cell)
-#     setindex!(topology.nodes, node, cell)
-# end
 
 "Like a [`Diary`](@ref) but more serious. 📓"
 mutable struct Notebook
