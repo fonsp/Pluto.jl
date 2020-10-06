@@ -10,9 +10,7 @@ end
 # `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
 # with the performance benefit of only generating ReactiveNode() when needed
 function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
-    # get(ReactiveNode, topology.nodes, cell)
-    result = get(topology.nodes, cell, nothing)
-    result === nothing ? ReactiveNode() : result
+    get!(ReactiveNode, topology.nodes, cell)
 end
 
 
