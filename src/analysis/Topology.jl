@@ -6,8 +6,9 @@ end
 
 function Base.union!(a::ReactiveNode, bs::ReactiveNode...)
 	union!(a.references, (b.references for b in bs)...)
-	union!(a.definitions_with_signatures, (b.definitions_with_signatures for b in bs)...)
-	union!(a.definitions_without_signatures, (b.definitions_without_signatures for b in bs)...)
+	union!(a.definitions, (b.definitions for b in bs)...)
+	union!(a.funcdefs_with_signatures, (b.funcdefs_with_signatures for b in bs)...)
+	union!(a.funcdefs_without_signatures, (b.funcdefs_without_signatures for b in bs)...)
 	union!(a.funcdef_names, (b.funcdef_names for b in bs)...)
 	return a
 end
@@ -16,8 +17,7 @@ end
 function ReactiveNode(symstate::SymbolsState)
 	result = ReactiveNode(
 		references=Set{Symbol}(symstate.references), 
-		definitions_with_signatures=Set{Symbol}(symstate.assignments), 
-		definitions_without_signatures=Set{Symbol}(symstate.assignments),
+		definitions=Set{Symbol}(symstate.assignments),
 		)
 	
 	# defined functions are 'exploded' into the cell's reactive node
@@ -30,10 +30,10 @@ function ReactiveNode(symstate::SymbolsState)
 		push!(result.funcdef_names, namesig.name)
 
 		just_the_name = join_funcname_parts(namesig.name)
-		push!(result.definitions_without_signatures, just_the_name)
+		push!(result.funcdefs_without_signatures, just_the_name)
 
 		with_hashed_sig = Symbol(just_the_name, hash(namesig.canonicalized_head))
-		push!(result.definitions_with_signatures, with_hashed_sig)
+		push!(result.funcdefs_with_signatures, with_hashed_sig)
 	end
 
 	return result
@@ -81,13 +81,13 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		if any_funcdef_assigns_global(topology[cell])
 			errable[cell] = FunctionAssignsGlobalError(topology, cell)
 		else
-			assigners = where_assigned(notebook, topology, union(topology[cell].definitions_with_signatures, topology[cell].definitions_without_signatures))
+			assigners = where_assigned(notebook, topology, cell)
 			if !allow_multiple_defs && length(assigners) > 1
 				for c in assigners
 					errable[c] = MultipleDefinitionsError(topology, c, assigners)
 				end
 			end
-			referencers = where_referenced(notebook, topology, topology[cell].definitions_without_signatures) |> Iterators.reverse
+			referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
 			for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 				if c != cell
 					dfs(c)
@@ -108,16 +108,26 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 end
 
 "Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
-function where_referenced(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
+function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+	to_compare = union(topology[myself].definitions, topology[myself].funcdefs_without_signatures)
 	return filter(notebook.cells) do cell
-		!disjoint(symbols, topology[cell].references)
+		!disjoint(to_compare, topology[cell].references)
 	end
 end
 
 "Return the cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
-function where_assigned(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
+function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+	self = topology[myself]
 	return filter(notebook.cells) do cell
-		!disjoint(symbols, topology[cell].definitions_with_signatures)
+		other = topology[cell]
+		!(
+			disjoint(self.definitions,                 other.definitions) &&
+
+			disjoint(self.definitions,                 other.funcdefs_without_signatures) &&
+			disjoint(self.funcdefs_without_signatures, other.definitions) &&
+
+			disjoint(self.funcdefs_with_signatures,    other.funcdefs_with_signatures)
+		)
 	end
 end
 
@@ -128,7 +138,7 @@ const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
-	isempty(topology[cell].definitions_without_signatures) && 
+	isempty(topology[cell].definitions) && isempty(topology[cell].funcdef_names) && 
 		length(topology[cell].references) <= 2 && 
 		topology[cell].references ⊆ md_and_friends
 end

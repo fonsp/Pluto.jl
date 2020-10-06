@@ -9,7 +9,7 @@ end
 
 function CyclicReferenceError(topology::NotebookTopology, cycle::Cell...)
 	referenced_during_cycle = union((topology[c].references for c in cycle)...)
-	assigned_during_cycle = union((topology[c].definitions_without_signatures for c in cycle)...)
+	assigned_during_cycle = union((topology[c].definitions for c in cycle)...)
 	
 	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
 end
@@ -22,7 +22,7 @@ end
 function MultipleDefinitionsError(topology::NotebookTopology, cell::Cell, all_definers)
 	competitors = setdiff(all_definers, [cell])
 	MultipleDefinitionsError(
-		union((topology[cell].definitions_without_signatures ∩ topology[c].definitions_without_signatures for c in competitors)...)
+		union((topology[cell].definitions ∩ topology[c].definitions for c in competitors)...)
 	)
 end
 

@@ -4,9 +4,10 @@ import .Configuration
 
 
 Base.@kwdef struct ReactiveNode
-	references::Set{Symbol} = Set{Symbol}()
-	definitions_with_signatures::Set{Symbol} = Set{Symbol}()
-    definitions_without_signatures::Set{Symbol} = Set{Symbol}()
+    references::Set{Symbol} = Set{Symbol}()
+    definitions::Set{Symbol} = Set{Symbol}()
+	funcdefs_with_signatures::Set{Symbol} = Set{Symbol}()
+    funcdefs_without_signatures::Set{Symbol} = Set{Symbol}()
     funcdef_names::Set{FunctionName} = Set{FunctionName}()
 end
 
