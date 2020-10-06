@@ -709,11 +709,19 @@ function canonalize(ex::Expr)
 		end
 		
 		hide_argument_name.(interesting)
-	else
-		@error "Huh" ex
+    elseif ex.head == :(::)
+        canonalize(ex.args[1])
+    elseif ex.head == :curly || ex.head == :(<:)
+        # for struct definitions, which we hackily treat as functions
+        nothing
+    else
+		@error "Failed to canonalize this strange looking function" ex
 		nothing
 	end
 end
+
+# for `function g end`
+canonalize(::Symbol) = nothing
 
 function hide_argument_name(ex::Expr)
     if ex.head == :(::) && length(ex.args) > 1

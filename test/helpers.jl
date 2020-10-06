@@ -30,9 +30,9 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
 
     result.assignments = Set(new_name.(result.assignments))
     result.funcdefs = let
-        newfuncdefs = Dict()
+        newfuncdefs = Dict{FunctionNameSignaturePair,SymbolsState}()
         for (k, v) in result.funcdefs
-            newfuncdefs[FunctionNameSignaturePair(new_name.(k.name), k.canonicalized_head)] = v
+            union!(newfuncdefs, Dict(FunctionNameSignaturePair(new_name.(k.name), "hello") => v))
         end
         newfuncdefs
     end
