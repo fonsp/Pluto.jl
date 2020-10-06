@@ -260,7 +260,7 @@ import JSON
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Mutliple assignments" begin
+    @testset "Mutliple assignments topology" begin
         notebook = Notebook([
             Cell("x = 1"),
             Cell("z = 4 + y"),
@@ -280,124 +280,103 @@ import JSON
             @test topo_order.errable == Dict()
         end
     end
+
     
-    false && @testset "Extended multiple assignments" begin
-        function methods_can_coexist(def1, def2, prep=Cell(""))
-            notebook = Notebook([prep, def1, def2])
-            fakeclient.connected_notebook = notebook
+    @testset "Methods across cells" begin
+        notebook = Notebook([
+            Cell("a(x) = 1"),
+            Cell("a(x,y) = 2"),
+            Cell("a(3)"),
+            Cell("a(4,4)"),
 
-            update_run!(🍭, notebook, prep)
+            Cell("b = 5"),
+            Cell("b(x) = 6"),
+            Cell("b + 7"),
+            Cell("b(8)"),
 
-            update_run!(🍭, notebook, def1)
-            update_run!(🍭, notebook, def2)
-            result = !def1.errored && !def2.errored
+            Cell("Base.tan(x::String) = 9"),
+            Cell("Base.tan(x::Missing) = 10"),
+            Cell("Base.tan(\"eleven\")"),
+            Cell("Base.tan(missing)"),
+            Cell("tan(missing)"),
+        ])
+        fakeclient.connected_notebook = notebook
 
-            # deleting one method should fix the error
-            setcode(def1, "")
-            update_run!(🍭, notebook, def1)
-            @test def1.errored == false
-            @test def2.errored == false
+        update_run!(🍭, notebook, notebook.cells[1:4])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].output_repr == "1"
+        @test notebook.cells[4].output_repr == "2"
 
-            WorkspaceManager.unmake_workspace((🍭, notebook))
-            
-            return result
-        end
+        setcode(notebook.cells[1], "a(x,x) = 999")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+        @test notebook.cells[3].errored == true
+        @test notebook.cells[4].errored == true
+        
+        setcode(notebook.cells[1], "a(x) = 1")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].output_repr == "1"
+        @test notebook.cells[4].output_repr == "2"
 
-        @testset "Different method signatures across cells" begin
-            @test methods_can_coexist(
-                Cell("f(x, y) = 1"),
-                Cell("f(x) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::A) = 1"),
-                Cell("f(x::B) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::e(f{g})=3) = 1"),
-                Cell("f(x::h where i) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::Tuple{X,T} where T) = 1"),
-                Cell("f(x::Tuple{X,T}) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::A) where A = 1"),
-                Cell("f(x::A) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::String, y) = 1"),
-                Cell("f(x, y::String) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::A) = 1"),
-                Cell("f(x::B) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x::A) = 1"),
-                Cell("f(x::B) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x, y...) = 1"),
-                Cell("f(x) = 2"),
-            )
-            @test methods_can_coexist(
-                Cell("f(x, y::Z...) = 1"),
-                Cell("f(x, y::X...) = 2"),
-            )
-        end
+        setcode(notebook.cells[1], "")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == true
+        @test notebook.cells[4].output_repr == "2"
 
-        @testset "Identical method signatures across cells" begin
-            @test !methods_can_coexist(
-                Cell("f(x) = 3"),
-                Cell("f(y) = 3"),
-            )
-            @test !methods_can_coexist(
-                Cell("f(x) = 3"),
-                Cell("f(y; z) = 3"),
-            )
-            @test !methods_can_coexist(
-                Cell("f(x) = 3"),
-                Cell("f(y::Any) = 3"),
-            )
-            # function using build in type synonyms
-            # like Int and Int64
-            @assert string(Int) == "Int64" || string(Int) == "Int32"
-            @test !methods_can_coexist(
-                Cell("f(x::Int) = 3"),
-                Cell("f(x::$(string(Int))) = 4"),
-            )
+        update_run!(🍭, notebook, notebook.cells[5:8])
+        @test notebook.cells[5].errored == true
+        @test notebook.cells[6].errored == true
+        @test notebook.cells[7].errored == true
+        @test notebook.cells[8].errored == true
 
-            # function using dynamic types
-            @test !methods_can_coexist(
-                Cell("f(x::A) = 3"),
-                Cell("f(x::Number) = 4"),
-                Cell("A = Number"),
-            )
+        setcode(notebook.cells[5], "")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == true
+        @test notebook.cells[8].output_repr == "6"
 
-            # variables vs methods
-            @test !methods_can_coexist(
-                Cell("f = 3"),
-                Cell("f(x) = 4"),
-            )
+        setcode(notebook.cells[5], "b = 5")
+        setcode(notebook.cells[6], "")
+        update_run!(🍭, notebook, notebook.cells[5:6])
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].output_repr == "12"
+        @test notebook.cells[8].errored == true
 
-            # multiple methods per cell
-            @test !methods_can_coexist(
-                Cell("f(x::Int) = 1; f(x::String) = 2"),
-                Cell("f(x::String) = 3; f(x::Vector) = 4"),
-            )
+        update_run!(🍭, notebook, notebook.cells[11:13])
+        @test notebook.cells[12].output_repr == "missing"
 
-            # methods only differing in key word arguments
-            @test !methods_can_coexist(
-                Cell("f() = 1"),
-                Cell("f(; x) = 3"),
-            )
+        update_run!(🍭, notebook, notebook.cells[9:10])
+        @test notebook.cells[9].errored == false
+        @test notebook.cells[10].errored == false
+        @test notebook.cells[11].output_repr == "9"
+        @test notebook.cells[12].output_repr == "10"
+        @test_broken notebook.cells[13].output_repr == "10"
+        update_run!(🍭, notebook, notebook.cells[13])
+        @test notebook.cells[13].output_repr == "10"
 
-            # what is this called again?
-            @test !methods_can_coexist(
-                Cell("f(x::T) where T = 1"),
-                Cell("f(x) = 2"),
-            )
-        end
+        setcode(notebook.cells[9], "")
+        update_run!(🍭, notebook, notebook.cells[9])
+        @test notebook.cells[11].errored == true
+        @test notebook.cells[12].output_repr == "10"
+
+        setcode(notebook.cells[10], "")
+        update_run!(🍭, notebook, notebook.cells[10])
+        @test notebook.cells[11].errored == true
+        @test notebook.cells[12].output_repr == "missing"
+
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+        # for lots of unsupported edge cases, see:
+        # https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
     end
 
     @testset "Cyclic" begin

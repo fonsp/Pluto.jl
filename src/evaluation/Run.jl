@@ -91,7 +91,7 @@ const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		union(topology[cell].definitions, topology[cell].funcdefs_without_signatures)
+		topology[cell].definitions
 	end
 end
 

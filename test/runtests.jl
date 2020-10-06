@@ -1,6 +1,7 @@
 include("./helpers.jl")
-include("./Dynamic.jl")
 include("./React.jl")
+include("./MethodSignatures.jl")
+include("./Dynamic.jl")
 include("./ExpressionExplorer.jl")
 include("./Configuration.jl")
 include("./Analysis.jl")

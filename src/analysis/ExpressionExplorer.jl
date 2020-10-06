@@ -414,7 +414,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         union!(innersymstate, explore!(Expr(:block, ex.args[2:end]...), innerscopestate))
         
-        funcnamesig = FunctionNameSignaturePair(funcname, "hello")
+        funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
 
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcnamesig] = innersymstate
@@ -693,6 +693,41 @@ end
 function explore_funcdef!(::Any, ::ScopeState)::Tuple{FunctionName,SymbolsState}
     Symbol[], SymbolsState()
 end
+
+###
+# CANONICALIZE FUNCTION DEFINITIONS
+###
+
+function canonalize(ex::Expr)
+	if ex.head == :where
+		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
+	elseif ex.head == :call
+		ex.args[1] # is the function name, we dont want it
+
+		interesting = filter(ex.args[2:end]) do arg
+			!(arg isa Expr && arg.head == :parameters)
+		end
+		
+		hide_argument_name.(interesting)
+	else
+		@error "Huh" ex
+		nothing
+	end
+end
+
+function hide_argument_name(ex::Expr)
+    if ex.head == :(::) && length(ex.args) > 1
+        Expr(:(::), nothing, ex.args[2:end]...)
+    elseif ex.head == :(...)
+        Expr(:(...), hide_argument_name(ex.args[1]))
+    elseif ex.head == :kw
+        Expr(:kw, hide_argument_name(ex.args[1]), nothing)
+    else
+        ex
+    end
+end
+hide_argument_name(::Symbol) = Expr(:(::), nothing, :Any)
+hide_argument_name(x::Any) = x
 
 ###
 # UTILITY FUNCTIONS
