@@ -159,7 +159,9 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
-    any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
+    # huh why did i do this
+    # any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
+    any_dependents = !isempty(where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym])))
     
     # assume body["is_first_value"] == false if you want to skip an edge case in this code
     

@@ -63,6 +63,9 @@ end
 "Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
 	to_compare = union(topology[myself].definitions, topology[myself].funcdefs_without_signatures)
+	where_referenced(notebook, topology, to_compare)
+end
+function where_referenced(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
 		!disjoint(to_compare, topology[cell].references)
 	end

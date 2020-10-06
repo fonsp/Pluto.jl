@@ -88,8 +88,10 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     # Expose the variable in the scope of `new_workspace`
                     Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
                 catch ex
-                    @warn "Failed to move variable $(symbol) to new workspace:"
-                    showerror(stderr, ex, stacktrace(catch_backtrace()))
+                    if !(ex isa UndefVarError)
+                        @warn "Failed to move variable $(symbol) to new workspace:"
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                    end
                 end
             end
         else
