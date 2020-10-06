@@ -20,37 +20,27 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	new_topology = NotebookTopology(new_symstates)
 
 	for cell in cells
-		finish_cache!(new_topology, cell)
+		merge_functions_into_symstate!(new_topology[cell])
 	end
 	
 	new_topology
 end
 
-"Account for globals referenced in function calls by including `SymbolsState`s from called functions in the cell itself."
-function finish_cache!(topology::NotebookTopology, cell::Cell)
-	# calls = all_indirect_calls(topology, topology[cell])
-	calls = Set{FunctionName}()
-	# calls = push!(calls, (namesig.name for namesig in keys(topology[cell].funcdefs))...) # _assume_ that all defined functions are called inside the cell to trigger eager reactivity.
-	# filter!(in(keys(topology.combined_funcdefs)), calls)
+"Account for globals referenced in function calls by including `SymbolsState`s from defined functions in the cell itself."
+function merge_functions_into_symstate!(symstate::SymbolsState)
+	# re c   u     r         s                            e
+	for (_, body_symstate) in symstate.funcdefs
+		merge_functions_into_symstate!(body_symstate)
+	end
 
-	# union!(topology[cell].references, (topology.combined_funcdefs[func].references for func in calls)...)
-	# union!(topology[cell].assignments, (topology.combined_funcdefs[func].assignments for func in calls)...)
-
-	union!(topology[cell].references, (symstate.references for (_, symstate) in topology[cell].funcdefs)...)
-	union!(topology[cell].assignments, (symstate.assignments for (_, symstate) in topology[cell].funcdefs)...)
-
-	add_funcnames!(topology, cell, calls)
+	add_funcnames!(symstate)
+	union!(symstate, (symstate for (_, symstate) in symstate.funcdefs)...)
 end
 
 """Add method calls and definitions as symbol references and definition, resp.
 
 Will add `Module.func` (stored as `Symbol[:Module, :func]`) as Symbol("Module.func") (which is not the same as the expression `:(Module.func)`)."""
-function add_funcnames!(topology::NotebookTopology, cell::Cell, calls::Set{Vector{Symbol}})
-	push!(topology[cell].references, (topology[cell].funccalls .|> join_funcname_parts)...)
-	push!(topology[cell].assignments, (join_funcname_parts(namesig.name) for namesig ∈ keys(topology[cell].funcdefs))...)
-	# push!(topology[cell].assignments, (keys(topology[cell].funcdefs) .|> join_funcname_parts)...)
-
-	# union!(topology[cell].references, (topology.combined_funcdefs[func].funccalls .|> join_funcname_parts for func in calls)...)
-	# union!(topology[cell].assignments, (keys(topology.combined_funcdefs[func].funcdefs) .|> join_funcname_parts for func in calls)...)
-	# union!(topology[cell].assignments, ([join_funcname_parts(namesig.name) for namesig ∈ keys(topology.combined_funcdefs[func].funcdefs)] for func in calls)...)
+function add_funcnames!(symstate::SymbolsState)
+	push!(symstate.references, (symstate.funccalls .|> join_funcname_parts)...)
+	push!(symstate.assignments, (join_funcname_parts(namesig.name) for namesig ∈ keys(symstate.funcdefs))...)
 end

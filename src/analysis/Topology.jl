@@ -63,53 +63,16 @@ end
 "Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, topology[cell].references)
-			return true
-		end
-        # for func in topology[cell].funccalls
-        #     if haskey(topology.combined_funcdefs, func)
-        #         if !disjoint(symbols, topology.combined_funcdefs[func].references)
-        #             return true
-        #         end
-        #     end
-		# end
-		return false
+		!disjoint(symbols, topology[cell].references)
 	end
 end
 
 "Return the cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
 function where_assigned(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, topology[cell].assignments)
-			return true
-		end
-        # for func in topology[cell].funccalls
-        #     if haskey(topology.combined_funcdefs, func)
-        #         if !disjoint(symbols, topology.combined_funcdefs[func].assignments)
-        #             return true
-        #         end
-        #     end
-		# end
-		return false
+		!disjoint(symbols, topology[cell].assignments)
 	end
 end
-
-# "Return all functions called by a cell, and all functions called by those functions, et cetera."
-# function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, found::Set{FunctionName}=Set{FunctionName}())::Set{FunctionName}
-# 	for func in symstate.funccalls
-# 		if func in found
-# 			# done
-# 		else
-# 			push!(found, func)
-#             if haskey(topology.combined_funcdefs, func)
-#                 inner_symstate = topology.combined_funcdefs[func]
-#                 all_indirect_calls(topology, inner_symstate, found)
-#             end
-# 		end
-# 	end
-
-# 	return found
-# end
 
 const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 

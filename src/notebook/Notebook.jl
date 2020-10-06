@@ -10,6 +10,7 @@ end
 # `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
 # with the performance benefit of only generating SymbolsState() when needed
 function Base.getindex(topology::NotebookTopology, cell::Cell)
+    # get(SymbolsState, topology.symstates, cell)
     result = get(topology.symstates, cell, nothing)
     result === nothing ? SymbolsState() : result
 end
