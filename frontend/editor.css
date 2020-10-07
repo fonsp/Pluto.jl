@@ -21,7 +21,7 @@ body {
 }
 
 main {
-    min-height: calc(100vh - 80px - 3.5rem - 4rem);
+    min-height: calc(100vh - 130px - 3.5rem);
     max-width: 700px;
     margin: 0 auto;
     /* margin-top: 80px; */
