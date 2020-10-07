@@ -394,6 +394,7 @@ a.export_card {
     text-decoration: none;
 }
 div.export_title {
+    height: 90px;
     flex: 0 0 auto;
     border-radius: 8px;
     text-orientation: sideways-right;
