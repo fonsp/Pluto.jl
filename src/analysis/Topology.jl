@@ -86,6 +86,22 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 		)
 	end
 end
+
+"Return whether any cell references the given symbol. Used for the @bind mechanism."
+function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology[cell].references
+	end
+end
+
+"Return whether any cell defines the given symbol. Used for the @bind mechanism."
+function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology[cell].definitions
+	end
+end
+
+
 """Assigns a number to a cell - cells with a lower number might run first. 
 
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
