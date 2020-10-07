@@ -21,7 +21,7 @@ export let make_library = () => {
     // observablehq.tex().then(tex => observablehq_exports.tex = tex)
 }
 
-// I make sure here that we use a different observable stdlib for ourselves and for the
-const observablehq_for_pluto = make_library()
+// We use two different observable stdlib instances: one for ourselves and one for the JS code in cell outputs
+const observablehq_for_myself = make_library()
 export const observablehq_for_cells = make_library()
-export { observablehq_for_pluto as default }
+export { observablehq_for_myself as default }
