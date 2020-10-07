@@ -44,7 +44,7 @@ using Test
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
         @test testee(:(A{B} = B), [], [:A], [], [])
-        @test testee(:(A{T} = Union{T, Int}), [:Int, :Union], [:A], [], [])
+        @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
 
         @test testee(:(abstract type a end), [], [], [], [:a => ([], [], [], [])])
         @test testee(:(abstract type a <: b end), [], [], [], [:a => ([:b], [], [], [])])
@@ -200,8 +200,12 @@ using Test
         @test testee(:(√ b), [:b], [], [:√], [])
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
+        @test testee(:(f(a).b()), [:a], [], [:f], [])
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
+        @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
+        @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
+        @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [

@@ -213,6 +213,12 @@ function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
 end
 
+function is_just_dots(ex::Expr)
+    ex.head == :(.) && all(is_just_dots, ex.args)
+end
+is_just_dots(::Union{QuoteNode,Symbol,GlobalRef}) = true
+is_just_dots(::Any) = false
+
 # this includes GlobalRef - it's fine that we don't recognise it, because you can't assign to a globalref?
 function split_funcname(::Any)::FunctionName
     Symbol[]
@@ -356,21 +362,25 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :call
         # Does not create scope
 
-        funcname = ex.args[1] |> split_funcname
-        symstate = if length(funcname) == 0
-            explore!(ex.args[1], scopestate)
-        elseif length(funcname) == 1
-            if funcname[1] ∈ scopestate.hiddenglobals
-                SymbolsState()
+        if is_just_dots(ex.args[1])
+            funcname = ex.args[1] |> split_funcname
+            symstate = if length(funcname) == 0
+                explore!(ex.args[1], scopestate)
+            elseif length(funcname) == 1
+                if funcname[1] ∈ scopestate.hiddenglobals
+                    SymbolsState()
+                else
+                SymbolsState(funccalls=Set{FunctionName}([funcname]))
+                end
             else
-            SymbolsState(funccalls=Set{FunctionName}([funcname]))
+                SymbolsState(references=Set{Symbol}([funcname[end - 1]]), funccalls=Set{FunctionName}([funcname]))
             end
+            # Explore code inside function arguments:
+            union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
+            return symstate
         else
-            SymbolsState(references=Set{Symbol}([funcname[end - 1]]), funccalls=Set{FunctionName}([funcname]))
+            return explore!(Expr(:block, ex.args...), scopestate)
         end
-        # Explore code inside function arguments:
-        union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
-        return symstate
     elseif ex.head == :kw
         return explore!(ex.args[2], scopestate)
     elseif ex.head == :struct
