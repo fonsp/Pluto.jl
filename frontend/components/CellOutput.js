@@ -72,6 +72,10 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
+            // Snippets starting with <!DOCTYPE or <html> are considered "full pages" that get their own iframe.
+            // Not entirely sure if this works the best, or if this slows down notebooks with many plots too much.
+            // AFAIK JSServe and Plotly both trigger and iframe now.
+            // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM
             if (body.startsWith("<!DOCTYPE ") || body.startsWith("<html>")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
@@ -99,34 +103,38 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
 }
 
 let IframeContainer = ({ body }) => {
-    // I know I know, this looks stupid.
-    // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
-    // and is removed when we are detatching from the DOM
-    let imgref = useRef()
+    let iframeref = useRef()
     useLayoutEffect(() => {
         let url = URL.createObjectURL(new Blob([body], { type: "text/html" }))
-        imgref.current.src = url
+        iframeref.current.src = url
 
         run(async () => {
-            await new Promise((resolve) => imgref.current.addEventListener("load", () => resolve()))
-            let iframeDocument = imgref.current.contentWindow.document
+            await new Promise((resolve) => iframeref.current.addEventListener("load", () => resolve()))
+            let iframeDocument = iframeref.current.contentWindow.document
 
+            // Insert iframe resizer inside the iframe
             let x = iframeDocument.createElement("script")
             x.src = "https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.contentWindow.min.js"
             x.integrity = "sha256-EH+7IdRixWtW5tdBwMkTXL+HvW5tAqV4of/HbAZ7nEc="
             x.crossOrigin = "anonymous"
             iframeDocument.head.appendChild(x)
 
+            // Apply iframe resizer from the host side
             new Promise((resolve) => x.addEventListener("load", () => resolve()))
-            window.iFrameResize({ checkOrigin: false }, imgref.current)
+            window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
 
         return () => URL.revokeObjectURL(url)
     }, [body])
 
-    return html`<iframe style=${{ width: "100%", border: "none" }} src="" ref=${imgref}></div>`
+    return html`<iframe style=${{ width: "100%", border: "none" }} src="" ref=${iframeref}></div>`
 }
 
+/**
+ * Call a block of code with with environment inserted as local bindings (even this)
+ *
+ * @param {{ code: string, environment: { [name: string]: any } }} options
+ */
 let execute_dynamic_function = async ({ environment, code }) => {
     const wrapped_code = `
         "use strict";
@@ -146,9 +154,12 @@ let execute_dynamic_function = async ({ environment, code }) => {
 const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
     let results_map = new Map()
 
+    // Run scripts sequentially
     for (let node of script_nodes) {
         root_node.currentScript = node
+
         if (node.src != "") {
+            // If it has a remote src="", de-dupe and copy the script to head
             if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === node.src)) {
                 const new_el = document.createElement("script")
                 new_el.src = node.src
@@ -164,6 +175,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 continue
             }
         } else {
+            // If there is no src="", we take the content en run it in an observablehq-like environment
             try {
                 let script_id = node.id
                 let result = await execute_dynamic_function({
@@ -175,9 +187,11 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     },
                     code: node.innerHTML,
                 })
+                // Save result for next run
                 if (script_id != null) {
                     results_map.set(script_id, result)
                 }
+                // Insert returned element
                 if (result instanceof HTMLElement && result.nodeType === Node.ELEMENT_NODE) {
                     node.parentElement.insertBefore(result, node)
                 }
