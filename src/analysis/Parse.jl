@@ -58,7 +58,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     Expr(topleveled.head, topleveled.args[1], preprocess_expr(topleveled.args[2]))
 end
 
-"Old Julia insert some `none:0` `LineNumberNode`s, which are useless and break stack traces, so we replace those."
+"Old Julia versions insert some `LineNumberNode`s with `:none` as filename, which are useless and break stack traces, so we replace those."
 function fix_linenumbernodes!(ex::Expr, actual_filename)
     for (i, a) in enumerate(ex.args)
         if a isa Expr

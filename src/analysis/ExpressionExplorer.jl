@@ -698,6 +698,31 @@ end
 # CANONICALIZE FUNCTION DEFINITIONS
 ###
 
+"""
+Turn a function definition expression into a "canonical" form, in the sense that two methods that would evaluate to the same method signature have the same canonical form. Part of a solution to https://github.com/fonsp/Pluto.jl/issues/177. Such a canonical form cannot be achieved statically with 100% correctness (impossible), but we can make it good enough to be practical.
+
+# Example
+```julia
+e1 = :(f(x, z::Any))
+e2 = :(g(x, y))
+
+canonalize(e1) == canonalize(e2)
+```
+
+```julia
+e1 = :(f(x))
+e2 = :(g(x, y))
+
+canonalize(e1) != canonalize(e2)
+```
+
+```julia
+e1 = :(f(a::X, b::wow(ie), c,      d...; e=f) where T)
+e2 = :(g(z::X, z::wow(ie), z::Any, z...     ) where T)
+
+canonalize(e1) == canonalize(e2)
+```
+"""
 function canonalize(ex::Expr)
 	if ex.head == :where
 		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
