@@ -730,7 +730,10 @@ import JSON
                     end
                     f()
                     r
-                end")
+                end"),
+            Cell("apple"),
+            Cell("map(14:14) do i; global apple = orange; end"),
+            Cell("orange = 15"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -754,19 +757,17 @@ import JSON
     
         update_run!(🍭, notebook, notebook.cells[6:7])
         @test occursinerror("UndefVarError", notebook.cells[6])
-        @test_broken notebook.cells[7].errored == true
-        @test_broken occursinerror("assigns to global", notebook.cells[7])
-        @test_broken occursinerror("wowow", notebook.cells[7])
-        @test_broken occursinerror("floep", notebook.cells[7])
+
+        # @test_broken occursinerror("assigns to global", notebook.cells[7])
+        # @test_broken occursinerror("wowow", notebook.cells[7])
+        # @test_broken occursinerror("floep", notebook.cells[7])
     
         update_run!(🍭, notebook, notebook.cells[8])
-        @test occursinerror("UndefVarError", notebook.cells[6])
-        @test_broken notebook.cells[8].errored == true
+        @test_broken !occursinerror("UndefVarError", notebook.cells[6])
 
         update_run!(🍭, notebook, notebook.cells[9:10])
-        @test_broken occursinerror("UndefVarError", notebook.cells[9])
-        @test_broken notebook.cells[9].errored == true
-        @test_broken notebook.cells[10].errored == true
+        @test !occursinerror("UndefVarError", notebook.cells[9])
+        @test notebook.cells[10].errored == false
 
         update_run!(🍭, notebook, notebook.cells[11])
         @test_broken notebook.cells[9].errored == true
@@ -775,6 +776,14 @@ import JSON
 
         update_run!(🍭, notebook, notebook.cells[12])
         @test notebook.cells[12].output_repr == "12"
+
+        update_run!(🍭, notebook, notebook.cells[13:15])
+        @test notebook.cells[13].output_repr == "15"
+        @test notebook.cells[14].errored == false
+
+        setcode(notebook.cells[15], "orange = 10005")
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[13].output_repr == "10005"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

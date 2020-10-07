@@ -699,7 +699,67 @@ end
 ###
 
 """
-Turn a function definition expression into a "canonical" form, in the sense that two methods that would evaluate to the same method signature have the same canonical form. Part of a solution to https://github.com/fonsp/Pluto.jl/issues/177. Such a canonical form cannot be achieved statically with 100% correctness (impossible), but we can make it good enough to be practical.
+Turn a function definition expression (`Expr`) into a "canonical" form, in the sense that two methods that would evaluate to the same method signature have the same canonical form. Part of a solution to https://github.com/fonsp/Pluto.jl/issues/177. Such a canonical form cannot be achieved statically with 100% correctness (impossible), but we can make it good enough to be practical.
+
+
+# Wait, "evaluate to the same method signature"?
+
+In Pluto, you cannot do definitions of **the same global variable** in different cells. This is needed for reactivity to work, and it avoid ambiguous notebooks and stateful stuff. This rule used to also apply to functions: you had to place all methods of a function in one cell. (Go and read more about methods in Julia if you haven't already.) But this is quite annoying, especially because multiple dispatch is so important in Julia code. So we allow methods of the same function to be defined across multiple cells, but we still want to throw errors when you define **multiple methods with the same signature**, because one overrides the other. For example:
+```julia
+julia> f(x) = 1
+f (generic function with 1 method)
+
+julia> f(x) = 2
+f (generic function with 1 method)
+``
+
+After adding the second method, the function still has only 1 method. This is because the second definition overrides the first one, instead of being added to the method table. This example should be illegal in Julia, for the same reason that `f = 1` and `f = 2` is illegal. So our problem is: how do we know that two cells will define overlapping methods? 
+
+Ideally, we would just evaluate the user's code and **count methods** afterwards, letting Julia do the work. Unfortunately, we need to know this info _before_ we run cells, otherwise we don't know in which order to run a notebook! There are ways to break this circle, but it would complicate our process quite a bit.
+
+Instead, we will do _static analysis_ on the function definition expressions to determine whether they overlap. This is non-trivial. For example, `f(x)` and `f(y::Any)` define the same method. Trickier examples are here: https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
+
+# Wait, "function definition expressions"?
+For example:
+
+```julia
+e = :(function f(x::Int, y::String)
+        x + y
+    end)
+
+dump(e, maxdepth=2)
+
+#=
+gives:
+
+Expr
+  head: Symbol function
+  args: Array{Any}((2,))
+    1: Expr
+    2: Expr
+=#
+```
+
+This first arg is the function head:
+
+```julia
+e.args[1] == :(f(x::Int, y::String))
+```
+
+# Mathematics
+Our problem is to find a way to compute the equivalence relation ~ on `H × H`, with `H` the set of function head expressions, defined as:
+
+`a ~ b` iff evaluating both expressions results in a function with exactly one method.
+
+_(More precisely, evaluating `Expr(:function, x, Expr(:block))` with `x ∈ {a, b}`.)_
+
+The equivalence sets are isomorphic to the set of possible Julia methods.
+
+Instead of finding a closed form algorithm for `~`, we search for a _canonical form_: a function `canonical: H -> H` that chooses one canonical expression per equivalence class. It has the property 
+    
+`canonical(a) = canonical(b)` implies `a ~ b`.
+
+We use this **canonical form** of the function's definition expression as its "signature". We compare these canonical forms when determining whether two function expressions will result in overlapping methods.
 
 # Example
 ```julia
