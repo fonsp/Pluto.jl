@@ -70,6 +70,7 @@ function fix_linenumbernodes!(ex::Expr, actual_filename)
         end
     end
 end
+fix_linenumbernodes!(::Any, actual_filename) = nothing
 
 """Get the list of string indices that denote expression boundaries.
 
