@@ -246,6 +246,7 @@ function run(session::ServerSession)
         end
     end
 
+    println()
     if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
     else

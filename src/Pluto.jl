@@ -27,6 +27,7 @@ include("./runner/PlutoRunner.jl")
 #   PlutoRunner = $(PlutoRunner)
 # end
 include("./analysis/ExpressionExplorer.jl")
+include("./analysis/ReactiveNode.jl")
 
 include("./notebook/PathHelpers.jl")
 include("./notebook/Cell.jl")
