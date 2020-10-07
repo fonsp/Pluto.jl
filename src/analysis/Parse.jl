@@ -44,7 +44,7 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     filename = pluto_filename(notebook, cell)
 
     if !can_insert_filename
-        fix_linenumbernodes!(topleveled, filename)
+        fix_linenumbernodes!(raw, filename)
     end
 
     # 3.
