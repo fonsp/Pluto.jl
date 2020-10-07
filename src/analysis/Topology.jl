@@ -129,7 +129,7 @@ const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
 This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
-	isempty(topology[cell].definitions) && isempty(topology[cell].funcdef_names) && 
+	isempty(topology[cell].definitions) && isempty(topology[cell].funcdefs_with_signatures) && 
 		length(topology[cell].references) <= 2 && 
 		topology[cell].references ⊆ md_and_friends
 end

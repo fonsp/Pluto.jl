@@ -97,7 +97,7 @@ end
 
 function defined_functions(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		((cell.cell_id, n) for n in topology[cell].funcdef_names)
+		((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
 	end
 end
 
