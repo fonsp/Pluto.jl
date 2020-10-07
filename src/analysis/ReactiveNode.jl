@@ -1,8 +1,8 @@
 import .ExpressionExplorer: SymbolsState, FunctionName
 
-"Every cell is a node in the reactive graph. This struct contains the back edges (`references`) and forward edges (`definitions`, `funcdefs_with_signatures`, `funcdefs_without_signatures`). With 'edges' we mean the graph-theoretic concept: edges form the links in the directed reactivity graph. In a reactive notebook, these are the **global variable references and definitions**.
+"Every cell is a node in the reactive graph. The nodes/point/vertices are the _cells_, and the edges/lines/arrows are the _dependencies between cells_. In a reactive notebook, these dependencies are the **global variable references and definitions**. (For the mathies: a reactive notebook is represented by a _directed multigraph_. A notebook without reactivity errors is an _acyclic directed multigraph_.) This struct contains the back edges (`references`) and forward edges (`definitions`, `funcdefs_with_signatures`, `funcdefs_without_signatures`) of a single node. 
 
-Before 0.12.0, we could have written this struct with just two fields: `references` and `definitions`, both of type `Set{Symbol}`, because we used variable names to form the reactive links. However, to support defining _multiple methods of the same function in different cells_ (https://github.com/fonsp/Pluto.jl/issues/177), we needed to change this. You might want to think about this old behavior first (try it on paper) before reading on.
+Before 0.12.0, we could have written this struct with just two fields: `references` and `definitions` (both of type `Set{Symbol}`) because we used variable names to form the reactive links. However, to support defining _multiple methods of the same function in different cells_ (https://github.com/fonsp/Pluto.jl/issues/177), we needed to change this. You might want to think about this old behavior first (try it on paper) before reading on.
 
 The essential idea is that edges are still formed by `Symbol`s. Simple global variables (`x = 1`) are registered by their name, but _function definitions_ `f(x::Int) = 5` are sometimes stored in two ways:
 - by their name (`f`), in `funcdefs_without_signatures`, and

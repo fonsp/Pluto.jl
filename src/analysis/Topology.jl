@@ -60,18 +60,19 @@ function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end
 
-"Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
+"Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
 	to_compare = union(topology[myself].definitions, topology[myself].funcdefs_without_signatures)
 	where_referenced(notebook, topology, to_compare)
 end
+"Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
 		!disjoint(to_compare, topology[cell].references)
 	end
 end
 
-"Return the cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
+"Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
 function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
 	self = topology[myself]
 	return filter(notebook.cells) do cell
