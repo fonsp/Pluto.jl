@@ -9,8 +9,9 @@ const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_li
 "Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
 
 1. Turn multiple expressions into an error expression.
-2. Will always produce an expression of the form: `Expr(:toplevel, LineNumberNode(..), root)`. It gets transformed (i.e. wrapped) into this form if needed. A `LineNumberNode` contains a line number and a file name. We use the cell UUID as a 'file name', which makes the stack traces easier to interpret. (Otherwise it would be impossible to tell from which cell a stack frame originates.) Not all Julia versions insert these `LineNumberNode`s, so we insert it ourselves if Julia doesn't.
-3. Apply `preprocess_expr` (below) to `root` (from rule 2)."
+2. Fix some `LineNumberNode` idiosyncrasies to be more like modern Julia.
+3. Will always produce an expression of the form: `Expr(:toplevel, LineNumberNode(..), root)`. It gets transformed (i.e. wrapped) into this form if needed. A `LineNumberNode` contains a line number and a file name. We use the cell UUID as a 'file name', which makes the stack traces easier to interpret. (Otherwise it would be impossible to tell from which cell a stack frame originates.) Not all Julia versions insert these `LineNumberNode`s, so we insert it ourselves if Julia doesn't.
+4. Apply `preprocess_expr` (below) to `root` (from rule 2)."
 function parse_custom(notebook::Notebook, cell::Cell)::Expr
     # 1.
     raw = if can_insert_filename
@@ -40,15 +41,34 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
     end
 
     # 2.
-    topleveled = if ExpressionExplorer.is_toplevel_expr(raw)
-        raw
-    else
-        filename = pluto_filename(notebook, cell)
-        Expr(:toplevel, LineNumberNode(1, Symbol(filename)), raw)
+    filename = pluto_filename(notebook, cell)
+
+    if !can_insert_filename
+        fix_linenumbernodes!(topleveled, filename)
     end
 
     # 3.
+    topleveled = if ExpressionExplorer.is_toplevel_expr(raw)
+        raw
+    else
+        Expr(:toplevel, LineNumberNode(1, Symbol(filename)), raw)
+    end
+
+    # 4.
     Expr(topleveled.head, topleveled.args[1], preprocess_expr(topleveled.args[2]))
+end
+
+"Old Julia insert some `none:0` `LineNumberNode`s, which are useless and break stack traces, so we replace those."
+function fix_linenumbernodes!(ex::Expr, actual_filename)
+    for (i, a) in enumerate(ex.args)
+        if a isa Expr
+            fix_linenumbernodes!(a, actual_filename)
+        elseif a isa LineNumberNode
+            if a.file == nothing || a.file == :none
+                ex.args[i] = LineNumberNode(a.line, Symbol(actual_filename))
+            end
+        end
+    end
 end
 
 """Get the list of string indices that denote expression boundaries.
