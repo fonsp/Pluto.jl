@@ -95,7 +95,7 @@ export const CellInput = ({
                 if (cm.somethingSelected()) {
                     const sels = cm.getSelections()
                     if (all_equal(sels)) {
-                      // todo
+                        // TODO
                     }
                 } else {
                     const cursor = cm.getCursor()
