@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import observablehq from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
@@ -153,6 +154,21 @@ export const CellInput = ({
                     cm.setSelections(new_selections)
                 }
             }
+            keys["Ctrl-O"] = () => {
+                window.cm = cm
+                cm.setBookmark(cm.getCursor(), {
+                    widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em;">`,
+                })
+            }
+            keys["Ctrl-K"] = () => {
+                window.cm = cm
+                const sel = cm.listSelections()[0]
+                cm.markText(sel.from(), sel.to(), {
+                    // replacedWith: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em;">`,
+                    atomic: true,
+                    css: "background: #fdd",
+                })
+            }
             const swap = (a, i, j) => {
                 ;[a[i], a[j]] = [a[j], a[i]]
             }
@@ -233,12 +249,24 @@ export const CellInput = ({
                 }
             })
 
-            cm.on("change", () => {
+            cm.on("change", (cm, e) => {
+                console.log(e)
                 const new_value = cm.getValue()
                 if (new_value.length > 1 && new_value[0] === "?") {
                     window.dispatchEvent(new CustomEvent("open_live_docs"))
                 }
                 change_handler_ref.current(new_value)
+
+                cm.eachLine((linehandle) => {
+                    const re = /(using|import) (\w+)/g
+                    let match
+                    while ((match = re.exec(linehandle.text)) != null) {
+                        console.log(match.index)
+                    }
+                })
+                // for (const match of new_value.matchAll()) {
+                //     console.log(match)
+                // }
             })
 
             cm.on("blur", () => {
