@@ -244,6 +244,13 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
                 console.info("Failed to typeset TeX:")
                 console.info(err)
             }
+
+            // Apply julia syntax highlighting
+            try {
+                for (let code_element of container.current.querySelectorAll("code.language-julia")) {
+                    highlight_julia(code_element)
+                }
+            } catch (err) {}
         })
 
         return () => {
@@ -252,4 +259,12 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
     })
 
     return html`<div ref=${container}></div>`
+}
+
+/** @param {HTMLElement} code_element */
+export let highlight_julia = (code_element) => {
+    if (code_element.children.length !== 0) return
+
+    window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
+    code_element.classList.add("cm-s-default")
 }
