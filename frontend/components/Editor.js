@@ -4,6 +4,7 @@ import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
+import { select_next_match, replace_all, clear_highlighting_all } from "../common/FindReplace.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
@@ -72,7 +73,16 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
-            dispatch_find_replace: null
+            find_replace: {
+              visible: false,
+              textmarkers : [],
+              word: "",
+              marker: null,
+              previous: null,
+              replace_with: null,
+              replace_all_with: null
+            },
+            code_selected: false
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -105,6 +115,34 @@ export class Editor extends Component {
             })
         }
         this.set_cell_state = set_cell_state.bind(this)
+
+        this.add_textmarkers = (markers) => {
+
+          if(markers.length > 0){
+            const cell_id = markers[0].cell_id
+
+            this.setState((prevState) => {
+              // delete old ones first
+              const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.cell_id != cell_id)
+              const succ_find_replace = {
+                ...prevState.find_replace,
+                textmarkers: [ ...prevMarkers, ...markers]
+              }
+
+              console.log(succ_find_replace)
+
+              return { find_replace: succ_find_replace }
+            })
+          }
+        }
+
+        this.update_findreplace_word = (word) => {
+          if(word == ""){
+            clear_highlighting_all(this.state.find_replace.textmarkers)
+          }
+          if(this.state.find_replace.marker) this.state.find_replace.marker.deselect()
+          this.setState({ find_replace: { ...this.state.find_replace, word: word, marker: null, previous: null } })
+        }
 
         // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
         this.all_completed = true
@@ -700,8 +738,13 @@ export class Editor extends Component {
                 this.delete_selected("Delete")
                 //e.preventDefault()
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
-                document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
-                document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")
+                const class_applied = document.body.querySelector("nav#at_the_top").classList.contains("show_findreplace")
+
+                if(!this.state.code_selected || !class_applied){
+                  document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
+                  document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")
+                  //this.setState({ find_replace: { ...this.state.find_replace, visible: !class_applied }})
+                }
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
@@ -944,8 +987,13 @@ export class Editor extends Component {
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
                     <${FindReplace}
+                      visible=${this.state.find_replace.visible}
                       cells=${this.state.notebook.cells}
-                      dispatch=${this.state.dispatch_find_replace}
+                      word=${this.state.find_replace.word}
+                      set_word=${this.update_findreplace_word}
+                      find_next=${() => this.setState({ find_replace: select_next_match(this.state.find_replace )})}
+                      replace_with=${(word) => { if(this.state.find_replace.marker) this.state.find_replace.marker.replace_with(word)}}
+                      replace_all=${(word) => replace_all(this.state.find_replace.textmarkers, word)}
                     />
                     <button class="toggle_export" title="Export..." onClick=${() => {
                         document.body.querySelector("header").classList.toggle("show_export")
@@ -991,8 +1039,12 @@ export class Editor extends Component {
                     all_completed_promise=${this.all_completed_promise}
                     selected_friends=${this.selected_friends}
                     requests=${this.requests}
-                    set_dispatch_find_replace=${(dispatch) => this.setState( { dispatch_find_replace: dispatch } )}
+                    add_textmarkers=${this.add_textmarkers}
+                    findreplace_word=${this.state.find_replace.word}
+                    set_findreplace_word=${this.update_findreplace_word}
+                    set_code_selected=${(selected) => this.setState({ code_selected: selected })}
                     client=${this.client}
+
                 />
 
                 <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />

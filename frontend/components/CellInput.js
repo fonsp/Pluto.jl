@@ -1,7 +1,7 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useReducer } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { map_cmd_to_ctrl_on_mac, has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.44.0/addon/search/searchcursor.min.js'
 
 const clear_selection = (cm) => {
@@ -31,7 +31,10 @@ export const CellInput = ({
     client,
     cell_id,
     notebook_id,
-    dispatch_mark
+    add_textmarkers,
+    findreplace_word,
+    set_findreplace_word,
+    set_code_selected
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
@@ -42,48 +45,6 @@ export const CellInput = ({
     useEffect(() => {
         remote_code_ref.current = remote_code
     }, [remote_code])
-
-    useEffect(() => {
-      const selectSameWordsListener = (e) => {
-        if(!is_hidden){
-
-          // makes sure everything is deselected first
-          cm_ref.current.getAllMarks().forEach((mark) => mark.clear())
-
-          var markers = []
-
-          var cursor = cm_ref.current.getSearchCursor(e.detail.word)
-          while(cursor.findNext()){
-            cm_ref.current.markText(cursor.from(), cursor.to(), { css: "color: orange" })
-
-            const from = cursor.from()
-            const to = cursor.to()
-            const textmarker = {
-              select: () => {
-                textmarker.marker = cm_ref.current.markText(from, to, { css: "border: 2px solid blue" })
-                cm_ref.current.focus()
-                cm_ref.current.setCursor(to)
-              },
-              deselect: () => {
-                textmarker.marker.clear()
-              },
-              replace_with: (word) => {
-                cm_ref.current.replaceRange(word, from, to)
-              }
-            }
-            markers.push(textmarker)
-          }
-
-          dispatch_mark({ type: 'add_textmarkers', textmarkers: markers })
-        }
-      }
-
-      window.addEventListener("select_same_words", selectSameWordsListener)
-
-      return () => {
-        window.removeEventListener("select_same_words", selectSameWordsListener)
-      }
-    }, [is_hidden])
 
     useEffect(() => {
         if (!is_hidden) {
@@ -134,19 +95,22 @@ export const CellInput = ({
                 if (cm.somethingSelected()) {
                     const sels = cm.getSelections()
                     if (all_equal(sels)) {
-                        window.dispatchEvent(
-                          new CustomEvent("select_same_words", {
-                            detail:{
-                              word: sels[0]
-                            }
-                          })
-                        )
+                      // todo
                     }
                 } else {
                     const cursor = cm.getCursor()
                     const token = cm.getTokenAt(cursor)
                     cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
                 }
+            }
+            keys["Ctrl-F"] = () => {
+              if(cm.somethingSelected()){
+                const sels = cm.getSelections()
+                if (all_equal(sels)) {
+                    set_findreplace_word(sels[0])
+                    return window.CodeMirror.Pass
+                }
+              }
             }
             keys["Ctrl-/"] = () => {
                 const old_value = cm.getValue()
@@ -264,6 +228,9 @@ export const CellInput = ({
             cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
 
             cm.on("cursorActivity", () => {
+
+                set_code_selected(cm.somethingSelected())
+
                 if (cm.somethingSelected()) {
                     const sel = cm.getSelection()
                     if (!/[\s]/.test(sel)) {
@@ -319,6 +286,43 @@ export const CellInput = ({
             }
         }
     }, [is_hidden])
+
+    useEffect(() => {
+      if(!is_hidden && findreplace_word){
+
+        // makes sure everything is deselected first
+        cm_ref.current.getAllMarks().forEach((mark) => mark.clear())
+
+        var markers = []
+
+        var cursor = cm_ref.current.getSearchCursor(findreplace_word)
+        while(cursor.findNext()){
+          const highlighter = cm_ref.current.markText(cursor.from(), cursor.to(), { css: "color: red; font-weight: bold" })
+
+          const from = cursor.from()
+          const to = cursor.to()
+          const textmarker = {
+            select: () => {
+              textmarker.marker = cm_ref.current.markText(from, to, { css: "background: #D9D5D5; color: red; font-weight: bold" })
+              //cm_ref.current.focus()
+              //cm_ref.current.setCursor(to)
+            },
+            deselect: () => {
+              textmarker.marker.clear()
+            },
+            replace_with: (word) => {
+              cm_ref.current.replaceRange(word, from, to)
+            },
+            clear_highlighting: () => {
+              highlighter.clear()
+            },
+            cell_id: cell_id
+          }
+          markers.push(textmarker)
+        }
+        add_textmarkers(markers)
+      }
+    }, [findreplace_word, local_code])
 
     useEffect(() => {
         if (!is_hidden) {
