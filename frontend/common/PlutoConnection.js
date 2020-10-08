@@ -194,7 +194,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}, secret: String}} PlutoConnection
+ * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}}} PlutoConnection
  * @param {{on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
  * @return {Promise<PlutoConnection>}
  */
@@ -204,7 +204,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         send: null,
         kill: null,
         session_options: null,
-        secret: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
@@ -263,16 +262,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     client.send = send
 
     const connect = async () => {
-        const secret = await (
-            await fetch("websocket_url_please", {
-                method: "GET",
-                cache: "no-cache",
-                redirect: "follow",
-                referrerPolicy: "no-referrer",
-            })
-        ).text()
-        client.secret = secret
-
         let update_url_with_binder_token = async () => {
             try {
                 const url = new URL(window.location.href)
@@ -287,11 +276,12 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
         update_url_with_binder_token()
 
-        const ws_address =
-            document.location.protocol.replace("http", "ws") + "//" + document.location.host + document.location.pathname.replace("/edit", "/") + secret
+        const ws_address = new URL(document.location.href)
+        ws_address.protocol = ws_address.protocol.replace("http", "ws")
+        ws_address.pathname = ws_address.pathname.replace("/edit", "/")
 
         try {
-            ws_connection = await create_ws_connection(ws_address, {
+            ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: handle_update,
                 on_socket_close: async () => {
                     on_connection_status(false)

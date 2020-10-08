@@ -14,20 +14,31 @@ html {
     font-size: 17px;
 }
 
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0px;
     overflow-anchor: none;
+    position: relative;
+
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 main {
-    min-height: calc(100vh - 80px - 3.5rem - 4rem);
-    max-width: 700px;
-    margin: 0 auto;
-    margin-top: 80px;
+    flex: 1;
+
+    max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
+    padding-top: 20px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
     align-content: center;
+    width: 100%;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -41,6 +52,7 @@ main {
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
     main {
         margin-right: 500px;
+        align-self: flex-end;
     }
 }
 
@@ -313,15 +325,16 @@ pluto-output table > tbody tr:hover {
 /* HEADER */
 
 body > header {
-    position: absolute;
-    top: 0px;
+    /* position: absolute;
+    top: 0px; */
     width: 100%;
     min-height: 60px;
 
     z-index: 5;
     /* overflow: hidden; */
     background-color: white;
-    transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
+    transform: translateY(0px);
+    transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
 
     font-family: "Roboto Mono", monospace;
@@ -334,24 +347,33 @@ body.loading > header {
 }
 
 body > header.show_export {
-    position: fixed;
-    top: 130px;
+    position: sticky;
+    top: 0;
+    transform: translateY(130px);
 }
 
 aside#export {
-    overflow-x: hidden;
     position: absolute;
-    top: -1130px;
+    top: 0;
     width: 100%;
     height: 130px;
     background: rgb(60, 67, 101);
     color: rgba(255, 255, 255, 0.7);
-    padding-top: 1000px;
+    transform: translateY(-100%);
+}
+aside#export::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: inherit;
 }
 aside#export div#container {
     flex-direction: row;
     display: flex;
-    max-width: calc(960px + 20px);
+    max-width: calc(960px + 20px + 20px);
     padding-right: 20px;
     margin: 0 auto;
 }
@@ -361,8 +383,8 @@ header.show_export aside#export div#container {
 a.export_card {
     margin: 20px 5px;
     flex: 0 0 auto;
-    width: 150px;
-    height: 80px;
+    width: 160px;
+    height: 90px;
 
     border: 5px solid transparent;
     background: rgba(255, 255, 255, 0.8);
@@ -372,8 +394,8 @@ a.export_card {
     text-decoration: none;
 }
 div.export_title {
+    height: 90px;
     flex: 0 0 auto;
-    height: 80px;
     border-radius: 8px;
     text-orientation: sideways-right;
     /* Not supported by Chrome: */
@@ -381,7 +403,7 @@ div.export_title {
     writing-mode: vertical-lr;
     transform: rotate(180deg);
 
-    margin-top: 20px;
+    margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
 }
@@ -409,7 +431,7 @@ nav#at_the_top h1 {
 
 nav#at_the_top {
     margin: 0 auto;
-    max-width: 960px;
+    max-width: 1000px;
     padding-left: 20px;
     padding-right: 20px;
     flex-wrap: wrap;
@@ -430,7 +452,7 @@ nav#at_the_top > a {
 
 nav#at_the_top img {
     height: 39px;
-    margin-bottom: -11px;
+    margin-bottom: -8px;
 }
 
 nav#at_the_top h1 {
@@ -465,7 +487,7 @@ nav#at_the_top > pluto-filepicker {
 }
 
 nav#at_the_top > pluto-filepicker .CodeMirror {
-    height: calc(1rem + 4px + 4px);
+    height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
     opacity: 0.6;
@@ -551,7 +573,8 @@ li.dir.CodeMirror-hint:before {
 
 body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
-    position: fixed;
+    position: sticky;
+    top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -811,6 +834,8 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
+    box-sizing: content-box;
+    margin-right: -1px; /* fix a visual glitch of imperfect alignment */
     width: 4px;
     position: absolute;
     left: -4px;
@@ -1111,6 +1136,7 @@ dropruler {
         position: sticky;
         bottom: 0px;
         height: 0px;
+        width: 100%;
         z-index: 5;
     }
     pluto-helpbox {
@@ -1394,12 +1420,14 @@ ul.CodeMirror-hints {
 }
 
 .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 90%, 98%, 1);
+    /* background: hsla(46, 90%, 98%, 1); */
+    background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
 pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 70%, 88%, 1);
+    /* background: hsla(46, 70%, 88%, 1); */
+    background-color: rgba(214, 172, 35, 0.2);
 }
 
 .cm-s-default .CodeMirror-guttermarker {

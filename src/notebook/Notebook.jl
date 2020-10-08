@@ -1,20 +1,18 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-struct NotebookTopology
-	symstates::Dict{Cell,SymbolsState}
-    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+Base.@kwdef struct NotebookTopology
+    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
 end
-NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
 
-# `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
-# with the performance benefit of only generating SymbolsState() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)
-    result = get(topology.symstates, cell, nothing)
-    result === nothing ? SymbolsState() : result
+# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
+# with the performance benefit of only generating ReactiveNode() when needed
+function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
+    get!(ReactiveNode, topology.nodes, cell)
 end
+
 
 "Like a [`Diary`](@ref) but more serious. 📓"
 mutable struct Notebook

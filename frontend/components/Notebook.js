@@ -16,7 +16,7 @@ export const Notebook = ({
     notebook_id,
 }) => {
     return html`
-        <pluto-notebook>
+        <pluto-notebook id=${notebook_id}>
             ${cells.map(
                 (d) => html`<${Cell}
                     ...${d}

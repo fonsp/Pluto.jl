@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
 import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
-import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
+import immer from "https://unpkg.com/immer@7/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -159,7 +159,7 @@ export class Editor extends Component {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now() },
+                    output: output,
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
@@ -677,6 +677,7 @@ export class Editor extends Component {
             const selected = this.state.notebook.cells.filter((c) => c.selected)
             if (selected.length > 0) {
                 this.requests.confirm_delete_multiple(verb, selected)
+                return true
             }
         }
 
@@ -695,15 +696,17 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.target.id !== "live-docs-search" && (e.key === "Backspace" || e.key === "Delete")) {
-                this.delete_selected("Delete")
-                e.preventDefault()
+                console.log('hello')
+                if (this.delete_selected("Delete")) {
+                    e.preventDefault()
+                }
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
