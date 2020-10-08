@@ -57,6 +57,7 @@ mutable struct ScopeState
     hiddenglobals::Set{Symbol}
     definedfuncs::Set{Symbol}
 end
+ScopeState() = ScopeState(true, Set{Symbol}(), Set{Symbol}(), Set{Symbol}())
 
 # The `union` and `union!` overloads define how two `SymbolsState`s or two `ScopeState`s are combined.
 
@@ -336,6 +337,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :let || ex.head == :for || ex.head == :while
         # Creates local scope
         return explore_inner_scoped(ex, scopestate)
+    elseif ex.head == :generator
+        # Creates local scope
+
+        # In a `generator`, a single expression is followed by the iterator assignments.
+        # In a `for`, this expression comes at the end.
+
+        # This is not strictly the normal form of a `for` but that's okay
+        return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
         # Does not create sccope
         
@@ -386,25 +395,29 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :struct
         # Creates local scope
 
-        structname = ex.args[2]
+        structnameexpr = ex.args[2]
         structfields = ex.args[3].args
 
-        equiv_func = Expr(:function, Expr(:call, structname, structfields...), Expr(:block, nothing))
+        equiv_func = Expr(:function, Expr(:call, structnameexpr, structfields...), Expr(:block, nothing))
 
         # struct should always be in Global state
         globalscopestate = deepcopy(scopestate)
         globalscopestate.inglobalscope = true
 
-        return explore!(equiv_func, globalscopestate)
-    elseif ex.head == :generator
-        # Creates local scope
+        # we register struct definitions as both a variable and a function. This is because deleting a struct is trickier than just deleting its methods.
+        inner_symstate = explore!(equiv_func, globalscopestate)
 
-        # In a `generator`, a single expression is followed by the iterator assignments.
-        # In a `for`, this expression comes at the end.
+        structname = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
+        push!(inner_symstate.assignments, structname)
+        return inner_symstate
+    elseif ex.head == :abstract
+        equiv_func = Expr(:function, ex.args...)
+        inner_symstate = explore!(equiv_func, scopestate)
 
-        # This is not strictly the normal form of a `for` but that's okay
-        return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
-    elseif ex.head == :function || ex.head == :macro || ex.head == :abstract
+        abstracttypename = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
+        push!(inner_symstate.assignments, abstracttypename)
+        return inner_symstate
+    elseif ex.head == :function || ex.head == :macro
         symstate = SymbolsState()
         # Creates local scope
 
@@ -838,7 +851,7 @@ hide_argument_name(x::Any) = x
 
 "Get the global references, assignment, function calls and function defintions inside an arbitrary expression."
 function compute_symbolreferences(ex::Any)::SymbolsState
-    symstate = explore!(ex, ScopeState(true, Set{Symbol}(), Set{Symbol}(), Set{Symbol}()))
+    symstate = explore!(ex, ScopeState())
 
     # We do something special to account for recursive functions:
     # If a function `f` calls a function `g`, and both are defined inside this cell, the reference to `g` inside the symstate of `f` will be deleted.
