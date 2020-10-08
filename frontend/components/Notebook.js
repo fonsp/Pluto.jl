@@ -22,7 +22,7 @@ export const Notebook = ({
 }) => {
 
     return html`
-        <pluto-notebook>
+        <pluto-notebook id=${notebook_id}>
             ${cells.map(
                 (d) => html`<${Cell}
                     ...${d}

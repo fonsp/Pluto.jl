@@ -199,7 +199,7 @@ export class Editor extends Component {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now() },
+                    output: output,
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
@@ -717,6 +717,7 @@ export class Editor extends Component {
             const selected = this.state.notebook.cells.filter((c) => c.selected)
             if (selected.length > 0) {
                 this.requests.confirm_delete_multiple(verb, selected)
+                return true
             }
         }
 
@@ -735,15 +736,17 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                this.delete_selected("Delete")
-                //e.preventDefault()
+                if(this.delete_selected("Delete")){
+                  e.preventDefault()
+                }
+
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
                 const class_applied = document.body.querySelector("nav#at_the_top").classList.contains("show_findreplace")
 
                 if(!this.state.code_selected || !class_applied){
                   document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
                   document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")
-                  //this.setState({ find_replace: { ...this.state.find_replace, visible: !class_applied }})
+                  this.setState({ find_replace: { ...this.state.find_replace, visible: !class_applied }})
                 }
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {

@@ -1,8 +1,4 @@
-import .ExpressionExplorer: SymbolsState
-
-function disjoint(a::Set, b::Set)
-	!any(x in a for x in b)
-end
+import .ExpressionExplorer: SymbolsState, FunctionName
 
 "Information container about the cells to run in a reactive call and any cells that will err."
 struct TopologicalOrder
@@ -35,13 +31,13 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 		end
 
 		push!(entries, cell)
-		assigners = where_assigned(notebook, topology, topology[cell].assignments)
+		assigners = where_assigned(notebook, topology, cell)
 		if !allow_multiple_defs && length(assigners) > 1
 			for c in assigners
 				errable[c] = MultipleDefinitionsError(topology, c, assigners)
 			end
 		end
-		referencers = where_referenced(notebook, topology, topology[cell].assignments) |> Iterators.reverse
+		referencers = where_referenced(notebook, topology, cell) |> Iterators.reverse
 		for c in (allow_multiple_defs ? referencers : union(assigners, referencers))
 			if c != cell
 				dfs(c)
@@ -60,68 +56,52 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
 end
 
-"Return the cells that reference any of the given symbols. Recurses down functions calls, but not down cells."
-function where_referenced(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
+function disjoint(a::Set, b::Set)
+	!any(x in a for x in b)
+end
+
+"Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
+function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+	to_compare = union(topology[myself].definitions, topology[myself].funcdefs_without_signatures)
+	where_referenced(notebook, topology, to_compare)
+end
+"Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
+function where_referenced(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, topology[cell].references)
-			return true
-		end
-        for func in topology[cell].funccalls
-            if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].references)
-                    return true
-                end
-            end
-		end
-		return false
+		!disjoint(to_compare, topology[cell].references)
 	end
 end
 
-"Return the cells that assign to any of the given symbols. Recurses down functions calls, but not down cells."
-function where_assigned(notebook::Notebook, topology::NotebookTopology, symbols::Set{Symbol})::Array{Cell,1}
+"Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
+function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
+	self = topology[myself]
 	return filter(notebook.cells) do cell
-		if !disjoint(symbols, topology[cell].assignments)
-			return true
-		end
-        for func in topology[cell].funccalls
-            if haskey(topology.combined_funcdefs, func)
-                if !disjoint(symbols, topology.combined_funcdefs[func].assignments)
-                    return true
-                end
-            end
-		end
-		return false
+		other = topology[cell]
+		!(
+			disjoint(self.definitions,                 other.definitions) &&
+
+			disjoint(self.definitions,                 other.funcdefs_without_signatures) &&
+			disjoint(self.funcdefs_without_signatures, other.definitions) &&
+
+			disjoint(self.funcdefs_with_signatures,    other.funcdefs_with_signatures)
+		)
 	end
 end
 
-"Return all functions called by a cell, and all functions called by those functions, et cetera."
-function all_indirect_calls(topology::NotebookTopology, symstate::SymbolsState, found::Set{Vector{Symbol}}=Set{Vector{Symbol}}())::Set{Vector{Symbol}}
-	for func in symstate.funccalls
-		if func in found
-			# done
-		else
-			push!(found, func)
-            if haskey(topology.combined_funcdefs, func)
-                inner_symstate = topology.combined_funcdefs[func]
-                all_indirect_calls(topology, inner_symstate, found)
-            end
-		end
+"Return whether any cell references the given symbol. Used for the @bind mechanism."
+function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology[cell].references
 	end
-
-	return found
 end
 
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
-
-"""Does the cell only contain md"..." and html"..."?
-
-This is used to run these cells first."""
-function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
-	# https://github.com/fonsp/Pluto.jl/issues/209
-	isempty(topology[cell].assignments) && 
-		length(topology[cell].references) <= 2 && 
-		topology[cell].references ⊆ md_and_friends
+"Return whether any cell defines the given symbol. Used for the @bind mechanism."
+function is_assigned_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
+	any(notebook.cells) do cell
+		sym ∈ topology[cell].definitions
+	end
 end
+
 
 """Assigns a number to a cell - cells with a lower number might run first. 
 
@@ -133,11 +113,23 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Numb
 	elseif !isempty(cell.module_usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
 		2
-	elseif [:include] ∈ topology[cell].funccalls
+	elseif :include ∈ topology[cell].references
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
 		3
 	else
 		4
 	end
+end
+
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
+
+"""Does the cell only contain md"..." and html"..."?
+
+This is used to run these cells first."""
+function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
+	# https://github.com/fonsp/Pluto.jl/issues/209
+	isempty(topology[cell].definitions) && isempty(topology[cell].funcdefs_with_signatures) && 
+		length(topology[cell].references) <= 2 && 
+		topology[cell].references ⊆ md_and_friends
 end
