@@ -1,4 +1,4 @@
-import { html, useEffect, useReducer, useState } from "../common/Preact.js"
+import { html } from "../common/Preact.js"
 import { map_cmd_to_ctrl_on_mac, has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
 import { Cell } from "./Cell.js"
@@ -20,7 +20,6 @@ export const Notebook = ({
     client,
     notebook_id,
 }) => {
-
     return html`
         <pluto-notebook id=${notebook_id}>
             ${cells.map(
