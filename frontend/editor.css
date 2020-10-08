@@ -452,7 +452,7 @@ nav#at_the_top > a {
 
 nav#at_the_top img {
     height: 39px;
-    margin-bottom: -11px;
+    margin-bottom: -8px;
 }
 
 nav#at_the_top h1 {
@@ -834,6 +834,8 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
+    box-sizing: content-box;
+    margin-right: -1px; /* fix a visual glitch of imperfect alignment */
     width: 4px;
     position: absolute;
     left: -4px;
