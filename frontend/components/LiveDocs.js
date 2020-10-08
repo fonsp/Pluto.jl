@@ -45,6 +45,10 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
         })
     }, [])
 
+    // useEffect(() => {
+    //     set_searched_query(desired_doc_query)
+    //     fetch_docs(desired_doc_query)
+    // }, [desired_doc_query])
     // useQueryFromCell
     useEffect(() => {
         if (hidden || loading) {
@@ -59,31 +63,32 @@ export const LiveDocs = ({ desired_doc_query, on_update_doc_query, client, noteb
             return
         }
 
-        liveDocSearchRef.current.innerText = desired_doc_query
         set_searched_query(desired_doc_query)
         fetch_docs(desired_doc_query)
-    }, [desired_doc_query])
+    }, [hidden, desired_doc_query])
 
     return html`
         <aside id="helpbox-wrapper" ref=${helpboxRef}>
             <pluto-helpbox class=${cl({ hidden, loading })}>
                 <header
-                    id="live-docs-search"
-                    ref=${liveDocSearchRef}
                     onClick=${() => {
                         set_hidden(!hidden)
-                        setTimeout(() => liveDocSearchRef.current.focus(), 0)
+                        setTimeout(() => liveDocSearchRef.current && liveDocSearchRef.current.focus(), 0)
                     }}
-                    onInput=${(e) => {
-                        if(e.target.innerText === "") {
-                            e.target.innerText = ZERO_WIDTH_SPACE
-                        }
-                        const cleanedText = e.target.innerText.replace(ZERO_WIDTH_SPACE, "").trim()
-                        fetch_docs(cleanedText)
-                    }}
-                    contenteditable=${!hidden}
                 >
-                    ${hidden ? "Live docs" : ZERO_WIDTH_SPACE}
+                    ${hidden ? "Live docs" : html`
+                        <input
+                            id="live-docs-search"
+                            placeholder="Live docs"
+                            ref=${liveDocSearchRef}
+                            onInput=${e => { 
+                                set_searched_query(e.target.value)
+                                fetch_docs(e.target.value)
+                            }}
+                            value=${searched_query}
+                            type="text"
+                        ></input>
+                    `}
                 </header>
                 <section>
                     <h1><code>${shown_query}</code></h1>

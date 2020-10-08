@@ -1143,6 +1143,18 @@ dropruler {
         border-top-right-radius: 6px;
         /* border-top: 4px solid #8a8a8a; */
     }
+    pluto-helpbox > header > input {
+        background-color: inherit;
+        color: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+        font-size: inherit;
+        border: none;
+        width: 90%;
+    }
+    pluto-helpbox > header > input:focus {
+        outline: none;
+    }
     pluto-helpbox > section {
         height: 100%;
         overflow: auto;
