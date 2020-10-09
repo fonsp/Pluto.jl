@@ -78,23 +78,12 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 
     old_names = names(old_workspace, all=true, imported=true)
 
+    funcs_with_no_methods_left = filter(funcs_to_delete) do f
+        !try_delete_toplevel_methods(old_workspace, f)
+    end
+    name_symbols_of_funcs_with_no_methods_left = last.(last.(funcs_with_no_methods_left))
     for symbol in old_names
-        if symbol ∉ vars_to_delete
-            # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
-                try
-                    val = getfield(old_workspace, symbol)
-
-                    # Expose the variable in the scope of `new_workspace`
-                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
-                catch ex
-                    if !(ex isa UndefVarError)
-                        @warn "Failed to move variable $(symbol) to new workspace:"
-                        showerror(stderr, ex, stacktrace(catch_backtrace()))
-                    end
-                end
-            end
-        else
+        if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
 
             # free memory for other variables
@@ -111,16 +100,32 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     Core.eval(old_workspace, :($(symbol) = nothing))
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
+        else
+            # var will not be redefined in the new workspace, move it over
+            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
+                try
+                    val = getfield(old_workspace, symbol)
+
+                    # Expose the variable in the scope of `new_workspace`
+                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
+                catch ex
+                    if !(ex isa UndefVarError)
+                        @warn "Failed to move variable $(symbol) to new workspace:"
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                    end
+                end
+            end
         end
     end
-    try_delete_toplevel_methods.([old_workspace], funcs_to_delete)
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."
 isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
-"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂"
-function delete_toplevel_methods(f::Function, cell_id::UUID)
+"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
+
+Return whether the function has any methods left after deletion."
+function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
     methods_table = typeof(f).name.mt
@@ -150,13 +155,14 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
+    return !isempty(methods(f).ms)
 end
 
 # function try_delete_toplevel_methods(workspace::Module, name::Symbol)
 #     try_delete_toplevel_methods(workspace, [name])
 # end
 
-function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
     try
         val = workspace
         for name in name_parts
@@ -167,8 +173,11 @@ function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::T
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
             showerror(stderr, ex, stacktrace(catch_backtrace()))
+            false
         end
-    catch; end
+    catch
+        false
+    end
 end
 
 # these deal with some inconsistencies in Julia's internal (undocumented!) variable names

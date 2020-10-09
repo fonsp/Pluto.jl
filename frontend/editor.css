@@ -408,9 +408,13 @@ aside#export::before {
 aside#export div#container {
     flex-direction: row;
     display: flex;
-    max-width: calc(960px + 20px + 20px);
+    max-width: 1000px;
     padding-right: 20px;
     margin: 0 auto;
+}
+header aside#export div#container {
+    /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
+    overflow-x: hidden;
 }
 header.show_export aside#export div#container {
     overflow-x: auto;
@@ -491,7 +495,7 @@ nav#at_the_top > a {
 
 nav#at_the_top img {
     height: 39px;
-    margin-bottom: -11px;
+    margin-bottom: -8px;
 }
 
 nav#at_the_top h1 {
@@ -873,6 +877,8 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
+    box-sizing: content-box;
+    margin-right: -1px; /* fix a visual glitch of imperfect alignment */
     width: 4px;
     position: absolute;
     left: -4px;

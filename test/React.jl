@@ -282,7 +282,7 @@ import JSON
     end
 
     
-    @testset "Methods across cells" begin
+    @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),
             Cell("a(x,y) = 2"),
@@ -299,6 +299,17 @@ import JSON
             Cell("Base.tan(\"eleven\")"),
             Cell("Base.tan(missing)"),
             Cell("tan(missing)"),
+
+            Cell("d(x::Integer) = 14"),
+            Cell("d(x::String) = 15"),
+            Cell("d(16)"),
+            Cell("d(\"seventeen\")"),
+            Cell("d"),
+
+            Cell("struct e; x; y; end"),
+            Cell(""),
+            Cell("e(21, 21)"),
+            Cell("e(22)"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -372,6 +383,72 @@ import JSON
         @test notebook.cells[11].errored == true
         @test notebook.cells[12].output_repr == "missing"
 
+        # Cell("d(x::Integer) = 14"),
+        # Cell("d(x::String) = 15"),
+        # Cell("d(16)"),
+        # Cell("d(\"seventeen\")"),
+        # Cell("d"),
+
+        update_run!(🍭, notebook, notebook.cells[16:18])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == true
+
+        update_run!(🍭, notebook, notebook.cells[14])
+        @test notebook.cells[16].errored == false
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == false
+
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[16].errored == false
+        @test notebook.cells[17].errored == false
+        @test notebook.cells[18].errored == false
+
+        setcode(notebook.cells[14], "")
+        update_run!(🍭, notebook, notebook.cells[14])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == false
+        @test notebook.cells[18].errored == false
+
+        setcode(notebook.cells[15], "")
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == true
+        @test occursinerror("UndefVarError", notebook.cells[18])
+
+        # Cell("struct e; x; y; end"),
+        # Cell(""),
+        # Cell("e(21, 21)"),
+        # Cell("e(22)"),
+
+        update_run!(🍭, notebook, notebook.cells[19:22])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[20], "e(x) = e(x,x)")
+        update_run!(🍭, notebook, notebook.cells[20])
+        @test occursinerror("Multiple definitions", notebook.cells[19])
+        @test occursinerror("Multiple definitions", notebook.cells[20])
+        @test notebook.cells[21].errored == true
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[20], "")
+        update_run!(🍭, notebook, notebook.cells[20])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[20].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[19], "begin struct e; x; y; end; e(x) = e(x,x); end")
+        setcode(notebook.cells[20], "")
+        update_run!(🍭, notebook, notebook.cells[19:20])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[20].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == false
+
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
@@ -397,18 +474,36 @@ import JSON
     @testset "Variable deletion" begin
         notebook = Notebook([
             Cell("x = 1"),
-            Cell("y = x")
+            Cell("y = x"),
+            Cell("struct a; x end"),
+            Cell("a")
         ])
         fakeclient.connected_notebook = notebook
 
-        update_run!(🍭, notebook, notebook.cells[1])
-        update_run!(🍭, notebook, notebook.cells[2])
+        update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
+        
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == ""
         @test notebook.cells[1].errored == false
         @test occursinerror("x not defined", notebook.cells[2])
+
+        update_run!(🍭, notebook, notebook.cells[4])
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        setcode(notebook.cells[3], "struct a; x; y end")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        setcode(notebook.cells[3], "")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == true
+
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

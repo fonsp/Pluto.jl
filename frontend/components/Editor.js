@@ -1,6 +1,6 @@
 import { html, Component } from "../common/Preact.js"
-import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
-import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
+import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
+import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -739,8 +739,8 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                if(this.delete_selected("Delete")){
-                  e.preventDefault()
+                if (this.delete_selected("Delete")) {
+                    e.preventDefault()
                 }
 
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
