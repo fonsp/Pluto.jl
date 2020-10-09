@@ -4,7 +4,7 @@ import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
-import { select_next_match, replace_all, clear_highlighting_all } from "../common/FindReplace.js"
+import { select_next_match, replace_all, clear_highlighting_all, init_findreplace, toggle_findreplace } from "../common/FindReplace.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
@@ -73,15 +73,7 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
-            find_replace: {
-              visible: false,
-              textmarkers : [],
-              word: "",
-              marker: null,
-              previous: null,
-              replace_with: null,
-              replace_all_with: null
-            },
+            find_replace: init_findreplace(),
             code_selected: false
         }
         // convenience method
@@ -119,7 +111,7 @@ export class Editor extends Component {
         this.add_textmarkers = (markers, cell_id) => {
           this.setState((prevState) => {
             // delete old ones first
-            const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.cell_id != cell_id)
+            const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.id != cell_id)
             const succ_find_replace = {
               ...prevState.find_replace,
               textmarkers: [ ...prevMarkers, ...markers]
@@ -744,13 +736,8 @@ export class Editor extends Component {
                 }
 
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
-                const class_applied = document.body.querySelector("nav#at_the_top").classList.contains("show_findreplace")
-
-                if(!this.state.code_selected || !class_applied){
-                  document.body.querySelector("nav#at_the_top").classList.toggle("show_findreplace")
-                  document.body.querySelector("aside#findreplace_container").classList.toggle("show_findreplace")
-                  this.setState({ find_replace: { ...this.state.find_replace, visible: !class_applied }})
-                }
+                const newState = toggle_findreplace(this.state.find_replace, this.state.code_selected)
+                this.setState({ find_replace: newState })
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
@@ -1046,6 +1033,7 @@ export class Editor extends Component {
                     selected_friends=${this.selected_friends}
                     requests=${this.requests}
                     add_textmarkers=${this.add_textmarkers}
+                    findreplace_visible=${this.state.find_replace.visible}
                     findreplace_word=${this.state.find_replace.word}
                     set_findreplace_word=${this.update_findreplace_word}
                     set_code_selected=${(selected) => this.setState({ code_selected: selected })}

@@ -13,6 +13,7 @@ export const Notebook = ({
     selected_friends,
     requests,
     add_textmarkers,
+    findreplace_visible,
     findreplace_word,
     set_findreplace_word,
     set_code_selected,
@@ -37,6 +38,7 @@ export const Notebook = ({
                     client=${client}
                     notebook_id=${notebook_id}
                     add_textmarkers=${add_textmarkers}
+                    findreplace_visible=${findreplace_visible}
                     findreplace_word=${findreplace_word}
                     set_findreplace_word=${set_findreplace_word}
                     set_code_selected=${set_code_selected}

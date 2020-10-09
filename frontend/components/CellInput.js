@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useReducer } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac, has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
@@ -33,6 +33,7 @@ export const CellInput = ({
     cell_id,
     notebook_id,
     add_textmarkers,
+    findreplace_visible,
     findreplace_word,
     set_findreplace_word,
     set_code_selected
@@ -290,12 +291,14 @@ export const CellInput = ({
 
     useEffect(() => {
       var markers = []
-      if(!is_hidden && findreplace_word){
+      if(cm_ref.current){
         clear_all_markers(cm_ref.current)
+      }
+      if(!is_hidden && findreplace_word && findreplace_visible){
         markers = find_all_markers(cm_ref.current, findreplace_word, cell_id)
       }
       add_textmarkers(markers, cell_id)
-    }, [is_hidden, findreplace_word, local_code])
+    }, [is_hidden, findreplace_word, local_code, findreplace_visible])
 
     useEffect(() => {
         if (!is_hidden) {
