@@ -167,6 +167,10 @@ pluto-output code {
     font-size: 0.75rem;
 }
 
+pluto-output .markdown code {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
 pluto-output pre {
     display: inline-block;
     margin: 0px;
