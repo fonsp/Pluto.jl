@@ -738,6 +738,7 @@ export class Editor extends Component {
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
                 const newState = toggle_findreplace(this.state.find_replace, this.state.code_selected)
                 this.setState({ find_replace: newState })
+                
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
