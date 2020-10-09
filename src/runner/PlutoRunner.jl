@@ -1,6 +1,6 @@
 # Will be evaluated _inside_ the workspace process.
 
-# Pluto does most things on process 1 (the server), and it uses little wokrpsace processes to evaluate notebook code in.
+# Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
 # These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
@@ -14,6 +14,7 @@ import Base64
 import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
 import UUIDs: UUID
+import Logging
 
 export @bind
 
@@ -62,7 +63,7 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -77,21 +78,12 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 
     old_names = names(old_workspace, all=true, imported=true)
 
+    funcs_with_no_methods_left = filter(funcs_to_delete) do f
+        !try_delete_toplevel_methods(old_workspace, f)
+    end
+    name_symbols_of_funcs_with_no_methods_left = last.(last.(funcs_with_no_methods_left))
     for symbol in old_names
-        if symbol ∉ vars_to_delete
-            # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
-                try
-                    val = getfield(old_workspace, symbol)
-
-                    # Expose the variable in the scope of `new_workspace`
-                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
-                catch ex
-                    @warn "Failed to move variable $(symbol) to new workspace:"
-                    showerror(stderr, ex, stacktrace(catch_backtrace()))
-                end
-            end
-        else
+        if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
 
             # free memory for other variables
@@ -108,22 +100,38 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     Core.eval(old_workspace, :($(symbol) = nothing))
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
+        else
+            # var will not be redefined in the new workspace, move it over
+            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
+                try
+                    val = getfield(old_workspace, symbol)
+
+                    # Expose the variable in the scope of `new_workspace`
+                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
+                catch ex
+                    if !(ex isa UndefVarError)
+                        @warn "Failed to move variable $(symbol) to new workspace:"
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                    end
+                end
+            end
         end
     end
-    try_delete_toplevel_methods.([old_workspace], funcs_to_delete)
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."
-isfromtoplevel(method::Method) = startswith(nameof(method.module) |> string, "workspace")
+isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
-"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂"
-function delete_toplevel_methods(f::Function)
+"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
+
+Return whether the function has any methods left after deletion."
+function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromtoplevel(method) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
             push!(deleted_sigs, method.sig)
         end
@@ -137,7 +145,7 @@ function delete_toplevel_methods(f::Function)
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
-            if !isfromtoplevel(method) && method.sig ∈ deleted_sigs
+            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
                 push!(to_insert, method)
             end
         end
@@ -147,25 +155,29 @@ function delete_toplevel_methods(f::Function)
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
+    return !isempty(methods(f).ms)
 end
 
-function try_delete_toplevel_methods(workspace::Module, name::Symbol)
-    try_delete_toplevel_methods(workspace, [name])
-end
+# function try_delete_toplevel_methods(workspace::Module, name::Symbol)
+#     try_delete_toplevel_methods(workspace, [name])
+# end
 
-function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbol})
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
     try
         val = workspace
         for name in name_parts
             val = getfield(val, name)
         end
         try
-            (val isa Function) && delete_toplevel_methods(val)
+            (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
             showerror(stderr, ex, stacktrace(catch_backtrace()))
+            false
         end
-    catch; end
+    catch
+        false
+    end
 end
 
 # these deal with some inconsistencies in Julia's internal (undocumented!) variable names
@@ -355,10 +367,9 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
                     htmlesc(io, repr(mime, x; context=iocontext_compact))
                 end
             elseif mime isa MIME"text/latex"
-                # LaTeXStrings prints $ at the start and end.
-                # We strip those, since Markdown.LaTeX only contains the math content
+                # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
                 texed = repr(mime, x)
-                html(io, Markdown.LaTeX(strip(texed, '$')))
+                html(io, Markdown.LaTeX("\\text{$texed}"))
             else                
                 show(io, mime, x)
             end
@@ -412,9 +423,20 @@ end
 
 istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
+function array_prefix(io, x::Array{<:Any, 1})
+    print(io, eltype(x))
+end
+function array_prefix(io, x)
+    original = sprint(Base.showarg, x, false)
+    print(io, lstrip(original, ':'))
+    print(io, ": ")
+end
+
+Base.showable(::MIME"application/vnd.pluto.tree+xml", x::AbstractRange) = false
+
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    summary(io, x)
+    array_prefix(io, x)
     print(io, "<jlarray>")
     indices = eachindex(x)
 
@@ -424,11 +446,11 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
 
-        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], @view x[firsti:firsti-1+tree_display_limit-from_end])
+        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
         
         print(io, "<r><more></more></r>")
         
-        show_array_elements(io, indices[end+1-from_end:end], @view x[end+1-from_end:end])
+        show_array_elements(io, indices[end+1-from_end:end], x)
     end
     
     print(io, "</jlarray>")
@@ -683,5 +705,51 @@ const fake_bind = """macro bind(def, element)
         el
     end
 end"""
+
+###
+# LOGGING
+###
+
+const log_channel = Channel{Any}(10)
+const old_logger = Ref{Any}(nothing)
+
+struct PlutoLogger <: Logging.AbstractLogger
+    stream
+end
+
+function Logging.shouldlog(::PlutoLogger, level, _module, _...)
+    # Accept logs
+    # - From the user's workspace module
+    # - Info level and above for other modules
+    _module === current_module || convert(Logging.LogLevel, level) >= Logging.Info
+end
+Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
+Logging.catch_exceptions(::PlutoLogger) = false
+function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+    try
+        put!(log_channel, (
+            level=string(level),
+            msg=(msg isa String) ? msg : repr(msg),
+            group=group,
+            # id=id,
+            file=file,
+            line=line,
+            kwargs=Dict((k=>repr(v) for (k,v) in kwargs)...),
+        ))
+        # also print to console
+        Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
+    catch e
+        println(stderr, "Failed to relay log from PlutoRunner")
+        showerror(stderr, e, stacktrace(catch_backtrace()))
+    end
+end
+
+# we put this in __init__ to fix a world age problem
+function __init__()
+    if Distributed.myid() != 1
+        old_logger[] = Logging.global_logger()
+        Logging.global_logger(PlutoLogger(nothing))
+    end
+end
 
 end

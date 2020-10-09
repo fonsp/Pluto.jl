@@ -1,4 +1,6 @@
 import { html, Component } from "../common/Preact.js"
+import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
+import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -7,16 +9,47 @@ import { FilePicker } from "./FilePicker.js"
 import { Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
+import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
+import { Scroller } from "./Scroller.js"
 
 import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { handle_log } from "../common/Logging.js"
 
 const default_path = "..."
+
+/**
+ * Serialize an array of cells into a string form (similar to the .jl file).
+ *
+ * Used for implementing clipboard functionality. This isn't in topological
+ * order, so you won't necessarily be able to run it directly.
+ *
+ * @param {Array<import("./Cell.js").CellState>} cells
+ * @return {String}
+ */
+function serialize_cells(cells) {
+    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.local_code.body + "\n").join("\n")
+}
+
+/**
+ * Deserialize a Julia program or output from `serialize_cells`.
+ *
+ * If a Julia program, it will return a single String containing it. Otherwise,
+ * it will split the string into cells based on the special delimiter.
+ *
+ * @param {String} serialized_cells
+ * @return {Array<String>}
+ */
+function deserialize_cells(serialized_cells) {
+    const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
+    return segments.map((s) => s.trim()).filter((s) => s.length > 0)
+}
 
 export class Editor extends Component {
     constructor() {
@@ -27,13 +60,17 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
-                notebook_id: document.location.search.split("id=")[1],
+                notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
             },
             desired_doc_query: null,
             recently_deleted: null,
             connected: false,
             loading: true,
+            scroller: {
+                up: false,
+                down: false,
+            },
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -76,6 +113,30 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            set_scroller: (enabled) => {
+                this.setState({ scroller: enabled })
+            },
+            serialize_selected: (cell) => {
+                const selected = cell ? this.selected_friends(cell.id) : this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length) {
+                    return serialize_cells(selected)
+                }
+            },
+            add_deserialized_cells: async (data, index) => {
+                const new_code = deserialize_cells(data)
+                if (index === -1) index = this.state.notebook.cells.length
+                for (const new_block of new_code) {
+                    const update = await this.requests.add_remote_cell_at(index++, true)
+                    const new_cell = empty_cell_data(update.cell_id)
+                    new_cell.pasted = true
+                    new_cell.queued = new_cell.running = false
+                    new_cell.output.body = ""
+                    new_cell.local_code.body = new_block
+                    new_cell.remote_code.submitted_by_me = true
+                    new_cell.selected = true
+                    this.actions.add_local_cell(new_cell, update.message.index)
+                }
+            },
             add_local_cell: (cell, new_index) => {
                 return set_notebook_state((prevstate) => {
                     if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
@@ -98,7 +159,7 @@ export class Editor extends Component {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now() },
+                    output: output,
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
@@ -213,6 +274,9 @@ export class Editor extends Component {
                             break
                         case "bond_update":
                             // by someone else
+                            break
+                        case "log":
+                            handle_log(message, this.state.notebook.path)
                             break
                         default:
                             console.error("Received unknown update type!")
@@ -465,8 +529,8 @@ export class Editor extends Component {
                     false
                 )
             },
-            confirm_delete_multiple: (cells) => {
-                if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
+            confirm_delete_multiple: (verb, cells) => {
+                if (cells.length <= 1 || confirm(`${verb} ${cells.length} cells?`)) {
                     if (cells.some((f) => f.running || f.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cells[0].cell_id)
@@ -609,42 +673,103 @@ export class Editor extends Component {
             }
         }
 
+        this.delete_selected = (verb) => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            if (selected.length > 0) {
+                this.requests.confirm_delete_multiple(verb, selected)
+                return true
+            }
+        }
+
         document.addEventListener("keydown", (e) => {
-            if (e.code === "KeyQ" && e.ctrlKey) {
+            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+                // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.code === "KeyS" && e.ctrlKey) {
+            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
                     // TODO: let user know that the notebook autosaves
                 }
                 e.preventDefault()
-            } else if (e.code === "Backspace" || e.code === "Delete") {
-                const selected = this.state.notebook.cells.filter((c) => c.selected)
-                if (selected.length > 0) {
-                    this.requests.confirm_delete_multiple(selected)
+            } else if (e.key === "Backspace" || e.key === "Delete") {
+                if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
-            } else if ((e.key === "?" && e.ctrlKey) || e.key === "F1") {
+            } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
+                // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
+                // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
+                // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
-    Ctrl+Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
     PageUp or fn+Up:   select cell above
     PageDown or fn+Down:   select cell below
 
-    Ctrl+Q:   interrupt notebook
-    Ctrl+S:   submit all changes
-    
+    ${ctrl_or_cmd_name}+Q:   interrupt notebook
+    ${ctrl_or_cmd_name}+S:   submit all changes
+
+    ${ctrl_or_cmd_name}+C:   copy selected cells
+    ${ctrl_or_cmd_name}+X:   cut selected cells
+    ${ctrl_or_cmd_name}+V:   paste selected cells
+
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
+            }
+        })
+
+        document.addEventListener("copy", (e) => {
+            if (!in_textarea_or_input()) {
+                const serialized = this.actions.serialize_selected()
+                if (serialized) {
+                    navigator.clipboard.writeText(serialized).catch((err) => {
+                        alert(`Error copying cells: ${e}`)
+                    })
+                }
+            }
+        })
+
+        // Disabled until we solve https://github.com/fonsp/Pluto.jl/issues/482
+        // or we can enable it with a prompt
+
+        // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
+
+        // document.addEventListener("cut", (e) => {
+        //     if (!in_textarea_or_input()) {
+        //         const serialized = this.actions.serialize_selected()
+        //         if (serialized) {
+        //             navigator.clipboard
+        //                 .writeText(serialized)
+        //                 .then(() => this.delete_selected("Cut"))
+        //                 .catch((err) => {
+        //                     alert(`Error cutting cells: ${e}`)
+        //                 })
+        //         }
+        //     }
+        // })
+
+        document.addEventListener("paste", async (e) => {
+            if (!in_textarea_or_input()) {
+                // Deselect everything first, to clean things up
+                this.setState(
+                    immer((state) => {
+                        for (let cell of state.notebook.cells) {
+                            cell.selected = false
+                        }
+                    })
+                )
+
+                // Paste in the cells at the end of the notebook
+                const data = e.clipboardData.getData("text/plain")
+                this.actions.add_deserialized_cells(data, -1)
             }
         })
 
@@ -677,7 +802,7 @@ export class Editor extends Component {
                 })
                 this.counter_statistics = create_counter_statistics()
             }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+        }, 20 * 1000) // 20 seconds - load feedback a little later for snappier UI
     }
 
     componentDidUpdate() {
@@ -706,7 +831,17 @@ export class Editor extends Component {
     }
 
     render() {
-        const circle = (fill) => html`<svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em;">
+        const circle = (fill) => html` <svg
+            width="48"
+            height="48"
+            viewBox="0 0 48 48"
+            style="
+                height: .7em;
+                width: .7em;
+                margin-left: .3em;
+                margin-right: .2em;
+            "
+        >
             <circle cx="24" cy="24" r="24" fill=${fill}></circle>
         </svg>`
         const triangle = (fill) => html`<svg
@@ -723,6 +858,7 @@ export class Editor extends Component {
             />
         </svg>`
         return html`
+            <${Scroller} active=${this.state.scroller} />
             <header>
                 <aside id="export">
                     <div id="container">
@@ -735,13 +871,24 @@ export class Editor extends Component {
                             href="#"
                             class="export_card"
                             onClick=${(e) => {
-                                const a = e.composedPath().find((el) => el.tagName === "A")
-                                a.download = this.state.notebook.shortpath + ".html"
-                                a.href = URL.createObjectURL(
-                                    new Blob([offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body })], {
-                                        type: "text/html",
-                                    })
-                                )
+                                offline_html({
+                                    pluto_version: this.client.version_info.pluto,
+                                    head: document.head,
+                                    body: document.body,
+                                }).then((html) => {
+                                    if (html != null) {
+                                        const fake_anchor = document.createElement("a")
+                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
+                                        fake_anchor.href = URL.createObjectURL(
+                                            new Blob([html], {
+                                                type: "text/html",
+                                            })
+                                        )
+                                        document.body.appendChild(fake_anchor)
+                                        fake_anchor.click()
+                                        document.body.removeChild(fake_anchor)
+                                    }
+                                })
                             }}
                         >
                             <header>${circle("#E86F51")} Static HTML</header>
@@ -835,29 +982,22 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler}
-                    requests=${this.requests}
-                    selected_friends=${this.selected_friends}
-                    on_selection=${(s) => {
-                        const from = Math.min(s.selection_start_index, s.selection_stop_index)
-                        const to = Math.max(s.selection_start_index, s.selection_stop_index)
-                        this.set_notebook_state((prevstate) => {
-                            return {
-                                cells: prevstate.cells.map((c, i) => {
-                                    if (from <= i && i < to) {
-                                        return {
-                                            ...c,
-                                            selected: true,
-                                        }
-                                    } else {
-                                        return {
-                                            ...c,
-                                            selected: false,
-                                        }
+                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />
+
+                <${SelectionArea}
+                    actions=${this.actions}
+                    cells=${this.state.notebook.cells}
+                    on_selection=${(selected_cell_ids) => {
+                        let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
+                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                            this.setState(
+                                immer((state) => {
+                                    for (let cell of state.notebook.cells) {
+                                        cell.selected = selected_cell_ids.includes(cell.cell_id)
                                     }
-                                }),
-                            }
-                        })
+                                })
+                            )
+                        }
                     }}
                 />
             </main>

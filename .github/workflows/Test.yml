@@ -22,13 +22,17 @@ jobs:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
                 julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]
-                os: [ubuntu-latest, windows-latest]
+                os: [ubuntu-latest]
                 include:
-                    # macOS - only the extremes, linux and windows cover pretty much everything already i think
+                    # macOS and windows - only the extremes, linux covers pretty much everything already i think
                     - julia-version: "1.0"
                       os: macOS-latest
                     - julia-version: "1.5"
                       os: macOS-latest
+                    - julia-version: "1.0"
+                      os: windows-latest
+                    - julia-version: "1.5"
+                      os: windows-latest
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it

@@ -18,12 +18,34 @@ Base.@kwdef mutable struct ServerOptions
 end
 
 """
-Security settings for the HTTP server.
+    SecurityOptions([; kwargs...])
+
+Security settings for the HTTP server. Options are:
+
+- `require_secret_for_open_links::Bool = true`
+
+    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?path=http://www.a.b/c.jl` should be protected. 
+
+    Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
+
+- `require_secret_for_access::Bool = true`
+
+    If false, you do not need to use a `secret` in the URL to access Pluto: you will be authenticated by visiting `http://localhost:1234/` in your browser. An authentication cookie is still used for access (to prevent XSS and deceptive links or an img src to `http://localhost:1234/open?url=badpeople.org/script.jl`), and is set automatically, but this request to `/` is protected by cross-origin policy.
+
+    Use `true` on a computer used by multiple people simultaneously. Only use `false` if necessary.
+
+**Leave these options on `true` for the most secure setup.**
+
+Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
 """
 Base.@kwdef mutable struct SecurityOptions
-    require_token_for_open_links::Bool = true
+    require_secret_for_open_links::Bool = true
+    require_secret_for_access::Bool = true
 end
 
+"""
+For internal use only.
+"""
 Base.@kwdef mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
     workspace_use_distributed::Bool = true
@@ -88,7 +110,7 @@ function Base.show(io::IO, x::AbstractOptions)
     println(io, "(")
     fnames = fieldnames(typeof(x))
     for each in fieldnames(typeof(x))
-        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", getfield(x, each))
+        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", repr(getfield(x, each)))
         println(io, ", ")
     end
     print(io, " "^indent, ")")
@@ -114,17 +136,19 @@ function from_flat_kwargs(; kwargs...)::Options
             throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
             [
                 "Server Options:",
-                map(x->" "^2 * string(x), fieldnames(ServerOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(ServerOptions))...,
                 "",
                 "Security Options:",
-                map(x->" "^2 * string(x), fieldnames(SecurityOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(SecurityOptions))...,
                 "",
                 "Evaluation Options:",
-                map(x->" "^2 * string(x), fieldnames(EvaluationOptions))...,
+                map(x -> " "^2 * string(x), fieldnames(EvaluationOptions))...,
                 "",
                 "Compiler Options:",
-                map(x->" "^2 * string(x), fieldnames(CompilerOptions))...,
-            ], '\n'))"""))
+                map(x -> " "^2 * string(x), fieldnames(CompilerOptions))...,
+            ], '\n'))
+            
+            These can be used as keywords arguments to Pluto.run, or to Pluto.from_flat_kwargs to create a Pluto.Options object."""))
         end
     end
 
