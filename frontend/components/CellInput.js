@@ -1,5 +1,6 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 import observablehq from "../common/SetupCellEnvironment.js"
+import range from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/range.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
@@ -156,6 +157,7 @@ export const CellInput = ({
             }
             keys["Ctrl-O"] = () => {
                 window.cm = cm
+                cm.findMarks({ line: 0, ch: 0 }, { line: Infinity, ch: 0 }).forEach((m) => m.clear())
                 cm.setBookmark(cm.getCursor(), {
                     widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em;">`,
                 })
@@ -257,16 +259,31 @@ export const CellInput = ({
                 }
                 change_handler_ref.current(new_value)
 
-                cm.eachLine((linehandle) => {
-                    const re = /(using|import) (\w+)/g
-                    let match
-                    while ((match = re.exec(linehandle.text)) != null) {
-                        console.log(match.index)
+                // cm.replaceRange()
+                cm.getAllMarks().forEach((m) => {
+                    const m_position = m.find()
+                    if (e.from.line <= m_position.line && m_position.line <= e.to.line) {
+                        m.clear()
                     }
                 })
-                // for (const match of new_value.matchAll()) {
-                //     console.log(match)
-                // }
+
+                range(e.from.line, e.to.line + 1).map((line_i) => {
+                    /** @type {string} */
+                    const line = cm.getLine(line_i)
+                    if (line != undefined) {
+                        // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
+                        const re = /(using|import)\s*(\w+)/g
+                        for (const match of line.matchAll(re)) {
+                            console.log(match)
+                            cm.setBookmark(
+                                { line: line_i, ch: match.index + match[0].length },
+                                {
+                                    widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em; margin-bottom: -.5em; margin-left: .3em; margin-right: .3em;">`,
+                                }
+                            )
+                        }
+                    }
+                })
             })
 
             cm.on("blur", () => {
