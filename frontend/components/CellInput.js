@@ -267,20 +267,41 @@ export const CellInput = ({
                     }
                 })
 
-                range(e.from.line, e.to.line + 1).map((line_i) => {
+                range(e.from.line, e.to.line).map((line_i) => {
                     /** @type {string} */
                     const line = cm.getLine(line_i)
                     if (line != undefined) {
+                        // dunno
                         // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
-                        const re = /(using|import)\s*(\w+)/g
-                        for (const match of line.matchAll(re)) {
-                            console.log(match)
-                            cm.setBookmark(
-                                { line: line_i, ch: match.index + match[0].length },
-                                {
-                                    widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em; margin-bottom: -.5em; margin-left: .3em; margin-right: .3em;">`,
+
+                        // import A: b. c
+                        // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
+
+                        // import A, B, C
+                        const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
+                        // const re = /(using|import)\s*(\w+)/g
+                        for (const import_match of line.matchAll(re)) {
+                            console.log(import_match)
+
+                            const start = import_match.index + import_match[1].length
+
+                            const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
+
+                            if (import_token.type === "keyword") {
+                                const inner = import_match[0].substr(import_match[1].length)
+
+                                const inner_re = /(\w+)(\.\w+)*/g
+                                for (const pkg_match of inner.matchAll(inner_re)) {
+                                    const pkg_name = pkg_match[1]
+                                    cm.setBookmark(
+                                        { line: line_i, ch: start + pkg_match.index + pkg_match[0].length },
+                                        {
+                                            widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em; margin-bottom: -.5em; margin-left: .3em; margin-right: .3em;"
+                                            title=${pkg_name}>`,
+                                        }
+                                    )
                                 }
-                            )
+                            }
                         }
                     }
                 })
