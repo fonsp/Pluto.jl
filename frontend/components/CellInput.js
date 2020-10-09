@@ -1,7 +1,7 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac, has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
+import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.44.0/addon/search/searchcursor.min.js'
 import { clear_all_markers, find_all_markers } from "../common/FindReplace.js"
 

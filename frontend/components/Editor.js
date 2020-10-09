@@ -738,7 +738,6 @@ export class Editor extends Component {
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
                 const newState = toggle_findreplace(this.state.find_replace, this.state.code_selected)
                 this.setState({ find_replace: newState })
-                
                 e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
@@ -1039,7 +1038,6 @@ export class Editor extends Component {
                     set_findreplace_word=${this.update_findreplace_word}
                     set_code_selected=${(selected) => this.setState({ code_selected: selected })}
                     client=${this.client}
-
                 />
 
                 <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />
