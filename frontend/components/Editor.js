@@ -116,24 +116,17 @@ export class Editor extends Component {
         }
         this.set_cell_state = set_cell_state.bind(this)
 
-        this.add_textmarkers = (markers) => {
+        this.add_textmarkers = (markers, cell_id) => {
+          this.setState((prevState) => {
+            // delete old ones first
+            const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.cell_id != cell_id)
+            const succ_find_replace = {
+              ...prevState.find_replace,
+              textmarkers: [ ...prevMarkers, ...markers]
+            }
 
-          if(markers.length > 0){
-            const cell_id = markers[0].cell_id
-
-            this.setState((prevState) => {
-              // delete old ones first
-              const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.cell_id != cell_id)
-              const succ_find_replace = {
-                ...prevState.find_replace,
-                textmarkers: [ ...prevMarkers, ...markers]
-              }
-
-              console.log(succ_find_replace)
-
-              return { find_replace: succ_find_replace }
-            })
-          }
+            return { find_replace: succ_find_replace }
+          })
         }
 
         this.update_findreplace_word = (word) => {
@@ -142,6 +135,16 @@ export class Editor extends Component {
           }
           if(this.state.find_replace.marker) this.state.find_replace.marker.deselect()
           this.setState({ find_replace: { ...this.state.find_replace, word: word, marker: null, previous: null } })
+        }
+
+        this.find_next = () => this.setState({ find_replace: select_next_match(this.state.find_replace )})
+
+        this.replace_with = (word) => {
+          if(this.state.find_replace.marker) {
+            this.state.find_replace.marker.replace_with(word)
+          }
+          // replace (even if nothing is selected) results in a find-next
+          this.find_next()
         }
 
         // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
@@ -994,8 +997,8 @@ export class Editor extends Component {
                       cells=${this.state.notebook.cells}
                       word=${this.state.find_replace.word}
                       set_word=${this.update_findreplace_word}
-                      find_next=${() => this.setState({ find_replace: select_next_match(this.state.find_replace )})}
-                      replace_with=${(word) => { if(this.state.find_replace.marker) this.state.find_replace.marker.replace_with(word)}}
+                      find_next=${this.find_next}
+                      replace_with=${this.replace_with}
                       replace_all=${(word) => replace_all(this.state.find_replace.textmarkers, word)}
                     />
                     <button class="toggle_export" title="Export..." onClick=${() => {

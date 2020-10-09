@@ -3,6 +3,7 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useReducer } from "
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac, has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 import 'https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.44.0/addon/search/searchcursor.min.js'
+import { clear_all_markers, find_all_markers } from "../common/FindReplace.js"
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -288,41 +289,13 @@ export const CellInput = ({
     }, [is_hidden])
 
     useEffect(() => {
+      var markers = []
       if(!is_hidden && findreplace_word){
-
-        // makes sure everything is deselected first
-        cm_ref.current.getAllMarks().forEach((mark) => mark.clear())
-
-        var markers = []
-
-        var cursor = cm_ref.current.getSearchCursor(findreplace_word)
-        while(cursor.findNext()){
-          const highlighter = cm_ref.current.markText(cursor.from(), cursor.to(), { css: "color: red; font-weight: bold" })
-
-          const from = cursor.from()
-          const to = cursor.to()
-          const textmarker = {
-            select: () => {
-              textmarker.marker = cm_ref.current.markText(from, to, { css: "background: #D9D5D5; color: red; font-weight: bold" })
-              //cm_ref.current.focus()
-              //cm_ref.current.setCursor(to)
-            },
-            deselect: () => {
-              textmarker.marker.clear()
-            },
-            replace_with: (word) => {
-              cm_ref.current.replaceRange(word, from, to)
-            },
-            clear_highlighting: () => {
-              highlighter.clear()
-            },
-            cell_id: cell_id
-          }
-          markers.push(textmarker)
-        }
-        add_textmarkers(markers)
+        clear_all_markers(cm_ref.current)
+        markers = find_all_markers(cm_ref.current, findreplace_word, cell_id)
       }
-    }, [findreplace_word, local_code])
+      add_textmarkers(markers, cell_id)
+    }, [is_hidden, findreplace_word, local_code])
 
     useEffect(() => {
         if (!is_hidden) {
