@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component, useState, useEffect } from "../common/Preact.js"
 import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
 import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
@@ -51,6 +51,108 @@ function deserialize_cells(serialized_cells) {
     return segments.map((s) => s.trim()).filter((s) => s.length > 0)
 }
 
+const Circle = ({ fill }) => html`
+    <svg
+        width="48"
+        height="48"
+        viewBox="0 0 48 48"
+        style="
+            height: .7em;
+            width: .7em;
+            margin-left: .3em;
+            margin-right: .2em;
+        "
+    >
+        <circle cx="24" cy="24" r="24" fill=${fill}></circle>
+    </svg>
+`
+const Triangle = ({ fill }) => html`
+    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">
+        <polygon points="24,0 48,40 0,40" fill=${fill} stroke="none" />
+    </svg>
+`
+
+let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
+    // let [html_export, set_html_export] = useState(null)
+
+    // useEffect(() => {
+    //     if (open) {
+    //         offline_html({
+    //             pluto_version: pluto_version,
+    //             head: document.head,
+    //             body: document.body,
+    //         }).then((html) => {
+    //             set_html_export(html)
+    //         })
+    //     } else {
+    //         set_html_export(null)
+    //     }
+    // }, [notebook, open, set_html_export])
+
+    return html`
+        <aside id="export">
+            <div id="container">
+                <div class="export_title">export</div>
+                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
+                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
+                    <section>Download a copy of the <b>.jl</b> script.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    onClick=${(e) => {
+                        offline_html({
+                            pluto_version: pluto_version,
+                            head: document.head,
+                            body: document.body,
+                        }).then((html) => {
+                            if (html != null) {
+                                const fake_anchor = document.createElement("a")
+                                fake_anchor.download = `${notebook.shortpath}.html`
+                                fake_anchor.href = URL.createObjectURL(
+                                    new Blob([html], {
+                                        type: "text/html",
+                                    })
+                                )
+                                document.body.appendChild(fake_anchor)
+                                fake_anchor.click()
+                                document.body.removeChild(fake_anchor)
+                            }
+                        })
+                    }}
+                >
+                    <header><${Circle} fill="#E86F51" /> Static HTML</header>
+                    <section>An <b>.html</b> file for your web page, or to share online.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    style=${window.chrome == null ? "opacity: .7;" : ""}
+                    onClick=${() => {
+                        if (window.chrome == null) {
+                            alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
+                        }
+                        window.print()
+                    }}
+                >
+                    <header><${Circle} fill="#3D6117" /> Static PDF</header>
+                    <section>A static <b>.pdf</b> file for print or email.</section>
+                </a>
+                <!--<div class="export_title">
+                    future
+                </div>
+                <a class="export_card" style="border-color: #00000021; opacity: .7;">
+                    <header>mybinder.org</header>
+                    <section>Publish an interactive notebook online.</section>
+                </a>-->
+                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                    <span></span>
+                </button>
+            </div>
+        </aside>
+    `
+}
+
 export class Editor extends Component {
     constructor() {
         super()
@@ -71,6 +173,7 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
+            export_menu_open: false,
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -831,99 +934,16 @@ export class Editor extends Component {
     }
 
     render() {
-        const circle = (fill) => html` <svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            style="
-                height: .7em;
-                width: .7em;
-                margin-left: .3em;
-                margin-right: .2em;
-            "
-        >
-            <circle cx="24" cy="24" r="24" fill=${fill}></circle>
-        </svg>`
-        const triangle = (fill) => html`<svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;"
-        >
-            <polygon
-                points="24,0 48
-            ,40 0,40"
-                fill=${fill}
-                stroke="none"
-            />
-        </svg>`
+        let { export_menu_open } = this.state
         return html`
             <${Scroller} active=${this.state.scroller} />
-            <header>
-                <aside id="export">
-                    <div id="container">
-                        <div class="export_title">export</div>
-                        <a href="./notebookfile?id=${this.state.notebook.notebook_id}" target="_blank" class="export_card">
-                            <header>${triangle("#a270ba")} Notebook file</header>
-                            <section>Download a copy of the <b>.jl</b> script.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            onClick=${(e) => {
-                                offline_html({
-                                    pluto_version: this.client.version_info.pluto,
-                                    head: document.head,
-                                    body: document.body,
-                                }).then((html) => {
-                                    if (html != null) {
-                                        const fake_anchor = document.createElement("a")
-                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
-                                        fake_anchor.href = URL.createObjectURL(
-                                            new Blob([html], {
-                                                type: "text/html",
-                                            })
-                                        )
-                                        document.body.appendChild(fake_anchor)
-                                        fake_anchor.click()
-                                        document.body.removeChild(fake_anchor)
-                                    }
-                                })
-                            }}
-                        >
-                            <header>${circle("#E86F51")} Static HTML</header>
-                            <section>An <b>.html</b> file for your web page, or to share online.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            style=${window.chrome == null ? "opacity: .7;" : ""}
-                            onClick=${() => {
-                                if (window.chrome == null) {
-                                    alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
-                                }
-                                window.print()
-                            }}
-                        >
-                            <header>${circle("#3D6117")} Static PDF</header>
-                            <section>A static <b>.pdf</b> file for print or email.</section>
-                        </a>
-                        <!--<div class="export_title">
-                            future
-                        </div>
-                        <a class="export_card" style="border-color: #00000021; opacity: .7;">
-                            <header>mybinder.org</header>
-                            <section>Publish an interactive notebook online.</section>
-                        </a>-->
-                        <button
-                            title="Close"
-                            class="toggle_export"
-                            onClick=${() => document.body.querySelector("header").classList.toggle("show_export", false)}
-                        >
-                            <span></span>
-                        </button>
-                    </div>
-                </aside>
+            <header className=${export_menu_open ? "show_export" : ""}>
+                <${ExportBanner}
+                    pluto_version=${this.client?.version_info?.pluto}
+                    notebook=${this.state.notebook}
+                    open=${export_menu_open}
+                    onClose=${() => this.setState({ export_menu_open: false })}
+                />
                 <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
@@ -939,7 +959,7 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => document.body.querySelector("header").classList.toggle("show_export")}>
+                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                         <span></span>
                     </button>
                 </nav>
