@@ -1,8 +1,11 @@
+import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
+
+const RECONNECT_DELAY = 500
 
 /**
  * Return a promise that resolves to:
@@ -276,9 +279,10 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
         update_url_with_binder_token()
 
-        const ws_address = new URL(document.location.href)
+        const ws_address = new URL(window.location.href)
         ws_address.protocol = ws_address.protocol.replace("http", "ws")
         ws_address.pathname = ws_address.pathname.replace("/edit", "/")
+        ws_address.hash = ""
 
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
@@ -287,6 +291,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     on_connection_status(false)
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
+                    await Promises.delay(RECONNECT_DELAY)
                     await connect() // reconnect!
 
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
@@ -313,7 +318,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
                 if (confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
-                    document.location.href = "./"
+                    window.location.href = "./"
                 }
                 on_connection_status(false)
                 return {}
@@ -332,6 +337,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             return u.message
         } catch (ex) {
             console.error("connect() failed", ex)
+            await Promises.delay(RECONNECT_DELAY)
             return await connect()
         }
     }
