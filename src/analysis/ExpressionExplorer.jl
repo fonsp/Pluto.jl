@@ -429,7 +429,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         funcname, innersymstate = explore_funcdef!(funcroot, innerscopestate)
         # Macro are called using @funcname, but defined with funcname. We need to change that in our scopestate
-        if ex.head == :macro
+        # (The `!= 0` is for when the function named couldn't be parsed)
+        if ex.head == :macro && length(funcname) != 0
             setdiff!(innerscopestate.hiddenglobals, funcname)
             funcname = Symbol[Symbol("@$(funcname[1])")]
             push!(innerscopestate.hiddenglobals, funcname...)
