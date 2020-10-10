@@ -188,6 +188,8 @@ function run(session::ServerSession)
                     # that's fine!
                 elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
                     # that's fine!
+                elseif ex isa AssertionError && occursin("is_authenticated", ex.msg)
+                    # That's fine!
                 else
                     bt = stacktrace(catch_backtrace())
                     @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
