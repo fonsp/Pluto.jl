@@ -596,34 +596,87 @@ end
 ###
 # REPL THINGS
 ###
+import REPL
+
+"""
+    pluto_completion_text(completion::REPL.REPLCompletions.Completion)
+
+A very little bit improved version of REPL.completions with the same signature.
+Only thing this improves is when you are autocompleting an infix operator.
+
+e.g. autocompleting `Base.` will normally yield `+`, but `Base.+` is never valid.
+So what I do is generating getproperty syntax, and then slicing of the `Base.` part,
+and that yield `:+` which is great because `Base.:+` is happy.
+
+(Even does `Base.:(:)`!!)
+"""
+function pluto_completion_text(completion) REPL.completion_text(completion) end
+function pluto_completion_text(completion::REPL.REPLCompletions.ModuleCompletion)
+	if startswith(completion.mod, "@")
+		completion.mod
+	else
+		string(Expr(:., :B, QuoteNode(Symbol(completion.mod))))[3:end]
+	end
+end
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (completion_text.(results), loc, found)
+    (pluto_completion_text.(results), loc, found)
 end
+
+"""
+    is_pure_expression(expression::ReturnValue{Meta.parse})
+
+Checks if an expression is approximately pure.
+
+Not sure if the type signature conveys it, but this take anything that is returned from `Meta.parse`.
+It obviously does not actually check if something is strictly pure, as `getproperty()` could be extended,
+and suddenly there can be side effects everywhere. This is just an approximation.
+"""
+function is_pure_expression(expr::Expr)
+    if expr.head == :. || expr.head === :curly
+        all((is_pure_expression(x) for x in expr.args))
+    else
+        false
+    end
+end
+is_pure_expression(s::Symbol) = true
+is_pure_expression(q::QuoteNode) = true
+is_pure_expression(q::Number) = true
+is_pure_expression(q::String) = true
+is_pure_expression(x) = false # Better safe than sorry I guess
 
 # Based on /base/docs/bindings.jl from Julia source code
 function binding_from(x::Expr, workspace::Module=current_module)
     if x.head == :macrocall
-        Docs.Binding(workspace, x.args[1])
-    elseif x.head == :.
-        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2].value)
+        macro_name = x.args[1]
+        if is_pure_expression(macro_name)
+            Core.eval(workspace, macro_name)
+        else
+            error("Couldn't infer `$x` for Live Docs.")
+        end
+    elseif is_pure_expression(x)
+        Core.eval(workspace, x)
     else
-        error("Invalid @var syntax `$x`.")
+        error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspace, s)
+binding_from(s::Symbol, workspace::Module=current_module) = Core.eval(workspace, s)
 binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
 
 "You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
-        (repr(MIME"text/html"(), Docs.doc(binding)), :👍)
+        value = binding_from(Meta.parse(query), workspace)
+        (
+            repr(MIME"text/html"(), Docs.doc(value)),
+            format_output(value),
+            :👍
+        )
     catch ex
-        (nothing, :👎)
+        (nothing, nothing, :👎)
     end
 end
 

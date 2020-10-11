@@ -76,17 +76,17 @@ end
 responses[:docs] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
     query = body["query"]
 
-    doc_html, status = if haskey(Docs.keywords, query |> Symbol)
+    doc_html, result_html, status = if haskey(Docs.keywords, query |> Symbol)
         # available in Base, no need to ask worker
         doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
-        (repr(MIME("text/html"), doc_md), :👍)
+        (repr(MIME("text/html"), doc_md), nothing, :👍)
     else
         workspace = WorkspaceManager.get_workspace((session, notebook))
 
         if isready(workspace.dowork_token)
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher($query)))
         else
-            (nothing, :⌛)
+            (nothing, nothing, :⌛)
         end
     end
 
@@ -94,7 +94,8 @@ responses[:docs] = (session::ServerSession, body, notebook::Notebook; initiator:
         Dict(
             :status => status,
             :doc => doc_html,
-            ), notebook, nothing, initiator)
+            :result_html => result_html
+        ), notebook, nothing, initiator)
 
     putclientupdates!(session, initiator, msg)
 end

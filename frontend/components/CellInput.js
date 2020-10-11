@@ -1,5 +1,5 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
-
+import { html as observable_html } from "../common/SetupCellEnvironment.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 
@@ -214,23 +214,52 @@ export const CellInput = ({
             cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
 
             cm.on("cursorActivity", () => {
-                if (cm.somethingSelected()) {
-                    const sel = cm.getSelection()
-                    if (!/[\s]/.test(sel)) {
+                setTimeout(() => {
+                    if (!cm.hasFocus()) return
+
+                    if (cm.somethingSelected()) {
+                        const sel = cm.getSelection()
+                        // if (!/[\s]/.test(sel)) {
                         // no whitespace
                         on_update_doc_query(sel)
+                        // }
+                    } else {
+                        const cursor = cm.getCursor()
+                        const token = cm.getTokenAt(cursor)
+
+                        if (token.start === 0 && token.type === "operator" && token.string === "?") {
+                            // https://github.com/fonsp/Pluto.jl/issues/321
+                            const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
+                            on_update_doc_query(second_token.string)
+                        } else {
+                            const token_before_cursor = cm.getTokenAt(cursor)
+                            const token_after_cursor = cm.getTokenAt({ ...cursor, ch: cursor.ch + 1 })
+
+                            let bad_token_types = ["number", "string", null]
+                            let before_and_after_token = [token_before_cursor, token_after_cursor]
+
+                            // Fix for string macros
+                            for (let possibly_string_macro of before_and_after_token) {
+                                let match = possibly_string_macro.string.match(/([a-zA-Z]+)"/)
+                                if (possibly_string_macro.type === "string" && match != null) {
+                                    return on_update_doc_query(`@${match[1]}_str`)
+                                }
+                            }
+
+                            let good_token = before_and_after_token.find((x) => !bad_token_types.includes(x.type))
+                            if (good_token) {
+                                let tokens = cm.getLineTokens(cursor.line)
+                                let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
+                                on_update_doc_query(
+                                    module_expanded_selection({
+                                        tokens_before_cursor: tokens.slice(0, current_token + 1),
+                                        tokens_after_cursor: tokens.slice(current_token + 1),
+                                    })
+                                )
+                            }
+                        }
                     }
-                } else {
-                    const cursor = cm.getCursor()
-                    const token = cm.getTokenAt(cursor)
-                    if (token.start === 0 && token.type === "operator" && token.string === "?") {
-                        // https://github.com/fonsp/Pluto.jl/issues/321
-                        const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
-                        on_update_doc_query(second_token.string)
-                    } else if (token.type != null && token.type !== "string") {
-                        on_update_doc_query(module_expanded_selection(cm, token.string, cursor.line, token.start))
-                    }
-                }
+                }, 0)
             })
 
             cm.on("change", () => {
@@ -332,29 +361,66 @@ const juliahints = (cm, options) => {
             }
         )
         .then((update) => {
+            let our_renderer = (element, _, completion) => {
+                if (completion.displayText) {
+                    element.append(observable_html`<span class="custom-code-completion">
+                        <span>${completion.displayText}</span>
+                        <span class="secondary">${completion.text}</span>
+                    </span>`)
+                } else {
+                    element.append(completion.text)
+                }
+            }
+            console.log(`update:`, update)
+            let normalized_completions = update.message.results.map((text) =>
+                typeof text === "string" ? { text: text, render: our_renderer } : { ...text, render: our_renderer }
+            )
             const completions = {
-                list: update.message.results,
+                list: normalized_completions,
                 from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
                 to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
             }
             window.CodeMirror.on(completions, "select", (val) => {
-                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+                let text = typeof val === "string" ? val : val.text
+                let doc_query = module_expanded_selection({
+                    tokens_before_cursor: [
+                        { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
+                        { type: "variable", string: text },
+                    ],
+                    tokens_after_cursor: [],
+                })
+                options.on_update_doc_query(doc_query)
             })
             return completions
         })
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/239
-const module_expanded_selection = (cm, current, line, ch) => {
-    const next1 = cm.getTokenAt({ line: line, ch: ch })
-    if (next1.string === ".") {
-        const next2 = cm.getTokenAt({ line: line, ch: ch - 1 })
-        if (next2.type === "variable") {
-            return module_expanded_selection(cm, next2.string + "." + current, line, next2.start)
-        } else {
-            return current
+const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }) => {
+    // Fix for :: type definitions, more specifically :: type definitions with { ... } generics
+    // e.g. ::AbstractArray{String} gets parsed by codemirror as [`::AbstractArray{`, `String}`] ??
+    let i_guess_current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
+    if (i_guess_current_token && i_guess_current_token.type === "builtin" && i_guess_current_token.string.startsWith("::")) {
+        let typedef_tokens = []
+        typedef_tokens.push(i_guess_current_token.string.slice(2))
+        for (let token of tokens_after_cursor) {
+            if (token.type !== "builtin") break
+            typedef_tokens.push(token.string)
         }
-    } else {
-        return current
+        return typedef_tokens.join("")
     }
+
+    let found = []
+    console.log(`tokens_before_cursor:`, tokens_before_cursor)
+    for (let token of tokens_before_cursor.slice().reverse()) {
+        if (token.type == null) {
+            break
+        }
+        if (token.type === "builtin" && token.string.startsWith("::")) {
+            found.push(token.string.slice(2))
+            break
+        }
+        found.push(token.string)
+    }
+    return found.reverse().join("").replace(/\.$/, "")
 }

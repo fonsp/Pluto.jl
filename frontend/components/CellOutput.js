@@ -61,7 +61,7 @@ let PlutoImage = ({ body, mime }) => {
     return html`<div><img ref=${imgref} type=${mime} src=${""} /></div>`
 }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
+export const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":

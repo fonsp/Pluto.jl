@@ -1,4 +1,5 @@
-window.onjltreeclick = (self, e) => {
+window.onjltreeclick = (_, e) => {
+    let self = e.currentTarget
     if (e.target !== self && !self.classList.contains("collapsed")) {
         return
     }

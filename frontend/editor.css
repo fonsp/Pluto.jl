@@ -1209,6 +1209,17 @@ dropruler {
     pluto-helpbox.hidden > header::before {
         content: "📚 ";
     }
+
+    pluto-helpbox pluto-output {
+        padding-left: 0;
+        padding-right: 0;
+    }
+    pluto-helpbox code,
+    pluto-helpbox pluto-output jltree,
+    pluto-helpbox pluto-output jlpair {
+        font-family: JuliaMono, monospace;
+        font-size: 0.82em; /* Close to 17px:14px ratio */
+    }
 }
 
 /* FOOTER */
@@ -1388,6 +1399,17 @@ pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
     font-size: 0.75em;
+}
+
+.CodeMirror-hints .custom-code-completion {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+}
+.CodeMirror-hints .secondary {
+    margin-left: 20px;
+    margin-right: 10px;
+    opacity: 0.7;
 }
 
 .cm-s-default.CodeMirror {
