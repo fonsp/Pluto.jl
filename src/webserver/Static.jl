@@ -168,7 +168,9 @@ function http_router_for(session::ServerSession)
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
-                url = query["url"]
+                # Quick fix for spaces in urls.
+                # I guess there is not really a clean fix for a url being passed around inside other urls.
+                url = replace(query["url"], " " => "%20")
                 return try_launch_notebook_response(SessionActions.open_url, url, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 error("Empty request")
