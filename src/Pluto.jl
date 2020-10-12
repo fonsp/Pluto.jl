@@ -55,6 +55,8 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
     Start a notebook server using:
 
+  julia> using Pluto
+    
   julia> Pluto.run()
 
     Have a look at the FAQ:
