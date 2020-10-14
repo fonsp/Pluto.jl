@@ -167,6 +167,12 @@ pluto-output code {
     font-size: 0.75em; /* not rem */
 }
 
+pluto-output:not(.inline_output) code {
+    padding: 3px;
+    border-radius: 8px;
+    background-color: #f2f2f2;
+}
+
 pluto-output pre {
     display: inline-block;
     margin: 0px;
@@ -197,7 +203,7 @@ pluto-output blockquote {
     padding: 15px;
 
     border-radius: 15px;
-    background-color: #fafafa;
+    background-color: #f2f2f2;
     color: #555;
 }
 
