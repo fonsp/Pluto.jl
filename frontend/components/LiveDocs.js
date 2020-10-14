@@ -7,6 +7,7 @@ import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
 
 export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, notebook }) => {
     let container_ref = useRef()
+    let live_doc_search_ref = useRef()
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
@@ -54,12 +55,11 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         }
 
         if (state.searched_query !== desired_doc_query) {
-            fetch_docs()
+            fetch_docs(desired_doc_query)
         }
-    }, [desired_doc_query])
+    }, [desired_doc_query, state.hidden])
 
-    let fetch_docs = () => {
-        const new_query = desired_doc_query
+    let fetch_docs = (new_query) => {
         update_state((state) => {
             state.loading = true
             state.searched_query = new_query
@@ -90,8 +90,33 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading })}>
-                <header onClick=${() => set_state((state) => ({ ...state, hidden: !state.hidden }))}>
-                    ${state.hidden || state.searched_query == null ? "Live docs" : state.searched_query}
+                <header
+                    onClick=${() => {
+                        if (state.hidden) {
+                            set_state((state) => ({ ...state, hidden: false }))
+                            // wait for next event loop
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }
+                    }}
+                >
+                    ${state.hidden
+                        ? "Live docs"
+                        : html`
+                        <input
+                            id="live-docs-search"
+                            placeholder="Live docs"
+                            ref=${live_doc_search_ref}
+                            onInput=${(e) => fetch_docs(e.target.value)}
+                            value=${state.searched_query}
+                            type="text"
+                        ></input>
+                        <button onClick=${(e) => {
+                            set_state((state) => ({ ...state, hidden: true }))
+                            e.stopPropagation()
+                            console.log(state)
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }}><span></span></button>
+                    `}
                 </header>
                 <section ref=${(ref) => ref != null && resolve_doc_reference_links(ref, on_update_doc_query)}>
                     <h1><code>${state.shown_query}</code></h1>

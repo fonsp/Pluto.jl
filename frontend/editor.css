@@ -47,6 +47,7 @@ main {
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     main {
         margin-left: 0px;
+        align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
@@ -1168,17 +1169,60 @@ dropruler {
         box-shadow: 0 0 11px 0px #00000010;
         font-family: "Alegreya Sans", sans-serif;
     }
+
     pluto-helpbox > header {
+        display: flex;
         padding: 15px;
         background-color: #eef1f7;
         color: hsl(230, 14%, 11%);
         font-family: "Roboto Mono", monospace;
         font-weight: 700;
-        cursor: pointer;
         border-top-left-radius: 6px;
         border-top-right-radius: 6px;
         /* border-top: 4px solid #8a8a8a; */
     }
+    pluto-helpbox > header::before {
+        content: "📖 ";
+        margin-right: 10px;
+    }
+    /* pluto-helpbox.loading>header::before{
+                content: "⌛ ";
+        margin-right: 10px;
+            } */
+    pluto-helpbox.hidden > header::before {
+        content: "📚 ";
+        margin-right: 10px;
+    }
+    pluto-helpbox > header > input {
+        flex-grow: 1;
+        background-color: inherit;
+        color: inherit;
+        font-family: inherit;
+        font-weight: inherit;
+        font-size: inherit;
+        border: none;
+    }
+    pluto-helpbox > header > input:focus {
+        outline: none;
+    }
+    pluto-helpbox > header > button {
+        border: none;
+        background: none;
+        cursor: pointer;
+
+        /* for bigger hitbox */
+        margin: -15px;
+        border: 15px solid transparent;
+    }
+    pluto-helpbox > header > button > span {
+        display: block;
+        content: " " !important;
+        background-size: 1em 1em;
+        height: 1em;
+        width: 1em;
+        background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/chevron-down-outline.svg");
+    }
+
     pluto-helpbox > section {
         height: 100%;
         overflow: auto;
@@ -1202,19 +1246,12 @@ dropruler {
     }
     pluto-helpbox.hidden {
         height: initial;
+        cursor: pointer;
     }
     pluto-helpbox.hidden > section {
         display: none;
     }
-    pluto-helpbox > header::before {
-        content: "📖 ";
-    }
-    /* pluto-helpbox.loading>header::before{
-                content: "⌛ ";
-            } */
-    pluto-helpbox.hidden > header::before {
-        content: "📚 ";
-    }
+    
 }
 
 /* FOOTER */
