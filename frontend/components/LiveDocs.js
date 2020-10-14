@@ -11,7 +11,8 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: "Start typing in a cell to learn more!",
+        body:
+            "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
         hidden: true,
         loading: false,
     })
@@ -66,7 +67,7 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         })
         Promise.race([
             observablehq.Promises.delay(2000, false),
-            client.send("docs", { query: new_query }, { notebook_id: notebook.notebook_id }).then((u) => {
+            client.send("docs", { query: new_query.replace(/^\?/, "") }, { notebook_id: notebook.notebook_id }).then((u) => {
                 if (u.message.status === "⌛") {
                     return false
                 }
@@ -104,7 +105,7 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
                         : html`
                         <input
                             id="live-docs-search"
-                            placeholder="Live docs"
+                            placeholder="Search docs..."
                             ref=${live_doc_search_ref}
                             onInput=${(e) => fetch_docs(e.target.value)}
                             value=${state.searched_query}
