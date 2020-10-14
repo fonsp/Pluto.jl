@@ -117,13 +117,15 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     linenumbernode = expr.args[1]
     root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
 
+    @gensym result
+    @gensym elapsed_ns
     # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
     Expr(:block, 
-        :(local elapsed_ns = time_ns()),
+        :(local $elapsed_ns = time_ns()),
         linenumbernode,
-        :(local result = $root),
-        :(elapsed_ns = time_ns() - elapsed_ns),
-        :((result, elapsed_ns, $return_proof)),
+        :(local $result = $root),
+        :($elapsed_ns = time_ns() - $elapsed_ns),
+        :(($result, $elapsed_ns, $return_proof)),
     )
 end
 
