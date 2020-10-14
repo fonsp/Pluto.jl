@@ -90,20 +90,32 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading })}>
-                <header onClick=${() => {
-                    set_state((state) => ({ ...state, hidden: !state.hidden }))
-                    // wait for next event loop
-                    setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
-                }}>
-                    ${state.hidden ? "Live docs" : html`
+                <header
+                    onClick=${() => {
+                        if (state.hidden) {
+                            set_state((state) => ({ ...state, hidden: false }))
+                            // wait for next event loop
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }
+                    }}
+                >
+                    ${state.hidden
+                        ? "Live docs"
+                        : html`
                         <input
                             id="live-docs-search"
                             placeholder="Live docs"
                             ref=${live_doc_search_ref}
-                            onInput=${e => fetch_docs(e.target.value)}
+                            onInput=${(e) => fetch_docs(e.target.value)}
                             value=${state.searched_query}
                             type="text"
                         ></input>
+                        <button onClick=${(e) => {
+                            set_state((state) => ({ ...state, hidden: true }))
+                            e.stopPropagation()
+                            console.log(state)
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }}><span></span></button>
                     `}
                 </header>
                 <section ref=${(ref) => ref != null && resolve_doc_reference_links(ref, on_update_doc_query)}>
