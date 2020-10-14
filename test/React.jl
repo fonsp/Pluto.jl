@@ -458,15 +458,47 @@ import JSON
 
     @testset "Cyclic" begin
         notebook = Notebook([
-            Cell("x = y"),
-            Cell("y = x")
+            Cell("xxx = yyy"),
+            Cell("yyy = xxx"),
+            Cell("zzz = yyy")
         ])
         fakeclient.connected_notebook = notebook
 
+        update_run!(🍭, notebook, notebook.cells[1:3])
+        @test occursinerror("Cyclic reference", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("UndefVarError", notebook.cells[3])
+
+        setcode(notebook.cells[1], "xxx = 1")
         update_run!(🍭, notebook, notebook.cells[1])
-        update_run!(🍭, notebook, notebook.cells[2])
+        @test notebook.cells[1].output_repr == "1"
+        @test notebook.cells[2].output_repr == "1"
+        @test notebook.cells[3].output_repr == "1"
+
+        setcode(notebook.cells[1], "xxx = zzz")
+        update_run!(🍭, notebook, notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("Cyclic reference", notebook.cells[3])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("zzz", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("zzz", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[3])
+        @test occursinerror("yyy", notebook.cells[3])
+        @test occursinerror("zzz", notebook.cells[3])
+
+        setcode(notebook.cells[3], "zzz = 3")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[1].output_repr == "3"
+        @test notebook.cells[2].output_repr == "3"
+        @test notebook.cells[3].output_repr == "3"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
