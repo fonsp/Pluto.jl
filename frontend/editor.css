@@ -47,6 +47,7 @@ main {
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     main {
         margin-left: 0px;
+        align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
@@ -1138,83 +1139,84 @@ dropruler {
 
 #helpbox-wrapper {
     display: none;
+    position: sticky;
+    bottom: 0px;
+    height: 0px;
+    width: 100%;
+    z-index: 5;
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) {
     #helpbox-wrapper {
         display: block;
-        position: sticky;
-        bottom: 0px;
-        height: 0px;
-        width: 100%;
-        z-index: 5;
     }
-    pluto-helpbox {
-        bottom: 0px;
-        right: 20px;
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
-        width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
-        height: 70vh; /* compat */
-        height: min(70vh, 900px);
-        /* overflow: hidden; */
-        background-color: white;
-        /* border: 2px solid darkgray; */
-        border-right: none;
-        border-bottom: none;
-        border-top-left-radius: 9px;
-        box-shadow: 0 0 11px 0px #00000010;
-        font-family: "Alegreya Sans", sans-serif;
-    }
-    pluto-helpbox > header {
-        padding: 15px;
-        background-color: #eef1f7;
-        color: hsl(230, 14%, 11%);
-        font-family: "Roboto Mono", monospace;
-        font-weight: 700;
-        cursor: pointer;
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
-        /* border-top: 4px solid #8a8a8a; */
-    }
-    pluto-helpbox > section {
-        height: 100%;
-        overflow: auto;
-        padding: 10px;
-    }
-    pluto-helpbox > section h1,
-    pluto-helpbox > section h2,
-    pluto-helpbox > section h3,
-    pluto-helpbox > section h4,
-    pluto-helpbox > section h5,
-    pluto-helpbox > section h6 {
-        font-family: inherit;
-        border-bottom: none;
-        font-size: 1rem;
-    }
-    pluto-helpbox > section h1 {
-        font-size: 1.3rem;
-    }
-    pluto-helpbox > section pre {
-        overflow-x: auto;
-    }
-    pluto-helpbox.hidden {
-        height: initial;
-    }
-    pluto-helpbox.hidden > section {
-        display: none;
-    }
-    pluto-helpbox > header::before {
-        content: "📖 ";
-    }
-    /* pluto-helpbox.loading>header::before{
-                content: "⌛ ";
-            } */
-    pluto-helpbox.hidden > header::before {
-        content: "📚 ";
-    }
+}
+
+pluto-helpbox {
+    bottom: 0px;
+    right: 20px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
+    width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
+    height: 70vh; /* compat */
+    height: min(70vh, 900px);
+    /* overflow: hidden; */
+    background-color: white;
+    /* border: 2px solid darkgray; */
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 9px;
+    box-shadow: 0 0 11px 0px #00000010;
+    font-family: "Alegreya Sans", sans-serif;
+}
+pluto-helpbox > header {
+    padding: 15px;
+    background-color: #eef1f7;
+    color: hsl(230, 14%, 11%);
+    font-family: "Roboto Mono", monospace;
+    font-weight: 700;
+    cursor: pointer;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    /* border-top: 4px solid #8a8a8a; */
+}
+pluto-helpbox > section {
+    height: 100%;
+    overflow: auto;
+    padding: 10px;
+}
+pluto-helpbox > section h1,
+pluto-helpbox > section h2,
+pluto-helpbox > section h3,
+pluto-helpbox > section h4,
+pluto-helpbox > section h5,
+pluto-helpbox > section h6 {
+    font-family: inherit;
+    border-bottom: none;
+    font-size: 1rem;
+}
+pluto-helpbox > section h1 {
+    font-size: 1.3rem;
+}
+pluto-helpbox > section pre {
+    overflow-x: auto;
+}
+pluto-helpbox.hidden {
+    height: initial;
+}
+pluto-helpbox.hidden > section {
+    display: none;
+}
+pluto-helpbox > header::before {
+    content: "📖 ";
+}
+/* pluto-helpbox.loading>header::before{
+            content: "⌛ ";
+        } */
+pluto-helpbox.hidden > header::before {
+    content: "📚 ";
 }
 
 /* FOOTER */
