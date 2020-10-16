@@ -212,6 +212,7 @@ export const CellInput = ({
             }
 
             cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
+            cm.setOption("autoCloseBrackets", true)
 
             cm.on("cursorActivity", () => {
                 if (cm.somethingSelected()) {
