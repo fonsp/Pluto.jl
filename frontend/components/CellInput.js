@@ -235,7 +235,6 @@ export const CellInput = ({
                             const token_before_cursor = cm.getTokenAt(cursor)
                             const token_after_cursor = cm.getTokenAt({ ...cursor, ch: cursor.ch + 1 })
 
-                            let bad_token_types = ["number", "string", null]
                             let before_and_after_token = [token_before_cursor, token_after_cursor]
 
                             // Fix for string macros
@@ -246,7 +245,7 @@ export const CellInput = ({
                                 }
                             }
 
-                            let good_token = before_and_after_token.find((x) => !bad_token_types.includes(x.type))
+                            let good_token = before_and_after_token.find(pure_ish_token)
                             if (good_token) {
                                 let tokens = cm.getLineTokens(cursor.line)
                                 let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
@@ -350,6 +349,8 @@ const juliahints = (cm, options) => {
     const old_line = cm.getLine(cursor.line)
     const old_line_sliced = old_line.slice(0, cursor.ch)
 
+    console.log(`old_line_sliced:`, old_line_sliced)
+
     return options.client
         .send(
             "complete",
@@ -395,29 +396,76 @@ const juliahints = (cm, options) => {
         })
 }
 
+let pure_ish_token = (token) => {
+    if (token.string === "]" || token.string === "[") {
+        return true
+    }
+    if (
+        token.type === "builtin" ||
+        token.type === "number" ||
+        token.type === "string" ||
+        token.type === "variable" ||
+        token.type === "keyword" ||
+        token.type === "meta" ||
+        token.type === "def"
+    ) {
+        return true
+    }
+    if (token.type === "operator" || token.string === ".") {
+        return true
+    }
+
+    console.log(`token:`, token)
+
+    return false
+}
+
 // https://github.com/fonsp/Pluto.jl/issues/239
 const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }) => {
     // Fix for :: type definitions, more specifically :: type definitions with { ... } generics
     // e.g. ::AbstractArray{String} gets parsed by codemirror as [`::AbstractArray{`, `String}`] ??
-    let i_guess_current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
-    if (i_guess_current_token && i_guess_current_token.type === "builtin" && i_guess_current_token.string.startsWith("::")) {
-        let typedef_tokens = []
-        typedef_tokens.push(i_guess_current_token.string.slice(2))
-        for (let token of tokens_after_cursor) {
-            if (token.type !== "builtin") break
-            typedef_tokens.push(token.string)
+    let current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
+
+    if (current_token) {
+        if (current_token.type === "builtin" && current_token.string.startsWith("::")) {
+            let typedef_tokens = []
+            typedef_tokens.push(current_token.string.slice(2))
+            for (let token of tokens_after_cursor) {
+                if (token.type !== "builtin") break
+                typedef_tokens.push(token.string)
+            }
+            return typedef_tokens.join("")
         }
-        return typedef_tokens.join("")
+
+        if (current_token.string == "[") {
+            let closing_tag_index = tokens_after_cursor.findIndex((token) => token.type == null && token.string === "]")
+            if (closing_tag_index === -1) {
+                module_expanded_selection({
+                    tokens_before_cursor: tokens_before_cursor.slice(0, -1),
+                    tokens_after_cursor: [...tokens_before_cursor.slice(-1), ...tokens_after_cursor],
+                })
+            } else {
+                return module_expanded_selection({
+                    tokens_before_cursor: [...tokens_before_cursor, ...tokens_after_cursor.slice(0, closing_tag_index + 1)],
+                    tokens_after_cursor: tokens_after_cursor.slice(closing_tag_index + 1),
+                })
+            }
+        }
     }
 
-    let found = []
     console.log(`tokens_before_cursor:`, tokens_before_cursor)
+    console.log(`tokens_after_cursor:`, tokens_after_cursor)
+
+    let found = []
     for (let token of tokens_before_cursor.slice().reverse()) {
-        if (token.type == null) {
+        if (!pure_ish_token(token)) {
             break
         }
         if (token.type === "builtin" && token.string.startsWith("::")) {
             found.push(token.string.slice(2))
+            break
+        }
+        if (token.type === "operator" && token.string === ":") {
             break
         }
         found.push(token.string)
