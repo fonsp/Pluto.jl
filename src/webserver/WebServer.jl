@@ -10,7 +10,7 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
 end
 
-include("./WebsocketFix.jl")
+include("./WebSocketFix.jl")
 
 
 # to fix lots of false error messages from HTTP
