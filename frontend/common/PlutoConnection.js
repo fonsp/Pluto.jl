@@ -91,11 +91,6 @@ const try_close_socket_connection = (socket) => {
 }
 
 /**
- * We append this after every message to say that the message is complete. This is necessary for sending WS messages larger than 1MB or something, since HTTP.jl splits those into multiple messages :(
- */
-const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
-
-/**
  * Open a 'raw' websocket connection to an API with MessagePack serialization. The method is asynchonous, and resolves to a @see WebsocketConnection when the connection is established.
  * @typedef {{socket: WebSocket, send: Function, kill: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
@@ -117,10 +112,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
         const send_encoded = (message) => {
             const encoded = pack(message)
-            const to_send = new Uint8Array(encoded.length + MSG_DELIM.length)
-            to_send.set(encoded, 0)
-            to_send.set(MSG_DELIM, encoded.length)
-            socket.send(to_send)
+            socket.send(encoded)
         }
         socket.onmessage = (event) => {
             // we read and deserialize the incoming messages asynchronously
@@ -131,8 +123,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             task_queue.push(async () => {
                 try {
                     const buffer = await event.data.arrayBuffer()
-                    const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
-                    const update = unpack(new Uint8Array(buffer_sliced))
+                    const update = unpack(new Uint8Array(buffer))
 
                     on_message(update)
                 } catch (ex) {

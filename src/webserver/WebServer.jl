@@ -10,6 +10,8 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
 end
 
+include("./WebsocketFix.jl")
+
 
 # to fix lots of false error messages from HTTP
 # https://github.com/JuliaWeb/HTTP.jl/pull/546
@@ -140,23 +142,10 @@ function run(session::ServerSession)
                         # This stream contains data received over the WebSocket.
                         # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
                         try
-                            parentbody = let
-                                # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
-                                data = UInt8[]
-                                while !endswith(data, MSG_DELIM)
-                                    if eof(clientstream)
-                                        if isempty(data)
-                                            return
-                                        end
-                                        @warn "Unexpected eof after" data
-                                        append!(data, MSG_DELIM)
-                                        break
-                                    end
-                                    append!(data, readavailable(clientstream))
-                                end
-                                # TODO: view to avoid memory allocation
-                                unpack(data[1:end - length(MSG_DELIM)])
-                            end
+                            message = collect(WebsocketFix.readmessage(clientstream))
+                            # TODO: view to avoid memory allocation
+                            parentbody = unpack(message)
+
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException

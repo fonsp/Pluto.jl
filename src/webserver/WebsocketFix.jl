@@ -1,0 +1,88 @@
+module WebsocketFix
+
+import HTTP.WebSockets
+
+"Status codes according to RFC 6455 7.4.1"
+const STATUS_CODE_DESCRIPTION = Dict{Int, String}(
+    1000=>"Normal",                     1001=>"Going Away",
+    1002=>"Protocol Error",             1003=>"Unsupported Data",
+    1004=>"Reserved",                   1005=>"No Status Recvd- reserved",
+    1006=>"Abnormal Closure- reserved", 1007=>"Invalid frame payload data",
+    1008=>"Policy Violation",           1009=>"Message too big",
+    1010=>"Missing Extension",          1011=>"Internal Error",
+    1012=>"Service Restart",            1013=>"Try Again Later",
+    1014=>"Bad Gateway",                1015=>"TLS Handshake")
+
+
+function readframe(ws::WebSockets.WebSocket)
+    header = WebSockets.readheader(ws.io)
+    @debug 1 "WebSocket ➡️  $header"
+
+    if header.length > 0
+        if length(ws.rxpayload) < header.length
+            resize!(ws.rxpayload, header.length)
+        end
+        unsafe_read(ws.io, pointer(ws.rxpayload), header.length)
+        @debug 2 "          ➡️  \"$(String(ws.rxpayload[1:header.length]))\""
+    end
+    l = Int(header.length)
+    if header.hasmask
+        WebSockets.mask!(ws.rxpayload, ws.rxpayload, l, reinterpret(UInt8, [header.mask]))
+    end
+
+    return header, view(ws.rxpayload, 1:l)
+end
+
+"""
+    readmessage(ws::WebSocket)
+
+HTTP.jl's default `readframe` (or `readavailable`) don't look at the FINAL field of frames.
+This means it will return a frame no matter what, even though most people expect to get a full message.
+This method fixes that and gives you what you expect.
+"""
+function readmessage(ws::WebSockets.WebSocket)
+    header, data = readframe(ws)
+    l = Int(header.length)
+
+    if header.opcode == WebSockets.WS_CLOSE
+        ws.rxclosed = true
+        if l >= 2
+            status = UInt16(ws.rxpayload[1]) << 8 | ws.rxpayload[2]
+            if status != 1000
+                message = String(ws.rxpayload[3:l])
+                status_descr = get(STATUS_CODE_DESCRIPTION, Int(status), "")
+                msg = "Status: $(status_descr), Internal Code: $(message)"
+                throw(WebSockets.WebSocketError(status, msg))
+            end
+        end
+        return UInt8[]
+    elseif header.opcode == WebSockets.WS_PING
+        wswrite(ws, WebSockets.WS_FINAL | WebSockets.WS_PONG, ws.rxpayload[1:l])
+        return my_readframe(ws)
+    elseif header.opcode == WebSockets.WS_CONTINUATION
+        throw("WS continuation gone wrong")
+    else
+        if header.final == true
+            return view(ws.rxpayload, 1:l)
+        else
+            multi_message_data = UInt8[]
+            append!(multi_message_data, data)  
+            while true
+                header2, data2 = readframe(ws)
+                if header2.opcode != WebSockets.WS_CONTINUATION
+                    println("header2.opcode:", header2.opcode)
+                    println("header2:", header2)
+                    throw("Should be a continuation")
+                end
+                append!(multi_message_data, data2)
+                if header2.final
+                    break
+                end
+            end
+
+            multi_message_data
+        end
+    end
+end
+
+end
