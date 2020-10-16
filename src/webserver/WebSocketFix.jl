@@ -30,6 +30,8 @@ This means that it will return a frame no matter what, even though most people e
 This method fixes that and gives you what you expect.
 """
 function readmessage(ws::WebSockets.WebSocket)
+    # this code is based on HTTP.jl source code: https://github.com/JuliaWeb/HTTP.jl/blob/master/src/WebSockets.jl
+
     header, data = readframe(ws)
     l = Int(header.length)
 
