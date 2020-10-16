@@ -1,18 +1,7 @@
+"Things that will hopefully go into HTTP.jl someday."
 module WebsocketFix
 
 import HTTP.WebSockets
-
-"Status codes according to RFC 6455 7.4.1"
-const STATUS_CODE_DESCRIPTION = Dict{Int, String}(
-    1000=>"Normal",                     1001=>"Going Away",
-    1002=>"Protocol Error",             1003=>"Unsupported Data",
-    1004=>"Reserved",                   1005=>"No Status Recvd- reserved",
-    1006=>"Abnormal Closure- reserved", 1007=>"Invalid frame payload data",
-    1008=>"Policy Violation",           1009=>"Message too big",
-    1010=>"Missing Extension",          1011=>"Internal Error",
-    1012=>"Service Restart",            1013=>"Try Again Later",
-    1014=>"Bad Gateway",                1015=>"TLS Handshake")
-
 
 function readframe(ws::WebSockets.WebSocket)
     header = WebSockets.readheader(ws.io)
@@ -36,8 +25,8 @@ end
 """
     readmessage(ws::WebSocket)
 
-HTTP.jl's default `readframe` (or `readavailable`) don't look at the FINAL field of frames.
-This means it will return a frame no matter what, even though most people expect to get a full message.
+HTTP.jl's default `readframe` (or `readavailable`) doesn't look at the FINAL field of frames.
+This means that it will return a frame no matter what, even though most people expect to get a full message.
 This method fixes that and gives you what you expect.
 """
 function readmessage(ws::WebSockets.WebSocket)
@@ -50,7 +39,7 @@ function readmessage(ws::WebSockets.WebSocket)
             status = UInt16(ws.rxpayload[1]) << 8 | ws.rxpayload[2]
             if status != 1000
                 message = String(ws.rxpayload[3:l])
-                status_descr = get(STATUS_CODE_DESCRIPTION, Int(status), "")
+                status_descr = get(WebSockets.STATUS_CODE_DESCRIPTION, Int(status), "")
                 msg = "Status: $(status_descr), Internal Code: $(message)"
                 throw(WebSockets.WebSocketError(status, msg))
             end
