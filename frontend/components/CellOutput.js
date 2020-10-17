@@ -11,6 +11,11 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import "../treeview.js"
 
 export class CellOutput extends Component {
+    constructor() {
+        super()
+        this.compensate_scrollheight_ref = {current: () => {}}
+    }
+
     shouldComponentUpdate({ last_run_timestamp }) {
         return last_run_timestamp !== this.props.last_run_timestamp
     }
@@ -20,14 +25,21 @@ export class CellOutput extends Component {
     }
 
     componentDidUpdate(prevProps, prevState, snapshot) {
-        // Scroll the page to compensate for change in page height:
-        const new_height = this.base.scrollHeight
-
-        if (document.body.querySelector("pluto-cell:focus-within")) {
-            const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-            if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
-                window.scrollBy(0, new_height - snapshot)
+        this.compensate_scrollheight_ref.current = () => {
+            // Scroll the page to compensate for change in page height:
+            const new_height = this.base.scrollHeight
+            if (document.body.querySelector("pluto-cell:focus-within")) {
+                const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
+                if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                    window.scrollBy(0, new_height - snapshot)
+                }
             }
+        }
+
+        if(!needs_delayed_scrollheight_compensation(this.props.mime)) {
+            this.compensate_scrollheight_ref.current()
+        } else {
+            // then this is handled by RawHTMLContainer or PlutoImage, asynchronously
         }
     }
 
@@ -41,27 +53,49 @@ export class CellOutput extends Component {
                 mime=${this.props.mime}
             >
                 <assignee>${this.props.rootassignee}</assignee>
-                <${OutputBody} ...${this.props} />
+                <${OutputBody} ...${this.props} compensate_scrollheight_ref=${this.compensate_scrollheight_ref} />
             </pluto-output>
         `
     }
 }
 
-let PlutoImage = ({ body, mime }) => {
+let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
     // I know I know, this looks stupid.
     // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
     // and is removed when we are detatching from the DOM
     let imgref = useRef()
     useLayoutEffect(() => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
+        
+        // we compensate scrolling after the image has loaded
+        imgref.current.onload = imgref.current.onerror = () => {
+            imgref.current.style.display = null
+            compensate_scrollheight_ref.current()
+        }
+        if(imgref.current.src === ""){
+            // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
+            // the solution is to make the <img> invisible until the image is loaded
+            imgref.current.style.display = "none"
+        }
         imgref.current.src = url
+        
         return () => URL.revokeObjectURL(url)
     }, [body])
 
     return html`<div><img ref=${imgref} type=${mime} src=${""} /></div>`
 }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) => {
+const needs_delayed_scrollheight_compensation = (mime) => {
+    return mime === "text/html" ||
+    mime === "image/png" ||
+    mime === "image/jpg" ||
+    mime === "image/jpeg" ||
+    mime === "image/gif" ||
+    mime === "image/bmp" ||
+    mime === "image/svg+xml"
+}
+
+const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -69,21 +103,21 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<${PlutoImage} mime=${mime} body=${body} />`
+            return html`<${PlutoImage} mime=${mime} body=${body} compensate_scrollheight_ref=${compensate_scrollheight_ref} />`
             break
         case "text/html":
             // Snippets starting with <!DOCTYPE or <html are considered "full pages" that get their own iframe.
-            // Not entirely sure if this works the best, or if this slows down notebooks with many plots too much.
-            // AFAIK JSServe and Plotly both trigger and iframe now.
-            // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM
+            // Not entirely sure if this works the best, or if this slows down notebooks with many plots.
+            // AFAIK JSServe and Plotly both trigger this code.
+            // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM.
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
+                return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} compensate_scrollheight_ref=${compensate_scrollheight_ref} />`
             }
             break
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
+            return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} compensate_scrollheight_ref=${undefined} />`
             break
         case "application/vnd.pluto.stacktrace+json":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
@@ -208,7 +242,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
+export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensate_scrollheight_ref }) => {
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -252,6 +286,10 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests }) => {
                     highlight_julia(code_element)
                 }
             } catch (err) {}
+
+            if(compensate_scrollheight_ref != null) {
+                compensate_scrollheight_ref.current()
+            }
         })
 
         return () => {
