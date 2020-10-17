@@ -72,11 +72,11 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests }) =>
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
-            // Snippets starting with <!DOCTYPE or <html> are considered "full pages" that get their own iframe.
+            // Snippets starting with <!DOCTYPE or <html are considered "full pages" that get their own iframe.
             // Not entirely sure if this works the best, or if this slows down notebooks with many plots too much.
             // AFAIK JSServe and Plotly both trigger and iframe now.
             // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM
-            if (body.startsWith("<!DOCTYPE ") || body.startsWith("<html>")) {
+            if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
                 return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} />`
@@ -175,7 +175,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 continue
             }
         } else {
-            // If there is no src="", we take the content en run it in an observablehq-like environment
+            // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
                 let script_id = node.id
                 let result = await execute_dynamic_function({
