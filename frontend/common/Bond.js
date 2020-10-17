@@ -24,7 +24,6 @@ export const connect_bonds = (node, all_completed_promise, cell_invalidated_prom
                 // send to the Pluto back-end (have a look at set_bond in Editor.js)
                 const to_send = await transformed_val(val)
                 requests.set_bond(bond_node.getAttribute("def"), to_send, is_first_value)
-                console.log(to_send, is_first_value)
             }
             // the first value might want to be ignored - https://github.com/fonsp/Pluto.jl/issues/275
             is_first_value = false
