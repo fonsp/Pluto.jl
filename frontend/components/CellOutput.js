@@ -170,13 +170,8 @@ let IframeContainer = ({ body }) => {
  * @param {{ code: string, environment: { [name: string]: any } }} options
  */
 let execute_dynamic_function = async ({ environment, code }) => {
-    const wrapped_code = `
-        "use strict";
-        let fn = async () => {
-            ${code}
-        }
-        return fn()
-    `
+    // single line so that we don't affect line numbers in the stack trace
+    const wrapped_code = `"use strict"; let functie_met_een_gekke_naam = async () => {${code}}; return functie_met_een_gekke_naam()`
 
     let { ["this"]: this_value, ...args } = environment
     let arg_names = Object.keys(args)
@@ -267,7 +262,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensa
             })
 
             if (all_completed_promise != null && requests != null) {
-                connect_bonds(container.current, all_completed_promise, requests)
+                connect_bonds(container.current, all_completed_promise, invalidation, requests)
             }
 
             // convert LaTeX to svg
