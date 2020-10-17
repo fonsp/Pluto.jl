@@ -171,7 +171,7 @@ let IframeContainer = ({ body }) => {
  */
 let execute_dynamic_function = async ({ environment, code }) => {
     // single line so that we don't affect line numbers in the stack trace
-    const wrapped_code = `"use strict"; let functie_met_een_gekke_naam = async () => {${code}}; return functie_met_een_gekke_naam()`
+    const wrapped_code = `"use strict"; return (async () => {${code}})()`
 
     let { ["this"]: this_value, ...args } = environment
     let arg_names = Object.keys(args)
