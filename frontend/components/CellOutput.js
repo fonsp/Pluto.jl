@@ -187,19 +187,22 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
     for (let node of script_nodes) {
         if (node.src != "") {
             // If it has a remote src="", de-dupe and copy the script to head
-            if (!Array.from(document.head.querySelectorAll("script")).some((s) => s.src === node.src)) {
-                const new_el = document.createElement("script")
-                new_el.src = node.src
-                new_el.type = node.type === "module" ? "module" : "text/javascript"
+            var script_el = Array.from(document.head.querySelectorAll("script")).find((s) => s.src === node.src)
 
-                // new_el.async = false
+            if (script_el == null) {
+                script_el = document.createElement("script")
+                script_el.src = node.src
+                script_el.type = node.type === "module" ? "module" : "text/javascript"
+                script_el.pluto_is_loading_me = true
+            }
+            const need_to_await = script_el.pluto_is_loading_me != null
+            if (need_to_await) {
                 await new Promise((resolve) => {
-                    new_el.addEventListener("load", resolve)
-                    new_el.addEventListener("error", resolve)
-                    document.head.appendChild(new_el)
+                    script_el.addEventListener("load", resolve)
+                    script_el.addEventListener("error", resolve)
+                    document.head.appendChild(script_el)
                 })
-            } else {
-                continue
+                script_el.pluto_is_loading_me = undefined
             }
         } else {
             // If there is no src="", we take the content and run it in an observablehq-like environment
