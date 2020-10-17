@@ -180,7 +180,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 let script_id = node.id
                 let result = await execute_dynamic_function({
                     environment: {
-                        this: script_id ? previous_results_map.get(script_id) : undefined,
+                        this: script_id ? previous_results_map.get(script_id) : window,
                         currentScript: node,
                         invalidation: invalidation,
                         ...observablehq_for_cells,
@@ -192,11 +192,12 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     results_map.set(script_id, result)
                 }
                 // Insert returned element
-                if (result instanceof HTMLElement && result.nodeType === Node.ELEMENT_NODE) {
+                if (result instanceof Element && result.nodeType === Node.ELEMENT_NODE) {
                     node.parentElement.insertBefore(result, node)
                 }
             } catch (err) {
-                console.log("Couldn't execute script:", node)
+                console.error("Couldn't execute script:", node)
+                // needs to be in its own console.error so that the stack trace is printed
                 console.error(err)
                 // TODO: relay to user
             }
