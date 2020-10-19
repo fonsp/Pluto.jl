@@ -170,7 +170,7 @@ function get_assignees(ex::Expr)::FunctionName
     elseif ex.head == :ref || ex.head == :(.)
         Symbol[]
     else
-        @warn "unknow use of `=`. Assignee is unrecognised." ex
+        @warn "unknown use of `=`. Assignee is unrecognised." ex
         Symbol[]
     end
 end
@@ -526,7 +526,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             scopestate.inglobalscope = old
             return result
         else
-            @error "unknow global use" ex
+            @error "unknown global use" ex
             return explore!(globalisee, scopestate)
         end
         
@@ -543,14 +543,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             push!(scopestate.hiddenglobals, get_assignees(localisee.args[1])...)
             return explore!(localisee, scopestate)
         else
-            @warn "unknow local use" ex
+            @warn "unknown local use" ex
             return explore!(localisee, scopestate)
         end
     elseif ex.head == :tuple
         # Does not create scope
         
         # There are three (legal) cases:
-        # 1. Creating a tupe:
+        # 1. Creating a tuple:
         #   (a, b, c)
         
         # 2. Creating a named tuple:
@@ -595,7 +595,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             end
         else
             # 1.
-            # good 'ol tuple
+            # good ol' tuple
             return explore!(Expr(:block, ex.args...), scopestate)
         end
     elseif ex.head == :(.) && ex.args[2] isa Expr && ex.args[2].head == :tuple
