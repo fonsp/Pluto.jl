@@ -1048,7 +1048,7 @@ export class Editor extends Component {
                         </td>
                         <td>
                         <form id="feedback" action="#" method="post">
-                            <label for="opinion">How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                            <label for="opinion">How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                             <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                             <button>Send</button>
                         </form>
