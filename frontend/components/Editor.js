@@ -1041,12 +1041,23 @@ export class Editor extends Component {
             <${SlideControls} />
             <footer>
                 <div id="info">
-                    <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
-                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                        <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                        <button>Send</button>
-                    </form>
+                <table width="100%">
+                    <tr>
+                        <td>
+                        🙋 <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank" alignment="left">FAQ</a>
+                        </td>
+                        <td>
+                        <form id="feedback" action="#" method="post">
+                            <label for="opinion">How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                            <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                            <button>Send</button>
+                        </form>
+                        </td>
+                        <td>
+                        📈 <a id="statistics-info" href="statistics-info" alignment="left">Statistics</a>
+                        </td>
+                    </tr>
+                </table>
                 </div>
             </footer>
         `
