@@ -13,7 +13,7 @@ import "../treeview.js"
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.compensate_scrollheight_ref = {current: () => {}}
+        this.compensate_scrollheight_ref = { current: () => {} }
     }
 
     shouldComponentUpdate({ last_run_timestamp }) {
@@ -36,7 +36,7 @@ export class CellOutput extends Component {
             }
         }
 
-        if(!needs_delayed_scrollheight_compensation(this.props.mime)) {
+        if (!needs_delayed_scrollheight_compensation(this.props.mime)) {
             this.compensate_scrollheight_ref.current()
         } else {
             // then this is handled by RawHTMLContainer or PlutoImage, asynchronously
@@ -66,19 +66,19 @@ let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
     let imgref = useRef()
     useLayoutEffect(() => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
-        
+
         // we compensate scrolling after the image has loaded
         imgref.current.onload = imgref.current.onerror = () => {
             imgref.current.style.display = null
             compensate_scrollheight_ref.current()
         }
-        if(imgref.current.src === ""){
+        if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
             // the solution is to make the <img> invisible until the image is loaded
             imgref.current.style.display = "none"
         }
         imgref.current.src = url
-        
+
         return () => URL.revokeObjectURL(url)
     }, [body])
 
@@ -86,16 +86,18 @@ let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
 }
 
 const needs_delayed_scrollheight_compensation = (mime) => {
-    return mime === "text/html" ||
-    mime === "image/png" ||
-    mime === "image/jpg" ||
-    mime === "image/jpeg" ||
-    mime === "image/gif" ||
-    mime === "image/bmp" ||
-    mime === "image/svg+xml"
+    return (
+        mime === "text/html" ||
+        mime === "image/png" ||
+        mime === "image/jpg" ||
+        mime === "image/jpeg" ||
+        mime === "image/gif" ||
+        mime === "image/bmp" ||
+        mime === "image/svg+xml"
+    )
 }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref }) => {
+const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -113,11 +115,22 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} compensate_scrollheight_ref=${compensate_scrollheight_ref} />`
+                return html`<${RawHTMLContainer}
+                    body=${body}
+                    all_completed_promise=${all_completed_promise}
+                    requests=${requests}
+                    compensate_scrollheight_ref=${compensate_scrollheight_ref}
+                    persist_js_state=${persist_js_state}
+                />`
             }
             break
         case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} compensate_scrollheight_ref=${undefined} />`
+            return html`<${RawHTMLContainer}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                compensate_scrollheight_ref=${undefined}
+            />`
             break
         case "application/vnd.pluto.stacktrace+json":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
@@ -238,7 +251,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensate_scrollheight_ref }) => {
+export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state = false }) => {
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -261,7 +274,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensa
                 root_node: container.current,
                 script_nodes: Array.from(container.current.querySelectorAll("script")),
                 invalidation: invalidation,
-                previous_results_map: previous_results_map.current,
+                previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
             if (all_completed_promise != null && requests != null) {
@@ -283,7 +296,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensa
                 }
             } catch (err) {}
 
-            if(compensate_scrollheight_ref != null) {
+            if (compensate_scrollheight_ref != null) {
                 compensate_scrollheight_ref.current()
             }
         })
