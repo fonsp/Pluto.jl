@@ -8,12 +8,9 @@
 
 :root {
     --pluto-cell-spacing: 17px;
-    /* use the value "contextual" to enable contextual ligatures
-        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures
-    */
-    --font-variant-ligatures: none;
-    /* e.g. "zero", "ss05"; Also see link above for options */
-    --font-feature-settings: off;
+    /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+    --pluto-operator-ligatures: none;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -70,9 +67,11 @@ pluto-notebook {
 
 pluto-notebook .CodeMirror pre.CodeMirror-line,
 pluto-notebook .CodeMirror pre.CodeMirror-line-like {
+  font-variant-ligatures: none;
+}
 
-  font-variant-ligatures: var(--font-variant-ligatures);
-  font-feature-settings: var(--font-feature-settings);
+.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
 /* STANDARD HTML ELEMENTS */
