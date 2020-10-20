@@ -1,3 +1,10 @@
+<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg" width=300 height=74 ></h1>
+
+The **Pluto.jl** [Julia](https://julialang.org) package allows you to create and share Pluto _notebooks_: documents that contain live Julia code, equations, plots, visualizations and narrative text. Pluto notebooks are **_reactive_**, **_lightweight_**, and **_simple_**. <!-- borrowing a bit from text at https://jupyter.org.. -->
+
+
+[![FAQ](https://img.shields.io/badge/docs-latest-blue.svg)](https://github.com/fonsp/Pluto.jl/wiki) <!-- | -->
+
 > _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://mitmath.github.io/18S191/Fall20/), fall 2020.
 > <br>
 
@@ -5,10 +12,6 @@
 
 <br>
 <br>
-
-<h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg" width=300 height=74 ></h1>
-
-Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 _Writing a notebook is not just about writing the final document — Pluto empowers the experiments and discoveries that are essential to getting there._
 
@@ -101,6 +104,8 @@ julia> Pluto.run()
 ```
 
 Pluto will open in your browser, and you can get started!
+
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 ### To developers
 
