@@ -67,6 +67,7 @@ function clientupdate_cell_output(notebook::Notebook, cell::Cell; initiator::Uni
             :errored => cell.errored,
             :output => Dict(
                 :last_run_timestamp => cell.last_run_timestamp,
+                :persist_js_state => cell.persist_js_state,
                 :mime => cell.repr_mime,
                 :body => cell.output_repr,
                 :rootassignee => cell.rootassignee,
