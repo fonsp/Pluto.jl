@@ -65,15 +65,6 @@ pluto-notebook {
     display: block;
 }
 
-pluto-notebook .CodeMirror pre.CodeMirror-line,
-pluto-notebook .CodeMirror pre.CodeMirror-line-like {
-  font-variant-ligatures: none;
-}
-
-.cm-operator {
-    font-variant-ligatures: var(--pluto-operator-ligatures);
-}
-
 /* STANDARD HTML ELEMENTS */
 
 /* (can be overriden by custom style) */
@@ -1616,6 +1607,15 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
     font-weight: 700;
     background-color: #1b4bbb21;
     border-radius: 2px;
+}
+
+pluto-notebook .CodeMirror pre.CodeMirror-line,
+pluto-notebook .CodeMirror pre.CodeMirror-line-like {
+  font-variant-ligatures: none;
+}
+
+.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
 .cm-s-default.CodeMirror-empty {
