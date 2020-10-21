@@ -818,7 +818,7 @@ export class Editor extends Component {
     PageDown or fn+Down:   select cell below
     ${ctrl_or_cmd_name}${mac_or_pc_join}${alt_or_option_name}+Down:   duplicate line
 
-    ${ctrl_or_cmd_name}${mac_or_pc_join}Q:   interrupt notebook
+    Ctrl+Q:   interrupt notebook
     ${ctrl_or_cmd_name}${mac_or_pc_join}S:   submit all changes
 
     ${ctrl_or_cmd_name}${mac_or_pc_join}C:   copy selected cells
