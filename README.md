@@ -100,6 +100,8 @@ julia> Pluto.run()
 
 Pluto will open in your browser, and you can get started!
 
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
+
 ### To developers
 
 Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/CONTRIBUTING.md) to start working on the package.
