@@ -153,6 +153,23 @@ export const CellInput = ({
                     cm.setSelections(new_selections)
                 }
             }
+            keys["Ctrl-Alt-Down"] = () => {
+                console.log("K");
+                // based on https://stackoverflow.com/a/53865581/633083
+                var current_cursor = cm.doc.getCursor();
+                cm.execCommand("goLineEnd")
+                cm.execCommand("goLineStart");
+                var start_cursor = cm.doc.getCursor();
+                var start = {'line': start_cursor.line, 'ch': start_cursor.ch};
+                cm.execCommand("goLineEnd")
+                var end_cursor = cm.doc.getCursor();
+                var end = {'line': end_cursor.line, 'ch': end_cursor.ch};
+                var line_content = cm.doc.getRange(start, end);
+                cm.execCommand("newLineAndIndent")
+                cm.doc.replaceSelection("\n");
+                cm.doc.replaceSelection(line_content);
+                cm.doc.setCursor(current_cursor.line + 1, current_cursor.ch);
+            }
             const swap = (a, i, j) => {
                 ;[a[i], a[j]] = [a[j], a[i]]
             }
