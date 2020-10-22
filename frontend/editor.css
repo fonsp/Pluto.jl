@@ -1472,6 +1472,11 @@ ul.CodeMirror-hints {
     color: #41323f;
 }
 
+.cm-s-default.CodeMirror pre.CodeMirror-line,
+.cm-s-default.CodeMirror pre.CodeMirror-line-like {
+    font-variant-ligatures: none;
+}
+
 .cm-s-default div.CodeMirror-selected {
     background: #d9dfef;
 }
@@ -1558,6 +1563,10 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #ce7d0a;
 }
 
+.cm-s-default span.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
+}
+
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -1607,15 +1616,6 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
     font-weight: 700;
     background-color: #1b4bbb21;
     border-radius: 2px;
-}
-
-pluto-notebook .CodeMirror pre.CodeMirror-line,
-pluto-notebook .CodeMirror pre.CodeMirror-line-like {
-  font-variant-ligatures: none;
-}
-
-.cm-operator {
-    font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
 .cm-s-default.CodeMirror-empty {
