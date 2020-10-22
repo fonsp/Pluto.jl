@@ -19,7 +19,7 @@ import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, alt_or_option_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 
 const default_path = "..."
@@ -806,22 +806,24 @@ export class Editor extends Component {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
+                var mac_or_pc_join = is_mac_keyboard ? "" : "+"
                 alert(
                     `Shortcuts 🎹
 
     Shift+Enter:   run cell
-    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
+    ${ctrl_or_cmd_name}${mac_or_pc_join}Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
     PageUp or fn+Up:   select cell above
     PageDown or fn+Down:   select cell below
 
-    ${ctrl_or_cmd_name}+Q:   interrupt notebook
-    ${ctrl_or_cmd_name}+S:   submit all changes
+    Ctrl+Q:   interrupt notebook
+    ${ctrl_or_cmd_name}${mac_or_pc_join}S:   submit all changes
+    ${alt_or_option_name}${mac_or_pc_join}Z:   toggle word wrap
 
-    ${ctrl_or_cmd_name}+C:   copy selected cells
-    ${ctrl_or_cmd_name}+X:   cut selected cells
-    ${ctrl_or_cmd_name}+V:   paste selected cells
+    ${ctrl_or_cmd_name}${mac_or_pc_join}C:   copy selected cells
+    ${ctrl_or_cmd_name}${mac_or_pc_join}X:   cut selected cells
+    ${ctrl_or_cmd_name}${mac_or_pc_join}V:   paste selected cells
 
     The notebook file saves every time you run`
                 )
