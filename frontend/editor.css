@@ -8,6 +8,9 @@
 
 :root {
     --pluto-cell-spacing: 17px;
+    /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+    --pluto-operator-ligatures: none;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -1469,6 +1472,11 @@ ul.CodeMirror-hints {
     color: #41323f;
 }
 
+.cm-s-default.CodeMirror pre.CodeMirror-line,
+.cm-s-default.CodeMirror pre.CodeMirror-line-like {
+    font-variant-ligatures: none;
+}
+
 .cm-s-default div.CodeMirror-selected {
     background: #d9dfef;
 }
@@ -1553,6 +1561,10 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 
 .cm-s-default span.cm-string {
     color: #ce7d0a;
+}
+
+.cm-s-default span.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
 pluto-output > assignee,
