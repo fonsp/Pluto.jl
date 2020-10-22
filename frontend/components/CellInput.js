@@ -165,12 +165,15 @@ export const CellInput = ({
                 var end = {'line': end_cursor.line, 'ch': end_cursor.ch};
                 var line_content = cm.doc.getRange(start, end);
                 if (duplicate_up) {
+                    cm.doc.setCursor(current_cursor.line, current_cursor.ch);
                     cm.execCommand("goLineStart");
                     cm.execCommand("newLineAndIndent")
                     cm.doc.replaceSelection(line_content);
                     cm.doc.replaceSelection("\n");
                     cm.doc.setCursor(current_cursor.line, current_cursor.ch);
                 } else {
+                    cm.doc.setCursor(current_cursor.line, current_cursor.ch);
+                    cm.execCommand("goLineEnd");
                     cm.execCommand("newLineAndIndent")
                     cm.doc.replaceSelection("\n");
                     cm.doc.replaceSelection(line_content);
