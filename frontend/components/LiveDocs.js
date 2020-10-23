@@ -58,7 +58,7 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         if (state.searched_query !== desired_doc_query) {
             fetch_docs(desired_doc_query)
         }
-    }, [desired_doc_query, state.hidden])
+    }, [desired_doc_query, state.hidden, state.loading, state.searched_query])
 
     let fetch_docs = (new_query) => {
         update_state((state) => {
