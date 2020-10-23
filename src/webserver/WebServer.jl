@@ -222,13 +222,13 @@ function run(session::ServerSession)
     address = let
         root = if session.options.server.root_url === nothing
             hostStr = string(hostIP)
-            hostPretty = if isa(hostIP, IPv6)
+            hostPretty = if isa(hostIP, Sockets.IPv6)
                 if hostStr == "::1"
                     "localhost"
                 else
                     "[$(hostStr)]"
                 end
-            elseif hostStr == "127.0.0.1" #Assuming the other alternative is IPv4
+            elseif hostStr == "127.0.0.1" # Assuming the other alternative is IPv4
                 "localhost"
             else
                 hostStr
