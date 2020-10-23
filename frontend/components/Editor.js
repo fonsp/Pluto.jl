@@ -784,6 +784,11 @@ export class Editor extends Component {
             }
         }
 
+        this.run_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            return this.requests.set_and_run_multiple(selected)
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -802,6 +807,8 @@ export class Editor extends Component {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
+            } else if (e.key === "Enter" && e.shiftKey) {
+                this.run_selected();
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -809,7 +816,7 @@ export class Editor extends Component {
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell
+    Shift+Enter:   run cell/selected cells
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
