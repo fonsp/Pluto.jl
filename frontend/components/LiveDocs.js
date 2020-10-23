@@ -107,8 +107,8 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
                             id="live-docs-search"
                             placeholder="Search docs..."
                             ref=${live_doc_search_ref}
-                            onInput=${(e) => fetch_docs(e.target.value)}
-                            value=${state.searched_query}
+                            onInput=${(e) => on_update_doc_query(e.target.value)}
+                            value=${desired_doc_query}
                             type="text"
                         ></input>
                         <button onClick=${(e) => {
