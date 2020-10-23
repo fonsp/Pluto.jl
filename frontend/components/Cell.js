@@ -153,7 +153,7 @@ export const Cell = ({
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
-                is_hidden=${!errored && !class_code_differs && class_code_folded && cm_forced_focus == null}
+                is_hidden=${!errored && !class_code_differs && class_code_folded}
                 local_code=${local_code}
                 remote_code=${remote_code}
                 disable_input=${disable_input}

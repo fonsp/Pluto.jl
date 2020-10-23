@@ -208,7 +208,6 @@ export const CellInput = ({
                 if (cm.lineCount() === 1 && cm.getValue() === "") {
                     on_focus_neighbor(cell_id, -1)
                     on_delete()
-                    console.log("backspace!")
                 }
                 return window.CodeMirror.Pass
             }
@@ -216,7 +215,6 @@ export const CellInput = ({
                 if (cm.lineCount() === 1 && cm.getValue() === "") {
                     on_focus_neighbor(cell_id, +1)
                     on_delete()
-                    console.log("delete!")
                 }
                 return window.CodeMirror.Pass
             }
@@ -353,7 +351,7 @@ const juliahints = (cm, options) => {
                 to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
             }
             window.CodeMirror.on(completions, "select", (val) => {
-                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+                options.on_update_doc_query(module_expanded_selection(cm, val.text, cursor.line, completions.from.ch))
             })
             return completions
         })
