@@ -11,7 +11,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text, Completion
+import REPL.REPLCompletions: completions, complete_path, completion_text
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
