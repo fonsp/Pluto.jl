@@ -597,7 +597,7 @@ end
 # REPL THINGS
 ###
 
-function completion_priority((s::String, exported::Bool))
+function completion_priority((s, description, exported))
 	c = first(s)
 	if islowercase(c)
 		1 - 10exported
@@ -641,13 +641,12 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
 
     texts = completion_text.(results)
-    exported = completions_exported(results)    
-    order = sortperm(zip(texts, exported); alg=MergeSort, by=completion_priority)
+    descriptions = completion_description.(results)
+    exported = completions_exported(results)
 
-    final = map(order) do i
-        c = results[i]
-        (texts[i], completion_description(c), exported[i])
-    end
+    smooshed_together = zip(texts, descriptions, exported)
+    
+    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
     (final, loc, found)
 end
 
