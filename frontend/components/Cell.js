@@ -25,6 +25,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
  * @property {boolean} selected
+ * @property {boolean} pasted
  */
 
 /**
@@ -55,6 +56,7 @@ export const empty_cell_data = (cell_id) => {
             rootassignee: null,
         },
         selected: false,
+        pasted: false,
     }
 }
 
@@ -81,6 +83,7 @@ export const Cell = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     all_completed_promise,
     selected_friends,
     requests,
@@ -150,11 +153,12 @@ export const Cell = ({
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
             <${CellInput}
-                is_hidden=${!errored && !class_code_folded && class_code_folded}
+                is_hidden=${!errored && !class_code_differs && class_code_folded && cm_forced_focus == null}
                 local_code=${local_code}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
+                scroll_into_view_after_creation=${scroll_into_view_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_submit=${(new_code) => {
@@ -162,7 +166,7 @@ export const Cell = ({
                 }}
                 on_delete=${() => {
                     const friends = selected_friends(cell_id)
-                    requests.confirm_delete_multiple(friends)
+                    requests.confirm_delete_multiple("Delete", friends)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")

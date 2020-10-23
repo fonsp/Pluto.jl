@@ -35,7 +35,7 @@ else
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
-html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corned of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
+html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corner of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
 md"I feel like our cat needs a friend. Let's call them $(friend)."
@@ -96,7 +96,7 @@ end
 HTML("""<p>To delete a cell like the one defining $scary_dog, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> on the right of its code.</p>""")
 
 # ╔═╡ fb4e471c-9551-11ea-1ab5-41bbd5de76b8
-md"Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is $(tempdir()), a special directory that gets _emptied_ when you restart your computer. To change the save location to something more permanent, scroll to the top - you'll see it next to the Pluto logo."
+md"Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is $(joinpath(first(DEPOT_PATH), "pluto_notebooks")), you can find it using your file explorer. To change the name or the directory of a notebook, scroll to the top - you enter the notebook's path next to the Pluto logo."
 
 # ╔═╡ 9d3af596-9554-11ea-21bd-bf427c91c424
 md"## ⚡ Pluto power ⚡

@@ -44,20 +44,88 @@ function notebook_redirect_response(notebook; home_url="./")
     return response
 end
 
+"""
+Return whether the `request` was authenticated in one of two ways:
+1. the session's `secret` was included in the URL as a search parameter, or
+2. the session's `secret` was included in a cookie.
+"""
+function is_authenticated(session::ServerSession, request::HTTP.Request)
+    (
+        secret_in_url = try
+            uri = HTTP.URI(request.target)
+            query = HTTP.queryparams(uri)
+            get(query, "secret", "") == session.secret
+        catch e
+            @warn "Failed to authenticate request using URL" exception = (e, catch_backtrace())
+            false
+        end
+    ) || (
+        secret_in_cookie = try
+            cookies = HTTP.cookies(request)
+            any(cookies) do cookie
+                cookie.name == "secret" && cookie.value == session.secret
+            end
+        catch e
+            @warn "Failed to authenticate request using cookies" exception = (e, catch_backtrace())
+            false
+        end
+    )
+    # that ) || ( kind of looks like Krabs from spongebob
+end
+
 function http_router_for(session::ServerSession)
     router = HTTP.Router()
+    security = session.options.security
+
+    function add_set_secret_cookie!(response::HTTP.Response)
+        push!(response.headers, "Set-Cookie" => "secret=$(session.secret); SameSite=Strict; HttpOnly")
+        response
+    end
+
+    """
+        with_authentication(f::Function)
+    
+    Returns a function `HTTP.Request → HTTP.Response` which does three things:
+    1. Check whether the request is authenticated (by calling `is_authenticated`), if not, return a 403 error.
+    2. Call your `f(request)` to create the response message.
+    3. Add a `Set-Cookie` header to the response with the session's `secret`.
+    """
+    function with_authentication(f::Function; required::Bool)::Function
+        return function (request::HTTP.Request)
+            if !required || is_authenticated(session, request)
+                response = f(request)
+                add_set_secret_cookie!(response)
+                response
+            else
+                error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
+            end
+        end
+    end
     
     function create_serve_onefile(path)
         return request::HTTP.Request -> asset_response(normpath(path))
     end
     
-    HTTP.@register(router, "GET", "/", create_serve_onefile(project_relative_path("frontend", "index.html")))
-    HTTP.@register(router, "GET", "/edit", create_serve_onefile(project_relative_path("frontend", "editor.html")))
+    # / does not need security.require_secret_for_open_links
+    # because this is how we handle the case:
+    #    require_secret_for_open_links == true
+    #    require_secret_for_access == false
+    # Access to all 'risky' endpoints is still restricted to requests that have the secret cookie, but visiting `/` is allowed, and it will set the cookie. From then on the security situation is identical to 
+    #    secret_for_access == true
+    HTTP.@register(router, "GET", "/", with_authentication(
+        create_serve_onefile(project_relative_path("frontend", "index.html"));
+        required=security.require_secret_for_access
+        ))
+    HTTP.@register(router, "GET", "/edit", with_authentication(
+        create_serve_onefile(project_relative_path("frontend", "editor.html"));
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links,
+    ))
+    # the /edit page also uses with_authentication, but this is not how access to notebooks is secured: this is done by requiring the WS connection to be authenticated.
+    # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/websocket_url_please", r -> HTTP.Response(200, string(session.secret)))
     HTTP.@register(router, "GET", "/possible_binder_token_please", r -> HTTP.Response(200, session.binder_token === nothing ? "" : session.binder_token))
-    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
     
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./")
         try
@@ -72,33 +140,33 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    function serve_newfile(req::HTTP.Request)
-        return notebook_redirect_response(SessionActions.new(session))
+    serve_newfile = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        notebook_redirect_response(SessionActions.new(session))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
-    
 
-    function serve_openfile(req::HTTP.Request)
-        uri = HTTP.URI(req.target)        
+    serve_openfile = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         try
+            uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
-
-            if session.options.security.require_token_for_open_links && (UUID(get(query, "secret", string(uuid1()))) != session.secret)
-                error_response(405, "Functionality disabled", "This Pluto server does not allow the requested action. If you are running the server yourself, have a look at the <em>security</em> keyword argument to <em>Pluto.run</em>. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
-            else
-                if haskey(query, "path")
-                    path = tamepath(query["path"])
-                    if isfile(path)
-                        return try_launch_notebook_response(SessionActions.open, path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
-                    else
-                        return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
-                    end
-                elseif haskey(query, "url")
-                    url = query["url"]
-                    return try_launch_notebook_response(SessionActions.open_url, url, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+            if haskey(query, "path")
+                path = tamepath(query["path"])
+                if isfile(path)
+                    return try_launch_notebook_response(SessionActions.open, path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
                 else
-                    error("Empty request")
+                    return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
+            elseif haskey(query, "url")
+                url = query["url"]
+                return try_launch_notebook_response(SessionActions.open_url, url, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+            else
+                error("Empty request")
             end
         catch e
             return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
@@ -107,21 +175,27 @@ function http_router_for(session::ServerSession)
 
     HTTP.@register(router, "GET", "/open", serve_openfile)
     
-    function serve_sample(req::HTTP.Request)
-        uri = HTTP.URI(req.target)
-        sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
+    serve_sample = with_authentication(;
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        uri = HTTP.URI(request.target)
+        sample_path = split(HTTP.unescapeuri(uri.path), "sample/")[2]
         sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
         
-        path = numbered_until_new(joinpath(tempdir(), sample_path_without_dotjl))
+        path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
         readwrite(project_relative_path("sample", sample_path), path)
         
-        return try_launch_notebook_response(SessionActions.open, path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        try_launch_notebook_response(SessionActions.open, path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
 
-    function serve_notebookfile(req::HTTP.Request)
-        uri = HTTP.URI(req.target)        
+    serve_notebookfile = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
         try
+            uri = HTTP.URI(request.target)        
             query = HTTP.queryparams(uri)
             id = UUID(query["id"])
             notebook = session.notebooks[id]
@@ -136,13 +210,14 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
     
-    function serve_asset(req::HTTP.Request)
-        reqURI = req.target |> HTTP.URIs.unescapeuri |> HTTP.URI
+    function serve_asset(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
         
-        filepath = project_relative_path("frontend", relpath(reqURI.path, "/"))
+        filepath = project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
+    HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
 
     return router
 end

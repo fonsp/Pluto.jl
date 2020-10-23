@@ -19,9 +19,6 @@ function serialize_message(message::UpdateMessage)
     sprint(serialize_message_to_stream, message)
 end
 
-"Appended after every WS message to say that the transmission is complete. This solves an issue where the WS message is broken up over multiple frames/packets/thingies."
-const MSG_DELIM = Vector{UInt8}(codeunits("IUUQ.km jt ejggjdvmu vhi")) # riddle me this, Julius
-
 "Send `messages` to all clients connected to the `notebook`."
 function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...; flush::Bool=true)
     listeners = filter(collect(values(session.connected_clients))) do c
@@ -73,7 +70,7 @@ function flushclient(client::ClientSession)
                     if client.stream isa HTTP.WebSockets.WebSocket
                         client.stream.frame_type = HTTP.WebSockets.WS_BINARY
                     end
-                    write(client.stream, serialize_message(next_to_send), MSG_DELIM)
+                    write(client.stream, serialize_message(next_to_send))
                 else
                     put!(flushtoken)
                     return false

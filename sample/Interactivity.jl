@@ -93,8 +93,8 @@ Try drawing a rectangle in the canvas below 👇 and notice that the `area` vari
 <canvas width="200" height="200" style="position: relative"></canvas>
 
 <script>
-// 🐸 `this` is the cell output wrapper - we use it to select elements 🐸 //
-const canvas = this.querySelector("canvas")
+// 🐸 `currentScript` is the current script tag - we use it to select elements 🐸 //
+const canvas = currentScript.closest('pluto-output').querySelector("canvas")
 const ctx = canvas.getContext("2d")
 
 var startX = 80
@@ -163,7 +163,7 @@ md"""#### More packages
 
 In fact, **_any package_ can add bindable values to their objects**. For example, a geoplotting package could add a JS `input` event to their plot that contains the cursor coordinates when it is clicked. You can then use those coordinates inside Julia.
 
-A package _does not need to add `Pluto.jl` as a dependency to so_: only the `Base.show(io, MIME("text/html"), obj)` function needs to be extended to contain a `<script>` that triggers the `input` event with a value. (It's up to the package creator _when_ and _what_.) This _does not affect_ how the object is displayed outside of Pluto.jl: uncaught events are ignored by your browser."""
+A package _does not need to add `Pluto.jl` as a dependency to do so_: only the `Base.show(io, MIME("text/html"), obj)` function needs to be extended to contain a `<script>` that triggers the `input` event with a value. (It's up to the package creator _when_ and _what_.) This _does not affect_ how the object is displayed outside of Pluto.jl: uncaught events are ignored by your browser."""
 
 # ╔═╡ 36ca3050-7f36-11ea-3caf-cb10e945ca99
 md"""## Tips
