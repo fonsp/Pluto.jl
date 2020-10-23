@@ -1042,7 +1042,9 @@ export class Editor extends Component {
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <a href="statistics-info">Statistics</a>
+                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                        <span style="flex: 1"></span>
                         <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>
