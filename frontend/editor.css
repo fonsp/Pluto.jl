@@ -2,7 +2,7 @@
 @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
 @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
 @import url("juliamono.css");
-@import url('https://fonts.googleapis.com/css2?family=Lato&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Lato&display=swap");
 
 /* VARIABLES */
 
@@ -170,9 +170,10 @@ a {
 pluto-output code {
     font-family: JuliaMono, monospace;
     font-size: 0.75em; /* not rem */
+    font-variant-ligatures: none;
 }
 
-pluto-output:not(.inline_output) code {
+pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
@@ -186,6 +187,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-variant-ligatures: none;
 }
 
 pluto-output hr {
@@ -200,7 +202,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output:not(.inline_output) pre,
+pluto-output.rich_output pre,
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
@@ -320,8 +322,9 @@ pluto-output table > thead {
 }
 
 pluto-output table > tbody td {
-    font-size: 0.75rem;
     font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
+    font-variant-ligatures: none;
 }
 
 pluto-output table td,
@@ -661,8 +664,9 @@ pluto-output:focus {
     outline: none;
 }
 
-pluto-output.inline_output {
+pluto-output:not(.rich_output) {
     display: flex;
+    flex-wrap: wrap;
     padding-top: 3px;
     padding-bottom: 3px;
 }
@@ -670,6 +674,7 @@ pluto-output.inline_output {
 pluto-output > assignee {
     font-family: JuliaMono, monospace;
     font-size: 0.75rem;
+    font-variant-ligatures: none;
 }
 
 pluto-output > assignee::after {
@@ -682,12 +687,12 @@ pluto-output > assignee:empty {
 }
 
 pluto-output > div {
-    width: 100%;
+    flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
 }
 
-pluto-output.inline_output > div > pre {
+pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
@@ -1243,7 +1248,8 @@ pluto-helpbox {
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     line-height: 1.5;
 }
-pluto-helpbox pre, pluto-helpbox code {
+pluto-helpbox pre,
+pluto-helpbox code {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.875em;
@@ -1271,13 +1277,13 @@ pluto-helpbox > section h1 {
     font-size: 1.3rem;
 }
 pluto-helpbox > section pre {
-	padding: 0.7rem 0.5rem;
-	-webkit-overflow-scrolling: touch;
+    padding: 0.7rem 0.5rem;
+    -webkit-overflow-scrolling: touch;
     overflow-x: auto;
     background: whitesmoke;
     border: 1px solid #dbdbdb;
-	white-space: pre;
-	word-wrap: normal;
+    white-space: pre;
+    word-wrap: normal;
 }
 /* pluto-helpbox > section code {
     background-color: whitesmoke;
@@ -1464,6 +1470,7 @@ ul.CodeMirror-hints {
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
+    font-variant-ligatures: none;
     font-size: 0.75em;
 }
 

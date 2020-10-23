@@ -218,7 +218,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
+iocontext = IOContext(stdout, :color => false, :limit => true, :displaysize => (18, 88))
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]

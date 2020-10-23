@@ -162,6 +162,7 @@ jlerror > section > ol > li > mark {
     background: #f3f2f1;
     border-radius: 6px;
     font-family: JuliaMono, monospace;
+    font-variant-ligatures: none;
 }
 jlerror > section > ol > li > em > a {
     background: #f5efd9;
