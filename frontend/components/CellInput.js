@@ -1,4 +1,5 @@
 import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
@@ -61,6 +62,14 @@ export const CellInput = ({
                         client: client,
                         notebook_id: notebook_id,
                         on_update_doc_query: on_update_doc_query,
+                        extraKeys: {
+                            ".": (cm, { pick }) => {
+                                pick()
+                                cm.replaceSelection(".")
+                                cm.showHint()
+                            },
+                            // "(": (cm, { pick }) => pick(),
+                        },
                     },
                     matchBrackets: true,
                 }
@@ -86,6 +95,7 @@ export const CellInput = ({
             }
             keys["Shift-Tab"] = "indentLess"
             keys["Tab"] = on_tab_key
+            keys["Ctrl-Space"] = () => cm.showHint()
             keys["Ctrl-D"] = () => {
                 if (cm.somethingSelected()) {
                     const sels = cm.getSelections()
@@ -234,7 +244,7 @@ export const CellInput = ({
                 }
             })
 
-            cm.on("change", () => {
+            cm.on("change", (_, e) => {
                 const new_value = cm.getValue()
                 if (new_value.length > 1 && new_value[0] === "?") {
                     window.dispatchEvent(new CustomEvent("open_live_docs"))
@@ -332,11 +342,15 @@ const juliahints = (cm, options) => {
                 notebook_id: options.notebook_id,
             }
         )
-        .then((update) => {
+        .then(({ message }) => {
             const completions = {
-                list: update.message.results,
-                from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
-                to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
+                list: message.results.map(([text, type_description, is_exported]) => ({
+                    text: text,
+                    className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                    // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+                })),
+                from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
+                to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
             }
             window.CodeMirror.on(completions, "select", (val) => {
                 options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))

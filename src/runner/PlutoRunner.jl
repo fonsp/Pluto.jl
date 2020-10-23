@@ -11,7 +11,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import REPL.REPLCompletions: completions, complete_path, completion_text, Completion, ModuleCompletion
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -597,22 +597,57 @@ end
 # REPL THINGS
 ###
 
-function completion_priority(s::String)
+function completion_priority((s, description, exported))
 	c = first(s)
 	if islowercase(c)
-		1
+		1 - 10exported
 	elseif isuppercase(c)
-		2
+		2 - 10exported
 	else
-		3
+		3 - 10exported
 	end
+end
+
+completed_object_description(x::Function) = "Function"
+completed_object_description(x::Number) = "Number"
+completed_object_description(x::AbstractString) = "String"
+completed_object_description(x::Module) = "Module"
+completed_object_description(x::AbstractArray) = "Array"
+completed_object_description(x::Any) = "Any"
+
+completion_description(c::ModuleCompletion) = try
+    completed_object_description(getfield(c.parent, Symbol(c.mod)))
+catch
+    nothing
+end
+completion_description(::Completion) = nothing
+
+function completions_exported(cs::Vector{<:Completion})
+    completed_modules = Set(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(m => string.(names(m, all=false, imported=true)) for m in completed_modules)
+
+    map(cs) do c
+        if c isa ModuleCompletion
+            c.mod ∈ completed_modules_exports[c.parent]
+        else
+
+            true
+        end
+    end
 end
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    sorted_completions = sort(completion_text.(results); alg=MergeSort, by=completion_priority)
-    (sorted_completions, loc, found)
+
+    texts = completion_text.(results)
+    descriptions = completion_description.(results)
+    exported = completions_exported(results)
+
+    smooshed_together = zip(texts, descriptions, exported)
+    
+    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
+    (final, loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
