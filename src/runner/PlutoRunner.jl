@@ -597,10 +597,22 @@ end
 # REPL THINGS
 ###
 
+function completion_priority(s::String)
+	c = first(s)
+	if islowercase(c)
+		1
+	elseif isuppercase(c)
+		2
+	else
+		3
+	end
+end
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (completion_text.(results), loc, found)
+    sorted_completions = sort(completion_text.(results); alg=MergeSort, by=completion_priority)
+    (sorted_completions, loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
