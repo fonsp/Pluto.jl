@@ -556,15 +556,18 @@ nav#at_the_top:after {
 }
 
 li.file.new.CodeMirror-hint:before {
-    content: "👉 ";
+    content: "👉";
+    color: black;
 }
 
 li.file.CodeMirror-hint:before {
-    content: "📄 ";
+    content: "📄";
+    color: black;
 }
 
 li.dir.CodeMirror-hint:before {
-    content: "📁 ";
+    content: "📁";
+    color: black;
 }
 
 @media screen and (any-pointer: fine) {
@@ -1454,6 +1457,27 @@ body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
 }
 
+/* CODEMIRROR HINTS */
+
+li.CodeMirror-hint {
+    /* this is the line height rounded to an integer to prevent jiggle */
+    height: 16px;
+}
+
+li.CodeMirror-hint.c_notexported {
+    color: rgba(0, 0, 0, 0.5);
+}
+li.CodeMirror-hint-active.c_notexported {
+    color: white;
+}
+
+li.CodeMirror-hint::before {
+    content: "⚫";
+    color: transparent;
+    margin-right: 0.5em;
+    opacity: 1;
+}
+
 /* CODEMIRROR STYLE */
 
 /*
@@ -1464,6 +1488,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 ul.CodeMirror-hints {
     padding: 0;
+    margin-left: -1.5em;
 }
 
 pluto-input .CodeMirror,
@@ -1552,6 +1577,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #815ba4;
 }
 
+li.CodeMirror-hint.c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
 }
@@ -1565,6 +1591,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #ef6155;
 }
 
+li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
     color: #ce7d0a;
 }
@@ -1573,6 +1600,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
+li.CodeMirror-hint.c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -1588,10 +1616,12 @@ pluto-output > assignee,
     color: #06b6ef;
 }
 
+li.CodeMirror-hint.c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
+li.CodeMirror-hint.c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
 }
