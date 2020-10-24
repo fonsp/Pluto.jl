@@ -332,12 +332,15 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
 
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
-    isstruct = 
+    isstruct = try
         mime isa MIME"text/plain" && 
         t isa DataType &&
         # there are two ways to override the plaintext show method: 
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
+    catch
+        false
+    end
     
     if isstruct
         show_struct(io, x)
