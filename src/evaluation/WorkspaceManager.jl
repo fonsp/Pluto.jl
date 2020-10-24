@@ -2,6 +2,7 @@ module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
+import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Distributed
 
@@ -267,7 +268,7 @@ function eval_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Not
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr}; kwargs...)
+function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
     workspace = get_workspace(session_notebook)
 
     old_workspace_name = workspace.module_name

@@ -77,3 +77,42 @@ then `]` to enter the package manager, and type
 
 To run the tests a second time, do `Arrow up`, then `Return`.
 
+# How to run specific version of Pluto:
+
+## Method 1: use git
+If you are fluent in git (I am not), then you can git magic your local clone into whatever you want, and if you did `pkg> dev path/to/my/clone` then it will always work! You can do most of it using the VS Code git GUI, it took me a while to learn though.
+
+## Method 2: use the package manager
+Use the Julia REPL package manager to **activate an empty environment** and then **add the branch/version of Plutp**. This is best explained using some examples.
+
+#### Example: run an old Pluto version
+You need Julia 1.5 for `--temp`, otherwise do `import Pkg; Pkg.activate(mktempdir())`.
+```julia
+(v1.5) pkg> activate --temp
+(jl_khadsfkj) pkg> add Pluto@0.8.0
+julia> import Pluto; Pluto.run(1234)
+```
+
+#### Example: check out a PR
+This PR: https://github.com/fonsp/Pluto.jl/pull/530
+
+is on a fork `pupuis/Pluto.jl`, on its own branch `find-and-replace` (nice!)
+
+```julia
+(v1.5) pkg> activate --temp
+(jl_khadsfkj) pkg> add https://github.com/pupuis/Pluto.jl#find-and-replace
+julia> import Pluto; Pluto.run()
+```
+
+#### Example: check out a specific commit
+You need to find the 'git SHA' of the commit. This is either a 7-character cutie or a 40-character biggie. Copy it:
+
+![image](https://user-images.githubusercontent.com/6933510/96336143-c19a3f80-107d-11eb-8c1c-527981cc448d.png)
+
+And paste after `#` in the URL:
+
+```julia
+(v1.5) pkg> activate --temp
+(jl_khadsfkj) pkg> add https://github.com/fonsp/Pluto.jl#f5050048668b31318afc3459bf81ce3b9cce6854
+julia> import Pluto; Pluto.run()
+```

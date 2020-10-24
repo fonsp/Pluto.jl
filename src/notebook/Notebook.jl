@@ -1,20 +1,18 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-struct NotebookTopology
-	symstates::Dict{Cell,SymbolsState}
-    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+Base.@kwdef struct NotebookTopology
+    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
 end
-NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
 
-# `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
-# with the performance benefit of only generating SymbolsState() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)
-    result = get(topology.symstates, cell, nothing)
-    result === nothing ? SymbolsState() : result
+# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
+# with the performance benefit of only generating ReactiveNode() when needed
+function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
+    get!(ReactiveNode, topology.nodes, cell)
 end
+
 
 "Like a [`Diary`](@ref) but more serious. 📓"
 mutable struct Notebook
@@ -40,7 +38,7 @@ end
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
     Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
+Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
@@ -64,7 +62,7 @@ Save the notebook to `io`, `file` or to `notebook.path`.
 
 In the produced file, cells are not saved in the notebook order. If `notebook.topolgy` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
 
-Have a look at or [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
+Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)

@@ -1,5 +1,6 @@
 > _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://mitmath.github.io/18S191/Fall20/), fall 2020.
-<br>
+> <br>
+
 <p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
@@ -85,7 +86,7 @@ Run Julia and add the package:
 
 ```julia
 julia> ]
-(v1.0) pkg> add Pluto
+(v1.5) pkg> add Pluto
 ```
 
 _Using the package manager for the first time can take up to 15 minutes - hang in there!_
@@ -94,10 +95,12 @@ To run the notebook server:
 
 ```julia
 julia> import Pluto
-julia> Pluto.run(1234)
+julia> Pluto.run()
 ```
 
-Then go to [`http://localhost:1234/`](http://localhost:1234/) to start coding!
+Pluto will open in your browser, and you can get started!
+
+Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
 ### To developers
 

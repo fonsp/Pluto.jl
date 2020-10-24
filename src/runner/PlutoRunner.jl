@@ -1,6 +1,6 @@
 # Will be evaluated _inside_ the workspace process.
 
-# Pluto does most things on process 1 (the server), and it uses little wokrpsace processes to evaluate notebook code in.
+# Pluto does most things on process 1 (the server), and it uses little workspace processes to evaluate notebook code in.
 # These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
@@ -11,7 +11,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import REPL.REPLCompletions: completions, complete_path, completion_text, Completion, ModuleCompletion
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -63,7 +63,7 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -78,21 +78,12 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 
     old_names = names(old_workspace, all=true, imported=true)
 
+    funcs_with_no_methods_left = filter(funcs_to_delete) do f
+        !try_delete_toplevel_methods(old_workspace, f)
+    end
+    name_symbols_of_funcs_with_no_methods_left = last.(last.(funcs_with_no_methods_left))
     for symbol in old_names
-        if symbol ∉ vars_to_delete
-            # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
-                try
-                    val = getfield(old_workspace, symbol)
-
-                    # Expose the variable in the scope of `new_workspace`
-                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
-                catch ex
-                    @warn "Failed to move variable $(symbol) to new workspace:"
-                    showerror(stderr, ex, stacktrace(catch_backtrace()))
-                end
-            end
-        else
+        if (symbol ∈ vars_to_delete) || (symbol ∈ name_symbols_of_funcs_with_no_methods_left)
             # var will be redefined - unreference the value so that GC can snoop it
 
             # free memory for other variables
@@ -109,22 +100,38 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                     Core.eval(old_workspace, :($(symbol) = nothing))
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
+        else
+            # var will not be redefined in the new workspace, move it over
+            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
+                try
+                    val = getfield(old_workspace, symbol)
+
+                    # Expose the variable in the scope of `new_workspace`
+                    Core.eval(new_workspace, :(import ..($(old_workspace_name)).$(symbol)))
+                catch ex
+                    if !(ex isa UndefVarError)
+                        @warn "Failed to move variable $(symbol) to new workspace:"
+                        showerror(stderr, ex, stacktrace(catch_backtrace()))
+                    end
+                end
+            end
         end
     end
-    try_delete_toplevel_methods.([old_workspace], funcs_to_delete)
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."
-isfromtoplevel(method::Method) = startswith(nameof(method.module) |> string, "workspace")
+isfromcell(method::Method, cell_id::UUID) = endswith(String(method.file), string(cell_id))
 
-"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂"
-function delete_toplevel_methods(f::Function)
+"Delete all methods of `f` that were defined in this notebook, and leave the ones defined in other packages, base, etc. ✂
+
+Return whether the function has any methods left after deletion."
+function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # we can delete methods of functions!
     # instead of deleting all methods, we only delete methods that were defined in this notebook. This is necessary when the notebook code extends a function from remote code
     methods_table = typeof(f).name.mt
     deleted_sigs = Set{Type}()
     Base.visit(methods_table) do method # iterates through all methods of `f`, including overridden ones
-        if isfromtoplevel(method) && getfield(method, deleted_world) == alive_world_val
+        if isfromcell(method, cell_id) && getfield(method, deleted_world) == alive_world_val
             Base.delete_method(method)
             push!(deleted_sigs, method.sig)
         end
@@ -138,7 +145,7 @@ function delete_toplevel_methods(f::Function)
     if !isempty(deleted_sigs)
         to_insert = Method[]
         Base.visit(methods_table) do method
-            if !isfromtoplevel(method) && method.sig ∈ deleted_sigs
+            if !isfromcell(method, cell_id) && method.sig ∈ deleted_sigs
                 push!(to_insert, method)
             end
         end
@@ -148,25 +155,29 @@ function delete_toplevel_methods(f::Function)
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end
+    return !isempty(methods(f).ms)
 end
 
-function try_delete_toplevel_methods(workspace::Module, name::Symbol)
-    try_delete_toplevel_methods(workspace, [name])
-end
+# function try_delete_toplevel_methods(workspace::Module, name::Symbol)
+#     try_delete_toplevel_methods(workspace, [name])
+# end
 
-function try_delete_toplevel_methods(workspace::Module, name_parts::Vector{Symbol})
+function try_delete_toplevel_methods(workspace::Module, (cell_id, name_parts)::Tuple{UUID,Vector{Symbol}})::Bool
     try
         val = workspace
         for name in name_parts
             val = getfield(val, name)
         end
         try
-            (val isa Function) && delete_toplevel_methods(val)
+            (val isa Function) && delete_toplevel_methods(val, cell_id)
         catch ex
             @warn "Failed to delete methods for $(name_parts)"
             showerror(stderr, ex, stacktrace(catch_backtrace()))
+            false
         end
-    catch; end
+    catch
+        false
+    end
 end
 
 # these deal with some inconsistencies in Julia's internal (undocumented!) variable names
@@ -207,7 +218,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
+iocontext = IOContext(stdout, :color => false, :limit => true, :displaysize => (18, 88))
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
@@ -321,12 +332,15 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
 
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
-    isstruct = 
+    isstruct = try
         mime isa MIME"text/plain" && 
         t isa DataType &&
         # there are two ways to override the plaintext show method: 
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
+    catch
+        false
+    end
     
     if isstruct
         show_struct(io, x)
@@ -586,10 +600,57 @@ end
 # REPL THINGS
 ###
 
+function completion_priority((s, description, exported))
+	c = first(s)
+	if islowercase(c)
+		1 - 10exported
+	elseif isuppercase(c)
+		2 - 10exported
+	else
+		3 - 10exported
+	end
+end
+
+completed_object_description(x::Function) = "Function"
+completed_object_description(x::Number) = "Number"
+completed_object_description(x::AbstractString) = "String"
+completed_object_description(x::Module) = "Module"
+completed_object_description(x::AbstractArray) = "Array"
+completed_object_description(x::Any) = "Any"
+
+completion_description(c::ModuleCompletion) = try
+    completed_object_description(getfield(c.parent, Symbol(c.mod)))
+catch
+    nothing
+end
+completion_description(::Completion) = nothing
+
+function completions_exported(cs::Vector{<:Completion})
+    completed_modules = Set(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(m => string.(names(m, all=false, imported=true)) for m in completed_modules)
+
+    map(cs) do c
+        if c isa ModuleCompletion
+            c.mod ∈ completed_modules_exports[c.parent]
+        else
+
+            true
+        end
+    end
+end
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (completion_text.(results), loc, found)
+
+    texts = completion_text.(results)
+    descriptions = completion_description.(results)
+    exported = completions_exported(results)
+
+    smooshed_together = zip(texts, descriptions, exported)
+    
+    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
+    (final, loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code
@@ -702,7 +763,9 @@ end"""
 const log_channel = Channel{Any}(10)
 const old_logger = Ref{Any}(nothing)
 
-struct PlutoLogger <: Logging.AbstractLogger end
+struct PlutoLogger <: Logging.AbstractLogger
+    stream
+end
 
 function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
@@ -735,7 +798,7 @@ end
 function __init__()
     if Distributed.myid() != 1
         old_logger[] = Logging.global_logger()
-        Logging.global_logger(PlutoLogger())
+        Logging.global_logger(PlutoLogger(nothing))
     end
 end
 

@@ -1,14 +1,22 @@
 const adjectives = [
 	"groundbreaking"
+	"revolutionary"
 	"important"
 	"novel"
 	"fun"
 	"interesting"
 	"fascinating"
+	"exciting"
 	"surprising"
 	"remarkable"
 	"wonderful"
 	"stunning"
+	"mini"
+	"small"
+	"tiny"
+	"cute"
+	"friendly"
+	"wild"
 ]
 
 const nouns = [
@@ -24,10 +32,30 @@ const nouns = [
 	"invention"
 	"blueprint"
 	"report"
+	"science"
+	"magic"
+	"program"
+	"notes"
+	"lecture"
+	"theory"
+	"proof"
+	"conjecture"
 ]
 
 function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
+end
+
+function new_notebooks_directory()
+    try
+        path = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+        if !isdir(path)
+            mkdir(path)
+        end
+        path
+    catch
+        homedir()
+    end
 end
 
 """
