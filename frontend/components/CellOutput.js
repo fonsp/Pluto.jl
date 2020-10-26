@@ -40,7 +40,16 @@ export class CellOutput extends Component {
                 })}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <code
+                    class="assignee"
+                    ref=${(ref) => {
+                        if (ref) {
+                            ref.innerText = this.props.rootassignee
+                            highlight_julia(ref)
+                        }
+                    }}
+                    >${this.props.rootassignee}</code
+                >
                 <${OutputBody} ...${this.props} />
             </pluto-output>
         `

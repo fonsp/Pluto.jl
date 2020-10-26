@@ -664,22 +664,26 @@ pluto-output.inline_output {
     padding-bottom: 3px;
 }
 
-pluto-output > assignee {
-    font-family: JuliaMono, monospace;
-    font-size: 0.75rem;
+pluto-output > code.assignee {
+    display: inline;
+}
+pluto-output:not(.inline_output) > code.assignee {
+    padding: initial;
+    border-radius: initial;
+    background-color: initial;
 }
 
-pluto-output > assignee::after {
+pluto-output > code.assignee::after {
     content: "\a0=\a0";
     opacity: 0.6;
 }
 
-pluto-output > assignee:empty {
+pluto-output > code.assignee:empty {
     display: none;
 }
 
 pluto-output > div {
-    width: 100%;
+    flex: 1;
     overflow-x: auto;
     overflow-y: hidden;
 }

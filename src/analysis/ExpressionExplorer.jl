@@ -897,17 +897,60 @@ end
 
 is_toplevel_expr(::Any)::Bool = false
 
+function assignment_expression_to_string(ex::Expr)
+    replace(string(ex), r"\s+end$" => "")
+end
+
 "If the expression is a (simple) assignemnt at its root, return the assignee as `Symbol`, return `nothing` otherwise."
-function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
+function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{String,Nothing}
+    # "Simple" macro calls that contain valid assignment syntax
+    # Like: Base.@kwdef struct X end
+    if Meta.isexpr(ex, :macrocall, 3)
+        subassignee = get_rootassignee(ex.args[3], recurse)
+        return if subassignee === nothing
+            nothing
+        else
+            macrocall = Expr(:macrocall, ex.args[1], nothing)
+            "$(macrocall) $(subassignee)"
+        end 
+    end
+
+    # Docstring macro detection
+    if Meta.isexpr(ex, :macrocall, 4) && ex.args[1] == GlobalRef(Core, Symbol("@doc"))
+        return get_rootassignee(ex.args[4], recurse)
+    end
+
+    # Enum macro detection
+    if Meta.isexpr(ex, :macrocall) && ex.args[1] === Symbol("@enum")
+        return "@enum $(ex.args[3]) ..."
+    end
+
+
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
     elseif ex.head == :(=) && ex.args[1] isa Symbol
-        ex.args[1]
+        string(ex.args[1])
+    elseif ex.head == :(=) && Meta.isexpr(ex.args[1], :call) 
+        assignment_expression_to_string(Expr(:function, ex.args[1]))
+    elseif Meta.isexpr(ex, :const, 1) && Meta.isexpr(ex.args[1], :(=), 2)
+        "const $(ex.args[1].args[1])"
+    # elseif ex.head == :(=) && Meta.isexpr(ex.args[1], :(a)) && Meta.isexpr(ex.args[1].args[1], :call)
+    #     assignment_expression_to_string(Expr(:function, ex.args[1].args[1]))
+    elseif Meta.isexpr(ex, :function)
+        assignment_expression_to_string(Expr(ex.head, ex.args[1]))
+    elseif Meta.isexpr(ex, :abstract)
+        assignment_expression_to_string(ex)
+    elseif Meta.isexpr(ex, :macro)
+        # Strip body from macro definition (but keep `macro xxx()`)
+        assignment_expression_to_string(Expr(ex.head, ex.args[1], Expr(:block)))
+    elseif Meta.isexpr(ex, :struct)
+        # Strip body from struct definition (but keep `struct xxx()`)
+        assignment_expression_to_string(Expr(ex.head, ex.args[1:2]..., Expr(:block)))
     else
         nothing
     end
 end
 
-get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
+get_rootassignee(ex::Any, recuse::Bool=true)::Union{String,Nothing} = nothing
 
 end
