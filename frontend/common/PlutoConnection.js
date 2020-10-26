@@ -131,7 +131,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
                     console.log(event)
 
                     alert(
-                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`
                     )
                 }
             })

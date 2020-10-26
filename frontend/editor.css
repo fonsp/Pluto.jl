@@ -1,13 +1,30 @@
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
-@import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/500-normal.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700-normal.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/700.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/900.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/500.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/700.css");
+
 @import url("juliamono.css");
-@import url('https://fonts.googleapis.com/css2?family=Lato&display=swap');
+
+/* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-lato@3.0.9/400.css");
 
 /* VARIABLES */
 
 :root {
     --pluto-cell-spacing: 17px;
+    /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+    --pluto-operator-ligatures: none;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -167,9 +184,10 @@ a {
 pluto-output code {
     font-family: JuliaMono, monospace;
     font-size: 0.75em; /* not rem */
+    font-variant-ligatures: none;
 }
 
-pluto-output:not(.inline_output) code {
+pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
@@ -183,6 +201,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-variant-ligatures: none;
 }
 
 pluto-output hr {
@@ -197,7 +216,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output:not(.inline_output) pre,
+pluto-output.rich_output pre,
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
@@ -317,8 +336,9 @@ pluto-output table > thead {
 }
 
 pluto-output table > tbody td {
-    font-size: 0.75rem;
     font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
+    font-variant-ligatures: none;
 }
 
 pluto-output table td,
@@ -339,7 +359,6 @@ body > header {
     min-height: 60px;
 
     z-index: 5;
-    /* overflow: hidden; */
     background-color: white;
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
@@ -551,15 +570,18 @@ nav#at_the_top:after {
 }
 
 li.file.new.CodeMirror-hint:before {
-    content: "👉 ";
+    content: "👉";
+    color: black;
 }
 
 li.file.CodeMirror-hint:before {
-    content: "📄 ";
+    content: "📄";
+    color: black;
 }
 
 li.dir.CodeMirror-hint:before {
-    content: "📁 ";
+    content: "📁";
+    color: black;
 }
 
 @media screen and (any-pointer: fine) {
@@ -658,8 +680,9 @@ pluto-output:focus {
     outline: none;
 }
 
-pluto-output.inline_output {
+pluto-output:not(.rich_output) {
     display: flex;
+    flex-wrap: wrap;
     padding-top: 3px;
     padding-bottom: 3px;
 }
@@ -671,6 +694,11 @@ pluto-output:not(.inline_output) > code.assignee {
     padding: initial;
     border-radius: initial;
     background-color: initial;
+}
+pluto-output > assignee {
+    font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
+    font-variant-ligatures: --pluto-operator-ligatures;
 }
 
 pluto-output > code.assignee::after {
@@ -684,11 +712,12 @@ pluto-output > code.assignee:empty {
 
 pluto-output > div {
     flex: 1;
+    flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
 }
 
-pluto-output.inline_output > div > pre {
+pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
@@ -1244,7 +1273,8 @@ pluto-helpbox {
     font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
     line-height: 1.5;
 }
-pluto-helpbox pre, pluto-helpbox code {
+pluto-helpbox pre,
+pluto-helpbox code {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.875em;
@@ -1272,13 +1302,13 @@ pluto-helpbox > section h1 {
     font-size: 1.3rem;
 }
 pluto-helpbox > section pre {
-	padding: 0.7rem 0.5rem;
-	-webkit-overflow-scrolling: touch;
+    padding: 0.7rem 0.5rem;
+    -webkit-overflow-scrolling: touch;
     overflow-x: auto;
     background: whitesmoke;
     border: 1px solid #dbdbdb;
-	white-space: pre;
-	word-wrap: normal;
+    white-space: pre;
+    word-wrap: normal;
 }
 /* pluto-helpbox > section code {
     background-color: whitesmoke;
@@ -1322,7 +1352,7 @@ footer form > label {
 }
 
 footer form > a {
-    margin-right: auto;
+    margin-right: 1em;
 }
 
 footer a {
@@ -1450,6 +1480,27 @@ body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
 }
 
+/* CODEMIRROR HINTS */
+
+li.CodeMirror-hint {
+    /* this is the line height rounded to an integer to prevent jiggle */
+    height: 16px;
+}
+
+li.CodeMirror-hint.c_notexported {
+    color: rgba(0, 0, 0, 0.5);
+}
+li.CodeMirror-hint-active.c_notexported {
+    color: white;
+}
+
+li.CodeMirror-hint::before {
+    content: "⚫";
+    color: transparent;
+    margin-right: 0.5em;
+    opacity: 1;
+}
+
 /* CODEMIRROR STYLE */
 
 /*
@@ -1460,17 +1511,24 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 ul.CodeMirror-hints {
     padding: 0;
+    margin-left: -1.5em;
 }
 
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
+    font-variant-ligatures: none;
     font-size: 0.75em;
 }
 
 .cm-s-default.CodeMirror {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
+}
+
+.cm-s-default.CodeMirror pre.CodeMirror-line,
+.cm-s-default.CodeMirror pre.CodeMirror-line-like {
+    font-variant-ligatures: none;
 }
 
 .cm-s-default div.CodeMirror-selected {
@@ -1542,6 +1600,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #815ba4;
 }
 
+li.CodeMirror-hint.c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
 }
@@ -1555,10 +1614,16 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #ef6155;
 }
 
+li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
     color: #ce7d0a;
 }
 
+.cm-s-default span.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
+}
+
+li.CodeMirror-hint.c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -1574,10 +1639,12 @@ pluto-output > assignee,
     color: #06b6ef;
 }
 
+li.CodeMirror-hint.c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
+li.CodeMirror-hint.c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
 }

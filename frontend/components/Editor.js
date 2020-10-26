@@ -1,5 +1,4 @@
 import { html, Component, useState, useEffect } from "../common/Preact.js"
-import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
 import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
@@ -1009,7 +1008,7 @@ export class Editor extends Component {
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
-                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                        if (!_.isEqual(current_selected_cells, selected_cell_ids)) {
                             this.setState(
                                 immer((state) => {
                                     for (let cell of state.notebook.cells) {
@@ -1042,7 +1041,9 @@ export class Editor extends Component {
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <a href="statistics-info">Statistics</a>
+                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                        <span style="flex: 1"></span>
                         <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>

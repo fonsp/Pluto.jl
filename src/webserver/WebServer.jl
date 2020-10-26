@@ -221,7 +221,18 @@ function run(session::ServerSession)
 
     address = let
         root = if session.options.server.root_url === nothing
-            hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
+            hostStr = string(hostIP)
+            hostPretty = if isa(hostIP, Sockets.IPv6)
+                if hostStr == "::1"
+                    "localhost"
+                else
+                    "[$(hostStr)]"
+                end
+            elseif hostStr == "127.0.0.1" # Assuming the other alternative is IPv4
+                "localhost"
+            else
+                hostStr
+            end
             portPretty = Int(port)
             "http://$(hostPretty):$(portPretty)/"
         else
