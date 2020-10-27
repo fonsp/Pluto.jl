@@ -807,7 +807,7 @@ export class Editor extends Component {
                     e.preventDefault()
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
-                this.run_selected();
+                this.run_selected()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -977,6 +977,7 @@ export class Editor extends Component {
                     </button>
                 </preamble>
                 <${Notebook}
+                    is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
                     on_cell_input=${(cell, new_val) => {
