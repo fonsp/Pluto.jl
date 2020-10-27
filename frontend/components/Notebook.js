@@ -1,4 +1,4 @@
-import { html } from "../common/Preact.js"
+import { html, useEffect } from "../common/Preact.js"
 
 import { Cell } from "./Cell.js"
 
@@ -15,6 +15,14 @@ export const Notebook = ({
     client,
     notebook_id,
 }) => {
+    // This might look kinda silly...
+    // and it is... but it covers all the cases... - DRAL
+    useEffect(() => {
+        if (cells.length === 0) {
+            requests.add_remote_cell_at(0)
+        }
+    }, [cells.length])
+
     return html`
         <pluto-notebook id=${notebook_id}>
             ${cells.map(
