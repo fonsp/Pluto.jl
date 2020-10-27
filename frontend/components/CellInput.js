@@ -37,6 +37,9 @@ export const CellInput = ({
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
 
+    const time_last_being_force_focussed_ref = useRef(0)
+    const time_last_genuine_backspace = useRef(0)
+
     useEffect(() => {
         remote_code_ref.current = remote_code
     }, [remote_code])
@@ -202,11 +205,27 @@ export const CellInput = ({
         keys["Alt-Down"] = () => alt_move(+1)
 
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
+            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
+            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
+
             if (cm.lineCount() === 1 && cm.getValue() === "") {
-                on_focus_neighbor(cell_id, -1)
-                on_delete()
+                // I wanted to write comments, but I think my variable names are documentation enough
+                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
+                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
+                    on_focus_neighbor(cell_id, -1)
+                    on_delete()
+                }
             }
-            return window.CodeMirror.Pass
+
+            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+            if (enough_time_passed_since_force_focus) {
+                time_last_genuine_backspace.current = Date.now()
+                return window.CodeMirror.Pass
+            } else {
+                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
+                time_last_being_force_focussed_ref.current = Date.now()
+            }
         }
         keys["Delete"] = keys["Ctrl-Delete"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
@@ -280,6 +299,7 @@ export const CellInput = ({
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
         } else {
+            time_last_being_force_focussed_ref.current = Date.now()
             cm_ref.current.focus()
             cm_ref.current.setSelection(...cm_forced_focus)
         }
