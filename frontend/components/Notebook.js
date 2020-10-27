@@ -1,8 +1,9 @@
-import { html } from "../common/Preact.js"
+import { html, useEffect } from "../common/Preact.js"
 
 import { Cell } from "./Cell.js"
 
 export const Notebook = ({
+    is_loading,
     cells,
     on_update_doc_query,
     on_cell_input,
@@ -15,6 +16,14 @@ export const Notebook = ({
     client,
     notebook_id,
 }) => {
+    // This might look kinda silly...
+    // and it is... but it covers all the cases... - DRAL
+    useEffect(() => {
+        if (cells.length === 0 && !is_loading) {
+            requests.add_remote_cell_at(0)
+        }
+    }, [is_loading, cells.length])
+
     return html`
         <pluto-notebook id=${notebook_id}>
             ${cells.map(

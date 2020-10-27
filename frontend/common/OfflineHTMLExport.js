@@ -51,7 +51,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                 <link rel="stylesheet" href="${CDNified(pluto_version, "editor.css")}" type="text/css" />
                 <link rel="stylesheet" href="${CDNified(pluto_version, "treeview.css")}" type="text/css" />
                 <link rel="stylesheet" href="${CDNified(pluto_version, "hide-ui.css")}" type="text/css" />
-                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.57.0/lib/codemirror.min.css" type="text/css" />
+                <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.css" type="text/css" />
 
                 <script src="${CDNified(pluto_version, "treeview.js")}"></script>
 

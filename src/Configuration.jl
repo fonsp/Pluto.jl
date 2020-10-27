@@ -15,6 +15,7 @@ Base.@kwdef mutable struct ServerOptions
     launch_browser::Bool = true
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
+    notebook::String = ""
 end
 
 """
