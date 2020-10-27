@@ -199,6 +199,7 @@ export const CellInput = ({
                             },
                         }
                     })
+                )
             }
         }
         keys["Alt-Up"] = () => alt_move(-1)
