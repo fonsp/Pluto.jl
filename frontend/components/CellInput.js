@@ -89,10 +89,10 @@ export const CellInput = ({
         }
         // Page up and page down are fn+Up and fn+Down on recent apple keyboards
         keys["PageUp"] = () => {
-            on_focus_neighbor(cell_id, -1)
+            on_focus_neighbor(cell_id, -1, 0, 0)
         }
         keys["PageDown"] = () => {
-            on_focus_neighbor(cell_id, +1)
+            on_focus_neighbor(cell_id, +1, 0, 0)
         }
         keys["Shift-Tab"] = "indentLess"
         keys["Tab"] = on_tab_key
@@ -236,6 +236,33 @@ export const CellInput = ({
             return window.CodeMirror.Pass
         }
 
+        /** Basically any variable inside an useEffect is already a ref
+         * so I'll just roll with this abstraction
+         * @param {(time_since: Number) => any} fn
+         */
+        let with_time_since_last = (fn) => {
+            let last_invoke_time = -Infinity // This infinity is for you, Fons
+            return () => {
+                let result = fn(Date.now() - last_invoke_time)
+                last_invoke_time = Date.now()
+                return result
+            }
+        }
+        keys["Up"] = with_time_since_last((elapsed) => {
+            if (cm.getCursor().line == 0 && elapsed > 300) {
+                on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
+            } else {
+                return window.CodeMirror.Pass
+            }
+        })
+        keys["Down"] = with_time_since_last((elapsed) => {
+            if (cm.getCursor().line == cm.lastLine() && elapsed > 300) {
+                on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
+            } else {
+                return window.CodeMirror.Pass
+            }
+        })
+
         cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
         cm.setOption("autoCloseBrackets", true)
 
@@ -301,8 +328,9 @@ export const CellInput = ({
             clear_selection(cm_ref.current)
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
+            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line == Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
             cm_ref.current.focus()
-            cm_ref.current.setSelection(...cm_forced_focus)
+            cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
 

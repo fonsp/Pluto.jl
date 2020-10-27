@@ -987,7 +987,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    on_focus_neighbor=${(cell_id, delta) => {
+                    on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta
                         if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
@@ -995,7 +995,8 @@ export class Editor extends Component {
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
-                                        line: delta === -1 ? Infinity : -1,
+                                        line: line,
+                                        ch: ch,
                                     },
                                 })
                             )
