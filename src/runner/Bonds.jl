@@ -6,7 +6,7 @@ module Bonds
 
 import ..PlutoRunner
 
-export @bind, fake_bind
+export @bind, fake_bind, Bond
 
 """
 _“The name is Bond, James Bond.”_
@@ -36,6 +36,7 @@ struct Bond
 end
 
 import Base: show
+import Markdown: withtag
 function show(io::IO, ::MIME"text/html", bond::Bond)
     withtag(io, :bond, :def => bond.defines) do 
         show(io, MIME"text/html"(), bond.element)
@@ -61,15 +62,15 @@ The first cell will show a slider as the cell's output, ranging from 0 until 100
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
 macro bind(def, element)
-	if def isa Symbol
-		quote
-			local el = $(esc(element))
+    if def isa Symbol
+		    quote
+            local el = $(esc(element))
             global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
-			$(Bond)(el, $(Meta.quot(def)))
-		end
-	else
-		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
-	end
+			      $(PlutoRunner.Bond)(el, $(Meta.quot(def)))
+		    end
+	  else
+		    :(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+	  end
 end
 
 """

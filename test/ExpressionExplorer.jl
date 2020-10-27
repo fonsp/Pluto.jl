@@ -295,11 +295,11 @@ using Test
         ])
         @test testee(quote "asdf" f(x) = x end, [], [], [], [:f => ([], [], [], [])])
 
-        @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
-        @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+        @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, Symbol("@bind")], [])
+        @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, Symbol("@bind")], [])
 
-        @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(html"a $(b = c)"), [], [], [Symbol("@html_str")], [])
         @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
         @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
