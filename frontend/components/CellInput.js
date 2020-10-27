@@ -280,6 +280,9 @@ export const CellInput = ({
     useEffect(() => {
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
+        } else {
+            cm_ref.current.focus()
+            cm_ref.current.setSelection(...cm_forced_focus)
         }
     }, [cm_forced_focus])
 
