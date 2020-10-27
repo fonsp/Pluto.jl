@@ -48,8 +48,8 @@ function readmessage(ws::WebSockets.WebSocket)
         end
         return UInt8[]
     elseif header.opcode == WebSockets.WS_PING
-        wswrite(ws, WebSockets.WS_FINAL | WebSockets.WS_PONG, ws.rxpayload[1:l])
-        return my_readframe(ws)
+        WebSockets.wswrite(ws, WebSockets.WS_FINAL | WebSockets.WS_PONG, ws.rxpayload[1:l])
+        return readframe(ws)
     elseif header.opcode == WebSockets.WS_CONTINUATION
         throw("WS continuation gone wrong")
     else
