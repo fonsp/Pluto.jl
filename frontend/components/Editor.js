@@ -1,5 +1,4 @@
 import { html, Component, useState, useEffect } from "../common/Preact.js"
-import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
 import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
@@ -784,6 +783,11 @@ export class Editor extends Component {
             }
         }
 
+        this.run_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            return this.requests.set_and_run_multiple(selected)
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -802,6 +806,8 @@ export class Editor extends Component {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
+            } else if (e.key === "Enter" && e.shiftKey) {
+                this.run_selected()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -810,7 +816,7 @@ export class Editor extends Component {
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell
+    Shift+Enter:   run cell/selected cells
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 
@@ -974,6 +980,7 @@ export class Editor extends Component {
                     </button>
                 </preamble>
                 <${Notebook}
+                    is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
                     on_cell_input=${(cell, new_val) => {
@@ -1012,7 +1019,7 @@ export class Editor extends Component {
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
-                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                        if (!_.isEqual(current_selected_cells, selected_cell_ids)) {
                             this.setState(
                                 immer((state) => {
                                     for (let cell of state.notebook.cells) {
@@ -1045,7 +1052,9 @@ export class Editor extends Component {
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <a href="statistics-info">Statistics</a>
+                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                        <span style="flex: 1"></span>
                         <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>

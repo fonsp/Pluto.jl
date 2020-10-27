@@ -47,8 +47,8 @@ export class CellOutput extends Component {
         return html`
             <pluto-output
                 class=${cl({
-                    inline_output:
-                        !this.props.errored && !!this.props.body && (this.props.mime == "application/vnd.pluto.tree+xml" || this.props.mime == "text/plain"),
+                    rich_output:
+                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+xml" && this.props.mime !== "text/plain"),
                 })}
                 mime=${this.props.mime}
             >

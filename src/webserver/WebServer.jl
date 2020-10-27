@@ -10,6 +10,8 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
 end
 
+isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
+
 include("./WebSocketFix.jl")
 
 
@@ -221,7 +223,18 @@ function run(session::ServerSession)
 
     address = let
         root = if session.options.server.root_url === nothing
-            hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
+            hostStr = string(hostIP)
+            hostPretty = if isa(hostIP, Sockets.IPv6)
+                if hostStr == "::1"
+                    "localhost"
+                else
+                    "[$(hostStr)]"
+                end
+            elseif hostStr == "127.0.0.1" # Assuming the other alternative is IPv4
+                "localhost"
+            else
+                hostStr
+            end
             portPretty = Int(port)
             "http://$(hostPretty):$(portPretty)/"
         else
@@ -230,11 +243,15 @@ function run(session::ServerSession)
 
         Sys.set_process_title("Pluto server - $root")
 
-        if session.options.security.require_secret_for_access
-            root * "?secret=$(session.secret)"
-        else
-            root
+        qargs = Dict{String, String}()
+        session.options.security.require_secret_for_access && (qargs["secret"]="$(session.secret)")
+        nbfile = session.options.server.notebook
+        if !isempty(nbfile)
+            nb = (isurl(nbfile) ? SessionActions.open_url : SessionActions.open)(session, nbfile; compiler_options=session.options.compiler)
+            root *= "edit"
+            qargs["id"] = "$(nb.notebook_id)"
         end
+        root * "?" * join(["$k=$v" for (k, v) in qargs], "&")
     end
 
     println()

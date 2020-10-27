@@ -1,6 +1,6 @@
 function ismodern(){
     try{
-        return eval("let {a, ...r} = {a:1,b:1}; r.a != r.b")
+        return eval("let {a, ...r} = {a:1,b:1}; r?.a != r.b")
     } catch(ex) {
         return false
     }
