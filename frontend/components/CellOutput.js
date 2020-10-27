@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useEffect } from "../common/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
 import { resolvable_promise } from "../common/PlutoConnection.js"
 

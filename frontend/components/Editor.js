@@ -1,5 +1,5 @@
-import { html, Component, useState, useEffect } from "../common/Preact.js"
-import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
+import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"

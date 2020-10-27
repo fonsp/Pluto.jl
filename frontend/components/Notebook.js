@@ -1,4 +1,4 @@
-import { html, useEffect } from "../common/Preact.js"
+import { html, useEffect } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 

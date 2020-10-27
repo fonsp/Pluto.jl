@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "../common/Preact.js"
+import { useEffect, useRef, useState } from "../imports/Preact.js"
 
 /**
  * Utility component that scrolls the page automatically, when the mouse is

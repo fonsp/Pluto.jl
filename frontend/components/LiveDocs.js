@@ -1,5 +1,5 @@
-import { html, useState, useRef, useLayoutEffect, useEffect, useMemo } from "../common/Preact.js"
-import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
+import { html, useState, useRef, useLayoutEffect, useEffect, useMemo } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 

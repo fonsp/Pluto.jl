@@ -1,4 +1,4 @@
-import { html } from "../common/Preact.js"
+import { html } from "../imports/Preact.js"
 
 export const RunArea = ({ runtime, onClick }) => {
     return html`

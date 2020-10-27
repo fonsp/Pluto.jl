@@ -1,8 +1,11 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+
+// @ts-ignore
+const CodeMirror = window.CodeMirror
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -45,7 +48,7 @@ export const CellInput = ({
     }, [remote_code])
 
     useEffect(() => {
-        const cm = (cm_ref.current = window.CodeMirror(
+        const cm = (cm_ref.current = CodeMirror(
             (el) => {
                 dom_node_ref.current.appendChild(el)
             },
@@ -222,7 +225,7 @@ export const CellInput = ({
             let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
             if (enough_time_passed_since_force_focus) {
                 time_last_genuine_backspace.current = Date.now()
-                return window.CodeMirror.Pass
+                return CodeMirror.Pass
             } else {
                 // Reset the force focus timer, as I want it to act like a debounce, not just a delay
                 time_last_being_force_focussed_ref.current = Date.now()
@@ -233,7 +236,7 @@ export const CellInput = ({
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
             }
-            return window.CodeMirror.Pass
+            return CodeMirror.Pass
         }
 
         /** Basically any variable inside an useEffect is already a ref
@@ -252,14 +255,14 @@ export const CellInput = ({
             if (cm.getCursor().line == 0 && elapsed > 300) {
                 on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
             } else {
-                return window.CodeMirror.Pass
+                return CodeMirror.Pass
             }
         })
         keys["Down"] = with_time_since_last((elapsed) => {
             if (cm.getCursor().line == cm.lastLine() && elapsed > 300) {
                 on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
             } else {
-                return window.CodeMirror.Pass
+                return CodeMirror.Pass
             }
         })
 
@@ -382,10 +385,10 @@ const juliahints = (cm, options) => {
                     className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
                     // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
                 })),
-                from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
-                to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
+                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
+                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
             }
-            window.CodeMirror.on(completions, "select", (val) => {
+            CodeMirror.on(completions, "select", (val) => {
                 options.on_update_doc_query(module_expanded_selection(cm, val.text, cursor.line, completions.from.ch))
             })
             return completions
