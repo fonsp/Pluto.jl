@@ -689,13 +689,9 @@ pluto-output:not(.rich_output) {
 
 pluto-output > code.assignee {
     display: inline;
-}
-pluto-output:not(.inline_output) > code.assignee {
     padding: initial;
     border-radius: initial;
     background-color: initial;
-}
-pluto-output > assignee {
     font-family: JuliaMono, monospace;
     font-size: 0.75rem;
     font-variant-ligatures: --pluto-operator-ligatures;
@@ -718,6 +714,7 @@ pluto-output > div {
 }
 
 pluto-output:not(.rich_output) > div > pre {
+    white-space: pre;
     display: flex;
 }
 
