@@ -13,7 +13,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
     frontend-test:
-        runs-on: 'ubuntu-latest'
+        runs-on: "ubuntu-latest"
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -22,50 +22,50 @@ jobs:
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
               with:
-                  version: '1.5'
+                  version: "1.5"
 
             - name: Install Pluto.jl packages
               run: |
-                julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
+                  julia --project=$GITHUB_WORKSPACE -e "using Pkg; Pkg.instantiate()"
 
             - uses: actions/setup-node@v1
               with:
-                node-version: '12.x'
+                  node-version: "12.x"
 
             - name: Install Chrome dependencies
               run: |
-                sudo apt-get update
-                # See https://crbug.com/795759
-                sudo apt-get install -yq libgconf-2-4
-                # Install latest chrome dev package, which installs the necessary libs to
-                # make the bundled version of Chromium that Puppeteer installs work.
-                sudo apt-get install -y wget --no-install-recommends
-                wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-                sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
-                sudo apt-get update
-                sudo apt-get install -y google-chrome-stable --no-install-recommends
-                sudo rm -rf /var/lib/apt/lists/*
+                  sudo apt-get update
+                  # See https://crbug.com/795759
+                  sudo apt-get install -yq libgconf-2-4
+                  # Install latest chrome dev package, which installs the necessary libs to
+                  # make the bundled version of Chromium that Puppeteer installs work.
+                  sudo apt-get install -y wget --no-install-recommends
+                  wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+                  sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list'
+                  sudo apt-get update
+                  sudo apt-get install -y google-chrome-stable --no-install-recommends
+                  sudo rm -rf /var/lib/apt/lists/*
 
             - name: Install dependencies
               working-directory: ./test/frontend
               run: |
-                npm install
+                  npm install
               env:
-                PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
-                PUPPETEER_EXECUTABLE_PATH: '/usr/bin/google-chrome-stable'
+                  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+                  PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
             - name: Run tests
               working-directory: ./test/frontend
               run: |
-                julia --project=$GITHUB_WORKSPACE -e "import Pluto; Pluto.run($PLUTO_PORT)" & # Run Pluto.jl server in the background
-                sleep 10 # Wait for Pluto to initialize
-                npm run test
+                  julia --project=$GITHUB_WORKSPACE -e "import Pluto; Pluto.run(port=$PLUTO_PORT, require_secret_for_access=false)" & # Run Pluto.jl server in the background
+                  sleep 10 # Wait for Pluto to initialize
+                  npm run test
               env:
-                PLUTO_PORT: 1235
-                PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: 'true'
-                PUPPETEER_EXECUTABLE_PATH: '/usr/bin/google-chrome-stable'
+                  PLUTO_PORT: 1235
+                  PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true"
+                  PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
             - uses: actions/upload-artifact@v2
               with:
-                name: test-screenshot-artefacts
-                path: ${{ github.workspace }}/test/frontend/artefacts/*.png
+                  name: test-screenshot-artefacts
+                  path: ${{ github.workspace }}/test/frontend/artefacts/*.png
