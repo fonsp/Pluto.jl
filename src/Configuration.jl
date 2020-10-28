@@ -77,9 +77,19 @@ Base.@kwdef mutable struct CompilerOptions
 
     @static if VERSION > v"1.5.0-"
         # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-        threads::Union{Nothing,String} = string(max(1, Sys.CPU_THREADS ÷ 2))
+        threads::Union{Nothing,String} = string(default_threads())
     end
 end # struct CompilerOptions
+
+function default_threads()
+    if Sys.CPU_THREADS == 1
+        1
+    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
+        2
+    else
+        Sys.CPU_THREADS ÷ 2
+    end
+end
 
 """
 Collection of all settings that configure a Pluto session. 
