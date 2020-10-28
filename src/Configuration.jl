@@ -77,7 +77,7 @@ Base.@kwdef mutable struct CompilerOptions
 
     @static if VERSION > v"1.5.0-"
         # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-        threads::Union{Nothing,String} = max(1, Sys.CPU_THREADS() ÷ 2)
+        threads::Union{Nothing,String} = max(1, Sys.CPU_THREADS ÷ 2)
     end
 end # struct CompilerOptions
 
