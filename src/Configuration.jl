@@ -76,7 +76,7 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = nothing
+        threads::Union{Nothing,String} = string(rand(900:999))
     end
 end # struct CompilerOptions
 
