@@ -25,17 +25,21 @@ end
 end
 
 @testset "flag conversion" begin
-    @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
-        ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
+    if VERSION > v"1.5.0-"
+        @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
+            ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
 
-    @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
-        ["--project=@.", "--startup-file=no", "--history-file=no"]
-    
-    @test _convert_to_flags(Configuration.CompilerOptions(compile="min", threads="123")) ==
-    ["--compile=min", "--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
+        @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
+            ["--project=@.", "--startup-file=no", "--history-file=no"]
+    else
+        @test _convert_to_flags(Configuration.CompilerOptions()) ==
+            ["--project=@.", "--startup-file=no", "--history-file=no"]
+    end
+    @test _convert_to_flags(Configuration.CompilerOptions(compile="min")) ⊇
+    ["--compile=min", "--project=@.", "--startup-file=no", "--history-file=no"]
 
-    @test _convert_to_flags(Configuration.CompilerOptions(compile="min", project="test", threads="123")) ==
-    ["--compile=min", "--project=test", "--startup-file=no", "--history-file=no", "--threads=123"]
+    @test _convert_to_flags(Configuration.CompilerOptions(compile="min", project="test")) ⊇
+    ["--compile=min", "--project=test", "--startup-file=no", "--history-file=no"]
 end
 
 end # testset

@@ -76,12 +76,12 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
-        threads::Union{Nothing,String} = string(default_threads())
+        threads::Union{Nothing,String} = string(roughly_the_number_of_physical_cpu_cores())
     end
-end # struct CompilerOptions
+end
 
-function default_threads()
+function roughly_the_number_of_physical_cpu_cores()
+    # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
     if Sys.CPU_THREADS == 1
         1
     elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
