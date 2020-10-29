@@ -815,7 +815,7 @@ export class Editor extends Component {
                 alert(
                     `Shortcuts 🎹
 
-    Shift+Enter:   run cell/selected cells
+    Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
 

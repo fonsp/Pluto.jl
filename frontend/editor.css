@@ -169,7 +169,8 @@ pluto-output p:first-child {
 
 /* I actually just want to get rid of the margin-block-start on the p tag,
     but css doesn't allow that. So I have to move the list up, instead of not moving it up */
-pluto-output li p + ul {
+pluto-output li p + ul,
+pluto-output li p + ol {
     margin-block-start: calc(var(--pluto-cell-spacing) * -1);
 }
 pluto-output p:last-child {
