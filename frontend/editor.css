@@ -879,7 +879,7 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
-    /* This is derived from the pattern length (16px) div sin(45deg) = 16px * sqrt(2)  */
+    /* --patternHeight is derived from the pattern length (16px) div sin(45deg) = 16px * sqrt(2)  */
     --patternHeight: 22.62741699797px;
     box-sizing: content-box;
     margin-right: -1px; /* fix a visual glitch of imperfect alignment */
@@ -895,11 +895,11 @@ pluto-trafficlight {
     background: rgba(0, 0, 0, 0.1);
     overflow: hidden;
 }
-/* 1. Unit
- */
+
 pluto-trafficlight::after {
     content: "";
-    top: calc(0px - var(--patternHeight) - var(--patternHeight));
+    /* Calc needs units everywhere to work */
+    top: calc(0px - 2 * var(--patternHeight));
     left: 0;
     width: 100%;
     height: calc(100% + 2 * var(--patternHeight));
@@ -979,6 +979,7 @@ pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+/* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {
         transform: translateY(0px);
