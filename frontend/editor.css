@@ -198,6 +198,9 @@ pluto-output.rich_output code {
     border-radius: 8px;
     background-color: #f2f2f2;
 }
+pluto-output.rich_output pre code {
+    padding: 0px;
+}
 
 pluto-output pre {
     display: inline-block;

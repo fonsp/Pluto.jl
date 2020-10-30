@@ -220,7 +220,7 @@ loading-bar {
 }
 
 body.loading loading-bar {
-    animation: 12s ease-in-out load;
+    animation: 16s ease-in-out load;
     display: block;
 }
 
