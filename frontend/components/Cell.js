@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useState, useEffect, Component } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -67,150 +67,191 @@ export const empty_cell_data = (cell_id) => {
  */
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
-export const Cell = ({
-    cell_id,
-    remote_code,
-    local_code,
-    code_folded,
-    queued,
-    running,
-    runtime,
-    errored,
-    output,
-    selected,
-    on_change,
-    on_update_doc_query,
-    on_focus_neighbor,
-    disable_input,
-    focus_after_creation,
-    scroll_into_view_after_creation,
-    all_completed_promise,
-    selected_friends,
-    requests,
-    client,
-    notebook_id,
-}) => {
-    // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
-    const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+export class Cell extends Component {
+    constructor () {
+        super()
+    }
 
-    useEffect(() => {
-        const focusListener = (e) => {
-            if (e.detail.cell_id === cell_id) {
-                if (e.detail.line != null) {
-                    const ch = e.detail.ch
-                    if (ch == null) {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
-                    } else {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+    shouldComponentUpdate (next_props) {
+        const comparable_prop_keys = [
+            'remote_code',
+            'local_code',
+            'output',
+            'code_folded',
+            'queued',
+            'running',
+            'runtime',
+            'errored',
+            'selected',
+            'disable_input',
+            'focus_after_creation',
+            'scroll_into_view_after_creation',
+        ]
+        for (const prop_key of comparable_prop_keys) {
+            const prop_type = typeof this.props[prop_key]
+
+            // remote_code, local_code, and output are objects with nested body property we want to check
+            if (prop_type === 'object' &&
+                this.props[prop_key] !== null &&
+                this.props[prop_key].body &&
+                this.props[prop_key].body !== next_props[prop_key].body
+            ) {
+                return true
+            }
+
+            if (prop_type !== 'object' && this.props[prop_key] !== next_props[prop_key]) {
+                return true
+            }
+        }
+
+        return false
+    }
+
+    render ({
+        cell_id,
+        remote_code,
+        local_code,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        output,
+        selected,
+        on_change,
+        on_update_doc_query,
+        on_focus_neighbor,
+        disable_input,
+        focus_after_creation,
+        scroll_into_view_after_creation,
+        all_completed_promise,
+        selected_friends,
+        requests,
+        client,
+        notebook_id,
+    }) {
+        // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
+        const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+
+        useEffect(() => {
+            const focusListener = (e) => {
+                if (e.detail.cell_id === cell_id) {
+                    if (e.detail.line != null) {
+                        const ch = e.detail.ch
+                        if (ch == null) {
+                            set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                        } else {
+                            set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+                        }
                     }
                 }
             }
-        }
-        window.addEventListener("cell_focus", focusListener)
-        // cleanup
-        return () => {
-            window.removeEventListener("cell_focus", focusListener)
-        }
-    }, [])
+            window.addEventListener("cell_focus", focusListener)
+            // cleanup
+            return () => {
+                window.removeEventListener("cell_focus", focusListener)
+            }
+        }, [])
 
-    const class_code_differs = remote_code.body !== local_code.body
-    const class_code_folded = code_folded && cm_forced_focus == null
+        const class_code_differs = remote_code.body !== local_code.body
+        const class_code_folded = code_folded && cm_forced_focus == null
 
-    let show_input = errored || class_code_differs || !class_code_folded
+        let show_input = errored || class_code_differs || !class_code_folded
 
-    return html`
-        <pluto-cell
-            class=${cl({
-                queued: queued,
-                running: running,
-                errored: errored,
-                selected: selected,
-                code_differs: class_code_differs,
-                code_folded: class_code_folded,
-            })}
-            id=${cell_id}
-        >
-            <pluto-shoulder draggable="true" title="Drag to move cell">
+        return html`
+            <pluto-cell
+                class=${cl({
+                    queued: queued,
+                    running: running,
+                    errored: errored,
+                    selected: selected,
+                    code_differs: class_code_differs,
+                    code_folded: class_code_folded,
+                })}
+                id=${cell_id}
+            >
+                <pluto-shoulder draggable="true" title="Drag to move cell">
+                    <button
+                        onClick=${() => {
+                            selected_friends(cell_id).forEach((friend) => {
+                                requests.fold_remote_cell(friend.cell_id, !code_folded)
+                            })
+                        }}
+                        class="foldcode"
+                        title="Show/hide code"
+                    >
+                        <span></span>
+                    </button>
+                </pluto-shoulder>
+                <pluto-trafficlight></pluto-trafficlight>
                 <button
                     onClick=${() => {
-                        selected_friends(cell_id).forEach((friend) => {
-                            requests.fold_remote_cell(friend.cell_id, !code_folded)
-                        })
+                        requests.add_remote_cell(cell_id, "before")
                     }}
-                    class="foldcode"
-                    title="Show/hide code"
+                    class="add_cell before"
+                    title="Add cell"
                 >
                     <span></span>
                 </button>
-            </pluto-shoulder>
-            <pluto-trafficlight></pluto-trafficlight>
-            <button
-                onClick=${() => {
-                    requests.add_remote_cell(cell_id, "before")
-                }}
-                class="add_cell before"
-                title="Add cell"
-            >
-                <span></span>
-            </button>
-            <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
-            ${show_input &&
-            html`<${CellInput}
-                local_code=${local_code}
-                remote_code=${remote_code}
-                disable_input=${disable_input}
-                focus_after_creation=${focus_after_creation}
-                scroll_into_view_after_creation=${scroll_into_view_after_creation}
-                cm_forced_focus=${cm_forced_focus}
-                set_cm_forced_focus=${set_cm_forced_focus}
-                on_submit=${(new_code) => {
-                    requests.change_remote_cell(cell_id, new_code)
-                }}
-                on_delete=${() => {
-                    const friends = selected_friends(cell_id)
-                    requests.confirm_delete_multiple("Delete", friends)
-                }}
-                on_add_after=${() => {
-                    requests.add_remote_cell(cell_id, "after")
-                }}
-                on_fold=${(new_folded) => requests.fold_remote_cell(cell_id, new_folded)}
-                on_change=${(new_code) => {
-                    if (code_folded && cm_forced_focus != null) {
-                        requests.fold_remote_cell(cell_id, false)
-                    }
-                    on_change(new_code)
-                }}
-                on_update_doc_query=${on_update_doc_query}
-                on_focus_neighbor=${on_focus_neighbor}
-                client=${client}
-                cell_id=${cell_id}
-                notebook_id=${notebook_id}
-            />`}
-            <${RunArea}
-                onClick=${() => {
-                    if (running || queued) {
-                        requests.interrupt_remote(cell_id)
-                    } else {
+                <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
+                ${show_input &&
+                html`<${CellInput}
+                    local_code=${local_code}
+                    remote_code=${remote_code}
+                    disable_input=${disable_input}
+                    focus_after_creation=${focus_after_creation}
+                    scroll_into_view_after_creation=${scroll_into_view_after_creation}
+                    cm_forced_focus=${cm_forced_focus}
+                    set_cm_forced_focus=${set_cm_forced_focus}
+                    on_submit=${(new_code) => {
+                        requests.change_remote_cell(cell_id, new_code)
+                    }}
+                    on_delete=${() => {
                         const friends = selected_friends(cell_id)
-
-                        if (friends.length == 1) {
-                            requests.change_remote_cell(cell_id, local_code.body)
-                        } else {
-                            requests.set_and_run_multiple(friends)
+                        requests.confirm_delete_multiple("Delete", friends)
+                    }}
+                    on_add_after=${() => {
+                        requests.add_remote_cell(cell_id, "after")
+                    }}
+                    on_fold=${(new_folded) => requests.fold_remote_cell(cell_id, new_folded)}
+                    on_change=${(new_code) => {
+                        if (code_folded && cm_forced_focus != null) {
+                            requests.fold_remote_cell(cell_id, false)
                         }
-                    }
-                }}
-                runtime=${runtime}
-            />
-            <button
-                onClick=${() => {
-                    requests.add_remote_cell(cell_id, "after")
-                }}
-                class="add_cell after"
-                title="Add cell"
-            >
-                <span></span>
-            </button>
-        </pluto-cell>
-    `
+                        on_change(new_code)
+                    }}
+                    on_update_doc_query=${on_update_doc_query}
+                    on_focus_neighbor=${on_focus_neighbor}
+                    client=${client}
+                    cell_id=${cell_id}
+                    notebook_id=${notebook_id}
+                />`}
+                <${RunArea}
+                    onClick=${() => {
+                        if (running || queued) {
+                            requests.interrupt_remote(cell_id)
+                        } else {
+                            const friends = selected_friends(cell_id)
+
+                            if (friends.length == 1) {
+                                requests.change_remote_cell(cell_id, local_code.body)
+                            } else {
+                                requests.set_and_run_multiple(friends)
+                            }
+                        }
+                    }}
+                    runtime=${runtime}
+                />
+                <button
+                    onClick=${() => {
+                        requests.add_remote_cell(cell_id, "after")
+                    }}
+                    class="add_cell after"
+                    title="Add cell"
+                >
+                    <span></span>
+                </button>
+            </pluto-cell>
+        `
+    }
 }
