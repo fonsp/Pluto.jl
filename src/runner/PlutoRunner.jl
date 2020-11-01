@@ -554,7 +554,7 @@ function Base.write(rp::ReplacePipe, x::UInt8)
 	if x == 0x22 || x== 0x5c || x== 0x2f # https://www.json.org/json-en.html
         write(rp.outstream, '\\')
         write(rp.outstream, x)
-    elseif x <= 0x20
+    elseif x < 0x20
         write(rp.outstream, "\\u")
         write(rp.outstream, string(x, base=16, pad=4))
     else
