@@ -198,7 +198,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
     // Run scripts sequentially
     for (let node of script_nodes) {
-        if (node.src != "") {
+        if (node.src != null && node.src !== "") {
             // If it has a remote src="", de-dupe and copy the script to head
             var script_el = Array.from(document.head.querySelectorAll("script")).find((s) => s.src === node.src)
 
