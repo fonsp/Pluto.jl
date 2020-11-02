@@ -54,11 +54,11 @@ function shuffled_with_imports_notebook()
             using Dates
             using Base64
         end"""),
-        Cell("json(1)"),
+        Cell("BasicREPL"),
         Cell("""
         begin
             x
-            using JSON
+            using REPL
         end"""),
     ])
 end
