@@ -8,7 +8,7 @@ Base.@kwdef mutable struct Cell
 
     code::String=""
     
-    output_repr::Union{Vector{UInt8},String,Nothing}=nothing
+    output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
     errored::Bool=false
     runtime::Union{Missing,UInt64}=missing

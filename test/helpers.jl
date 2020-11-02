@@ -73,7 +73,7 @@ function setcode(cell, newcode)
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
-    return haystack.errored && occursin(needle, haystack.output_repr)
+    haystack.errored && occursin(needle, haystack.output_repr[:msg])
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."

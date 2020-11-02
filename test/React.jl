@@ -2,8 +2,6 @@ using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
 import Distributed
-import JSON
-
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
@@ -89,7 +87,7 @@ import JSON
     🍭.options.evaluation.workspace_use_distributed = false
 
     begin
-        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \$"
+        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \x10 \$"
         notebook = Notebook([
             Cell("a\\"),
             Cell("1 = 2"),
@@ -156,12 +154,12 @@ import JSON
 
             @test occursinerror("DomainError", notebook.cells[12])
             let
-                st = JSON.parse(notebook.cells[12].output_repr)
-                @test length(st["stacktrace"]) == 4 # check in REPL
+                st = notebook.cells[12].output_repr
+                @test length(st[:stacktrace]) == 4 # check in REPL
                 if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 1
-                    @test occursin(notebook.cells[12].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
+                    @test st[:stacktrace][4][:line] == 1
+                    @test occursin(notebook.cells[12].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
                 else
                     @test_broken false
                 end
@@ -169,12 +167,12 @@ import JSON
 
             @test occursinerror("DomainError", notebook.cells[13])
             let
-                st = JSON.parse(notebook.cells[13].output_repr)
-                @test length(st["stacktrace"]) == 4
+                st = notebook.cells[13].output_repr
+                @test length(st[:stacktrace]) == 4
                 if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[13].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
+                    @test st[:stacktrace][4][:line] == 3
+                    @test occursin(notebook.cells[13].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
                 else
                     @test_broken false
                 end
@@ -182,25 +180,25 @@ import JSON
 
             @test occursinerror("DomainError", notebook.cells[15])
             let
-                st = JSON.parse(notebook.cells[15].output_repr)
-                @test length(st["stacktrace"]) == 5
+                st = notebook.cells[15].output_repr
+                @test length(st[:stacktrace]) == 5
 
                 if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[14].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
+                    @test st[:stacktrace][4][:line] == 3
+                    @test occursin(notebook.cells[14].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
 
-                    @test st["stacktrace"][5]["line"] == 1
-                    @test occursin(notebook.cells[15].cell_id |> string, st["stacktrace"][5]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][5]["file"])
+                    @test st[:stacktrace][5][:line] == 1
+                    @test occursin(notebook.cells[15].cell_id |> string, st[:stacktrace][5][:file])
+                    @test occursin(notebook.path |> basename, st[:stacktrace][5][:file])
                 else
                     @test_broken false
                 end
             end
 
             let
-                st = JSON.parse(notebook.cells[16].output_repr)
-                @test occursin(escape_me, st["msg"])
+                st = notebook.cells[16].output_repr
+                @test occursin(escape_me, st[:msg])
             end
 
         end
