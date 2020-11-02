@@ -45,10 +45,11 @@ function set_current_module(newname)
     global current_module = getfield(Main, newname)
 end
 
-const cell_results = Dict{UUID, WeakRef}()
+# TODO: clear key when a cell is deleted furever
+const cell_results = Dict{UUID, Any}()
 
 function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
-    ans = cell_results[id].value
+    ans = cell_results[id]
     errored = ans isa CapturedException
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
     (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
@@ -392,6 +393,7 @@ end
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 
 const tree_display_limit = 50
+const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
 
 function show_array_row(io::IO, pair::Tuple)
     i, element = pair
@@ -437,8 +439,10 @@ end
 
 Base.showable(::MIME"application/vnd.pluto.tree+xml", x::AbstractRange) = false
 
+const more = """<r><more onclick="onjltreeclickmore(this, event)"></more></r>"""
+
 function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
-    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)" objectid=$(string(objectid(x), base=16))>""")
     array_prefix(io, x)
     print(io, "<jlarray>")
     indices = eachindex(x)
@@ -451,7 +455,7 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<
 
         show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
         
-        print(io, "<r><more></more></r>")
+        print(io, more)
         
         show_array_elements(io, indices[end+1-from_end:end], x)
     end
@@ -476,7 +480,7 @@ function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:
     for pair in x
         show_dict_row(io, pair)
         if row_index == tree_display_limit
-            print(io, "<r><more></more></r>")
+            print(io, more)
             break
         end
         row_index += 1

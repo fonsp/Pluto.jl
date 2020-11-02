@@ -1,4 +1,4 @@
-import { html, useEffect } from "../imports/Preact.js"
+import { html, useEffect, useRef } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 
@@ -24,8 +24,15 @@ export const Notebook = ({
         }
     }, [is_loading, cells.length])
 
+    // make the `requests` object available from user JS code
+    // this is currently used for the tree viewer, but might be removed in the future. don't use it inside your notebook
+    const node_ref = useRef(null)
+    useEffect(() => {
+        node_ref.current.requests = requests
+    }, [node_ref.current, requests])
+
     return html`
-        <pluto-notebook id=${notebook_id}>
+        <pluto-notebook id=${notebook_id} ref=${node_ref}>
             ${cells.map(
                 (d) => html`<${Cell}
                     ...${d}
