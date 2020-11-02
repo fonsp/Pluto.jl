@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 export class DropRuler extends Component {
     constructor() {

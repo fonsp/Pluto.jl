@@ -11,7 +11,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import REPL.REPLCompletions: completions, complete_path, completion_text, Completion, ModuleCompletion
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -218,7 +218,7 @@ function html(io::IO, x::LaTeX)
 end
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :compact => false, :limit => true, :displaysize => (18, 88))
+iocontext = IOContext(stdout, :color => false, :limit => true, :displaysize => (18, 88))
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
@@ -332,12 +332,15 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
 
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
-    isstruct = 
+    isstruct = try
         mime isa MIME"text/plain" && 
         t isa DataType &&
         # there are two ways to override the plaintext show method: 
         which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
         which(show, (IO, t)) === struct_showmethod
+    catch
+        false
+    end
     
     if isstruct
         show_struct(io, x)
@@ -551,8 +554,9 @@ function Base.write(rp::ReplacePipe, x::UInt8)
 	if x == 0x22 || x== 0x5c || x== 0x2f # https://www.json.org/json-en.html
         write(rp.outstream, '\\')
         write(rp.outstream, x)
-    elseif x < 0x10 # ish
-        write(rp.outstream, escape_string(String([Char(x)]))) # the Julia escaping 'happens' to coincide with what we want
+    elseif x < 0x20
+        write(rp.outstream, "\\u")
+        write(rp.outstream, string(x, base=16, pad=4))
     else
         write(rp.outstream, x)
     end
@@ -597,10 +601,57 @@ end
 # REPL THINGS
 ###
 
+function completion_priority((s, description, exported))
+	c = first(s)
+	if islowercase(c)
+		1 - 10exported
+	elseif isuppercase(c)
+		2 - 10exported
+	else
+		3 - 10exported
+	end
+end
+
+completed_object_description(x::Function) = "Function"
+completed_object_description(x::Number) = "Number"
+completed_object_description(x::AbstractString) = "String"
+completed_object_description(x::Module) = "Module"
+completed_object_description(x::AbstractArray) = "Array"
+completed_object_description(x::Any) = "Any"
+
+completion_description(c::ModuleCompletion) = try
+    completed_object_description(getfield(c.parent, Symbol(c.mod)))
+catch
+    nothing
+end
+completion_description(::Completion) = nothing
+
+function completions_exported(cs::Vector{<:Completion})
+    completed_modules = Set(c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(m => string.(names(m, all=false, imported=true)) for m in completed_modules)
+
+    map(cs) do c
+        if c isa ModuleCompletion
+            c.mod ∈ completed_modules_exports[c.parent]
+        else
+
+            true
+        end
+    end
+end
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-    (completion_text.(results), loc, found)
+
+    texts = completion_text.(results)
+    descriptions = completion_description.(results)
+    exported = completions_exported(results)
+
+    smooshed_together = zip(texts, descriptions, exported)
+    
+    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
+    (final, loc, found)
 end
 
 # Based on /base/docs/bindings.jl from Julia source code

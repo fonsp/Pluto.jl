@@ -1,8 +1,11 @@
+import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
+
+const RECONNECT_DELAY = 500
 
 /**
  * Return a promise that resolves to:
@@ -88,11 +91,6 @@ const try_close_socket_connection = (socket) => {
 }
 
 /**
- * We append this after every message to say that the message is complete. This is necessary for sending WS messages larger than 1MB or something, since HTTP.jl splits those into multiple messages :(
- */
-const MSG_DELIM = new TextEncoder().encode("IUUQ.km jt ejggjdvmu vhi")
-
-/**
  * Open a 'raw' websocket connection to an API with MessagePack serialization. The method is asynchonous, and resolves to a @see WebsocketConnection when the connection is established.
  * @typedef {{socket: WebSocket, send: Function, kill: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
@@ -114,10 +112,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
         const send_encoded = (message) => {
             const encoded = pack(message)
-            const to_send = new Uint8Array(encoded.length + MSG_DELIM.length)
-            to_send.set(encoded, 0)
-            to_send.set(MSG_DELIM, encoded.length)
-            socket.send(to_send)
+            socket.send(encoded)
         }
         socket.onmessage = (event) => {
             // we read and deserialize the incoming messages asynchronously
@@ -128,8 +123,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             task_queue.push(async () => {
                 try {
                     const buffer = await event.data.arrayBuffer()
-                    const buffer_sliced = buffer.slice(0, buffer.byteLength - MSG_DELIM.length)
-                    const update = unpack(new Uint8Array(buffer_sliced))
+                    const update = unpack(new Uint8Array(buffer))
 
                     on_message(update)
                 } catch (ex) {
@@ -137,7 +131,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
                     console.log(event)
 
                     alert(
-                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${event}`
+                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`
                     )
                 }
             })
@@ -276,9 +270,10 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
         update_url_with_binder_token()
 
-        const ws_address = new URL(document.location.href)
+        const ws_address = new URL(window.location.href)
         ws_address.protocol = ws_address.protocol.replace("http", "ws")
         ws_address.pathname = ws_address.pathname.replace("/edit", "/")
+        ws_address.hash = ""
 
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
@@ -287,6 +282,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     on_connection_status(false)
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
+                    await Promises.delay(RECONNECT_DELAY)
                     await connect() // reconnect!
 
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
@@ -313,7 +309,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
                 if (confirm("A new server was started - this notebook session is no longer running.\n\nWould you like to go back to the main menu?")) {
-                    document.location.href = "./"
+                    window.location.href = "./"
                 }
                 on_connection_status(false)
                 return {}
@@ -332,6 +328,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             return u.message
         } catch (ex) {
             console.error("connect() failed", ex)
+            await Promises.delay(RECONNECT_DELAY)
             return await connect()
         }
     }

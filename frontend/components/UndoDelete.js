@@ -1,4 +1,4 @@
-import { html, useState, useEffect } from "../common/Preact.js"
+import { html, useState, useEffect } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 
 export const UndoDelete = ({ recently_deleted, on_click }) => {

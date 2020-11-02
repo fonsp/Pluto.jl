@@ -12,11 +12,6 @@ function mime_fromfilename(filename)
     MIME(mimepairs[file_extension])
 end
 
-# because HTTP.jl is    c o n f u s i n g
-function to_uri(str::String)::HTTP.URI
-    HTTP.URI(HTTP.URIs.unescapeuri(str))
-end
-
 function asset_response(path)
     if !isfile(path) && !endswith(path, ".html")
         return asset_response(path * ".html")
@@ -57,7 +52,7 @@ Return whether the `request` was authenticated in one of two ways:
 function is_authenticated(session::ServerSession, request::HTTP.Request)
     (
         secret_in_url = try
-            uri = to_uri(request.target)
+            uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
             get(query, "secret", "") == session.secret
         catch e
@@ -158,7 +153,7 @@ function http_router_for(session::ServerSession)
         security.require_secret_for_open_links
     ) do request::HTTP.Request
         try
-            uri = to_uri(request.target)
+            uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
             if haskey(query, "path")
                 path = tamepath(query["path"])
@@ -184,8 +179,8 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        uri = to_uri(request.target)
-        sample_path = HTTP.URIs.unescapeuri(split(uri.path, "sample/")[2])
+        uri = HTTP.URI(request.target)
+        sample_path = split(HTTP.unescapeuri(uri.path), "sample/")[2]
         sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
         
         path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
@@ -200,7 +195,7 @@ function http_router_for(session::ServerSession)
         security.require_secret_for_open_links
     ) do request::HTTP.Request
         try
-            uri = to_uri(request.target)        
+            uri = HTTP.URI(request.target)        
             query = HTTP.queryparams(uri)
             id = UUID(query["id"])
             notebook = session.notebooks[id]
@@ -216,9 +211,9 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
     
     function serve_asset(request::HTTP.Request)
-        uri = to_uri(request.target)
+        uri = HTTP.URI(request.target)
         
-        filepath = project_relative_path("frontend", relpath(uri.path, "/"))
+        filepath = project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/"))
         asset_response(filepath)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)

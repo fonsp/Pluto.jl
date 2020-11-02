@@ -1,5 +1,9 @@
-@import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
+/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+
 @import url("juliamono.css");
 
 #title {
@@ -216,7 +220,7 @@ loading-bar {
 }
 
 body.loading loading-bar {
-    animation: 12s ease-in-out load;
+    animation: 16s ease-in-out load;
     display: block;
 }
 
