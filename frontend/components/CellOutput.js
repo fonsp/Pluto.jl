@@ -132,8 +132,8 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
                 compensate_scrollheight_ref=${undefined}
             />`
             break
-        case "application/vnd.pluto.stacktrace+json":
-            return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${JSON.parse(body)} /></div>`
+        case "application/vnd.pluto.stacktrace+object":
+            return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`
             break
 
         case "text/plain":
