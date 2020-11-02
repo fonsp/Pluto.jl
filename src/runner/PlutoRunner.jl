@@ -223,14 +223,14 @@ iocontext = IOContext(stdout, :color => false, :limit => true, :displaysize => (
 iocontext_compact = IOContext(iocontext, :compact => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
-# in order of coolness
-# text/plain always matches
+# in descending order of coolness
+# text/plain always matches - almost always
 """
 The MIMEs that Pluto supports, in order of how much I like them. 
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.tree+xml"(); MIME"text/html"(); imagemimes; MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -240,11 +240,15 @@ See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
 function format_output(@nospecialize(val))::MimedOutput
     try
-        result, mime = sprint_withreturned(show_richest, val; context=iocontext)
-        if mime ∈ imagemimes
-            result, mime
+        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=iocontext)
+        if value === nothing
+            if mime ∈ imagemimes
+                io_sprinted, mime
+            else
+                String(io_sprinted), mime
+            end
         else
-            String(result), mime
+            value, mime
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
@@ -253,7 +257,7 @@ function format_output(@nospecialize(val))::MimedOutput
     end
 end
 
-format_output(val::Nothing)::MimedOutput = "", MIME"text/plain"()
+format_output(::Nothing)::MimedOutput = "", MIME"text/plain"()
 
 function format_output(val::CapturedException)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
@@ -327,7 +331,7 @@ instead of (`onlyhtml=false`)
 data:image/png;base64,ahsdf87hf278hwh7823hr...
 ```
 """
-function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
+function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::Tuple{<:Any,MIME}
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
     t = typeof(x)
 
@@ -344,44 +348,45 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::MIME
     end
     
     if isstruct
-        show_struct(io, x)
-        return MIME"application/vnd.pluto.tree+xml"()
-    end
-
-    if mime ∈ imagemimes
-        if onlyhtml
-            # if only html output is accepted, we need to base64 encode the result and use it as image source.
-            enc_pipe = Base64.Base64EncodePipe(io)
-            io_64 = IOContext(enc_pipe, iocontext)
-
-            print(io, "<img src=\"data:", mime, ";base64,")
-            show(io_64, mime, x)
-            close(enc_pipe)
-            print(io, "\">")
-            return MIME"text/html"()
-        else
-            show(io, mime, x)
-            return mime
-        end
+        return tree_data(x), MIME"application/vnd.pluto.tree+object"()
     else
-        if onlyhtml || mime isa MIME"text/latex"
-            # see onlyhtml description in docstring
-            if mime isa MIME"text/plain"
-                withtag(io, :pre) do 
-                    htmlesc(io, repr(mime, x; context=iocontext_compact))
-                end
-            elseif mime isa MIME"text/latex"
-                # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
-                texed = repr(mime, x)
-                html(io, Markdown.LaTeX("\\text{$texed}"))
-            else                
+        if mime isa MIME"application/vnd.pluto.tree+object"
+            return tree_data(x), mime
+        elseif mime ∈ imagemimes
+            if onlyhtml
+                # if only html output is accepted, we need to base64 encode the result and use it as image source.
+                enc_pipe = Base64.Base64EncodePipe(io)
+                io_64 = IOContext(enc_pipe, iocontext)
+
+                print(io, "<img src=\"data:", mime, ";base64,")
+                show(io_64, mime, x)
+                close(enc_pipe)
+                print(io, "\">")
+                return nothing, MIME"text/html"()
+            else
                 show(io, mime, x)
+                return nothing, mime
             end
-            return MIME"text/html"()
         else
-            # the classic:
-            show(io, mime, x)
-            return mime
+            if onlyhtml || mime isa MIME"text/latex"
+                # see onlyhtml description in docstring
+                if mime isa MIME"text/plain"
+                    withtag(io, :pre) do 
+                        htmlesc(io, repr(mime, x; context=iocontext_compact))
+                    end
+                elseif mime isa MIME"text/latex"
+                    # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
+                    texed = repr(mime, x)
+                    html(io, Markdown.LaTeX("\\text{$texed}"))
+                else                
+                    show(io, mime, x)
+                end
+                return nothing, MIME"text/html"()
+            else
+                # the classic:
+                show(io, mime, x)
+                return nothing, mime
+            end
         end
     end
 end
@@ -390,119 +395,160 @@ end
 # TREE VIEWER
 ###
 
+
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
+
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
+Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+
+
+
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 
 const tree_display_limit = 50
 const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
 
-function show_array_row(io::IO, pair::Tuple)
-    i, element = pair
-    print(io, "<r><k>", i, "</k><v>")
-    show_richest(io, element; onlyhtml=true)
-    print(io, "</v></r>")
-end
-
-function show_array_elements(io::IO, indices::AbstractVector{<:Integer}, x::AbstractArray{<:Any, 1})
-    for i in indices
+function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer})
+    map(indices) do i
         if isassigned(x, i)
-            show_array_row(io, (i, x[i]))
+            i, format_output(x[i])
         else
-            show_array_row(io, (i, Text(Base.undef_ref_str)))
+            i, format_output(Text(Base.undef_ref_str))
         end
     end
 end
 
-function show_dict_row(io::IO, pair::Union{Pair,Tuple})
-    k, element = pair
-    print(io, "<r><k>")
-    if pair isa Pair
-        show_richest(io, k; onlyhtml=true)
-    else
-        # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
-        print(io, k)
-    end
-    print(io, "</k><v>")
-    show_richest(io, element; onlyhtml=true)
-    print(io, "</v></r>")
-end
+# function tree_data_dict_row(pair::Union{Pair,Tuple})
+#     k, element = pair
 
-istextmime(::MIME"application/vnd.pluto.tree+xml") = true
 
-function array_prefix(io, x::Array{<:Any, 1})
-    print(io, eltype(x))
+
+
+#     print(io, "<r><k>")
+#     if pair isa Pair
+#         show_richest(io, k; onlyhtml=true)
+#     else
+#         # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
+#         print(io, k)
+#     end
+#     print(io, "</k><v>")
+#     show_richest(io, element; onlyhtml=true)
+#     print(io, "</v></r>")
+# end
+
+function array_prefix(x::Array{<:Any, 1})
+    string(eltype(x))
 end
-function array_prefix(io, x)
+function array_prefix(x)
     original = sprint(Base.showarg, x, false)
-    print(io, lstrip(original, ':'))
-    print(io, ": ")
+    lstrip(original, ':') * ": "
 end
+# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any, 1})
+#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)" objectid=$(string(objectid(x), base=16))>""")
+#     array_prefix(io, x)
+#     print(io, "<jlarray>")
+#     indices = eachindex(x)
 
-Base.showable(::MIME"application/vnd.pluto.tree+xml", x::AbstractRange) = false
+#     if length(x) <= tree_display_limit
+#         show_array_elements(io, indices, x)
+#     else
+#         firsti = firstindex(x)
+#         from_end = tree_display_limit > 20 ? 10 : 1
 
-const more = """<r><more onclick="onjltreeclickmore(this, event)"></more></r>"""
-
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractArray{<:Any, 1})
-    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)" objectid=$(string(objectid(x), base=16))>""")
-    array_prefix(io, x)
-    print(io, "<jlarray>")
+#         show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
+        
+#         print(io, more)
+        
+#         show_array_elements(io, indices[end+1-from_end:end], x)
+#     end
+    
+#     print(io, "</jlarray>")
+#     print(io, "</jltree>")
+# end
+function tree_data(x::AbstractArray{<:Any, 1})
     indices = eachindex(x)
 
-    if length(x) <= tree_display_limit
-        show_array_elements(io, indices, x)
+    elements = if length(x) <= tree_display_limit
+        tree_data_array_elements(x, indices)
     else
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
-
-        show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
-        
-        print(io, more)
-        
-        show_array_elements(io, indices[end+1-from_end:end], x)
+        [
+            tree_data_array_elements(x, indices[firsti:firsti-1+tree_display_limit-from_end])...,
+            "more",
+            tree_data_array_elements(x, indices[end+1-from_end:end])...,
+        ]
     end
     
-    print(io, "</jlarray>")
-    print(io, "</jltree>")
+    Dict(
+        :prefix => array_prefix(x),
+        :objectid => string(objectid(x), base=16),
+        :type => :Array,
+        :elements => elements
+    )
 end
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Tuple)
-    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, """<jlarray class="Tuple">""")
-    show_array_row.([io], zip(eachindex(x), x))
-    print(io, "</jlarray>")
-    print(io, "</jltree>")
+function tree_data(x::Tuple)
+    Dict(
+        :objectid => string(objectid(x), base=16),
+        :type => :Tuple,
+        :elements => tree_data_array_elements(x, eachindex(x))
+    )
 end
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::AbstractDict{<:Any, <:Any})
-    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, typeof(x) |> trynameof)
-    print(io, "<jldict>")
-    row_index = 1
-    for pair in x
-        show_dict_row(io, pair)
-        if row_index == tree_display_limit
-            print(io, more)
-            break
-        end
-        row_index += 1
-    end
+# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::AbstractDict{<:Any, <:Any})
+#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+#     print(io, typeof(x) |> trynameof)
+#     print(io, "<jldict>")
+#     row_index = 1
+#     for pair in x
+#         show_dict_row(io, pair)
+#         if row_index == tree_display_limit
+#             print(io, more)
+#             break
+#         end
+#         row_index += 1
+#     end
     
-    print(io, "</jldict>")
-    print(io, "</jltree>")
-end
+#     print(io, "</jldict>")
+#     print(io, "</jltree>")
+# end
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::NamedTuple)
-    print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-    print(io, """<jldict class="NamedTuple">""")
-    show_dict_row.([io], zip(eachindex(x), x))
-    print(io, "</jldict>")
-    print(io, "</jltree>")
-end
+# function tree_data(x::AbstractDict{<:Any, <:Any})
+#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+#     print(io, typeof(x) |> trynameof)
+#     print(io, "<jldict>")
+#     row_index = 1
+#     for pair in x
+#         show_dict_row(io, pair)
+#         if row_index == tree_display_limit
+#             print(io, more)
+#             break
+#         end
+#         row_index += 1
+#     end
+    
+#     print(io, "</jldict>")
+#     print(io, "</jltree>")
+# end
 
-function show(io::IO, ::MIME"application/vnd.pluto.tree+xml", x::Pair)
-    print(io, """<jlpair>""")
-    show_dict_row(io, x)
-    print(io, "</jlpair>")
-end
+# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::NamedTuple)
+#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
+#     print(io, """<jldict class="NamedTuple">""")
+#     show_dict_row.([io], zip(eachindex(x), x))
+#     print(io, "</jldict>")
+#     print(io, "</jltree>")
+# end
+
+# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::Pair)
+#     print(io, """<jlpair>""")
+#     show_dict_row(io, x)
+#     print(io, "</jlpair>")
+# end
 
 
 
