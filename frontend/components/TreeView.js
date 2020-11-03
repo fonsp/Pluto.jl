@@ -6,13 +6,7 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 
 import { PlutoImage, RawHTMLContainer, OutputBody } from "./CellOutput.js"
 
-const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests, on_rendered, persist_js_state }) => {
-    useLayoutEffect(() => {
-        if (mime === "text/plain") {
-            on_rendered?.current()
-        }
-    }, [mime, body])
-
+const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -20,41 +14,32 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<${PlutoImage} mime=${mime} body=${body} on_rendered=${on_rendered} />`
+            return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
             return html`<${RawHTMLContainer}
                 body=${body}
                 all_completed_promise=${all_completed_promise}
                 requests=${requests}
-                on_rendered=${on_rendered}
                 persist_js_state=${persist_js_state}
             />`
             break
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView}
-                body=${body}
-                all_completed_promise=${all_completed_promise}
-                requests=${requests}
-                on_rendered=${on_rendered}
-                persist_js_state=${persist_js_state}
-            />`
+            return html`<${TreeView} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} persist_js_state=${persist_js_state} />`
             break
         case "text/plain":
         default:
-            on_rendered?.current()
             return html`<pre>${body}</pre>`
             break
     }
 }
 
-export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, on_rendered, persist_js_state }) => {
+export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
         mime=${pair[1]}
         body=${pair[0]}
         all_completed_promise=${all_completed_promise}
         requests=${requests}
-        on_rendered=${on_rendered}
         persist_js_state=${persist_js_state}
     />`
     var inner = null
