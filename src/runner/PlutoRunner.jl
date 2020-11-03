@@ -39,8 +39,8 @@ function set_current_module(newname)
         end
     end
     
-    global iocontext = IOContext(iocontext, :module => current_module)
-    global iocontext_compact = IOContext(iocontext_compact, :module => current_module)
+    global default_iocontext = IOContext(default_iocontext, :module => current_module)
+    global default_iocontext_compact = IOContext(default_iocontext_compact, :module => current_module)
     
     global current_module = getfield(Main, newname)
 end
@@ -218,9 +218,13 @@ function html(io::IO, x::LaTeX)
     end
 end
 
+# because i like that
+Base.IOContext(io::IOContext, ::Nothing) = io
+
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-iocontext = IOContext(stdout, :color => false, :limit => true, :displaysize => (18, 88))
-iocontext_compact = IOContext(iocontext, :compact => true)
+default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
+default_iocontext_compact = IOContext(default_iocontext, :compact => true)
+
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -238,9 +242,10 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val))::MimedOutput
+function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
     try
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=iocontext)
+        new_iocontext = IOContext(default_iocontext, context)
+        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=new_iocontext)
         if value === nothing
             if mime ∈ imagemimes
                 io_sprinted, mime
@@ -304,19 +309,37 @@ end
 
 "Like `Base.sprint`, but return a `(String, Any)` tuple containing function output as the second entry."
 function sprint_withreturned(f::Function, args...; context=nothing, sizehint::Integer=0)
-    s = IOBuffer(sizehint=sizehint)
-    val = if context !== nothing
-        f(IOContext(s, context), args...)
-    else
-        f(s, args...)
-    end
-    resize!(s.data, s.size), val
+    buffer = IOBuffer(sizehint=sizehint)
+    val = f(IOContext(buffer, context), args...)
+    resize!(buffer.data, buffer.size), val
 end
 
 "Super important thing don't change."
 struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
+
+function use_tree_viewer_for_struct(@nospecialize(x))
+    T = typeof(x)
+
+    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
+    # this is how we check whether this display method is appropriate:
+    isstruct = try
+        T isa DataType &&
+        # there are two ways to override the plaintext show method: 
+        which(show, (IO, MIME"text/plain", T)) === struct_showmethod_mime &&
+        which(show, (IO, T)) === struct_showmethod
+    catch
+        false
+    end
+
+    isstruct && let
+        # from julia source code, dont know why
+        nf = nfields(x)
+        nb = sizeof(x)
+        nf != 0 || nb == 0
+    end
+end
 
 """
 Like two-argument `Base.show`, except:
@@ -335,30 +358,17 @@ data:image/png;base64,ahsdf87hf278hwh7823hr...
 """
 function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::Tuple{<:Any,MIME}
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
-    t = typeof(x)
-
-    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
-    # this is how we check whether this display method is appropriate:
-    isstruct = try
-        mime isa MIME"text/plain" && 
-        t isa DataType &&
-        # there are two ways to override the plaintext show method: 
-        which(show, (IO, MIME"text/plain", t)) === struct_showmethod_mime &&
-        which(show, (IO, t)) === struct_showmethod
-    catch
-        false
-    end
     
-    if isstruct
-        return tree_data(x), MIME"application/vnd.pluto.tree+object"()
+    if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
+        return tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     else
         if mime isa MIME"application/vnd.pluto.tree+object"
-            return tree_data(x), mime
+            return tree_data(x, io), mime
         elseif mime ∈ imagemimes
             if onlyhtml
                 # if only html output is accepted, we need to base64 encode the result and use it as image source.
                 enc_pipe = Base64.Base64EncodePipe(io)
-                io_64 = IOContext(enc_pipe, iocontext)
+                io_64 = IOContext(enc_pipe, default_iocontext)
 
                 print(io, "<img src=\"data:", mime, ";base64,")
                 show(io_64, mime, x)
@@ -374,7 +384,7 @@ function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::Tuple{<:A
                 # see onlyhtml description in docstring
                 if mime isa MIME"text/plain"
                     withtag(io, :pre) do 
-                        htmlesc(io, repr(mime, x; context=iocontext_compact))
+                        htmlesc(io, repr(mime, x; context=default_iocontext_compact))
                     end
                 elseif mime isa MIME"text/latex"
                     # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
@@ -398,6 +408,7 @@ end
 ###
 
 
+# We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
@@ -405,21 +416,25 @@ Base.showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
+
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
 
-# We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 
 const tree_display_limit = 50
 const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
 
-function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer})
+
+# in the next functions you see a `context` argument
+# this is really only used for the circular reference tracking
+
+function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)
     map(indices) do i
         if isassigned(x, i)
-            i, format_output_default(x[i])
+            i, format_output_default(x[i]; context=context)
         else
-            i, format_output_default(Text(Base.undef_ref_str))
+            i, format_output_default(Text(Base.undef_ref_str); context=context)
         end
     end
 end
@@ -432,18 +447,18 @@ function array_prefix(x)
     lstrip(original, ':') * ": "
 end
 
-function tree_data(x::AbstractArray{<:Any, 1})
+function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
 
     elements = if length(x) <= tree_display_limit
-        tree_data_array_elements(x, indices)
+        tree_data_array_elements(x, indices, context)
     else
         firsti = firstindex(x)
         from_end = tree_display_limit > 20 ? 10 : 1
         [
-            tree_data_array_elements(x, indices[firsti:firsti-1+tree_display_limit-from_end])...,
+            tree_data_array_elements(x, indices[firsti:firsti-1+tree_display_limit-from_end], context)...,
             "more",
-            tree_data_array_elements(x, indices[end+1-from_end:end])...,
+            tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
         ]
     end
     
@@ -455,21 +470,21 @@ function tree_data(x::AbstractArray{<:Any, 1})
     )
 end
 
-function tree_data(x::Tuple)
+function tree_data(x::Tuple, context::IOContext)
     Dict(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x))),
+        :elements => collect(enumerate(format_output_default.(x; context=context))),
     )
 end
 
-function tree_data(x::AbstractDict{<:Any, <:Any})
+function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
     elements = []
 
     row_index = 1
     for pair in x
         k, v = pair
-        push!(elements, (format_output_default(k), format_output_default(v)))
+        push!(elements, (format_output_default(k; context=context), format_output_default(v; context=context)))
         if row_index == tree_display_limit
             push!(elements, "more")
             break
@@ -485,60 +500,63 @@ function tree_data(x::AbstractDict{<:Any, <:Any})
     )
 end
 
-function tree_data_nt_row(pair::Tuple)
+function tree_data_nt_row(pair::Tuple, context::IOContext)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
-    string(k), format_output_default(element)
+    string(k), format_output_default(element; context=context)
 end
 
 
-function tree_data(x::NamedTuple)
+function tree_data(x::NamedTuple, context::IOContext)
     Dict(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(zip(eachindex(x), x))
+        :elements => tree_data_nt_row.(zip(eachindex(x), x), (context,))
     )
 end
 
-function tree_data(x::Pair)
+function tree_data(x::Pair, context::IOContext)
     k, v = x
     Dict(
         :objectid => string(objectid(x), base=16),
         :type => :Pair,
-        :key_value => (format_output_default(k), format_output_default(v)),
+        :key_value => (format_output_default(k; context=context), format_output_default(v; context=context)),
     )
 end
 
-
-
-# Based on Julia source code, but HTML-ified
-function show_struct(io::IO, @nospecialize(x))
+# Based on Julia source code but without writing to IO
+function tree_data(@nospecialize(x::Any), context::IOContext)
     t = typeof(x)
     nf = nfields(x)
     nb = sizeof(x)
-    if nf != 0 || nb == 0
-        print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-        show(io, t)
-        print(io, "<jlstruct>")
+    
+    if Base.show_circular(context, x)
+        Dict(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
+    else
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
+                                Pair{Symbol,Any}(:typeinfo, Any))
         
-        if !Base.show_circular(io, x)
-            recur_io = IOContext(io, Pair{Symbol,Any}(:SHOWN_SET, x),
-                                 Pair{Symbol,Any}(:typeinfo, Any))
-            for i in 1:nf
-                f = fieldname(t, i)
-                if !isdefined(x, f)
-                    print(io, "<r>", Base.undef_ref_str, "</r>")
-                else
-                    show_array_row(recur_io, (f, getfield(x, i)))
-                end
+        elements = map(1:nf) do i
+            f = fieldname(t, i)
+            if !isdefined(x, f)
+                Base.undef_ref_str
+                f, format_output_default(Text(Base.undef_ref_str); context=recur_io)
+            else
+                f, format_output_default(getfield(x, i); context=recur_io)
             end
         end
-
-        print(io, "</jlstruct>")
-        print(io, "</jltree>")
-    else
-        Base.show_default(io, x)
+    
+        Dict(
+            :prefix => repr(t),
+            :objectid => string(objectid(x), base=16),
+            :type => :struct,
+            :elements => elements,
+        )
     end
+
 end
 
 trynameof(x::DataType) = nameof(x)
