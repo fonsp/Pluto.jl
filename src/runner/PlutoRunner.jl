@@ -238,7 +238,7 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output(@nospecialize(val))::MimedOutput
+function format_output_default(@nospecialize(val))::MimedOutput
     try
         io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=iocontext)
         if value === nothing
@@ -256,6 +256,8 @@ function format_output(@nospecialize(val))::MimedOutput
         format_output(CapturedException(title, bt))
     end
 end
+
+format_output(x) = format_output_default(x)
 
 format_output(::Nothing)::MimedOutput = "", MIME"text/plain"()
 
@@ -415,30 +417,12 @@ const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}
 function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer})
     map(indices) do i
         if isassigned(x, i)
-            i, format_output(x[i])
+            i, format_output_default(x[i])
         else
-            i, format_output(Text(Base.undef_ref_str))
+            i, format_output_default(Text(Base.undef_ref_str))
         end
     end
 end
-
-# function tree_data_dict_row(pair::Union{Pair,Tuple})
-#     k, element = pair
-
-
-
-
-#     print(io, "<r><k>")
-#     if pair isa Pair
-#         show_richest(io, k; onlyhtml=true)
-#     else
-#         # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
-#         print(io, k)
-#     end
-#     print(io, "</k><v>")
-#     show_richest(io, element; onlyhtml=true)
-#     print(io, "</v></r>")
-# end
 
 function array_prefix(x::Array{<:Any, 1})
     string(eltype(x))
@@ -447,28 +431,7 @@ function array_prefix(x)
     original = sprint(Base.showarg, x, false)
     lstrip(original, ':') * ": "
 end
-# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::AbstractArray{<:Any, 1})
-#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)" objectid=$(string(objectid(x), base=16))>""")
-#     array_prefix(io, x)
-#     print(io, "<jlarray>")
-#     indices = eachindex(x)
 
-#     if length(x) <= tree_display_limit
-#         show_array_elements(io, indices, x)
-#     else
-#         firsti = firstindex(x)
-#         from_end = tree_display_limit > 20 ? 10 : 1
-
-#         show_array_elements(io, indices[firsti:firsti-1+tree_display_limit-from_end], x)
-        
-#         print(io, more)
-        
-#         show_array_elements(io, indices[end+1-from_end:end], x)
-#     end
-    
-#     print(io, "</jlarray>")
-#     print(io, "</jltree>")
-# end
 function tree_data(x::AbstractArray{<:Any, 1})
     indices = eachindex(x)
 
@@ -496,59 +459,55 @@ function tree_data(x::Tuple)
     Dict(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => tree_data_array_elements(x, eachindex(x))
+        :elements => collect(enumerate(format_output_default.(x))),
     )
 end
 
-# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::AbstractDict{<:Any, <:Any})
-#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-#     print(io, typeof(x) |> trynameof)
-#     print(io, "<jldict>")
-#     row_index = 1
-#     for pair in x
-#         show_dict_row(io, pair)
-#         if row_index == tree_display_limit
-#             print(io, more)
-#             break
-#         end
-#         row_index += 1
-#     end
+function tree_data(x::AbstractDict{<:Any, <:Any})
+    elements = []
+
+    row_index = 1
+    for pair in x
+        k, v = pair
+        push!(elements, (format_output_default(k), format_output_default(v)))
+        if row_index == tree_display_limit
+            push!(elements, "more")
+            break
+        end
+        row_index += 1
+    end
     
-#     print(io, "</jldict>")
-#     print(io, "</jltree>")
-# end
+    Dict(
+        :prefix => string(typeof(x) |> trynameof),
+        :objectid => string(objectid(x), base=16),
+        :type => :Dict,
+        :elements => elements
+    )
+end
 
-# function tree_data(x::AbstractDict{<:Any, <:Any})
-#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-#     print(io, typeof(x) |> trynameof)
-#     print(io, "<jldict>")
-#     row_index = 1
-#     for pair in x
-#         show_dict_row(io, pair)
-#         if row_index == tree_display_limit
-#             print(io, more)
-#             break
-#         end
-#         row_index += 1
-#     end
-    
-#     print(io, "</jldict>")
-#     print(io, "</jltree>")
-# end
+function tree_data_nt_row(pair::Tuple)
+    k, element = pair
+    # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
+    string(k), format_output_default(k)
+end
 
-# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::NamedTuple)
-#     print(io, """<jltree class="collapsed" onclick="onjltreeclick(this, event)">""")
-#     print(io, """<jldict class="NamedTuple">""")
-#     show_dict_row.([io], zip(eachindex(x), x))
-#     print(io, "</jldict>")
-#     print(io, "</jltree>")
-# end
 
-# function show(io::IO, ::MIME"application/vnd.pluto.tree+object", x::Pair)
-#     print(io, """<jlpair>""")
-#     show_dict_row(io, x)
-#     print(io, "</jlpair>")
-# end
+function tree_data(x::NamedTuple)
+    Dict(
+        :objectid => string(objectid(x), base=16),
+        :type => :NamedTuple,
+        :elements => collect(enumerate(format_output_default.(x)))
+    )
+end
+
+function tree_data(x::Pair)
+    k, v = pair
+    Dict(
+        :objectid => string(objectid(x), base=16),
+        :type => :Pair,
+        :key_value => (format_output_default(k), format_output_default(v)),
+    )
+end
 
 
 
