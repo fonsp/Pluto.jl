@@ -70,7 +70,7 @@ export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
         // we compensate scrolling after the image has loaded
         imgref.current.onload = imgref.current.onerror = () => {
             imgref.current.style.display = null
-            compensate_scrollheight_ref.current()
+            compensate_scrollheight_ref?.current()
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
@@ -82,7 +82,7 @@ export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
         return () => URL.revokeObjectURL(url)
     }, [body])
 
-    return html`<div><img ref=${imgref} type=${mime} src=${""} /></div>`
+    return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
 const needs_delayed_scrollheight_compensation = (mime) => {
@@ -105,13 +105,14 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<${PlutoImage} mime=${mime} body=${body} compensate_scrollheight_ref=${compensate_scrollheight_ref} />`
+            return html`<div><${PlutoImage} mime=${mime} body=${body} compensate_scrollheight_ref=${compensate_scrollheight_ref} /></div>`
             break
         case "text/html":
             // Snippets starting with <!DOCTYPE or <html are considered "full pages" that get their own iframe.
             // Not entirely sure if this works the best, or if this slows down notebooks with many plots.
             // AFAIK JSServe and Plotly both trigger this code.
             // NOTE: Jupyter doesn't do this, jupyter renders everything directly in pages DOM.
+            //                                                                   -DRAL
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {

@@ -25,6 +25,15 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
                 persist_js_state=${persist_js_state}
             />`
             break
+        case "application/vnd.pluto.tree+object":
+            return html`<${TreeView}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                compensate_scrollheight_ref=${undefined}
+                persist_js_state=${persist_js_state}
+            />`
+            break
         case "text/plain":
         default:
             return html`<pre>${body}</pre>`
@@ -38,7 +47,8 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
     var inner = null
     switch (body.type) {
         case "Array":
-            inner = html`${body.prefix}<jlarray
+        case "Tuple":
+            inner = html`${body.prefix}<jlarray class=${body.type}
                     >${body.elements.map((r) =>
                         r === "more"
                             ? html`<r><more></more></r>`
@@ -56,8 +66,33 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
                     )}</jlarray
                 >`
             break
-        case "Tuple":
-            inner = html`tuple`
+            break
+        case "Dict":
+        case "NamedTuple":
+            inner = html`<jldict class=${body.type}
+                >${body.elements.map((r) =>
+                    r === "more"
+                        ? html`<r><more></more></r>`
+                        : html`<r
+                              ><k
+                                  ><${SimpleOutputBody}
+                                      mime=${r[0][1]}
+                                      body=${r[0][0]}
+                                      all_completed_promise=${all_completed_promise}
+                                      requests=${requests}
+                                      compensate_scrollheight_ref=${undefined}
+                                      persist_js_state=${persist_js_state} /></k
+                              ><v
+                                  ><${SimpleOutputBody}
+                                      mime=${r[1][1]}
+                                      body=${r[1][0]}
+                                      all_completed_promise=${all_completed_promise}
+                                      requests=${requests}
+                                      compensate_scrollheight_ref=${undefined}
+                                      persist_js_state=${persist_js_state} /></v
+                          ></r>`
+                )}</jldict
+            >`
             break
     }
 
