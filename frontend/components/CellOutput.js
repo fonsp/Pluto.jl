@@ -3,12 +3,12 @@ import { html, Component, useRef, useLayoutEffect, useEffect } from "../imports/
 import { resolvable_promise } from "../common/PlutoConnection.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
+import { TreeView } from "./TreeView.js"
 
 import { connect_bonds } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import "../treeview.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -48,7 +48,7 @@ export class CellOutput extends Component {
             <pluto-output
                 class=${cl({
                     rich_output:
-                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+xml" && this.props.mime !== "text/plain"),
+                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+object" && this.props.mime !== "text/plain"),
                 })}
                 mime=${this.props.mime}
             >
@@ -59,7 +59,7 @@ export class CellOutput extends Component {
     }
 }
 
-let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
+export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
     // I know I know, this looks stupid.
     // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
     // and is removed when we are detatching from the DOM
@@ -124,12 +124,13 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
                 />`
             }
             break
-        case "application/vnd.pluto.tree+xml":
-            return html`<${RawHTMLContainer}
+        case "application/vnd.pluto.tree+object":
+            return html`<${TreeView}
                 body=${body}
                 all_completed_promise=${all_completed_promise}
                 requests=${requests}
                 compensate_scrollheight_ref=${undefined}
+                persist_js_state=${persist_js_state}
             />`
             break
         case "application/vnd.pluto.stacktrace+object":
