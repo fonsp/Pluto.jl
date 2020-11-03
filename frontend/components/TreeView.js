@@ -42,7 +42,21 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
 }
 
 export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state }) => {
-    console.log(body)
+    const mimepair_output = (pair) => html`<${SimpleOutputBody}
+        mime=${pair[1]}
+        body=${pair[0]}
+        all_completed_promise=${all_completed_promise}
+        requests=${requests}
+        compensate_scrollheight_ref=${undefined}
+        persist_js_state=${persist_js_state}
+    />`
+
+    if (body.type === "Pair") {
+        const r = body.key_value
+        return html`<jlpair class=${body.type}
+            ><r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r></jlpair
+        >`
+    }
 
     var inner = null
     switch (body.type) {
@@ -50,19 +64,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         case "Tuple":
             inner = html`${body.prefix}<jlarray class=${body.type}
                     >${body.elements.map((r) =>
-                        r === "more"
-                            ? html`<r><more></more></r>`
-                            : html`<r
-                                  ><k>${r[0]}</k
-                                  ><v
-                                      ><${SimpleOutputBody}
-                                          mime=${r[1][1]}
-                                          body=${r[1][0]}
-                                          all_completed_promise=${all_completed_promise}
-                                          requests=${requests}
-                                          compensate_scrollheight_ref=${undefined}
-                                          persist_js_state=${persist_js_state} /></v
-                              ></r>`
+                        r === "more" ? html`<r><more></more></r>` : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`
                     )}</jlarray
                 >`
             break
@@ -71,26 +73,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         case "NamedTuple":
             inner = html`<jldict class=${body.type}
                 >${body.elements.map((r) =>
-                    r === "more"
-                        ? html`<r><more></more></r>`
-                        : html`<r
-                              ><k
-                                  ><${SimpleOutputBody}
-                                      mime=${r[0][1]}
-                                      body=${r[0][0]}
-                                      all_completed_promise=${all_completed_promise}
-                                      requests=${requests}
-                                      compensate_scrollheight_ref=${undefined}
-                                      persist_js_state=${persist_js_state} /></k
-                              ><v
-                                  ><${SimpleOutputBody}
-                                      mime=${r[1][1]}
-                                      body=${r[1][0]}
-                                      all_completed_promise=${all_completed_promise}
-                                      requests=${requests}
-                                      compensate_scrollheight_ref=${undefined}
-                                      persist_js_state=${persist_js_state} /></v
-                          ></r>`
+                    r === "more" ? html`<r><more></more></r>` : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`
                 )}</jldict
             >`
             break

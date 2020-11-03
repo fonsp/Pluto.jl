@@ -488,7 +488,7 @@ end
 function tree_data_nt_row(pair::Tuple)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
-    string(k), format_output_default(k)
+    string(k), format_output_default(element)
 end
 
 
@@ -496,7 +496,7 @@ function tree_data(x::NamedTuple)
     Dict(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(pairs(x))
+        :elements => tree_data_nt_row.(zip(eachindex(x), x))
     )
 end
 
