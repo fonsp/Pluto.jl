@@ -550,7 +550,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         end
     
         Dict(
-            :prefix => repr(t),
+            :prefix => repr(t; context=context),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
             :elements => elements,

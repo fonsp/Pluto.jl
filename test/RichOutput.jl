@@ -71,6 +71,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             
             @test notebook.cells[16].repr_mime isa MIME"application/vnd.pluto.tree+object"
             @test notebook.cells[16].output_repr isa Dict
+            @test occursin("circular", notebook.cells[16].output_repr |> string)
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end

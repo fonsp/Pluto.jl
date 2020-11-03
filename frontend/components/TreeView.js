@@ -50,16 +50,15 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         compensate_scrollheight_ref=${undefined}
         persist_js_state=${persist_js_state}
     />`
-
-    if (body.type === "Pair") {
-        const r = body.key_value
-        return html`<jlpair class=${body.type}
-            ><r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r></jlpair
-        >`
-    }
-
     var inner = null
     switch (body.type) {
+        case "Pair":
+            const r = body.key_value
+            return html`<jlpair class=${body.type}
+                ><r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r></jlpair
+            >`
+        case "circular":
+            return html`<em>circular reference</em>`
         case "Array":
         case "Tuple":
             inner = html`${body.prefix}<jlarray class=${body.type}
@@ -76,6 +75,10 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
                     r === "more" ? html`<r><more></more></r>` : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`
                 )}</jldict
             >`
+            break
+        case "struct":
+            console.log(body)
+            inner = html`${body.prefix}<jlstruct> ${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)} </jlstruct>`
             break
     }
 
