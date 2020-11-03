@@ -112,16 +112,3 @@ window.onjltreeclick = (self, e) => {
 
     self.classList.toggle("collapsed")
 }
-
-window.onjltreeclickmore = (self, e) => {
-    if (e.target !== self || self.closest("jltree.collapsed") != null) {
-        return
-    }
-    var parent_tree = self.closest("jltree")
-    const objectid = parent_tree.getAttribute("objectid")
-
-    const notebook = self.closest("pluto-notebook")
-
-    // TODO actually do something
-    console.log(notebook.requests)
-}
