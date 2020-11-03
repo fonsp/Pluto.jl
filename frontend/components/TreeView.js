@@ -4,9 +4,15 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 
-import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
+import { PlutoImage, RawHTMLContainer, OutputBody } from "./CellOutput.js"
 
-const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state }) => {
+const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests, on_rendered, persist_js_state }) => {
+    useLayoutEffect(() => {
+        if (mime === "text/plain") {
+            on_rendered?.current()
+        }
+    }, [mime, body])
+
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -14,14 +20,14 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<${PlutoImage} mime=${mime} body=${body} compensate_scrollheight_ref=${undefined} />`
+            return html`<${PlutoImage} mime=${mime} body=${body} on_rendered=${on_rendered} />`
             break
         case "text/html":
             return html`<${RawHTMLContainer}
                 body=${body}
                 all_completed_promise=${all_completed_promise}
                 requests=${requests}
-                compensate_scrollheight_ref=${compensate_scrollheight_ref}
+                on_rendered=${on_rendered}
                 persist_js_state=${persist_js_state}
             />`
             break
@@ -30,24 +36,25 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
                 body=${body}
                 all_completed_promise=${all_completed_promise}
                 requests=${requests}
-                compensate_scrollheight_ref=${undefined}
+                on_rendered=${on_rendered}
                 persist_js_state=${persist_js_state}
             />`
             break
         case "text/plain":
         default:
+            on_rendered?.current()
             return html`<pre>${body}</pre>`
             break
     }
 }
 
-export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state }) => {
+export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, on_rendered, persist_js_state }) => {
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
         mime=${pair[1]}
         body=${pair[0]}
         all_completed_promise=${all_completed_promise}
         requests=${requests}
-        compensate_scrollheight_ref=${undefined}
+        on_rendered=${on_rendered}
         persist_js_state=${persist_js_state}
     />`
     var inner = null

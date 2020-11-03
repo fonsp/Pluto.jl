@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useEffect } from "../imports/Preact.js"
+import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
 import { resolvable_promise } from "../common/PlutoConnection.js"
 
@@ -10,37 +10,98 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 
+// const CompensateScroll = ({ children }) => {
+//     const node_ref = useRef(null)
+//     const height_ref = useRef(0)
+
+//     useEffect(() => {
+//         console.log(node_ref.current)
+//         if (node_ref.current != null) {
+//             const resize_observer = new ResizeObserver((entries) => {
+//                 console.log(entries[0])
+
+//                 const old_height = height_ref.current
+//                 const new_height = node_ref.current.scrollHeight
+
+//                 console.log(old_height, new_height)
+
+//                 // Scroll the page to compensate for change in page height:
+//                 if (document.body.querySelector("pluto-cell:focus-within")) {
+//                     const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output > div") // CSS wizardry ✨
+//                     if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(node_ref.current)) {
+//                         window.scrollBy(0, new_height - old_height)
+//                     }
+//                 }
+
+//                 height_ref.current = new_height
+//             })
+
+//             resize_observer.observe(node_ref.current)
+
+//             return () => {
+//                 resize_observer.unobserve(node_ref.current)
+//             }
+//         }
+//     }, [node_ref.current])
+
+//     return html`<asdf ref=${node_ref}>${children}</asdf>`
+// }
+
 export class CellOutput extends Component {
     constructor() {
         super()
-        this.compensate_scrollheight_ref = { current: () => {} }
+        this.on_rendered = { current: () => {} }
+
+        this.old_height = 0
+        this.resize_observer = new ResizeObserver((entries) => {
+            console.log(entries[0])
+
+            const new_height = this.base.scrollHeight
+
+            console.log(this.old_height, new_height)
+
+            // Scroll the page to compensate for change in page height:
+            if (document.body.querySelector("pluto-cell:focus-within")) {
+                const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output > div") // CSS wizardry ✨
+                if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                    window.scrollBy(0, new_height - this.old_height)
+                }
+            }
+
+            this.old_height = new_height
+        })
     }
 
     shouldComponentUpdate({ last_run_timestamp }) {
         return last_run_timestamp !== this.props.last_run_timestamp
     }
 
-    getSnapshotBeforeUpdate() {
-        return this.base.scrollHeight
+    // getSnapshotBeforeUpdate() {
+    //     return this.base.scrollHeight
+    // }
+
+    componentDidMount() {
+        this.resize_observer.observe(this.base)
     }
 
-    componentDidUpdate(prevProps, prevState, snapshot) {
-        this.compensate_scrollheight_ref.current = () => {
-            // Scroll the page to compensate for change in page height:
-            const new_height = this.base.scrollHeight
-            if (document.body.querySelector("pluto-cell:focus-within")) {
-                const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-                if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
-                    window.scrollBy(0, new_height - snapshot)
-                }
-            }
-        }
+    // componentDidUpdate(prevProps, prevState, snapshot) {
+    //     // console.log("updating dat function")
+    //     // setTimeout(() => {
+    //     //     const old_height = snapshot
+    //     //     const new_height = this.base.scrollHeight
+    //     //     console.log(old_height, new_height)
+    //     //     // Scroll the page to compensate for change in page height:
+    //     //     if (document.body.querySelector("pluto-cell:focus-within")) {
+    //     //         const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
+    //     //         if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+    //     //             window.scrollBy(0, new_height - old_height)
+    //     //         }
+    //     //     }
+    //     // }, 0)
+    // }
 
-        if (!needs_delayed_scrollheight_compensation(this.props.mime)) {
-            this.compensate_scrollheight_ref.current()
-        } else {
-            // then this is handled by RawHTMLContainer or PlutoImage, asynchronously
-        }
+    componentWillUnmount() {
+        resize_observer.unobserve(this.base)
     }
 
     render() {
@@ -53,13 +114,79 @@ export class CellOutput extends Component {
                 mime=${this.props.mime}
             >
                 <assignee>${this.props.rootassignee}</assignee>
-                <${OutputBody} ...${this.props} compensate_scrollheight_ref=${this.compensate_scrollheight_ref} />
+                <${OutputBody} ...${this.props} on_rendered=${this.on_rendered} />
             </pluto-output>
         `
     }
 }
 
-export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
+// export class CellOutput extends Component {
+//     constructor() {
+//         super()
+//         this.on_rendered = { current: () => {} }
+//         this.fresh = true
+//     }
+
+//     shouldComponentUpdate({ last_run_timestamp }) {
+//         return last_run_timestamp !== this.props.last_run_timestamp
+//     }
+
+//     componentWillUpdate() {
+//         this.fresh = true
+//     }
+
+//     getSnapshotBeforeUpdate() {
+//         return this.base.scrollHeight
+//     }
+
+//     componentDidUpdate(prevProps, prevState, snapshot) {
+//         console.log("updating function")
+//         this.on_rendered.current = () => {
+//             if (this.fresh) {
+//                 // Scroll the page to compensate for change in page height:
+//                 const new_height = this.base.scrollHeight
+
+//                 console.log(snapshot, new_height)
+
+//                 if (document.body.querySelector("pluto-cell:focus-within")) {
+//                     const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
+//                     if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+//                         window.scrollBy(0, new_height - snapshot)
+//                     }
+//                 }
+//             }
+//             this.fresh = false
+//         }
+//         if (!this.fresh) {
+//             console.log("not fresh, updating now!")
+//             this.fresh = true
+//             this.on_rendered.current()
+//         }
+
+//         // if (!needs_delayed_scrollheight_compensation(this.props.mime)) {
+//         //     this.on_rendered.current()
+//         // } else {
+//         //     // then this is handled by RawHTMLContainer or PlutoImage, asynchronously
+//         // }
+//     }
+
+//     render() {
+//         return html`
+//             <pluto-output
+//                 class=${cl({
+//                     rich_output:
+//                         this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+object" && this.props.mime !== "text/plain"),
+//                 })}
+//                 mime=${this.props.mime}
+//             >
+//                 <assignee>${this.props.rootassignee}</assignee>
+//                 <${OutputBody} ...${this.props} on_rendered=${this.on_rendered} />
+//             </pluto-output>
+//         `
+//     }
+// }
+
+export let PlutoImage = ({ body, mime, on_rendered }) => {
     // I know I know, this looks stupid.
     // BUT it is necessary to make sure the object url is only created when we are actually attaching to the DOM,
     // and is removed when we are detatching from the DOM
@@ -70,7 +197,7 @@ export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
         // we compensate scrolling after the image has loaded
         imgref.current.onload = imgref.current.onerror = () => {
             imgref.current.style.display = null
-            compensate_scrollheight_ref?.current()
+            on_rendered?.current()
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
@@ -85,19 +212,26 @@ export let PlutoImage = ({ body, mime, compensate_scrollheight_ref }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-const needs_delayed_scrollheight_compensation = (mime) => {
-    return (
-        mime === "text/html" ||
-        mime === "image/png" ||
-        mime === "image/jpg" ||
-        mime === "image/jpeg" ||
-        mime === "image/gif" ||
-        mime === "image/bmp" ||
-        mime === "image/svg+xml"
-    )
-}
+// const needs_delayed_scrollheight_compensation = (mime) => {
+//     return (
+//         mime === "text/html" ||
+//         mime === "image/png" ||
+//         mime === "image/jpg" ||
+//         mime === "image/jpeg" ||
+//         mime === "image/gif" ||
+//         mime === "image/bmp" ||
+//         mime === "image/svg+xml"
+//     )
+// }
 
-const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state }) => {
+export const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, on_rendered, persist_js_state }) => {
+    useEffect(() => {
+        if (mime === "text/plain" || mime === "application/vnd.pluto.stacktrace+object") {
+            console.log("calling onrendered directly", mime)
+            on_rendered.current()
+        }
+    }, [mime, body])
+
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -105,7 +239,7 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
         case "image/gif":
         case "image/bmp":
         case "image/svg+xml":
-            return html`<div><${PlutoImage} mime=${mime} body=${body} compensate_scrollheight_ref=${compensate_scrollheight_ref} /></div>`
+            return html`<div><${PlutoImage} mime=${mime} body=${body} on_rendered=${on_rendered} /></div>`
             break
         case "text/html":
             // Snippets starting with <!DOCTYPE or <html are considered "full pages" that get their own iframe.
@@ -120,19 +254,21 @@ const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, comp
                     body=${body}
                     all_completed_promise=${all_completed_promise}
                     requests=${requests}
-                    compensate_scrollheight_ref=${compensate_scrollheight_ref}
+                    on_rendered=${on_rendered}
                     persist_js_state=${persist_js_state}
                 />`
             }
             break
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView}
-                body=${body}
-                all_completed_promise=${all_completed_promise}
-                requests=${requests}
-                compensate_scrollheight_ref=${undefined}
-                persist_js_state=${persist_js_state}
-            />`
+            return html`<div>
+                <${TreeView}
+                    body=${body}
+                    all_completed_promise=${all_completed_promise}
+                    requests=${requests}
+                    on_rendered=${on_rendered}
+                    persist_js_state=${persist_js_state}
+                />
+            </div>`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`
@@ -253,7 +389,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensate_scrollheight_ref, persist_js_state = false }) => {
+export let RawHTMLContainer = ({ body, all_completed_promise, requests, on_rendered, persist_js_state = false }) => {
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -298,9 +434,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, compensa
                 }
             } catch (err) {}
 
-            if (compensate_scrollheight_ref != null) {
-                compensate_scrollheight_ref.current()
-            }
+            on_rendered?.current()
         })
 
         return () => {
