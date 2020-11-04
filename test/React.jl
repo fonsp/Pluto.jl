@@ -627,7 +627,7 @@ import Distributed
         @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
-        original_repr = sprint(Pluto.PlutoRunner.show_richest, Ref((25, :fish)))
+        original_repr = Pluto.PlutoRunner.format_output(Ref((25, :fish)))[1]
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
         @test notebook.cells[25].output_repr == original_repr
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
