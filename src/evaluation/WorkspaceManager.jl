@@ -245,11 +245,7 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
         end
     end
 
-    # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
-    # This also means that very big objects are not duplicated in RAM.
-    withtoken(workspace.dowork_token) do
-        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
-    end
+    format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon)
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -258,6 +254,15 @@ function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook}
     
     Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
     nothing
+end
+
+function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectID, Nothing}=nothing)
+    workspace = get_workspace(session_notebook)
+    
+    # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+    end
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."
