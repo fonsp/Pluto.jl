@@ -62,6 +62,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
     }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
+        cell_id=${cell_id}
         mime=${pair[1]}
         body=${pair[0]}
         all_completed_promise=${all_completed_promise}
@@ -75,8 +76,9 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
                     requests.reshow_cell(cell_id, body.objectid)
                 }
             }}
-        ></more
-    ></r>`
+            >more</more
+        ></r
+    >`
 
     var inner = null
     switch (body.type) {
