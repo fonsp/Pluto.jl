@@ -19,11 +19,7 @@ const prettytime = (time_ns) => {
         i += 1
         time_ns /= 1000
     }
-    let roundedtime
-    if (time_ns >= 100.0) {
-        roundedtime = Math.round(time_ns)
-    } else {
-        roundedtime = Math.round(time_ns * 10) / 10
-    }
+    const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
+
     return roundedtime + "\xa0" + prefices[i] + "s"
 }
