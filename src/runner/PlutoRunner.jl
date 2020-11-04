@@ -344,62 +344,28 @@ end
 """
 Like two-argument `Base.show`, except:
 1. the richest MIME type available to Pluto will be used
-2. the used MIME type is returned
-3. 'raw' data (e.g. image data) is always base64 encoded, with base64 header. This will change when/if we switch to a binary message format
-
-With `onlyhtml=true`, the returned MIME type will always be MIME"text/html", and other MIME types are converted to this type. For example, an image with MIME type MIME"image/png" defined will display as:
-```
-<img src="data:image/png;base64,ahsdf87hf278hwh7823hr..." >
-```
-instead of (`onlyhtml=false`)
-```
-data:image/png;base64,ahsdf87hf278hwh7823hr...
-```
+2. the used MIME type is returned as second element
+3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
-function show_richest(io::IO, @nospecialize(x); onlyhtml::Bool=false)::Tuple{<:Any,MIME}
+function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
     
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
-        return tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
+        tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
+    elseif mime isa MIME"application/vnd.pluto.tree+object"
+        tree_data(x, io), mime
+    elseif mime ∈ imagemimes
+        show(io, mime, x)
+        nothing, mime
+    elseif mime isa MIME"text/latex"
+        # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
+        texed = repr(mime, x)
+        html(io, Markdown.LaTeX("\\text{$texed}"))
+        nothing, MIME"text/html"()
     else
-        if mime isa MIME"application/vnd.pluto.tree+object"
-            return tree_data(x, io), mime
-        elseif mime ∈ imagemimes
-            if onlyhtml
-                # if only html output is accepted, we need to base64 encode the result and use it as image source.
-                enc_pipe = Base64.Base64EncodePipe(io)
-                io_64 = IOContext(enc_pipe, default_iocontext)
-
-                print(io, "<img src=\"data:", mime, ";base64,")
-                show(io_64, mime, x)
-                close(enc_pipe)
-                print(io, "\">")
-                return nothing, MIME"text/html"()
-            else
-                show(io, mime, x)
-                return nothing, mime
-            end
-        else
-            if onlyhtml || mime isa MIME"text/latex"
-                # see onlyhtml description in docstring
-                if mime isa MIME"text/plain"
-                    withtag(io, :pre) do 
-                        htmlesc(io, repr(mime, x; context=default_iocontext_compact))
-                    end
-                elseif mime isa MIME"text/latex"
-                    # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
-                    texed = repr(mime, x)
-                    html(io, Markdown.LaTeX("\\text{$texed}"))
-                else                
-                    show(io, mime, x)
-                end
-                return nothing, MIME"text/html"()
-            else
-                # the classic:
-                show(io, mime, x)
-                return nothing, mime
-            end
-        end
+        # the classic:
+        show(io, mime, x)
+        nothing, mime
     end
 end
 
@@ -423,7 +389,7 @@ Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
 const tree_display_limit = 50
-const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
+# const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
 
 
 # in the next functions you see a `context` argument
