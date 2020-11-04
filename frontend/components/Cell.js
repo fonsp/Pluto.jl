@@ -2,9 +2,8 @@ import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/P
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea } from "./RunArea.js"
+import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { useMillisSinceTruthy } from "../imports/hooks.js"
 
 /**
  * @typedef {Object} CodeState
