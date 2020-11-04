@@ -292,8 +292,8 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
 
 /** @param {HTMLElement} code_element */
 export let highlight_julia = (code_element) => {
-    if (code_element.children.length !== 0) return
-
-    window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
-    code_element.classList.add("cm-s-default")
+    if (code_element.children.length === 0){
+        window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
+        code_element.classList.add("cm-s-default")
+    }
 }
