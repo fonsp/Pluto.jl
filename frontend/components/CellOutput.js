@@ -1,7 +1,5 @@
 import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
-import { resolvable_promise } from "../common/PlutoConnection.js"
-
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView } from "./TreeView.js"
 
@@ -15,11 +13,7 @@ export class CellOutput extends Component {
         super()
         this.old_height = 0
         this.resize_observer = new ResizeObserver((entries) => {
-            console.log(entries[0])
-
             const new_height = this.base.scrollHeight
-
-            console.log(this.old_height, new_height)
 
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
@@ -292,7 +286,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
 
 /** @param {HTMLElement} code_element */
 export let highlight_julia = (code_element) => {
-    if (code_element.children.length === 0){
+    if (code_element.children.length === 0) {
         window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
         code_element.classList.add("cm-s-default")
     }
