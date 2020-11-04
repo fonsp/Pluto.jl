@@ -99,6 +99,7 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
                 return html`<${IframeContainer} body=${body} />`
             } else {
                 return html`<${RawHTMLContainer}
+                    cell_id=${cell_id}
                     body=${body}
                     all_completed_promise=${all_completed_promise}
                     requests=${requests}
@@ -108,7 +109,13 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView} body=${body} all_completed_promise=${all_completed_promise} requests=${requests} persist_js_state=${persist_js_state} />
+                <${TreeView}
+                    cell_id=${cell_id}
+                    body=${body}
+                    all_completed_promise=${all_completed_promise}
+                    requests=${requests}
+                    persist_js_state=${persist_js_state}
+                />
             </div>`
             break
         case "application/vnd.pluto.stacktrace+object":

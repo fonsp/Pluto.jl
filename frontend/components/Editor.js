@@ -724,6 +724,16 @@ export class Editor extends Component {
                         }
                     })
             },
+            reshow_cell: (cell_id, object_id) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        object_id: object_id,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
+            },
         }
 
         this.selected_friends = (cell_id) => {

@@ -102,17 +102,20 @@ function defined_functions(topology::NotebookTopology, cells)
 	end
 end
 
-"Run a single cell non-reactively, return run information."
+"Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+	set_output!(cell, run)
+	return run
+end
+
+function set_output!(cell::Cell, run)
 	cell.last_run_timestamp = time()
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
 	cell.errored = run.errored
-
-	return run
 end
 
 ###

@@ -19,6 +19,7 @@ import Logging
 export @bind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
+ObjectID = typeof(objectid("hello computer"))
 
 ###
 # WORKSPACE MANAGER
@@ -48,10 +49,22 @@ end
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID, Any}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+const tree_display_limit = 30
+const tree_display_limit_increase = 40
+const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
+
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+    extra_items = if showmore === nothing
+        tree_display_extra_items[id] = Dict{ObjectID, Int64}()
+    else
+        old = get!(() -> Dict{ObjectID, Int64}(), tree_display_extra_items, id)
+        old[showmore] = get(old, showmore, 0) + tree_display_limit_increase
+        old
+    end
+
     ans = cell_results[id]
     errored = ans isa CapturedException
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans) : ("", MIME"text/plain"())
+    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
     (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
 end
 
@@ -262,11 +275,11 @@ function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
     end
 end
 
-format_output(x) = format_output_default(x)
+format_output(x; context=nothing) = format_output_default(x; context=context)
 
-format_output(::Nothing)::MimedOutput = "", MIME"text/plain"()
+format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
 
-function format_output(val::CapturedException)::MimedOutput
+function format_output(val::CapturedException; context=nothing)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s,_) in val.processed_bt]
 
@@ -386,12 +399,6 @@ Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = fals
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
-
-
-const tree_display_limit = 50
-# const tree_display_extra_items = Dict{typeof(objectid("hello computer")), Int64}()
-
-
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
@@ -413,16 +420,28 @@ function array_prefix(x)
     lstrip(original, ':') * ": "
 end
 
+function get_my_display_limit(x, context)
+    tree_display_limit + let
+        d = get(context, :extra_items, nothing)
+        if d === nothing
+            0
+        else
+            get(d, objectid(x), 0)
+        end
+    end
+end
+
 function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
+    my_limit = get_my_display_limit(x, context)
 
-    elements = if length(x) <= tree_display_limit
+    elements = if length(x) <= my_limit
         tree_data_array_elements(x, indices, context)
     else
         firsti = firstindex(x)
-        from_end = tree_display_limit > 20 ? 10 : 1
+        from_end = my_limit > 20 ? 10 : 1
         [
-            tree_data_array_elements(x, indices[firsti:firsti-1+tree_display_limit-from_end], context)...,
+            tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], context)...,
             "more",
             tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
         ]
@@ -447,11 +466,12 @@ end
 function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
     elements = []
 
+    my_limit = get_my_display_limit(x, context)
     row_index = 1
     for pair in x
         k, v = pair
         push!(elements, (format_output_default(k; context=context), format_output_default(v; context=context)))
-        if row_index == tree_display_limit
+        if row_index == my_limit
             push!(elements, "more")
             break
         end
