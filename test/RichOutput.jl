@@ -9,43 +9,108 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
     fakeclient = ClientSession(:fake, nothing)
     🍭.connected_clients[fakeclient.id] = fakeclient
     
-    @testset "Interactive inspector" begin
+    @testset "Tree viewer" begin
+        @testset "Basics" begin
+            notebook = Notebook([
+                    Cell("[1,1,[1]]"),
+                    Cell("Dict(:a => [:b, :c])"),
+                    Cell("[3, Dict()]"),
+                    Cell("[4,[3, Dict()]]"),
+                    Cell("[5, missing, 5]"),
+                    Cell("[]"),
+                    Cell("(7,7)"),
+                    Cell("(a=8,b=[8])"),
+                    Cell("Ref(9)"),
+                    Cell("Vector(undef, 10)"),
+                    Cell("struct Eleven x end"),
+                    Cell("Eleven(12)"),
 
-        notebook = Notebook([
-                Cell("[1,1,[1]]"),
-                Cell("Dict(:a => [:b, :c])"),
-                Cell("[3, Dict()]"),
-                Cell("[4,[3, Dict()]]"),
-                Cell("[5, missing, 5]"),
-                Cell("[]"),
-                Cell("(7,7)"),
-                Cell("(a=8,b=[8])"),
-                Cell("Ref(9)"),
-                Cell("struct Ten x end"),
-                Cell("Ten(11)"),
-                Cell("Vector(undef, 12)"),
+                    Cell("struct Amazing{T} x::T end"),
+                    Cell("Amazing(14)"),
+
+                    Cell("1:15"),
+
+                    Cell("""begin
+                        mutable struct A x; y end
+                        a = A(16, 0)
+                        a.y = [1, (2, A(3, (r=4, t=(5 => Dict(6 => Ref(a))))))]
+                        a
+                    end""")
+                ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells)
+
+            @test notebook.cells[1].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[3].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[4].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[10].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[1].output_repr isa Dict
+            @test notebook.cells[2].output_repr isa Dict
+            @test notebook.cells[3].output_repr isa Dict
+            @test notebook.cells[4].output_repr isa Dict
+            @test notebook.cells[5].output_repr isa Dict
+            @test notebook.cells[6].output_repr isa Dict
+            @test notebook.cells[7].output_repr isa Dict
+            @test notebook.cells[8].output_repr isa Dict
+            @test notebook.cells[9].output_repr isa Dict
+            @test notebook.cells[10].output_repr isa Dict
+
+            @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[12].output_repr isa Dict
+            @test notebook.cells[14].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[14].output_repr isa Dict
+
+            @test notebook.cells[15].repr_mime isa MIME"text/plain"
+            
+            @test notebook.cells[16].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[16].output_repr isa Dict
+            @test occursin("circular", notebook.cells[16].output_repr |> string)
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+
+        @testset "Overloaded Base.show" begin
+
+            notebook = Notebook([
+                Cell("""begin
+                    struct A x end
+                    Base.show(io::IO, ::MIME"image/png", x::Vector{A}) = print(io, "1")
+                    [A(1), A(1)]
+                end"""),
+                
+                Cell("""begin
+                    struct B x end
+                    Base.show(io::IO, ::MIME"text/html", x::B) = print(io, "2")
+                    B(2)
+                end"""),
+
+                Cell("""begin
+                    struct C x end
+                    Base.show(io::IO, ::MIME"text/plain", x::C) = print(io, "3")
+                    C(3)
+                end"""),
             ])
             fakeclient.connected_notebook = notebook
 
-        update_run!(🍭, notebook, notebook.cells)
-
-        @test notebook.cells[1].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[3].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[4].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[11].repr_mime isa MIME"application/vnd.pluto.tree+xml"
-        @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.tree+xml"
+            update_run!(🍭, notebook, notebook.cells)
             
-
-        WorkspaceManager.unmake_workspace((🍭, notebook))
-    
+            @test notebook.cells[1].repr_mime isa MIME"image/png"
+            @test notebook.cells[1].output_repr == codeunits("1")
+            @test notebook.cells[2].repr_mime isa MIME"text/html"
+            @test notebook.cells[2].output_repr == "2"
+            @test notebook.cells[3].repr_mime isa MIME"text/plain"
+            @test notebook.cells[3].output_repr == "3"
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
     end
-
     
     begin
         escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \x10 \$"
