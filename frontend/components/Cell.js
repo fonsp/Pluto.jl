@@ -1,4 +1,4 @@
-import { html, useState, useEffect, Component } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -67,69 +67,30 @@ export const empty_cell_data = (cell_id) => {
  */
 export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
 
-export class Cell extends Component {
-    constructor () {
-        super()
-    }
-
-    shouldComponentUpdate (next_props) {
-        const comparable_prop_keys = [
-            'remote_code',
-            'local_code',
-            'output',
-            'code_folded',
-            'queued',
-            'running',
-            'runtime',
-            'errored',
-            'selected',
-            'disable_input',
-            'focus_after_creation',
-            'scroll_into_view_after_creation',
-        ]
-        for (const prop_key of comparable_prop_keys) {
-            const prop_type = typeof this.props[prop_key]
-
-            // remote_code, local_code, and output are objects with nested body property we want to check
-            if (prop_type === 'object' &&
-                this.props[prop_key] !== null &&
-                this.props[prop_key].body &&
-                this.props[prop_key].body !== next_props[prop_key].body
-            ) {
-                return true
-            }
-
-            if (prop_type !== 'object' && this.props[prop_key] !== next_props[prop_key]) {
-                return true
-            }
-        }
-
-        return false
-    }
-
-    render ({
-        cell_id,
-        remote_code,
-        local_code,
-        code_folded,
-        queued,
-        running,
-        runtime,
-        errored,
-        output,
-        selected,
-        on_change,
-        on_update_doc_query,
-        on_focus_neighbor,
-        disable_input,
-        focus_after_creation,
-        scroll_into_view_after_creation,
-        all_completed_promise,
-        selected_friends,
-        requests,
-        client,
-        notebook_id,
-    }) {
+export const Cell = ({
+    cell_id,
+    remote_code,
+    local_code,
+    code_folded,
+    queued,
+    running,
+    runtime,
+    errored,
+    output,
+    selected,
+    on_change,
+    on_update_doc_query,
+    on_focus_neighbor,
+    disable_input,
+    focus_after_creation,
+    scroll_into_view_after_creation,
+    all_completed_promise,
+    selected_friends,
+    requests,
+    client,
+    notebook_id,
+}) => {
+    return useMemo(() => {
         // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
         const [cm_forced_focus, set_cm_forced_focus] = useState(null)
 
@@ -253,5 +214,18 @@ export class Cell extends Component {
                 </button>
             </pluto-cell>
         `
-    }
+    }, [
+        remote_code.body,
+        local_code.body,
+        output.body,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        selected,
+        disable_input,
+        focus_after_creation,
+        scroll_into_view_after_creation,
+    ])
 }
