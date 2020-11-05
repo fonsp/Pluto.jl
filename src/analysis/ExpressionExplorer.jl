@@ -369,7 +369,12 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         end
         # Some package macros have simplified versions:
         zoofun = get(MacroZoo.mock_macros, length(funcname)>0 ? funcname[end] : "", tuple)
-        zooargs = zoofun(ex.args[2:end]...)
+        zooargs = try
+            zoofun(ex.args[2:end]...)
+        catch err
+            @warn "MacroZoo failed to apply $(zoofun)" exception=err
+            Tuple(ex.args[2:end])
+        end
         return explore!(Expr(:call, ex.args[1], zooargs...), scopestate)
 
     elseif ex.head == :call
