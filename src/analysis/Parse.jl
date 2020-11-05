@@ -152,6 +152,6 @@ function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
             bt = stacktrace(catch_backtrace())
             (CapturedException(ex, bt), missing)
         end
-        setindex!(Main.PlutoRunner.cell_results, WeakRef(ans), $(cell_id))
+        setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
     end
 end

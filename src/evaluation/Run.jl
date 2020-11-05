@@ -21,7 +21,7 @@ macro asynclog(expr)
 end
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
@@ -69,7 +69,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.queued = false
 		cell.running = true
-		cell.persist_js_state = cell ∉ cells
+		cell.persist_js_state = persist_js_state || cell ∉ cells
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 
 		if any_interrupted
@@ -102,17 +102,20 @@ function defined_functions(topology::NotebookTopology, cells)
 	end
 end
 
-"Run a single cell non-reactively, return run information."
+"Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+	set_output!(cell, run)
+	return run
+end
+
+function set_output!(cell::Cell, run)
 	cell.last_run_timestamp = time()
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
 	cell.errored = run.errored
-
-	return run
 end
 
 ###

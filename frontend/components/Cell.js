@@ -2,7 +2,7 @@ import { html, useState, useEffect, useMemo } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea } from "./RunArea.js"
+import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
 /**
@@ -93,7 +93,7 @@ export const Cell = ({
     return useMemo(() => {
         // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
         const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-
+        const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
         useEffect(() => {
             const focusListener = (e) => {
                 if (e.detail.cell_id === cell_id) {
@@ -201,7 +201,7 @@ export const Cell = ({
                             }
                         }
                     }}
-                    runtime=${runtime}
+                    runtime=${localTimeRunning || runtime}
                 />
                 <button
                     onClick=${() => {
