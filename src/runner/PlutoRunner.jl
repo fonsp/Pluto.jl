@@ -19,6 +19,7 @@ import REPL.REPLCompletions: completions, complete_path, completion_text, Comple
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
+import Tables
 
 export @bind
 
@@ -251,7 +252,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -371,6 +372,8 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         tree_data(x, io), mime
+    elseif mime isa MIME"application/vnd.pluto.table+object"
+        table_data(x, io), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -401,6 +404,9 @@ Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
 Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+
+
+Base.showable(::MIME"application/vnd.pluto.table+object", x::Any) = Tables.rowaccess(x)
 
 
 # in the next functions you see a `context` argument
@@ -551,6 +557,26 @@ end
 
 trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
+
+###
+# TABLE VIEWER
+##
+
+function table_data(x::Any, io::IOContext)
+    rows = Table.rows(x)
+    row_data = map(rows) do row
+        format_output_default.(row; context=recur_io)
+    end
+    schema = Table.schema(rows)
+    schema_data = schema === nothing ? nothing : Dict(
+        :names => string.(schema.names),
+        :type => String.(trynameof.(schema.types)),
+    )
+    Dict(
+        :schema => schema_data,
+        :rows => row_data,
+    )
+end
 
 ###
 # REPL THINGS
