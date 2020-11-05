@@ -1,3 +1,4 @@
+import { cl } from "../common/ClassTable.js"
 import { html, useRef } from "../imports/Preact.js"
 
 import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
@@ -108,4 +109,50 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
     }
 
     return html`<jltree class="collapsed" onclick=${onclick} ref=${node_ref}>${inner}</jltree>`
+}
+
+export const TableView = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+    const node_ref = useRef(null)
+
+    const mimepair_output = (pair) => html`<${SimpleOutputBody}
+        cell_id=${cell_id}
+        mime=${pair[1]}
+        body=${pair[0]}
+        all_completed_promise=${all_completed_promise}
+        requests=${requests}
+        persist_js_state=${persist_js_state}
+    />`
+    const more = html`<r
+        ><more
+            onclick=${(e) => {
+                requests.reshow_cell(cell_id, body.objectid)
+            }}
+            >more</more
+        ></r
+    >`
+
+    console.log(body.schema)
+    const thead = html`<thead>
+        <tr>
+            ${["", ...body.schema.names].map((x) => html`<th>${x}</th>`)}
+        </tr>
+        <tr>
+            ${["", ...body.schema.type].map((x) => html`<th>${x}</th>`)}
+        </tr>
+    </thead>`
+    const tbody = html`<tbody>
+        ${body.rows.map(
+            (row, i) =>
+                html`<tr>
+                    <th>${i + 1}</th>
+                    ${row.map((x) => html`<td>${mimepair_output(x)}</td>`)}
+                </tr>`
+        )}
+    </tbody>`
+
+    return html`<div>
+        <table>
+            ${thead}${tbody}
+        </table>
+    </div>`
 }

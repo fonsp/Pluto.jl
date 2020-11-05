@@ -1,7 +1,7 @@
 import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView } from "./TreeView.js"
+import { TreeView, TableView } from "./TreeView.js"
 
 import { connect_bonds } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
@@ -44,7 +44,11 @@ export class CellOutput extends Component {
             <pluto-output
                 class=${cl({
                     rich_output:
-                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+object" && this.props.mime !== "text/plain"),
+                        this.props.errored ||
+                        !this.props.body ||
+                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                            this.props.mime !== "application/vnd.pluto.table+object" &&
+                            this.props.mime !== "text/plain"),
                 })}
                 mime=${this.props.mime}
             >
@@ -110,6 +114,17 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
         case "application/vnd.pluto.tree+object":
             return html`<div>
                 <${TreeView}
+                    cell_id=${cell_id}
+                    body=${body}
+                    all_completed_promise=${all_completed_promise}
+                    requests=${requests}
+                    persist_js_state=${persist_js_state}
+                />
+            </div>`
+            break
+        case "application/vnd.pluto.table+object":
+            return html`<div>
+                <${TableView}
                     cell_id=${cell_id}
                     body=${body}
                     all_completed_promise=${all_completed_promise}

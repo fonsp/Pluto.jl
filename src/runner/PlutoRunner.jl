@@ -574,7 +574,7 @@ function table_data(x::Any, io::IOContext)
     schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
         :names => string.(schema.names),
-        :type => String.(trynameof.(schema.types)),
+        :types => String.(trynameof.(schema.types)),
     )
     Dict(
         :objectid => objectid(x),
