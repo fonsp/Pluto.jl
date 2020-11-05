@@ -188,7 +188,7 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
             end
             to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
 
-            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false)
+            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
         end
     else
         # a bond was set while the cell is in limbo state
