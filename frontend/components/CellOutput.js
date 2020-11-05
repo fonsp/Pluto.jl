@@ -214,7 +214,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                         invalidation: invalidation,
                         ...observablehq_for_cells,
                     },
-                    code: node.innerHTML,
+                    code: node.innerText,
                 })
                 // Save result for next run
                 if (script_id != null) {
