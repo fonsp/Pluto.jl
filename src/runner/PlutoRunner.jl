@@ -563,16 +563,21 @@ trynameof(x::Any) = Symbol()
 ##
 
 function table_data(x::Any, io::IOContext)
-    rows = Table.rows(x)
+    rows = Tables.rows(x)
     row_data = map(rows) do row
-        format_output_default.(row; context=recur_io)
+        # not a map(row) because it needs to be a Vector
+        [
+            format_output_default(el; context=io)
+            for el in row
+        ]
     end
-    schema = Table.schema(rows)
+    schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
         :names => string.(schema.names),
         :type => String.(trynameof.(schema.types)),
     )
     Dict(
+        :objectid => objectid(x),
         :schema => schema_data,
         :rows => row_data,
     )
