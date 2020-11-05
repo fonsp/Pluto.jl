@@ -46,8 +46,6 @@ function set_current_module(newname)
     end
     
     global default_iocontext = IOContext(default_iocontext, :module => current_module)
-    global default_iocontext_compact = IOContext(default_iocontext_compact, :module => current_module)
-    
     global current_module = getfield(Main, newname)
 end
 
@@ -241,8 +239,6 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
-default_iocontext_compact = IOContext(default_iocontext, :compact => true)
-
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -371,7 +367,7 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, io), mime
+        tree_data(x, IOContext(io, :compact => true)), mime
     elseif mime isa MIME"application/vnd.pluto.table+object"
         table_data(x, io), mime
     elseif mime ∈ imagemimes

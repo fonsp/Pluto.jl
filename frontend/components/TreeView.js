@@ -137,7 +137,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
             ${["", ...body.schema.names].map((x) => html`<th>${x}</th>`)}
         </tr>
         <tr>
-            ${["", ...body.schema.type].map((x) => html`<th>${x}</th>`)}
+            ${["", ...body.schema.types].map((x) => html`<th>${x}</th>`)}
         </tr>
     </thead>`
     const tbody = html`<tbody>
@@ -151,7 +151,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
     </tbody>`
 
     return html`<div>
-        <table>
+        <table class="pluto-table">
             ${thead}${tbody}
         </table>
     </div>`

@@ -196,3 +196,12 @@ jlerror > section > ol > li > span {
     opacity: 0.8;
     padding: 0px 1em;
 }
+
+table.pluto-table {
+    table-layout: fixed;
+}
+
+table.pluto-table td {
+    max-width: 300px;
+    overflow: hidden;
+}
