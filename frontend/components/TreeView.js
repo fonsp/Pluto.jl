@@ -1,5 +1,5 @@
 import { cl } from "../common/ClassTable.js"
-import { html, useRef } from "../imports/Preact.js"
+import { html, useRef, useMemo } from "../imports/Preact.js"
 
 import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
 
@@ -131,7 +131,6 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         ></r
     >`
 
-    console.log(body.schema)
     const thead = html`<thead>
         <tr>
             ${["", ...body.schema.names].map((x) => html`<th>${x}</th>`)}

@@ -362,7 +362,7 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
+    mime = Iterators.filter(m -> pluto_showable(m ,x), allmimes) |> first
     
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
@@ -385,24 +385,31 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     end
 end
 
+# we write our own function instead of extending Base.showable with our new MIME because:
+# we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
+# but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
+# Baee.showable(m::MIME, x::Plots.Plot)
+# because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
+pluto_showable(m::MIME, x::Any) = Base.invokelatest(showable, m, x)
+
 ###
 # TREE VIEWER
 ###
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
-Base.showable(::MIME"application/vnd.pluto.table+object", x::Any) = Tables.rowaccess(x)
+pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = Tables.rowaccess(x)
 
 
 # in the next functions you see a `context` argument
