@@ -95,15 +95,18 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
                     >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`))}</jlarray
                 >`
             break
-            break
         case "Dict":
+            inner = html`${body.prefix}<jldict class=${body.type}
+                    >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
+                >`
+            break
         case "NamedTuple":
             inner = html`<jldict class=${body.type}
-                >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
+                >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
             >`
             break
         case "struct":
-            inner = html`${body.prefix}<jlstruct> ${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)} </jlstruct>`
+            inner = html`${body.prefix}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
             break
     }
 
