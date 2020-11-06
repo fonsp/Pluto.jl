@@ -466,6 +466,16 @@ export class Editor extends Component {
                                     loading: false,
                                 })
                                 console.info("All cells loaded! 🚂 enjoy the ride")
+                                // do one autocomplete to trigger its precompilation
+                                this.client.send(
+                                    "complete",
+                                    {
+                                        query: "sq",
+                                    },
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
                             })
                         }
                     )
