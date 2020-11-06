@@ -685,6 +685,11 @@ pluto-output {
     background-color: white;
 }
 
+.scroll_y {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
 pluto-output:focus {
     outline: none;
 }
@@ -713,7 +718,6 @@ pluto-output > assignee:empty {
 
 pluto-output > div {
     flex-shrink: 0;
-    overflow-x: auto;
     overflow-y: hidden;
 }
 

@@ -150,9 +150,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         )}
     </tbody>`
 
-    return html`<div>
-        <table class="pluto-table">
-            ${thead}${tbody}
-        </table>
-    </div>`
+    return html`<table class="pluto-table">
+        ${thead}${tbody}
+    </table>`
 }

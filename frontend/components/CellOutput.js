@@ -49,6 +49,7 @@ export class CellOutput extends Component {
                         (this.props.mime !== "application/vnd.pluto.tree+object" &&
                             this.props.mime !== "application/vnd.pluto.table+object" &&
                             this.props.mime !== "text/plain"),
+                    scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
                 mime=${this.props.mime}
             >
