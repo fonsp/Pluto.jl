@@ -117,7 +117,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
             >`
             break
         case "struct":
-            inner = html`${body.prefix}<jlstruct> ${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)} </jlstruct>`
+            inner = html`${body.prefix}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
             break
     }
 
