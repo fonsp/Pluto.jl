@@ -27,11 +27,13 @@ include("./runner/PlutoRunner.jl")
 #   PlutoRunner = $(PlutoRunner)
 # end
 include("./analysis/ExpressionExplorer.jl")
+include("./analysis/ReactiveNode.jl")
 
 include("./notebook/PathHelpers.jl")
 include("./notebook/Cell.jl")
 include("./notebook/Notebook.jl")
 include("./webserver/Session.jl")
+include("./webserver/PutUpdates.jl")
 
 include("./analysis/Errors.jl")
 include("./analysis/Parse.jl")
@@ -42,7 +44,6 @@ include("./evaluation/Update.jl")
 include("./evaluation/Run.jl")
 
 include("./webserver/MsgPack.jl")
-include("./webserver/PutUpdates.jl")
 include("./webserver/SessionActions.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")

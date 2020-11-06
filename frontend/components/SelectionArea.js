@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
@@ -50,6 +50,7 @@ export class SelectionArea extends Component {
             const t = e.target.tagName
             // TODO: also allow starting the selection in one codemirror and stretching it to another cell
             if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
+                this.props.on_selection([])
                 this.setState({
                     selection_start: { x: e.pageX, y: e.pageY },
                     selection_end: { x: e.pageX, y: e.pageY },
@@ -63,6 +64,7 @@ export class SelectionArea extends Component {
                     selection_start: null,
                     selection_end: null,
                 })
+                this.props.actions.set_scroller({ up: false, down: false })
             } else {
                 // if you didn't click on a UI element...
                 if (
@@ -104,6 +106,7 @@ export class SelectionArea extends Component {
                 return A.start_left < B.end_left && A.end_left > B.start_left && A.start_top < B.end_top && A.end_top > B.start_top
             })
 
+            this.props.actions.set_scroller({ up: selection_start.y > selection_end.y, down: selection_start.y < selection_end.y })
             this.props.on_selection(in_selection.map((x) => x.id))
             this.setState({
                 selection_end: selection_end,

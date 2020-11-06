@@ -1,12 +1,30 @@
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese");
-@import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/500-normal.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700-normal.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/700.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/900.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/500.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/700.css");
+
 @import url("juliamono.css");
+
+/* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-lato@3.0.9/400.css");
 
 /* VARIABLES */
 
 :root {
     --pluto-cell-spacing: 17px;
+    /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
+        for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
+    --pluto-operator-ligatures: none;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -14,20 +32,31 @@ html {
     font-size: 17px;
 }
 
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0px;
     overflow-anchor: none;
+    position: relative;
+
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 main {
-    min-height: calc(100vh - 80px - 3.5rem - 4rem);
-    max-width: 700px;
-    margin: 0 auto;
-    margin-top: 80px;
+    flex: 1;
+
+    max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
+    padding-top: 20px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
     align-content: center;
+    width: 100%;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -36,11 +65,13 @@ main {
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     main {
         margin-left: 0px;
+        align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
     main {
         margin-right: 500px;
+        align-self: flex-end;
     }
 }
 
@@ -136,6 +167,12 @@ pluto-output p:first-child {
     margin-block-start: 0px;
 }
 
+/* I actually just want to get rid of the margin-block-start on the p tag,
+    but css doesn't allow that. So I have to move the list up, instead of not moving it up */
+pluto-output li p + ul,
+pluto-output li p + ol {
+    margin-block-start: calc(var(--pluto-cell-spacing) * -1);
+}
 pluto-output p:last-child {
     margin-block-end: 0px;
 }
@@ -152,7 +189,17 @@ a {
 
 pluto-output code {
     font-family: JuliaMono, monospace;
-    font-size: 0.75rem;
+    font-size: 0.75em; /* not rem */
+    font-variant-ligatures: none;
+}
+
+pluto-output.rich_output code {
+    padding: 3px;
+    border-radius: 8px;
+    background-color: #f2f2f2;
+}
+pluto-output.rich_output pre code {
+    padding: 0px;
 }
 
 pluto-output pre {
@@ -163,6 +210,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-variant-ligatures: none;
 }
 
 pluto-output hr {
@@ -177,7 +225,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output:not(.inline_output) pre,
+pluto-output.rich_output pre,
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
@@ -185,7 +233,7 @@ pluto-output blockquote {
     padding: 15px;
 
     border-radius: 15px;
-    background-color: #fafafa;
+    background-color: #f2f2f2;
     color: #555;
 }
 
@@ -297,8 +345,9 @@ pluto-output table > thead {
 }
 
 pluto-output table > tbody td {
-    font-size: 0.75rem;
     font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
+    font-variant-ligatures: none;
 }
 
 pluto-output table td,
@@ -313,15 +362,15 @@ pluto-output table > tbody tr:hover {
 /* HEADER */
 
 body > header {
-    position: absolute;
-    top: 0px;
+    /* position: absolute;
+    top: 0px; */
     width: 100%;
     min-height: 60px;
 
     z-index: 5;
-    /* overflow: hidden; */
     background-color: white;
-    transition: background-color 0.5s ease-in-out, top 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
+    transform: translateY(0px);
+    transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
 
     font-family: "Roboto Mono", monospace;
@@ -334,26 +383,39 @@ body.loading > header {
 }
 
 body > header.show_export {
-    position: fixed;
-    top: 130px;
+    position: sticky;
+    top: 0;
+    transform: translateY(130px);
 }
 
 aside#export {
-    overflow-x: hidden;
     position: absolute;
-    top: -1130px;
+    top: 0;
     width: 100%;
     height: 130px;
     background: rgb(60, 67, 101);
     color: rgba(255, 255, 255, 0.7);
-    padding-top: 1000px;
+    transform: translateY(-100%);
+}
+aside#export::before {
+    content: "";
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: inherit;
 }
 aside#export div#container {
     flex-direction: row;
     display: flex;
-    max-width: calc(960px + 20px);
+    max-width: 1000px;
     padding-right: 20px;
     margin: 0 auto;
+}
+header aside#export div#container {
+    /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
+    overflow-x: hidden;
 }
 header.show_export aside#export div#container {
     overflow-x: auto;
@@ -361,8 +423,8 @@ header.show_export aside#export div#container {
 a.export_card {
     margin: 20px 5px;
     flex: 0 0 auto;
-    width: 150px;
-    height: 80px;
+    width: 160px;
+    height: 90px;
 
     border: 5px solid transparent;
     background: rgba(255, 255, 255, 0.8);
@@ -372,8 +434,8 @@ a.export_card {
     text-decoration: none;
 }
 div.export_title {
+    height: 90px;
     flex: 0 0 auto;
-    height: 80px;
     border-radius: 8px;
     text-orientation: sideways-right;
     /* Not supported by Chrome: */
@@ -381,7 +443,7 @@ div.export_title {
     writing-mode: vertical-lr;
     transform: rotate(180deg);
 
-    margin-top: 20px;
+    margin-top: 10px;
     font-weight: 700;
     font-size: 1rem;
 }
@@ -409,7 +471,7 @@ nav#at_the_top h1 {
 
 nav#at_the_top {
     margin: 0 auto;
-    max-width: 960px;
+    max-width: 1000px;
     padding-left: 20px;
     padding-right: 20px;
     flex-wrap: wrap;
@@ -430,7 +492,7 @@ nav#at_the_top > a {
 
 nav#at_the_top img {
     height: 39px;
-    margin-bottom: -11px;
+    margin-bottom: -8px;
 }
 
 nav#at_the_top h1 {
@@ -465,7 +527,7 @@ nav#at_the_top > pluto-filepicker {
 }
 
 nav#at_the_top > pluto-filepicker .CodeMirror {
-    height: calc(1rem + 4px + 4px);
+    height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
     opacity: 0.6;
@@ -517,15 +579,18 @@ nav#at_the_top:after {
 }
 
 li.file.new.CodeMirror-hint:before {
-    content: "👉 ";
+    content: "👉";
+    color: black;
 }
 
 li.file.CodeMirror-hint:before {
-    content: "📄 ";
+    content: "📄";
+    color: black;
 }
 
 li.dir.CodeMirror-hint:before {
-    content: "📁 ";
+    content: "📁";
+    color: black;
 }
 
 @media screen and (any-pointer: fine) {
@@ -551,7 +616,8 @@ li.dir.CodeMirror-hint:before {
 
 body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
-    position: fixed;
+    position: sticky;
+    top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -623,8 +689,9 @@ pluto-output:focus {
     outline: none;
 }
 
-pluto-output.inline_output {
+pluto-output:not(.rich_output) {
     display: flex;
+    flex-wrap: wrap;
     padding-top: 3px;
     padding-bottom: 3px;
 }
@@ -632,6 +699,7 @@ pluto-output.inline_output {
 pluto-output > assignee {
     font-family: JuliaMono, monospace;
     font-size: 0.75rem;
+    font-variant-ligatures: none;
 }
 
 pluto-output > assignee::after {
@@ -644,12 +712,12 @@ pluto-output > assignee:empty {
 }
 
 pluto-output > div {
-    width: 100%;
+    flex-shrink: 0;
     overflow-x: auto;
     overflow-y: hidden;
 }
 
-pluto-output.inline_output > div > pre {
+pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
@@ -811,6 +879,10 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
+    /* --patternHeight is derived from the pattern length (16px) div sin(45deg) = 16px * sqrt(2)  */
+    --patternHeight: 22.62741699797px;
+    box-sizing: content-box;
+    margin-right: -1px; /* fix a visual glitch of imperfect alignment */
     width: 4px;
     position: absolute;
     left: -4px;
@@ -821,6 +893,17 @@ pluto-trafficlight {
     border-bottom-left-radius: 4px;
     border-left-color: rgba(0, 0, 0, 0.1);
     background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+pluto-trafficlight::after {
+    content: "";
+    /* Calc needs units everywhere to work */
+    top: calc(0px - 2 * var(--patternHeight));
+    left: 0;
+    width: 100%;
+    height: calc(100% + 2 * var(--patternHeight));
+    position: absolute;
 }
 
 /* in ascending order of severity: */
@@ -862,21 +945,21 @@ pluto-cell.errored > pluto-trafficlight {
     background-clip: content-box;
 }
 
-pluto-cell.queued > pluto-trafficlight {
+pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.running > pluto-trafficlight {
+pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.queued.errored > pluto-trafficlight {
+pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         hsla(0, 70%, 80%, 0.7),
@@ -885,24 +968,24 @@ pluto-cell.queued.errored > pluto-trafficlight {
         hsla(0, 70%, 80%, 0.05) 16px
     );
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.running.errored > pluto-trafficlight {
+pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+/* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {
-        background-position-y: 0px;
+        transform: translateY(0px);
     }
     100% {
-        background-position-y: 22627.41699797px;
-        /* 16 * sqrt(2) */
+        transform: translateY(calc(var(--patternHeight)));
     }
 }
 
@@ -1103,82 +1186,150 @@ dropruler {
 
 #helpbox-wrapper {
     display: none;
+    position: sticky;
+    bottom: 0px;
+    height: 0px;
+    width: 100%;
+    z-index: 5;
 }
 
-@media screen and (min-width: calc(700px + 25px + 6px + 350px)) {
+@media screen and (min-width: 500px) {
     #helpbox-wrapper {
         display: block;
-        position: sticky;
-        bottom: 0px;
-        height: 0px;
-        z-index: 5;
     }
-    pluto-helpbox {
-        bottom: 0px;
-        right: 20px;
-        position: absolute;
-        display: flex;
-        flex-direction: column;
-        width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
-        width: calc(min(100vw - 50px - (700px + 25px + 6px), 450px));
-        height: 70vh; /* compat */
-        height: min(70vh, 900px);
-        /* overflow: hidden; */
-        background-color: white;
-        /* border: 2px solid darkgray; */
-        border-right: none;
-        border-bottom: none;
-        border-top-left-radius: 9px;
-        box-shadow: 0 0 11px 0px #00000010;
-        font-family: "Alegreya Sans", sans-serif;
-    }
-    pluto-helpbox > header {
-        padding: 15px;
-        background-color: #eef1f7;
-        color: hsl(230, 14%, 11%);
-        font-family: "Roboto Mono", monospace;
-        font-weight: 700;
-        cursor: pointer;
-        border-top-left-radius: 6px;
-        border-top-right-radius: 6px;
-        /* border-top: 4px solid #8a8a8a; */
-    }
-    pluto-helpbox > section {
-        height: 100%;
-        overflow: auto;
-        padding: 10px;
-    }
-    pluto-helpbox > section h1,
-    pluto-helpbox > section h2,
-    pluto-helpbox > section h3,
-    pluto-helpbox > section h4,
-    pluto-helpbox > section h5,
-    pluto-helpbox > section h6 {
-        font-family: inherit;
-        border-bottom: none;
-        font-size: 1rem;
-    }
-    pluto-helpbox > section h1 {
-        font-size: 1.3rem;
-    }
-    pluto-helpbox > section pre {
-        overflow-x: auto;
-    }
-    pluto-helpbox.hidden {
-        height: initial;
-    }
-    pluto-helpbox.hidden > section {
-        display: none;
-    }
-    pluto-helpbox > header::before {
-        content: "📖 ";
-    }
-    /* pluto-helpbox.loading>header::before{
-                content: "⌛ ";
-            } */
-    pluto-helpbox.hidden > header::before {
-        content: "📚 ";
-    }
+}
+pluto-helpbox {
+    bottom: 0px;
+    right: 20px;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    width: calc(100vw - 50px - (700px + 25px + 6px)); /* compat */
+    width: calc(max(min(100vw - 50px - (700px + 25px + 6px), 450px), 300px));
+    height: 70vh; /* compat */
+    height: min(70vh, 900px);
+    /* overflow: hidden; */
+    background-color: white;
+    /* border: 2px solid darkgray; */
+    border-right: none;
+    border-bottom: none;
+    border-top-left-radius: 9px;
+    border-top-right-radius: 9px;
+    box-shadow: 0 0 11px 0px #00000010;
+}
+pluto-helpbox > header {
+    display: flex;
+    padding: 15px;
+    background-color: #eef1f7;
+    color: hsl(230, 14%, 11%);
+    font-family: "Roboto Mono", monospace;
+    font-weight: 700;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    /* border-top: 4px solid #8a8a8a; */
+}
+pluto-helpbox > header::before {
+    content: "📖 ";
+    margin-right: 10px;
+}
+/* pluto-helpbox.loading>header::before{
+    content: "⌛ ";
+    margin-right: 10px;
+} */
+pluto-helpbox.hidden > header::before {
+    content: "📚 ";
+    margin-right: 10px;
+}
+pluto-helpbox > header > input {
+    flex-grow: 1;
+    background-color: inherit;
+    color: inherit;
+    font-family: inherit;
+    font-weight: inherit;
+    font-size: inherit;
+    border: none;
+}
+pluto-helpbox > header > input:focus {
+    outline: none;
+}
+pluto-helpbox > header > button {
+    border: none;
+    background: none;
+    cursor: pointer;
+
+    /* for bigger hitbox */
+    margin: -15px;
+    border: 15px solid transparent;
+}
+pluto-helpbox > header > button > span {
+    display: block;
+    content: " " !important;
+    background-size: 1em 1em;
+    height: 1em;
+    width: 1em;
+    background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/chevron-down-outline.svg");
+}
+pluto-helpbox.hidden {
+    height: initial;
+    cursor: pointer;
+}
+pluto-helpbox.hidden > section {
+    display: none;
+}
+
+/* NOTE */
+/* We try to match the visual style of Documenter.jl, so we have copied over some rules from */
+/* https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
+/* see https://github.com/JuliaDocs/Documenter.jl for author information */
+
+pluto-helpbox {
+    font-family: "Lato", -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", "Helvetica", "Arial", sans-serif;
+    line-height: 1.5;
+}
+pluto-helpbox pre,
+pluto-helpbox code {
+    /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
+    font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
+    font-size: 0.875em;
+}
+pluto-helpbox pre code {
+    font-size: 1em;
+}
+
+pluto-helpbox > section {
+    height: 100%;
+    overflow: auto;
+    padding: 10px;
+}
+pluto-helpbox > section h1,
+pluto-helpbox > section h2,
+pluto-helpbox > section h3,
+pluto-helpbox > section h4,
+pluto-helpbox > section h5,
+pluto-helpbox > section h6 {
+    font-family: inherit;
+    border-bottom: none;
+    font-size: 1rem;
+}
+pluto-helpbox > section h1 {
+    font-size: 1.3rem;
+}
+pluto-helpbox > section pre {
+    padding: 0.7rem 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+    background: whitesmoke;
+    border: 1px solid #dbdbdb;
+    white-space: pre;
+    word-wrap: normal;
+}
+/* pluto-helpbox > section code {
+    background-color: whitesmoke;
+    padding: 0.1em;
+} */
+pluto-helpbox > section hr {
+    border: none;
+    border-top: 3px solid rgba(0, 0, 0, 0.15);
 }
 
 /* FOOTER */
@@ -1214,7 +1365,7 @@ footer form > label {
 }
 
 footer form > a {
-    margin-right: auto;
+    margin-right: 1em;
 }
 
 footer a {
@@ -1342,6 +1493,27 @@ body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
 }
 
+/* CODEMIRROR HINTS */
+
+li.CodeMirror-hint {
+    /* this is the line height rounded to an integer to prevent jiggle */
+    height: 16px;
+}
+
+li.CodeMirror-hint.c_notexported {
+    color: rgba(0, 0, 0, 0.5);
+}
+li.CodeMirror-hint-active.c_notexported {
+    color: white;
+}
+
+li.CodeMirror-hint::before {
+    content: "⚫";
+    color: transparent;
+    margin-right: 0.5em;
+    opacity: 1;
+}
+
 /* CODEMIRROR STYLE */
 
 /*
@@ -1352,17 +1524,24 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 ul.CodeMirror-hints {
     padding: 0;
+    margin-left: -1.5em;
 }
 
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
+    font-variant-ligatures: none;
     font-size: 0.75em;
 }
 
 .cm-s-default.CodeMirror {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
+}
+
+.cm-s-default.CodeMirror pre.CodeMirror-line,
+.cm-s-default.CodeMirror pre.CodeMirror-line-like {
+    font-variant-ligatures: none;
 }
 
 .cm-s-default div.CodeMirror-selected {
@@ -1382,12 +1561,14 @@ ul.CodeMirror-hints {
 }
 
 .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 90%, 98%, 1);
+    /* background: hsla(46, 90%, 98%, 1); */
+    background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
 pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
-    background: hsla(46, 70%, 88%, 1);
+    /* background: hsla(46, 70%, 88%, 1); */
+    background-color: rgba(214, 172, 35, 0.2);
 }
 
 .cm-s-default .CodeMirror-guttermarker {
@@ -1432,6 +1613,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #815ba4;
 }
 
+li.CodeMirror-hint.c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
 }
@@ -1445,10 +1627,16 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #ef6155;
 }
 
+li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
     color: #ce7d0a;
 }
 
+.cm-s-default span.cm-operator {
+    font-variant-ligatures: var(--pluto-operator-ligatures);
+}
+
+li.CodeMirror-hint.c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -1464,10 +1652,12 @@ pluto-output > assignee,
     color: #06b6ef;
 }
 
+li.CodeMirror-hint.c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
+li.CodeMirror-hint.c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
 }

@@ -2,8 +2,6 @@ using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
 import Distributed
-import JSON
-
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
@@ -88,125 +86,6 @@ import JSON
 
     🍭.options.evaluation.workspace_use_distributed = false
 
-    begin
-        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \$"
-        notebook = Notebook([
-            Cell("a\\"),
-            Cell("1 = 2"),
-            
-            Cell("b = 3.0\nb = 3"),
-            Cell("\n# uhm\n\nc = 4\n\n# wowie \n\n"),
-            Cell("d = 5;"),
-            Cell("e = 6; f = 6"),
-            Cell("g = 7; h = 7;"),
-            Cell("\n\n0 + 8; 0 + 8;\n\n\n"),
-            Cell("0 + 9; 9;\n\n\n"),
-            Cell("0 + 10;\n10;"),
-            Cell("0 + 11;\n11"),
-            
-            Cell("sqrt(-12)"),
-            Cell("\n\nsqrt(-13)"),
-            Cell("\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend"),
-            Cell("w(-15)"),
-            Cell("error(" * sprint(Base.print_quoted, escape_me) * ")")
-        ])
-        fakeclient.connected_notebook = notebook
-
-        @testset "Strange code"  begin
-            update_run!(🍭, notebook, notebook.cells[1])
-            update_run!(🍭, notebook, notebook.cells[2])
-            @test notebook.cells[1].errored == true
-            @test notebook.cells[2].errored == true
-
-        end
-        @testset "Mutliple expressions & semicolon"  begin
-
-            update_run!(🍭, notebook, notebook.cells[3:end])
-            @test occursinerror("syntax: extra token after", notebook.cells[3])
-
-            @test notebook.cells[4].errored == false
-            @test notebook.cells[4].output_repr == "4"
-            @test notebook.cells[4].rootassignee == :c
-
-            @test notebook.cells[5].errored == false
-            @test notebook.cells[5].output_repr == ""
-            @test notebook.cells[5].rootassignee === nothing
-
-            @test notebook.cells[6].errored == false
-            @test notebook.cells[6].output_repr == "6"
-            @test notebook.cells[6].rootassignee === nothing
-
-            @test notebook.cells[7].errored == false
-            @test notebook.cells[7].output_repr == ""
-            @test notebook.cells[7].rootassignee === nothing
-
-            @test notebook.cells[8].errored == false
-            @test notebook.cells[8].output_repr == ""
-
-            @test notebook.cells[9].errored == false
-            @test notebook.cells[9].output_repr == ""
-
-            @test occursinerror("syntax: extra token after", notebook.cells[10])
-
-            @test occursinerror("syntax: extra token after", notebook.cells[11])
-        end
-
-        @testset "Stack traces" begin
-            @test_nowarn update_run!(🍭, notebook, notebook.cells[12:16])
-
-            @test occursinerror("DomainError", notebook.cells[12])
-            let
-                st = JSON.parse(notebook.cells[12].output_repr)
-                @test length(st["stacktrace"]) == 4 # check in REPL
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 1
-                    @test occursin(notebook.cells[12].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            @test occursinerror("DomainError", notebook.cells[13])
-            let
-                st = JSON.parse(notebook.cells[13].output_repr)
-                @test length(st["stacktrace"]) == 4
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[13].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            @test occursinerror("DomainError", notebook.cells[15])
-            let
-                st = JSON.parse(notebook.cells[15].output_repr)
-                @test length(st["stacktrace"]) == 5
-
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[14].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-
-                    @test st["stacktrace"][5]["line"] == 1
-                    @test occursin(notebook.cells[15].cell_id |> string, st["stacktrace"][5]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][5]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            let
-                st = JSON.parse(notebook.cells[16].output_repr)
-                @test occursin(escape_me, st["msg"])
-            end
-
-        end
-        WorkspaceManager.unmake_workspace((🍭, notebook))
-    end
-
     @testset "Mutliple assignments" begin
         notebook = Notebook([
             Cell("x = 1"),
@@ -260,7 +139,7 @@ import JSON
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Mutliple assignments" begin
+    @testset "Mutliple assignments topology" begin
         notebook = Notebook([
             Cell("x = 1"),
             Cell("z = 4 + y"),
@@ -281,17 +160,224 @@ import JSON
         end
     end
 
-    @testset "Cyclic" begin
+    
+    @testset "Multiple methods across cells" begin
         notebook = Notebook([
-            Cell("x = y"),
-            Cell("y = x")
+            Cell("a(x) = 1"),
+            Cell("a(x,y) = 2"),
+            Cell("a(3)"),
+            Cell("a(4,4)"),
+
+            Cell("b = 5"),
+            Cell("b(x) = 6"),
+            Cell("b + 7"),
+            Cell("b(8)"),
+
+            Cell("Base.tan(x::String) = 9"),
+            Cell("Base.tan(x::Missing) = 10"),
+            Cell("Base.tan(\"eleven\")"),
+            Cell("Base.tan(missing)"),
+            Cell("tan(missing)"),
+
+            Cell("d(x::Integer) = 14"),
+            Cell("d(x::String) = 15"),
+            Cell("d(16)"),
+            Cell("d(\"seventeen\")"),
+            Cell("d"),
+
+            Cell("struct e; x; y; end"),
+            Cell(""),
+            Cell("e(21, 21)"),
+            Cell("e(22)"),
         ])
         fakeclient.connected_notebook = notebook
 
+        update_run!(🍭, notebook, notebook.cells[1:4])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].output_repr == "1"
+        @test notebook.cells[4].output_repr == "2"
+
+        setcode(notebook.cells[1], "a(x,x) = 999")
         update_run!(🍭, notebook, notebook.cells[1])
-        update_run!(🍭, notebook, notebook.cells[2])
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+        @test notebook.cells[3].errored == true
+        @test notebook.cells[4].errored == true
+        
+        setcode(notebook.cells[1], "a(x) = 1")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].output_repr == "1"
+        @test notebook.cells[4].output_repr == "2"
+
+        setcode(notebook.cells[1], "")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == true
+        @test notebook.cells[4].output_repr == "2"
+
+        update_run!(🍭, notebook, notebook.cells[5:8])
+        @test notebook.cells[5].errored == true
+        @test notebook.cells[6].errored == true
+        @test notebook.cells[7].errored == true
+        @test notebook.cells[8].errored == true
+
+        setcode(notebook.cells[5], "")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == true
+        @test notebook.cells[8].output_repr == "6"
+
+        setcode(notebook.cells[5], "b = 5")
+        setcode(notebook.cells[6], "")
+        update_run!(🍭, notebook, notebook.cells[5:6])
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].output_repr == "12"
+        @test notebook.cells[8].errored == true
+
+        update_run!(🍭, notebook, notebook.cells[11:13])
+        @test notebook.cells[12].output_repr == "missing"
+
+        update_run!(🍭, notebook, notebook.cells[9:10])
+        @test notebook.cells[9].errored == false
+        @test notebook.cells[10].errored == false
+        @test notebook.cells[11].output_repr == "9"
+        @test notebook.cells[12].output_repr == "10"
+        @test_broken notebook.cells[13].output_repr == "10"
+        update_run!(🍭, notebook, notebook.cells[13])
+        @test notebook.cells[13].output_repr == "10"
+
+        setcode(notebook.cells[9], "")
+        update_run!(🍭, notebook, notebook.cells[9])
+        @test notebook.cells[11].errored == true
+        @test notebook.cells[12].output_repr == "10"
+
+        setcode(notebook.cells[10], "")
+        update_run!(🍭, notebook, notebook.cells[10])
+        @test notebook.cells[11].errored == true
+        @test notebook.cells[12].output_repr == "missing"
+
+        # Cell("d(x::Integer) = 14"),
+        # Cell("d(x::String) = 15"),
+        # Cell("d(16)"),
+        # Cell("d(\"seventeen\")"),
+        # Cell("d"),
+
+        update_run!(🍭, notebook, notebook.cells[16:18])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == true
+
+        update_run!(🍭, notebook, notebook.cells[14])
+        @test notebook.cells[16].errored == false
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == false
+
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[16].errored == false
+        @test notebook.cells[17].errored == false
+        @test notebook.cells[18].errored == false
+
+        setcode(notebook.cells[14], "")
+        update_run!(🍭, notebook, notebook.cells[14])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == false
+        @test notebook.cells[18].errored == false
+
+        setcode(notebook.cells[15], "")
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[16].errored == true
+        @test notebook.cells[17].errored == true
+        @test notebook.cells[18].errored == true
+        @test occursinerror("UndefVarError", notebook.cells[18])
+
+        # Cell("struct e; x; y; end"),
+        # Cell(""),
+        # Cell("e(21, 21)"),
+        # Cell("e(22)"),
+
+        update_run!(🍭, notebook, notebook.cells[19:22])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[20], "e(x) = e(x,x)")
+        update_run!(🍭, notebook, notebook.cells[20])
+        @test occursinerror("Multiple definitions", notebook.cells[19])
+        @test occursinerror("Multiple definitions", notebook.cells[20])
+        @test notebook.cells[21].errored == true
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[20], "")
+        update_run!(🍭, notebook, notebook.cells[20])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[20].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == true
+
+        setcode(notebook.cells[19], "begin struct e; x; y; end; e(x) = e(x,x); end")
+        setcode(notebook.cells[20], "")
+        update_run!(🍭, notebook, notebook.cells[19:20])
+        @test notebook.cells[19].errored == false
+        @test notebook.cells[20].errored == false
+        @test notebook.cells[21].errored == false
+        @test notebook.cells[22].errored == false
+
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+        # for lots of unsupported edge cases, see:
+        # https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
+    end
+
+    @testset "Cyclic" begin
+        notebook = Notebook([
+            Cell("xxx = yyy"),
+            Cell("yyy = xxx"),
+            Cell("zzz = yyy")
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells[1:3])
+        @test occursinerror("Cyclic reference", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("UndefVarError", notebook.cells[3])
+
+        setcode(notebook.cells[1], "xxx = 1")
+        update_run!(🍭, notebook, notebook.cells[1])
+        @test notebook.cells[1].output_repr == "1"
+        @test notebook.cells[2].output_repr == "1"
+        @test notebook.cells[3].output_repr == "1"
+
+        setcode(notebook.cells[1], "xxx = zzz")
+        update_run!(🍭, notebook, notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("Cyclic reference", notebook.cells[3])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("zzz", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("zzz", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[3])
+        @test occursinerror("yyy", notebook.cells[3])
+        @test occursinerror("zzz", notebook.cells[3])
+
+        setcode(notebook.cells[3], "zzz = 3")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[1].output_repr == "3"
+        @test notebook.cells[2].output_repr == "3"
+        @test notebook.cells[3].output_repr == "3"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -299,18 +385,36 @@ import JSON
     @testset "Variable deletion" begin
         notebook = Notebook([
             Cell("x = 1"),
-            Cell("y = x")
+            Cell("y = x"),
+            Cell("struct a; x end"),
+            Cell("a")
         ])
         fakeclient.connected_notebook = notebook
 
-        update_run!(🍭, notebook, notebook.cells[1])
-        update_run!(🍭, notebook, notebook.cells[2])
+        update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
+        
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == ""
         @test notebook.cells[1].errored == false
         @test occursinerror("x not defined", notebook.cells[2])
+
+        update_run!(🍭, notebook, notebook.cells[4])
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        setcode(notebook.cells[3], "struct a; x; y end")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        setcode(notebook.cells[3], "")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == true
+
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -523,9 +627,9 @@ import JSON
         @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
-        original_repr = sprint(Pluto.PlutoRunner.show_richest, Ref((25, :fish)))
+        original_repr = Pluto.PlutoRunner.format_output(Ref((25, :fish)))[1]
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr == original_repr
+        @test notebook.cells[25].output_repr isa Dict
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
         @test_broken notebook.cells[25].output_repr == "🐟" # cell'🍭 don't automatically call `show` again when a new overload is defined - that'🍭 a minor issue
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
@@ -534,7 +638,7 @@ import JSON
         setcode(notebook.cells[26], "")
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr == original_repr
+        @test notebook.cells[25].output_repr isa Dict
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output_repr == "false"
@@ -571,7 +675,7 @@ import JSON
     @testset "Functional programming" begin
         notebook = Notebook([
             Cell("a = 1"),
-            Cell("map(2:2) do val; (global a = val; 2*val) end |> last"),
+            Cell("map(2:2) do val; (a = val; 2*val) end |> last"),
 
             Cell("b = 3"),
             Cell("g = f"),
@@ -584,12 +688,7 @@ import JSON
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
-        @test occursinerror("Multiple definitions for a", notebook.cells[1])
-        @test occursinerror("Multiple definitions for a", notebook.cells[2])
-
-        setcode(notebook.cells[1], "a")
-        update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == "2"
+        @test notebook.cells[1].output_repr == "1"
         @test notebook.cells[2].output_repr == "4"
 
         update_run!(🍭, notebook, notebook.cells[3:6])
@@ -615,7 +714,7 @@ import JSON
         
     end
 
-    @testset "Immutable globals" begin
+    @testset "Global assignments inside functions" begin
     # We currently have a slightly relaxed version of immutable globals:
     # globals can only be mutated/assigned _in a single cell_.
         notebook = Notebook([
@@ -624,12 +723,23 @@ import JSON
             Cell("y = -3; y = 3"),
             Cell("z = 4"),
             Cell("let global z = 5 end"),
-            Cell("w"),
-            Cell("function f(x) global w = x end"),
-            Cell("f(8)"),
+            Cell("wowow"),
+            Cell("function floep(x) global wowow = x end"),
+            Cell("floep(8)"),
             Cell("v"),
             Cell("function g(x) global v = x end; g(10)"),
             Cell("g(11)"),
+            Cell("let
+                    local r = 0
+                    function f()
+                        r = 12
+                    end
+                    f()
+                    r
+                end"),
+            Cell("apple"),
+            Cell("map(14:14) do i; global apple = orange; end"),
+            Cell("orange = 15"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -653,22 +763,33 @@ import JSON
     
         update_run!(🍭, notebook, notebook.cells[6:7])
         @test occursinerror("UndefVarError", notebook.cells[6])
-        @test notebook.cells[7].errored == false
+
+        # @test_broken occursinerror("assigns to global", notebook.cells[7])
+        # @test_broken occursinerror("wowow", notebook.cells[7])
+        # @test_broken occursinerror("floep", notebook.cells[7])
     
         update_run!(🍭, notebook, notebook.cells[8])
-        @test occursinerror("UndefVarError", notebook.cells[6])
-        @test occursinerror("Multiple definitions for w", notebook.cells[7])
-        @test occursinerror("Multiple definitions for w", notebook.cells[8])
+        @test_broken !occursinerror("UndefVarError", notebook.cells[6])
 
         update_run!(🍭, notebook, notebook.cells[9:10])
-        @test notebook.cells[9].output_repr == "10"
-        @test notebook.cells[9].errored == false
+        @test !occursinerror("UndefVarError", notebook.cells[9])
         @test notebook.cells[10].errored == false
 
         update_run!(🍭, notebook, notebook.cells[11])
-        @test occursinerror("UndefVarError", notebook.cells[9])
-        @test occursinerror("Multiple definitions for v", notebook.cells[10])
-        @test occursinerror("Multiple definitions for v", notebook.cells[11])
+        @test_broken notebook.cells[9].errored == true
+        @test_broken notebook.cells[10].errored == true
+        @test_broken notebook.cells[11].errored == true
+
+        update_run!(🍭, notebook, notebook.cells[12])
+        @test notebook.cells[12].output_repr == "12"
+
+        update_run!(🍭, notebook, notebook.cells[13:15])
+        @test notebook.cells[13].output_repr == "15"
+        @test notebook.cells[14].errored == false
+
+        setcode(notebook.cells[15], "orange = 10005")
+        update_run!(🍭, notebook, notebook.cells[15])
+        @test notebook.cells[13].output_repr == "10005"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

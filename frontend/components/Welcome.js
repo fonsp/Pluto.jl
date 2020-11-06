@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
@@ -53,8 +53,7 @@ export const process_path_or_url = async (path_or_url) => {
                 path_or_url: files[0].raw_url,
             }
         } else if (u.host === "github.com") {
-            u.host = "raw.githubusercontent.com"
-            u.pathname = u.pathname.replace("/blob", "")
+            u.searchParams.set("raw", "true")
         }
         return {
             type: "url",
@@ -69,8 +68,8 @@ export const process_path_or_url = async (path_or_url) => {
 }
 
 // /open will execute a script from your hard drive, so we include a token in the URL to prevent a mean person from getting a bad file on your computer _using another hypothetical intrusion_, and executing it using Pluto
-export const link_open_path = (path, secret) => "open?" + new URLSearchParams({ path: path, secret: secret }).toString()
-export const link_open_url = (url, secret) => "open?" + new URLSearchParams({ url: url, secret: secret }).toString()
+export const link_open_path = (path) => "open?" + new URLSearchParams({ path: path }).toString()
+export const link_open_url = (url) => "open?" + new URLSearchParams({ url: url }).toString()
 export const link_edit = (notebook_id) => "edit?id=" + notebook_id
 
 export class Welcome extends Component {
@@ -135,11 +134,12 @@ export class Welcome extends Component {
         const on_connection_status = (val) => this.setState({ connected: val })
 
         this.client = {}
-        create_pluto_connection({
+        this.client_promise = create_pluto_connection({
             on_unrequested_update: on_update,
             on_connection_status: on_connection_status,
             on_reconnect: () => true,
-        }).then((client) => {
+        })
+        this.client_promise.then((client) => {
             Object.assign(this.client, client)
 
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
@@ -204,11 +204,11 @@ export class Welcome extends Component {
             const processed = await process_path_or_url(new_path)
             if (processed.type === "path") {
                 document.body.classList.add("loading")
-                window.location.href = link_open_path(processed.path_or_url, this.client.secret)
+                window.location.href = link_open_path(processed.path_or_url)
             } else {
                 if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
                     document.body.classList.add("loading")
-                    window.location.href = link_open_url(processed.path_or_url, this.client.secret)
+                    window.location.href = link_open_url(processed.path_or_url)
                 }
             }
         }
@@ -239,7 +239,7 @@ export class Welcome extends Component {
                 set_notebook_state(nb.path, {
                     transitioning: true,
                 })
-                fetch(link_open_path(nb.path, this.client.secret), {
+                fetch(link_open_path(nb.path), {
                     method: "GET",
                 })
                     .then((r) => {
@@ -287,7 +287,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path, this.client.secret)} title=${nb.path}>${shortpath(nb.path)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortpath(nb.path)}</a>
                 </li>`
             })
         }

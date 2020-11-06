@@ -1,8 +1,8 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea } from "./RunArea.js"
+import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 
 /**
@@ -25,6 +25,7 @@ import { cl } from "../common/ClassTable.js"
  * @property {boolean} errored
  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
  * @property {boolean} selected
+ * @property {boolean} pasted
  */
 
 /**
@@ -55,6 +56,7 @@ export const empty_cell_data = (cell_id) => {
             rootassignee: null,
         },
         selected: false,
+        pasted: false,
     }
 }
 
@@ -81,6 +83,7 @@ export const Cell = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     all_completed_promise,
     selected_friends,
     requests,
@@ -89,7 +92,7 @@ export const Cell = ({
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-
+    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -110,6 +113,11 @@ export const Cell = ({
         }
     }, [])
 
+    const class_code_differs = remote_code.body !== local_code.body
+    const class_code_folded = code_folded && cm_forced_focus == null
+
+    let show_input = errored || class_code_differs || !class_code_folded
+
     return html`
         <pluto-cell
             class=${cl({
@@ -117,8 +125,8 @@ export const Cell = ({
                 running: running,
                 errored: errored,
                 selected: selected,
-                code_differs: remote_code.body !== local_code.body,
-                code_folded: code_folded && cm_forced_focus == null,
+                code_differs: class_code_differs,
+                code_folded: class_code_folded,
             })}
             id=${cell_id}
         >
@@ -146,11 +154,13 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
-            <${CellInput}
-                is_hidden=${!errored && code_folded && cm_forced_focus == null}
+            ${show_input &&
+            html`<${CellInput}
+                local_code=${local_code}
                 remote_code=${remote_code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
+                scroll_into_view_after_creation=${scroll_into_view_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_submit=${(new_code) => {
@@ -158,7 +168,7 @@ export const Cell = ({
                 }}
                 on_delete=${() => {
                     const friends = selected_friends(cell_id)
-                    requests.confirm_delete_multiple(friends)
+                    requests.confirm_delete_multiple("Delete", friends)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")
@@ -175,7 +185,7 @@ export const Cell = ({
                 client=${client}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-            />
+            />`}
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {
@@ -190,7 +200,7 @@ export const Cell = ({
                         }
                     }
                 }}
-                runtime=${runtime}
+                runtime=${localTimeRunning || runtime}
             />
             <button
                 onClick=${() => {

@@ -1,7 +1,11 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+
+// @ts-ignore
+const CodeMirror = window.CodeMirror
 
 const clear_selection = (cm) => {
     const c = cm.getCursor()
@@ -12,10 +16,11 @@ const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
 
 export const CellInput = ({
-    is_hidden,
+    local_code,
     remote_code,
     disable_input,
     focus_after_creation,
+    scroll_into_view_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
     on_submit,
@@ -35,17 +40,20 @@ export const CellInput = ({
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
 
+    const time_last_being_force_focussed_ref = useRef(0)
+    const time_last_genuine_backspace = useRef(0)
+
     useEffect(() => {
         remote_code_ref.current = remote_code
     }, [remote_code])
 
     useEffect(() => {
-        const cm = (cm_ref.current = window.CodeMirror(
+        const cm = (cm_ref.current = CodeMirror(
             (el) => {
                 dom_node_ref.current.appendChild(el)
             },
             {
-                value: remote_code.body,
+                value: local_code.body,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -58,6 +66,14 @@ export const CellInput = ({
                     client: client,
                     notebook_id: notebook_id,
                     on_update_doc_query: on_update_doc_query,
+                    extraKeys: {
+                        ".": (cm, { pick }) => {
+                            pick()
+                            cm.replaceSelection(".")
+                            cm.showHint()
+                        },
+                        // "(": (cm, { pick }) => pick(),
+                    },
                 },
                 matchBrackets: true,
             }
@@ -76,13 +92,14 @@ export const CellInput = ({
         }
         // Page up and page down are fn+Up and fn+Down on recent apple keyboards
         keys["PageUp"] = () => {
-            on_focus_neighbor(cell_id, -1)
+            on_focus_neighbor(cell_id, -1, 0, 0)
         }
         keys["PageDown"] = () => {
-            on_focus_neighbor(cell_id, +1)
+            on_focus_neighbor(cell_id, +1, 0, 0)
         }
         keys["Shift-Tab"] = "indentLess"
         keys["Tab"] = on_tab_key
+        keys["Ctrl-Space"] = () => cm.showHint()
         keys["Ctrl-D"] = () => {
             if (cm.somethingSelected()) {
                 const sels = cm.getSelections()
@@ -97,7 +114,7 @@ export const CellInput = ({
         }
         keys["Ctrl-/"] = () => {
             const old_value = cm.getValue()
-            cm.toggleComment({indent: true})
+            cm.toggleComment({ indent: true })
             const new_value = cm.getValue()
             if (old_value === new_value) {
                 // the commenter failed for some reason
@@ -192,23 +209,65 @@ export const CellInput = ({
         keys["Alt-Down"] = () => alt_move(+1)
 
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
+            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
+            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
+
             if (cm.lineCount() === 1 && cm.getValue() === "") {
-                on_focus_neighbor(cell_id, -1)
-                on_delete()
-                console.log("backspace!")
+                // I wanted to write comments, but I think my variable names are documentation enough
+                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
+                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
+                    on_focus_neighbor(cell_id, -1)
+                    on_delete()
+                }
             }
-            return window.CodeMirror.Pass
+
+            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+            if (enough_time_passed_since_force_focus) {
+                time_last_genuine_backspace.current = Date.now()
+                return CodeMirror.Pass
+            } else {
+                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
+                time_last_being_force_focussed_ref.current = Date.now()
+            }
         }
         keys["Delete"] = keys["Ctrl-Delete"] = () => {
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
-                console.log("delete!")
             }
-            return window.CodeMirror.Pass
+            return CodeMirror.Pass
         }
 
+        /** Basically any variable inside an useEffect is already a ref
+         * so I'll just roll with this abstraction
+         * @param {(time_since: Number) => any} fn
+         */
+        let with_time_since_last = (fn) => {
+            let last_invoke_time = -Infinity // This infinity is for you, Fons
+            return () => {
+                let result = fn(Date.now() - last_invoke_time)
+                last_invoke_time = Date.now()
+                return result
+            }
+        }
+        keys["Up"] = with_time_since_last((elapsed) => {
+            if (cm.getCursor().line == 0 && elapsed > 300) {
+                on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
+            } else {
+                return CodeMirror.Pass
+            }
+        })
+        keys["Down"] = with_time_since_last((elapsed) => {
+            if (cm.getCursor().line == cm.lastLine() && elapsed > 300) {
+                on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
+            } else {
+                return CodeMirror.Pass
+            }
+        })
+
         cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
+        cm.setOption("autoCloseBrackets", true)
 
         cm.on("cursorActivity", () => {
             if (cm.somethingSelected()) {
@@ -230,7 +289,7 @@ export const CellInput = ({
             }
         })
 
-        cm.on("change", () => {
+        cm.on("change", (_, e) => {
             const new_value = cm.getValue()
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
@@ -251,6 +310,9 @@ export const CellInput = ({
         if (focus_after_creation) {
             cm.focus()
         }
+        if (scroll_into_view_after_creation) {
+            dom_node_ref.current.scrollIntoView()
+        }
 
         document.fonts.ready.then(() => {
             cm.refresh()
@@ -268,17 +330,12 @@ export const CellInput = ({
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
         } else {
+            time_last_being_force_focussed_ref.current = Date.now()
+            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line == Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
             cm_ref.current.focus()
-            cm_ref.current.setSelection(...cm_forced_focus)
+            cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
-
-    // if the CodeMirror initialized/changed while it was hidden, and it suddely became unhidden, we need to refresh it to fix a layout bug where the gutter takes no horizontal space.
-    useLayoutEffect(() => {
-        if (!is_hidden) {
-            cm_ref.current && cm_ref.current.refresh()
-        }
-    }, [is_hidden])
 
     // TODO effect hook for disable_input?
 
@@ -287,7 +344,6 @@ export const CellInput = ({
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
         </pluto-input>
     `
-    // TODO: confirm delete
 }
 
 const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
@@ -322,14 +378,18 @@ const juliahints = (cm, options) => {
                 notebook_id: options.notebook_id,
             }
         )
-        .then((update) => {
+        .then(({ message }) => {
             const completions = {
-                list: update.message.results,
-                from: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.start)),
-                to: window.CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, update.message.stop)),
+                list: message.results.map(([text, type_description, is_exported]) => ({
+                    text: text,
+                    className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                    // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+                })),
+                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
+                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
             }
-            window.CodeMirror.on(completions, "select", (val) => {
-                options.on_update_doc_query(module_expanded_selection(cm, val, cursor.line, completions.from.ch))
+            CodeMirror.on(completions, "select", (val) => {
+                options.on_update_doc_query(module_expanded_selection(cm, val.text, cursor.line, completions.from.ch))
             })
             return completions
         })

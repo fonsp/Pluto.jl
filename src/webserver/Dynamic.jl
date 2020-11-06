@@ -159,41 +159,46 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
     bound_sym = Symbol(body["sym"])
     new_val = body["val"]
 
-    any_dependents = !isempty(where_assigned(notebook, notebook.topology, Set{Symbol}([bound_sym])))
-    
-    # assume body["is_first_value"] == false if you want to skip an edge case in this code
-    
-    triggered_other_cells = if body["is_first_value"]
-        # fix for https://github.com/fonsp/Pluto.jl/issues/275
-        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+    variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+    if variable_exists
+        any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
         
-        # check if the variable does not already have that value.
-        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-        fetched_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-        if fetched_result === true
-            # the initial value is already set, and we don't want to run cells again.
-            false
+        # Assume `body["is_first_value"] == false` if you want to skip an edge case in this code
+        cancel_run_early = if body["is_first_value"]
+            # fix for https://github.com/fonsp/Pluto.jl/issues/275
+            # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+            
+            # check if the variable does not already have that value.
+            # because if the initial value is already set, then we don't want to run dependent cells again.
+            eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+            WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
         else
-            any_dependents
+            false
+        end
+    
+        reponse = Dict(body..., "triggered_other_cells" => any_dependents && (!cancel_run_early))
+        
+        putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, reponse, notebook, nothing, initiator))
+        
+        if !cancel_run_early
+            function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
+                push!(to_delete_vars, bound_sym) # also delete the bound symbol
+                WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+                WorkspaceManager.eval_in_workspace((session, notebook), :($bound_sym = $new_val))
+            end
+            to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+
+            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
         end
     else
-        any_dependents
+        # a bond was set while the cell is in limbo state
+        # we don't need to do anything
     end
+end
 
-    # we re-use `body` as our response message :)
-    body["triggered_other_cells"] = triggered_other_cells
-
-    putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, body, notebook, nothing, initiator))
-    
-    if triggered_other_cells
-        function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Vector{Symbol}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
-            push!(to_delete_vars, bound_sym) # also delete the bound symbol
-            WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-            WorkspaceManager.eval_in_workspace((session, notebook), :($bound_sym = $new_val))
-        end
-        to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
-
-        update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false)
-    end
-
+responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), parse(PlutoRunner.ObjectID, body["object_id"], base=16))
+    set_output!(cell, run)
+    # send to all clients, why not
+    putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 end

@@ -2,7 +2,7 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fonsvdplas@gmail.com>", "Mikołaj Bochenski <iceflamecode@gmail.com>"]
-version = "0.11.14"
+version = "0.12.7"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
@@ -10,6 +10,7 @@ Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MsgPack = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -18,14 +19,13 @@ Sockets = "6462fe0b-24de-5631-8697-dd941f90decc"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
-HTTP = "^0.8.8"
+HTTP = "^0.8.18"
 MsgPack = "1.1"
 julia = "^1.0.0"
 
 [extras]
-JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "Random", "JSON"]
+test = ["Test", "Random"]

@@ -1,5 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
+import .ExpressionExplorer: FunctionNameSignaturePair
 
 Base.push!(x::Set{Cell}) = x
 
@@ -20,7 +21,7 @@ macro asynclog(expr)
 end
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
@@ -28,8 +29,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	old_order = topological_order(notebook, old_topology, cells)
 
 	old_runnable = old_order.runnable
-	to_delete_vars = union!(Set{Symbol}(), (old_topology[cell].assignments for cell in old_runnable)...)
-	to_delete_funcs = union!(Set{Vector{Symbol}}(), (keys(old_topology[cell].funcdefs) for cell in old_runnable)...)
+	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
@@ -51,13 +52,13 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
-	to_delete_vars = union!(to_delete_vars, (new_topology[cell].assignments for cell in new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, (keys(new_topology[cell].funcdefs) for cell in new_runnable)...)
+	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
+	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
 
 	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
 	new_errable = keys(new_order.errable)
-	to_delete_vars = union!(to_delete_vars, (new_topology[cell].assignments for cell in new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, (keys(new_topology[cell].funcdefs) for cell in new_errable)...)
+	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
+	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
 	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
@@ -68,6 +69,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.queued = false
 		cell.running = true
+		cell.persist_js_state = persist_js_state || cell ∉ cells
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 
 		if any_interrupted
@@ -86,16 +88,34 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	return new_order
 end
 
-"Run a single cell non-reactively, return run information."
+const lazymap = Base.Generator
+
+function defined_variables(topology::NotebookTopology, cells)
+	lazymap(cells) do cell
+		topology[cell].definitions
+	end
+end
+
+function defined_functions(topology::NotebookTopology, cells)
+	lazymap(cells) do cell
+		((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
+	end
+end
+
+"Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+	set_output!(cell, run)
+	return run
+end
+
+function set_output!(cell::Cell, run)
+	cell.last_run_timestamp = time()
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
 	cell.errored = run.errored
-
-	return run
 end
 
 ###

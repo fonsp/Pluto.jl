@@ -1,6 +1,5 @@
-import { html, Component } from "../common/Preact.js"
-import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4/isEqual.js"
-import immer from "https://unpkg.com/immer@7.0/dist/immer.esm.js"
+import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -12,15 +11,146 @@ import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
+import { Scroller } from "./Scroller.js"
 
 import { link_open_path } from "./Welcome.js"
 import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { handle_log } from "../common/Logging.js"
 
 const default_path = "..."
+
+/**
+ * Serialize an array of cells into a string form (similar to the .jl file).
+ *
+ * Used for implementing clipboard functionality. This isn't in topological
+ * order, so you won't necessarily be able to run it directly.
+ *
+ * @param {Array<import("./Cell.js").CellState>} cells
+ * @return {String}
+ */
+function serialize_cells(cells) {
+    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.local_code.body + "\n").join("\n")
+}
+
+/**
+ * Deserialize a Julia program or output from `serialize_cells`.
+ *
+ * If a Julia program, it will return a single String containing it. Otherwise,
+ * it will split the string into cells based on the special delimiter.
+ *
+ * @param {String} serialized_cells
+ * @return {Array<String>}
+ */
+function deserialize_cells(serialized_cells) {
+    const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
+    return segments.map((s) => s.trim()).filter((s) => s.length > 0)
+}
+
+const Circle = ({ fill }) => html`
+    <svg
+        width="48"
+        height="48"
+        viewBox="0 0 48 48"
+        style="
+            height: .7em;
+            width: .7em;
+            margin-left: .3em;
+            margin-right: .2em;
+        "
+    >
+        <circle cx="24" cy="24" r="24" fill=${fill}></circle>
+    </svg>
+`
+const Triangle = ({ fill }) => html`
+    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">
+        <polygon points="24,0 48,40 0,40" fill=${fill} stroke="none" />
+    </svg>
+`
+
+let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
+    // let [html_export, set_html_export] = useState(null)
+
+    // useEffect(() => {
+    //     if (open) {
+    //         offline_html({
+    //             pluto_version: pluto_version,
+    //             head: document.head,
+    //             body: document.body,
+    //         }).then((html) => {
+    //             set_html_export(html)
+    //         })
+    //     } else {
+    //         set_html_export(null)
+    //     }
+    // }, [notebook, open, set_html_export])
+
+    return html`
+        <aside id="export">
+            <div id="container">
+                <div class="export_title">export</div>
+                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
+                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
+                    <section>Download a copy of the <b>.jl</b> script.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    onClick=${(e) => {
+                        offline_html({
+                            pluto_version: pluto_version,
+                            head: document.head,
+                            body: document.body,
+                        }).then((html) => {
+                            if (html != null) {
+                                const fake_anchor = document.createElement("a")
+                                fake_anchor.download = `${notebook.shortpath}.html`
+                                fake_anchor.href = URL.createObjectURL(
+                                    new Blob([html], {
+                                        type: "text/html",
+                                    })
+                                )
+                                document.body.appendChild(fake_anchor)
+                                fake_anchor.click()
+                                document.body.removeChild(fake_anchor)
+                            }
+                        })
+                    }}
+                >
+                    <header><${Circle} fill="#E86F51" /> Static HTML</header>
+                    <section>An <b>.html</b> file for your web page, or to share online.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    style=${window.chrome == null ? "opacity: .7;" : ""}
+                    onClick=${() => {
+                        if (window.chrome == null) {
+                            alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
+                        }
+                        window.print()
+                    }}
+                >
+                    <header><${Circle} fill="#3D6117" /> Static PDF</header>
+                    <section>A static <b>.pdf</b> file for print or email.</section>
+                </a>
+                <!--<div class="export_title">
+                    future
+                </div>
+                <a class="export_card" style="border-color: #00000021; opacity: .7;">
+                    <header>mybinder.org</header>
+                    <section>Publish an interactive notebook online.</section>
+                </a>-->
+                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                    <span></span>
+                </button>
+            </div>
+        </aside>
+    `
+}
 
 export class Editor extends Component {
     constructor() {
@@ -38,6 +168,11 @@ export class Editor extends Component {
             recently_deleted: null,
             connected: false,
             loading: true,
+            scroller: {
+                up: false,
+                down: false,
+            },
+            export_menu_open: false,
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -80,6 +215,30 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            set_scroller: (enabled) => {
+                this.setState({ scroller: enabled })
+            },
+            serialize_selected: (cell) => {
+                const selected = cell ? this.selected_friends(cell.id) : this.state.notebook.cells.filter((c) => c.selected)
+                if (selected.length) {
+                    return serialize_cells(selected)
+                }
+            },
+            add_deserialized_cells: async (data, index) => {
+                const new_code = deserialize_cells(data)
+                if (index === -1) index = this.state.notebook.cells.length
+                for (const new_block of new_code) {
+                    const update = await this.requests.add_remote_cell_at(index++, true)
+                    const new_cell = empty_cell_data(update.cell_id)
+                    new_cell.pasted = true
+                    new_cell.queued = new_cell.running = false
+                    new_cell.output.body = ""
+                    new_cell.local_code.body = new_block
+                    new_cell.remote_code.submitted_by_me = true
+                    new_cell.selected = true
+                    this.actions.add_local_cell(new_cell, update.message.index)
+                }
+            },
             add_local_cell: (cell, new_index) => {
                 return set_notebook_state((prevstate) => {
                     if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
@@ -102,7 +261,7 @@ export class Editor extends Component {
                     running: running,
                     runtime: runtime,
                     errored: errored,
-                    output: { ...output, timestamp: Date.now() },
+                    output: output,
                 })
             },
             update_local_cell_input: (cell, by_me, code, folded) => {
@@ -218,6 +377,9 @@ export class Editor extends Component {
                         case "bond_update":
                             // by someone else
                             break
+                        case "log":
+                            handle_log(message, this.state.notebook.path)
+                            break
                         default:
                             console.error("Received unknown update type!")
                             console.log(update)
@@ -304,6 +466,16 @@ export class Editor extends Component {
                                     loading: false,
                                 })
                                 console.info("All cells loaded! 🚂 enjoy the ride")
+                                // do one autocomplete to trigger its precompilation
+                                this.client.send(
+                                    "complete",
+                                    {
+                                        query: "sq",
+                                    },
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
                             })
                         }
                     )
@@ -469,8 +641,8 @@ export class Editor extends Component {
                     false
                 )
             },
-            confirm_delete_multiple: (cells) => {
-                if (cells.length <= 1 || confirm(`Delete ${cells.length} cells?`)) {
+            confirm_delete_multiple: (verb, cells) => {
+                if (cells.length <= 1 || confirm(`${verb} ${cells.length} cells?`)) {
                     if (cells.some((f) => f.running || f.queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cells[0].cell_id)
@@ -562,6 +734,16 @@ export class Editor extends Component {
                         }
                     })
             },
+            reshow_cell: (cell_id, object_id) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        object_id: object_id,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
+            },
         }
 
         this.selected_friends = (cell_id) => {
@@ -613,6 +795,19 @@ export class Editor extends Component {
             }
         }
 
+        this.delete_selected = (verb) => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            if (selected.length > 0) {
+                this.requests.confirm_delete_multiple(verb, selected)
+                return true
+            }
+        }
+
+        this.run_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            return this.requests.set_and_run_multiple(selected)
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -628,18 +823,18 @@ export class Editor extends Component {
                 }
                 e.preventDefault()
             } else if (e.key === "Backspace" || e.key === "Delete") {
-                const selected = this.state.notebook.cells.filter((c) => c.selected)
-                if (selected.length > 0) {
-                    this.requests.confirm_delete_multiple(selected)
+                if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
+            } else if (e.key === "Enter" && e.shiftKey) {
+                this.run_selected()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
                 // I hope we can find a better solution for this later - Dral
                 alert(
                     `Shortcuts 🎹
-    
+
     Shift+Enter:   run cell
     ${ctrl_or_cmd_name}+Enter:   run cell and add cell below
     Delete or Backspace:   delete empty cell
@@ -649,10 +844,61 @@ export class Editor extends Component {
 
     ${ctrl_or_cmd_name}+Q:   interrupt notebook
     ${ctrl_or_cmd_name}+S:   submit all changes
-    
+
+    ${ctrl_or_cmd_name}+C:   copy selected cells
+    ${ctrl_or_cmd_name}+X:   cut selected cells
+    ${ctrl_or_cmd_name}+V:   paste selected cells
+
     The notebook file saves every time you run`
                 )
                 e.preventDefault()
+            }
+        })
+
+        document.addEventListener("copy", (e) => {
+            if (!in_textarea_or_input()) {
+                const serialized = this.actions.serialize_selected()
+                if (serialized) {
+                    navigator.clipboard.writeText(serialized).catch((err) => {
+                        alert(`Error copying cells: ${e}`)
+                    })
+                }
+            }
+        })
+
+        // Disabled until we solve https://github.com/fonsp/Pluto.jl/issues/482
+        // or we can enable it with a prompt
+
+        // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
+
+        // document.addEventListener("cut", (e) => {
+        //     if (!in_textarea_or_input()) {
+        //         const serialized = this.actions.serialize_selected()
+        //         if (serialized) {
+        //             navigator.clipboard
+        //                 .writeText(serialized)
+        //                 .then(() => this.delete_selected("Cut"))
+        //                 .catch((err) => {
+        //                     alert(`Error cutting cells: ${e}`)
+        //                 })
+        //         }
+        //     }
+        // })
+
+        document.addEventListener("paste", async (e) => {
+            if (!in_textarea_or_input()) {
+                // Deselect everything first, to clean things up
+                this.setState(
+                    immer((state) => {
+                        for (let cell of state.notebook.cells) {
+                            cell.selected = false
+                        }
+                    })
+                )
+
+                // Paste in the cells at the end of the notebook
+                const data = e.clipboardData.getData("text/plain")
+                this.actions.add_deserialized_cells(data, -1)
             }
         })
 
@@ -714,84 +960,16 @@ export class Editor extends Component {
     }
 
     render() {
-        const circle = (fill) => html`<svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em;">
-            <circle cx="24" cy="24" r="24" fill=${fill}></circle>
-        </svg>`
-        const triangle = (fill) => html`<svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;"
-        >
-            <polygon
-                points="24,0 48
-            ,40 0,40"
-                fill=${fill}
-                stroke="none"
-            />
-        </svg>`
+        let { export_menu_open } = this.state
         return html`
-            <header>
-                <aside id="export">
-                    <div id="container">
-                        <div class="export_title">export</div>
-                        <a href="./notebookfile?id=${this.state.notebook.notebook_id}" target="_blank" class="export_card">
-                            <header>${triangle("#a270ba")} Notebook file</header>
-                            <section>Download a copy of the <b>.jl</b> script.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            onClick=${(e) => {
-                                offline_html({ pluto_version: this.client.version_info.pluto, head: document.head, body: document.body }).then((html) => {
-                                    if (html != null) {
-                                        const fake_anchor = document.createElement("a")
-                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
-                                        fake_anchor.href = URL.createObjectURL(
-                                            new Blob([html], {
-                                                type: "text/html",
-                                            })
-                                        )
-                                        document.body.appendChild(fake_anchor)
-                                        fake_anchor.click()
-                                        document.body.removeChild(fake_anchor)
-                                    }
-                                })
-                            }}
-                        >
-                            <header>${circle("#E86F51")} Static HTML</header>
-                            <section>An <b>.html</b> file for your web page, or to share online.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            style=${window.chrome == null ? "opacity: .7;" : ""}
-                            onClick=${() => {
-                                if (window.chrome == null) {
-                                    alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
-                                }
-                                window.print()
-                            }}
-                        >
-                            <header>${circle("#3D6117")} Static PDF</header>
-                            <section>A static <b>.pdf</b> file for print or email.</section>
-                        </a>
-                        <!--<div class="export_title">
-                            future
-                        </div>
-                        <a class="export_card" style="border-color: #00000021; opacity: .7;">
-                            <header>mybinder.org</header>
-                            <section>Publish an interactive notebook online.</section>
-                        </a>-->
-                        <button
-                            title="Close"
-                            class="toggle_export"
-                            onClick=${() => document.body.querySelector("header").classList.toggle("show_export", false)}
-                        >
-                            <span></span>
-                        </button>
-                    </div>
-                </aside>
+            <${Scroller} active=${this.state.scroller} />
+            <header className=${export_menu_open ? "show_export" : ""}>
+                <${ExportBanner}
+                    pluto_version=${this.client?.version_info?.pluto}
+                    notebook=${this.state.notebook}
+                    open=${export_menu_open}
+                    onClose=${() => this.setState({ export_menu_open: false })}
+                />
                 <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
@@ -807,7 +985,7 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => document.body.querySelector("header").classList.toggle("show_export")}>
+                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                         <span></span>
                     </button>
                 </nav>
@@ -819,6 +997,7 @@ export class Editor extends Component {
                     </button>
                 </preamble>
                 <${Notebook}
+                    is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
                     on_cell_input=${(cell, new_val) => {
@@ -828,7 +1007,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    on_focus_neighbor=${(cell_id, delta) => {
+                    on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta
                         if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
@@ -836,7 +1015,8 @@ export class Editor extends Component {
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
-                                        line: delta === -1 ? Infinity : -1,
+                                        line: line,
+                                        ch: ch,
                                     },
                                 })
                             )
@@ -850,13 +1030,14 @@ export class Editor extends Component {
                     client=${this.client}
                 />
 
-                <${DropRuler} requests=${this.requests} selected_friends=${this.selected_friends} />
+                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />
 
                 <${SelectionArea}
+                    actions=${this.actions}
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
-                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                        if (!_.isEqual(current_selected_cells, selected_cell_ids)) {
                             this.setState(
                                 immer((state) => {
                                     for (let cell of state.notebook.cells) {
@@ -889,7 +1070,9 @@ export class Editor extends Component {
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <a href="statistics-info">Statistics</a>
+                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                        <span style="flex: 1"></span>
                         <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>

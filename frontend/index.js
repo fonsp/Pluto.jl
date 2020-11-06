@@ -1,4 +1,4 @@
-import { html, render } from "./common/Preact.js"
+import { html, render } from "./imports/Preact.js"
 import "./common/NodejsCompatibilityPolyfill.js"
 
 import { Welcome } from "./components/Welcome.js"

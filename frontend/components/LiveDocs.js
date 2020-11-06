@@ -1,108 +1,142 @@
-import { html, Component } from "../common/Preact.js"
+import { html, useState, useRef, useLayoutEffect, useEffect, useMemo } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer } from "./CellOutput.js"
+import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
 
-export class LiveDocs extends Component {
-    constructor() {
-        super()
-        this.state = {
-            shown_query: null,
-            searched_query: null,
-            body: "Start typing in a cell to learn more!",
-            hidden: true,
-            loading: false,
-        }
-        this.updateDocTimer = undefined
-    }
+export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, notebook }) => {
+    let container_ref = useRef()
+    let live_doc_search_ref = useRef()
+    let [state, set_state] = useState({
+        shown_query: null,
+        searched_query: null,
+        body:
+            "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
+        hidden: true,
+        loading: false,
+    })
+    let update_state = (mutation) => set_state(immer((state) => mutation(state)))
 
-    componentDidMount() {
-        window.addEventListener("open_live_docs", () => {
+    // Open docs when "open_live_docs" event is triggered
+    useEffect(() => {
+        let handler = () => {
             // https://github.com/fonsp/Pluto.jl/issues/321
-            this.setState({
-                hidden: false,
+            update_state((state) => {
+                state.hidden = false
             })
-            if (window.getComputedStyle(this.base).display === "none") {
+            if (window.getComputedStyle(container_ref.current).display === "none") {
                 alert("This browser window is too small to show docs.\n\nMake the window bigger, or try zooming out.")
             }
-        })
-    }
+        }
+        window.addEventListener("open_live_docs", handler)
+        return () => window.removeEventListener("open_live_docs", handler)
+    }, [])
 
-    componentDidUpdate() {
-        if (this.state.hidden || this.state.loading) {
+    // Apply syntax highlighting to code blocks:
+    // In the standard HTML container we already do this for code.language-julia blocks,
+    // but in the docs it's safe to extend to to all highlighting I think
+    useLayoutEffect(() => {
+        // Actually, showing the jldoctest stuff wasn't as pretty... should make a mode for that sometimes
+        // for (let code_element of container_ref.current.querySelectorAll("code.language-jldoctest")) {
+        //     highlight_julia(code_element)
+        // }
+        for (let code_element of container_ref.current.querySelectorAll("code:not([class])")) {
+            highlight_julia(code_element)
+        }
+    }, [state.body])
+
+    useEffect(() => {
+        if (state.hidden || state.loading) {
             return
         }
-        if (!/[^\s]/.test(this.props.desired_doc_query)) {
+        if (!/[^\s]/.test(desired_doc_query)) {
             // only whitespace
             return
         }
 
-        if (this.state.searched_query === this.props.desired_doc_query) {
-            return
+        if (state.searched_query !== desired_doc_query) {
+            fetch_docs(desired_doc_query)
         }
+    }, [desired_doc_query, state.hidden, state.loading, state.searched_query])
 
-        this.fetch_docs()
-    }
-
-    fetch_docs() {
-        const new_query = this.props.desired_doc_query
-        this.setState({
-            loading: true,
-            searched_query: new_query,
+    let fetch_docs = (new_query) => {
+        update_state((state) => {
+            state.loading = true
+            state.searched_query = new_query
         })
         Promise.race([
             observablehq.Promises.delay(2000, false),
-            this.props.client.send("docs", { query: new_query }, { notebook_id: this.props.notebook.notebook_id }).then((u) => {
+            client.send("docs", { query: new_query.replace(/^\?/, "") }, { notebook_id: notebook.notebook_id }).then((u) => {
                 if (u.message.status === "⌛") {
                     return false
                 }
                 if (u.message.status === "👍") {
-                    this.setState({
-                        shown_query: new_query,
-                        body: u.message.doc,
+                    update_state((state) => {
+                        state.shown_query = new_query
+                        state.body = u.message.doc
                     })
                     return true
                 }
             }),
         ]).then(() => {
-            this.setState({
-                loading: false,
+            update_state((state) => {
+                state.loading = false
             })
         })
     }
 
-    render() {
-        return html`
-            <aside id="helpbox-wrapper">
-                <pluto-helpbox class=${cl({ hidden: this.state.hidden, loading: this.state.loading })}>
-                    <header onClick=${() => this.setState({ hidden: !this.state.hidden })}>
-                        ${this.state.hidden || this.state.searched_query == null ? "Live docs" : this.state.searched_query}
-                    </header>
-                    <section>
-                        <h1><code>${this.state.shown_query}</code></h1>
-                        <${RawHTMLContainer}
-                            body=${this.state.body}
-                            pure=${true}
-                            on_render=${(n) => resolve_doc_reference_links(n, this.props.on_update_doc_query)}
-                        />
-                    </section>
-                </pluto-helpbox>
-            </aside>
-        `
-    }
+    let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${state.body} /> `, [state.body])
+
+    return html`
+        <aside id="helpbox-wrapper" ref=${container_ref}>
+            <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading })}>
+                <header
+                    onClick=${() => {
+                        if (state.hidden) {
+                            set_state((state) => ({ ...state, hidden: false }))
+                            // wait for next event loop
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }
+                    }}
+                >
+                    ${state.hidden
+                        ? "Live docs"
+                        : html`
+                        <input
+                            id="live-docs-search"
+                            placeholder="Search docs..."
+                            ref=${live_doc_search_ref}
+                            onInput=${(e) => on_update_doc_query(e.target.value)}
+                            value=${desired_doc_query}
+                            type="text"
+                        ></input>
+                        <button onClick=${(e) => {
+                            set_state((state) => ({ ...state, hidden: true }))
+                            e.stopPropagation()
+                            console.log(state)
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }}><span></span></button>
+                    `}
+                </header>
+                <section ref=${(ref) => ref != null && resolve_doc_reference_links(ref, on_update_doc_query)}>
+                    <h1><code>${state.shown_query}</code></h1>
+                    ${docs_element}
+                </section>
+            </pluto-helpbox>
+        </aside>
+    `
 }
 
 const resolve_doc_reference_links = (node, on_update_doc_query) => {
-    const as = node.querySelectorAll("a")
-    as.forEach((a) => {
-        const href = a.getAttribute("href")
+    for (let anchor of node.querySelectorAll("a")) {
+        const href = anchor.getAttribute("href")
         if (href != null && href.startsWith("@ref")) {
-            const query = href.length > 4 ? href.substr(5) : a.textContent
-            a.onclick = (e) => {
+            const query = href.length > 4 ? href.substr(5) : anchor.textContent
+            anchor.onclick = (e) => {
                 on_update_doc_query(query)
                 e.preventDefault()
             }
         }
-    })
+    }
 }

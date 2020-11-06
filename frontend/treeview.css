@@ -1,4 +1,7 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+/* @import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700.css");
+
 @import url("juliamono.css");
 
 /*  */
@@ -119,13 +122,31 @@ jltree.collapsed r:last-child::after {
     content: "";
 }
 
-jltree r > more::after {
-    content: "⁝";
-    margin-left: 0.2em;
+jltree r > more {
+    display: inline-block;
+    margin: 0.6em 0em;
+    cursor: pointer;
 }
 
-jltree.collapsed r > more::after {
-    content: "⋅⋅⋅";
+jltree r > more::before {
+    margin-left: 0.2em;
+    margin-right: 0.5em;
+    top: -0.1em;
+    display: inline-block;
+    position: relative;
+    content: "";
+    background-size: 100%;
+    height: 17px;
+    width: 17px;
+    opacity: 0.5;
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-vertical.svg);
+}
+
+jltree.collapsed r > more {
+    margin: 0em;
+}
+jltree.collapsed r > more::before {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal.svg);
 }
 
 /*  */
@@ -162,6 +183,7 @@ jlerror > section > ol > li > mark {
     background: #f3f2f1;
     border-radius: 6px;
     font-family: JuliaMono, monospace;
+    font-variant-ligatures: none;
 }
 jlerror > section > ol > li > em > a {
     background: #f5efd9;
