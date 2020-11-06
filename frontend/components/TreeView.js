@@ -1,5 +1,4 @@
-import { cl } from "../common/ClassTable.js"
-import { html, useRef, useMemo } from "../imports/Preact.js"
+import { html, useRef, useState } from "../imports/Preact.js"
 
 import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
 
@@ -43,6 +42,21 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
     }
 }
 
+const More = ({ on_click_more }) => {
+    const [loading, set_loading] = useState(false)
+
+    return html`<jlmore
+        class=${loading ? "loading" : ""}
+        onclick=${(e) => {
+            if (!loading) {
+                on_click_more()
+                set_loading(true)
+            }
+        }}
+        >more</jlmore
+    >`
+}
+
 export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
     const node_ref = useRef(null)
     const onclick = (e) => {
@@ -61,6 +75,11 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
 
         self.classList.toggle("collapsed")
     }
+    const on_click_more = () => {
+        if (node_ref.current.closest("jltree.collapsed") == null) {
+            requests.reshow_cell(cell_id, body.objectid)
+        }
+    }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
         cell_id=${cell_id}
@@ -70,16 +89,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         requests=${requests}
         persist_js_state=${persist_js_state}
     />`
-    const more = html`<r
-        ><more
-            onclick=${(e) => {
-                if (node_ref.current.closest("jltree.collapsed") == null) {
-                    requests.reshow_cell(cell_id, body.objectid)
-                }
-            }}
-            >more</more
-        ></r
-    >`
+    const more = html`<r><${More} on_click_more=${on_click_more} /></r>`
 
     var inner = null
     switch (body.type) {
@@ -122,14 +132,11 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         requests=${requests}
         persist_js_state=${persist_js_state}
     />`
-    const more = html`<r
-        ><more
-            onclick=${(e) => {
-                requests.reshow_cell(cell_id, body.objectid)
-            }}
-            >more</more
-        ></r
-    >`
+    const more = html`<${More}
+        on_click_more=${() => {
+            requests.reshow_cell(cell_id, body.objectid)
+        }}
+    />`
 
     const thead = html`<thead>
         <tr>
@@ -143,8 +150,10 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         ${body.rows.map(
             (row, i) =>
                 html`<tr>
-                    <th>${i + 1}</th>
-                    ${row.map((x) => html`<td>${mimepair_output(x)}</td>`)}
+                    ${row === "more"
+                        ? more
+                        : html`<th>${i + 1}</th>
+                              ${row.map((x) => html`<td>${mimepair_output(x)}</td>`)}`}
                 </tr>`
         )}
     </tbody>`

@@ -54,6 +54,8 @@ const cell_results = Dict{UUID, Any}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
+const table_display_limit = 30
+const table_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
 
 function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
@@ -61,7 +63,7 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         tree_display_extra_items[id] = Dict{ObjectID, Int64}()
     else
         old = get!(() -> Dict{ObjectID, Int64}(), tree_display_extra_items, id)
-        old[showmore] = get(old, showmore, 0) + tree_display_limit_increase
+        old[showmore] = get(old, showmore, 0) + 1
         old
     end
 
@@ -369,7 +371,7 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     elseif mime isa MIME"application/vnd.pluto.tree+object"
         tree_data(x, IOContext(io, :compact => true)), mime
     elseif mime isa MIME"application/vnd.pluto.table+object"
-        table_data(x, io), mime
+        table_data(x, IOContext(io, :compact => true)), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -433,20 +435,20 @@ function array_prefix(x)
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(x, context)
-    tree_display_limit + let
+function get_my_display_limit(x, context, a, b)
+    a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
         else
-            get(d, objectid(x), 0)
+            b * get(d, objectid(x), 0)
         end
     end
 end
 
 function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, context, tree_display_limit, tree_display_limit_increase)
 
     elements = if length(x) <= my_limit
         tree_data_array_elements(x, indices, context)
@@ -479,7 +481,7 @@ end
 function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
     elements = []
 
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, context, tree_display_limit, tree_display_limit_increase)
     row_index = 1
     for pair in x
         k, v = pair
@@ -567,20 +569,28 @@ trynameof(x::Any) = Symbol()
 
 function table_data(x::Any, io::IOContext)
     rows = Tables.rows(x)
-    row_data = map(rows) do row
+    my_limit = get_my_display_limit(x, io, table_display_limit, table_display_limit_increase)
+
+    truncate = my_limit < length(rows)
+    row_data = Any[
         # not a map(row) because it needs to be a Vector
         [
             format_output_default(el; context=io)
             for el in row
         ]
+        for row in (truncate ? rows[1:my_limit] : rows)
+    ]
+    if truncate
+        push!(row_data, "more")
     end
+
     schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
         :names => string.(schema.names),
         :types => String.(trynameof.(schema.types)),
     )
     Dict(
-        :objectid => objectid(x),
+        :objectid => string(objectid(x), base=16),
         :schema => schema_data,
         :rows => row_data,
     )
