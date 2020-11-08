@@ -1,3 +1,24 @@
+
+// as per https://stackoverflow.com/questions/123999/how-can-i-tell-if-a-dom-element-is-visible-in-the-current-viewport/7557433#7557433
+const isElementVisible = (element) => {
+  const boundingRectangle = element.getBoundingClientRect()
+  return (
+    boundingRectangle.top >= 0 && boundingRectangle.left >= 0 &&
+    boundingRectangle.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    boundingRectangle.right <= (window.innerWidth || document.documentElement.clientWidth)
+  )
+}
+
+const scrollToCodeMirrorIfNeeded = (codemirror) => {
+  const wrapperElement = codemirror.getWrapperElement()
+  if(!isElementVisible(wrapperElement)){
+    codemirror.getWrapperElement().scrollIntoView({
+      behaviour: 'auto',
+      block: 'center',
+      inline: 'center'
+    })
+  }
+}
 /**
  * Wraps the CodeMirror TextMarker, enhanced by some context information and
  * convenient functionality. Used to keep a reference to matches found by the
@@ -29,6 +50,7 @@ export default class TextMarker {
       this.to,
       { css: "background: #D9D5D5; color: red; font-weight: bold" }
     )
+    scrollToCodeMirrorIfNeeded(this.codemirror)
   }
 
   /**
