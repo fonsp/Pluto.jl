@@ -979,15 +979,6 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <${FindReplace}
-                      visible=${this.state.find_replace.visible}
-                      cells=${this.state.notebook.cells}
-                      word=${this.state.find_replace.word}
-                      set_word=${this.update_findreplace_word}
-                      find_next=${this.find_next}
-                      replace_with=${this.replace_with}
-                      replace_all=${(word) => replace_all(this.state.find_replace.textmarkers, word)}
-                    />
                     <button class="toggle_export" title="Export..." onClick=${() => {
                         document.body.querySelector("header").classList.toggle("show_export")
                       }}>
@@ -1059,6 +1050,17 @@ export class Editor extends Component {
                     }}
                 />
             </main>
+            <div id="findreplace">
+            <${FindReplace}
+              visible=${this.state.find_replace.visible}
+              cells=${this.state.notebook.cells}
+              word=${this.state.find_replace.word}
+              set_word=${this.update_findreplace_word}
+              find_next=${this.find_next}
+              replace_with=${this.replace_with}
+              replace_all=${(word) => replace_all(this.state.find_replace.textmarkers, word)}
+            />
+            </div>
             <${LiveDocs}
                 desired_doc_query=${this.state.desired_doc_query}
                 on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}

@@ -352,6 +352,15 @@ body > header.show_export {
     transform: translateY(130px);
 }
 
+div#findreplace {
+/*  margin: 10px; */
+  margin-left: 20px;
+  margin-right: auto;
+  position: sticky;
+  bottom: 10px;
+  z-index: 5;
+}
+
 aside#findreplace_container {
   display: none;
   flex-direction: row;
@@ -378,9 +387,9 @@ aside#findreplace_container > div > input {
 }
 aside#findreplace_container > div > button {
   cursor: pointer;
-  background: #896c6c;
+  background: #651b82/*#896c6c*/;
   border-radius: 0 3px 3px 0;
-  border: 2px solid #896c6c;
+  border: 2px solid #651b82/*#896c6c*/;
   color: white;
   font-family: inherit;
   font-weight: 600;
@@ -479,9 +488,9 @@ nav#at_the_top {
     flex-direction: row;
 }
 
-nav#at_the_top.show_findreplace {
+/*nav#at_the_top.show_findreplace {
   max-width: inherit;
-}
+}*/
 
 nav#at_the_top > * {
     flex: 0 0 auto;
