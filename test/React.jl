@@ -2,8 +2,6 @@ using Test
 import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
 import Pluto.Configuration: Options, EvaluationOptions
 import Distributed
-import JSON
-
 
 @testset "Reactivity" begin
     🍭 = ServerSession()
@@ -87,125 +85,6 @@ import JSON
     end
 
     🍭.options.evaluation.workspace_use_distributed = false
-
-    begin
-        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \$"
-        notebook = Notebook([
-            Cell("a\\"),
-            Cell("1 = 2"),
-            
-            Cell("b = 3.0\nb = 3"),
-            Cell("\n# uhm\n\nc = 4\n\n# wowie \n\n"),
-            Cell("d = 5;"),
-            Cell("e = 6; f = 6"),
-            Cell("g = 7; h = 7;"),
-            Cell("\n\n0 + 8; 0 + 8;\n\n\n"),
-            Cell("0 + 9; 9;\n\n\n"),
-            Cell("0 + 10;\n10;"),
-            Cell("0 + 11;\n11"),
-            
-            Cell("sqrt(-12)"),
-            Cell("\n\nsqrt(-13)"),
-            Cell("\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend"),
-            Cell("w(-15)"),
-            Cell("error(" * sprint(Base.print_quoted, escape_me) * ")")
-        ])
-        fakeclient.connected_notebook = notebook
-
-        @testset "Strange code"  begin
-            update_run!(🍭, notebook, notebook.cells[1])
-            update_run!(🍭, notebook, notebook.cells[2])
-            @test notebook.cells[1].errored == true
-            @test notebook.cells[2].errored == true
-
-        end
-        @testset "Mutliple expressions & semicolon"  begin
-
-            update_run!(🍭, notebook, notebook.cells[3:end])
-            @test occursinerror("syntax: extra token after", notebook.cells[3])
-
-            @test notebook.cells[4].errored == false
-            @test notebook.cells[4].output_repr == "4"
-            @test notebook.cells[4].rootassignee == :c
-
-            @test notebook.cells[5].errored == false
-            @test notebook.cells[5].output_repr == ""
-            @test notebook.cells[5].rootassignee === nothing
-
-            @test notebook.cells[6].errored == false
-            @test notebook.cells[6].output_repr == "6"
-            @test notebook.cells[6].rootassignee === nothing
-
-            @test notebook.cells[7].errored == false
-            @test notebook.cells[7].output_repr == ""
-            @test notebook.cells[7].rootassignee === nothing
-
-            @test notebook.cells[8].errored == false
-            @test notebook.cells[8].output_repr == ""
-
-            @test notebook.cells[9].errored == false
-            @test notebook.cells[9].output_repr == ""
-
-            @test occursinerror("syntax: extra token after", notebook.cells[10])
-
-            @test occursinerror("syntax: extra token after", notebook.cells[11])
-        end
-
-        @testset "Stack traces" begin
-            @test_nowarn update_run!(🍭, notebook, notebook.cells[12:16])
-
-            @test occursinerror("DomainError", notebook.cells[12])
-            let
-                st = JSON.parse(notebook.cells[12].output_repr)
-                @test length(st["stacktrace"]) == 4 # check in REPL
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 1
-                    @test occursin(notebook.cells[12].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            @test occursinerror("DomainError", notebook.cells[13])
-            let
-                st = JSON.parse(notebook.cells[13].output_repr)
-                @test length(st["stacktrace"]) == 4
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[13].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            @test occursinerror("DomainError", notebook.cells[15])
-            let
-                st = JSON.parse(notebook.cells[15].output_repr)
-                @test length(st["stacktrace"]) == 5
-
-                if Pluto.can_insert_filename
-                    @test st["stacktrace"][4]["line"] == 3
-                    @test occursin(notebook.cells[14].cell_id |> string, st["stacktrace"][4]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][4]["file"])
-
-                    @test st["stacktrace"][5]["line"] == 1
-                    @test occursin(notebook.cells[15].cell_id |> string, st["stacktrace"][5]["file"])
-                    @test occursin(notebook.path |> basename, st["stacktrace"][5]["file"])
-                else
-                    @test_broken false
-                end
-            end
-
-            let
-                st = JSON.parse(notebook.cells[16].output_repr)
-                @test occursin(escape_me, st["msg"])
-            end
-
-        end
-        WorkspaceManager.unmake_workspace((🍭, notebook))
-    end
 
     @testset "Mutliple assignments" begin
         notebook = Notebook([
@@ -458,15 +337,47 @@ import JSON
 
     @testset "Cyclic" begin
         notebook = Notebook([
-            Cell("x = y"),
-            Cell("y = x")
+            Cell("xxx = yyy"),
+            Cell("yyy = xxx"),
+            Cell("zzz = yyy")
         ])
         fakeclient.connected_notebook = notebook
 
+        update_run!(🍭, notebook, notebook.cells[1:3])
+        @test occursinerror("Cyclic reference", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("UndefVarError", notebook.cells[3])
+
+        setcode(notebook.cells[1], "xxx = 1")
         update_run!(🍭, notebook, notebook.cells[1])
-        update_run!(🍭, notebook, notebook.cells[2])
+        @test notebook.cells[1].output_repr == "1"
+        @test notebook.cells[2].output_repr == "1"
+        @test notebook.cells[3].output_repr == "1"
+
+        setcode(notebook.cells[1], "xxx = zzz")
+        update_run!(🍭, notebook, notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[1])
         @test occursinerror("Cyclic reference", notebook.cells[2])
+        @test occursinerror("Cyclic reference", notebook.cells[3])
+        @test occursinerror("xxx", notebook.cells[1])
+        @test occursinerror("yyy", notebook.cells[1])
+        @test occursinerror("zzz", notebook.cells[1])
+        @test occursinerror("xxx", notebook.cells[2])
+        @test occursinerror("yyy", notebook.cells[2])
+        @test occursinerror("zzz", notebook.cells[2])
+        @test occursinerror("xxx", notebook.cells[3])
+        @test occursinerror("yyy", notebook.cells[3])
+        @test occursinerror("zzz", notebook.cells[3])
+
+        setcode(notebook.cells[3], "zzz = 3")
+        update_run!(🍭, notebook, notebook.cells[3])
+        @test notebook.cells[1].output_repr == "3"
+        @test notebook.cells[2].output_repr == "3"
+        @test notebook.cells[3].output_repr == "3"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -716,9 +627,9 @@ import JSON
         @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
-        original_repr = sprint(Pluto.PlutoRunner.show_richest, Ref((25, :fish)))
+        original_repr = Pluto.PlutoRunner.format_output(Ref((25, :fish)))[1]
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr == original_repr
+        @test notebook.cells[25].output_repr isa Dict
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
         @test_broken notebook.cells[25].output_repr == "🐟" # cell'🍭 don't automatically call `show` again when a new overload is defined - that'🍭 a minor issue
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
@@ -727,7 +638,7 @@ import JSON
         setcode(notebook.cells[26], "")
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr == original_repr
+        @test notebook.cells[25].output_repr isa Dict
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output_repr == "false"

@@ -15,6 +15,7 @@ Base.@kwdef mutable struct ServerOptions
     launch_browser::Bool = true
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
+    notebook::Union{Nothing,String} = nothing
 end
 
 """
@@ -75,9 +76,20 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = nothing
+        threads::Union{Nothing,String} = string(roughly_the_number_of_physical_cpu_cores())
     end
-end # struct CompilerOptions
+end
+
+function roughly_the_number_of_physical_cpu_cores()
+    # https://gist.github.com/fonsp/738fe244719cae820245aa479e7b4a8d
+    if Sys.CPU_THREADS == 1
+        1
+    elseif Sys.CPU_THREADS == 2 || Sys.CPU_THREADS == 3
+        2
+    else
+        Sys.CPU_THREADS ÷ 2
+    end
+end
 
 """
 Collection of all settings that configure a Pluto session. 

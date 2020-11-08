@@ -16,14 +16,14 @@ end
 
 "These expressions get evaluated inside every newly create module inside a `Workspace`."
 const workspace_preamble = [
-    :(using Markdown, InteractiveUtils, Main.PlutoRunner), 
+    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
     :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
 ]
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
-    :(include($(project_relative_path("src", "runner", "PlutoRunner.jl")))),
+    :(include($(project_relative_path("src", "runner", "Loader.jl")))),
     :(ENV["GKSwstype"] = "nul"), 
     :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
 ]
@@ -245,11 +245,7 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
         end
     end
 
-    # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
-    # This also means that very big objects are not duplicated in RAM.
-    withtoken(workspace.dowork_token) do
-        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon)))
-    end
+    format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon)
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -258,6 +254,15 @@ function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook}
     
     Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
     nothing
+end
+
+function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectID, Nothing}=nothing)
+    workspace = get_workspace(session_notebook)
+    
+    # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
+    withtoken(workspace.dowork_token) do
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+    end
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."

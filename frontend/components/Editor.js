@@ -1,6 +1,5 @@
-import { html, Component } from "../common/Preact.js"
-import isEqual from "https://cdn.jsdelivr.net/npm/lodash-es@4.17.15/isEqual.js"
-import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
+import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -53,6 +52,108 @@ function deserialize_cells(serialized_cells) {
     return segments.map((s) => s.trim()).filter((s) => s.length > 0)
 }
 
+const Circle = ({ fill }) => html`
+    <svg
+        width="48"
+        height="48"
+        viewBox="0 0 48 48"
+        style="
+            height: .7em;
+            width: .7em;
+            margin-left: .3em;
+            margin-right: .2em;
+        "
+    >
+        <circle cx="24" cy="24" r="24" fill=${fill}></circle>
+    </svg>
+`
+const Triangle = ({ fill }) => html`
+    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">
+        <polygon points="24,0 48,40 0,40" fill=${fill} stroke="none" />
+    </svg>
+`
+
+let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
+    // let [html_export, set_html_export] = useState(null)
+
+    // useEffect(() => {
+    //     if (open) {
+    //         offline_html({
+    //             pluto_version: pluto_version,
+    //             head: document.head,
+    //             body: document.body,
+    //         }).then((html) => {
+    //             set_html_export(html)
+    //         })
+    //     } else {
+    //         set_html_export(null)
+    //     }
+    // }, [notebook, open, set_html_export])
+
+    return html`
+        <aside id="export">
+            <div id="container">
+                <div class="export_title">export</div>
+                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
+                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
+                    <section>Download a copy of the <b>.jl</b> script.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    onClick=${(e) => {
+                        offline_html({
+                            pluto_version: pluto_version,
+                            head: document.head,
+                            body: document.body,
+                        }).then((html) => {
+                            if (html != null) {
+                                const fake_anchor = document.createElement("a")
+                                fake_anchor.download = `${notebook.shortpath}.html`
+                                fake_anchor.href = URL.createObjectURL(
+                                    new Blob([html], {
+                                        type: "text/html",
+                                    })
+                                )
+                                document.body.appendChild(fake_anchor)
+                                fake_anchor.click()
+                                document.body.removeChild(fake_anchor)
+                            }
+                        })
+                    }}
+                >
+                    <header><${Circle} fill="#E86F51" /> Static HTML</header>
+                    <section>An <b>.html</b> file for your web page, or to share online.</section>
+                </a>
+                <a
+                    href="#"
+                    class="export_card"
+                    style=${window.chrome == null ? "opacity: .7;" : ""}
+                    onClick=${() => {
+                        if (window.chrome == null) {
+                            alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
+                        }
+                        window.print()
+                    }}
+                >
+                    <header><${Circle} fill="#3D6117" /> Static PDF</header>
+                    <section>A static <b>.pdf</b> file for print or email.</section>
+                </a>
+                <!--<div class="export_title">
+                    future
+                </div>
+                <a class="export_card" style="border-color: #00000021; opacity: .7;">
+                    <header>mybinder.org</header>
+                    <section>Publish an interactive notebook online.</section>
+                </a>-->
+                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+                    <span></span>
+                </button>
+            </div>
+        </aside>
+    `
+}
+
 export class Editor extends Component {
     constructor() {
         super()
@@ -73,6 +174,7 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
+            export_menu_open: false,
             find_replace: init_findreplace(),
             code_selected: false
         }
@@ -399,6 +501,16 @@ export class Editor extends Component {
                                     loading: false,
                                 })
                                 console.info("All cells loaded! 🚂 enjoy the ride")
+                                // do one autocomplete to trigger its precompilation
+                                this.client.send(
+                                    "complete",
+                                    {
+                                        query: "sq",
+                                    },
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
                             })
                         }
                     )
@@ -657,6 +769,16 @@ export class Editor extends Component {
                         }
                     })
             },
+            reshow_cell: (cell_id, object_id) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        object_id: object_id,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
+            },
         }
 
         this.selected_friends = (cell_id) => {
@@ -716,6 +838,11 @@ export class Editor extends Component {
             }
         }
 
+        this.run_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            return this.requests.set_and_run_multiple(selected)
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -734,11 +861,12 @@ export class Editor extends Component {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
-
+            } else if (e.key === "Enter" && e.shiftKey) {
+                this.run_selected()
             } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
                 const newState = toggle_findreplace(this.state.find_replace, this.state.code_selected)
                 this.setState({ find_replace: newState })
-                e.preventDefault()
+                e.preventDefault()            
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -871,99 +999,16 @@ export class Editor extends Component {
     }
 
     render() {
-        const circle = (fill) => html` <svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            style="
-                height: .7em;
-                width: .7em;
-                margin-left: .3em;
-                margin-right: .2em;
-            "
-        >
-            <circle cx="24" cy="24" r="24" fill=${fill}></circle>
-        </svg>`
-        const triangle = (fill) => html`<svg
-            width="48"
-            height="48"
-            viewBox="0 0 48 48"
-            style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;"
-        >
-            <polygon
-                points="24,0 48
-            ,40 0,40"
-                fill=${fill}
-                stroke="none"
-            />
-        </svg>`
+        let { export_menu_open } = this.state
         return html`
             <${Scroller} active=${this.state.scroller} />
-            <header>
-                <aside id="export">
-                    <div id="container">
-                        <div class="export_title">export</div>
-                        <a href="./notebookfile?id=${this.state.notebook.notebook_id}" target="_blank" class="export_card">
-                            <header>${triangle("#a270ba")} Notebook file</header>
-                            <section>Download a copy of the <b>.jl</b> script.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            onClick=${(e) => {
-                                offline_html({
-                                    pluto_version: this.client.version_info.pluto,
-                                    head: document.head,
-                                    body: document.body,
-                                }).then((html) => {
-                                    if (html != null) {
-                                        const fake_anchor = document.createElement("a")
-                                        fake_anchor.download = this.state.notebook.shortpath + ".html"
-                                        fake_anchor.href = URL.createObjectURL(
-                                            new Blob([html], {
-                                                type: "text/html",
-                                            })
-                                        )
-                                        document.body.appendChild(fake_anchor)
-                                        fake_anchor.click()
-                                        document.body.removeChild(fake_anchor)
-                                    }
-                                })
-                            }}
-                        >
-                            <header>${circle("#E86F51")} Static HTML</header>
-                            <section>An <b>.html</b> file for your web page, or to share online.</section>
-                        </a>
-                        <a
-                            href="#"
-                            class="export_card"
-                            style=${window.chrome == null ? "opacity: .7;" : ""}
-                            onClick=${() => {
-                                if (window.chrome == null) {
-                                    alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
-                                }
-                                window.print()
-                            }}
-                        >
-                            <header>${circle("#3D6117")} Static PDF</header>
-                            <section>A static <b>.pdf</b> file for print or email.</section>
-                        </a>
-                        <!--<div class="export_title">
-                            future
-                        </div>
-                        <a class="export_card" style="border-color: #00000021; opacity: .7;">
-                            <header>mybinder.org</header>
-                            <section>Publish an interactive notebook online.</section>
-                        </a>-->
-                        <button
-                            title="Close"
-                            class="toggle_export"
-                            onClick=${() => document.body.querySelector("header").classList.toggle("show_export", false)}
-                        >
-                            <span></span>
-                        </button>
-                    </div>
-                </aside>
+            <header className=${export_menu_open ? "show_export" : ""}>
+                <${ExportBanner}
+                    pluto_version=${this.client?.version_info?.pluto}
+                    notebook=${this.state.notebook}
+                    open=${export_menu_open}
+                    onClose=${() => this.setState({ export_menu_open: false })}
+                />
                 <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
@@ -979,9 +1024,7 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => {
-                        document.body.querySelector("header").classList.toggle("show_export")
-                      }}>
+                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                         <span></span>
                     </button>
 
@@ -995,6 +1038,7 @@ export class Editor extends Component {
                     </button>
                 </preamble>
                 <${Notebook}
+                    is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
                     on_cell_input=${(cell, new_val) => {
@@ -1004,7 +1048,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    on_focus_neighbor=${(cell_id, delta) => {
+                    on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta
                         if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
@@ -1012,7 +1056,8 @@ export class Editor extends Component {
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
-                                        line: delta === -1 ? Infinity : -1,
+                                        line: line,
+                                        ch: ch,
                                     },
                                 })
                             )
@@ -1038,7 +1083,7 @@ export class Editor extends Component {
                     cells=${this.state.notebook.cells}
                     on_selection=${(selected_cell_ids) => {
                         let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
-                        if (!isEqual(current_selected_cells, selected_cell_ids)) {
+                        if (!_.isEqual(current_selected_cells, selected_cell_ids)) {
                             this.setState(
                                 immer((state) => {
                                     for (let cell of state.notebook.cells) {
@@ -1082,7 +1127,9 @@ export class Editor extends Component {
             <footer>
                 <div id="info">
                     <form id="feedback" action="#" method="post">
-                        <a id="statistics-info" href="statistics-info">Statistics</a>
+                        <a href="statistics-info">Statistics</a>
+                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                        <span style="flex: 1"></span>
                         <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
                         <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                         <button>Send</button>

@@ -1,4 +1,4 @@
-import { html, useState, useRef, useEffect } from "../common/Preact.js"
+import { html, useState, useRef, useEffect } from "../imports/Preact.js"
 
 const enter_key = 13
 

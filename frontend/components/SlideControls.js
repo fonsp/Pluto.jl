@@ -1,4 +1,4 @@
-import { html } from "../common/Preact.js"
+import { html } from "../imports/Preact.js"
 
 export const SlideControls = () => {
     const calculate_slide_positions = () => {

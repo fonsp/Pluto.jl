@@ -8,7 +8,7 @@ Base.@kwdef mutable struct Cell
 
     code::String=""
     
-    output_repr::Union{Vector{UInt8},String,Nothing}=nothing
+    output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
     errored::Bool=false
     runtime::Union{Missing,UInt64}=missing
@@ -18,6 +18,8 @@ Base.@kwdef mutable struct Cell
 
     "Time that the last output was created, used only on the frontend to rerender the output"
     last_run_timestamp::Float64=0
+    "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
+    persist_js_state::Bool=false
     
     parsedcode::Union{Nothing,Expr}=nothing
     module_usings::Set{Expr}=Set{Expr}()

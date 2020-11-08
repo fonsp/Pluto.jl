@@ -31,6 +31,31 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, 
         update_save_run!(🍭, notebookB, notebookB.cells[1])
 
         @test notebookB.cells[1].errored == true
+
+        WorkspaceManager.unmake_workspace((🍭, notebookA))
+        WorkspaceManager.unmake_workspace((🍭, notebookB))
+    end
+    @testset "Variables with secret names" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = false
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        notebook = Notebook([
+            Cell("result = 1"),
+            Cell("result"),
+            Cell("elapsed_ns = 3"),
+            Cell("elapsed_ns"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_save_run!(🍭, notebook, notebook.cells[1:4])
+        @test notebook.cells[1].output_repr == "1"
+        @test notebook.cells[2].output_repr == "1"
+        @test notebook.cells[3].output_repr == "3"
+        @test notebook.cells[4].output_repr == "3"
+        
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "notebook environment" begin

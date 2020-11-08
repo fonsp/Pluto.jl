@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.12
+# v0.12.3
 
 using Markdown
 using InteractiveUtils
@@ -20,7 +20,7 @@ begin
 		import Pkg
 		Pkg.activate(env)
 		Pkg.Registry.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version=v"0.6.1"))
+		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version="0.6.7-0.6"))
 	end
 	using PlutoUI
 end
@@ -32,11 +32,11 @@ The [Interactivity sample notebook](./sample/Interactivity.jl) explains how Plut
 
 However, code like
 
-```
+```julia
 @bind x html"<input type=range min=5 max=15>"
 ```
 is hard to memorize, so `PlutoUI` makes it more _Julian_:
-```
+```julia
 @bind x Slider(1:15)
 ```
 """
@@ -53,7 +53,7 @@ julia> ]
 (@v1.5) pkg> add PlutoUI
 ```
 Next, add this cell to your notebook:
-```
+```julia
 using PlutoUI
 ```
 """
