@@ -348,11 +348,11 @@ export const CellInput = ({
       if(cm_ref.current){
         clear_all_markers(cm_ref.current)
       }
-      if(!is_hidden && findreplace_word && findreplace_visible){
+      if(findreplace_word && findreplace_visible){
         markers = find_all_markers(cm_ref.current, findreplace_word, cell_id)
       }
       add_textmarkers(markers, cell_id)
-    }, [is_hidden, findreplace_word, local_code, findreplace_visible])
+    }, [findreplace_word, local_code, findreplace_visible])
 
     useEffect(() => {
         if (cm_forced_focus == null) {
