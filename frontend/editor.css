@@ -687,7 +687,7 @@ pluto-output {
 
 .scroll_y {
     overflow-y: auto;
-    max-height: 90vh;
+    max-height: 80vh;
 }
 
 pluto-output:focus {

@@ -606,7 +606,7 @@ function table_data(x::Any, io::IOContext)
 
     row_data = Any[
         # not a map(row) because it needs to be a Vector
-        (i, row_data_for(row)) for (i, row) in enumerate(truncate_rows ? rows[1:my_row_limit] : rows)
+        (i, row_data_for(row)) for (i, row) in enumerate(truncate_rows ? (@view rows[1:my_row_limit]) : rows)
     ]
     if truncate_rows
         push!(row_data, "more")

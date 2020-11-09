@@ -122,6 +122,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("DataFrame(rand(20,20))"),
                 Cell("DataFrame(rand(2000,20))"),
                 Cell("DataFrame(rand(20,2000))"),
+                Cell("@view DataFrame(rand(100,3))[:, 2:2]"),
+                Cell("@view DataFrame(rand(3,100))[2:2, :]"),
             ])
         fakeclient.connected_notebook = notebook
 
@@ -133,12 +135,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[2].output_repr isa Dict
         @test notebook.cells[3].output_repr isa Dict
         @test notebook.cells[4].output_repr isa Dict
         @test notebook.cells[5].output_repr isa Dict
         @test notebook.cells[6].output_repr isa Dict
         @test notebook.cells[7].output_repr isa Dict
+        @test notebook.cells[8].output_repr isa Dict
+        @test notebook.cells[9].output_repr isa Dict
 
         # to see if we truncated correctly, we convert the output to string and check how big it is
         # because we don't want to test too specifically
