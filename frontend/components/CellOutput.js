@@ -13,7 +13,7 @@ export class CellOutput extends Component {
         super()
         this.old_height = 0
         this.resize_observer = new ResizeObserver((entries) => {
-            const new_height = this.base.scrollHeight
+            const new_height = this.base.offsetHeight
 
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
