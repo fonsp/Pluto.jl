@@ -141,22 +141,25 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         }}
     />`
 
-    const thead = html`<thead>
-        <tr>
-            ${["", ...body.schema.names].map((x) => html`<th>${x}</th>`)}
-        </tr>
-        <tr>
-            ${["", ...body.schema.types].map((x) => html`<th>${x}</th>`)}
-        </tr>
-    </thead>`
+    const thead =
+        body.schema == null
+            ? null
+            : html`<thead>
+                  <tr>
+                      ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? "..." : x}</th>`)}
+                  </tr>
+                  <tr>
+                      ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
+                  </tr>
+              </thead>`
     const tbody = html`<tbody>
         ${body.rows.map(
-            (row, i) =>
+            (row) =>
                 html`<tr>
                     ${row === "more"
-                        ? more
-                        : html`<th>${i + 1}</th>
-                              ${row.map((x) => html`<td>${mimepair_output(x)}</td>`)}`}
+                        ? html`<td colspan="999">${more}</td>`
+                        : html`<th>${row[0]}</th>
+                              ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
                 </tr>`
         )}
     </tbody>`

@@ -54,8 +54,11 @@ const cell_results = Dict{UUID, Any}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
-const table_display_limit = 30
-const table_display_limit_increase = 30
+const table_row_display_limit = 30
+const table_row_display_limit_increase = 30
+const table_column_display_limit = 20
+const table_column_display_limit_increase = 20
+
 const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
 
 function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
@@ -567,28 +570,56 @@ trynameof(x::Any) = Symbol()
 # TABLE VIEWER
 ##
 
+function maptruncated(f::Function, xs, filler, limit; truncate::Bool=true)
+    if truncate
+        result = Any[
+            f(x) for x in xs[1:limit]
+        ]
+        push!(result, filler)
+        result
+    else
+        [f(x) for x in xs]
+    end
+end
+
 function table_data(x::Any, io::IOContext)
     rows = Tables.rows(x)
-    my_limit = get_my_display_limit(x, io, table_display_limit, table_display_limit_increase)
 
-    truncate = my_limit < length(rows)
+    my_row_limit = get_my_display_limit(x, io, table_row_display_limit, table_row_display_limit_increase)
+
+    # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+    # my_column_limit = get_my_display_limit(x, io, table_column_display_limit, table_column_display_limit_increase)
+    my_column_limit = table_column_display_limit
+
+    truncate_rows = my_row_limit+5 < length(rows)
+    truncate_columns = if isempty(rows)
+        false
+    else
+        my_column_limit+5 < length(first(rows))
+    end
+
+    row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+        format_output_default(el; context=io)
+    end
+
     row_data = Any[
         # not a map(row) because it needs to be a Vector
-        [
-            format_output_default(el; context=io)
-            for el in row
-        ]
-        for row in (truncate ? rows[1:my_limit] : rows)
+        (i, row_data_for(row)) for (i, row) in enumerate(truncate_rows ? rows[1:my_row_limit] : rows)
     ]
-    if truncate
+    if truncate_rows
         push!(row_data, "more")
+        push!(row_data, (length(rows), row_data_for(last(rows))))
     end
+    
+    # TODO: render entire schema by default?
 
     schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
-        :names => string.(schema.names),
-        :types => String.(trynameof.(schema.types)),
+        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+        :types => maptruncated(String ∘ trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns),
     )
+
     Dict(
         :objectid => string(objectid(x), base=16),
         :schema => schema_data,
