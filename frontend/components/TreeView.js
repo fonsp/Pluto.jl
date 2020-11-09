@@ -77,7 +77,7 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
     }
     const on_click_more = () => {
         if (node_ref.current.closest("jltree.collapsed") == null) {
-            requests.reshow_cell(cell_id, body.objectid)
+            requests.reshow_cell(cell_id, body.objectid, 1)
         }
     }
 
@@ -135,9 +135,9 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         requests=${requests}
         persist_js_state=${persist_js_state}
     />`
-    const more = html`<${More}
+    const more = (dim) => html`<${More}
         on_click_more=${() => {
-            requests.reshow_cell(cell_id, body.objectid)
+            requests.reshow_cell(cell_id, body.objectid, dim)
         }}
     />`
 
@@ -146,7 +146,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
             ? null
             : html`<thead>
                   <tr class="schema-names">
-                      ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? "..." : x}</th>`)}
+                      ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? more(2) : x}</th>`)}
                   </tr>
                   <tr class="schema-types">
                       ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
@@ -157,7 +157,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
             (row) =>
                 html`<tr>
                     ${row === "more"
-                        ? html`<td colspan="999">${more}</td>`
+                        ? html`<td colspan="999">${more(1)}</td>`
                         : html`<th>${row[0]}</th>
                               ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
                 </tr>`

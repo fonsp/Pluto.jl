@@ -25,6 +25,7 @@ export @bind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
 ObjectID = typeof(objectid("hello computer"))
+ObjectDimPair = Tuple{ObjectID,Int64}
 
 ###
 # WORKSPACE MANAGER
@@ -59,13 +60,13 @@ const table_row_display_limit_increase = 30
 const table_column_display_limit = 20
 const table_column_display_limit_increase = 20
 
-const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
+const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectID, Int64}()
+        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
     else
-        old = get!(() -> Dict{ObjectID, Int64}(), tree_display_extra_items, id)
+        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
         old[showmore] = get(old, showmore, 0) + 1
         old
     end
@@ -438,20 +439,20 @@ function array_prefix(x)
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(x, context, a, b)
+function get_my_display_limit(x, dim::Int64, context::IOContext, a::Int64, b::Int64)
     a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
         else
-            b * get(d, objectid(x), 0)
+            b * get(d, (objectid(x),dim), 0)
         end
     end
 end
 
 function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
-    my_limit = get_my_display_limit(x, context, tree_display_limit, tree_display_limit_increase)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
     elements = if length(x) <= my_limit
         tree_data_array_elements(x, indices, context)
@@ -484,7 +485,7 @@ end
 function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
     elements = []
 
-    my_limit = get_my_display_limit(x, context, tree_display_limit, tree_display_limit_increase)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
     row_index = 1
     for pair in x
         k, v = pair
@@ -585,12 +586,12 @@ end
 function table_data(x::Any, io::IOContext)
     rows = Tables.rows(x)
 
-    my_row_limit = get_my_display_limit(x, io, table_row_display_limit, table_row_display_limit_increase)
+    my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
 
     # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
 
-    # my_column_limit = get_my_display_limit(x, io, table_column_display_limit, table_column_display_limit_increase)
-    my_column_limit = table_column_display_limit
+    my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+    # my_column_limit = table_column_display_limit
 
     truncate_rows = my_row_limit+5 < length(rows)
     truncate_columns = if isempty(rows)

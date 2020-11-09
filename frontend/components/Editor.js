@@ -724,11 +724,12 @@ export class Editor extends Component {
                         }
                     })
             },
-            reshow_cell: (cell_id, object_id) => {
+            reshow_cell: (cell_id, object_id, dim) => {
                 this.client.send(
                     "reshow_cell",
                     {
                         object_id: object_id,
+                        dim: dim,
                     },
                     { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
                     false
