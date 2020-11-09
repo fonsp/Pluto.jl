@@ -228,3 +228,23 @@ table.pluto-table td {
     max-width: 300px;
     overflow: hidden;
 }
+
+table.pluto-table .schema-types {
+    color: rgba(0, 0, 0, 0.4);
+    font-family: "JuliaMono", monospace;
+    font-size: 0.75rem;
+    opacity: 0;
+}
+
+table.pluto-table thead:hover .schema-types {
+    opacity: 1;
+}
+
+table.pluto-table .schema-names {
+    transform: translate(0, 0.5em);
+    transition: transform 0.1s ease-in-out;
+}
+
+table.pluto-table thead:hover .schema-names {
+    transform: translate(0, 0);
+}

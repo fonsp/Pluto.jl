@@ -145,10 +145,10 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
         body.schema == null
             ? null
             : html`<thead>
-                  <tr>
+                  <tr class="schema-names">
                       ${["", ...body.schema.names].map((x) => html`<th>${x === "more" ? "..." : x}</th>`)}
                   </tr>
-                  <tr>
+                  <tr class="schema-types">
                       ${["", ...body.schema.types].map((x) => html`<th>${x === "more" ? null : x}</th>`)}
                   </tr>
               </thead>`
