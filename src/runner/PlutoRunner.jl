@@ -415,7 +415,7 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = fal
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
-pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = Tables.rowaccess(x)
+pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x) catch; false end
 
 
 # in the next functions you see a `context` argument
@@ -571,7 +571,7 @@ trynameof(x::Any) = Symbol()
 # TABLE VIEWER
 ##
 
-function maptruncated(f::Function, xs, filler, limit; truncate::Bool=true)
+function maptruncated(f::Function, xs, filler, limit; truncate=true)
     if truncate
         result = Any[
             f(x) for x in xs[1:limit]
@@ -617,8 +617,9 @@ function table_data(x::Any, io::IOContext)
 
     schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
-        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
-        :types => maptruncated(String ∘ trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns),
+        :names => maptruncated(string, collect(schema.names), "more", my_column_limit; truncate=truncate_columns),
+        # we collect because of https://github.com/JuliaLang/julia/issues/38364
+        :types => String.(maptruncated(trynameof, collect(schema.types), "more", my_column_limit; truncate=truncate_columns)),
     )
 
     Dict(

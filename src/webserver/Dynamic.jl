@@ -197,7 +197,7 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
 end
 
 responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["object_id"], base=16), convert(Int64, body["dim"])))
+    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
     putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
