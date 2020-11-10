@@ -115,7 +115,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
     @testset "Table viewer" begin
         notebook = Notebook([
-                Cell("using DataFrames"),
+                Cell("using DataFrames, Tables"),
                 Cell("DataFrame()"),
                 Cell("DataFrame(:a => [])"),
                 Cell("DataFrame(:a => [1,2,3], :b => [999, 5, 6])"),
@@ -125,6 +125,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("@view DataFrame(rand(100,3))[:, 2:2]"),
                 Cell("@view DataFrame(rand(3,100))[2:2, :]"),
                 Cell("DataFrame"),
+                Cell("Tables.table(rand(11,11))"),
+                Cell("Tables.table(rand(120,120))"),
             ])
         fakeclient.connected_notebook = notebook
 
@@ -138,6 +140,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[11].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.table+object"
         @test notebook.cells[2].output_repr isa Dict
         @test notebook.cells[3].output_repr isa Dict
         @test notebook.cells[4].output_repr isa Dict
@@ -146,6 +150,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[7].output_repr isa Dict
         @test notebook.cells[8].output_repr isa Dict
         @test notebook.cells[9].output_repr isa Dict
+        @test notebook.cells[11].output_repr isa Dict
+        @test notebook.cells[12].output_repr isa Dict
 
         @test notebook.cells[10].repr_mime isa MIME"text/plain"
         @test notebook.cells[10].errored == false

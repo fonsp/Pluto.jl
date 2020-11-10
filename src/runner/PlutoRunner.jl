@@ -575,7 +575,8 @@ trynameof(x::Any) = Symbol()
 function maptruncated(f::Function, xs, filler, limit; truncate=true)
     if truncate
         result = Any[
-            f(x) for x in xs[1:limit]
+            # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+            f(xs[i]) for i in 1:limit
         ]
         push!(result, filler)
         result
@@ -607,7 +608,8 @@ function table_data(x::Any, io::IOContext)
 
     row_data = Any[
         # not a map(row) because it needs to be a Vector
-        (i, row_data_for(row)) for (i, row) in enumerate(truncate_rows ? (@view rows[1:my_row_limit]) : rows)
+        # not enumerate(rows) because of some silliness
+        (i, row_data_for(rows[i])) for i in (truncate_rows ? (1:my_row_limit) : (1:length(rows)))
     ]
     if truncate_rows
         push!(row_data, "more")
@@ -618,9 +620,8 @@ function table_data(x::Any, io::IOContext)
 
     schema = Tables.schema(rows)
     schema_data = schema === nothing ? nothing : Dict(
-        :names => maptruncated(string, collect(schema.names), "more", my_column_limit; truncate=truncate_columns),
-        # we collect because of https://github.com/JuliaLang/julia/issues/38364
-        :types => String.(maptruncated(trynameof, collect(schema.types), "more", my_column_limit; truncate=truncate_columns)),
+        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+        :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
     )
 
     Dict(
