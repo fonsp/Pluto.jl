@@ -56,9 +56,9 @@ const cell_results = Dict{UUID, Any}()
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
 const table_row_display_limit = 30
-const table_row_display_limit_increase = 30
-const table_column_display_limit = 20
-const table_column_display_limit_increase = 20
+const table_row_display_limit_increase = 80
+const table_column_display_limit = 15
+const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
 
@@ -455,7 +455,8 @@ function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
-    elements = if length(x) <= my_limit
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    elements = if length(x) <= my_limit + 5
         tree_data_array_elements(x, indices, context)
     else
         firsti = firstindex(x)
@@ -595,11 +596,12 @@ function table_data(x::Any, io::IOContext)
     my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
     # my_column_limit = table_column_display_limit
 
-    truncate_rows = my_row_limit+5 < length(rows)
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    truncate_rows = my_row_limit + 5 < length(rows)
     truncate_columns = if isempty(rows)
         false
     else
-        my_column_limit+5 < length(first(rows))
+        my_column_limit + 5 < length(first(rows))
     end
 
     row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
