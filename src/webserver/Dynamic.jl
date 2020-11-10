@@ -1,5 +1,6 @@
 import UUIDs: uuid1
 
+import .PkgTools
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
@@ -201,4 +202,18 @@ responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cel
     set_output!(cell, run)
     # send to all clients, why not
     putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+end
+
+responses[:package_versions] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    result = PkgTools.package_versions(body["package_name"])
+    putclientupdates!(session, initiator, UpdateMessage(:🍕, Dict(
+        :versions => result,
+    ), nothing, nothing, initiator))
+end
+
+responses[:package_completions] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+    results = PkgTools.package_completions(body["query"])
+    putclientupdates!(session, initiator, UpdateMessage(:🍳, Dict(
+        :results => results,
+    ), nothing, nothing, initiator))
 end

@@ -3,6 +3,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { PkgBubble } from "./PkgBubble.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -308,7 +309,7 @@ export const CellInput = ({
         })
 
         cm.on("change", (cm, e) => {
-            console.log(e)
+            // console.log(e)
             const new_value = cm.getValue()
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
@@ -337,7 +338,7 @@ export const CellInput = ({
                     const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
                     // const re = /(using|import)\s*(\w+)/g
                     for (const import_match of line.matchAll(re)) {
-                        console.log(import_match)
+                        // console.log(import_match)
 
                         const start = import_match.index + import_match[1].length
 
@@ -347,13 +348,16 @@ export const CellInput = ({
                             const inner = import_match[0].substr(import_match[1].length)
 
                             const inner_re = /(\w+)(\.\w+)*/g
-                            for (const pkg_match of inner.matchAll(inner_re)) {
-                                const pkg_name = pkg_match[1]
+                            for (const package_match of inner.matchAll(inner_re)) {
+                                const package_name = package_match[1]
+                                console.log(package_name)
                                 cm.setBookmark(
-                                    { line: line_i, ch: start + pkg_match.index + pkg_match[0].length },
+                                    { line: line_i, ch: start + package_match.index + package_match[0].length },
                                     {
-                                        widget: observablehq_for_myself.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em; margin-bottom: -.5em; margin-left: .3em; margin-right: .3em;"
-                                        title=${pkg_name}>`,
+                                        widget: PkgBubble({
+                                            client: client,
+                                            package_name: package_name,
+                                        }),
                                     }
                                 )
                             }
