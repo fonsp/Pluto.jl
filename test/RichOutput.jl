@@ -126,8 +126,10 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             s = string(notebook.cells[2].output_repr)
             @test occursin("OffsetArray", s)
             @test occursin("21", s)
-            # once in the prefix, once as index
-            @test count("22", s) >= 2
+            if VERSION >= v"1.3"
+                # once in the prefix, once as index
+                @test count("22", s) >= 2
+            end
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
