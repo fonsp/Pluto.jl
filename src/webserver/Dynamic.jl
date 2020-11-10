@@ -188,10 +188,17 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
             end
             to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
 
-            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false)
+            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
         end
     else
         # a bond was set while the cell is in limbo state
         # we don't need to do anything
     end
+end
+
+responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), parse(PlutoRunner.ObjectID, body["object_id"], base=16))
+    set_output!(cell, run)
+    # send to all clients, why not
+    putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 end

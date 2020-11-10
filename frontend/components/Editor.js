@@ -466,6 +466,16 @@ export class Editor extends Component {
                                     loading: false,
                                 })
                                 console.info("All cells loaded! 🚂 enjoy the ride")
+                                // do one autocomplete to trigger its precompilation
+                                this.client.send(
+                                    "complete",
+                                    {
+                                        query: "sq",
+                                    },
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
                             })
                         }
                     )
@@ -723,6 +733,16 @@ export class Editor extends Component {
                             }
                         }
                     })
+            },
+            reshow_cell: (cell_id, object_id) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        object_id: object_id,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
             },
         }
 
