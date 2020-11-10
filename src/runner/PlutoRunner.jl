@@ -416,6 +416,7 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
 pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x) catch; false end
+pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
 
 
 # in the next functions you see a `context` argument
