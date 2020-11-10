@@ -422,14 +422,14 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)
+function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)::Vector
     map(indices) do i
         if isassigned(x, i)
             i, format_output_default(x[i]; context=context)
         else
             i, format_output_default(Text(Base.undef_ref_str); context=context)
         end
-    end
+    end |> collect
 end
 
 function array_prefix(x::Array{<:Any, 1})

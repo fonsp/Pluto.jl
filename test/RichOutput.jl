@@ -111,6 +111,26 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
+
+        @testset "Special arrays" begin
+
+            notebook = Notebook([
+                Cell("using OffsetArrays"),
+                Cell("OffsetArray(zeros(3), 20:22)"),
+            ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells)
+            
+            @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[2].output_repr)
+            @test occursin("OffsetArray", s)
+            @test occursin("21", s)
+            # once in the prefix, once as index
+            @test count("22", s) >= 2
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
     end
 
     @testset "Table viewer" begin
