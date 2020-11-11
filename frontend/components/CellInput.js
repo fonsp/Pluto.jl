@@ -181,7 +181,7 @@ export const CellInput = ({
             const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
             if (!selected_lines.has(final_line_number)) {
                 Array.from(selected_lines)
-                    .sort((a, b) => delta * a < delta * b)
+                    .sort((a, b) => delta * a < delta * b ? 1 : -1)
                     .forEach((line_number) => {
                         const lines = cm.getValue().split("\n")
                         swap(lines, line_number, line_number + delta)
