@@ -196,7 +196,7 @@ function unmake_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},
     workspace = get_workspace(session_notebook)
 
     if workspace.pid != Distributed.myid()
-        filter!(p -> p.second.pid != workspace.pid, workspaces)
+        filter!(p -> wait(p.second).pid != workspace.pid, workspaces)
         interrupt_workspace(workspace; verbose=false)
         if workspace.pid != Distributed.myid()
             Distributed.rmprocs(workspace.pid)
