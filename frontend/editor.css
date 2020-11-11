@@ -1112,6 +1112,8 @@ pkg-bubble select {
     font-size: 0.75rem;
     font-family: "Space Mono", monospace;
     font-weight: 700;
+    text-align: center;
+    text-align-last: center;
 }
 
 /* RUNAREA */
