@@ -55,9 +55,9 @@ const cell_results = Dict{UUID, Any}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
-const table_row_display_limit = 30
-const table_row_display_limit_increase = 80
-const table_column_display_limit = 15
+const table_row_display_limit = 10
+const table_row_display_limit_increase = 60
+const table_column_display_limit = 8
 const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()

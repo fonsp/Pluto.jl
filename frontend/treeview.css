@@ -124,8 +124,10 @@ jltree.collapsed r:last-child::after {
 
 jlmore {
     display: inline-block;
-    margin: 0.6em 0em;
+    padding: 0.6em 0em;
     cursor: pointer;
+    /* this only affects jlmore inside a table */
+    width: 100%;
 }
 
 jlmore::before {

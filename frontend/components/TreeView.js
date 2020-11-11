@@ -49,8 +49,9 @@ const More = ({ on_click_more }) => {
         class=${loading ? "loading" : ""}
         onclick=${(e) => {
             if (!loading) {
-                on_click_more()
-                set_loading(true)
+                if (on_click_more() !== false) {
+                    set_loading(true)
+                }
             }
         }}
         >more</jlmore
@@ -76,9 +77,10 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         self.classList.toggle("collapsed")
     }
     const on_click_more = () => {
-        if (node_ref.current.closest("jltree.collapsed") == null) {
-            requests.reshow_cell(cell_id, body.objectid, 1)
+        if (node_ref.current.closest("jltree.collapsed") != null) {
+            return false
         }
+        requests.reshow_cell(cell_id, body.objectid, 1)
     }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
