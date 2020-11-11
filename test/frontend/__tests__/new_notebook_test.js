@@ -4,7 +4,16 @@ import { waitForContent,
     saveScreenshot,
     getTestScreenshotPath
 } from '../helpers/common'
-import { createNewNotebook, getCellIds, waitForCellOutput, getPlutoUrl, prewarmPluto, waitForCellOutputToChange } from '../helpers/pluto'
+import {
+    createNewNotebook,
+    getCellIds,
+    waitForCellOutput,
+    getPlutoUrl,
+    prewarmPluto,
+    waitForCellOutputToChange,
+    keyboardPressInPlutoInput,
+    writeSingleLineInPlutoInput
+} from '../helpers/pluto'
 
 const manuallyEnterCells = async (page, cells) => {
     const plutoCellIds = []
@@ -12,7 +21,7 @@ const manuallyEnterCells = async (page, cells) => {
         const plutoCellId = lastElement(await getCellIds(page))
         plutoCellIds.push(plutoCellId)
         await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
-        await page.type(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`, cell)
+        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
 
         const runSelector = `pluto-cell[id="${plutoCellId}"] .runcell`
         await page.waitForSelector(runSelector, { visible: true })
@@ -50,7 +59,7 @@ describe('PlutoNewNotebook', () => {
     it('should run a single cell', async () => {
         const cellInputSelector = 'pluto-input textarea'
         await page.waitForSelector(cellInputSelector)
-        await page.type(cellInputSelector, '1+1')
+        await writeSingleLineInPlutoInput(page, 'pluto-input', '1+1')
 
         const runSelector = '.runcell'
         await page.waitForSelector(runSelector, { visible: true })
@@ -84,21 +93,18 @@ describe('PlutoNewNotebook', () => {
         expect(initialLastCellContent).toBe('6')
 
         // Change second cell
-        const secondCellSelector = `pluto-cell[id="${plutoCellIds[1]}"] pluto-input textarea`
+        const secondCellInputSelector = `pluto-cell[id="${plutoCellIds[1]}"] pluto-input`
 
         // Delete 2
-        await page.focus(secondCellSelector)
-        await page.keyboard.press('Backspace')
+        await keyboardPressInPlutoInput(page, secondCellInputSelector, 'Backspace')
 
         // Enter 10
-        await page.type(secondCellSelector, '10')
-        await page.waitFor(500)
+        await writeSingleLineInPlutoInput(page, secondCellInputSelector, '10')
 
         // Re-evaluate
         await page.click('.runallchanged')
         const reactiveLastCellContent = await waitForCellOutputToChange(page, lastElement(plutoCellIds), '6')
-        
-        // TODO: DISABLED because it failed too often because of a timing issue i guess
-        //expect(reactiveLastCellContent).toBe('14')
+
+        expect(reactiveLastCellContent).toBe('14')
     })
 })
