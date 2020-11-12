@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 

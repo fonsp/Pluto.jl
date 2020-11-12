@@ -1,5 +1,5 @@
-import { html, Component, useState, useEffect } from "../common/Preact.js"
-import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
+import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -466,6 +466,16 @@ export class Editor extends Component {
                                     loading: false,
                                 })
                                 console.info("All cells loaded! 🚂 enjoy the ride")
+                                // do one autocomplete to trigger its precompilation
+                                this.client.send(
+                                    "complete",
+                                    {
+                                        query: "sq",
+                                    },
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    }
+                                )
                             })
                         }
                     )
@@ -724,6 +734,17 @@ export class Editor extends Component {
                         }
                     })
             },
+            reshow_cell: (cell_id, objectid, dim) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        objectid: objectid,
+                        dim: dim,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
+            },
         }
 
         this.selected_friends = (cell_id) => {
@@ -783,6 +804,11 @@ export class Editor extends Component {
             }
         }
 
+        this.run_selected = () => {
+            const selected = this.state.notebook.cells.filter((c) => c.selected)
+            return this.requests.set_and_run_multiple(selected)
+        }
+
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
@@ -801,6 +827,8 @@ export class Editor extends Component {
                 if (this.delete_selected("Delete")) {
                     e.preventDefault()
                 }
+            } else if (e.key === "Enter" && e.shiftKey) {
+                this.run_selected()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -970,6 +998,7 @@ export class Editor extends Component {
                     </button>
                 </preamble>
                 <${Notebook}
+                    is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
                     on_cell_input=${(cell, new_val) => {
@@ -979,7 +1008,7 @@ export class Editor extends Component {
                             },
                         })
                     }}
-                    on_focus_neighbor=${(cell_id, delta) => {
+                    on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
                         const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
                         const new_i = i + delta
                         if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
@@ -987,7 +1016,8 @@ export class Editor extends Component {
                                 new CustomEvent("cell_focus", {
                                     detail: {
                                         cell_id: this.state.notebook.cells[new_i].cell_id,
-                                        line: delta === -1 ? Infinity : -1,
+                                        line: line,
+                                        ch: ch,
                                     },
                                 })
                             )

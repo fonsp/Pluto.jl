@@ -167,6 +167,12 @@ pluto-output p:first-child {
     margin-block-start: 0px;
 }
 
+/* I actually just want to get rid of the margin-block-start on the p tag,
+    but css doesn't allow that. So I have to move the list up, instead of not moving it up */
+pluto-output li p + ul,
+pluto-output li p + ol {
+    margin-block-start: calc(var(--pluto-cell-spacing) * -1);
+}
 pluto-output p:last-child {
     margin-block-end: 0px;
 }
@@ -191,6 +197,9 @@ pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
+}
+pluto-output.rich_output pre code {
+    padding: 0px;
 }
 
 pluto-output pre {
@@ -676,6 +685,11 @@ pluto-output {
     background-color: white;
 }
 
+.scroll_y {
+    overflow-y: auto;
+    max-height: 80vh;
+}
+
 pluto-output:focus {
     outline: none;
 }
@@ -709,7 +723,6 @@ pluto-output > code.assignee:empty {
 pluto-output > div {
     flex: 1;
     flex-shrink: 0;
-    overflow-x: auto;
     overflow-y: hidden;
 }
 
@@ -876,6 +889,8 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {
+    /* --patternHeight is derived from the pattern length (16px) div sin(45deg) = 16px * sqrt(2)  */
+    --patternHeight: 22.62741699797px;
     box-sizing: content-box;
     margin-right: -1px; /* fix a visual glitch of imperfect alignment */
     width: 4px;
@@ -888,6 +903,17 @@ pluto-trafficlight {
     border-bottom-left-radius: 4px;
     border-left-color: rgba(0, 0, 0, 0.1);
     background: rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+pluto-trafficlight::after {
+    content: "";
+    /* Calc needs units everywhere to work */
+    top: calc(0px - 2 * var(--patternHeight));
+    left: 0;
+    width: 100%;
+    height: calc(100% + 2 * var(--patternHeight));
+    position: absolute;
 }
 
 /* in ascending order of severity: */
@@ -929,21 +955,21 @@ pluto-cell.errored > pluto-trafficlight {
     background-clip: content-box;
 }
 
-pluto-cell.queued > pluto-trafficlight {
+pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.running > pluto-trafficlight {
+pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.queued.errored > pluto-trafficlight {
+pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         hsla(0, 70%, 80%, 0.7),
@@ -952,24 +978,24 @@ pluto-cell.queued.errored > pluto-trafficlight {
         hsla(0, 70%, 80%, 0.05) 16px
     );
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.running.errored > pluto-trafficlight {
+pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
-    animation: 1000s linear 0s infinite running scrollbackground;
-    background-size: 4px 22.62741699797px; /* 16 * sqrt(2) */
+    animation: 1s linear 0s infinite running scrollbackground;
+    background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+/* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {
-        background-position-y: 0px;
+        transform: translateY(0px);
     }
     100% {
-        background-position-y: 22627.41699797px;
-        /* 16 * sqrt(2) */
+        transform: translateY(calc(var(--patternHeight)));
     }
 }
 

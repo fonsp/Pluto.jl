@@ -35,6 +35,8 @@ MsgPack.to_msgpack(::MsgPack.ExtensionType, x::Vector{T}) where T <: JSTypedInt 
     type = findfirst(isequal(T), JSTypedIntSupport) + 0x10
     MsgPack.Extension(type, reinterpret(UInt8, x))
 end
+MsgPack.msgpack_type(::Type{Vector{Union{}}}) = MsgPack.ArrayType()
+
 
 # The other side does the same (/frontend/common/MsgPack.js), and we decode it here:
 function decode_extension_and_addbits(x::MsgPack.Extension)
@@ -45,7 +47,11 @@ function decode_extension_and_addbits(x::MsgPack.Extension)
     else
         # the array types
         julia_type = JSTypedIntSupport[x.type - 0x10]
-        reinterpret(julia_type, x.data)
+        if eltype(x.data) == julia_type
+            x.data
+        else
+            reinterpret(julia_type, x.data)
+        end
     end
 end
 

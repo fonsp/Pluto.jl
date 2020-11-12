@@ -1,4 +1,4 @@
-import { html, Component } from "../common/Preact.js"
+import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"

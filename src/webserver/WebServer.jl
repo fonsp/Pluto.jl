@@ -25,6 +25,9 @@ function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: I
     end
 end
 
+# https://github.com/JuliaWeb/HTTP.jl/pull/609
+HTTP.URIs.escapeuri(query::Union{Vector,Dict}) = isempty(query) ? HTTP.URIs.absent : join((HTTP.URIs.escapeuri(k, v) for (k, v) in query), "&")
+
 # from https://github.com/JuliaLang/julia/pull/36425
 function detectwsl()
     Sys.islinux() &&
@@ -51,10 +54,12 @@ function open_in_default_browser(url::AbstractString)::Bool
     end
 end
 
+isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
+
 """
     Pluto.run()
 
-Start Pluto! Yayo!
+Start Pluto!
 
 ## Keyword arguments
 You can configure some of Pluto's more technical behaviour using keyword arguments, but this is mostly meant to support testing and strange setups like Docker. If you want to do something exciting with Pluto, you can probably write a creative notebook to do it!
@@ -219,34 +224,7 @@ function run(session::ServerSession)
         end
     end
 
-    address = let
-        root = if session.options.server.root_url === nothing
-            hostStr = string(hostIP)
-            hostPretty = if isa(hostIP, Sockets.IPv6)
-                if hostStr == "::1"
-                    "localhost"
-                else
-                    "[$(hostStr)]"
-                end
-            elseif hostStr == "127.0.0.1" # Assuming the other alternative is IPv4
-                "localhost"
-            else
-                hostStr
-            end
-            portPretty = Int(port)
-            "http://$(hostPretty):$(portPretty)/"
-        else
-            session.options.server.root_url
-        end
-
-        Sys.set_process_title("Pluto server - $root")
-
-        if session.options.security.require_secret_for_access
-            root * "?secret=$(session.secret)"
-        else
-            root
-        end
-    end
+    address = pretty_address(session, hostIP, port)
 
     println()
     if session.options.server.launch_browser && open_in_default_browser(address)
@@ -284,6 +262,45 @@ function run(session::ServerSession)
             rethrow(e)
         end
     end
+end
+
+function pretty_address(session::ServerSession, hostIP, port)
+    root = if session.options.server.root_url === nothing
+        host_str = string(hostIP)
+        host_pretty = if isa(hostIP, Sockets.IPv6)
+            if host_str == "::1"
+                "localhost"
+            else
+                "[$(host_str)]"
+            end
+        elseif host_str == "127.0.0.1" # Assuming the other alternative is IPv4
+            "localhost"
+        else
+            host_str
+        end
+        port_pretty = Int(port)
+        "http://$(host_pretty):$(port_pretty)/"
+    else
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    end
+
+    Sys.set_process_title("Pluto server - $root")
+
+    url_params = Dict{String,String}()
+
+    if session.options.security.require_secret_for_access
+        url_params["secret"] = session.secret
+    end
+    fav_notebook = session.options.server.notebook
+    new_root = if fav_notebook !== nothing
+        key = isurl(fav_notebook) ? "url" : "path"
+        url_params[key] = string(fav_notebook)
+        root * "open"
+    else
+        root
+    end
+    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
