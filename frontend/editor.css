@@ -3,18 +3,13 @@
 @import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/500-normal.css");
 @import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700-normal.css");
 
-/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i,700,700i,900,900i&display=swap&subset=cyrillic,cyrillic-ext,greek,latin-ext,vietnamese"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/700.css");
-@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/900.css");
-
 /* @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); */
 @import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/400.css");
 @import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/500.css");
 @import url("https://cdn.jsdelivr.net/npm/fontsource-alegreya-sans@3.0.10/700.css");
 
 @import url("juliamono.css");
-
+@import url("vollkorn.css");
 /* @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); */
 @import url("https://cdn.jsdelivr.net/npm/fontsource-lato@3.0.9/400.css");
 
@@ -97,6 +92,7 @@ pluto-output h4,
 pluto-output h5,
 pluto-output h6 {
     font-family: "Vollkorn", serif;
+    font-feature-settings: "lnum", "pnum";
     font-weight: 600;
     color: hsl(0, 0%, 12%);
     margin-block-start: 1rem;
@@ -244,6 +240,7 @@ pluto-output div.admonition {
 }
 pluto-output div.admonition .admonition-title {
     font-family: "Vollkorn", sans-serif;
+    font-feature-settings: "lnum", "pnum";
     color: white;
     font-weight: 600;
     margin-block-end: 0px;
@@ -450,6 +447,7 @@ div.export_title {
 a.export_card header {
     margin-block: 0px;
     font-family: "Vollkorn", sans;
+    font-feature-settings: "lnum", "pnum";
     font-size: 1rem;
 }
 a.export_card section {
