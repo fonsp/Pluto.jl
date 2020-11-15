@@ -65,8 +65,8 @@ export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text
 export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) => {
     const currentLineText = await getTextContent(`${plutoInputSelector} .CodeMirror-line`)
     await page.focus(`${plutoInputSelector} textarea`)
-    await page.keyboard.press(key)
     await page.waitFor(500)
+    await page.keyboard.press(key)
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .CodeMirror-line`, currentLineText)
 }
