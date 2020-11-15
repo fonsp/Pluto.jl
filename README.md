@@ -102,6 +102,16 @@ Pluto will open in your browser, and you can get started!
 
 Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 
+### Migration from Jupyter
+
+If you have Jupyter notebooks that you'd like to migrate to Pluto, [**Fons van der Plas**](https://github.com/fonsp) has created a webapp [here](https://observablehq.com/@olivier_plas/pluto-jl-jupyter-conversion) which will automatically do the conversion.
+
+_Note_: Pluto is different from Jupyter in many ways - the conversion will not be perfect. Pluto has restrictions on what kind of code you can write (no multiple definitions, for example), and it can be frustrating to start out with a notebook that contains a lot of these 'reactivity errors'.
+
+Try it out, but remember that **it might be easier to start the Pluto notebook 'from scratch' and copy code cell-by-cell**. Pluto is designed for a different style of writing (see [Dynamic Environment](#dynamic-environment)) - this will be difficult to appreciate when you start out with a Jupyter notebook.
+
+Reactivity makes this process more fun than you might think!
+
 ### To developers
 
 Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/master/CONTRIBUTING.md) to start working on the package.
