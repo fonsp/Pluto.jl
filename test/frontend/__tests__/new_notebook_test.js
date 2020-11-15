@@ -23,11 +23,6 @@ const manuallyEnterCells = async (page, cells) => {
         await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
 
-        const runSelector = `pluto-cell[id="${plutoCellId}"] .runcell`
-        await page.waitForSelector(runSelector, { visible: true })
-        await page.click(runSelector)
-        await waitForCellOutput(page, plutoCellId)
-
         await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
         await page.waitFor((nCells) => document.querySelectorAll('pluto-cell').length === nCells, {}, plutoCellIds.length + 1)
     }
@@ -77,6 +72,7 @@ describe('PlutoNewNotebook', () => {
             'a + b + c'
         ]
         const plutoCellIds = await manuallyEnterCells(page, cells)
+        await page.click('.runallchanged')
         const content = await waitForCellOutput(page, lastElement(plutoCellIds))
         expect(content).toBe('6')
     })
@@ -89,6 +85,7 @@ describe('PlutoNewNotebook', () => {
             'a + b + c'
         ]
         const plutoCellIds = await manuallyEnterCells(page, cells)
+        await page.click('.runallchanged')
         const initialLastCellContent = await waitForCellOutput(page, lastElement(plutoCellIds))
         expect(initialLastCellContent).toBe('6')
 
