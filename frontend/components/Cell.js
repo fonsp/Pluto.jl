@@ -86,6 +86,7 @@ export const Cell = ({
     scroll_into_view_after_creation,
     all_completed_promise,
     selected_friends,
+    pkg_state,
     requests,
     client,
     notebook_id,
@@ -182,6 +183,7 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                pkg_state=${pkg_state}
                 client=${client}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}

@@ -1105,9 +1105,13 @@ pkg-bubble {
     margin-left: 0.3em;
     display: inline-block;
     background: #b6bcc738;
-    border: 3px solid #afafe269;
+    border: 3px solid #bfaa65;
     border-radius: 4px;
     color: #748c77;
+}
+
+pkg-bubble.installed {
+    border-color: #afafe269;
 }
 pkg-bubble select {
     width: 100%;

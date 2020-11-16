@@ -903,6 +903,20 @@ export class Editor extends Component {
             }
         })
 
+        this.pkg_state = {
+            is_pluto_managed: true,
+            packages: [
+                {
+                    name: "PlutoUI",
+                    version: "0.6.5",
+                },
+                {
+                    name: "Plots",
+                    version: "1.2.3",
+                },
+            ],
+        }
+
         window.addEventListener("beforeunload", (event) => {
             const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
             if (first_unsaved != null) {
@@ -1027,6 +1041,7 @@ export class Editor extends Component {
                     focus_after_creation=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
                     selected_friends=${this.selected_friends}
+                    pkg_state=${this.pkg_state}
                     requests=${this.requests}
                     client=${this.client}
                 />

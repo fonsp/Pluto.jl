@@ -32,3 +32,4 @@ type EffectFn = () => void | UnsubscribeFn
 
 export declare function useEffect(fn: EffectFn, deps?: Array<any>): void
 export declare function useLayoutEffect(fn: EffectFn, deps?: Array<any>): void
+export declare function useCallback(fn: EffectFn, deps?: Array<any>): void

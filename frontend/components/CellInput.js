@@ -15,6 +15,14 @@ const clear_selection = (cm) => {
 
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
+const swap = (a, i, j) => {
+    ;[a[i], a[j]] = [a[j], a[i]]
+}
+const range = (a, b) => {
+    const x = Math.min(a, b)
+    const y = Math.max(a, b)
+    return [...Array(y + 1 - x).keys()].map((i) => i + x)
+}
 
 const get = (map, key, creator) => {
     if (map.has(key)) {
@@ -41,6 +49,7 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    pkg_state,
     client,
     cell_id,
     notebook_id,
@@ -55,6 +64,12 @@ export const CellInput = ({
     const time_last_genuine_backspace = useRef(0)
 
     const pkg_bubbles = useRef(new Map())
+
+    useEffect(() => {
+        pkg_bubbles.current.forEach((b) => {
+            b.on_pkg_state(pkg_state)
+        })
+    }, pkg_state.packages)
 
     useEffect(() => {
         remote_code_ref.current = remote_code
@@ -181,14 +196,6 @@ export const CellInput = ({
             }
         }
 
-        const swap = (a, i, j) => {
-            ;[a[i], a[j]] = [a[j], a[i]]
-        }
-        const range = (a, b) => {
-            const x = Math.min(a, b)
-            const y = Math.max(a, b)
-            return [...Array(y + 1 - x).keys()].map((i) => i + x)
-        }
         const alt_move = (delta) => {
             const selections = cm.listSelections()
             const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
@@ -319,6 +326,13 @@ export const CellInput = ({
                 }
             })
 
+            // TODO: put this search in a function that returns the list of mathces
+            // we can use that when you submit the cell to definitively find the list of import
+            // and then purge the map?
+
+            // TODO: debounce _any_ edit to update all imports for this cell
+            // because adding #= to the start of a cell will remove imports later
+
             range(e.from.line, e.to.line).map((line_i) => {
                 /** @type {string} */
                 const line = cm.getLine(line_i)
@@ -347,12 +361,15 @@ export const CellInput = ({
                                 const package_name = package_match[1]
                                 console.log(package_name)
 
-                                const widget = get(pkg_bubbles.current, package_name, () =>
-                                    PkgBubble({
+                                const widget = get(pkg_bubbles.current, package_name, () => {
+                                    const b = PkgBubble({
                                         client: client,
                                         package_name: package_name,
                                     })
-                                )
+                                    b.on_pkg_state(pkg_state)
+                                    return b
+                                })
+
                                 cm.setBookmark(
                                     { line: line_i, ch: start + package_match.index + package_match[0].length },
                                     {
