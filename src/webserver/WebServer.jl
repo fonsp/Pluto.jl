@@ -56,7 +56,7 @@ end
 
 isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
 
-swallowexn(exntype::Type{T}, f) where T =
+swallow_exception(f, exception_type::Type{T}) where T =
     try f()
     catch e
         isa(e, T) || rethrow(e)
@@ -244,11 +244,11 @@ function run(session::ServerSession)
 
     kill_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
-        @async swallowexn(Base.IOError, () -> close(serversocket))
+        @async swallow_exception(() -> close(serversocket), Base.IOError)
         # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
         for client in values(session.connected_clients)
-            @async swallowexn(Base.IOError, () -> close(client.stream))
+            @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
         for (notebook_id, ws) in WorkspaceManager.workspaces
