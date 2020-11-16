@@ -16,6 +16,16 @@ const clear_selection = (cm) => {
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
 
+const get = (map, key, creator) => {
+    if (map.has(key)) {
+        return map.get(key)
+    } else {
+        const val = creator()
+        map.set(key, val)
+        return val
+    }
+}
+
 export const CellInput = ({
     local_code,
     remote_code,
@@ -43,6 +53,8 @@ export const CellInput = ({
 
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
+
+    const pkg_bubbles = useRef(new Map())
 
     useEffect(() => {
         remote_code_ref.current = remote_code
@@ -169,23 +181,6 @@ export const CellInput = ({
             }
         }
 
-        keys["Ctrl-O"] = () => {
-            window.cm = cm
-            cm.findMarks({ line: 0, ch: 0 }, { line: Infinity, ch: 0 }).forEach((m) => m.clear())
-            cm.setBookmark(cm.getCursor(), {
-                widget: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em;">`,
-            })
-        }
-        keys["Ctrl-K"] = () => {
-            window.cm = cm
-            const sel = cm.listSelections()[0]
-            cm.markText(sel.from(), sel.to(), {
-                // replacedWith: observablehq.html`<img src="https://codemirror.net/doc/logo.png" style="display: inline-block; height: 2em;">`,
-                atomic: true,
-                css: "background: #fdd",
-            })
-        }
-
         const swap = (a, i, j) => {
             ;[a[i], a[j]] = [a[j], a[i]]
         }
@@ -200,7 +195,7 @@ export const CellInput = ({
             const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
             if (!selected_lines.has(final_line_number)) {
                 Array.from(selected_lines)
-                    .sort((a, b) => delta * a < delta * b ? 1 : -1)
+                    .sort((a, b) => (delta * a < delta * b ? 1 : -1))
                     .forEach((line_number) => {
                         const lines = cm.getValue().split("\n")
                         swap(lines, line_number, line_number + delta)
@@ -351,13 +346,17 @@ export const CellInput = ({
                             for (const package_match of inner.matchAll(inner_re)) {
                                 const package_name = package_match[1]
                                 console.log(package_name)
+
+                                const widget = get(pkg_bubbles.current, package_name, () =>
+                                    PkgBubble({
+                                        client: client,
+                                        package_name: package_name,
+                                    })
+                                )
                                 cm.setBookmark(
                                     { line: line_i, ch: start + package_match.index + package_match[0].length },
                                     {
-                                        widget: PkgBubble({
-                                            client: client,
-                                            package_name: package_name,
-                                        }),
+                                        widget: widget,
                                     }
                                 )
                             }
