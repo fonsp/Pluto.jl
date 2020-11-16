@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.7
+# v0.12.8
 
 using Markdown
 using InteractiveUtils
@@ -151,11 +151,11 @@ Markdown.parse("For the Answer to the Ultimate Question of Life, the Universe, a
 # ╔═╡ 4c94c6de-2060-11eb-23ee-fd9684d97792
 
 
-# ╔═╡ 5f849070-205e-11eb-2709-a962062194d6
-x = 7
-
 # ╔═╡ 61e1451e-205e-11eb-1a16-f503b4d37923
 x += 1
+
+# ╔═╡ 5f849070-205e-11eb-2709-a962062194d6
+x = 7
 
 # ╔═╡ Cell order:
 # ╟─ddc7c8f0-205c-11eb-1644-95e93ea74f11
