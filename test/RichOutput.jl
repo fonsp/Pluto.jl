@@ -1,4 +1,5 @@
 using Test
+import Pluto
 import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 
@@ -110,6 +111,86 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
+
+        @testset "Special arrays" begin
+
+            notebook = Notebook([
+                Cell("using OffsetArrays"),
+                Cell("OffsetArray(zeros(3), 20:22)"),
+            ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells)
+            
+            @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[2].output_repr)
+            @test occursin("OffsetArray", s)
+            @test occursin("21", s)
+            if VERSION >= v"1.3"
+                # once in the prefix, once as index
+                @test count("22", s) >= 2
+            end
+            
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+    end
+
+    @testset "Table viewer" begin
+        notebook = Notebook([
+                Cell("using DataFrames, Tables"),
+                Cell("DataFrame()"),
+                Cell("DataFrame(:a => [])"),
+                Cell("DataFrame(:a => [1,2,3], :b => [999, 5, 6])"),
+                Cell("DataFrame(rand(20,20))"),
+                Cell("DataFrame(rand(2000,20))"),
+                Cell("DataFrame(rand(20,2000))"),
+                Cell("@view DataFrame(rand(100,3))[:, 2:2]"),
+                Cell("@view DataFrame(rand(3,100))[2:2, :]"),
+                Cell("DataFrame"),
+                Cell("Tables.table(rand(11,11))"),
+                Cell("Tables.table(rand(120,120))"),
+            ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[3].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[4].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[11].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[2].output_repr isa Dict
+        @test notebook.cells[3].output_repr isa Dict
+        @test notebook.cells[4].output_repr isa Dict
+        @test notebook.cells[5].output_repr isa Dict
+        @test notebook.cells[6].output_repr isa Dict
+        @test notebook.cells[7].output_repr isa Dict
+        @test notebook.cells[8].output_repr isa Dict
+        @test notebook.cells[9].output_repr isa Dict
+        @test notebook.cells[11].output_repr isa Dict
+        @test notebook.cells[12].output_repr isa Dict
+
+        @test notebook.cells[10].repr_mime isa MIME"text/plain"
+        @test notebook.cells[10].errored == false
+        
+        # to see if we truncated correctly, we convert the output to string and check how big it is
+        # because we don't want to test too specifically
+        roughsize(x) = length(string(x))
+
+        smallsize = roughsize(notebook.cells[5])
+        manyrowssize = roughsize(notebook.cells[6])
+        manycolssize = roughsize(notebook.cells[7])
+        @test manyrowssize < 50 * smallsize
+        @test manycolssize < 50 * smallsize
+
+        # TODO: test lazy loading more rows/cols
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
     
     begin

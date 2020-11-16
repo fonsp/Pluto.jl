@@ -114,7 +114,6 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
                         <button onClick=${(e) => {
                             set_state((state) => ({ ...state, hidden: true }))
                             e.stopPropagation()
-                            console.log(state)
                             setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
                         }}><span></span></button>
                     `}
