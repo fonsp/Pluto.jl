@@ -1113,6 +1113,9 @@ pkg-bubble {
 pkg-bubble.installed {
     border-color: #afafe269;
 }
+pkg-bubble.not_found {
+    width: 2em;
+}
 pkg-bubble select {
     width: 100%;
     border: none;

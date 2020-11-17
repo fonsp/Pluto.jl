@@ -3,7 +3,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 const html = observablehq_for_myself.html
 
 // not preact because we're too cool
-export const PkgBubble = ({ client, package_name }) => {
+export const PkgBubble = ({ client, package_name, refresh }) => {
     const node = html`<pkg-bubble>...</pkg-bubble>`
     const pkg_state_ref = { current: null }
     const versions_ref = { current: [] }
@@ -12,6 +12,7 @@ export const PkgBubble = ({ client, package_name }) => {
         const me = pkg_state_ref.current?.packages.find((p) => p.name === package_name)
         const installed = me != null
         node.classList.toggle("installed", installed)
+        node.classList.toggle("not_found", versions_ref.current.length === 0)
         node.title = installed ? "" : "This version will be installed"
 
         const select = html`<select>
@@ -30,7 +31,11 @@ export const PkgBubble = ({ client, package_name }) => {
         }
 
         node.innerHTML = ""
+        if (versions_ref.current.length !== 0) {
+        }
         node.appendChild(select)
+
+        refresh()
     }
 
     node.on_pkg_state = (p) => {

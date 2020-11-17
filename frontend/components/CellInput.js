@@ -359,23 +359,25 @@ export const CellInput = ({
                             const inner_re = /(\w+)(\.\w+)*/g
                             for (const package_match of inner.matchAll(inner_re)) {
                                 const package_name = package_match[1]
-                                console.log(package_name)
 
-                                const widget = get(pkg_bubbles.current, package_name, () => {
-                                    const b = PkgBubble({
-                                        client: client,
-                                        package_name: package_name,
+                                if (package_name !== "Base" && package_name !== "Core") {
+                                    const widget = get(pkg_bubbles.current, package_name, () => {
+                                        const b = PkgBubble({
+                                            client: client,
+                                            package_name: package_name,
+                                            refresh: () => cm.refresh(),
+                                        })
+                                        b.on_pkg_state(pkg_state)
+                                        return b
                                     })
-                                    b.on_pkg_state(pkg_state)
-                                    return b
-                                })
 
-                                cm.setBookmark(
-                                    { line: line_i, ch: start + package_match.index + package_match[0].length },
-                                    {
-                                        widget: widget,
-                                    }
-                                )
+                                    cm.setBookmark(
+                                        { line: line_i, ch: start + package_match.index + package_match[0].length },
+                                        {
+                                            widget: widget,
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
