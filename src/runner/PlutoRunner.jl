@@ -15,7 +15,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions, FuzzyCompletions
+import FuzzyCompletions: Completion, ModuleCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -637,27 +637,6 @@ end
 # REPL THINGS
 ###
 
-# for functions below to work both for completions from REPLCompletions and FuzzyCompletions
-for c in [:KeywordCompletion, :PathCompletion, :ModuleCompletion, :PackageCompletion,
-          :PropertyCompletion, :FieldCompletion, :MethodCompletion, :BslashCompletion,
-          :ShellCompletion, :DictCompletion]
-  eval(:(const $c = Union{REPLCompletions.$c, FuzzyCompletions.$c}))
-end
-const Completion = Union{REPLCompletions.Completion, FuzzyCompletions.Completion}
-completion_text(c::REPLCompletions.Completion) = REPLCompletions.completion_text(c)
-completion_text(c::FuzzyCompletions.Completion) = FuzzyCompletions.completion_text(c)
-
-function completion_priority((s, description, exported))
-	c = first(s)
-	if islowercase(c)
-		1 - 10exported
-	elseif isuppercase(c)
-		2 - 10exported
-	else
-		3 - 10exported
-	end
-end
-
 completed_object_description(x::Function) = "Function"
 completed_object_description(x::Number) = "Number"
 completed_object_description(x::AbstractString) = "String"
@@ -680,23 +659,16 @@ function completions_exported(cs::Vector{<:Completion})
         if c isa ModuleCompletion
             c.mod ∈ completed_modules_exports[c.parent]
         else
-
             true
         end
     end
 end
 
 "You say Linear, I say Algebra!"
-function completion_fetcher(args...)
-    # TODO: switch this by configuration ?
-    isfuzzy = true
-    return (isfuzzy ? fuzzy_completion_fetcher : repl_completion_fetcher)(args...)
-end
+function completion_fetcher(query, pos, workspace::Module=current_module)
+    results, loc, found = completions(query, pos, workspace)
 
-function fuzzy_completion_fetcher(query, pos, workspace::Module=current_module)
-    results, loc, found = FuzzyCompletions.completions(query, pos, workspace)
-
-    filter!(c -> FuzzyCompletions.score(c) ≥ 0, results) # too many candiates otherwise
+    filter!(≥(0) ∘ score, results) # too many candiates otherwise
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
@@ -704,19 +676,6 @@ function fuzzy_completion_fetcher(query, pos, workspace::Module=current_module)
 
     final = collect(zip(texts, descriptions, exported))
 
-    (final, loc, found)
-end
-
-function repl_completion_fetcher(query, pos, workspace::Module=current_module)
-    results, loc, found = REPLCompletions.completions(query, pos, workspace)
-
-    texts = completion_text.(results)
-    descriptions = completion_description.(results)
-    exported = completions_exported(results)
-
-    smooshed_together = zip(texts, descriptions, exported)
-
-    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
     (final, loc, found)
 end
 
