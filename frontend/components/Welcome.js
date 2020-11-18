@@ -12,7 +12,28 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const shortpath = (path) => path.split("/").pop().split("\\").pop()
+const isUnixPath = (path) => path.includes("/")
+
+const split_at_level = (path, level) => {
+    let isunix = isUnixPath(path)
+    let sep = isunix ? "/" : "\\"
+    return path.split(sep).slice(-level).join(sep)
+}
+
+const shortestpath = (path, allpaths) => {
+    let level = 1
+    for (let i in allpaths) {
+        let otherpath = allpaths[i]
+        if (otherpath != path) {
+            while (split_at_level(path, level) == split_at_level(otherpath, level)) {
+                level++
+            }
+            console.log(split_at_level(path, level), split_at_level(otherpath, level))
+        }
+    }
+    console.log(path, level)
+    return split_at_level(path, level)
+}
 
 // should strip characters similar to how github converts filenames into the #file-... URL hash.
 // test on: https://gist.github.com/fonsp/f7d230da4f067a11ad18de15bff80470
@@ -182,10 +203,10 @@ export class Welcome extends Component {
                     console.log(`Newer version ${remote} is available`)
                     alert(
                         "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                            local +
-                            ", the latest is " +
-                            remote +
-                            '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
+                        local +
+                        ", the latest is " +
+                        remote +
+                        '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
                     )
                 }
             })
@@ -269,25 +290,26 @@ export class Welcome extends Component {
 
     render() {
         let recents = null
-
+        let allPaths = null
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
             console.log(this.state.combined_notebooks)
+            allPaths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
                 return html`<li
                     key=${nb.path}
                     class=${cl({
-                        running: running,
-                        recent: !running,
-                        transitioning: nb.transitioning,
-                    })}
+                    running: running,
+                    recent: !running,
+                    transitioning: nb.transitioning,
+                })}
                 >
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortpath(nb.path)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortestpath(nb.path, allPaths)}</a>
                 </li>`
             })
         }
