@@ -1,4 +1,4 @@
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 using Markdown
 
@@ -11,6 +11,7 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
+    filter!(≥(0) ∘ score, results) # too many candiates otherwise
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
