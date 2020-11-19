@@ -12,15 +12,15 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const isUnixPath = (path) => path.includes("/")
+const is_unix_path = (path) => path.includes("/")
 
 const split_at_level = (path, level) => {
-    let isunix = isUnixPath(path)
+    let isunix = is_unix_path(path)
     let sep = isunix ? "/" : "\\"
     return path.split(sep).slice(-level).join(sep)
 }
 
-const shortestpath = (path, allpaths) => {
+const shortest_path = (path, allpaths) => {
     let level = 1
     for (let i of allpaths) {
         let otherpath = allpaths[i]
@@ -307,7 +307,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortestpath(nb.path, allPaths)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, allPaths)}</a>
                 </li>`
             })
         }
