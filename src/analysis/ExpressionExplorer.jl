@@ -253,6 +253,9 @@ function join_funcname_parts(parts::FunctionName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
 
+assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
+assign_to_kw(x::Any) = x
+
 
 ###
 # MAIN RECURSIVE FUNCTION
@@ -367,7 +370,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             end
         end
 
-        return explore!(Expr(:call, ex.args...), scopestate)
+        new_ex = if length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
+        else
+            Expr(:call, ex.args...)
+        end
+
+        return explore!(new_ex, scopestate)
     elseif ex.head == :call
         # Does not create scope
 
