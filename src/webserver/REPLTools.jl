@@ -1,4 +1,4 @@
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import FuzzyCompletions: complete_path, completion_text, score, PathCompletion
 import Distributed
 using Markdown
 
@@ -6,11 +6,14 @@ function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
 
+score(c::PathCompletion) = c.score
+
 responses[:completepath] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     path = body["query"]
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
+    filter!(≥(-0.1) ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
