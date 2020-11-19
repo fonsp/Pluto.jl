@@ -146,6 +146,7 @@ function run(session::ServerSession)
                     while !eof(clientstream)
                         # This stream contains data received over the WebSocket.
                         # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+                        local parentbody
                         try
                             message = collect(WebsocketFix.readmessage(clientstream))
                             parentbody = unpack(message)
