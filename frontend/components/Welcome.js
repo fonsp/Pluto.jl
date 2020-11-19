@@ -22,16 +22,14 @@ const split_at_level = (path, level) => {
 
 const shortestpath = (path, allpaths) => {
     let level = 1
-    for (let i in allpaths) {
+    for (let i of allpaths) {
         let otherpath = allpaths[i]
         if (otherpath != path) {
-            while (split_at_level(path, level) == split_at_level(otherpath, level)) {
+            while (split_at_level(path, level) === split_at_level(otherpath, level)) {
                 level++
             }
-            console.log(split_at_level(path, level), split_at_level(otherpath, level))
         }
     }
-    console.log(path, level)
     return split_at_level(path, level)
 }
 
