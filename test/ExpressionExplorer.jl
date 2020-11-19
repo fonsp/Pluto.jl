@@ -284,7 +284,7 @@ using Test
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
         @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
-        @test testee(:(@f(x, y = z)), [:x, :z], [:y], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
+        @test testee(:(@f(x, y = z)), [:x, :z], [], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
         @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
         @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
@@ -297,6 +297,8 @@ using Test
 
         @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
         @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+
+        @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
 
         @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
