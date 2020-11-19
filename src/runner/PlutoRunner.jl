@@ -674,8 +674,9 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
 
-    final = collect(zip(texts, descriptions, exported))
+    smooshed_together = zip(texts, descriptions, exported)
 
+    final = sort!(collect(smooshed_together); alg=MergeSort, rev=true, by=(t -> t[3]))
     (final, loc, found)
 end
 
