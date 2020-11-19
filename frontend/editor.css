@@ -327,6 +327,12 @@ pluto-output div.footnote p:last-child {
     padding-bottom: 0px;
 }
 
+pluto-output.scroll_y {
+    max-height: 80vh;
+    max-height: 400px;
+    overflow: auto;
+}
+
 pluto-output table {
     border-collapse: collapse;
     border: 2px solid rgba(0, 0, 0, 0.2);
