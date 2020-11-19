@@ -288,12 +288,11 @@ export class Welcome extends Component {
 
     render() {
         let recents = null
-        let allPaths = null
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
             console.log(this.state.combined_notebooks)
-            allPaths = this.state.combined_notebooks.map((nb) => nb.path)
+            const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
                 return html`<li
@@ -307,7 +306,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, allPaths)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
                 </li>`
             })
         }
