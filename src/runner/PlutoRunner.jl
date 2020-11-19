@@ -668,7 +668,7 @@ end
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
 
-    filter!(≥(0) ∘ score, results) # too many candiates otherwise
+    endswith(query, '.') || filter!(≥(0) ∘ score, results) # too many candiates otherwise
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
