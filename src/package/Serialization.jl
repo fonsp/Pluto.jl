@@ -10,11 +10,15 @@
 variable_name = "PLUTO_NOTEBOOK_PACKAGES"
 
 function serialize_project(io::IO, project::Vector{<:NamedTuple})
-	write(io, variable_name, " = [\n")
-	for p in project
-		print(io, "\t", p, ",\n")
+	if isempty(project)
+		write(io, variable_name, " = []\n")
+	else
+		write(io, variable_name, " = [\n")
+		for p in project
+			print(io, "\t", p, ",\n")
+		end
+		write(io, "]\n")
 	end
-	write(io, "]\n")
 end
 serialize_project(project::Vector{<:NamedTuple}) = sprint(serialize_project, project)
 
