@@ -166,6 +166,8 @@ function run(session::ServerSession)
                     catch ex
                         if ex isa InterruptException
                             shutdown_server[]()
+                        elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                            # that's fine!
                         else
                             bt = stacktrace(catch_backtrace())
                             @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
