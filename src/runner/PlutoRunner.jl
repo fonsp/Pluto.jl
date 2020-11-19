@@ -664,19 +664,42 @@ function completions_exported(cs::Vector{<:Completion})
     end
 end
 
+function basic_completion_priority((s, description, exported))
+	c = first(s)
+	if islowercase(c)
+		1 - 10exported
+	elseif isuppercase(c)
+		2 - 10exported
+	else
+		3 - 10exported
+	end
+end
+
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
-
-    endswith(query, '.') || filter!(≥(0) ∘ score, results) # too many candiates otherwise
+    if endswith(query, '.')
+        # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    else
+        filter!(≥(0) ∘ score, results) # too many candiates otherwise
+    end
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
+    
+    smooshed_together = collect(zip(texts, descriptions, exported))
+    
+    p = if endswith(query, '.')
+        sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
+    else
+        # we give 3 extra score points to exported fields
+        scores = score.(results)
+        sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
+    end
 
-    smooshed_together = zip(texts, descriptions, exported)
-
-    final = sort!(collect(smooshed_together); alg=MergeSort, rev=true, by=(t -> t[3]))
+    final = smooshed_together[p]
     (final, loc, found)
 end
 
