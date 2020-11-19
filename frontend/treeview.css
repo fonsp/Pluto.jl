@@ -275,15 +275,15 @@ table.pluto-table tbody th:first-child {
     top: 2rem;
 }
 
-table.pluto-table td[colspan="999"] {
+table.pluto-table .jlmore-td {
     text-align: left;
     overflow: unset;
 }
 
-table.pluto-table td[colspan="999"] jlmore {
+table.pluto-table .jlmore-td jlmore {
     overflow: unset;
     position: sticky;
     left: 0;
     top: 2rem;
-    max-width: 200px;
+    max-width: 650px;
 }

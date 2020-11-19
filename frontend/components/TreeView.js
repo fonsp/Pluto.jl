@@ -159,7 +159,7 @@ export const TableView = ({ mime, body, cell_id, all_completed_promise, requests
             (row) =>
                 html`<tr>
                     ${row === "more"
-                        ? html`<td colspan="999">${more(1)}</td>`
+                        ? html`<td class="jlmore-td" colspan="999">${more(1)}</td>`
                         : html`<th>${row[0]}</th>
                               ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
                 </tr>`
