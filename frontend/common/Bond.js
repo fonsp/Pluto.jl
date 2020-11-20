@@ -6,6 +6,8 @@ import observablehq from "./SetupCellEnvironment.js"
 export const connect_bonds = (node, all_completed_promise, cell_invalidated_promise, requests) => {
     node.querySelectorAll("bond").forEach(async (bond_node) => {
         // read the docs on Generators.input from observablehq/stdlib:
+        console.log(`bond_node:`, bond_node)
+        console.log(`bond_node.firstElementChild:`, bond_node.firstElementChild)
         const inputs = observablehq.Generators.input(bond_node.firstElementChild)
         var is_first_value = true
 
@@ -21,6 +23,7 @@ export const connect_bonds = (node, all_completed_promise, cell_invalidated_prom
             // wait for a new input value. If a value is ready, then this promise resolves immediately
             const val = await inputs.next().value
             if (!node_is_invalidated) {
+                console.log(`val:`, val)
                 // send to the Pluto back-end (have a look at set_bond in Editor.js)
                 const to_send = await transformed_val(val)
                 requests.set_bond(bond_node.getAttribute("def"), to_send, is_first_value)

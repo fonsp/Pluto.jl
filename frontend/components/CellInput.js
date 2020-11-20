@@ -314,9 +314,7 @@ export const CellInput = ({
                             }
                         }
 
-                        console.log(`before_and_after_token:`, before_and_after_token)
                         let good_token = before_and_after_token.find((x) => is_good_token(x))
-                        console.log(`good_token:`, good_token)
                         if (good_token) {
                             let tokens = cm.getLineTokens(cursor.line)
                             let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
@@ -458,11 +456,8 @@ const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }
             if (token.type !== "builtin") break
             typedef_tokens.push(token.string)
         }
-        console.log(`typedef_tokens:`, typedef_tokens)
         return typedef_tokens.join("")
     }
-
-    console.log(`tokens_before_cursor, tokens_after_cursor:`, tokens_before_cursor, tokens_after_cursor)
 
     // Fix for multi-character operators (|>, &&, ||), codemirror splits these up, so we have to stitch them back together.
     if (i_guess_current_token?.type === "operator") {
@@ -513,7 +508,6 @@ const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }
                 found.push(token.string)
                 continue
             }
-            console.log(`token:`, token)
             break
         }
     }
