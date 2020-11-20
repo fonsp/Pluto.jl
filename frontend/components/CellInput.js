@@ -181,7 +181,7 @@ export const CellInput = ({
             const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
             if (!selected_lines.has(final_line_number)) {
                 Array.from(selected_lines)
-                    .sort((a, b) => delta * a < delta * b ? 1 : -1)
+                    .sort((a, b) => (delta * a < delta * b ? 1 : -1))
                     .forEach((line_number) => {
                         const lines = cm.getValue().split("\n")
                         swap(lines, line_number, line_number + delta)
@@ -269,24 +269,61 @@ export const CellInput = ({
         cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
         cm.setOption("autoCloseBrackets", true)
 
-        cm.on("cursorActivity", () => {
-            if (cm.somethingSelected()) {
-                const sel = cm.getSelection()
-                if (!/[\s]/.test(sel)) {
-                    // no whitespace
-                    on_update_doc_query(sel)
-                }
-            } else {
-                const cursor = cm.getCursor()
-                const token = cm.getTokenAt(cursor)
-                if (token.start === 0 && token.type === "operator" && token.string === "?") {
-                    // https://github.com/fonsp/Pluto.jl/issues/321
-                    const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
-                    on_update_doc_query(second_token.string)
-                } else if (token.type != null && token.type !== "string") {
-                    on_update_doc_query(module_expanded_selection(cm, token.string, cursor.line, token.start))
-                }
+        let is_good_token = (token) => {
+            let bad_token_types = ["number", "string", null]
+            if (bad_token_types.includes(token.type)) {
+                return false
             }
+            // Symbol, and symbols don't have autocomplete 🤷‍♀️
+            if (token.type === "builtin" && token.string.startsWith(":") && !token.string.startsWith("::")) {
+                return false
+            }
+            return true
+        }
+        cm.on("cursorActivity", () => {
+            setTimeout(() => {
+                if (!cm.hasFocus()) return
+                if (cm.somethingSelected()) {
+                    const sel = cm.getSelection()
+                    if (!/[\s]/.test(sel)) {
+                        // no whitespace
+                        on_update_doc_query(sel)
+                    }
+                } else {
+                    const cursor = cm.getCursor()
+                    const token = cm.getTokenAt(cursor)
+                    if (token.start === 0 && token.type === "operator" && token.string === "?") {
+                        // https://github.com/fonsp/Pluto.jl/issues/321
+                        const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
+                        on_update_doc_query(second_token.string)
+                    } else {
+                        const token_before_cursor = cm.getTokenAt(cursor)
+                        const token_after_cursor = cm.getTokenAt({ ...cursor, ch: cursor.ch + 1 })
+
+                        let before_and_after_token = [token_before_cursor, token_after_cursor]
+
+                        // Fix for string macros
+                        for (let possibly_string_macro of before_and_after_token) {
+                            let match = possibly_string_macro.string.match(/([a-zA-Z]+)"/)
+                            if (possibly_string_macro.type === "string" && match != null) {
+                                return on_update_doc_query(`@${match[1]}_str`)
+                            }
+                        }
+
+                        let good_token = before_and_after_token.find((x) => is_good_token(x))
+                        if (good_token) {
+                            let tokens = cm.getLineTokens(cursor.line)
+                            let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
+                            on_update_doc_query(
+                                module_expanded_selection({
+                                    tokens_before_cursor: tokens.slice(0, current_token + 1),
+                                    tokens_after_cursor: tokens.slice(current_token + 1),
+                                })
+                            )
+                        }
+                    }
+                }
+            }, 0)
         })
 
         cm.on("change", (_, e) => {
@@ -389,23 +426,68 @@ const juliahints = (cm, options) => {
                 to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
             }
             CodeMirror.on(completions, "select", (val) => {
-                options.on_update_doc_query(module_expanded_selection(cm, val.text, cursor.line, completions.from.ch))
+                let text = typeof val === "string" ? val : val.text
+                let doc_query = module_expanded_selection({
+                    tokens_before_cursor: [
+                        { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
+                        { type: "variable", string: text },
+                    ],
+                    tokens_after_cursor: [],
+                })
+                options.on_update_doc_query(doc_query)
             })
             return completions
         })
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/239
-const module_expanded_selection = (cm, current, line, ch) => {
-    const next1 = cm.getTokenAt({ line: line, ch: ch })
-    if (next1.string === ".") {
-        const next2 = cm.getTokenAt({ line: line, ch: ch - 1 })
-        if (next2.type === "variable") {
-            return module_expanded_selection(cm, next2.string + "." + current, line, next2.start)
-        } else {
-            return current
+const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }) => {
+    // Fix for :: type definitions, more specifically :: type definitions with { ... } generics
+    // e.g. ::AbstractArray{String} gets parsed by codemirror as [`::AbstractArray{`, `String}`] ??
+    let i_guess_current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
+    console.log(`i_guess_current_token:`, i_guess_current_token)
+    if (i_guess_current_token?.type === "builtin" && i_guess_current_token.string.startsWith("::")) {
+        let typedef_tokens = []
+        typedef_tokens.push(i_guess_current_token.string.slice(2))
+        for (let token of tokens_after_cursor) {
+            if (token.type !== "builtin") break
+            typedef_tokens.push(token.string)
         }
-    } else {
-        return current
+        console.log(`typedef_tokens:`, typedef_tokens)
+        return typedef_tokens.join("")
     }
+
+    // Fix for multi-character operators (|>, &&, ||), codemirror splits these up, so we have to stitch them back together.
+    if (i_guess_current_token?.type === "operator") {
+        let operator_tokens = []
+        for (let token of tokens_before_cursor.reverse()) {
+            if (token.type !== "operator") {
+                break
+            }
+            operator_tokens.unshift(token.string)
+        }
+        for (let token of tokens_after_cursor) {
+            if (token.type !== "operator") {
+                break
+            }
+            operator_tokens.push(token.string)
+        }
+        return operator_tokens.join("")
+    }
+
+    let found = []
+    for (let token of tokens_before_cursor.slice().reverse()) {
+        if (token.type == null) {
+            break
+        }
+        if (token.type === "number") {
+            break
+        }
+        if (token.type === "builtin" && token.string.startsWith("::")) {
+            found.push(token.string.slice(2))
+            break
+        }
+        found.push(token.string)
+    }
+    return found.reverse().join("").replace(/\.$/, "")
 }
