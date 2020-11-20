@@ -50,7 +50,7 @@ function readmessage(ws::WebSockets.WebSocket)
     elseif header.opcode == WebSockets.WS_PING
         WebSockets.wswrite(ws, WebSockets.WS_FINAL | WebSockets.WS_PONG, ws.rxpayload[1:l])
         header2, data2 = readframe(ws)
-        return data2
+        return readmessage(ws)
     elseif header.opcode == WebSockets.WS_CONTINUATION
         error("WS continuation gone wrong")
     else
