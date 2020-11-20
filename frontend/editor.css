@@ -1257,6 +1257,9 @@ pluto-helpbox > header > input {
     font-size: inherit;
     border: none;
 }
+pluto-helpbox.notfound > header > input {
+    color: red;
+}
 pluto-helpbox > header > input:focus {
     outline: none;
 }

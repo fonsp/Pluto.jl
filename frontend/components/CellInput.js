@@ -270,12 +270,16 @@ export const CellInput = ({
         cm.setOption("autoCloseBrackets", true)
 
         let is_good_token = (token) => {
-            let bad_token_types = ["number", "string", null]
-            if (bad_token_types.includes(token.type)) {
-                return false
+            if (token.type == null && token.string === "]") {
+                return true
             }
+
             // Symbol, and symbols don't have autocomplete 🤷‍♀️
             if (token.type === "builtin" && token.string.startsWith(":") && !token.string.startsWith("::")) {
+                return false
+            }
+            let bad_token_types = ["number", "string", null]
+            if (bad_token_types.includes(token.type)) {
                 return false
             }
             return true
@@ -310,7 +314,9 @@ export const CellInput = ({
                             }
                         }
 
+                        console.log(`before_and_after_token:`, before_and_after_token)
                         let good_token = before_and_after_token.find((x) => is_good_token(x))
+                        console.log(`good_token:`, good_token)
                         if (good_token) {
                             let tokens = cm.getLineTokens(cursor.line)
                             let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
@@ -445,7 +451,6 @@ const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }
     // Fix for :: type definitions, more specifically :: type definitions with { ... } generics
     // e.g. ::AbstractArray{String} gets parsed by codemirror as [`::AbstractArray{`, `String}`] ??
     let i_guess_current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
-    console.log(`i_guess_current_token:`, i_guess_current_token)
     if (i_guess_current_token?.type === "builtin" && i_guess_current_token.string.startsWith("::")) {
         let typedef_tokens = []
         typedef_tokens.push(i_guess_current_token.string.slice(2))
@@ -456,6 +461,8 @@ const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }
         console.log(`typedef_tokens:`, typedef_tokens)
         return typedef_tokens.join("")
     }
+
+    console.log(`tokens_before_cursor, tokens_after_cursor:`, tokens_before_cursor, tokens_after_cursor)
 
     // Fix for multi-character operators (|>, &&, ||), codemirror splits these up, so we have to stitch them back together.
     if (i_guess_current_token?.type === "operator") {
@@ -476,18 +483,39 @@ const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }
     }
 
     let found = []
+    /** @type {"top" | "in-ref"} */
+    let state = "top"
     for (let token of tokens_before_cursor.slice().reverse()) {
-        if (token.type == null) {
+        if (state === "top") {
+            if (token.type == null && token.string == "]") {
+                state = "in-ref"
+                found.push(token.string)
+                continue
+            }
+            if (token.type == null) {
+                break
+            }
+            if (token.type === "number") {
+                break
+            }
+            if (token.type === "builtin" && token.string.startsWith("::")) {
+                found.push(token.string.slice(2))
+                break
+            }
+            found.push(token.string)
+        } else if (state === "in-ref") {
+            if (token.type == null && token.string == "[") {
+                state = "top"
+                found.push(token.string)
+                continue
+            }
+            if (token.type === "number" || token.type === "string") {
+                found.push(token.string)
+                continue
+            }
+            console.log(`token:`, token)
             break
         }
-        if (token.type === "number") {
-            break
-        }
-        if (token.type === "builtin" && token.string.startsWith("::")) {
-            found.push(token.string.slice(2))
-            break
-        }
-        found.push(token.string)
     }
     return found.reverse().join("").replace(/\.$/, "")
 }
