@@ -15,7 +15,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, CompleteAlways, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -637,10 +637,6 @@ end
 # REPL THINGS
 ###
 
-# we don't want the CompleteAlways feature of FuzzyCompletions, so we disable it by having our own score function:
-my_score(c::CompleteAlways) = c.score
-my_score(c::Any) = score(c)
-
 function basic_completion_priority((s, description, exported))
 	c = first(s)
 	if islowercase(c)
@@ -686,20 +682,20 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
     else
-        filter!(≥(0) ∘ my_score, results) # too many candiates otherwise
+        filter!(≥(0) ∘ score, results) # too many candiates otherwise
     end
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
-    
+
     smooshed_together = collect(zip(texts, descriptions, exported))
-    
+
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
     else
         # we give 3 extra score points to exported fields
-        scores = my_score.(results)
+        scores = score.(results)
         sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
     end
 

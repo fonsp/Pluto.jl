@@ -1,12 +1,10 @@
-import FuzzyCompletions: complete_path, completion_text, score, PathCompletion
+import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 using Markdown
 
 function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
-
-score(c::PathCompletion) = c.score
 
 responses[:completepath] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     path = body["query"]
