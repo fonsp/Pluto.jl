@@ -1,6 +1,6 @@
 import { html, useEffect, useRef } from "../imports/Preact.js"
 
-import { Cell } from "./Cell.js"
+import { MemoCell } from "./Cell.js"
 
 export const Notebook = ({
     is_loading,
@@ -27,11 +27,11 @@ export const Notebook = ({
     return html`
         <pluto-notebook id=${notebook_id}>
             ${cells.map(
-                (d) => html`<${Cell}
+                (d) => html`<${MemoCell}
                     ...${d}
                     key=${d.cell_id}
                     on_update_doc_query=${on_update_doc_query}
-                    on_change=${(val) => on_cell_input(d, val)}
+                    on_change=${on_cell_input}
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${focus_after_creation && !d.pasted}

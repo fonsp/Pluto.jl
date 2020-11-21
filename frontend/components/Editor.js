@@ -1001,8 +1001,8 @@ export class Editor extends Component {
                     is_loading=${this.state.loading}
                     ...${this.state.notebook}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
-                    on_cell_input=${(cell, new_val) => {
-                        this.set_cell_state(cell.cell_id, {
+                    on_cell_input=${(cell_id, new_val) => {
+                        this.set_cell_state(cell_id, {
                             local_code: {
                                 body: new_val,
                             },
