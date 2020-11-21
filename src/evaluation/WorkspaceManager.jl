@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -29,7 +29,7 @@ const process_preamble = [
 ]
 
 const moduleworkspace_count = Ref(0)
-const workspaces = Dict{UUID,Workspace}()
+const workspaces = Dict{UUID,Promise{Workspace}}()
 
 
 """Create a workspace for the notebook, optionally in a separate process.
@@ -184,11 +184,10 @@ end
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
 function get_workspace(session_notebook::Tuple{ServerSession, Notebook})::Workspace
     session, notebook = session_notebook
-    if haskey(workspaces, notebook.notebook_id)
-        workspaces[notebook.notebook_id]
-    else
-        workspaces[notebook.notebook_id] = make_workspace(session_notebook)
+    promise = get!(workspaces, notebook.notebook_id) do
+        Promise{Workspace}(() -> make_workspace(session_notebook))
     end
+    wait(promise)
 end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
@@ -197,7 +196,7 @@ function unmake_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},
     workspace = get_workspace(session_notebook)
 
     if workspace.pid != Distributed.myid()
-        filter!(p -> p.second.pid != workspace.pid, workspaces)
+        filter!(p -> wait(p.second).pid != workspace.pid, workspaces)
         interrupt_workspace(workspace; verbose=false)
         if workspace.pid != Distributed.myid()
             Distributed.rmprocs(workspace.pid)
@@ -256,7 +255,7 @@ function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook}
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectID, Nothing}=nothing)
+function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair, Nothing}=nothing)
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.

@@ -15,15 +15,17 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text, Completion, ModuleCompletion
+import FuzzyCompletions: Completion, ModuleCompletion, CompleteAlways, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
+import Tables
 
 export @bind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
 ObjectID = typeof(objectid("hello computer"))
+ObjectDimPair = Tuple{ObjectID,Int64}
 
 ###
 # WORKSPACE MANAGER
@@ -45,8 +47,6 @@ function set_current_module(newname)
     end
     
     global default_iocontext = IOContext(default_iocontext, :module => current_module)
-    global default_iocontext_compact = IOContext(default_iocontext_compact, :module => current_module)
-    
     global current_module = getfield(Main, newname)
 end
 
@@ -55,14 +55,19 @@ const cell_results = Dict{UUID, Any}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
-const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
+const table_row_display_limit = 10
+const table_row_display_limit_increase = 60
+const table_column_display_limit = 8
+const table_column_display_limit_increase = 30
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
+
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectID, Int64}()
+        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
     else
-        old = get!(() -> Dict{ObjectID, Int64}(), tree_display_extra_items, id)
-        old[showmore] = get(old, showmore, 0) + tree_display_limit_increase
+        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
+        old[showmore] = get(old, showmore, 0) + 1
         old
     end
 
@@ -240,8 +245,6 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
-default_iocontext_compact = IOContext(default_iocontext, :compact => true)
-
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -251,7 +254,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -365,12 +368,14 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
+    mime = Iterators.filter(m -> pluto_showable(m ,x), allmimes) |> first
     
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, io), mime
+        tree_data(x, IOContext(io, :compact => true)), mime
+    elseif mime isa MIME"application/vnd.pluto.table+object"
+        table_data(x, IOContext(io, :compact => true)), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -386,34 +391,45 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     end
 end
 
+# we write our own function instead of extending Base.showable with our new MIME because:
+# we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
+# but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
+# Baee.showable(m::MIME, x::Plots.Plot)
+# because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
+pluto_showable(m::MIME, x::Any) = Base.invokelatest(showable, m, x)
+
 ###
 # TREE VIEWER
 ###
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+
+
+pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x) catch; false end
+pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
 
 
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)
+function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)::Vector
     map(indices) do i
         if isassigned(x, i)
             i, format_output_default(x[i]; context=context)
         else
             i, format_output_default(Text(Base.undef_ref_str); context=context)
         end
-    end
+    end |> collect
 end
 
 function array_prefix(x::Array{<:Any, 1})
@@ -424,22 +440,23 @@ function array_prefix(x)
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(x, context)
-    tree_display_limit + let
+function get_my_display_limit(x, dim::Int64, context::IOContext, a::Int64, b::Int64)
+    a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
         else
-            get(d, objectid(x), 0)
+            b * get(d, (objectid(x),dim), 0)
         end
     end
 end
 
 function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     indices = eachindex(x)
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
-    elements = if length(x) <= my_limit
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    elements = if length(x) <= my_limit + 5
         tree_data_array_elements(x, indices, context)
     else
         firsti = firstindex(x)
@@ -470,7 +487,7 @@ end
 function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
     elements = []
 
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
     row_index = 1
     for pair in x
         k, v = pair
@@ -553,10 +570,78 @@ trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
 ###
+# TABLE VIEWER
+##
+
+function maptruncated(f::Function, xs, filler, limit; truncate=true)
+    if truncate
+        result = Any[
+            # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+            f(xs[i]) for i in 1:limit
+        ]
+        push!(result, filler)
+        result
+    else
+        [f(x) for x in xs]
+    end
+end
+
+function table_data(x::Any, io::IOContext)
+    rows = Tables.rows(x)
+
+    my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+
+    # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+    my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+    # my_column_limit = table_column_display_limit
+
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    truncate_rows = my_row_limit + 5 < length(rows)
+    truncate_columns = if isempty(rows)
+        false
+    else
+        my_column_limit + 5 < length(first(rows))
+    end
+
+    row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+        format_output_default(el; context=io)
+    end
+
+    row_data = Any[
+        # not a map(row) because it needs to be a Vector
+        # not enumerate(rows) because of some silliness
+        (i, row_data_for(rows[i])) for i in (truncate_rows ? (1:my_row_limit) : (1:length(rows)))
+    ]
+    if truncate_rows
+        push!(row_data, "more")
+        push!(row_data, (length(rows), row_data_for(last(rows))))
+    end
+    
+    # TODO: render entire schema by default?
+
+    schema = Tables.schema(rows)
+    schema_data = schema === nothing ? nothing : Dict(
+        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+        :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+    )
+
+    Dict(
+        :objectid => string(objectid(x), base=16),
+        :schema => schema_data,
+        :rows => row_data,
+    )
+end
+
+###
 # REPL THINGS
 ###
 
-function completion_priority((s, description, exported))
+# we don't want the CompleteAlways feature of FuzzyCompletions, so we disable it by having our own score function:
+my_score(c::CompleteAlways) = c.score
+my_score(c::Any) = score(c)
+
+function basic_completion_priority((s, description, exported))
 	c = first(s)
 	if islowercase(c)
 		1 - 10exported
@@ -589,7 +674,6 @@ function completions_exported(cs::Vector{<:Completion})
         if c isa ModuleCompletion
             c.mod ∈ completed_modules_exports[c.parent]
         else
-
             true
         end
     end
@@ -598,36 +682,75 @@ end
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
+    if endswith(query, '.')
+        # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    else
+        filter!(≥(0) ∘ my_score, results) # too many candiates otherwise
+    end
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
-
-    smooshed_together = zip(texts, descriptions, exported)
     
-    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
+    smooshed_together = collect(zip(texts, descriptions, exported))
+    
+    p = if endswith(query, '.')
+        sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
+    else
+        # we give 3 extra score points to exported fields
+        scores = my_score.(results)
+        sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
+    end
+
+    final = smooshed_together[p]
     (final, loc, found)
 end
+
+"""
+    is_pure_expression(expression::ReturnValue{Meta.parse})
+Checks if an expression is approximately pure.
+Not sure if the type signature conveys it, but this take anything that is returned from `Meta.parse`.
+It obviously does not actually check if something is strictly pure, as `getproperty()` could be extended,
+and suddenly there can be side effects everywhere. This is just an approximation.
+"""
+function is_pure_expression(expr::Expr)
+    if expr.head == :. || expr.head === :curly || expr.head === :ref
+        all((is_pure_expression(x) for x in expr.args))
+    else
+        false
+    end
+end
+is_pure_expression(s::Symbol) = true
+is_pure_expression(q::QuoteNode) = true
+is_pure_expression(q::Number) = true
+is_pure_expression(q::String) = true
+is_pure_expression(x) = false # Better safe than sorry I guess
 
 # Based on /base/docs/bindings.jl from Julia source code
 function binding_from(x::Expr, workspace::Module=current_module)
     if x.head == :macrocall
-        Docs.Binding(workspace, x.args[1])
-    elseif x.head == :.
-        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2].value)
+        macro_name = x.args[1]
+        if is_pure_expression(macro_name)
+            Core.eval(workspace, macro_name)
+        else
+            error("Couldn't infer `$x` for Live Docs.")
+        end
+    elseif is_pure_expression(x)
+        Core.eval(workspace, x)
     else
-        error("Invalid @var syntax `$x`.")
+        error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspace, s)
+binding_from(s::Symbol, workspace::Module=current_module) = Core.eval(workspace, s)
 binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
 
 "You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
-        (repr(MIME"text/html"(), Docs.doc(binding)), :👍)
+        value = binding_from(Meta.parse(query), workspace)
+        (repr(MIME"text/html"(), Docs.doc(value)), :👍)
     catch ex
         (nothing, :👎)
     end

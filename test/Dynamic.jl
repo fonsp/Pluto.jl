@@ -49,14 +49,13 @@ stringify_keys(x::Any) = x
         @test length(notebook.cells) == 4
         @test_nowarn send(:set_input, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:run_multiple_cells, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
-        @test_nowarn send(:run, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9, :is_first_value => true), Dict(:notebook_id => n))
         @test_nowarn send(:change_cell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
         @test_nowarn send(:delete_cell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
 
         @test_nowarn send(:move_multiple_cells, Dict(:cells => [c(notebook.cells[3])], :index => 1), Dict(:notebook_id => n))
         @test_nowarn send(:fold_cell, Dict(:folded => true), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-        @test_nowarn send(:getinput, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
+        @test_nowarn send(:get_input, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:get_output, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
         @test_nowarn send(:get_all_cells, Dict(), Dict(:notebook_id => n))
         @test_nowarn send(:get_all_notebooks, Dict(), Dict(:notebook_id => n))

@@ -1,7 +1,7 @@
 import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView } from "./TreeView.js"
+import { TreeView, TableView } from "./TreeView.js"
 
 import { connect_bonds } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
@@ -13,7 +13,7 @@ export class CellOutput extends Component {
         super()
         this.old_height = 0
         this.resize_observer = new ResizeObserver((entries) => {
-            const new_height = this.base.scrollHeight
+            const new_height = this.base.offsetHeight
 
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
@@ -44,7 +44,12 @@ export class CellOutput extends Component {
             <pluto-output
                 class=${cl({
                     rich_output:
-                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+object" && this.props.mime !== "text/plain"),
+                        this.props.errored ||
+                        !this.props.body ||
+                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                            this.props.mime !== "application/vnd.pluto.table+object" &&
+                            this.props.mime !== "text/plain"),
+                    scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
                 mime=${this.props.mime}
             >
@@ -117,6 +122,15 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
                     persist_js_state=${persist_js_state}
                 />
             </div>`
+            break
+        case "application/vnd.pluto.table+object":
+            return html` <${TableView}
+                cell_id=${cell_id}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                persist_js_state=${persist_js_state}
+            />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`

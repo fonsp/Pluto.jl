@@ -102,10 +102,6 @@ responses[:fold_cell] = (session::ServerSession, body, notebook::Notebook, cell:
     putnotebookupdates!(session, notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
 end
 
-responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    update_save_run!(session, notebook, [cell]; run_async=true, save=false)
-end
-
 responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
@@ -113,7 +109,7 @@ responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebo
     update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
 
-responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_input] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 
@@ -197,7 +193,7 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
 end
 
 responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), parse(PlutoRunner.ObjectID, body["object_id"], base=16))
+    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
     putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))

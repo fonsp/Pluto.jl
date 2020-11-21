@@ -129,7 +129,7 @@ function run(session::ServerSession)
         end
     end
 
-    kill_server = Ref{Function}(identity)
+    shutdown_server = Ref{Function}(() -> ())
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
@@ -146,29 +146,28 @@ function run(session::ServerSession)
                     while !eof(clientstream)
                         # This stream contains data received over the WebSocket.
                         # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+                        local parentbody
                         try
                             message = collect(WebsocketFix.readmessage(clientstream))
-                            # TODO: view to avoid memory allocation
                             parentbody = unpack(message)
 
                             process_ws_message(session, parentbody, clientstream)
                         catch ex
                             if ex isa InterruptException
-                                kill_server[]()
+                                shutdown_server[]()
                             elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
                                 # that's fine!
-                            elseif ex isa InexactError
-                                # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471
-                                # TODO: remove this switch
                             else
                                 bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
+                                @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
                             end
                         end
                     end
                     catch ex
                         if ex isa InterruptException
-                            kill_server[]()
+                            shutdown_server[]()
+                        elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                            # that's fine!
                         else
                             bt = stacktrace(catch_backtrace())
                             @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
@@ -177,7 +176,7 @@ function run(session::ServerSession)
                 end
             catch ex
                 if ex isa InterruptException
-                    kill_server[]()
+                    shutdown_server[]()
                 elseif ex isa Base.IOError
                     # that's fine!
                 elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
@@ -236,7 +235,7 @@ function run(session::ServerSession)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    kill_server[] = () -> @sync begin
+    shutdown_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
         @async close(serversocket)
         # TODO: HTTP has a kill signal?
@@ -246,7 +245,7 @@ function run(session::ServerSession)
         end
         empty!(session.connected_clients)
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(ws)
+            @async WorkspaceManager.unmake_workspace(wait(ws))
         end
     end
 
@@ -255,7 +254,7 @@ function run(session::ServerSession)
         wait(servertask)
     catch e
         if e isa InterruptException
-            kill_server[]()
+            shutdown_server[]()
         elseif e isa TaskFailedException
             # nice!
         else
