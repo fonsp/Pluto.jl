@@ -989,6 +989,25 @@ pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+pluto-cell.drop_target {
+    position: relative;
+}
+
+pluto-cell.drop_target pluto-input::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.75);
+    color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    content: "+ Drop file here";
+    z-index: 2;
+}
+
 /* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {

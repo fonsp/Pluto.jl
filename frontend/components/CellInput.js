@@ -30,6 +30,7 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    on_drag_drop_events,
     client,
     cell_id,
     notebook_id,
@@ -310,6 +311,25 @@ export const CellInput = ({
             }
             return true
         }
+
+        cm.on("dragover", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+        cm.on("drop", (cm_, e) => {
+            on_drag_drop_events(e)
+            e.preventDefault()
+            return true
+        })
+        cm.on("dragenter", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+        cm.on("dragleave", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+
         cm.on("cursorActivity", () => {
             setTimeout(() => {
                 if (!cm.hasFocus()) return
@@ -387,11 +407,17 @@ export const CellInput = ({
     }, [])
 
     useEffect(() => {
-        if (!remote_code.submitted_by_me) {
+        if (!remote_code.submitted_by_me || cm_ref.current.value !== local_code.body) {
             cm_ref.current.setValue(remote_code.body)
         }
         cm_ref.current.options.disableInput = disable_input
     }, [remote_code.timestamp])
+
+    useEffect(() => {
+        if (cm_ref.current.value !== local_code.body && local_code.body === remote_code.body) {
+            cm_ref.current.setValue(remote_code.body)
+        }
+    }, [local_code.body, remote_code.body])
 
     useEffect(() => {
         if (cm_forced_focus == null) {

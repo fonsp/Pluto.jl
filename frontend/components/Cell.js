@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -92,6 +92,8 @@ export const Cell = ({
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [dragActive, setDragActiveFast] = useState(false)
+    const setDragActive = useMemo(() => _.debounce(setDragActiveFast, 200), [setDragActiveFast])
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
@@ -117,9 +119,76 @@ export const Cell = ({
     const class_code_folded = code_folded && cm_forced_focus == null
 
     let show_input = errored || class_code_differs || !class_code_folded
+    const uploadFile = (file) => {
+        return
+        const form = new FormData()
+        form.append("file", file)
+        fetch("https://file.io/?expires=1d", {
+            method: "POST",
+            body: form,
+        })
+            .then((res) => {
+                return res.json()
+            })
+            .then(console.log)
+    }
 
+    const uploadAndCreateCodeTemplate = (file) => {
+        if (!(file instanceof File)) return " #  File can't be read"
+        uploadFile(file)
+        const fileName = file?.name
+        switch (file?.type) {
+            // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
+            case "text/plain":
+                return
+            case "application/vnd.ms-excel":
+            case "application/vnd.oasis.opendocument.spreadsheet":
+            case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+                console.log("excel file")
+                return
+            case "image/jpeg":
+                console.log("jpeg image")
+                break
+            case "image/png":
+                console.log("image png")
+                break
+            case "application/vnd.apache.arrow.file":
+                console.log("Arrow file")
+                break
+            case "application/json":
+                break
+        }
+        return ""
+    }
+    const eventHandler = (ev) => {
+        switch (ev.type) {
+            case "cmdrop":
+            case "drop":
+                ev.preventDefault() // don't file open
+                const new_code = uploadAndCreateCodeTemplate(ev.dataTransfer.files[0])
+                on_change(new_code)
+                requests.change_remote_cell(cell_id, new_code)
+                setDragActive(false)
+                break
+            case "dragover":
+                ev.dataTransfer.dropEffect = "copy"
+                setDragActive(true)
+                break
+            case "dragenter":
+                setDragActiveFast(true)
+                break
+            case "dragleave":
+                setDragActive(false)
+                break
+            default:
+        }
+    }
     return html`
         <pluto-cell
+            onDragOver=${eventHandler}
+            onDrop=${eventHandler}
+            onDragEnter=${eventHandler}
+            onDragLeave=${eventHandler}
             class=${cl({
                 queued: queued,
                 running: running,
@@ -127,6 +196,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                drop_target: dragActive,
             })}
             id=${cell_id}
         >
@@ -163,6 +233,7 @@ export const Cell = ({
                 scroll_into_view_after_creation=${scroll_into_view_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                on_drag_drop_events=${eventHandler}
                 on_submit=${(new_code) => {
                     requests.change_remote_cell(cell_id, new_code)
                 }}
