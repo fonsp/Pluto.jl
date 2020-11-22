@@ -161,14 +161,22 @@ export const Cell = ({
         return ""
     }
     const eventHandler = (ev) => {
+        // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
+        console.log("this runs", ev.dataTransfer.types)
+        if (ev.dataTransfer.types[0] === "text/pluto-cell") return
         switch (ev.type) {
             case "cmdrop":
             case "drop":
                 ev.preventDefault() // don't file open
-                const new_code = uploadAndCreateCodeTemplate(ev.dataTransfer.files[0])
-                on_change(new_code)
-                requests.change_remote_cell(cell_id, new_code)
                 setDragActive(false)
+                if (!ev.dataTransfer.files.length) {
+                    return
+                }
+                const new_code = uploadAndCreateCodeTemplate(ev.dataTransfer.files[0])
+                if (new_code) {
+                    on_change(new_code)
+                    requests.change_remote_cell(cell_id, new_code)
+                }
                 break
             case "dragover":
                 ev.dataTransfer.dropEffect = "copy"
