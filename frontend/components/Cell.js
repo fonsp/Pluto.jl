@@ -93,6 +93,7 @@ export const Cell = ({
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [dragActive, setDragActiveFast] = useState(false)
+    const [savingFile, setSavingFile] = useState(false)
     const setDragActive = useMemo(() => _.debounce(setDragActiveFast, 200), [setDragActiveFast])
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
@@ -119,24 +120,35 @@ export const Cell = ({
     const class_code_folded = code_folded && cm_forced_focus == null
 
     let show_input = errored || class_code_differs || !class_code_folded
-    const uploadFile = (file) => {
-        return
-        const form = new FormData()
-        form.append("file", file)
-        fetch("https://file.io/?expires=1d", {
-            method: "POST",
-            body: form,
+    const prepareFileBase64 = (file) =>
+        new Promise((resolve, reject) => {
+            const { name, type } = file
+            const fr = new FileReader()
+            fr.onerror = () => reject("Failed to read file!")
+            fr.onloadstart = () => {}
+            fr.onprogress = ({ loaded, total }) => {}
+            fr.onload = () => {}
+            fr.onloadend = ({ target: { result } }) => resolve({ fileBase64: String(result).replace(/.*base64,/, ""), name, type })
+            fr.readAsDataURL(file)
         })
-            .then((res) => {
-                return res.json()
-            })
-            .then(console.log)
-    }
 
-    const uploadAndCreateCodeTemplate = (file) => {
+    const uploadAndCreateCodeTemplate = async (file) => {
         if (!(file instanceof File)) return " #  File can't be read"
-        uploadFile(file)
-        const fileName = file?.name
+        setSavingFile(true)
+
+        const {
+            message: { success, file_path },
+        } = await prepareFileBase64(file).then(
+            (preparedObj) => {
+                return requests.write_file(cell_id, preparedObj)
+            },
+            () => alert("Pluto can't save this file 😥")
+        )
+        setSavingFile(false)
+        if (!success) {
+            alert("Pluto can't save this file 😥")
+            return "# File save failed"
+        }
         switch (file?.type) {
             // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             case "text/plain":
@@ -157,30 +169,36 @@ export const Cell = ({
                 break
             case "application/json":
                 break
+            default:
+                alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
+                return
         }
-        return ""
+        return " # Filetype not supported!"
     }
     const eventHandler = (ev) => {
         // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
-        console.log("this runs", ev.dataTransfer.types)
         if (ev.dataTransfer.types[0] === "text/pluto-cell") return
         switch (ev.type) {
             case "cmdrop":
             case "drop":
+                console.log("runs?")
                 ev.preventDefault() // don't file open
                 setDragActive(false)
                 if (!ev.dataTransfer.files.length) {
                     return
                 }
-                const new_code = uploadAndCreateCodeTemplate(ev.dataTransfer.files[0])
-                if (new_code) {
-                    on_change(new_code)
-                    requests.change_remote_cell(cell_id, new_code)
-                }
+                uploadAndCreateCodeTemplate(ev.dataTransfer.files[0]).then((code) => {
+                    if (code) {
+                        on_change(code)
+                        requests.change_remote_cell(cell_id, code)
+                    }
+                })
                 break
             case "dragover":
+                ev.preventDefault()
                 ev.dataTransfer.dropEffect = "copy"
                 setDragActive(true)
+                setTimeout(() => setDragActive(false), 500)
                 break
             case "dragenter":
                 setDragActiveFast(true)

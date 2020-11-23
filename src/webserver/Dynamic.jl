@@ -1,5 +1,5 @@
 import UUIDs: uuid1
-
+import Base64: base64decode
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
@@ -197,4 +197,25 @@ responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cel
     set_output!(cell, run)
     # send to all clients, why not
     putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+end
+
+responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let 
+    file = base64decode(body["fileBase64"])
+    path = notebook.path
+    save_path = joinpath(path |> dirname, body["name"])
+    success = try
+        io = open(save_path, "w")
+        write(io, file)
+        close(io)
+        true
+    catch e
+        false
+    end
+    msg = UpdateMessage(:write_file_reply, 
+        Dict(
+            :success => success,
+            :file_path => save_path
+        ), notebook, nothing, initiator)
+
+    putclientupdates!(session, initiator, msg)
 end
