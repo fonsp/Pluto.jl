@@ -137,7 +137,7 @@ export const Cell = ({
         setSavingFile(true)
 
         const {
-            message: { success, file_path },
+            message: { success, file_path, file_name },
         } = await prepareFileBase64(file).then(
             (preparedObj) => {
                 return requests.write_file(cell_id, preparedObj)
@@ -149,26 +149,47 @@ export const Cell = ({
             alert("Pluto can't save this file 😥")
             return "# File save failed"
         }
+
+        const [name, extension] = file_name.split(".").map((a) => a.replace(/["\-,#@!\%\s+\;()$&*\[\]\{\}']/g, ""))
         switch (file?.type) {
             // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
             case "text/plain":
-                return
+                if (extension === "csv")
+                    return `begin
+    using TableIO, DataFrames #
+    df_${name} = DataFrame(read_table(${file_path}); copycols=false)
+end
+`
+                if (extension === "txt")
+                    return `begin
+    file = open("${file_path}")
+    txt_${name} = read(file, String)
+end`
             case "application/vnd.ms-excel":
             case "application/vnd.oasis.opendocument.spreadsheet":
             case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                console.log("excel file")
-                return
+                return `begin
+    using TableIO, DataFrames
+    df_${name} = DataFrame(read_table("${file_path}",
+    #, "Sheet1"  # Uncomment This if you need to read a specific sheet
+    ); copycols=false)
+end
+                `
             case "image/jpeg":
-                console.log("jpeg image")
-                break
             case "image/png":
-                console.log("image png")
-                break
+            case "image/gif":
+                return `begin
+    using PlutoUI
+    LocalResource("${file_path}")
+ end`
             case "application/vnd.apache.arrow.file":
                 console.log("Arrow file")
                 break
             case "application/json":
-                break
+                return `begin
+    using TableIO, DataFrames
+    df_${name} = read_table("${file_path}") |> DataFrame
+end`
             default:
                 alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
                 return

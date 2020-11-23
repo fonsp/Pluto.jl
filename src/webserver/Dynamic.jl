@@ -214,7 +214,8 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     msg = UpdateMessage(:write_file_reply, 
         Dict(
             :success => success,
-            :file_path => save_path
+            :file_path => save_path,
+            :file_name => body["name"]
         ), notebook, nothing, initiator)
 
     putclientupdates!(session, initiator, msg)
