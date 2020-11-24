@@ -236,11 +236,12 @@ get_template_code = (filename, directory) -> begin
     extension = split(filename, ".")[end]
 
     if extension ∈ ["jpg", "jpeg", "png", "gif"]
-        requirements = [:PlutoUI]
-        req_code = "using PlutoUI"
+        requirements = [:Images]
+        req_code = "using Images"
         code = """begin
+# Make sure to Pkg.add both Images and "ImageMagick";
     $(req_code)
-    LocalResource("$(path)")
+    img_$(varname) = Images.load("$(path)")
 end"""
 
     elseif extension ∈ ["txt", "text"]
