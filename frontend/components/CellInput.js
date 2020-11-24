@@ -15,6 +15,13 @@ const clear_selection = (cm) => {
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
 
+/**
+ * @param {{
+ *  local_code: string,
+ *  remote_code: string,
+ *  [key: string]: any,
+ * }} props
+ */
 export const CellInput = ({
     local_code,
     remote_code,
@@ -53,7 +60,7 @@ export const CellInput = ({
                 dom_node_ref.current.appendChild(el)
             },
             {
-                value: local_code.body,
+                value: local_code,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -355,17 +362,21 @@ export const CellInput = ({
             dom_node_ref.current.scrollIntoView()
         }
 
+        // @ts-ignore
         document.fonts.ready.then(() => {
             cm.refresh()
         })
     }, [])
 
+    // useEffect(() => {
+    //     if (!remote_code.submitted_by_me) {
+    //         cm_ref.current.setValue(remote_code.body)
+    //     }
+    //     cm_ref.current.options.disableInput = disable_input
+    // }, [remote_code.timestamp])
     useEffect(() => {
-        if (!remote_code.submitted_by_me) {
-            cm_ref.current.setValue(remote_code.body)
-        }
-        cm_ref.current.options.disableInput = disable_input
-    }, [remote_code.timestamp])
+        cm_ref.current.setValue(remote_code)
+    }, [remote_code])
 
     useEffect(() => {
         if (cm_forced_focus == null) {

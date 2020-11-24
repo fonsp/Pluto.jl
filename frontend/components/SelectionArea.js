@@ -47,6 +47,7 @@ export class SelectionArea extends Component {
     componentDidMount() {
         /* SELECTIONS */
         document.addEventListener("mousedown", (e) => {
+            // @ts-ignore
             const t = e.target.tagName
             // TODO: also allow starting the selection in one codemirror and stretching it to another cell
             if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
@@ -69,6 +70,7 @@ export class SelectionArea extends Component {
                 // if you didn't click on a UI element...
                 if (
                     !e.composedPath().some((e) => {
+                        // @ts-ignore
                         const tag = e.tagName
                         return tag === "PLUTO-SHOULDER" || tag === "BUTTON"
                     })
@@ -115,6 +117,7 @@ export class SelectionArea extends Component {
 
         document.addEventListener(
             "scroll",
+            // @ts-ignore
             (e) => {
                 if (this.state.selection_start) {
                     update_selection({ pageX: this.mouse_position.clientX, pageY: this.mouse_position.clientY + document.documentElement.scrollTop })
@@ -142,7 +145,7 @@ export class SelectionArea extends Component {
             if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
                 if (document.activeElement === document.body && window.getSelection().isCollapsed) {
-                    this.props.on_selection(this.props.cells.map((x) => x.cell_id))
+                    this.props.on_selection(this.props.cell_order)
                     e.preventDefault()
                 }
             }

@@ -1,5 +1,6 @@
 import { html, Component, useState, useEffect } from "../imports/Preact.js"
-import immer from "../imports/immer.js"
+import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
+import { v4 as uuidv4 } from "../imports/uuid.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -14,7 +15,6 @@ import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 
 import { link_open_path } from "./Welcome.js"
-import { empty_cell_data, code_differs } from "./Cell.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
@@ -29,12 +29,16 @@ const default_path = "..."
  * Used for implementing clipboard functionality. This isn't in topological
  * order, so you won't necessarily be able to run it directly.
  *
- * @param {Array<import("./Cell.js").CellState>} cells
+ * @param {Array<CellData>} cells
  * @return {String}
  */
 function serialize_cells(cells) {
-    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.local_code.body + "\n").join("\n")
+    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.code + "\n").join("\n")
 }
+
+/**
+ * @typedef {import('../imports/immer').Patch} Patch
+ * */
 
 /**
  * Deserialize a Julia program or output from `serialize_cells`.
@@ -88,6 +92,9 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
     //     }
     // }, [notebook, open, set_html_export])
 
+    // @ts-ignore
+    let is_chrome = window.chrome == null
+
     return html`
         <aside id="export">
             <div id="container">
@@ -126,9 +133,9 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
                 <a
                     href="#"
                     class="export_card"
-                    style=${window.chrome == null ? "opacity: .7;" : ""}
+                    style=${!is_chrome ? "opacity: .7;" : ""}
                     onClick=${() => {
-                        if (window.chrome == null) {
+                        if (!is_chrome) {
                             alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
                         }
                         window.print()
@@ -152,18 +159,64 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
     `
 }
 
+/**
+ * @typedef CellData
+ * @type {{
+ *  cell_id: string,
+ *  code: string,
+ *  code_folded: boolean,
+ * }}
+ */
+
+/**
+ * Running state of a cell,
+ * owned by the worker
+ * @typedef CellState
+ * @type {{
+ *  cell_id: string,
+ *  queued: boolean,
+ *  running: boolean,
+ *  errored: boolean,
+ *  runtime?: number,
+ *  output: {
+ *      body: string,
+ *      persist_js_state: boolean,
+ *      last_run_timestamp: number,
+ *      mime: string,
+ *      rootassignee: ?string,
+ *  }
+ * }}
+ */
+
+/**
+ * @typedef NotebookData
+ * @type {{
+ *  path: string,
+ *  shortpath: string,
+ *  in_temp_dir: boolean,
+ *  notebook_id: string,
+ *  cell_dict: { [uuid: string]: CellData },
+ *  cells_running: { [uuid: string]: CellState }
+ *  cell_order: Array<string>,
+ *  bonds: { [name: string]: any },
+ * }}
+ */
+
 export class Editor extends Component {
     constructor() {
         super()
 
         this.state = {
-            notebook: {
+            notebook: /** @type {NotebookData} */ ({
+                notebook_id: new URLSearchParams(window.location.search).get("id"),
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
-                notebook_id: new URLSearchParams(window.location.search).get("id"),
-                cells: [],
-            },
+                cell_dict: {},
+                cells_running: {},
+                cell_order: [],
+            }),
+            cells_local: /** @type {{ [id: string]: CellData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: null,
             connected: false,
@@ -173,38 +226,9 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
-        }
-        // convenience method
-        const set_notebook_state = (updater) => {
-            return new Promise((resolve) => {
-                this.setState((prevstate) => {
-                    return {
-                        notebook: {
-                            ...prevstate.notebook,
-                            ...updater(prevstate.notebook),
-                        },
-                    }
-                }, resolve)
-            })
-        }
-        this.set_notebook_state = set_notebook_state.bind(this)
 
-        // convenience method
-        const set_cell_state = (cell_id, new_state_props) => {
-            return new Promise((resolve) => {
-                this.setState((prevstate) => {
-                    return {
-                        notebook: {
-                            ...prevstate.notebook,
-                            cells: prevstate.notebook.cells.map((c) => {
-                                return c.cell_id == cell_id ? { ...c, ...new_state_props } : c
-                            }),
-                        },
-                    }
-                }, resolve)
-            })
+            selected_cells: [],
         }
-        this.set_cell_state = set_cell_state.bind(this)
 
         // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
         this.all_completed = true
@@ -218,86 +242,47 @@ export class Editor extends Component {
             set_scroller: (enabled) => {
                 this.setState({ scroller: enabled })
             },
+            // Not really an action, but sure - DRAL
             serialize_selected: (cell) => {
-                const selected = cell ? this.selected_friends(cell.id) : this.state.notebook.cells.filter((c) => c.selected)
+                const selected = cell ? this.selected_friends(cell.id) : this.state.selected_cells.map((id) => this.state.notebook.cell_dict[id])
                 if (selected.length) {
                     return serialize_cells(selected)
                 }
             },
             add_deserialized_cells: async (data, index) => {
-                const new_code = deserialize_cells(data)
-                if (index === -1) index = this.state.notebook.cells.length
-                for (const new_block of new_code) {
-                    const update = await this.requests.add_remote_cell_at(index++, true)
-                    const new_cell = empty_cell_data(update.cell_id)
-                    new_cell.pasted = true
-                    new_cell.queued = new_cell.running = false
-                    new_cell.output.body = ""
-                    new_cell.local_code.body = new_block
-                    new_cell.remote_code.submitted_by_me = true
-                    new_cell.selected = true
-                    this.actions.add_local_cell(new_cell, update.message.index)
+                let new_codes = deserialize_cells(data)
+                /** @type {Array<CellData>} */
+                let new_cells = new_codes.map((code) => {
+                    return {
+                        cell_id: uuidv4(),
+                        code: code,
+                        code_folded: false,
+                    }
+                })
+                if (index === -1) {
+                    index = this.state.notebook.cell_order.length
                 }
-            },
-            add_local_cell: (cell, new_index) => {
-                return set_notebook_state((prevstate) => {
-                    if (prevstate.cells.some((c) => c.cell_id == cell.cell_id)) {
-                        console.warn("Tried to add cell with existing cell_id. Canceled.")
-                        console.log(cell)
-                        console.log(prevstate)
-                        return prevstate
-                    }
 
-                    const before = prevstate.cells
-                    return {
-                        cells: [...before.slice(0, new_index), cell, ...before.slice(new_index)],
+                this.setState(
+                    immer((state) => {
+                        for (let cell of new_cells) {
+                            state.cells_local[cell.cell_id] = cell
+                        }
+                    })
+                )
+                update_notebook((notebook) => {
+                    for (const cell of new_cells) {
+                        notebook.cell_dict[cell.cell_id] = {
+                            ...cell,
+                            // Fill the cell with empty code remotely, so it doesn't run unsafe code
+                            code: "",
+                        }
                     }
-                })
-            },
-            update_local_cell_output: (cell, { output, queued, running, runtime, errored }) => {
-                this.counter_statistics.numRuns++
-                return set_cell_state(cell.cell_id, {
-                    queued: queued,
-                    running: running,
-                    runtime: runtime,
-                    errored: errored,
-                    output: output,
-                })
-            },
-            update_local_cell_input: (cell, by_me, code, folded) => {
-                return set_cell_state(cell.cell_id, {
-                    remote_code: {
-                        body: code,
-                        submitted_by_me: by_me,
-                        timestamp: Date.now(),
-                    },
-                    local_code: {
-                        body: code,
-                    },
-                    code_folded: folded,
-                })
-            },
-            delete_local_cell: (cell) => {
-                // TODO: event listeners? gc?
-                return set_notebook_state((prevstate) => {
-                    return {
-                        cells: prevstate.cells.filter((c) => c !== cell),
-                    }
-                })
-            },
-            move_local_cells: (cells, new_index) => {
-                return set_notebook_state((prevstate) => {
-                    // The set of moved cell can be scatter across the notebook (not necessarily contiguous)
-                    // but this action will move all of them to a single cluster
-                    // The first cell of that cluster will be at index `new_index`.
-                    const old_first_index = prevstate.cells.findIndex((c) => cells.includes(c))
-
-                    const before = prevstate.cells.filter((c, i) => i < new_index && !cells.includes(c))
-                    const after = prevstate.cells.filter((c, i) => i >= new_index && !cells.includes(c))
-
-                    return {
-                        cells: [...before, ...cells, ...after],
-                    }
+                    notebook.cell_order = [
+                        ...notebook.cell_order.slice(0, index),
+                        ...new_cells.map((x) => x.cell_id),
+                        ...notebook.cell_order.slice(index, Infinity),
+                    ]
                 })
             },
         }
@@ -305,12 +290,12 @@ export class Editor extends Component {
         const on_remote_notebooks = ({ message }) => {
             const old_path = this.state.notebook.path
 
-            message.notebooks.forEach((nb) => {
-                if (nb.notebook_id == this.state.notebook.notebook_id) {
-                    set_notebook_state(() => nb)
-                    update_stored_recent_notebooks(nb.path, old_path)
+            for (let notebook of message.notebooks) {
+                if (notebook.notebook_id == this.state.notebook.notebook_id) {
+                    // TODO This is now stored locally, lets store it somewhere central 😈
+                    update_stored_recent_notebooks(notebook.path, old_path)
                 }
-            })
+            }
         }
 
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
@@ -322,165 +307,68 @@ export class Editor extends Component {
                         break
                 }
             } else {
-                if (this.state.notebook.notebook_id === update.notebook_id) {
-                    const message = update.message
-                    const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
-                    switch (update.type) {
-                        case "cell_output":
-                            if (cell != null) {
-                                this.actions.update_local_cell_output(cell, message)
+                if (this.state.notebook.notebook_id !== update.notebook_id) {
+                    return
+                }
+                const message = update.message
+                const cell = this.state.notebook.cell_dict[update.cell_id]
+                switch (update.type) {
+                    // case "notebook":
+                    //     this.setState({ notebook: message })
+                    //     break
+                    case "notebook_diff":
+                        this.setState((state) => {
+                            // console.group("Update!")
+                            // for (let patch of message) {
+                            //     console.group(`Patch :${patch.op}`)
+                            //     console.log(`patch.path:`, patch.path)
+                            //     console.log(`patch.value:`, patch.value)
+                            //     console.groupEnd()
+                            // }
+                            let new_notebook = applyPatches(state.notebook, message)
+                            // console.log(`message:`, message)
+                            // console.log(`new_notebook:`, new_notebook)
+                            // console.groupEnd()
+                            return {
+                                notebook: new_notebook,
                             }
-                            break
-                        case "cell_queued":
-                            if (cell != null) {
-                                set_cell_state(update.cell_id, {
-                                    running: false,
-                                    queued: true,
-                                })
-                            }
-                            break
-                        case "cell_running":
-                            if (cell != null) {
-                                set_cell_state(update.cell_id, {
-                                    running: true,
-                                    queued: false,
-                                })
-                            }
-                            break
-                        case "cell_folded":
-                            if (cell != null) {
-                                set_cell_state(update.cell_id, {
-                                    code_folded: message.folded,
-                                })
-                            }
-                            break
-                        case "cell_input":
-                            if (cell != null) {
-                                this.actions.update_local_cell_input(cell, by_me, message.code, message.folded)
-                            }
-                            break
-                        case "cell_deleted":
-                            if (cell != null) {
-                                this.actions.delete_local_cell(cell)
-                            }
-                            break
-                        case "cells_moved":
-                            const cells = message.cells.map((cell_id) => this.state.notebook.cells.find((c) => c.cell_id == cell_id))
-                            this.actions.move_local_cells(cells, message.index)
-                            break
-                        case "cell_added":
-                            const new_cell = empty_cell_data(update.cell_id)
-                            new_cell.queued = new_cell.running = false
-                            new_cell.output.body = ""
-                            this.actions.add_local_cell(new_cell, message.index)
-                            break
-                        case "bond_update":
-                            // by someone else
-                            break
-                        case "log":
-                            handle_log(message, this.state.notebook.path)
-                            break
-                        default:
-                            console.error("Received unknown update type!")
-                            console.log(update)
-                            alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
-                            break
-                    }
+                        })
+                        break
+                    // case "bond_update":
+                    //     // by someone else
+                    //     break
+                    case "log":
+                        handle_log(message, this.state.notebook.path)
+                        break
+                    default:
+                        console.error("Received unknown update type!")
+                        console.log(update)
+                        // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
+                        break
                 }
             }
         }
         this.on_update = on_update
 
-        const on_establish_connection = (client) => {
+        const on_establish_connection = async (client) => {
             // nasty
             Object.assign(this.client, client)
+
+            // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
             const run_all = this.client.session_options.evaluation.run_notebook_on_load
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
 
-            this.client
-                .send("get_all_cells", {}, { notebook_id: this.state.notebook.notebook_id })
-                .then((update) => {
-                    this.setState(
-                        {
-                            notebook: {
-                                ...this.state.notebook,
-                                cells: update.message.cells.map((cell) => {
-                                    const cell_data = empty_cell_data(cell.cell_id)
-                                    cell_data.running = false
-                                    cell_data.queued = run_all
-                                    cell_data.code_folded = true
-                                    return cell_data
-                                }),
-                            },
-                        },
-                        () => {
-                            // For cell outputs, we request them all, and then batch all responses into one using Promise.all
-                            // We could experiment with loading the first ~5 cell outputs in the first batch, and the rest in a second, to speed up the time-to-first-usable-content.
-                            const outputs_promise = Promise.all(
-                                this.state.notebook.cells.map((cell_data) => {
-                                    return this.client.send(
-                                        "get_output",
-                                        {},
-                                        {
-                                            notebook_id: this.state.notebook.notebook_id,
-                                            cell_id: cell_data.cell_id,
-                                        }
-                                    )
-                                })
-                            ).then((updates) => {
-                                updates.forEach((u, i) => {
-                                    const cell_data = this.state.notebook.cells[i]
-                                    if (!run_all || cell_data.running || cell_data.queued) {
-                                        this.actions.update_local_cell_output(cell_data, u.message)
-                                    } else {
-                                        // the cell completed running asynchronously, after Pluto received and processed the :getouput request, but before this message was added to this client's queue.
-                                    }
-                                })
-                            })
+            await update_notebook(() => {}).then((x) => {
+                // console.log(`Hmmmm x:`, x)
+                this.setState({ loading: false })
+            })
 
-                            // Same for cell inputs
-                            // We process all updates in one go, so that React doesn't do its Thing™ for every cell input. (This makes page loading very slow.)
-                            const inputs_promise = Promise.all(
-                                this.state.notebook.cells.map((cell_data) => {
-                                    return this.client.send(
-                                        "get_input",
-                                        {},
-                                        {
-                                            notebook_id: this.state.notebook.notebook_id,
-                                            cell_id: cell_data.cell_id,
-                                        }
-                                    )
-                                })
-                            ).then((updates) => {
-                                updates.forEach((u, i) => {
-                                    const cell_data = this.state.notebook.cells[i]
-                                    this.actions.update_local_cell_input(cell_data, false, u.message.code, u.message.folded)
-                                })
-                            })
-
-                            Promise.all([outputs_promise, inputs_promise]).then(() => {
-                                this.setState({
-                                    loading: false,
-                                })
-                                console.info("All cells loaded! 🚂 enjoy the ride")
-                                // do one autocomplete to trigger its precompilation
-                                this.client.send(
-                                    "complete",
-                                    {
-                                        query: "sq",
-                                    },
-                                    {
-                                        notebook_id: this.state.notebook.notebook_id,
-                                    }
-                                )
-                            })
-                        }
-                    )
-                })
-                .catch(console.error)
+            // do one autocomplete to trigger its precompilation
+            // TODO Do this from julia itself
+            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -499,79 +387,106 @@ export class Editor extends Component {
             connect_metadata: { notebook_id: this.state.notebook.notebook_id },
         }).then(on_establish_connection)
 
+        /** @param {(notebook: NotebookData) => void} mutate_fn */
+        let update_notebook = async (mutate_fn) => {
+            // if (this.state.loading) {
+            //     console.error("Update notebook done during loading, strange")
+            //     return
+            // }
+
+            let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
+                mutate_fn(notebook)
+            })
+            console.trace(`changes:`, changes)
+
+            for (let change of changes) {
+                if (change.path.some((x) => typeof x === "number")) {
+                    throw new Error("This sounds like it is editting an array!!!")
+                }
+            }
+
+            await Promise.all([
+                this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false),
+                new Promise((resolve) => {
+                    this.setState(
+                        {
+                            notebook: new_notebook,
+                        },
+                        resolve
+                    )
+                }),
+            ])
+        }
+        this.update_notebook = update_notebook
+
         // these are things that can be done to the remote notebook
         this.requests = {
-            change_remote_cell: (cell_id, new_code, create_promise = false) => {
+            change_remote_cell: async (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
                 // set_cell_state(cell_id, { running: true })
-                return this.client.send(
-                    "change_cell",
-                    { code: new_code },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
-                    create_promise
+
+                // TODO Need to do the update locally too, not doing that right now
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[cell_id].code = new_code
+                })
+                // Just making sure there is no local state to overwrite left
+                this.setState(
+                    immer((state) => {
+                        delete state.cells_local[cell_id]
+                    })
                 )
+                await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
-                const cell = this.state.notebook.cells.find((c) => c.cell_id == cell_id)
-                const new_code = block + "\n\t" + cell.local_code.body.replace(/\n/g, "\n\t") + "\n" + "end"
-                this.actions.update_local_cell_input(cell, false, new_code, cell.code_folded)
+                const cell = this.state.notebook.cell_dict[cell_id]
+                const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
+                // this.actions.update_local_cell_input(cell, false, new_code, cell.code_folded)
                 this.requests.change_remote_cell(cell_id, new_code)
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
-                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-                const cell = this.state.notebook.cells[index]
+                const cell = this.state.notebook.cell_dict[cell_id]
 
-                const old_code = cell.local_code.body
+                const old_code = cell.code
                 const padded_boundaries = [0, ...boundaries]
+                /** @type {Array<String>} */
                 const parts = boundaries.map((b, i) => slice_utf8(old_code, padded_boundaries[i], b).trim()).filter((x) => x !== "")
-
-                const new_ids = []
-
-                // for loop because we need to wait for each addition to finish before adding the next, otherwise their order would be random
-                for (const [i, part] of parts.entries()) {
-                    if (i === 0) {
-                        new_ids.push(cell_id)
-                    } else {
-                        const update = await this.requests.add_remote_cell_at(index + i, true)
-                        on_update(update, true)
-                        new_ids.push(update.cell_id)
+                /** @type {Array<CellData>} */
+                const cells_to_add = parts.map((code) => {
+                    return {
+                        cell_id: uuidv4(),
+                        code: code,
+                        code_folded: false,
                     }
-                }
+                })
 
-                await Promise.all(
-                    parts.map(async (part, i) => {
-                        const id = new_ids[i]
-
-                        // we set the cell's remote_code to force its value
-                        await this.actions.update_local_cell_input({ cell_id: id }, false, part, false)
-
-                        // we need to reset the remote_code, otherwise the cell will falsely report that it is in sync with the remote
-                        const new_state = this.state.notebook.cells.find((c) => c.cell_id === id)
-                        await this.set_cell_state(id, {
-                            remote_code: {
-                                ...new_state.remote_code,
-                                body: i === 0 ? old_code : "",
-                            },
-                        })
+                update_notebook((notebook) => {
+                    delete notebook.cell_dict[cell_id]
+                    for (let cell of cells_to_add) {
+                        notebook.cell_dict[cell.cell_id] = cell
+                    }
+                    notebook.cell_order = notebook.cell_order.flatMap((c) => {
+                        if (cell_id === c) {
+                            return cells_to_add.map((x) => x.cell_id)
+                        } else {
+                            return [c]
+                        }
                     })
-                )
+                })
 
                 if (submit) {
-                    const cells = new_ids.map((id) => this.state.notebook.cells.find((c) => c.cell_id == id))
-                    await this.requests.set_and_run_multiple(cells)
+                    // const cells = new_ids.map((id) => this.state.notebook.cells.find((c) => c.cell_id == id))
+                    await this.requests.set_and_run_multiple(cells_to_add.map((x) => x.cell_id))
                 }
             },
             interrupt_remote: (cell_id) => {
-                set_notebook_state((prevstate) => {
-                    return {
-                        cells: prevstate.cells.map((c) => {
-                            return { ...c, errored: c.errored || c.running || c.queued }
-                        }),
-                    }
-                })
+                // TODO Make this cooler
+                // set_notebook_state((prevstate) => {
+                //     return {
+                //         cells: prevstate.cells.map((c) => {
+                //             return { ...c, errored: c.errored || c.running || c.queued }
+                //         }),
+                //     }
+                // })
                 this.client.send(
                     "interrupt_all",
                     {},
@@ -581,125 +496,81 @@ export class Editor extends Component {
                     false
                 )
             },
-            move_remote_cells: (cells, new_index) => {
-                // Indexing works as if a new cell is added.
-                // e.g. if the third cell (at js-index 2) of [0, 1, 2, 3, 4]
-                // is moved to the end, that would be new js-index = 5
-                this.client.send(
-                    "move_multiple_cells",
-                    {
-                        cells: cells.map((c) => c.cell_id),
-                        index: new_index,
-                    },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                    },
-                    false
-                )
+            move_remote_cells: (cell_ids, new_index) => {
+                update_notebook((notebook) => {
+                    let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
+                    let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
+                    notebook.cell_order = [...before, ...cell_ids, ...after]
+                })
             },
-            add_remote_cell_at: (index, create_promise = false) => {
-                return this.client.send(
-                    "add_cell",
-                    { index: index },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                    },
-                    create_promise
-                )
+            add_remote_cell_at: async (index) => {
+                let id = uuidv4()
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[id] = {
+                        cell_id: id,
+                        code: "",
+                        code_folded: false,
+                    }
+                    notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
+                })
+                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
             },
-            add_remote_cell: (cell_id, before_or_after, create_promise = false) => {
-                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
+            add_remote_cell: async (cell_id, before_or_after) => {
+                const index = this.state.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
-                return this.requests.add_remote_cell_at(index + delta, create_promise)
-            },
-            delete_cell: (cell_id) => {
-                if (this.state.notebook.cells.length <= 1) {
-                    this.requests.add_remote_cell(cell_id, "after")
-                }
-                const index = this.state.notebook.cells.findIndex((c) => c.cell_id == cell_id)
-                const cell = this.state.notebook.cells[index]
-                this.setState({
-                    recently_deleted: {
-                        index: index,
-                        body: this.state.notebook.cells[index].local_code.body,
-                    },
-                })
 
-                set_cell_state(cell_id, {
-                    queued: true,
-                }).then(() => {
-                    this.actions.update_local_cell_input(cell, false, "", true)
+                let uuid = uuidv4()
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[uuid] = {
+                        cell_id: uuid,
+                        code: "",
+                        code_folded: false,
+                    }
+                    notebook.cell_order = [...notebook.cell_order.slice(0, index + delta), uuid, ...notebook.cell_order.slice(index + delta, Infinity)]
                 })
-
-                this.client.send(
-                    "delete_cell",
-                    {},
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
-                    false
-                )
+                await this.client.send("run_multiple_cells", { cells: [uuid] }, { notebook_id: this.state.notebook.notebook_id })
             },
-            confirm_delete_multiple: (verb, cells) => {
-                if (cells.length <= 1 || confirm(`${verb} ${cells.length} cells?`)) {
-                    if (cells.some((f) => f.running || f.queued)) {
+            confirm_delete_multiple: (verb, cell_ids) => {
+                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+                    if (cell_ids.some((cell_id) => this.state.notebook.cells_running[cell_id].running || this.state.notebook.cells_running[cell_id].queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                            this.requests.interrupt_remote(cells[0].cell_id)
+                            this.requests.interrupt_remote(cell_ids[0])
                         }
                     } else {
-                        cells.forEach((f) => this.requests.delete_cell(f.cell_id))
+                        update_notebook((notebook) => {
+                            for (let cell_id of cell_ids) {
+                                delete notebook.cell_dict[cell_id]
+                            }
+                            notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
+                        })
+                        // cells.forEach((f) => this.requests.delete_cell(f.cell_id))
                     }
                 }
             },
             fold_remote_cell: (cell_id, newFolded) => {
-                this.client.send(
-                    "fold_cell",
-                    { folded: newFolded },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
-                    false
-                )
+                update_notebook((notebook) => {
+                    let cell = notebook.cell_dict[cell_id]
+                    cell.code_folded = newFolded
+                })
             },
             set_and_run_all_changed_remote_cells: () => {
-                const changed = this.state.notebook.cells.filter((cell) => code_differs(cell))
-                return this.requests.set_and_run_multiple(changed)
+                const changed = this.state.notebook.cell_order.filter(
+                    (cell_id) => this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
+                )
+                this.requests.set_and_run_multiple(changed)
+                return changed.length > 0
             },
-            set_and_run_multiple: (cells) => {
-                const promises = cells.map((cell) => {
-                    set_cell_state(cell.cell_id, { queued: true })
-                    return this.client
-                        .send(
-                            "set_input",
-                            { code: cell.local_code.body },
-                            {
-                                notebook_id: this.state.notebook.notebook_id,
-                                cell_id: cell.cell_id,
-                            }
-                        )
-                        .then((u) => {
-                            this.actions.update_local_cell_input(cell, true, u.message.code, u.message.folded)
-                        })
+            set_and_run_multiple: async (cells_ids) => {
+                await update_notebook((notebook) => {
+                    for (let cell_id of cells_ids) {
+                        if (this.state.cells_local[cell_id]) {
+                            notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
+                        }
+                    }
                 })
-                Promise.all(promises)
-                    .then(() =>
-                        this.client.send(
-                            "run_multiple_cells",
-                            {
-                                cells: cells.map((c) => c.cell_id),
-                            },
-                            {
-                                notebook_id: this.state.notebook.notebook_id,
-                            }
-                        )
-                    )
-                    .catch(console.error)
-
-                return cells.length != 0
+                await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
             },
-            set_bond: (symbol, value, is_first_value) => {
+            set_bond: async (symbol, value, is_first_value) => {
                 this.counter_statistics.numBondSets++
 
                 if (this.all_completed) {
@@ -709,30 +580,24 @@ export class Editor extends Component {
                     Object.assign(this.all_completed_promise, resolvable_promise())
                 }
 
-                this.client
-                    .send(
-                        "set_bond",
-                        {
-                            sym: symbol,
-                            val: value,
-                            is_first_value: is_first_value,
-                        },
-                        { notebook_id: this.state.notebook.notebook_id }
-                    )
-                    .then(({ message }) => {
-                        // the back-end tells us whether any cells depend on the bound value
+                await update_notebook((notebook) => {
+                    notebook.bonds[symbol] = value
+                })
+                this.all_completed = true
+                this.all_completed_promise.resolve()
 
-                        if (message.triggered_other_cells) {
-                            // there are dependent cells, those cells will start running and returning output soon
-                            // when the last running cell returns its output, the all_completed_promise is resolved, and a new bond value can be sent
-                        } else {
-                            // there are no dependent cells, so we resolve the promise right now
-                            if (!this.all_completed) {
-                                this.all_completed = true
-                                this.all_completed_promise.resolve()
-                            }
-                        }
-                    })
+                // TODO Something with all_completed true ?
+                // // the back-end tells us whether any cells depend on the bound value
+                // if (message.triggered_other_cells) {
+                //     // there are dependent cells, those cells will start running and returning output soon
+                //     // when the last running cell returns its output, the all_completed_promise is resolved, and a new bond value can be sent
+                // } else {
+                //     // there are no dependent cells, so we resolve the promise right now
+                //     if (!this.all_completed) {
+                //         this.all_completed = true
+                //         this.all_completed_promise.resolve()
+                //     }
+                // }
             },
             reshow_cell: (cell_id, objectid, dim) => {
                 this.client.send(
@@ -748,11 +613,12 @@ export class Editor extends Component {
         }
 
         this.selected_friends = (cell_id) => {
-            const cell = this.state.notebook.cells.find((c) => c.cell_id === cell_id)
-            if (cell.selected) {
-                return this.state.notebook.cells.filter((c) => c.selected)
+            // const cell = this.state.notebook.cell_dict[cell_id]
+            if (this.state.selected_cells.includes(cell_id)) {
+                return this.state.selected_cells
+                // return this.state.notebook.cells.filter((c) => c.selected)
             } else {
-                return [cell]
+                return [cell_id]
             }
         }
 
@@ -761,33 +627,40 @@ export class Editor extends Component {
             if (old_path === new_path) {
                 return
             }
-            if (this.state.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
-                this.setState({ loading: true })
-                this.client
-                    .send(
-                        "move_notebook_file",
-                        {
-                            path: new_path,
-                        },
-                        { notebook_id: this.state.notebook.notebook_id }
-                    )
-                    .then((u) => {
-                        this.setState({
-                            loading: false,
-                        })
-                        if (u.message.success) {
-                            this.setState({
+            console.log(`this.state.notebook.in_temp_dir:`, this.state.notebook.in_temp_dir)
+            if (this.state.notebook.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                // this.setState({ loading: true })
+                update_notebook((notebook) => {
+                    notebook.in_temp_dir = false
+                    notebook.path = new_path
+                })
+                false &&
+                    this.client
+                        .send(
+                            "move_notebook_file",
+                            {
                                 path: new_path,
-                            })
-                            document.activeElement.blur()
-                        } else {
+                            },
+                            { notebook_id: this.state.notebook.notebook_id }
+                        )
+                        .then((u) => {
                             this.setState({
-                                path: old_path,
+                                loading: false,
                             })
-                            reset_cm_value()
-                            alert("Failed to move file:\n\n" + u.message.reason)
-                        }
-                    })
+                            if (u.message.success) {
+                                this.setState({
+                                    path: new_path,
+                                })
+                                // @ts-ignore
+                                document.activeElement.blur()
+                            } else {
+                                this.setState({
+                                    path: old_path,
+                                })
+                                reset_cm_value()
+                                alert("Failed to move file:\n\n" + u.message.reason)
+                            }
+                        })
             } else {
                 this.setState({
                     path: old_path,
@@ -797,22 +670,20 @@ export class Editor extends Component {
         }
 
         this.delete_selected = (verb) => {
-            const selected = this.state.notebook.cells.filter((c) => c.selected)
-            if (selected.length > 0) {
-                this.requests.confirm_delete_multiple(verb, selected)
+            if (this.state.selected_cells.length > 0) {
+                this.requests.confirm_delete_multiple(verb, this.state.selected_cells)
                 return true
             }
         }
 
         this.run_selected = () => {
-            const selected = this.state.notebook.cells.filter((c) => c.selected)
-            return this.requests.set_and_run_multiple(selected)
+            return this.requests.set_and_run_multiple(this.state.selected_cells)
         }
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
-                if (this.state.notebook.cells.some((c) => c.running || c.queued)) {
+                if (Object.values(this.state.notebook.cells_running).some((c) => c.running || c.queued)) {
                     this.requests.interrupt_remote()
                 }
                 e.preventDefault()
@@ -904,21 +775,22 @@ export class Editor extends Component {
         })
 
         window.addEventListener("beforeunload", (event) => {
-            const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
+            const unsaved_cells = this.state.notebook.cell_order.filter((id) => this.state.notebook.cell_dict[id].code !== this.state.cells_local[id].code)
+            const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
-                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved.cell_id } }))
+                window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved } }))
                 // } else if (this.state.notebook.in_temp_dir) {
                 //     window.scrollTo(0, 0)
                 //     // TODO: focus file picker
+                console.log("Preventing unload")
+                event.stopImmediatePropagation()
+                event.preventDefault()
+                event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
                 this.client.kill()
-                return // and don't prevent the unload
+                // and don't prevent the unload
             }
-            console.log("Preventing unload")
-            event.stopImmediatePropagation()
-            event.preventDefault()
-            event.returnValue = ""
         })
 
         setTimeout(() => {
@@ -938,18 +810,21 @@ export class Editor extends Component {
     componentDidUpdate() {
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
-        const any_code_differs = this.state.notebook.cells.some((cell) => code_differs(cell))
+        // TODO Local state
+        const any_code_differs = false // this.state.notebook.cells.some((cell) => code_differs(cell))
         document.body.classList.toggle("code_differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
         if (this.state.connected) {
+            // @ts-ignore
             document.querySelector("meta[name=theme-color]").content = "#fff"
             document.body.classList.remove("disconnected")
         } else {
+            // @ts-ignore
             document.querySelector("meta[name=theme-color]").content = "#DEAF91"
             document.body.classList.add("disconnected")
         }
 
-        const all_completed_now = !this.state.notebook.cells.some((cell) => cell.running || cell.queued)
+        const all_completed_now = !Object.values(this.state.notebook.cells_running).some((cell) => cell && (cell.running || cell.queued))
         if (all_completed_now && !this.all_completed) {
             this.all_completed = true
             this.all_completed_promise.resolve()
@@ -961,6 +836,8 @@ export class Editor extends Component {
     }
 
     render() {
+        // console.log(`this.state.notebook:`, this.state.notebook)
+
         let { export_menu_open } = this.state
         return html`
             <${Scroller} active=${this.state.scroller} />
@@ -999,23 +876,27 @@ export class Editor extends Component {
                 </preamble>
                 <${Notebook}
                     is_loading=${this.state.loading}
-                    ...${this.state.notebook}
+                    notebook=${this.state.notebook}
+                    selected_cells=${this.state.selected_cells}
+                    cells_local=${this.state.cells_local}
                     on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
-                    on_cell_input=${(cell, new_val) => {
-                        this.set_cell_state(cell.cell_id, {
-                            local_code: {
-                                body: new_val,
-                            },
-                        })
+                    on_cell_input=${(cell_id, new_val) => {
+                        this.setState(
+                            immer((state) => {
+                                state.cells_local[cell_id] = {
+                                    code: new_val,
+                                }
+                            })
+                        )
                     }}
                     on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
-                        const i = this.state.notebook.cells.findIndex((c) => c.cell_id === cell_id)
+                        const i = this.state.notebook.cell_order.indexOf(cell_id)
                         const new_i = i + delta
-                        if (new_i >= 0 && new_i < this.state.notebook.cells.length) {
+                        if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
                             window.dispatchEvent(
                                 new CustomEvent("cell_focus", {
                                     detail: {
-                                        cell_id: this.state.notebook.cells[new_i].cell_id,
+                                        cell_id: this.state.notebook.cell_order[new_i],
                                         line: line,
                                         ch: ch,
                                     },
@@ -1035,18 +916,12 @@ export class Editor extends Component {
 
                 <${SelectionArea}
                     actions=${this.actions}
-                    cells=${this.state.notebook.cells}
+                    cell_order=${this.state.notebook.cell_order}
+                    selected_cell_ids=${this.state.selected_cell_ids}
                     on_selection=${(selected_cell_ids) => {
-                        let current_selected_cells = this.state.notebook.cells.filter((x) => x.selected).map((x) => x.cell_id)
-                        if (!_.isEqual(current_selected_cells, selected_cell_ids)) {
-                            this.setState(
-                                immer((state) => {
-                                    for (let cell of state.notebook.cells) {
-                                        cell.selected = selected_cell_ids.includes(cell.cell_id)
-                                    }
-                                })
-                            )
-                        }
+                        this.setState({
+                            selected_cells: selected_cell_ids,
+                        })
                     }}
                 />
             </main>
@@ -1059,12 +934,16 @@ export class Editor extends Component {
             <${UndoDelete}
                 recently_deleted=${this.state.recently_deleted}
                 on_click=${() => {
-                    this.requests.add_remote_cell_at(this.state.recently_deleted.index, true).then((update) => {
-                        this.on_update(update, true)
-                        this.actions.update_local_cell_input({ cell_id: update.cell_id }, false, this.state.recently_deleted.body, false).then(() => {
-                            this.requests.change_remote_cell(update.cell_id, this.state.recently_deleted.body)
-                        })
-                    })
+                    // TODO Make this work when I made recently_deleted work again
+                    // this.update_notebook((notebook) => {
+                    //     let id = uuidv4()
+                    //     notebook.cell_dict[id] = {
+                    //         cell_id: id,
+                    //         code: this.state.recently_deleted.body,
+                    //         code_folded: false,
+                    //     }
+                    //     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
+                    // })
                 }}
             />
             <${SlideControls} />

@@ -37,17 +37,17 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "queued"
-	local listeners = ClientSession[]
+	# local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
+		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
-	flushallclients(session, listeners)
+	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
+	# flushallclients(session, listeners)
 
 
 	# delete new variables that will be defined by a cell
@@ -70,7 +70,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
@@ -80,9 +80,9 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		end
 		
 		cell.running = false
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
-
+	
+	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order

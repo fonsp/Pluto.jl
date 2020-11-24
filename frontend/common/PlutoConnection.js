@@ -131,7 +131,9 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
                     console.log(event)
 
                     alert(
-                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`
+                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(
+                            event
+                        )}`
                     )
                 }
             })
@@ -208,7 +210,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     const sent_requests = {}
 
     const handle_update = (update) => {
-        const by_me = "initiator_id" in update && update.initiator_id == client_id
+        const by_me = update.initiator_id == client_id
         const request_id = update.request_id
 
         if (by_me && request_id) {
@@ -241,17 +243,17 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             ...metadata,
         }
 
-        var p = undefined
+        var p = resolvable_promise()
 
-        if (create_promise) {
-            const rp = resolvable_promise()
-            p = rp.current
-
-            sent_requests[request_id] = rp.resolve
+        sent_requests[request_id] = (message) => {
+            if (create_promise === false) {
+                on_unrequested_update(message, true)
+            }
+            p.resolve(message)
         }
 
         ws_connection.send(message)
-        return p
+        return p.current
     }
     client.send = send
 

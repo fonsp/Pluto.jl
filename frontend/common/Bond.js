@@ -17,7 +17,10 @@ export const connect_bonds = (node, all_completed_promise, cell_invalidated_prom
 
         while (!node_is_invalidated) {
             // wait for all (other) cells to complete - if we don't, the Julia code would get overloaded with new values
-            await all_completed_promise.current
+
+            // TODO Something with all_completed_promise
+            // await all_completed_promise.current
+
             // wait for a new input value. If a value is ready, then this promise resolves immediately
             const val = await inputs.next().value
             if (!node_is_invalidated) {
@@ -38,6 +41,7 @@ const transformed_val = async (val) => {
     } else if (val instanceof File) {
         return await new Promise((res) => {
             const reader = new FileReader()
+            // @ts-ignore
             reader.onload = () => res({ name: val.name, type: val.type, data: new Uint8Array(reader.result) })
             reader.onerror = () => res({ name: val.name, type: val.type, data: null })
             reader.readAsArrayBuffer(val)

@@ -15,30 +15,52 @@ end
 
 
 "Like a [`Diary`](@ref) but more serious. 📓"
-mutable struct Notebook
+Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cells::Array{Cell,1}
+    cell_dict::Dict{UUID, Cell}
+    cell_order::Array{UUID, 1}
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
     notebook_id::UUID
-    topology::NotebookTopology
+    topology::NotebookTopology=NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
-    pendingupdates::Channel
+    pendingupdates::Channel=Channel(1024)
 
-    executetoken::Token
+    executetoken::Token=Token()
 
     # per notebook compiler options
     # nothing means to use global session compiler options
-    compiler_options::Union{Nothing,Configuration.CompilerOptions}
+    compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+
+    bonds::Dict{Symbol,Any}=Dict()
 end
+
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
+Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+    cell_dict=Dict(map(cells) do cell
+        (cell.cell_id, cell)
+    end),
+    cell_order=map(x -> x.cell_id, cells),
+    path=path,
+    notebook_id=notebook_id,
+)
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
+
+function Base.getproperty(notebook::Notebook, property::Symbol)
+    if property == :cells
+        cell_dict = getfield(notebook, :cell_dict)
+        cell_order = getfield(notebook, :cell_order)
+        map(cell_order) do id
+            cell_dict[id]
+        end
+    else
+        getfield(notebook, property)
+    end
+end
 
 function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
     findfirst(c -> c.cell_id == cell_id, notebook.cells)
