@@ -202,7 +202,14 @@ end
 responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let 
     file = base64decode(body["fileBase64"])
     path = notebook.path
-    save_path = joinpath(path |> dirname, body["name"])
+    reldir = "$(path |> basename).assets"
+    dir = joinpath(path |> dirname, reldir)
+    save_path = joinpath(dir, body["name"])
+    
+    if !ispath(dir)
+        mkpath(dir)
+    end
+
     success = try
         io = open(save_path, "w")
         write(io, file)
@@ -211,12 +218,73 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     catch e
         false
     end
+
+    code = get_template_code(body["name"], reldir)
+
     msg = UpdateMessage(:write_file_reply, 
         Dict(
             :success => success,
-            :file_path => save_path,
-            :file_name => body["name"]
+            :code => code
         ), notebook, nothing, initiator)
 
     putclientupdates!(session, initiator, msg)
+end
+
+get_template_code = (filename, directory) -> begin
+    path = string(raw"$(dirname(@__FILE__))", "/", directory, "/", filename)
+    varname = replace(filename, r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
+    extension = split(filename, ".")[end]
+
+    if extension ∈ ["jpg", "jpeg", "png", "gif"]
+        requirements = [:PlutoUI]
+        req_code = "using PlutoUI"
+        code = """begin
+    $(req_code)
+    LocalResource("$(path)")
+end"""
+
+    elseif extension ∈ ["txt", "text"]
+        code = """begin
+    $(varname) = open("$(path)")
+    txt_$(varname) = read($(varname), String)
+end"""
+
+    elseif extension ∈ ["jl"]
+        code = """include("$(path)")"""
+
+    elseif extension ∈ ["csv", "json"]
+        requirements = [:TableIO, :DataFrames]
+        req_code = "using TableIO, DataFrames"
+        code = """begin
+    $(req_code)
+    df_$(varname) = read_table("$(path)") |> DataFrame
+end"""
+
+    elseif extension ∈ ["arrow"]
+        requirements = [:TableIO, :DataFrames]
+        req_code = "using TableIO, DataFrames"
+        code = """begin
+    $(req_code)
+    df_$(varname) = DataFrame(read_table("$(path)"), copycols=false)
+end"""
+
+    elseif extension ∈ ["xlsx", "xslm"]
+        requirements = [:TableIO, :DataFrames]
+        req_code = "using TableIO, DataFrames"
+        code = """begin
+    $(req_code)
+    df_$(varname) = DataFrame(read_table("$(path)"#==,  "Sheet1" ==#); copycols=false)
+end"""
+
+    elseif extension ∈ ["db", "sqlite", "sqlite3"]
+        requirements = [:TableIO, :DataFrames]
+        req_code = "using TableIO, DataFrames"
+        code = """begin
+    $(req_code)
+    df_$(varname) = DataFrame(read_table("$(path)"), "table" #== Replace this with the table ==#, copycols=false)
+end"""
+
+    else
+        code = missing
+    end
 end

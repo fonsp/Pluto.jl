@@ -137,7 +137,7 @@ export const Cell = ({
         setSavingFile(true)
 
         const {
-            message: { success, file_path, file_name },
+            message: { success, code },
         } = await prepareFileBase64(file).then(
             (preparedObj) => {
                 return requests.write_file(cell_id, preparedObj)
@@ -149,51 +149,9 @@ export const Cell = ({
             alert("Pluto can't save this file 😥")
             return "# File save failed"
         }
-
-        const [name, extension] = file_name.split(".").map((a) => a.replace(/["\-,#@!\%\s+\;()$&*\[\]\{\}']/g, ""))
-        switch (file?.type) {
-            // https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-            case "text/plain":
-                if (extension === "csv")
-                    return `begin
-    using TableIO, DataFrames #
-    df_${name} = DataFrame(read_table(raw"${file_path}"); copycols=false)
-end`
-                if (extension === "txt")
-                    return `begin
-    file = open(raw"${file_path}")
-    txt_${name} = read(file, String)
-end`
-            case "application/vnd.ms-excel":
-            case "application/vnd.oasis.opendocument.spreadsheet":
-            case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-                return `begin
-    using TableIO, DataFrames
-    df_${name} = DataFrame(read_table(raw"${file_path}",
-    #, "Sheet1"  # Uncomment This if you need to read a specific sheet
-    ); copycols=false)
-end
-                `
-            case "image/jpeg":
-            case "image/png":
-            case "image/gif":
-                return `begin
-    using PlutoUI
-    LocalResource(raw"${file_path}")
- end`
-            case "application/vnd.apache.arrow.file":
-                console.log("Arrow file")
-                break
-            case "application/json":
-                return `begin
-    using TableIO, DataFrames
-    df_${name} = read_table(raw"${file_path}") |> DataFrame
-end`
-            default:
-                alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
-                return ""
-        }
-        return " # Filetype not supported!"
+        if (code) return code
+        alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
+        return ""
     }
     const eventHandler = (ev) => {
         // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
