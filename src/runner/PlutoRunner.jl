@@ -27,6 +27,13 @@ MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
 ObjectID = typeof(objectid("hello computer"))
 ObjectDimPair = Tuple{ObjectID,Int64}
 
+
+
+
+
+
+
+
 ###
 # WORKSPACE MANAGER
 ###
@@ -50,32 +57,169 @@ function set_current_module(newname)
     global current_module = getfield(Main, newname)
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+###
+# EVALUATING NOTEBOOK CODE
+###
+
+
+struct Computer
+    f::Function
+    input_globals::Vector{Symbol}
+    output_globals::Vector{Symbol}
+end
+
 # TODO: clear key when a cell is deleted furever
-const cell_results = Dict{UUID, Any}()
+const computers = WeakKeyDict{Expr,Computer}()
 
-const tree_display_limit = 30
-const tree_display_limit_increase = 40
-const table_row_display_limit = 10
-const table_row_display_limit_increase = 60
-const table_column_display_limit = 8
-const table_column_display_limit_increase = 30
+const computer_workspace = Main
 
-const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
+function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+    @gensym result
+    e = Expr(:function, Expr(:tuple, input_globals...), Expr(:block, 
+        Expr(:(=), result, trycatch_expr(expr)),
+        Expr(:tuple,
+            result,
+            Expr(:tuple, output_globals...)
+        )
+    ))
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
-    extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
-    else
-        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
-        old[showmore] = get(old, showmore, 0) + 1
-        old
+    f = Core.eval(computer_workspace, e)
+
+    computers[expr] = Computer(f, input_globals, output_globals)
+end
+
+function compute(computer::Computer)
+    input_global_values = try
+        getfield.([current_module], computer.input_globals)
+    catch e
+        @error "Failed to get one of the globals" exception=(e,stacktrace(catch_backtrace()))
     end
 
-    ans = cell_results[id]
-    errored = ans isa CapturedException
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+    result, output_global_values = computer.f(input_global_values...)
+
+    try
+        for (name, val) in zip(computer.output_globals, output_global_values)
+            Core.eval(current_module, Expr(:(=), name, val))
+        end
+    catch e
+        @error "Failed to set one of the globals" exception=(e,stacktrace(catch_backtrace()))
+    end
+
+    result
 end
+
+function compute(expr::Any)
+    if haskey(computers, expr)
+        compute(computers[expr])
+    else
+        Core.eval(Main, expr)
+    end
+end
+
+
+"Wrap `expr` inside a timing block."
+function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
+    # @assert ExpressionExplorer.is_toplevel_expr(expr)
+
+    linenumbernode = expr.args[1]
+    root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
+
+    @gensym result
+    @gensym elapsed_ns
+    # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
+    Expr(:block, 
+        :(local $elapsed_ns = time_ns()),
+        linenumbernode,
+        :(local $result = $root),
+        :($elapsed_ns = time_ns() - $elapsed_ns),
+        :(($result, $elapsed_ns, $return_proof)),
+    )
+end
+
+"Wrap `expr` inside a timing block, and then inside a try ... catch block."
+function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+    return_proof = Ref(123)
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
+    quote
+        ans, runtime = try
+            # We eval `expr` in the global scope of the workspace module:
+            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+
+            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
+                throw("Pluto: You can only use return inside a function.")
+            else
+                local ans, runtime, _ = invocation
+                (ans, runtime)
+            end
+        catch ex
+            bt = stacktrace(catch_backtrace())
+            (CapturedException(ex, bt), missing)
+        end
+        setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
+    end
+end
+
+
+"Wrap `expr` inside a timing block, and then inside a try ... catch block."
+function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+    return_proof = Ref(123)
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
+    quote
+        ans, runtime = try
+            # We eval `expr` in the global scope of the workspace module:
+            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+
+            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
+                throw("Pluto: You can only use return inside a function.")
+            else
+                local ans, runtime, _ = invocation
+                (ans, runtime)
+            end
+        catch ex
+            bt = stacktrace(catch_backtrace())
+            (CapturedException(ex, bt), missing)
+        end
+        setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+###
+# DELETING GLOBALS
+###
+
 
 """
 Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined. 
@@ -208,9 +352,55 @@ const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world
 const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
 const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # FORMATTING
 ###
+
+
+# TODO: clear key when a cell is deleted furever
+const cell_results = Dict{UUID,Any}()
+
+const tree_display_limit = 30
+const tree_display_limit_increase = 40
+const table_row_display_limit = 10
+const table_row_display_limit_increase = 60
+const table_column_display_limit = 8
+const table_column_display_limit_increase = 30
+
+const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
+
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+    extra_items = if showmore === nothing
+        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
+    else
+        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
+        old[showmore] = get(old, showmore, 0) + 1
+        old
+    end
+
+    ans = cell_results[id]
+    errored = ans isa CapturedException
+    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+end
+
 
 "Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
@@ -633,6 +823,23 @@ function table_data(x::Any, io::IOContext)
     )
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # REPL THINGS
 ###
@@ -756,6 +963,23 @@ function doc_fetcher(query, workspace::Module=current_module)
     end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # BONDS
 ###
@@ -834,6 +1058,23 @@ const fake_bind = """macro bind(def, element)
         el
     end
 end"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###
 # LOGGING

@@ -573,10 +573,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # 
         # 🤔
         # we turn it into two expressions:
-        #
+        # 
         # (a, b) = (2, 3)
         # (c = 1)
-        #
+        # 
         # and explore those :)
 
         indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
@@ -918,5 +918,24 @@ function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
 end
 
 get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
+
+
+function can_be_function_wrapped(x::Expr)
+    if x.head === :global ||
+        x.head === :using ||
+        x.head === :import ||
+        x.head === :module ||
+        x.head === :function ||
+        x.head === :macro ||
+        x.head === :macrocall ||
+        x.head === :macro
+        false
+    else
+        true
+    end
+
+end
+can_be_function_wrapped(x::Any) = true
+
 
 end
