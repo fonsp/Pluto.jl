@@ -157,12 +157,11 @@ export const Cell = ({
                 if (extension === "csv")
                     return `begin
     using TableIO, DataFrames #
-    df_${name} = DataFrame(read_table(${file_path}); copycols=false)
-end
-`
+    df_${name} = DataFrame(read_table(raw"${file_path}"); copycols=false)
+end`
                 if (extension === "txt")
                     return `begin
-    file = open("${file_path}")
+    file = open(raw"${file_path}")
     txt_${name} = read(file, String)
 end`
             case "application/vnd.ms-excel":
@@ -170,7 +169,7 @@ end`
             case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
                 return `begin
     using TableIO, DataFrames
-    df_${name} = DataFrame(read_table("${file_path}",
+    df_${name} = DataFrame(read_table(raw"${file_path}",
     #, "Sheet1"  # Uncomment This if you need to read a specific sheet
     ); copycols=false)
 end
@@ -180,7 +179,7 @@ end
             case "image/gif":
                 return `begin
     using PlutoUI
-    LocalResource("${file_path}")
+    LocalResource(raw"${file_path}")
  end`
             case "application/vnd.apache.arrow.file":
                 console.log("Arrow file")
@@ -188,11 +187,11 @@ end
             case "application/json":
                 return `begin
     using TableIO, DataFrames
-    df_${name} = read_table("${file_path}") |> DataFrame
+    df_${name} = read_table(raw"${file_path}") |> DataFrame
 end`
             default:
                 alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
-                return
+                return ""
         }
         return " # Filetype not supported!"
     }
