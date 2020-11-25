@@ -501,10 +501,10 @@ export class Editor extends Component {
 
         // these are things that can be done to the remote notebook
         this.requests = {
-            write_file: (cell_id, { fileBase64, name, type }) => {
+            write_file: (cell_id, { file, name, type }) => {
                 return this.client.send(
                     "write_file",
-                    { fileBase64, name, type, path: this.state.notebook.path },
+                    { file, name, type, path: this.state.notebook.path },
                     {
                         notebook_id: this.state.notebook.notebook_id,
                         cell_id: cell_id,

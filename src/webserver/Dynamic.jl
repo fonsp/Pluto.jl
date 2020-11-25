@@ -1,5 +1,4 @@
 import UUIDs: uuid1
-import Base64: base64decode
 import TableIOInterface: get_example_code
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
@@ -200,7 +199,6 @@ responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cel
 end
 
 responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let 
-    file = base64decode(body["fileBase64"])
     path = notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
@@ -209,10 +207,9 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     if !ispath(dir)
         mkpath(dir)
     end
-
     success = try
         io = open(save_path, "w")
-        write(io, file)
+        write(io, body["file"])
         close(io)
         true
     catch e

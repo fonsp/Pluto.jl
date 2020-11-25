@@ -2,7 +2,7 @@ import { useState, useMemo } from "../imports/Preact.js"
 
 const MAGIC_TIMEOUT = 500
 
-const prepareFileBase64 = (file) =>
+const prepareFile = (file) =>
     new Promise((resolve, reject) => {
         const { name, type } = file
         const fr = new FileReader()
@@ -10,8 +10,8 @@ const prepareFileBase64 = (file) =>
         fr.onloadstart = () => {}
         fr.onprogress = ({ loaded, total }) => {}
         fr.onload = () => {}
-        fr.onloadend = ({ target: { result } }) => resolve({ fileBase64: String(result).replace(/.*base64,/, ""), name, type })
-        fr.readAsDataURL(file)
+        fr.onloadend = ({ target: { result } }) => resolve({ file: result, name, type })
+        fr.readAsArrayBuffer(file)
     })
 
 export const useDropHandler = (requests, on_change, cell_id) => {
@@ -25,7 +25,7 @@ export const useDropHandler = (requests, on_change, cell_id) => {
             setSavingFile(true)
             const {
                 message: { success, code },
-            } = await prepareFileBase64(file).then(
+            } = await prepareFile(file).then(
                 (preparedObj) => {
                     return requests.write_file(cell_id, preparedObj)
                 },
