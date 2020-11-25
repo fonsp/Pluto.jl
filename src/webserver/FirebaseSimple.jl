@@ -231,8 +231,8 @@ function getpath(value, path)
 		return value
 	end
 	
-	current = path[begin]
-	rest = path[begin+1:end]
+	current = path[firstindex(path)]
+	rest = path[firstindex(path)+1:lastindex(path)]
 	if value isa AbstractDict
     key = force_convert_key(value, current)
 		getpath(getindex(value, key), rest)
@@ -260,8 +260,8 @@ function update!(value, patch::AddPatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
-		last = patch.path[end]
-		rest = patch.path[begin:end-1]
+		last = patch.path[lastindex(patch.path)]
+		rest = patch.path[firstindex(patch.path):lastindex(patch.path)-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
       key = force_convert_key(subvalue, last)
@@ -288,8 +288,8 @@ function update!(value, patch::ReplacePatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
-		last = patch.path[end]
-		rest = patch.path[begin:end-1]
+		last = patch.path[lastindex(patch.path)]
+		rest = patch.path[firstindex(patch.path):lastindex(patch.path)-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
       key = force_convert_key(subvalue, last)
@@ -316,8 +316,8 @@ function update!(value, patch::RemovePatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
-		last = patch.path[end]
-		rest = patch.path[begin:end-1]
+		last = patch.path[lastindex(patch.path)]
+		rest = patch.path[firstindex(patch.path):lastindex(patch.path)-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
       key = force_convert_key(subvalue, last)

@@ -190,7 +190,8 @@ const mutators = Dict(
         end,
     ),
     "cell_order" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
-        request.notebook.cell_order = patch.value
+        Firebase.update!(request.notebook, patch)
+        # request.notebook.cell_order = patch.value
         return [FileChanged()]
     end,
     "bonds" => Dict(
