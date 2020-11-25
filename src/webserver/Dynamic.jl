@@ -236,18 +236,17 @@ get_template_code = (filename, directory) -> begin
     extension = split(filename, ".")[end]
 
     if extension ∈ ["jpg", "jpeg", "png", "gif"]
-        requirements = [:Images]
-        req_code = "using Images"
-        code = """begin
-# Make sure to Pkg.add both Images and "ImageMagick";
+        req_code = "import Images"
+        code = """img_$(varname) = let
+# Make sure to Pkg.add both Images and "ImageMagick!";
     $(req_code)
-    img_$(varname) = Images.load("$(path)")
+    Images.load("$(path)")
 end"""
 
     elseif extension ∈ ["txt", "text"]
-        code = """begin
+        code = """txt_$(varname) = let
     $(varname) = open("$(path)")
-    txt_$(varname) = read($(varname), String)
+    read($(varname), String)
 end"""
 
     elseif extension ∈ ["jl"]
