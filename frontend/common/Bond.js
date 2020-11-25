@@ -3,7 +3,7 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
-export const connect_bonds = (node, all_completed_promise, cell_invalidated_promise, requests) => {
+export const connect_bonds = (node, cell_invalidated_promise, requests) => {
     node.querySelectorAll("bond").forEach(async (bond_node) => {
         // read the docs on Generators.input from observablehq/stdlib:
         const inputs = observablehq.Generators.input(bond_node.firstElementChild)
@@ -16,11 +16,6 @@ export const connect_bonds = (node, all_completed_promise, cell_invalidated_prom
         })
 
         while (!node_is_invalidated) {
-            // wait for all (other) cells to complete - if we don't, the Julia code would get overloaded with new values
-
-            // TODO Something with all_completed_promise
-            // await all_completed_promise.current
-
             // wait for a new input value. If a value is ready, then this promise resolves immediately
             const val = await inputs.next().value
             if (!node_is_invalidated) {

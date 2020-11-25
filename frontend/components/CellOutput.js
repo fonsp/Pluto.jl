@@ -12,6 +12,7 @@ export class CellOutput extends Component {
     constructor() {
         super()
         this.old_height = 0
+        // @ts-ignore Is there a way to use the latest DOM spec?
         this.resize_observer = new ResizeObserver((entries) => {
             const new_height = this.base.offsetHeight
 
@@ -84,7 +85,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+export const OutputBody = ({ mime, body, cell_id, requests, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -103,34 +104,16 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer}
-                    cell_id=${cell_id}
-                    body=${body}
-                    all_completed_promise=${all_completed_promise}
-                    requests=${requests}
-                    persist_js_state=${persist_js_state}
-                />`
+                return html`<${RawHTMLContainer} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView}
-                    cell_id=${cell_id}
-                    body=${body}
-                    all_completed_promise=${all_completed_promise}
-                    requests=${requests}
-                    persist_js_state=${persist_js_state}
-                />
+                <${TreeView} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView}
-                cell_id=${cell_id}
-                body=${body}
-                all_completed_promise=${all_completed_promise}
-                requests=${requests}
-                persist_js_state=${persist_js_state}
-            />`
+            return html` <${TableView} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`
@@ -168,6 +151,7 @@ let IframeContainer = ({ body }) => {
 
             // Apply iframe resizer from the host side
             new Promise((resolve) => x.addEventListener("load", () => resolve()))
+            // @ts-ignore
             window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
 
@@ -193,6 +177,11 @@ let execute_dynamic_function = async ({ environment, code }) => {
     return result
 }
 
+/**
+ * @typedef PlutoScript
+ * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
+ */
+
 const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
     let results_map = new Map()
 
@@ -206,8 +195,10 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 script_el = document.createElement("script")
                 script_el.src = node.src
                 script_el.type = node.type === "module" ? "module" : "text/javascript"
+                // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
+            // @ts-ignore
             const need_to_await = script_el.pluto_is_loading_me != null
             if (need_to_await) {
                 await new Promise((resolve) => {
@@ -215,6 +206,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     script_el.addEventListener("error", resolve)
                     document.head.appendChild(script_el)
                 })
+                // @ts-ignore
                 script_el.pluto_is_loading_me = undefined
             }
         } else {
@@ -251,7 +243,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_js_state = false }) => {
+export let RawHTMLContainer = ({ body, requests, persist_js_state = false }) => {
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -277,12 +269,15 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
-            if (all_completed_promise != null && requests != null) {
-                connect_bonds(container.current, all_completed_promise, invalidation, requests)
+            if (requests != null) {
+                connect_bonds(container.current, invalidation, requests)
+            } else {
+                console.log(`Bonds couldn't connect, because no requests`)
             }
 
             // convert LaTeX to svg
             try {
+                // @ts-ignore
                 window.MathJax.typeset([container.current])
             } catch (err) {
                 console.info("Failed to typeset TeX:")
@@ -308,6 +303,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
 /** @param {HTMLElement} code_element */
 export let highlight_julia = (code_element) => {
     if (code_element.children.length === 0) {
+        // @ts-ignore
         window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
         code_element.classList.add("cm-s-default")
     }

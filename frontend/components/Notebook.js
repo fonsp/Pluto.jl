@@ -13,7 +13,6 @@ import { Cell } from "./Cell.js"
  *  on_focus_neighbor: any,
  *  disable_input: any,
  *  focus_after_creation: any,
- *  all_completed_promise: any,
  *  selected_friends: any,
  *  requests: any,
  *  client: any,
@@ -29,7 +28,6 @@ export const Notebook = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
-    all_completed_promise,
     selected_friends,
     requests,
     client,
@@ -65,7 +63,6 @@ export const Notebook = ({
                     disable_input=${disable_input}
                     focus_after_creation=${false /* focus_after_creation && !d.pasted */}
                     scroll_into_view_after_creation=${false /* d.pasted */}
-                    all_completed_promise=${all_completed_promise}
                     selected_friends=${selected_friends}
                     requests=${requests}
                     client=${client}

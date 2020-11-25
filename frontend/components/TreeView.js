@@ -8,7 +8,7 @@ import { PlutoImage, RawHTMLContainer } from "./CellOutput.js"
 // whatever
 //
 // TODO: remove this, use OutputBody instead, and fix the CSS classes so that i all looks nice again
-const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+const SimpleOutputBody = ({ mime, body, cell_id, requests, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -19,21 +19,10 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
             return html`<${PlutoImage} mime=${mime} body=${body} />`
             break
         case "text/html":
-            return html`<${RawHTMLContainer}
-                body=${body}
-                all_completed_promise=${all_completed_promise}
-                requests=${requests}
-                persist_js_state=${persist_js_state}
-            />`
+            return html`<${RawHTMLContainer} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.tree+object":
-            return html`<${TreeView}
-                cell_id=${cell_id}
-                body=${body}
-                all_completed_promise=${all_completed_promise}
-                requests=${requests}
-                persist_js_state=${persist_js_state}
-            />`
+            return html`<${TreeView} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
             break
         case "text/plain":
         default:
@@ -58,7 +47,7 @@ const More = ({ on_click_more }) => {
     >`
 }
 
-export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+export const TreeView = ({ mime, body, cell_id, requests, persist_js_state }) => {
     const node_ref = useRef(null)
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
@@ -87,7 +76,6 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
         cell_id=${cell_id}
         mime=${pair[1]}
         body=${pair[0]}
-        all_completed_promise=${all_completed_promise}
         requests=${requests}
         persist_js_state=${persist_js_state}
     />`
@@ -126,14 +114,13 @@ export const TreeView = ({ mime, body, cell_id, all_completed_promise, requests,
     return html`<jltree class="collapsed" onclick=${onclick} ref=${node_ref}>${inner}</jltree>`
 }
 
-export const TableView = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+export const TableView = ({ mime, body, cell_id, requests, persist_js_state }) => {
     const node_ref = useRef(null)
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody}
         cell_id=${cell_id}
         mime=${pair[1]}
         body=${pair[0]}
-        all_completed_promise=${all_completed_promise}
         requests=${requests}
         persist_js_state=${persist_js_state}
     />`

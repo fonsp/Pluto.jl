@@ -92,7 +92,6 @@ export const Cell = ({
     disable_input,
     focus_after_creation,
     scroll_into_view_after_creation,
-    all_completed_promise,
     selected_friends,
     requests,
     client,
@@ -161,7 +160,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} all_completed_promise=${all_completed_promise} requests=${requests} cell_id=${cell_id} />
+            <${CellOutput} ...${output} requests=${requests} cell_id=${cell_id} />
             ${show_input &&
             html`<${CellInput}
                 local_code=${cell_local?.code ?? code}

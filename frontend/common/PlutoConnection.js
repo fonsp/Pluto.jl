@@ -246,10 +246,11 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         var p = resolvable_promise()
 
         sent_requests[request_id] = (message) => {
+            console.log(`Resolving ${message_type}`)
+            p.resolve(message)
             if (create_promise === false) {
                 on_unrequested_update(message, true)
             }
-            p.resolve(message)
         }
 
         ws_connection.send(message)

@@ -25,6 +25,7 @@ responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebo
     # cells = [notebook.cells[i] for i in indices if i !== nothing]
     # @info "Run multiple cells" cells indices
     uuids = UUID.(body["cells"])
+    @info "Cells to run" uuids
     cells = map(uuids) do uuid
         notebook.cell_dict[uuid]
     end
@@ -68,52 +69,52 @@ module Firebase include("./FirebaseSimple.jl") end
 
 function notebook_to_js(notebook::Notebook)
     return Dict(
-        :notebook_id => notebook.notebook_id,
-        :path => notebook.path,
-        :in_temp_dir => startswith(notebook.path, new_notebooks_directory()),
-        :shortpath => basename(notebook.path),
-        :cell_dict => Dict(map(collect(notebook.cell_dict)) do (id, cell)
+        "notebook_id" => notebook.notebook_id,
+        "path" => notebook.path,
+        "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
+        "shortpath" => basename(notebook.path),
+        "cell_dict" => Dict(map(collect(notebook.cell_dict)) do (id, cell)
             id => Dict(
-                :cell_id => cell.cell_id,
-                :code => cell.code,
-                :code_folded => cell.code_folded,
+                "cell_id" => cell.cell_id,
+                "code" => cell.code,
+                "code_folded" => cell.code_folded,
             )
         end),
-        :cells_running => Dict(map(collect(notebook.cell_dict)) do (id, cell)
+        "cells_running" => Dict(map(collect(notebook.cell_dict)) do (id, cell)
             id => Dict(
-                :cell_id => cell.cell_id,
-                :queued => cell.queued,
-                :running => cell.running,
-                :errored => cell.errored,
-                :runtime => ismissing(cell.runtime) ? nothing : cell.runtime,
-                :output => Dict(                
-                    :last_run_timestamp => cell.last_run_timestamp,
-                    :persist_js_state => cell.persist_js_state,
-                    :mime => cell.repr_mime,
-                    :body => cell.output_repr,
-                    :rootassignee => cell.rootassignee,
+                "cell_id" => cell.cell_id,
+                "queued" => cell.queued,
+                "running" => cell.running,
+                "errored" => cell.errored,
+                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "output" => Dict(                
+                    "last_run_timestamp" => cell.last_run_timestamp,
+                    "persist_js_state" => cell.persist_js_state,
+                    "mime" => cell.repr_mime,
+                    "body" => cell.output_repr,
+                    "rootassignee" => cell.rootassignee,
                 ),
             )
         end),
-        :cell_order => notebook.cell_order,
-        :bonds => Dict(notebook.bonds),     
+        "cell_order" => notebook.cell_order,
+        "bonds" => Dict(notebook.bonds),     
     )
 end
 
 global current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 function send_notebook_changes!(request::NotebookRequest)
+    notebook_dict = notebook_to_js(request.notebook)
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
-            notebook_dict = notebook_to_js(request.notebook)
             current_dict = get(current_state_for_clients, client, :empty)
-            @info "current_dict:" current_dict
             patches = Firebase.diff(current_dict, notebook_dict)
             local patches_as_dict::Array{Dict} = patches
-
-            @info "Patches:" patches
             current_state_for_clients[client] = notebook_dict
 
-            if length(patches) != 0
+            # Make sure we do send a confirmation to the client who made the request, even without changes
+            send_anyway = request.initiator !== nothing && client == request.initiator.client
+
+            if length(patches) != 0 || send_anyway
                 initiator = isnothing(request.initiator) ? missing : request.initiator
                 putclientupdates!(client, UpdateMessage(:notebook_diff, patches_as_dict, request.notebook, nothing, initiator))
             end
@@ -121,73 +122,127 @@ function send_notebook_changes!(request::NotebookRequest)
     end
 end
 
+function convert_jsonpatch(::Type{Firebase.JSONPatch}, patch_dict::Dict)
+	if patch_dict["op"] == "add"
+		Firebase.AddPatch(patch_dict["path"], patch_dict["value"])
+	elseif patch_dict["op"] == "remove"
+		Firebase.RemovePatch(patch_dict["path"])
+	elseif patch_dict["op"] == "replace"
+		Firebase.ReplacePatch(patch_dict["path"], patch_dict["value"])
+	else
+		throw("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion")
+	end
+end
+
+struct Wildcard end
+function trigger_resolver(anything, path, values=[])
+	(value=anything, matches=values, rest=path)
+end
+function trigger_resolver(resolvers::Dict, path, values=[])
+	if length(path) == 0
+		throw("No key matched")
+	end
+	
+	segment = path[begin]
+	rest = path[begin+1:end]
+	for (key, resolver) in resolvers
+		if key isa Wildcard
+			continue
+		end
+		if key == segment
+			return trigger_resolver(resolver, rest, values)
+		end
+	end
+	
+	if haskey(resolvers, Wildcard())
+		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
+	else
+		throw("No key matched")
+	end
+end
+
+abstract type Changed end
+struct CodeChanged <: Changed end
+struct FileChanged <: Changed end
+
+const mutators = Dict(
+    "path" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
+        newpath = tamepath(patch.value)
+        @info "Newpath:" newpath
+        request.notebook.path = newpath
+        SessionActions.move(request.session, request.notebook, newpath)
+        nothing
+    end,
+    "in_temp_dir" => function(; _...) nothing end,
+    "cell_dict" => Dict(
+        Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebase.JSONPatch)
+            Firebase.update!(request.notebook, patch)
+            @info "Updating cell" patch
+
+            if length(rest) == 0
+                [CodeChanged(), FileChanged()]
+            elseif length(rest) == 1 && Symbol(rest[1]) == :code
+                request.notebook.cell_dict[UUID(cell_id)].parsedcode = nothing
+                [CodeChanged(), FileChanged()]
+            else
+                [FileChanged()]
+            end
+        end,
+    ),
+    "cell_order" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
+        request.notebook.cell_order = patch.value
+        return [FileChanged()]
+    end,
+    "bonds" => Dict(
+        Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
+            # @assert patch isa Firebase.ReplacePatch || patch isa Firebase.AddPatch
+            name = Symbol(name)
+            # request.notebook.bonds[name] = patch.value
+            Firebase.update!(request.notebook, patch)
+            @info "Bond" name patch.value
+            refresh_bond(session=request.session, notebook=request.notebook, name=name)
+            nothing
+        end,
+    )
+)
 
 function update_notebook(request::NotebookRequest)
     notebook = request.notebook
-    
-    # if !haskey(current_state_for_clients, request.client)
-    #     current_state_for_clients[request.client] = nothing
-    # end
 
-    code_changed = false
-    file_changed = false
+    if length(request.message["updates"]) == 0
+        return send_notebook_changes!(request)
+    end
+
+    if !haskey(current_state_for_clients, request.initiator.client)
+        throw("Updating without having a first version of the notebook??")
+    end
+
+    # TODO Immutable ??
+    for update in request.message["updates"]
+        patch = convert_jsonpatch(Firebase.JSONPatch, update)
+        Firebase.update!(current_state_for_clients[request.initiator.client], patch)
+    end
+
+    changes = Set{Changed}()
 
     for update in request.message["updates"]
-        local operation = Symbol(update["op"])
-        local path = Tuple(update["path"])
-        local value = haskey(update, "value") ? update["value"] : nothing
+        patch = convert_jsonpatch(Firebase.JSONPatch, update)
 
-        @assert operation in [:add, :replace, :remove] "Operation $(operation) unknown"
-
-        if length(path) == 1 && path[1] == "path"
-            @assert operation == :replace
-            newpath = tamepath(value)
-            notebook.path = newpath
-            @info "Newpath:" newpath
-            SessionActions.move(request.session, notebook, newpath)
-        elseif length(path) == 1 && path[1] == "in_temp_dir"
-            nothing
-        elseif length(path) == 3 && path[1] == "cell_dict"
-            file_changed = true
-            code_changed = true
-
-            @assert operation == :replace "You can only :replace on cells, you tried :$(operation)"
-            property = Symbol(path[3])
-            cell_id = UUID(path[2])
-            # cell_index = c(notebook, cell_id)
-            cell = notebook.cell_dict[cell_id]
-            setproperty!(cell, property, value)
-
-            if property == :code
-                cell.parsedcode = nothing
-                code_changed = true
-            end
-        elseif length(path) == 2 && path[1] == "cell_dict"
-            file_changed = true
-            code_changed = true
-
-            if operation == :add
-                cell_id = UUID(path[2])
-                notebook.cell_dict[cell_id] = value
-            elseif operation == :remove
-                cell_id = UUID(path[2])
-                delete!(notebook.cell_dict, cell_id)
+        match = trigger_resolver(mutators, patch.path)
+        if match !== nothing
+            (mutator, matches, rest) = match
+            
+            current_changes = if length(rest) == 0 && hasmethod(mutator, Tuple{fill(Any, length(matches))...})
+                mutator(matches...; request=request, patch=patch)
             else
-                throw("Tried :$(operation) on a whole cell, but you can only :add or :remove")
+                mutator(matches..., rest; request=request, patch=patch)
             end
-        elseif length(path) == 1 && path[1] == "cell_order"
-            file_changed = true
 
-            @assert operation == :replace
-            notebook.cell_order = value
-        elseif length(path) == 2 && path[1] == "bonds"
-            name = Symbol(path[2])
-            notebook.bonds[name] = value
-            @info "Bond" name value
-            refresh_bond(session=request.session, notebook=notebook, name=name)
-            @info "Refreshed bond..."
+            if current_changes !== nothing && current_changes isa AbstractVector{Changed}
+                push!(changes, current_changes...)
+            end
         else
-            throw("Path :$(path[1]) not yet implemented")
+            @warn "Not matching" patch
         end
     end
 
@@ -195,7 +250,8 @@ function update_notebook(request::NotebookRequest)
 
     # end
 
-    if file_changed
+    if FileChanged ∈ changes
+        @info "SAVE NOTEBOOK"
         save_notebook(notebook)
     end
 

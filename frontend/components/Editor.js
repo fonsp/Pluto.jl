@@ -230,10 +230,6 @@ export class Editor extends Component {
             selected_cells: [],
         }
 
-        // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
-        this.all_completed = true
-        this.all_completed_promise = resolvable_promise()
-
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
 
@@ -318,25 +314,22 @@ export class Editor extends Component {
                     //     break
                     case "notebook_diff":
                         this.setState((state) => {
-                            // console.group("Update!")
-                            // for (let patch of message) {
-                            //     console.group(`Patch :${patch.op}`)
-                            //     console.log(`patch.path:`, patch.path)
-                            //     console.log(`patch.value:`, patch.value)
-                            //     console.groupEnd()
-                            // }
+                            console.group("Update!")
+                            for (let patch of message) {
+                                console.group(`Patch :${patch.op}`)
+                                console.log(`patch.path:`, patch.path)
+                                console.log(`patch.value:`, patch.value)
+                                console.groupEnd()
+                            }
                             let new_notebook = applyPatches(state.notebook, message)
-                            // console.log(`message:`, message)
-                            // console.log(`new_notebook:`, new_notebook)
-                            // console.groupEnd()
+                            console.log(`message:`, message)
+                            console.log(`new_notebook:`, new_notebook)
+                            console.groupEnd()
                             return {
                                 notebook: new_notebook,
                             }
                         })
                         break
-                    // case "bond_update":
-                    //     // by someone else
-                    //     break
                     case "log":
                         handle_log(message, this.state.notebook.path)
                         break
@@ -361,8 +354,7 @@ export class Editor extends Component {
             // on socket success
             this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
 
-            await update_notebook(() => {}).then((x) => {
-                // console.log(`Hmmmm x:`, x)
+            this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false).then(() => {
                 this.setState({ loading: false })
             })
 
@@ -397,7 +389,11 @@ export class Editor extends Component {
             let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
                 mutate_fn(notebook)
             })
-            console.trace(`changes:`, changes)
+            if (changes.length === 0) {
+                return
+            }
+
+            console.trace(`Changes to send to server:`, changes)
 
             for (let change of changes) {
                 if (change.path.some((x) => typeof x === "number")) {
@@ -435,6 +431,7 @@ export class Editor extends Component {
                         delete state.cells_local[cell_id]
                     })
                 )
+                console.log("RUN MULTIPLE CELLS", cell_id)
                 await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
@@ -549,13 +546,13 @@ export class Editor extends Component {
             },
             fold_remote_cell: (cell_id, newFolded) => {
                 update_notebook((notebook) => {
-                    let cell = notebook.cell_dict[cell_id]
-                    cell.code_folded = newFolded
+                    notebook.cell_dict[cell_id].code_folded = newFolded
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
-                    (cell_id) => this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
+                    (cell_id) =>
+                        this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
                 )
                 this.requests.set_and_run_multiple(changed)
                 return changed.length > 0
@@ -568,23 +565,15 @@ export class Editor extends Component {
                         }
                     }
                 })
+                console.log(`run_multiple_cells cells_ids:`, cells_ids)
                 await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
             },
             set_bond: async (symbol, value, is_first_value) => {
                 this.counter_statistics.numBondSets++
 
-                if (this.all_completed) {
-                    // instead of waiting for this component to update, we reset the promise right now
-                    // this prevents very fast bonds from sending multiple values within the ping interval
-                    this.all_completed = false
-                    Object.assign(this.all_completed_promise, resolvable_promise())
-                }
-
                 await update_notebook((notebook) => {
                     notebook.bonds[symbol] = value
                 })
-                this.all_completed = true
-                this.all_completed_promise.resolve()
 
                 // TODO Something with all_completed true ?
                 // // the back-end tells us whether any cells depend on the bound value
@@ -634,33 +623,32 @@ export class Editor extends Component {
                     notebook.in_temp_dir = false
                     notebook.path = new_path
                 })
-                false &&
-                    this.client
-                        .send(
-                            "move_notebook_file",
-                            {
-                                path: new_path,
-                            },
-                            { notebook_id: this.state.notebook.notebook_id }
-                        )
-                        .then((u) => {
-                            this.setState({
-                                loading: false,
-                            })
-                            if (u.message.success) {
-                                this.setState({
-                                    path: new_path,
-                                })
-                                // @ts-ignore
-                                document.activeElement.blur()
-                            } else {
-                                this.setState({
-                                    path: old_path,
-                                })
-                                reset_cm_value()
-                                alert("Failed to move file:\n\n" + u.message.reason)
-                            }
-                        })
+                // this.client
+                //     .send(
+                //         "move_notebook_file",
+                //         {
+                //             path: new_path,
+                //         },
+                //         { notebook_id: this.state.notebook.notebook_id }
+                //     )
+                //     .then((u) => {
+                //         this.setState({
+                //             loading: false,
+                //         })
+                //         if (u.message.success) {
+                //             this.setState({
+                //                 path: new_path,
+                //             })
+                //             // @ts-ignore
+                //             document.activeElement.blur()
+                //         } else {
+                //             this.setState({
+                //                 path: old_path,
+                //             })
+                //             reset_cm_value()
+                //             alert("Failed to move file:\n\n" + u.message.reason)
+                //         }
+                //     })
             } else {
                 this.setState({
                     path: old_path,
@@ -824,15 +812,15 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
-        const all_completed_now = !Object.values(this.state.notebook.cells_running).some((cell) => cell && (cell.running || cell.queued))
-        if (all_completed_now && !this.all_completed) {
-            this.all_completed = true
-            this.all_completed_promise.resolve()
-        }
-        if (!all_completed_now && this.all_completed) {
-            this.all_completed = false
-            Object.assign(this.all_completed_promise, resolvable_promise())
-        }
+        // const all_completed_now = !Object.values(this.state.notebook.cells_running).some((cell) => cell && (cell.running || cell.queued))
+        // if (all_completed_now && !this.all_completed) {
+        //     this.all_completed = true
+        //     this.all_completed_promise.resolve()
+        // }
+        // if (!all_completed_now && this.all_completed) {
+        //     this.all_completed = false
+        //     Object.assign(this.all_completed_promise, resolvable_promise())
+        // }
     }
 
     render() {
@@ -906,7 +894,6 @@ export class Editor extends Component {
                     }}
                     disable_input=${!this.state.connected}
                     focus_after_creation=${!this.state.loading}
-                    all_completed_promise=${this.all_completed_promise}
                     selected_friends=${this.selected_friends}
                     requests=${this.requests}
                     client=${this.client}

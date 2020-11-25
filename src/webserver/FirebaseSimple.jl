@@ -17,7 +17,9 @@ md"### =="
 md"### convert(::Type{Dict}, ::JSONPatch)"
 
 # ╔═╡ 921a130e-b028-4f91-b077-3bd79dcb6c6d
-
+function force_convert_key(::Dict{T,<:Any}, value) where T
+  T(value)
+end
 
 # ╔═╡ daf9ec12-2de1-11eb-3a8d-59d9c2753134
 md"## Diff"
@@ -232,9 +234,10 @@ function getpath(value, path)
 	current = path[begin]
 	rest = path[begin+1:end]
 	if value isa AbstractDict
-		getpath(getindex(value[current]), rest)
+    key = force_convert_key(value, current)
+		getpath(getindex(value, key), rest)
 	else
-		getpath(getproperty(value[current]), rest)
+		getpath(getproperty(value, Symbol(current)), rest)
 	end
 end
 
@@ -261,15 +264,17 @@ function update!(value, patch::AddPatch)
 		rest = patch.path[begin:end-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
+      key = force_convert_key(subvalue, last)
 			if STRICT
-				@assert get(subvalue, last, nothing) === nothing
+				@assert get(subvalue, key, nothing) === nothing
 			end
-			subvalue[last] = patch.value
+			subvalue[key] = patch.value
 		else
+      key = Symbol(last)
 			if STRICT
-				@assert getproperty(subvalue, last) === nothing
+				@assert getproperty(subvalue, key) === nothing
 			end
-			setproperty!(subvalue, last, patch.value)
+			setproperty!(subvalue, key, patch.value)
 		end
 	end
 	return value
@@ -287,15 +292,17 @@ function update!(value, patch::ReplacePatch)
 		rest = patch.path[begin:end-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
+      key = force_convert_key(subvalue, last)
 			if STRICT
-				@assert get(subvalue, last, nothing) !== nothing
+				@assert get(subvalue, key, nothing) !== nothing
 			end
-			subvalue[last] = patch.value
+			subvalue[key] = patch.value
 		else
+      key = Symbol(last)
 			if STRICT
-				@assert getproperty(subvalue, last) !== nothing
+				@assert getproperty(subvalue, key) !== nothing
 			end
-			setproperty!(subvalue, last, patch.value)
+			setproperty!(subvalue, key, patch.value)
 		end
 	end
 	return value
@@ -313,15 +320,17 @@ function update!(value, patch::RemovePatch)
 		rest = patch.path[begin:end-1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
+      key = force_convert_key(subvalue, last)
 			if STRICT
-				@assert get(subvalue, last, nothing) !== nothing
+				@assert get(subvalue, key, nothing) !== nothing
 			end
-			delete!(subvalue, last)
+			delete!(subvalue, key)
 		else
+      key = Symbol(last)
 			if STRICT
-				@assert getproperty(subvalue, last) !== nothing
+				@assert getproperty(subvalue, key) !== nothing
 			end
-			setproperty!(subvalue, last, nothing)
+			setproperty!(subvalue, key, nothing)
 		end
 	end
 	return value
