@@ -228,6 +228,8 @@ export class Editor extends Component {
             export_menu_open: false,
 
             selected_cells: [],
+
+            update_is_ongoing: false,
         }
 
         // statistics that are accumulated over time
@@ -302,33 +304,28 @@ export class Editor extends Component {
                         on_remote_notebooks(update)
                         break
                 }
-            } else {
-                if (this.state.notebook.notebook_id !== update.notebook_id) {
-                    return
-                }
+            } else if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
-                const cell = this.state.notebook.cell_dict[update.cell_id]
                 switch (update.type) {
-                    // case "notebook":
-                    //     this.setState({ notebook: message })
-                    //     break
                     case "notebook_diff":
-                        this.setState((state) => {
-                            console.group("Update!")
-                            for (let patch of message) {
-                                console.group(`Patch :${patch.op}`)
-                                console.log(`patch.path:`, patch.path)
-                                console.log(`patch.value:`, patch.value)
+                        if (message.length !== 0) {
+                            this.setState((state) => {
+                                console.group("Update!")
+                                for (let patch of message) {
+                                    console.group(`Patch :${patch.op}`)
+                                    console.log(`patch.path:`, patch.path)
+                                    console.log(`patch.value:`, patch.value)
+                                    console.groupEnd()
+                                }
+                                let new_notebook = applyPatches(state.notebook, message)
+                                console.log(`message:`, message)
+                                console.log(`new_notebook:`, new_notebook)
                                 console.groupEnd()
-                            }
-                            let new_notebook = applyPatches(state.notebook, message)
-                            console.log(`message:`, message)
-                            console.log(`new_notebook:`, new_notebook)
-                            console.groupEnd()
-                            return {
-                                notebook: new_notebook,
-                            }
-                        })
+                                return {
+                                    notebook: new_notebook,
+                                }
+                            })
+                        }
                         break
                     case "log":
                         handle_log(message, this.state.notebook.path)
@@ -339,9 +336,10 @@ export class Editor extends Component {
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
+            } else {
+                // Update for a different notebook, TODO maybe log this as it shouldn't happen
             }
         }
-        this.on_update = on_update
 
         const on_establish_connection = async (client) => {
             // nasty
@@ -379,6 +377,11 @@ export class Editor extends Component {
             connect_metadata: { notebook_id: this.state.notebook.notebook_id },
         }).then(on_establish_connection)
 
+        // Not completely happy with this yet, but it will do for now - DRAL
+        this.bonds_changes_to_apply_when_done = []
+        this.notebook_is_idle = () =>
+            !Object.values(this.state.notebook.cells_running).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
+
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
             // if (this.state.loading) {
@@ -389,11 +392,21 @@ export class Editor extends Component {
             let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
                 mutate_fn(notebook)
             })
+
+            if (!this.notebook_is_idle()) {
+                let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                changes = changes.filter((x) => x.path[0] !== "bonds")
+            }
+
             if (changes.length === 0) {
                 return
             }
 
-            console.trace(`Changes to send to server:`, changes)
+            try {
+                let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+            } catch (error) {}
 
             for (let change of changes) {
                 if (change.path.some((x) => typeof x === "number")) {
@@ -401,6 +414,7 @@ export class Editor extends Component {
                 }
             }
 
+            this.setState({ update_is_ongoing: true })
             await Promise.all([
                 this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false),
                 new Promise((resolve) => {
@@ -412,6 +426,7 @@ export class Editor extends Component {
                     )
                 }),
             ])
+            this.setState({ update_is_ongoing: false })
         }
         this.update_notebook = update_notebook
 
@@ -419,13 +434,13 @@ export class Editor extends Component {
         this.requests = {
             change_remote_cell: async (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
-                // set_cell_state(cell_id, { running: true })
 
                 // TODO Need to do the update locally too, not doing that right now
                 await update_notebook((notebook) => {
                     notebook.cell_dict[cell_id].code = new_code
                 })
                 // Just making sure there is no local state to overwrite left
+                // TODO I'm not sure if this is useful actually
                 this.setState(
                     immer((state) => {
                         delete state.cells_local[cell_id]
@@ -437,7 +452,6 @@ export class Editor extends Component {
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cell_dict[cell_id]
                 const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
-                // this.actions.update_local_cell_input(cell, false, new_code, cell.code_folded)
                 this.requests.change_remote_cell(cell_id, new_code)
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -812,6 +826,11 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
+        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done) {
+            this.update_notebook((notebook) => {
+                applyPatches(notebook, this.bonds_changes_to_apply_when_done)
+            })
+        }
         // const all_completed_now = !Object.values(this.state.notebook.cells_running).some((cell) => cell && (cell.running || cell.queued))
         // if (all_completed_now && !this.all_completed) {
         //     this.all_completed = true
