@@ -1,6 +1,6 @@
 import UUIDs: uuid1
 import Base64: base64decode
-
+import TableIOInterface: get_example_code
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
 
@@ -251,39 +251,11 @@ end"""
 end"""
 
     elseif extension ∈ ["jl"]
-        code = """include("$(path)")"""
+        file = open(path)
+        code = read(file, String)
 
-    elseif extension ∈ ["csv", "json"]
-        requirements = [:TableIO, :DataFrames]
-        req_code = "using TableIO, DataFrames"
-        code = """begin
-    $(req_code)
-    df_$(varname) = read_table("$(path)") |> DataFrame
-end"""
-
-    elseif extension ∈ ["arrow"]
-        requirements = [:TableIO, :DataFrames]
-        req_code = "using TableIO, DataFrames"
-        code = """begin
-    $(req_code)
-    df_$(varname) = DataFrame(read_table("$(path)"), copycols=false)
-end"""
-
-    elseif extension ∈ ["xlsx", "xslm"]
-        requirements = [:TableIO, :DataFrames]
-        req_code = "using TableIO, DataFrames"
-        code = """begin
-    $(req_code)
-    df_$(varname) = DataFrame(read_table("$(path)"#==,  "Sheet1" ==#); copycols=false)
-end"""
-
-    elseif extension ∈ ["db", "sqlite", "sqlite3"]
-        requirements = [:TableIO, :DataFrames]
-        req_code = "using TableIO, DataFrames"
-        code = """begin
-    $(req_code)
-    df_$(varname) = DataFrame(read_table("$(path)"), "table" #== Replace this with the table ==#, copycols=false)
-end"""
+    elseif extension ∈  ["zip",  "csv",  "jdf",  "parquet",  "xlsx",  "xlsm",  "db",  "sqlite",  "sqlite3",  "dta",  "sav",  "sas7bdat",  "json",  "arrow"]
+        code = get_example_code(directory, filename)
 
     else
         code = missing
