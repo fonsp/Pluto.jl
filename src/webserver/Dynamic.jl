@@ -21,11 +21,7 @@ responses[:ping] = (session::ServerSession, body, notebook = nothing; initiator:
 end
 
 responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
-    # indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
-    # cells = [notebook.cells[i] for i in indices if i !== nothing]
-    # @info "Run multiple cells" cells indices
     uuids = UUID.(body["cells"])
-    @info "Cells to run" uuids
     cells = map(uuids) do uuid
         notebook.cell_dict[uuid]
     end
@@ -143,8 +139,8 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 		throw("No key matched")
 	end
 	
-	segment = path[begin]
-	rest = path[begin+1:end]
+	segment = path[firstindex(path)]
+	rest = path[firstindex(path)+1:lastindex(path)]
 	for (key, resolver) in resolvers
 		if key isa Wildcard
 			continue

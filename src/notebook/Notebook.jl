@@ -62,13 +62,6 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     end
 end
 
-function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
-    findfirst(c -> c.cell_id == cell_id, notebook.cells)
-end
-
-
-
-
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
