@@ -121,11 +121,15 @@ function compute(computer::Computer)
     result
 end
 
-function compute(expr::Any)
+function compute(expr::Any, cell_id::UUID)
+
+end
+
+function run_expression(expr::Any, cell_id::UUID)
     if haskey(computers, expr)
         compute(computers[expr])
     else
-        Core.eval(Main, expr)
+        trycatch_expr(expr, cell_id)
     end
 end
 
@@ -150,59 +154,56 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
 end
 
 "Wrap `expr` inside a timing block, and then inside a try ... catch block."
-function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+function trycatch_expr(expr::Expr, cell_id::UUID)
     # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
     return_proof = Ref(123)
     # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
     # way to protect people from finding this obscure bug in some way - DRAL
 
-    quote
-        ans, runtime = try
-            # We eval `expr` in the global scope of the workspace module:
-            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+    cell_results[cell_id], cell_runtimes[cell_id] = try
+        # We eval `expr` in the global scope of the workspace module:
+        local invocation = Core.eval(current_module, timed_expr(expr, return_proof))
 
-            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
-                throw("Pluto: You can only use return inside a function.")
-            else
-                local ans, runtime, _ = invocation
-                (ans, runtime)
-            end
-        catch ex
-            bt = stacktrace(catch_backtrace())
-            (CapturedException(ex, bt), missing)
+        if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
+            throw("Pluto: You can only use return inside a function.")
+        else
+            local ans, runtime, _ = invocation
+            (ans, runtime)
         end
-        setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
+    catch ex
+        bt = stacktrace(catch_backtrace())
+        (CapturedException(ex, bt), missing)
     end
 end
 
 
-"Wrap `expr` inside a timing block, and then inside a try ... catch block."
-function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
-    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
-    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
-    return_proof = Ref(123)
-    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
-    # way to protect people from finding this obscure bug in some way - DRAL
+# "Wrap `expr` inside a timing block, and then inside a try ... catch block."
+# function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
+#     # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+#     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+#     return_proof = Ref(123)
+#     # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+#     # way to protect people from finding this obscure bug in some way - DRAL
 
-    quote
-        ans, runtime = try
-            # We eval `expr` in the global scope of the workspace module:
-            local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
+#     quote
+#         ans, runtime = try
+#             # We eval `expr` in the global scope of the workspace module:
+#             local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
 
-            if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
-                throw("Pluto: You can only use return inside a function.")
-            else
-                local ans, runtime, _ = invocation
-                (ans, runtime)
-            end
-        catch ex
-            bt = stacktrace(catch_backtrace())
-            (CapturedException(ex, bt), missing)
-        end
-        setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
-    end
-end
+#             if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
+#                 throw("Pluto: You can only use return inside a function.")
+#             else
+#                 local ans, runtime, _ = invocation
+#                 (ans, runtime)
+#             end
+#         catch ex
+#             bt = stacktrace(catch_backtrace())
+#             (CapturedException(ex, bt), missing)
+#         end
+#         setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
+#     end
+# end
 
 
 
@@ -376,6 +377,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID,Any}()
+const cell_runtimes = Dict{UUID,Union{Missing,UInt64}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -398,7 +400,7 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
     ans = cell_results[id]
     errored = ans isa CapturedException
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
 end
 
 

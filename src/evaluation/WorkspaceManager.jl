@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, trycatch_expr, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -216,16 +216,13 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
         cd_workspace(workspace, session_notebook[2].path)
     end
     
-    # We wrap the expression in a try-catch block, because we want to capture and format the exception on the worker itself.
-    wrapped = trycatch_expr(expr, workspace.module_name, cell_id)
-
     # run the code 🏃‍♀️
     
     # a try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
     try
         # we use [pid] instead of pid to prevent fetching output
-        Distributed.remotecall_eval(Main, [workspace.pid], wrapped)
+        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id)))
         put!(workspace.dowork_token)
     catch exs
         # We don't use a `finally` because the token needs to be back asap
