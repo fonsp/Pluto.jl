@@ -1,5 +1,5 @@
 import UUIDs: uuid1
-import TableIOInterface: get_example_code
+import TableIOInterface: get_example_code, is_extension_supported
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
 
@@ -250,7 +250,7 @@ end"""
         file = open(path)
         code = read(file, String)
 
-    elseif extension ∈  ["zip",  "csv",  "jdf",  "parquet",  "xlsx",  "xlsm",  "db",  "sqlite",  "sqlite3",  "dta",  "sav",  "sas7bdat",  "json",  "arrow"]
+    elseif is_extension_supported(extension)
         code = get_example_code(directory, filename)
 
     else
