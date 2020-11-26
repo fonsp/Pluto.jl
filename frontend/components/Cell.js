@@ -57,13 +57,6 @@ import { cl } from "../common/ClassTable.js"
 //  * @property {boolean} pasted
 //  */
 
-// /**
-//  *
-//  * @param {CellState} cell
-//  * @return {boolean}
-//  */
-export const code_differs = (cell) => cell.remote_code.body !== cell.local_code.body
-
 /**
  * @param {{
  *  cell: import("./Editor.js").CellData,
@@ -77,14 +70,6 @@ export const Cell = ({
     cell: { cell_id, code, code_folded },
     cell_state: { queued, running, runtime, errored, output },
     cell_local,
-    // remote_code,
-    // local_code,
-    // code_folded,
-    // queued,
-    // running,
-    // runtime,
-    // errored,
-    // output,
     selected,
     on_change,
     on_update_doc_query,

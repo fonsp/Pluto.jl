@@ -20,9 +20,9 @@ const RECONNECT_DELAY = 500
 export const timeout_promise = (promise, time_ms) =>
     Promise.race([
         promise,
-        new Promise((res, rej) => {
+        new Promise((resolve, reject) => {
             setTimeout(() => {
-                rej(new Error("Promise timed out."))
+                reject(new Error("Promise timed out."))
             }, time_ms)
         }),
     ])
@@ -50,15 +50,6 @@ export const resolvable_promise = () => {
     return {
         current: p,
         resolve: resolve,
-    }
-}
-
-const do_all = async (queue) => {
-    const next = queue[0]
-    await next()
-    queue.shift()
-    if (queue.length > 0) {
-        await do_all(queue)
     }
 }
 
@@ -92,7 +83,7 @@ const try_close_socket_connection = (socket) => {
 
 /**
  * Open a 'raw' websocket connection to an API with MessagePack serialization. The method is asynchonous, and resolves to a @see WebsocketConnection when the connection is established.
- * @typedef {{socket: WebSocket, send: Function, kill: Function}} WebsocketConnection
+ * @typedef {{socket: WebSocket, send: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
  * @return {Promise<WebsocketConnection>}
@@ -100,7 +91,6 @@ const try_close_socket_connection = (socket) => {
 const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
-        const task_queue = []
 
         var has_been_open = false
 
@@ -114,13 +104,15 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             const encoded = pack(message)
             socket.send(encoded)
         }
+
+        let last_task = Promise.resolve()
         socket.onmessage = (event) => {
             // we read and deserialize the incoming messages asynchronously
             // they arrive in order (WS guarantees this), i.e. this socket.onmessage event gets fired with the message events in the right order
             // but some message are read and deserialized much faster than others, because of varying sizes, so _after_ async read & deserialization, messages are no longer guaranteed to be in order
             //
             // the solution is a task queue, where each task includes the deserialization and the update handler
-            task_queue.push(async () => {
+            last_task.then(async () => {
                 try {
                     const buffer = await event.data.arrayBuffer()
                     const update = unpack(new Uint8Array(buffer))
@@ -130,17 +122,12 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
                     console.error("Failed to process update!", ex)
                     console.log(event)
 
-                    alert(
-                        `Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(
-                            event
-                        )}`
-                    )
+                    // prettier-ignore
+                    alert(`Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`)
                 }
             })
-            if (task_queue.length == 1) {
-                do_all(task_queue)
-            }
         }
+
         socket.onerror = async (e) => {
             console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
 
@@ -175,10 +162,6 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             resolve({
                 socket: socket,
                 send: send_encoded,
-                kill: () => {
-                    socket.onclose = undefined
-                    try_close_socket_connection(socket)
-                },
             })
         }
         console.log("Waiting for socket to open...", new Date().toLocaleTimeString())
@@ -208,21 +191,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
 
     const client_id = get_unique_short_id()
     const sent_requests = {}
-
-    const handle_update = (update) => {
-        const by_me = update.initiator_id == client_id
-        const request_id = update.request_id
-
-        if (by_me && request_id) {
-            const request = sent_requests[request_id]
-            if (request) {
-                request(update)
-                delete sent_requests[request_id]
-                return
-            }
-        }
-        on_unrequested_update(update, by_me)
-    }
 
     /**
      * Send a message to the Pluto backend, and return a promise that resolves when the backend sends a response. Not all messages receive a response.
@@ -280,7 +248,20 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
 
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
-                on_message: handle_update,
+                on_message: (update) => {
+                    const by_me = update.initiator_id == client_id
+                    const request_id = update.request_id
+
+                    if (by_me && request_id) {
+                        const request = sent_requests[request_id]
+                        if (request) {
+                            request(update)
+                            delete sent_requests[request_id]
+                            return
+                        }
+                    }
+                    on_unrequested_update(update, by_me)
+                },
                 on_socket_close: async () => {
                     on_connection_status(false)
 
@@ -297,8 +278,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     }
                 },
             })
-
-            client.kill = ws_connection.kill
 
             // let's say hello
             console.log("Hello?")

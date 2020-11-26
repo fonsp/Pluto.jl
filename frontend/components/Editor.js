@@ -490,7 +490,7 @@ export class Editor extends Component {
                 })
 
                 if (submit) {
-                    await this.requests.set_and_run_multiple(cells_to_add.map((x) => x.cell_id))
+                    await this.requests.set_and_run_multiple([cell_id, ...cells_to_add.map((x) => x.cell_id)])
                 }
             },
             interrupt_remote: (cell_id) => {
@@ -545,19 +545,20 @@ export class Editor extends Component {
                 })
                 await this.client.send("run_multiple_cells", { cells: [uuid] }, { notebook_id: this.state.notebook.notebook_id })
             },
-            confirm_delete_multiple: (verb, cell_ids) => {
+            confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cells_running[cell_id].running || this.state.notebook.cells_running[cell_id].queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.requests.interrupt_remote(cell_ids[0])
                         }
                     } else {
-                        update_notebook((notebook) => {
+                        await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
                                 delete notebook.cell_dict[cell_id]
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
+                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
                     }
                 }
             },
@@ -783,7 +784,6 @@ export class Editor extends Component {
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
-                this.client.kill()
                 // and don't prevent the unload
             }
         })

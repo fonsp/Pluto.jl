@@ -1,4 +1,3 @@
-import { code_differs } from "../components/Cell.js"
 import { timeout_promise } from "./PlutoConnection.js"
 
 export const create_counter_statistics = () => {
@@ -41,7 +40,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // integer
         numFolded: cells.filter((c) => c.code_folded).length,
         // integer
-        numCodeDiffers: cells.filter(code_differs).length,
+        numCodeDiffers: state.notebook.cell_order.filter((cell_id) => state.notebook.cell_dict[cell_id].code === cells_local[cell_id].code).length,
         // integer
         numMarkdowns: cells.filter((c) => first_line(c).startsWith('md"')).length,
         // integer
