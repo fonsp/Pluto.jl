@@ -1,7 +1,7 @@
 include("./helpers.jl")
+include("./RichOutput.jl")
 include("./React.jl")
 include("./ExpressionExplorer.jl")
-include("./RichOutput.jl")
 include("./Dynamic.jl")
 include("./MethodSignatures.jl")
 include("./Notebook.jl")

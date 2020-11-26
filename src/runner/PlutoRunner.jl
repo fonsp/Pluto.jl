@@ -190,8 +190,14 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
     else
-        computer = get!(computers, expr) do
-            register_computer(expr, collect.(function_wrapped_info)...)
+        local computer = get(computers, expr, nothing)
+        if computer === nothing
+            try
+                computer = register_computer(expr, collect.(function_wrapped_info)...)
+            catch e
+                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                return run_expression(expr, cell_id, nothing)
+            end
         end
         ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
             compute(computer)
