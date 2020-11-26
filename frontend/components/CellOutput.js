@@ -1,12 +1,13 @@
-import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
 
-import { connect_bonds } from "../common/Bond.js"
+import { add_bonds_listener } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -85,7 +86,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, requests, persist_js_state }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -104,19 +105,19 @@ export const OutputBody = ({ mime, body, cell_id, requests, persist_js_state }) 
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
+                return html`<${RawHTMLContainer} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />
+                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html` <${TableView} cell_id=${cell_id} body=${body} requests=${requests} persist_js_state=${persist_js_state} />`
+            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "application/vnd.pluto.stacktrace+object":
-            return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`
+            return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
 
         case "text/plain":
@@ -243,7 +244,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, requests, persist_js_state = false }) => {
+export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
+    let pluto_actions = useContext(PlutoContext)
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -269,8 +271,13 @@ export let RawHTMLContainer = ({ body, requests, persist_js_state = false }) => 
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
-            if (requests != null) {
-                connect_bonds(container.current, invalidation, requests)
+            if (pluto_actions != null) {
+                let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
+                    pluto_actions.set_bond(name, value, is_first_value)
+                })
+                invalidation.then(() => {
+                    remove_bonds_listener()
+                })
             }
 
             // convert LaTeX to svg

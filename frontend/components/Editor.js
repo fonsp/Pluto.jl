@@ -6,7 +6,7 @@ import { create_pluto_connection, resolvable_promise } from "../common/PlutoConn
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { Notebook } from "./Notebook.js"
+import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
@@ -20,6 +20,7 @@ import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
 
@@ -238,6 +239,32 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            send: (...args) => this.client.send(...args),
+            set_doc_query: (query) => this.setState({ desired_doc_query: query }),
+            set_local_cell: (cell_id, new_val) => {
+                this.setState(
+                    immer((state) => {
+                        state.cells_local[cell_id] = {
+                            code: new_val,
+                        }
+                    })
+                )
+            },
+            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
+                const i = this.state.notebook.cell_order.indexOf(cell_id)
+                const new_i = i + delta
+                if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
+                    window.dispatchEvent(
+                        new CustomEvent("cell_focus", {
+                            detail: {
+                                cell_id: this.state.notebook.cell_order[new_i],
+                                line: line,
+                                ch: ch,
+                            },
+                        })
+                    )
+                }
+            },
             set_scroller: (enabled) => {
                 this.setState({ scroller: enabled })
             },
@@ -283,6 +310,170 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
+            },
+            change_remote_cell: async (cell_id, new_code, create_promise = false) => {
+                this.counter_statistics.numEvals++
+
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[cell_id].code = new_code
+                })
+                // Just making sure there is no local state to overwrite left
+                // TODO I'm not sure if this is useful/necessary/required actually
+                this.setState(
+                    immer((state) => {
+                        delete state.cells_local[cell_id]
+                    })
+                )
+                console.log("RUN MULTIPLE CELLS", cell_id)
+                await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
+            },
+            wrap_remote_cell: (cell_id, block = "begin") => {
+                const cell = this.state.notebook.cell_dict[cell_id]
+                const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
+                this.actions.change_remote_cell(cell_id, new_code)
+            },
+            split_remote_cell: async (cell_id, boundaries, submit = false) => {
+                const cell = this.state.notebook.cell_dict[cell_id]
+
+                const old_code = cell.code
+                const padded_boundaries = [0, ...boundaries]
+                /** @type {Array<String>} */
+                const parts = boundaries.map((b, i) => slice_utf8(old_code, padded_boundaries[i], b).trim()).filter((x) => x !== "")
+                /** @type {Array<CellData>} */
+                const cells_to_add = parts.map((code) => {
+                    return {
+                        cell_id: uuidv4(),
+                        code: code,
+                        code_folded: false,
+                    }
+                })
+
+                update_notebook((notebook) => {
+                    delete notebook.cell_dict[cell_id]
+                    for (let cell of cells_to_add) {
+                        notebook.cell_dict[cell.cell_id] = cell
+                    }
+                    notebook.cell_order = notebook.cell_order.flatMap((c) => {
+                        if (cell_id === c) {
+                            return cells_to_add.map((x) => x.cell_id)
+                        } else {
+                            return [c]
+                        }
+                    })
+                })
+
+                if (submit) {
+                    await this.actions.set_and_run_multiple([cell_id, ...cells_to_add.map((x) => x.cell_id)])
+                }
+            },
+            interrupt_remote: (cell_id) => {
+                // TODO Make this cooler
+                // set_notebook_state((prevstate) => {
+                //     return {
+                //         cells: prevstate.cells.map((c) => {
+                //             return { ...c, errored: c.errored || c.running || c.queued }
+                //         }),
+                //     }
+                // })
+                this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
+            },
+            move_remote_cells: (cell_ids, new_index) => {
+                update_notebook((notebook) => {
+                    let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
+                    let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
+                    notebook.cell_order = [...before, ...cell_ids, ...after]
+                })
+            },
+            add_remote_cell_at: async (index) => {
+                let id = uuidv4()
+                this.setState({ last_created_cell: id })
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[id] = {
+                        cell_id: id,
+                        code: "",
+                        code_folded: false,
+                    }
+                    notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
+                })
+                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
+            },
+            add_remote_cell: async (cell_id, before_or_after) => {
+                const index = this.state.notebook.cell_order.indexOf(cell_id)
+                const delta = before_or_after == "before" ? 0 : 1
+
+                let uuid = uuidv4()
+                this.setState({ last_created_cell: uuid })
+                await update_notebook((notebook) => {
+                    notebook.cell_dict[uuid] = {
+                        cell_id: uuid,
+                        code: "",
+                        code_folded: false,
+                    }
+                    notebook.cell_order = [...notebook.cell_order.slice(0, index + delta), uuid, ...notebook.cell_order.slice(index + delta, Infinity)]
+                })
+                await this.client.send("run_multiple_cells", { cells: [uuid] }, { notebook_id: this.state.notebook.notebook_id })
+            },
+            confirm_delete_multiple: async (verb, cell_ids) => {
+                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+                    if (cell_ids.some((cell_id) => this.state.notebook.cells_running[cell_id].running || this.state.notebook.cells_running[cell_id].queued)) {
+                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
+                            this.actions.interrupt_remote(cell_ids[0])
+                        }
+                    } else {
+                        await update_notebook((notebook) => {
+                            for (let cell_id of cell_ids) {
+                                delete notebook.cell_dict[cell_id]
+                            }
+                            notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
+                        })
+                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
+                    }
+                }
+            },
+            fold_remote_cell: (cell_id, newFolded) => {
+                if (!newFolded) {
+                    this.setState({ last_created_cell: cell_id })
+                }
+                update_notebook((notebook) => {
+                    notebook.cell_dict[cell_id].code_folded = newFolded
+                })
+            },
+            set_and_run_all_changed_remote_cells: () => {
+                const changed = this.state.notebook.cell_order.filter(
+                    (cell_id) =>
+                        this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
+                )
+                this.actions.set_and_run_multiple(changed)
+                return changed.length > 0
+            },
+            set_and_run_multiple: async (cells_ids) => {
+                await update_notebook((notebook) => {
+                    for (let cell_id of cells_ids) {
+                        if (this.state.cells_local[cell_id]) {
+                            notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
+                        }
+                    }
+                })
+                console.log(`run_multiple_cells cells_ids:`, cells_ids)
+                await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
+            },
+            set_bond: async (symbol, value, is_first_value) => {
+                this.counter_statistics.numBondSets++
+
+                await update_notebook((notebook) => {
+                    notebook.bonds[symbol] = value
+                })
+            },
+            reshow_cell: (cell_id, objectid, dim) => {
+                this.client.send(
+                    "reshow_cell",
+                    {
+                        objectid: objectid,
+                        dim: dim,
+                    },
+                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    false
+                )
             },
         }
 
@@ -437,174 +628,6 @@ export class Editor extends Component {
         }
         this.update_notebook = update_notebook
 
-        // these are things that can be done to the remote notebook
-        this.requests = {
-            change_remote_cell: async (cell_id, new_code, create_promise = false) => {
-                this.counter_statistics.numEvals++
-
-                await update_notebook((notebook) => {
-                    notebook.cell_dict[cell_id].code = new_code
-                })
-                // Just making sure there is no local state to overwrite left
-                // TODO I'm not sure if this is useful/necessary/required actually
-                this.setState(
-                    immer((state) => {
-                        delete state.cells_local[cell_id]
-                    })
-                )
-                console.log("RUN MULTIPLE CELLS", cell_id)
-                await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
-            },
-            wrap_remote_cell: (cell_id, block = "begin") => {
-                const cell = this.state.notebook.cell_dict[cell_id]
-                const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
-                this.requests.change_remote_cell(cell_id, new_code)
-            },
-            split_remote_cell: async (cell_id, boundaries, submit = false) => {
-                const cell = this.state.notebook.cell_dict[cell_id]
-
-                const old_code = cell.code
-                const padded_boundaries = [0, ...boundaries]
-                /** @type {Array<String>} */
-                const parts = boundaries.map((b, i) => slice_utf8(old_code, padded_boundaries[i], b).trim()).filter((x) => x !== "")
-                /** @type {Array<CellData>} */
-                const cells_to_add = parts.map((code) => {
-                    return {
-                        cell_id: uuidv4(),
-                        code: code,
-                        code_folded: false,
-                    }
-                })
-
-                update_notebook((notebook) => {
-                    delete notebook.cell_dict[cell_id]
-                    for (let cell of cells_to_add) {
-                        notebook.cell_dict[cell.cell_id] = cell
-                    }
-                    notebook.cell_order = notebook.cell_order.flatMap((c) => {
-                        if (cell_id === c) {
-                            return cells_to_add.map((x) => x.cell_id)
-                        } else {
-                            return [c]
-                        }
-                    })
-                })
-
-                if (submit) {
-                    await this.requests.set_and_run_multiple([cell_id, ...cells_to_add.map((x) => x.cell_id)])
-                }
-            },
-            interrupt_remote: (cell_id) => {
-                // TODO Make this cooler
-                // set_notebook_state((prevstate) => {
-                //     return {
-                //         cells: prevstate.cells.map((c) => {
-                //             return { ...c, errored: c.errored || c.running || c.queued }
-                //         }),
-                //     }
-                // })
-                this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
-            },
-            move_remote_cells: (cell_ids, new_index) => {
-                update_notebook((notebook) => {
-                    let before = notebook.cell_order.slice(0, new_index).filter((x) => !cell_ids.includes(x))
-                    let after = notebook.cell_order.slice(new_index, Infinity).filter((x) => !cell_ids.includes(x))
-                    notebook.cell_order = [...before, ...cell_ids, ...after]
-                })
-            },
-            add_remote_cell_at: async (index) => {
-                let id = uuidv4()
-                this.setState({ last_created_cell: id })
-                await update_notebook((notebook) => {
-                    notebook.cell_dict[id] = {
-                        cell_id: id,
-                        code: "",
-                        code_folded: false,
-                    }
-                    notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
-                })
-                await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
-            },
-            add_remote_cell: async (cell_id, before_or_after) => {
-                const index = this.state.notebook.cell_order.indexOf(cell_id)
-                const delta = before_or_after == "before" ? 0 : 1
-
-                let uuid = uuidv4()
-                this.setState({ last_created_cell: uuid })
-                await update_notebook((notebook) => {
-                    notebook.cell_dict[uuid] = {
-                        cell_id: uuid,
-                        code: "",
-                        code_folded: false,
-                    }
-                    notebook.cell_order = [...notebook.cell_order.slice(0, index + delta), uuid, ...notebook.cell_order.slice(index + delta, Infinity)]
-                })
-                await this.client.send("run_multiple_cells", { cells: [uuid] }, { notebook_id: this.state.notebook.notebook_id })
-            },
-            confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
-                    if (cell_ids.some((cell_id) => this.state.notebook.cells_running[cell_id].running || this.state.notebook.cells_running[cell_id].queued)) {
-                        if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
-                            this.requests.interrupt_remote(cell_ids[0])
-                        }
-                    } else {
-                        await update_notebook((notebook) => {
-                            for (let cell_id of cell_ids) {
-                                delete notebook.cell_dict[cell_id]
-                            }
-                            notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
-                        })
-                        await this.client.send("run_multiple_cells", { cells: [] }, { notebook_id: this.state.notebook.notebook_id })
-                    }
-                }
-            },
-            fold_remote_cell: (cell_id, newFolded) => {
-                if (!newFolded) {
-                    this.setState({ last_created_cell: cell_id })
-                }
-                update_notebook((notebook) => {
-                    notebook.cell_dict[cell_id].code_folded = newFolded
-                })
-            },
-            set_and_run_all_changed_remote_cells: () => {
-                const changed = this.state.notebook.cell_order.filter(
-                    (cell_id) =>
-                        this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
-                )
-                this.requests.set_and_run_multiple(changed)
-                return changed.length > 0
-            },
-            set_and_run_multiple: async (cells_ids) => {
-                await update_notebook((notebook) => {
-                    for (let cell_id of cells_ids) {
-                        if (this.state.cells_local[cell_id]) {
-                            notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
-                        }
-                    }
-                })
-                console.log(`run_multiple_cells cells_ids:`, cells_ids)
-                await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
-            },
-            set_bond: async (symbol, value, is_first_value) => {
-                this.counter_statistics.numBondSets++
-
-                await update_notebook((notebook) => {
-                    notebook.bonds[symbol] = value
-                })
-            },
-            reshow_cell: (cell_id, objectid, dim) => {
-                this.client.send(
-                    "reshow_cell",
-                    {
-                        objectid: objectid,
-                        dim: dim,
-                    },
-                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
-                    false
-                )
-            },
-        }
-
         this.submit_file_change = (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
@@ -653,24 +676,24 @@ export class Editor extends Component {
 
         this.delete_selected = (verb) => {
             if (this.state.selected_cells.length > 0) {
-                this.requests.confirm_delete_multiple(verb, this.state.selected_cells)
+                this.actions.confirm_delete_multiple(verb, this.state.selected_cells)
                 return true
             }
         }
 
         this.run_selected = () => {
-            return this.requests.set_and_run_multiple(this.state.selected_cells)
+            return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
 
         document.addEventListener("keydown", (e) => {
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cells_running).some((c) => c.running || c.queued)) {
-                    this.requests.interrupt_remote()
+                    this.actions.interrupt_remote()
                 }
                 e.preventDefault()
             } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
-                const some_cells_ran = this.requests.set_and_run_all_changed_remote_cells()
+                const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
                     // TODO: let user know that the notebook autosaves
@@ -814,124 +837,103 @@ export class Editor extends Component {
     render() {
         let { export_menu_open } = this.state
         return html`
-            <${Scroller} active=${this.state.scroller} />
-            <header className=${export_menu_open ? "show_export" : ""}>
-                <${ExportBanner}
-                    pluto_version=${this.client?.version_info?.pluto}
-                    notebook=${this.state.notebook}
-                    open=${export_menu_open}
-                    onClose=${() => this.setState({ export_menu_open: false })}
-                />
-                <nav id="at_the_top">
-                    <a href="./">
-                        <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
-                    </a>
-                    <${FilePicker}
-                        client=${this.client}
-                        value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
-                        on_submit=${this.submit_file_change}
-                        suggest_new_file=${{
-                            base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                            name: this.state.notebook.shortpath,
-                        }}
-                        placeholder="Save notebook..."
-                        button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+            <${PlutoContext.Provider} value=${this.actions}>
+                <${Scroller} active=${this.state.scroller} />
+                <header className=${export_menu_open ? "show_export" : ""}>
+                    <${ExportBanner}
+                        pluto_version=${this.client?.version_info?.pluto}
+                        notebook=${this.state.notebook}
+                        open=${export_menu_open}
+                        onClose=${() => this.setState({ export_menu_open: false })}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
-                        <span></span>
-                    </button>
-                </nav>
-            </header>
-            <main>
-                <preamble>
-                    <button onClick=${() => this.requests.set_and_run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
-                        <span></span>
-                    </button>
-                </preamble>
-                <${Notebook}
-                    is_loading=${this.state.loading}
-                    notebook=${this.state.notebook}
-                    selected_cells=${this.state.selected_cells}
-                    cells_local=${this.state.cells_local}
-                    on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
-                    on_cell_input=${(cell_id, new_val) => {
-                        this.setState(
-                            immer((state) => {
-                                state.cells_local[cell_id] = {
-                                    code: new_val,
-                                }
-                            })
-                        )
-                    }}
-                    on_focus_neighbor=${(cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
-                        const i = this.state.notebook.cell_order.indexOf(cell_id)
-                        const new_i = i + delta
-                        if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
-                            window.dispatchEvent(
-                                new CustomEvent("cell_focus", {
-                                    detail: {
-                                        cell_id: this.state.notebook.cell_order[new_i],
-                                        line: line,
-                                        ch: ch,
-                                    },
+                    <nav id="at_the_top">
+                        <a href="./">
+                            <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
+                        </a>
+                        <${FilePicker}
+                            client=${this.client}
+                            value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                            on_submit=${this.submit_file_change}
+                            suggest_new_file=${{
+                                base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                name: this.state.notebook.shortpath,
+                            }}
+                            placeholder="Save notebook..."
+                            button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                        />
+                        <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
+                            <span></span>
+                        </button>
+                    </nav>
+                </header>
+                <main>
+                    <preamble>
+                        <button onClick=${() =>
+                            this.actions.set_and_run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
+                            <span></span>
+                        </button>
+                    </preamble>
+                    <${Notebook}
+                        is_loading=${this.state.loading}
+                        notebook=${this.state.notebook}
+                        selected_cells=${this.state.selected_cells}
+                        cells_local=${this.state.cells_local}
+                        on_update_doc_query=${this.actions.set_doc_query}
+                        on_cell_input=${this.actions.set_local_cell}
+                        on_focus_neighbor=${this.actions.focus_on_neighbor}
+                        disable_input=${!this.state.connected}
+                        last_created_cell=${this.state.last_created_cell}
+                    />
+
+                    <${DropRuler} actions=${this.actions} selected_cells=${this.state.selected_cells} />
+
+                    <${SelectionArea}
+                        actions=${this.actions}
+                        cell_order=${this.state.notebook.cell_order}
+                        selected_cell_ids=${this.state.selected_cell_ids}
+                        on_selection=${(selected_cell_ids) => {
+                            if (!window._.isEqual(this.state.selected_cells, selected_cell_ids)) {
+                                this.setState({
+                                    selected_cells: selected_cell_ids,
                                 })
-                            )
-                        }
-                    }}
-                    disable_input=${!this.state.connected}
-                    last_created_cell=${this.state.last_created_cell}
-                    selected_cells=${this.state.selected_cells}
-                    requests=${this.requests}
-                    client=${this.client}
+                            }
+                        }}
+                    />
+                </main>
+                <${LiveDocs}
+                    desired_doc_query=${this.state.desired_doc_query}
+                    on_update_doc_query=${this.actions.set_doc_query}
+                    notebook=${this.state.notebook}
                 />
-
-                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_cells=${this.state.selected_cells} />
-
-                <${SelectionArea}
-                    actions=${this.actions}
-                    cell_order=${this.state.notebook.cell_order}
-                    selected_cell_ids=${this.state.selected_cell_ids}
-                    on_selection=${(selected_cell_ids) => {
-                        this.setState({
-                            selected_cells: selected_cell_ids,
-                        })
+                <${UndoDelete}
+                    recently_deleted=${this.state.recently_deleted}
+                    on_click=${() => {
+                        // TODO Make this work when I made recently_deleted work again
+                        // this.update_notebook((notebook) => {
+                        //     let id = uuidv4()
+                        //     notebook.cell_dict[id] = {
+                        //         cell_id: id,
+                        //         code: this.state.recently_deleted.body,
+                        //         code_folded: false,
+                        //     }
+                        //     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
+                        // })
                     }}
                 />
-            </main>
-            <${LiveDocs}
-                desired_doc_query=${this.state.desired_doc_query}
-                on_update_doc_query=${(query) => this.setState({ desired_doc_query: query })}
-                client=${this.client}
-                notebook=${this.state.notebook}
-            />
-            <${UndoDelete}
-                recently_deleted=${this.state.recently_deleted}
-                on_click=${() => {
-                    // TODO Make this work when I made recently_deleted work again
-                    // this.update_notebook((notebook) => {
-                    //     let id = uuidv4()
-                    //     notebook.cell_dict[id] = {
-                    //         cell_id: id,
-                    //         code: this.state.recently_deleted.body,
-                    //         code_folded: false,
-                    //     }
-                    //     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
-                    // })
-                }}
-            />
-            <${SlideControls} />
-            <footer>
-                <div id="info">
-                    <form id="feedback" action="#" method="post">
-                        <a href="statistics-info">Statistics</a>
-                        <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
-                        <span style="flex: 1"></span>
-                        <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                        <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                        <button>Send</button>
-                    </form>
-                </div>
-            </footer>
+                <${SlideControls} />
+                <footer>
+                    <div id="info">
+                        <form id="feedback" action="#" method="post">
+                            <a href="statistics-info">Statistics</a>
+                            <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                            <span style="flex: 1"></span>
+                            <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                            <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                            <button>Send</button>
+                        </form>
+                    </div>
+                </footer>
+            </${PlutoContext.Provider}>
         `
     }
 }

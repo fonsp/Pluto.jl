@@ -1,9 +1,10 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
 // /**
 //  * @typedef {Object} CodeState
@@ -80,10 +81,10 @@ export const Cell = ({
     focus_after_creation,
     scroll_into_view_after_creation,
     selected_cells,
-    requests,
-    client,
     notebook_id,
 }) => {
+    let pluto_actions = useContext(PlutoContext)
+
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
@@ -128,7 +129,7 @@ export const Cell = ({
                 <button
                     onClick=${() => {
                         let cells_to_fold = selected ? selected_cells : [cell_id]
-                        requests.update_notebook((notebook) => {
+                        pluto_actions.update_notebook((notebook) => {
                             for (let cell_id of cells_to_fold) {
                                 notebook.cell_dict[cell_id].code_folded = !code_folded
                             }
@@ -143,14 +144,14 @@ export const Cell = ({
             <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
-                    requests.add_remote_cell(cell_id, "before")
+                    pluto_actions.add_remote_cell(cell_id, "before")
                 }}
                 class="add_cell before"
                 title="Add cell"
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} requests=${requests} cell_id=${cell_id} />
+            <${CellOutput} ...${output} cell_id=${cell_id} />
             ${show_input &&
             html`<${CellInput}
                 local_code=${cell_local?.code ?? code}
@@ -161,42 +162,41 @@ export const Cell = ({
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_submit=${(new_code) => {
-                    requests.change_remote_cell(cell_id, new_code)
+                    pluto_actions.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]
-                    requests.confirm_delete_multiple("Delete", cells_to_delete)
+                    pluto_actions.confirm_delete_multiple("Delete", cells_to_delete)
                 }}
                 on_add_after=${() => {
-                    requests.add_remote_cell(cell_id, "after")
+                    pluto_actions.add_remote_cell(cell_id, "after")
                 }}
-                on_fold=${(new_folded) => requests.fold_remote_cell(cell_id, new_folded)}
+                on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
                 on_change=${(new_code) => {
                     if (code_folded && cm_forced_focus != null) {
-                        requests.fold_remote_cell(cell_id, false)
+                        pluto_actions.fold_remote_cell(cell_id, false)
                     }
                     on_change(new_code)
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
-                client=${client}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />`}
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {
-                        requests.interrupt_remote(cell_id)
+                        pluto_actions.interrupt_remote(cell_id)
                     } else {
                         let cell_to_run = selected ? selected_cells : [cell_id]
-                        requests.set_and_run_multiple(cell_to_run)
+                        pluto_actions.set_and_run_multiple(cell_to_run)
                     }
                 }}
                 runtime=${localTimeRunning || runtime}
             />
             <button
                 onClick=${() => {
-                    requests.add_remote_cell(cell_id, "after")
+                    pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 class="add_cell after"
                 title="Add cell"

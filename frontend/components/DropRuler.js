@@ -86,7 +86,7 @@ export class DropRuler extends Component {
                 // Called when drag-dropped somewhere on the page
                 const drop_index = this.getDropIndexOf(e)
                 const friend_ids = this.props.selected_cells.includes(this.dropee.id) ? this.props.selected_cells : [this.dropee.id]
-                this.props.requests.move_remote_cells(friend_ids, drop_index)
+                this.props.actions.move_remote_cells(friend_ids, drop_index)
             } else {
                 // Called when cell(s) from another window are dragged onto the page
                 const drop_index = this.getDropIndexOf(e)

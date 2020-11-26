@@ -1,8 +1,9 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -37,10 +38,11 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
-    client,
     cell_id,
     notebook_id,
 }) => {
+    let pluto_actions = useContext(PlutoContext)
+
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
     const remote_code_ref = useRef(null)
@@ -70,7 +72,7 @@ export const CellInput = ({
                 indentUnit: 4,
                 hintOptions: {
                     hint: juliahints,
-                    client: client,
+                    pluto_actions: pluto_actions,
                     notebook_id: notebook_id,
                     on_update_doc_query: on_update_doc_query,
                     extraKeys: {
@@ -420,39 +422,29 @@ const juliahints = (cm, options) => {
     const old_line = cm.getLine(cursor.line)
     const old_line_sliced = old_line.slice(0, cursor.ch)
 
-    return options.client
-        .send(
-            "complete",
-            {
-                query: old_line_sliced,
-            },
-            {
-                notebook_id: options.notebook_id,
-            }
-        )
-        .then(({ message }) => {
-            const completions = {
-                list: message.results.map(([text, type_description, is_exported]) => ({
-                    text: text,
-                    className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                    // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
-                })),
-                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
-                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
-            }
-            CodeMirror.on(completions, "select", (val) => {
-                let text = typeof val === "string" ? val : val.text
-                let doc_query = module_expanded_selection({
-                    tokens_before_cursor: [
-                        { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-                        { type: "variable", string: text },
-                    ],
-                    tokens_after_cursor: [],
-                })
-                options.on_update_doc_query(doc_query)
+    return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
+        const completions = {
+            list: message.results.map(([text, type_description, is_exported]) => ({
+                text: text,
+                className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+            })),
+            from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
+            to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
+        }
+        CodeMirror.on(completions, "select", (val) => {
+            let text = typeof val === "string" ? val : val.text
+            let doc_query = module_expanded_selection({
+                tokens_before_cursor: [
+                    { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
+                    { type: "variable", string: text },
+                ],
+                tokens_after_cursor: [],
             })
-            return completions
+            options.on_update_doc_query(doc_query)
         })
+        return completions
+    })
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/239
