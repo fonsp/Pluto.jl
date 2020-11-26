@@ -310,17 +310,19 @@ export class Editor extends Component {
                     case "notebook_diff":
                         if (message.length !== 0) {
                             this.setState((state) => {
-                                console.group("Update!")
-                                for (let patch of message) {
-                                    console.group(`Patch :${patch.op}`)
-                                    console.log(`patch.path:`, patch.path)
-                                    console.log(`patch.value:`, patch.value)
-                                    console.groupEnd()
-                                }
                                 let new_notebook = applyPatches(state.notebook, message)
-                                console.log(`message:`, message)
-                                console.log(`new_notebook:`, new_notebook)
-                                console.groupEnd()
+
+                                // console.group("Update!")
+                                // for (let patch of message) {
+                                //     console.group(`Patch :${patch.op}`)
+                                //     console.log(`patch.path:`, patch.path)
+                                //     console.log(`patch.value:`, patch.value)
+                                //     console.groupEnd()
+                                // }
+                                // console.log(`message:`, message)
+                                // console.log(`new_notebook:`, new_notebook)
+                                // console.groupEnd()
+
                                 return {
                                     notebook: new_notebook,
                                 }
@@ -393,6 +395,10 @@ export class Editor extends Component {
                 mutate_fn(notebook)
             })
 
+            // If "notebook is not idle" I seperate and store the bonds updates,
+            // to send when the notebook is idle. This delays the updating of the bond for performance,
+            // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
+            // this will no longer be necessary
             if (!this.notebook_is_idle()) {
                 let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
                 this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
@@ -435,12 +441,11 @@ export class Editor extends Component {
             change_remote_cell: async (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
 
-                // TODO Need to do the update locally too, not doing that right now
                 await update_notebook((notebook) => {
                     notebook.cell_dict[cell_id].code = new_code
                 })
                 // Just making sure there is no local state to overwrite left
-                // TODO I'm not sure if this is useful actually
+                // TODO I'm not sure if this is useful/necessary/required actually
                 this.setState(
                     immer((state) => {
                         delete state.cells_local[cell_id]
@@ -485,7 +490,6 @@ export class Editor extends Component {
                 })
 
                 if (submit) {
-                    // const cells = new_ids.map((id) => this.state.notebook.cells.find((c) => c.cell_id == id))
                     await this.requests.set_and_run_multiple(cells_to_add.map((x) => x.cell_id))
                 }
             },
@@ -554,7 +558,6 @@ export class Editor extends Component {
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
-                        // cells.forEach((f) => this.requests.delete_cell(f.cell_id))
                     }
                 }
             },
@@ -588,19 +591,6 @@ export class Editor extends Component {
                 await update_notebook((notebook) => {
                     notebook.bonds[symbol] = value
                 })
-
-                // TODO Something with all_completed true ?
-                // // the back-end tells us whether any cells depend on the bound value
-                // if (message.triggered_other_cells) {
-                //     // there are dependent cells, those cells will start running and returning output soon
-                //     // when the last running cell returns its output, the all_completed_promise is resolved, and a new bond value can be sent
-                // } else {
-                //     // there are no dependent cells, so we resolve the promise right now
-                //     if (!this.all_completed) {
-                //         this.all_completed = true
-                //         this.all_completed_promise.resolve()
-                //     }
-                // }
             },
             reshow_cell: (cell_id, objectid, dim) => {
                 this.client.send(
@@ -777,7 +767,10 @@ export class Editor extends Component {
         })
 
         window.addEventListener("beforeunload", (event) => {
-            const unsaved_cells = this.state.notebook.cell_order.filter((id) => this.state.notebook.cell_dict[id].code !== this.state.cells_local[id].code)
+            const unsaved_cells = this.state.notebook.cell_order.filter(
+                (id) => this.state.cells_local[id] && this.state.notebook.cell_dict[id].code !== this.state.cells_local[id].code
+            )
+            console.log(`unsaved_cells:`, unsaved_cells)
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
                 window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved } }))
@@ -831,20 +824,9 @@ export class Editor extends Component {
                 applyPatches(notebook, this.bonds_changes_to_apply_when_done)
             })
         }
-        // const all_completed_now = !Object.values(this.state.notebook.cells_running).some((cell) => cell && (cell.running || cell.queued))
-        // if (all_completed_now && !this.all_completed) {
-        //     this.all_completed = true
-        //     this.all_completed_promise.resolve()
-        // }
-        // if (!all_completed_now && this.all_completed) {
-        //     this.all_completed = false
-        //     Object.assign(this.all_completed_promise, resolvable_promise())
-        // }
     }
 
     render() {
-        // console.log(`this.state.notebook:`, this.state.notebook)
-
         let { export_menu_open } = this.state
         return html`
             <${Scroller} active=${this.state.scroller} />
