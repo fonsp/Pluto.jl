@@ -8,12 +8,12 @@ import { Cell } from "./Cell.js"
  *  notebook: import("./Editor.js").NotebookData,
  *  selected_cells: Array<string>,
  *  cells_local: { [uuid: string]: import("./Editor.js").CellData },
+ *  last_created_cell: string,
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
  *  disable_input: any,
  *  focus_after_creation: any,
- *  selected_friends: any,
  *  requests: any,
  *  client: any,
  * }} props
@@ -23,12 +23,11 @@ export const Notebook = ({
     notebook,
     selected_cells,
     cells_local,
+    last_created_cell,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
     disable_input,
-    focus_after_creation,
-    selected_friends,
     requests,
     client,
 }) => {
@@ -61,9 +60,9 @@ export const Notebook = ({
                     on_change=${(val) => on_cell_input(cell_id, val)}
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
-                    focus_after_creation=${false /* focus_after_creation && !d.pasted */}
+                    focus_after_creation=${last_created_cell === cell_id}
                     scroll_into_view_after_creation=${false /* d.pasted */}
-                    selected_friends=${selected_friends}
+                    selected_cells=${selected_cells}
                     requests=${requests}
                     client=${client}
                 />`

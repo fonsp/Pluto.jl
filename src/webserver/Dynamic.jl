@@ -104,7 +104,7 @@ function send_notebook_changes!(request::NotebookRequest)
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
             patches = Firebase.diff(current_dict, notebook_dict)
-            local patches_as_dict::Array{Dict} = patches
+            patches_as_dict::Array{Dict} = patches
             current_state_for_clients[client] = notebook_dict
 
             # Make sure we do send a confirmation to the client who made the request, even without changes

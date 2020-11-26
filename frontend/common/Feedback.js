@@ -8,7 +8,7 @@ export const create_counter_statistics = () => {
     }
 }
 
-const first_line = (cell) => /(.*)/.exec(cell.local_code.body)[0]
+const first_line = (cell) => /(.*)/.exec(cell.code)[0]
 const count_matches = (pattern, haystack) => (haystack.match(pattern) || []).length
 const value_counts = (values) =>
     values.reduce((prev_counts, val) => {
@@ -28,7 +28,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
     const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_dict[cell_id])
     const cells_local = state.notebook.cell_order.map((cell_id) => {
         return {
-            ...state.notebook.cell_dict[cell_id],
+            ...(state.cells_local[cell_id] ?? state.notebook.cell_dict[cell_id]),
             ...state.cells_local[cell_id],
         }
     })
@@ -40,15 +40,17 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // integer
         numFolded: cells.filter((c) => c.code_folded).length,
         // integer
-        numCodeDiffers: state.notebook.cell_order.filter((cell_id) => state.notebook.cell_dict[cell_id].code === cells_local[cell_id].code).length,
+        numCodeDiffers: state.notebook.cell_order.filter(
+            (cell_id) => state.notebook.cell_dict[cell_id].code === (state.cells_local[cell_id]?.code ?? state.notebook.cell_dict[cell_id].code)
+        ).length,
         // integer
-        numMarkdowns: cells.filter((c) => first_line(c).startsWith('md"')).length,
+        numMarkdowns: cells_local.filter((c) => first_line(c).startsWith('md"')).length,
         // integer
         numBinds: sum(cells_local.map((c) => count_matches(/\@bind/g, c.code))),
         // integer
-        numBegins: cells.filter((c) => first_line(c).endsWith("begin")).length,
+        numBegins: cells_local.filter((c) => first_line(c).endsWith("begin")).length,
         // integer
-        numLets: cells.filter((c) => first_line(c).endsWith("let")).length,
+        numLets: cells_local.filter((c) => first_line(c).endsWith("let")).length,
         // integer
         cellSizes: value_counts(cells_local.map((c) => count_matches(/\n/g, c.code) + 1)),
         // {numLines: numCells, ...}

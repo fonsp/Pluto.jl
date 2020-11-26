@@ -271,8 +271,6 @@ export let RawHTMLContainer = ({ body, requests, persist_js_state = false }) => 
 
             if (requests != null) {
                 connect_bonds(container.current, invalidation, requests)
-            } else {
-                console.log(`Bonds couldn't connect, because no requests`)
             }
 
             // convert LaTeX to svg

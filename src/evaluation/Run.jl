@@ -173,5 +173,6 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 end
 
+# Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)

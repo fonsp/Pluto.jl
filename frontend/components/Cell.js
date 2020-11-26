@@ -63,6 +63,8 @@ import { cl } from "../common/ClassTable.js"
  *  cell_state: import("./Editor.js").CellState,
  *  cell_local: import("./Editor.js").CellData,
  *  selected: boolean,
+ *  focus_after_creation: boolean,
+ *  selected_cells: Array<string>,
  *  [key: string]: any,
  * }} props
  * */
@@ -77,7 +79,7 @@ export const Cell = ({
     disable_input,
     focus_after_creation,
     scroll_into_view_after_creation,
-    selected_friends,
+    selected_cells,
     requests,
     client,
     notebook_id,
@@ -125,8 +127,11 @@ export const Cell = ({
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
-                        selected_friends(cell_id).forEach((friend_ids) => {
-                            requests.fold_remote_cell(friend_ids, !code_folded)
+                        let cells_to_fold = selected ? selected_cells : [cell_id]
+                        requests.update_notebook((notebook) => {
+                            for (let cell_id of cells_to_fold) {
+                                notebook.cell_dict[cell_id].code_folded = !code_folded
+                            }
                         })
                     }}
                     class="foldcode"
@@ -159,8 +164,8 @@ export const Cell = ({
                     requests.change_remote_cell(cell_id, new_code)
                 }}
                 on_delete=${() => {
-                    const friends = selected_friends(cell_id)
-                    requests.confirm_delete_multiple("Delete", friends)
+                    let cells_to_delete = selected ? selected_cells : [cell_id]
+                    requests.confirm_delete_multiple("Delete", cells_to_delete)
                 }}
                 on_add_after=${() => {
                     requests.add_remote_cell(cell_id, "after")
@@ -183,13 +188,8 @@ export const Cell = ({
                     if (running || queued) {
                         requests.interrupt_remote(cell_id)
                     } else {
-                        const friends_ids = selected_friends(cell_id)
-
-                        if (friends_ids.length == 1) {
-                            requests.change_remote_cell(cell_id, code)
-                        } else {
-                            requests.set_and_run_multiple(friends_ids)
-                        }
+                        let cell_to_run = selected ? selected_cells : [cell_id]
+                        requests.set_and_run_multiple(cell_to_run)
                     }
                 }}
                 runtime=${localTimeRunning || runtime}

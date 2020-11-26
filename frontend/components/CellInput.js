@@ -372,11 +372,11 @@ export const CellInput = ({
     //     if (!remote_code.submitted_by_me) {
     //         cm_ref.current.setValue(remote_code.body)
     //     }
-    //     cm_ref.current.options.disableInput = disable_input
     // }, [remote_code.timestamp])
+
     useEffect(() => {
-        cm_ref.current.setValue(remote_code)
-    }, [remote_code])
+        cm_ref.current.options.disableInput = disable_input
+    })
 
     useEffect(() => {
         if (cm_forced_focus == null) {

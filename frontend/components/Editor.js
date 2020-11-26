@@ -227,6 +227,7 @@ export class Editor extends Component {
             },
             export_menu_open: false,
 
+            last_created_cell: null,
             selected_cells: [],
 
             update_is_ongoing: false,
@@ -241,10 +242,10 @@ export class Editor extends Component {
                 this.setState({ scroller: enabled })
             },
             // Not really an action, but sure - DRAL
-            serialize_selected: (cell) => {
-                const selected = cell ? this.selected_friends(cell.id) : this.state.selected_cells.map((id) => this.state.notebook.cell_dict[id])
-                if (selected.length) {
-                    return serialize_cells(selected)
+            serialize_selected: (cell_id) => {
+                const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
+                if (cells_to_serialize.length) {
+                    return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_dict[id]))
                 }
             },
             add_deserialized_cells: async (data, index) => {
@@ -502,14 +503,7 @@ export class Editor extends Component {
                 //         }),
                 //     }
                 // })
-                this.client.send(
-                    "interrupt_all",
-                    {},
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                    },
-                    false
-                )
+                this.client.send("interrupt_all", {}, { notebook_id: this.state.notebook.notebook_id }, false)
             },
             move_remote_cells: (cell_ids, new_index) => {
                 update_notebook((notebook) => {
@@ -520,6 +514,7 @@ export class Editor extends Component {
             },
             add_remote_cell_at: async (index) => {
                 let id = uuidv4()
+                this.setState({ last_created_cell: id })
                 await update_notebook((notebook) => {
                     notebook.cell_dict[id] = {
                         cell_id: id,
@@ -535,6 +530,7 @@ export class Editor extends Component {
                 const delta = before_or_after == "before" ? 0 : 1
 
                 let uuid = uuidv4()
+                this.setState({ last_created_cell: uuid })
                 await update_notebook((notebook) => {
                     notebook.cell_dict[uuid] = {
                         cell_id: uuid,
@@ -563,6 +559,9 @@ export class Editor extends Component {
                 }
             },
             fold_remote_cell: (cell_id, newFolded) => {
+                if (!newFolded) {
+                    this.setState({ last_created_cell: cell_id })
+                }
                 update_notebook((notebook) => {
                     notebook.cell_dict[cell_id].code_folded = newFolded
                 })
@@ -604,16 +603,6 @@ export class Editor extends Component {
                     false
                 )
             },
-        }
-
-        this.selected_friends = (cell_id) => {
-            // const cell = this.state.notebook.cell_dict[cell_id]
-            if (this.state.selected_cells.includes(cell_id)) {
-                return this.state.selected_cells
-                // return this.state.notebook.cells.filter((c) => c.selected)
-            } else {
-                return [cell_id]
-            }
         }
 
         this.submit_file_change = (new_path, reset_cm_value) => {
@@ -753,13 +742,9 @@ export class Editor extends Component {
         document.addEventListener("paste", async (e) => {
             if (!in_textarea_or_input()) {
                 // Deselect everything first, to clean things up
-                this.setState(
-                    immer((state) => {
-                        for (let cell of state.notebook.cells) {
-                            cell.selected = false
-                        }
-                    })
-                )
+                this.setState({
+                    selected_cells: [],
+                })
 
                 // Paste in the cells at the end of the notebook
                 const data = e.clipboardData.getData("text/plain")
@@ -894,13 +879,13 @@ export class Editor extends Component {
                         }
                     }}
                     disable_input=${!this.state.connected}
-                    focus_after_creation=${!this.state.loading}
-                    selected_friends=${this.selected_friends}
+                    last_created_cell=${this.state.last_created_cell}
+                    selected_cells=${this.state.selected_cells}
                     requests=${this.requests}
                     client=${this.client}
                 />
 
-                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_friends=${this.selected_friends} />
+                <${DropRuler} requests=${this.requests} actions=${this.actions} selected_cells=${this.state.selected_cells} />
 
                 <${SelectionArea}
                     actions=${this.actions}

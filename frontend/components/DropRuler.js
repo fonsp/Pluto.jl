@@ -38,7 +38,7 @@ export class DropRuler extends Component {
                 this.dropee = null
             } else {
                 this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee))
+                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee.id))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -85,7 +85,7 @@ export class DropRuler extends Component {
             if (this.dropee && this.state.drag_start) {
                 // Called when drag-dropped somewhere on the page
                 const drop_index = this.getDropIndexOf(e)
-                const friend_ids = this.props.selected_friends(this.dropee.id)
+                const friend_ids = this.props.selected_cells.includes(this.dropee.id) ? this.props.selected_cells : [this.dropee.id]
                 this.props.requests.move_remote_cells(friend_ids, drop_index)
             } else {
                 // Called when cell(s) from another window are dragged onto the page
