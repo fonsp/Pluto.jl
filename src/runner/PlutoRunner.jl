@@ -75,7 +75,7 @@ end
 ###
 
 struct ReturnProof end
-
+const return_error = "Pluto: You can only use return inside a function."
 
 struct Computer
     f::Function
@@ -107,33 +107,26 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
 end
 
 function compute(computer::Computer)
-    # input_global_values = try
-    #     getfield.([current_module], computer.input_globals)
-    # catch e
-    #     @error "Failed to get one of the globals" exception=(e,stacktrace(catch_backtrace())) current_module names(current_module, all=true, imported=true)
-    #     []
-    # end
     input_global_values = getfield.([current_module], computer.input_globals)
 
-    result, output_global_values = Base.invokelatest(computer.f, input_global_values...)
+    out = Base.invokelatest(computer.f, input_global_values...)
+    if out isa Tuple{Any,Tuple}
+        result, output_global_values = out
 
-    try
         for (name, val) in zip(computer.output_globals, output_global_values)
             Core.eval(current_module, Expr(:(=), name, val))
         end
-    catch e
-        @error "Failed to set one of the globals" exception=(e,stacktrace(catch_backtrace()))
-    end
 
-    result
+        result
+    else
+        throw(return_error)
+    end
 end
 
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
     cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
-        # @info "noo" Base.remove_linenums!(deepcopy(expr.args[2]))
         trycatch_expr(expr, cell_id)
     else
-        @info "yes" Base.remove_linenums!(deepcopy(expr.args[2]))
         computer = get!(computers, expr) do
             register_computer(expr, collect.(function_wrapped_info)...)
         end
@@ -188,7 +181,7 @@ function trycatch_expr(expr::Union{Expr,Function}, cell_id::UUID, return_proof::
         end
 
         if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
-            throw("Pluto: You can only use return inside a function.")
+            throw(return_error)
         else
             local ans, runtime, _ = invocation
             (ans, runtime)

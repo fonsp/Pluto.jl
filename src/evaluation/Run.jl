@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
@@ -104,7 +104,7 @@ end
 
 "Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (reactive_node.references, reactive_node.definitions) : nothing)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
 	set_output!(cell, run)
 	return run
 end

@@ -253,6 +253,11 @@ function join_funcname_parts(parts::FunctionName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
 
+# this is stupid
+function is_joined_funcname(joined::Symbol)
+    occursin('.', String(joined))
+end
+
 assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
 assign_to_kw(x::Any) = x
 

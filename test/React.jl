@@ -805,12 +805,22 @@ import Distributed
                     return []
                 end
             """),
+            Cell("""filter(1:3) do x
+                return true
+            end"""),
         ])
 
-        for cell in notebook.cells
-            update_run!(🍭, notebook, cell)
-            @test occursinerror("You can only use return inside a function.", cell)
-        end
+        update_run!(🍭, notebook, notebook.cells)
+        @test occursinerror("You can only use return inside a function.", notebook.cells[1])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[2])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[3])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[4])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[5])
+        @test notebook.cells[1].output_repr == 1
+        @test notebook.cells[5].output_repr == 1
+
+        @test notebook.cells[6].errored == false
+
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
