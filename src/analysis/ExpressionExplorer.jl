@@ -225,7 +225,7 @@ function split_funcname(::Any)::FunctionName
     Symbol[]
 end
 
-"Turn :(.+) into :(+)"
+"""Turn `Symbol(".+")` into `:(+)`"""
 function without_dotprefix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[1] == '.'
@@ -235,7 +235,7 @@ function without_dotprefix(funcname::Symbol)::Symbol
     end
 end
 
-"Turn :(sqrt.) into :(sqrt)"
+"""Turn `Symbol("sqrt.")` into `:sqrt`"""
 function without_dotsuffix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[end] == '.'
@@ -253,7 +253,7 @@ function join_funcname_parts(parts::FunctionName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
 
-# this is stupid
+# this is stupid -- désolé
 function is_joined_funcname(joined::Symbol)
     occursin('.', String(joined))
 end
@@ -924,19 +924,18 @@ end
 
 get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
 
-
+"Is this code simple enough that we can wrap it inside a function to boost performance? Look for [`PlutoRunner.Computer`](@ref) to learn more."
 function can_be_function_wrapped(x::Expr)
-    if x.head === :global ||
+    if x.head === :global || # better safe than sorry
         x.head === :using ||
         x.head === :import ||
         x.head === :module ||
         x.head === :function ||
         x.head === :macro ||
-        x.head === :macrocall ||
-        x.head === :macro ||
+        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
         x.head === :struct ||
         x.head === :abstract ||
-        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call)
+        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call) # f(x) = ...
         false
     else
         all(can_be_function_wrapped, x.args)
@@ -944,6 +943,5 @@ function can_be_function_wrapped(x::Expr)
 
 end
 can_be_function_wrapped(x::Any) = true
-
 
 end

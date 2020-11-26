@@ -107,8 +107,11 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
 end
 
 function compute(computer::Computer)
+    # 1. get the referenced global variables
+    # this might error if the global does not exist, which is exactly what we want
     input_global_values = getfield.([current_module], computer.input_globals)
 
+    # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
     if out isa Tuple{Any,Tuple}
         result, output_global_values = out
@@ -122,20 +125,6 @@ function compute(computer::Computer)
         throw(return_error)
     end
 end
-
-function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
-    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
-        trycatch_expr(expr, cell_id)
-    else
-        computer = get!(computers, expr) do
-            register_computer(expr, collect.(function_wrapped_info)...)
-        end
-        trycatch_expr(cell_id, computer.return_proof) do
-            compute(computer)
-        end
-    end
-end
-
 
 "Wrap `expr` inside a timing block."
 function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
@@ -156,15 +145,10 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     )
 end
 
-# function timed_expr(f::Function, return_proof::Any=nothing)
-#     local elapsed_ns = time_ns()
-#     local result = f()
-#     elapsed_ns = time_ns() - elapsed_ns
-#     (result, elapsed_ns, return_proof)
-# end
-
-"Wrap `expr` inside a timing block, and then inside a try ... catch block."
-function trycatch_expr(expr::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof=ReturnProof())
+"""
+Run the expression or function inside a try ... catch block, and verify its "return proof".
+"""
+function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof)
     # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
 
@@ -172,12 +156,12 @@ function trycatch_expr(expr::Union{Expr,Function}, cell_id::UUID, return_proof::
     # way to protect people from finding this obscure bug in some way - DRAL
 
     ans, runtime = try
-        local invocation = if expr isa Expr
-            # We eval `expr` in the global scope of the workspace module:
-            Core.eval(current_module, timed_expr(expr, return_proof))
+        local invocation = if f isa Expr
+            # We eval `f` in the global scope of the workspace module:
+            Core.eval(current_module, f)
         else
-            # expr is a function
-            expr()
+            # f is a function
+            f()
         end
 
         if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
@@ -193,6 +177,35 @@ function trycatch_expr(expr::Union{Expr,Function}, cell_id::UUID, return_proof::
 end
 
 
+"""
+Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
+
+If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the referenced and assigned variables of the expression (computed by the ExpressionExplorer), then the expression will be **wrapped inside a function**, with the references as inputs, and the assignments as outputs. Instead of running the expression directly, Pluto will call this function, with the right globals as inputs.
+
+This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
+"""
+function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+        proof = ReturnProof()
+        wrapped = timed_expr(expr, proof)
+        run_inside_trycatch(wrapped, cell_id, proof)
+    else
+        computer = get!(computers, expr) do
+            register_computer(expr, collect.(function_wrapped_info)...)
+        end
+        ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
+            compute(computer)
+        end
+
+        # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+        # The fix is to detect this situation and run the expression in the classical way.
+        if (ans isa CapturedException) && (ans.ex isa UndefVarError)
+            run_expression(expr, cell_id, nothing)
+        else
+            ans, runtime
+        end
+    end
+end
 
 
 
