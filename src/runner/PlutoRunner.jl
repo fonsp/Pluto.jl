@@ -74,9 +74,12 @@ end
 # EVALUATING NOTEBOOK CODE
 ###
 
+struct ReturnProof end
+
 
 struct Computer
     f::Function
+    return_proof::ReturnProof
     input_globals::Vector{Symbol}
     output_globals::Vector{Symbol}
 end
@@ -87,9 +90,11 @@ const computers = WeakKeyDict{Expr,Computer}()
 const computer_workspace = Main
 
 function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+    proof = ReturnProof()
+
     @gensym result
     e = Expr(:function, Expr(:tuple, input_globals...), Expr(:block, 
-        Expr(:(=), result, trycatch_expr(expr)),
+        Expr(:(=), result, timed_expr(expr, proof)),
         Expr(:tuple,
             result,
             Expr(:tuple, output_globals...)
@@ -98,17 +103,19 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
 
     f = Core.eval(computer_workspace, e)
 
-    computers[expr] = Computer(f, input_globals, output_globals)
+    computers[expr] = Computer(f, proof, input_globals, output_globals)
 end
 
 function compute(computer::Computer)
-    input_global_values = try
-        getfield.([current_module], computer.input_globals)
-    catch e
-        @error "Failed to get one of the globals" exception=(e,stacktrace(catch_backtrace()))
-    end
+    # input_global_values = try
+    #     getfield.([current_module], computer.input_globals)
+    # catch e
+    #     @error "Failed to get one of the globals" exception=(e,stacktrace(catch_backtrace())) current_module names(current_module, all=true, imported=true)
+    #     []
+    # end
+    input_global_values = getfield.([current_module], computer.input_globals)
 
-    result, output_global_values = computer.f(input_global_values...)
+    result, output_global_values = Base.invokelatest(computer.f, input_global_values...)
 
     try
         for (name, val) in zip(computer.output_globals, output_global_values)
@@ -121,15 +128,18 @@ function compute(computer::Computer)
     result
 end
 
-function compute(expr::Any, cell_id::UUID)
-
-end
-
-function run_expression(expr::Any, cell_id::UUID)
-    if haskey(computers, expr)
-        compute(computers[expr])
-    else
+function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+        # @info "noo" Base.remove_linenums!(deepcopy(expr.args[2]))
         trycatch_expr(expr, cell_id)
+    else
+        @info "yes" Base.remove_linenums!(deepcopy(expr.args[2]))
+        computer = get!(computers, expr) do
+            register_computer(expr, collect.(function_wrapped_info)...)
+        end
+        trycatch_expr(cell_id, computer.return_proof) do
+            compute(computer)
+        end
     end
 end
 
@@ -153,17 +163,29 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     )
 end
 
+# function timed_expr(f::Function, return_proof::Any=nothing)
+#     local elapsed_ns = time_ns()
+#     local result = f()
+#     elapsed_ns = time_ns() - elapsed_ns
+#     (result, elapsed_ns, return_proof)
+# end
+
 "Wrap `expr` inside a timing block, and then inside a try ... catch block."
-function trycatch_expr(expr::Expr, cell_id::UUID)
-    # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+function trycatch_expr(expr::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof=ReturnProof())
+    # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
-    return_proof = Ref(123)
+
     # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
     # way to protect people from finding this obscure bug in some way - DRAL
 
-    cell_results[cell_id], cell_runtimes[cell_id] = try
-        # We eval `expr` in the global scope of the workspace module:
-        local invocation = Core.eval(current_module, timed_expr(expr, return_proof))
+    ans, runtime = try
+        local invocation = if expr isa Expr
+            # We eval `expr` in the global scope of the workspace module:
+            Core.eval(current_module, timed_expr(expr, return_proof))
+        else
+            # expr is a function
+            expr()
+        end
 
         if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
             throw("Pluto: You can only use return inside a function.")
@@ -176,36 +198,6 @@ function trycatch_expr(expr::Expr, cell_id::UUID)
         (CapturedException(ex, bt), missing)
     end
 end
-
-
-# "Wrap `expr` inside a timing block, and then inside a try ... catch block."
-# function trycatch_expr(expr::Expr, module_name::Symbol, cell_id::UUID)
-#     # I use this to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
-#     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
-#     return_proof = Ref(123)
-#     # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
-#     # way to protect people from finding this obscure bug in some way - DRAL
-
-#     quote
-#         ans, runtime = try
-#             # We eval `expr` in the global scope of the workspace module:
-#             local invocation = Core.eval($(module_name), $(timed_expr(expr, return_proof) |> QuoteNode))
-
-#             if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== $(return_proof)
-#                 throw("Pluto: You can only use return inside a function.")
-#             else
-#                 local ans, runtime, _ = invocation
-#                 (ans, runtime)
-#             end
-#         catch ex
-#             bt = stacktrace(catch_backtrace())
-#             (CapturedException(ex, bt), missing)
-#         end
-#         setindex!(Main.PlutoRunner.cell_results, ans, $(cell_id))
-#     end
-# end
-
-
 
 
 
