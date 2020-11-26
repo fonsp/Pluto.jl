@@ -810,7 +810,8 @@ import Distributed
                 return true
             end"""),
 
-            Cell("struct A1 end; return 10"), # to disable the function-generating optimization
+            # create struct to disable the function-generating optimization
+            Cell("struct A1 end; return 10"),
             Cell("struct A2 end; return (0, 0)"),
             Cell("struct A3 end; return (0, 0)"),
             Cell("struct A4 end; return (0, 0, 0)"),

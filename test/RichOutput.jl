@@ -208,12 +208,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             Cell("0 + 9; 9;\n\n\n"),
             Cell("0 + 10;\n10;"),
             Cell("0 + 11;\n11"),
-            
-            Cell("sqrt(-12)"),
-            Cell("\n\nsqrt(-13)"),
-            Cell("\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend"),
-            Cell("w(-15)"),
-            Cell("error(" * sprint(Base.print_quoted, escape_me) * ")")
         ])
         fakeclient.connected_notebook = notebook
 
@@ -256,47 +250,76 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursinerror("syntax: extra token after", notebook.cells[11])
         end
 
-        @testset "Stack traces" begin
-            @test_nowarn update_run!(🍭, notebook, notebook.cells[12:16])
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
-            @test occursinerror("DomainError", notebook.cells[12])
+    @testset "Stack traces" begin
+        escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \x10 \$"
+
+        codes = [
+            "sqrt(-1)",
+            "let\n\nsqrt(-2)\nend",
+            "\"Something very exciting!\"\nfunction w(x)\n\tsqrt(x)\nend",
+            "w(-4)",
+            "error(" * sprint(Base.print_quoted, escape_me) * ")",
+        ]
+
+        notebook1 = Notebook([
+            Cell(code)
+            for (i, code) in enumerate(codes)
+        ])
+            
+        # create struct to disable the function-generating optimization
+        notebook2 = Notebook([
+            Cell("struct S$(i) end; $code")
+            for (i, code) in enumerate(codes)
+        ])
+
+        @testset "$(wrapped ? "With" : "Without") function wrapping" for wrapped in [false, true]
+            notebook = wrapped ? notebook1 : notebook2
+            
+            fakeclient.connected_notebook = notebook
+
+            @test_nowarn update_run!(🍭, notebook, notebook.cells[1:5])
+
+            @test occursinerror("DomainError", notebook.cells[1])
             let
-                st = notebook.cells[12].output_repr
+                st = notebook.cells[1].output_repr
                 @test length(st[:stacktrace]) == 4 # check in REPL
                 if Pluto.can_insert_filename
                     @test st[:stacktrace][4][:line] == 1
-                    @test occursin(notebook.cells[12].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.cells[1].cell_id |> string, st[:stacktrace][4][:file])
                     @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
                 else
                     @test_broken false
                 end
             end
 
-            @test occursinerror("DomainError", notebook.cells[13])
+            @test occursinerror("DomainError", notebook.cells[2])
             let
-                st = notebook.cells[13].output_repr
+                st = notebook.cells[2].output_repr
                 @test length(st[:stacktrace]) == 4
                 if Pluto.can_insert_filename
                     @test st[:stacktrace][4][:line] == 3
-                    @test occursin(notebook.cells[13].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.cells[2].cell_id |> string, st[:stacktrace][4][:file])
                     @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
                 else
                     @test_broken false
                 end
             end
 
-            @test occursinerror("DomainError", notebook.cells[15])
+            @test occursinerror("DomainError", notebook.cells[4])
             let
-                st = notebook.cells[15].output_repr
+                st = notebook.cells[4].output_repr
                 @test length(st[:stacktrace]) == 5
 
                 if Pluto.can_insert_filename
                     @test st[:stacktrace][4][:line] == 3
-                    @test occursin(notebook.cells[14].cell_id |> string, st[:stacktrace][4][:file])
+                    @test occursin(notebook.cells[3].cell_id |> string, st[:stacktrace][4][:file])
                     @test occursin(notebook.path |> basename, st[:stacktrace][4][:file])
 
                     @test st[:stacktrace][5][:line] == 1
-                    @test occursin(notebook.cells[15].cell_id |> string, st[:stacktrace][5][:file])
+                    @test occursin(notebook.cells[4].cell_id |> string, st[:stacktrace][5][:file])
                     @test occursin(notebook.path |> basename, st[:stacktrace][5][:file])
                 else
                     @test_broken false
@@ -304,12 +327,13 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             end
 
             let
-                st = notebook.cells[16].output_repr
+                st = notebook.cells[5].output_repr
                 @test occursin(escape_me, st[:msg])
             end
 
+            WorkspaceManager.unmake_workspace((🍭, notebook))
         end
-        WorkspaceManager.unmake_workspace((🍭, notebook))
+
     end
 
 end

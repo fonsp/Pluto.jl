@@ -93,7 +93,7 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
     proof = ReturnProof()
 
     @gensym result
-    e = Expr(:function, Expr(:tuple, input_globals...), Expr(:block, 
+    e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block, 
         Expr(:(=), result, timed_expr(expr, proof)),
         Expr(:tuple,
             result,
@@ -486,12 +486,18 @@ function format_output(val::CapturedException; context=nothing)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s,_) in val.processed_bt]
 
-    for _ in 1:2
-        until = findfirst(b -> b.func == :eval, reverse(stack))
-        stack = until === nothing ? stack : stack[1:(length(stack) - until)]
+    function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+
+    if function_wrap_index === nothing
+        for _ in 1:2
+            until = findfirst(b -> b.func == :eval, reverse(stack))
+            stack = until === nothing ? stack : stack[1:end - until]
+        end
+    else
+        stack = stack[1:function_wrap_index]
     end
 
-    pretty = map(stack[1:end]) do s
+    pretty = map(stack) do s
         Dict(
             :call => pretty_stackcall(s, s.linfo),
             :inlined => s.inlined,
@@ -505,7 +511,11 @@ end
 # from the Julia source code:
 function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
     if frame.func isa Symbol
-        String(frame.func)
+        if occursin("function_wrapped_cell", String(frame.func))
+            "top-level scope"
+        else
+            String(frame.func)
+        end
     else
         repr(frame.func)
     end
