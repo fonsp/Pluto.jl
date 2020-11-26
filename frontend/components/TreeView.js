@@ -35,6 +35,15 @@ const SimpleOutputBody = ({ mime, body, cell_id, all_completed_promise, requests
                 persist_js_state=${persist_js_state}
             />`
             break
+        case "application/vnd.pluto.table+object":
+            return html` <${TableView}
+                cell_id=${cell_id}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                persist_js_state=${persist_js_state}
+            />`
+            break
         case "text/plain":
         default:
             return html`<pre>${body}</pre>`
