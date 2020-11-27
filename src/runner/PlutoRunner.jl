@@ -85,7 +85,7 @@ struct Computer
 end
 
 # TODO: clear key when a cell is deleted furever
-const computers = WeakKeyDict{Expr,Computer}()
+const computers = Dict{Expr,Computer}()
 
 const computer_workspace = Main
 
