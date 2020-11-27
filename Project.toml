@@ -25,7 +25,7 @@ FuzzyCompletions = "0.3"
 HTTP = "^0.8.18"
 MsgPack = "1.1"
 Tables = "1"
-julia = "^1.0.0"
+julia = "^1.0.4"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
