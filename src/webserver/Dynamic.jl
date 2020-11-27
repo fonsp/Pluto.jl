@@ -172,7 +172,7 @@ const mutators = Dict(
     "in_temp_dir" => function(; _...) nothing end,
     "cell_dict" => Dict(
         Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebase.JSONPatch)
-            cell = request.notebook.cell_dict[UUID(cell_id)]
+            # cell = request.notebook.cell_dict[UUID(cell_id)]
             Firebase.update!(request.notebook, patch)
             @info "Updating cell" patch
 

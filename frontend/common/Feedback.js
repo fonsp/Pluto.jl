@@ -24,8 +24,8 @@ const sum = (values) => values.reduce((a, b) => a + b, 0)
  * }} state
  * */
 export const finalize_statistics = async (state, client, counter_statistics) => {
-    const cells_running = state.notebook.cell_order.map((cell_id) => state.notebook.cells_running[cell_id])
-    const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_dict[cell_id])
+    const cells_running = state.notebook.cell_order.map((cell_id) => state.notebook.cells_running[cell_id]).filter((x) => x != null)
+    const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_dict[cell_id]).filter((x) => x != null)
     const cells_local = state.notebook.cell_order.map((cell_id) => {
         return {
             ...(state.cells_local[cell_id] ?? state.notebook.cell_dict[cell_id]),

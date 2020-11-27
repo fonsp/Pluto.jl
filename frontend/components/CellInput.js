@@ -16,10 +16,24 @@ const clear_selection = (cm) => {
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
 
+// Adapted from https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
+var offsetFromViewport = function (elem) {
+    let bounding = elem.getBoundingClientRect()
+    let is_in_viewport = bounding.top >= 0 && bounding.bottom <= window.innerHeight
+    if (is_in_viewport) {
+        return null
+    } else {
+        return {
+            top: bounding.top < 0 ? -bounding.top : window.innerHeight - bounding.bottom,
+        }
+    }
+}
+
 /**
  * @param {{
  *  local_code: string,
  *  remote_code: string,
+ *  scroll_into_view_after_creation: boolean,
  *  [key: string]: any,
  * }} props
  */
@@ -28,13 +42,11 @@ export const CellInput = ({
     remote_code,
     disable_input,
     focus_after_creation,
-    scroll_into_view_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
     on_submit,
     on_delete,
     on_add_after,
-    on_fold,
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
@@ -44,7 +56,7 @@ export const CellInput = ({
     let pluto_actions = useContext(PlutoContext)
 
     const cm_ref = useRef(null)
-    const dom_node_ref = useRef(null)
+    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
@@ -56,7 +68,7 @@ export const CellInput = ({
         remote_code_ref.current = remote_code
     }, [remote_code])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const cm = (cm_ref.current = CodeMirror(
             (el) => {
                 dom_node_ref.current.appendChild(el)
@@ -384,10 +396,25 @@ export const CellInput = ({
         })
 
         if (focus_after_creation) {
+            // if (!isInViewport(dom_node_ref.current)) {
+            // let offset_from_viewport = offsetFromViewport(dom_node_ref.current)
+            // console.log(`offset_from_viewport:`, offset_from_viewport)
+            // if (offset_from_viewport) {
+            //     console.log("SCROLLING")
+            //     document.body.scrollBy({
+            //         behavior: "auto",
+            //         top: offset_from_viewport.top,
+            //     })
+            // }
+            // console.log(`isInViewport(dom_node_ref.current):`, isInViewport(dom_node_ref.current))
+            // console.log("Scrolling into view (smooth")
+            // dom_node_ref.current.scrollIntoView({
+            //     behavior: "smooth",
+            //     block: "center",
+            // })
+            // }
+            // console.log("FOCUS")
             cm.focus()
-        }
-        if (scroll_into_view_after_creation) {
-            dom_node_ref.current.scrollIntoView()
         }
 
         // @ts-ignore
@@ -404,7 +431,7 @@ export const CellInput = ({
 
     useEffect(() => {
         cm_ref.current.options.disableInput = disable_input
-    })
+    }, [disable_input])
 
     useEffect(() => {
         if (cm_forced_focus == null) {

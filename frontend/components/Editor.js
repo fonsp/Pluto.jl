@@ -1,6 +1,7 @@
 import { html, Component, useState, useEffect } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import { v4 as uuidv4 } from "../imports/uuid.js"
+import _ from "../imports/lodash.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
@@ -52,7 +53,7 @@ function serialize_cells(cells) {
  */
 function deserialize_cells(serialized_cells) {
     const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
-    return segments.map((s) => s.trim()).filter((s) => s.length > 0)
+    return segments.map((s) => s.trim()).filter((s) => s !== "")
 }
 
 const Circle = ({ fill }) => html`
@@ -219,7 +220,7 @@ export class Editor extends Component {
             }),
             cells_local: /** @type {{ [id: string]: CellData }} */ ({}),
             desired_doc_query: null,
-            recently_deleted: null,
+            recently_deleted: /** @type {Array<{ index: number, cell: CellData }>} */ (null),
             connected: false,
             loading: true,
             scroller: {
@@ -240,6 +241,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
+            update_notebook: this.update_notebook,
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 this.setState(
@@ -293,6 +295,7 @@ export class Editor extends Component {
                     immer((state) => {
                         for (let cell of new_cells) {
                             state.cells_local[cell.cell_id] = cell
+                            state.last_created_cell = cell.cell_id
                         }
                     })
                 )
@@ -420,6 +423,14 @@ export class Editor extends Component {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
+                        this.setState({
+                            recently_deleted: cell_ids.map((cell_id) => {
+                                return {
+                                    index: this.state.notebook.cell_order.indexOf(cell_id),
+                                    cell: this.state.notebook.cell_dict[cell_id],
+                                }
+                            }),
+                        })
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
                                 delete notebook.cell_dict[cell_id]
@@ -745,9 +756,7 @@ export class Editor extends Component {
 
         // Disabled until we solve https://github.com/fonsp/Pluto.jl/issues/482
         // or we can enable it with a prompt
-
         // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
-
         // document.addEventListener("cut", (e) => {
         //     if (!in_textarea_or_input()) {
         //         const serialized = this.actions.serialize_selected()
@@ -772,6 +781,7 @@ export class Editor extends Component {
                 // Paste in the cells at the end of the notebook
                 const data = e.clipboardData.getData("text/plain")
                 this.actions.add_deserialized_cells(data, -1)
+                e.preventDefault()
             }
         })
 
@@ -779,7 +789,6 @@ export class Editor extends Component {
             const unsaved_cells = this.state.notebook.cell_order.filter(
                 (id) => this.state.cells_local[id] && this.state.notebook.cell_dict[id].code !== this.state.cells_local[id].code
             )
-            console.log(`unsaved_cells:`, unsaved_cells)
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
                 window.dispatchEvent(new CustomEvent("cell_focus", { detail: { cell_id: first_unsaved } }))
@@ -868,8 +877,13 @@ export class Editor extends Component {
                 </header>
                 <main>
                     <preamble>
-                        <button onClick=${() =>
-                            this.actions.set_and_run_all_changed_remote_cells()} class="runallchanged" title="Save and run all changed cells">
+                        <button
+                            onClick=${() => {
+                                this.actions.set_and_run_all_changed_remote_cells()
+                            }}
+                            class="runallchanged"
+                            title="Save and run all changed cells"
+                        >
                             <span></span>
                         </button>
                     </preamble>
@@ -892,7 +906,11 @@ export class Editor extends Component {
                         cell_order=${this.state.notebook.cell_order}
                         selected_cell_ids=${this.state.selected_cell_ids}
                         on_selection=${(selected_cell_ids) => {
-                            if (!window._.isEqual(this.state.selected_cells, selected_cell_ids)) {
+                            // @ts-ignore
+                            if (
+                                selected_cell_ids.length !== this.state.selected_cells ||
+                                _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                            ) {
                                 this.setState({
                                     selected_cells: selected_cell_ids,
                                 })
@@ -908,16 +926,12 @@ export class Editor extends Component {
                 <${UndoDelete}
                     recently_deleted=${this.state.recently_deleted}
                     on_click=${() => {
-                        // TODO Make this work when I made recently_deleted work again
-                        // this.update_notebook((notebook) => {
-                        //     let id = uuidv4()
-                        //     notebook.cell_dict[id] = {
-                        //         cell_id: id,
-                        //         code: this.state.recently_deleted.body,
-                        //         code_folded: false,
-                        //     }
-                        //     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
-                        // })
+                        this.update_notebook((notebook) => {
+                            for (let { index, cell } of this.state.recently_deleted) {
+                                notebook.cell_dict[cell.cell_id] = cell
+                                notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
+                            }
+                        })
                     }}
                 />
                 <${SlideControls} />
