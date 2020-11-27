@@ -999,13 +999,25 @@ pluto-cell.drop_target pluto-input::after {
     left: 0;
     height: 100%;
     width: 100%;
-    background-color: rgba(255, 255, 255, 0.75);
     color: black;
     display: flex;
     align-items: center;
     justify-content: center;
-    content: "+ Drop file here";
     z-index: 2;
+    background-color: rgba(255, 255, 255, 0.75);
+    content: "+ Drop file here";
+}
+
+pluto-cell.drop_target.saving_file pluto-input::after {
+    content: "The 💾 File you dropped is being saved... ";
+    color: white;
+    background-color: rgba(3, 92, 151, 0.75);
+}
+
+pluto-cell.drop_target.drop_invalid pluto-input::after {
+    background-color: rgba(206, 50, 50, 0.75);
+    color: white;
+    content: "🛑 🚫 This cell is not empty ❗ ⛔ Try dropping your file in an empty one!";
 }
 
 /* Define --patternHeight for this keyframes animation to work! */

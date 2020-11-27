@@ -93,7 +93,9 @@ export const Cell = ({
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-    const { savingFile, dragActive, eventHandler } = useDropHandler(requests, on_change, cell_id)
+    const { savingFile, dragActive, eventHandler, inactiveHandler } = useDropHandler(requests, on_change, cell_id)
+    const has_code = local_code.body?.length > 0
+    const handler = !has_code ? eventHandler : inactiveHandler
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
@@ -122,10 +124,10 @@ export const Cell = ({
 
     return html`
         <pluto-cell
-            onDragOver=${eventHandler}
-            onDrop=${eventHandler}
-            onDragEnter=${eventHandler}
-            onDragLeave=${eventHandler}
+            onDragOver=${handler}
+            onDrop=${handler}
+            onDragEnter=${handler}
+            onDragLeave=${handler}
             class=${cl({
                 queued: queued,
                 running: running,
@@ -134,6 +136,8 @@ export const Cell = ({
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
                 drop_target: dragActive,
+                drop_invalid: has_code,
+                saving_file: savingFile,
             })}
             id=${cell_id}
         >

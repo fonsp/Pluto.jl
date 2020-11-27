@@ -18,7 +18,30 @@ export const useDropHandler = (requests, on_change, cell_id) => {
     const [savingFile, setSavingFile] = useState(false)
     const [dragActive, setDragActiveFast] = useState(false)
     const setDragActive = useMemo(() => _.debounce(setDragActiveFast, 200), [setDragActiveFast])
-
+    const inactiveHandler = useMemo(
+        () => (ev) => {
+            switch (ev.type) {
+                case "drop":
+                    ev.preventDefault() // don't file open
+                    break
+                case "dragover":
+                    ev.preventDefault()
+                    ev.dataTransfer.dropEffect = "none"
+                    setDragActive(true)
+                    setTimeout(() => setDragActive(false), MAGIC_TIMEOUT)
+                    break
+                case "dragenter":
+                    setDragActiveFast(true)
+                    break
+                case "dragleave":
+                    setDragActive(false)
+                    break
+                default:
+                    break
+            }
+        },
+        [setDragActive, setDragActiveFast]
+    )
     const eventHandler = useMemo(() => {
         const uploadAndCreateCodeTemplate = async (file) => {
             if (!(file instanceof File)) return " #  File can't be read"
@@ -75,5 +98,5 @@ export const useDropHandler = (requests, on_change, cell_id) => {
         }
     }, [setDragActive, setDragActiveFast, setSavingFile, requests, cell_id, on_change])
 
-    return { savingFile, dragActive, eventHandler }
+    return { savingFile, dragActive, eventHandler, inactiveHandler }
 }
