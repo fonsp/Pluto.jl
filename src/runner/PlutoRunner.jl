@@ -822,15 +822,17 @@ function table_data(x::Any, io::IOContext)
     # not a map(row) because it needs to be a Vector
     # not enumerate(rows) because of some silliness
     # not rows[i] because `getindex` is not guaranteed to exist
-    L = truncate_rows ? (1:my_row_limit) : (1:length(rows))
-    row_data = Array{Any,1}(undef, L[end])
-    for (i,row) in zip(L,rows)
+    L = truncate_rows ? my_row_limit : length(rows)
+    row_data = Array{Any,1}(undef, L)
+    for (i,row) in zip(1:L,rows)
         row_data[i] = (i, row_data_for(row))
     end
 
     if truncate_rows
         push!(row_data, "more")
-        push!(row_data, (length(rows), row_data_for(last(rows))))
+        if applicable(last, rows)
+            push!(row_data, (length(rows), row_data_for(last(rows))))
+        end
     end
     
     # TODO: render entire schema by default?
