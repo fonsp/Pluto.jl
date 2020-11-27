@@ -242,10 +242,7 @@ table.pluto-table .schema-types {
 table.pluto-table .schema-types th {
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     background-color: white;
-    position: sticky;
-    top: calc(2.25rem - var(--pluto-cell-spacing));
     height: 2rem;
-    z-index: 1;
 }
 
 table.pluto-table thead:hover .schema-types {
