@@ -159,10 +159,10 @@ export class SelectionArea extends Component {
             return null
         }
 
-        let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
-        let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
-        let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
-        let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
+        // let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
+        // let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
+        // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
+        // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
 
         return html`
             <selectarea
@@ -170,17 +170,18 @@ export class SelectionArea extends Component {
                     position: "absolute",
                     background: "rgba(40, 78, 189, 0.24)",
                     zIndex: 10,
-                    top: 0,
-                    left: 0,
-                    width: 1,
-                    height: 1,
+                    top: Math.min(selection_start.y, selection_end.y),
+                    left: Math.min(selection_start.x, selection_end.x),
+                    width: Math.abs(selection_start.x - selection_end.x),
+                    height: Math.abs(selection_start.y - selection_end.y),
 
-                    transformOrigin: "top left",
-                    transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
-                    // top: Math.min(selection_start.y, selection_end.y),
-                    // left: Math.min(selection_start.x, selection_end.x),
-                    // width: Math.abs(selection_start.x - selection_end.x),
-                    // height: Math.abs(selection_start.y - selection_end.y),
+                    // Transform could be faster
+                    // top: 0,
+                    // left: 0,
+                    // width: 1,
+                    // height: 1,
+                    // transformOrigin: "top left",
+                    // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
                 }}
             />
         `
