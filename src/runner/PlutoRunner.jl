@@ -403,6 +403,7 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
 
     ans = cell_results[id]
     errored = ans isa CapturedException
+
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
     (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
 end
@@ -478,7 +479,7 @@ function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
     end
 end
 
-format_output(x; context=nothing) = format_output_default(x; context=context)
+format_output(@nospecialize(x); context=nothing) = format_output_default(x; context=context)
 
 format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
 
