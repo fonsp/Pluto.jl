@@ -8,6 +8,7 @@ function update_caches!(notebook::Notebook, cells)
             cell.parsedcode = parse_custom(notebook, cell)
 			cell.module_usings = ExpressionExplorer.compute_usings(cell.parsedcode)
 			cell.rootassignee = ExpressionExplorer.get_rootassignee(cell.parsedcode)
+			cell.function_wrapped = ExpressionExplorer.can_be_function_wrapped(cell.parsedcode)
         end
 	end
 end

@@ -193,6 +193,7 @@ using Test
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
+        @test testee(:(f = function(a, b) a + b * n end), [:n], [:f], [:+, :*], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])

@@ -260,16 +260,42 @@ export const CellInput = ({
                 return result
             }
         }
+        const isapprox = (a, b) => Math.abs(a - b) < 3.0
+        const at_first_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, 0.0)
         keys["Up"] = with_time_since_last((elapsed) => {
-            if (cm.getCursor().line == 0 && elapsed > 300) {
-                on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
+            if (elapsed > 300 && at_first_line_visually()) {
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
+                // todo:
+                // on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
+                // but this does not work if the last line in the previous cell wraps
+                // and i can't figure out how to fix it in a simple way
             } else {
                 return CodeMirror.Pass
             }
         })
+        const at_first_position = () => cm.findPosH(cm.getCursor(), -1, "char")?.hitSide === true
+        keys["Left"] = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_first_position()) {
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
+            } else {
+                return CodeMirror.Pass
+            }
+        })
+        const at_last_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, cm.cursorCoords({ line: Infinity, ch: Infinity }, "div").top)
         keys["Down"] = with_time_since_last((elapsed) => {
-            if (cm.getCursor().line == cm.lastLine() && elapsed > 300) {
-                on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
+            if (elapsed > 300 && at_last_line_visually()) {
+                on_focus_neighbor(cell_id, 1, 0, 0)
+                // todo:
+                // on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
+                // same here
+            } else {
+                return CodeMirror.Pass
+            }
+        })
+        const at_last_position = () => cm.findPosH(cm.getCursor(), 1, "char")?.hitSide === true
+        keys["Right"] = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_last_position()) {
+                on_focus_neighbor(cell_id, 1, 0, 0)
             } else {
                 return CodeMirror.Pass
             }
@@ -385,7 +411,7 @@ export const CellInput = ({
             clear_selection(cm_ref.current)
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
-            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line == Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
+            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line === Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
             cm_ref.current.focus()
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }

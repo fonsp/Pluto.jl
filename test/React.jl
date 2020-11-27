@@ -798,6 +798,7 @@ import Distributed
         notebook = Notebook([
             Cell("return 10"),
             Cell("return (0, 0)"),
+            Cell("return (0, 0)"),
             Cell("return (0, 0, 0)"),
             Cell("begin return \"a string\" end"),
             Cell("""
@@ -805,12 +806,84 @@ import Distributed
                     return []
                 end
             """),
+            Cell("""filter(1:3) do x
+                return true
+            end"""),
+
+            # create struct to disable the function-generating optimization
+            Cell("struct A1 end; return 10"),
+            Cell("struct A2 end; return (0, 0)"),
+            Cell("struct A3 end; return (0, 0)"),
+            Cell("struct A4 end; return (0, 0, 0)"),
+            Cell("struct A5 end; begin return \"a string\" end"),
+            Cell("""
+                struct A6 end; let
+                    return []
+                end
+            """),
+            Cell("""struct A7 end; filter(1:3) do x
+                return true
+            end"""),
         ])
 
-        for cell in notebook.cells
-            update_run!(🍭, notebook, cell)
-            @test occursinerror("You can only use return inside a function.", cell)
+        update_run!(🍭, notebook, notebook.cells)
+        @test occursinerror("You can only use return inside a function.", notebook.cells[1])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[2])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[3])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[4])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[5])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[6])
+        @test notebook.cells[7].errored == false
+
+        @test occursinerror("You can only use return inside a function.", notebook.cells[8])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[9])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[10])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[11])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[12])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[13])
+        @test notebook.cells[14].errored == false
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Function generation" begin
+        notebook = Notebook([
+            Cell("false && jlaksdfjalskdfj"),
+            Cell("fonsi = 2"),
+            Cell("""
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
+            """),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[1].output_repr == "false"
+
+        function benchmark(fonsi)
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
         end
+
+        bad = @elapsed benchmark(2)
+        good = @elapsed benchmark(2)
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
