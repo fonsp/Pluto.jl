@@ -210,6 +210,7 @@ function run(session::ServerSession)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
+                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
