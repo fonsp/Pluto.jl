@@ -15,7 +15,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import FuzzyCompletions: Completion, ModuleCompletion, CompleteAlways, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -85,7 +85,7 @@ struct Computer
 end
 
 # TODO: clear key when a cell is deleted furever
-const computers = WeakKeyDict{Expr,Computer}()
+const computers = Dict{Expr,Computer}()
 
 const computer_workspace = Main
 
@@ -403,6 +403,7 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
 
     ans = cell_results[id]
     errored = ans isa CapturedException
+
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
     (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
 end
@@ -478,7 +479,7 @@ function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
     end
 end
 
-format_output(x; context=nothing) = format_output_default(x; context=context)
+format_output(@nospecialize(x); context=nothing) = format_output_default(x; context=context)
 
 format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
 
@@ -630,13 +631,14 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:N
 # this is really only used for the circular reference tracking
 
 function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)::Vector
-    map(indices) do i
+    [
         if isassigned(x, i)
             i, format_output_default(x[i]; context=context)
         else
             i, format_output_default(Text(Base.undef_ref_str); context=context)
         end
-    end |> collect
+        for i in indices
+    ] |> collect
 end
 
 function array_prefix(x::Array{<:Any, 1})
@@ -815,14 +817,22 @@ function table_data(x::Any, io::IOContext)
         format_output_default(el; context=io)
     end
 
-    row_data = Any[
-        # not a map(row) because it needs to be a Vector
-        # not enumerate(rows) because of some silliness
-        (i, row_data_for(rows[i])) for i in (truncate_rows ? (1:my_row_limit) : (1:length(rows)))
-    ]
+    # ugliest code in Pluto:
+
+    # not a map(row) because it needs to be a Vector
+    # not enumerate(rows) because of some silliness
+    # not rows[i] because `getindex` is not guaranteed to exist
+    L = truncate_rows ? my_row_limit : length(rows)
+    row_data = Array{Any,1}(undef, L)
+    for (i,row) in zip(1:L,rows)
+        row_data[i] = (i, row_data_for(row))
+    end
+
     if truncate_rows
         push!(row_data, "more")
-        push!(row_data, (length(rows), row_data_for(last(rows))))
+        if applicable(lastindex, rows)
+            push!(row_data, (length(rows), row_data_for(last(rows))))
+        end
     end
     
     # TODO: render entire schema by default?
@@ -860,10 +870,6 @@ end
 ###
 # REPL THINGS
 ###
-
-# we don't want the CompleteAlways feature of FuzzyCompletions, so we disable it by having our own score function:
-my_score(c::CompleteAlways) = c.score
-my_score(c::Any) = score(c)
 
 function basic_completion_priority((s, description, exported))
 	c = first(s)
@@ -910,20 +916,20 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
     else
-        filter!(≥(0) ∘ my_score, results) # too many candiates otherwise
+        filter!(≥(0) ∘ score, results) # too many candiates otherwise
     end
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
-    
+
     smooshed_together = collect(zip(texts, descriptions, exported))
-    
+
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
     else
         # we give 3 extra score points to exported fields
-        scores = my_score.(results)
+        scores = score.(results)
         sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
     end
 
