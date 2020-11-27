@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
@@ -75,7 +75,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell)
+			run = run_single!((session, notebook), cell, new_topology[cell])
 			any_interrupted |= run.interrupted
 		end
 		
@@ -103,8 +103,8 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
 	set_output!(cell, run)
 	return run
 end
@@ -145,7 +145,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
-			run_single!(offline_workspace, cell)
+			run_single!(offline_workspace, cell, new[cell])
 		end
 		
 		cd(original_pwd)

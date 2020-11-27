@@ -27,6 +27,13 @@ MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
 ObjectID = typeof(objectid("hello computer"))
 ObjectDimPair = Tuple{ObjectID,Int64}
 
+
+
+
+
+
+
+
 ###
 # WORKSPACE MANAGER
 ###
@@ -50,32 +57,174 @@ function set_current_module(newname)
     global current_module = getfield(Main, newname)
 end
 
-# TODO: clear key when a cell is deleted furever
-const cell_results = Dict{UUID, Any}()
 
-const tree_display_limit = 30
-const tree_display_limit_increase = 40
-const table_row_display_limit = 10
-const table_row_display_limit_increase = 60
-const table_column_display_limit = 8
-const table_column_display_limit_increase = 30
 
-const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
-    extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
-    else
-        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
-        old[showmore] = get(old, showmore, 0) + 1
-        old
-    end
 
-    ans = cell_results[id]
-    errored = ans isa CapturedException
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+
+
+
+
+
+
+
+
+
+###
+# EVALUATING NOTEBOOK CODE
+###
+
+struct ReturnProof end
+const return_error = "Pluto: You can only use return inside a function."
+
+struct Computer
+    f::Function
+    return_proof::ReturnProof
+    input_globals::Vector{Symbol}
+    output_globals::Vector{Symbol}
 end
+
+# TODO: clear key when a cell is deleted furever
+const computers = WeakKeyDict{Expr,Computer}()
+
+const computer_workspace = Main
+
+function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+    proof = ReturnProof()
+
+    @gensym result
+    e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block, 
+        Expr(:(=), result, timed_expr(expr, proof)),
+        Expr(:tuple,
+            result,
+            Expr(:tuple, output_globals...)
+        )
+    ))
+
+    f = Core.eval(computer_workspace, e)
+
+    computers[expr] = Computer(f, proof, input_globals, output_globals)
+end
+
+function compute(computer::Computer)
+    # 1. get the referenced global variables
+    # this might error if the global does not exist, which is exactly what we want
+    input_global_values = getfield.([current_module], computer.input_globals)
+
+    # 2. run the function
+    out = Base.invokelatest(computer.f, input_global_values...)
+    if out isa Tuple{Any,Tuple}
+        result, output_global_values = out
+
+        for (name, val) in zip(computer.output_globals, output_global_values)
+            Core.eval(current_module, Expr(:(=), name, val))
+        end
+
+        result
+    else
+        throw(return_error)
+    end
+end
+
+"Wrap `expr` inside a timing block."
+function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
+    # @assert ExpressionExplorer.is_toplevel_expr(expr)
+
+    linenumbernode = expr.args[1]
+    root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
+
+    @gensym result
+    @gensym elapsed_ns
+    # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
+    Expr(:block, 
+        :(local $elapsed_ns = time_ns()),
+        linenumbernode,
+        :(local $result = $root),
+        :($elapsed_ns = time_ns() - $elapsed_ns),
+        :(($result, $elapsed_ns, $return_proof)),
+    )
+end
+
+"""
+Run the expression or function inside a try ... catch block, and verify its "return proof".
+"""
+function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof)
+    # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
+    ans, runtime = try
+        local invocation = if f isa Expr
+            # We eval `f` in the global scope of the workspace module:
+            Core.eval(current_module, f)
+        else
+            # f is a function
+            f()
+        end
+
+        if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
+            throw(return_error)
+        else
+            local ans, runtime, _ = invocation
+            (ans, runtime)
+        end
+    catch ex
+        bt = stacktrace(catch_backtrace())
+        (CapturedException(ex, bt), missing)
+    end
+end
+
+
+"""
+Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
+
+If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the referenced and assigned variables of the expression (computed by the ExpressionExplorer), then the expression will be **wrapped inside a function**, with the references as inputs, and the assignments as outputs. Instead of running the expression directly, Pluto will call this function, with the right globals as inputs.
+
+This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
+"""
+function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+        proof = ReturnProof()
+        wrapped = timed_expr(expr, proof)
+        run_inside_trycatch(wrapped, cell_id, proof)
+    else
+        local computer = get(computers, expr, nothing)
+        if computer === nothing
+            try
+                computer = register_computer(expr, collect.(function_wrapped_info)...)
+            catch e
+                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                return run_expression(expr, cell_id, nothing)
+            end
+        end
+        ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
+            compute(computer)
+        end
+
+        # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+        # The fix is to detect this situation and run the expression in the classical way.
+        if (ans isa CapturedException) && (ans.ex isa UndefVarError)
+            run_expression(expr, cell_id, nothing)
+        else
+            ans, runtime
+        end
+    end
+end
+
+
+
+
+
+
+
+
+
+###
+# DELETING GLOBALS
+###
+
 
 """
 Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined. 
@@ -208,9 +357,56 @@ const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world
 const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
 const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # FORMATTING
 ###
+
+
+# TODO: clear key when a cell is deleted furever
+const cell_results = Dict{UUID,Any}()
+const cell_runtimes = Dict{UUID,Union{Missing,UInt64}}()
+
+const tree_display_limit = 30
+const tree_display_limit_increase = 40
+const table_row_display_limit = 10
+const table_row_display_limit_increase = 60
+const table_column_display_limit = 8
+const table_column_display_limit_increase = 30
+
+const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
+
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+    extra_items = if showmore === nothing
+        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
+    else
+        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
+        old[showmore] = get(old, showmore, 0) + 1
+        old
+    end
+
+    ans = cell_results[id]
+    errored = ans isa CapturedException
+    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
+end
+
 
 "Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
@@ -290,12 +486,18 @@ function format_output(val::CapturedException; context=nothing)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s,_) in val.processed_bt]
 
-    for _ in 1:2
-        until = findfirst(b -> b.func == :eval, reverse(stack))
-        stack = until === nothing ? stack : stack[1:(length(stack) - until)]
+    function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+
+    if function_wrap_index === nothing
+        for _ in 1:2
+            until = findfirst(b -> b.func == :eval, reverse(stack))
+            stack = until === nothing ? stack : stack[1:end - until]
+        end
+    else
+        stack = stack[1:function_wrap_index]
     end
 
-    pretty = map(stack[1:end]) do s
+    pretty = map(stack) do s
         Dict(
             :call => pretty_stackcall(s, s.linfo),
             :inlined => s.inlined,
@@ -309,7 +511,11 @@ end
 # from the Julia source code:
 function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
     if frame.func isa Symbol
-        String(frame.func)
+        if occursin("function_wrapped_cell", String(frame.func))
+            "top-level scope"
+        else
+            String(frame.func)
+        end
     else
         repr(frame.func)
     end
@@ -634,6 +840,23 @@ function table_data(x::Any, io::IOContext)
     )
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # REPL THINGS
 ###
@@ -757,6 +980,23 @@ function doc_fetcher(query, workspace::Module=current_module)
     end
 end
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # BONDS
 ###
@@ -835,6 +1075,23 @@ const fake_bind = """macro bind(def, element)
         el
     end
 end"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###
 # LOGGING
