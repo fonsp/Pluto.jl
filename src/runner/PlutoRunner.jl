@@ -1105,13 +1105,8 @@ struct PlutoLogger <: Logging.AbstractLogger
     stream
 end
 
-function Logging.shouldlog(::PlutoLogger, level, _module, _...)
-    # Accept logs
-    # - From the user's workspace module
-    # - Info level and above for other modules
-    _module === current_module || convert(Logging.LogLevel, level) >= Logging.Info
-end
-Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
+Logging.shouldlog(::PlutoLogger, args...) = true
+Logging.min_enabled_level(::PlutoLogger) = Logging.Info
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     try
