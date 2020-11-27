@@ -638,7 +638,7 @@ function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractV
             i, format_output_default(Text(Base.undef_ref_str); context=context)
         end
         for i in indices
-    ]
+    ] |> collect
 end
 
 function array_prefix(x::Array{<:Any, 1})
