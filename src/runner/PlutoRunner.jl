@@ -1135,7 +1135,7 @@ end
 function __init__()
     if Distributed.myid() != 1
         old_logger[] = Logging.global_logger()
-        Logging.global_logger(PlutoLogger(nothing))
+        # Logging.global_logger(PlutoLogger(nothing))
     end
 end
 
