@@ -1,12 +1,10 @@
-import FuzzyCompletions: complete_path, completion_text, score, PathCompletion
+import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 using Markdown
 
 function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
-
-score(c::PathCompletion) = c.score
 
 responses[:completepath] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
     path = body["query"]
@@ -38,11 +36,17 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     end
     stop_utf8 = nextind(path, pos) # advance one unicode char, js uses exclusive upper bound
 
+    scores = [max(0.0, score(r)) for r in results]
+    formatted = format_path_completion.(results)
+
+    # sort on score. If a tie (e.g. both score 0.0), sort on dir/file. If a tie, sort alphabetically.
+    perm = sortperm(collect(zip(.-scores, (!isdirpath).(formatted), formatted)))
+
     msg = UpdateMessage(:completion_result, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => sort(format_path_completion.(results), by=s -> (!isdirpath(s), s))
+            :results => formatted[perm]
             ), notebook, nothing, initiator)
 
     putclientupdates!(session, initiator, msg)
