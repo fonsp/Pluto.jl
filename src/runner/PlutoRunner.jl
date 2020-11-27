@@ -830,7 +830,7 @@ function table_data(x::Any, io::IOContext)
 
     if truncate_rows
         push!(row_data, "more")
-        if applicable(last, rows)
+        if applicable(lastindex, rows)
             push!(row_data, (length(rows), row_data_for(last(rows))))
         end
     end
