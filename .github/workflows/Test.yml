@@ -17,7 +17,7 @@ jobs:
     test:
         runs-on: ${{ matrix.os }}
         # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
-        # continue-on-error: true
+        continue-on-error: true
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
