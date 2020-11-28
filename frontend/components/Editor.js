@@ -295,8 +295,8 @@ export class Editor extends Component {
                     immer((state) => {
                         for (let cell of new_cells) {
                             state.cells_local[cell.cell_id] = cell
-                            state.last_created_cell = cell.cell_id
                         }
+                        state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
                 update_notebook((notebook) => {
@@ -511,12 +511,12 @@ export class Editor extends Component {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        if (message.length !== 0) {
+                        if (message.patches.length !== 0) {
                             this.setState((state) => {
-                                let new_notebook = applyPatches(state.notebook, message)
+                                let new_notebook = applyPatches(state.notebook, message.patches)
 
                                 // console.group("Update!")
-                                // for (let patch of message) {
+                                // for (let patch of message.patches) {
                                 //     console.group(`Patch :${patch.op}`)
                                 //     console.log(`patch.path:`, patch.path)
                                 //     console.log(`patch.value:`, patch.value)
@@ -624,64 +624,55 @@ export class Editor extends Component {
             }
 
             this.setState({ update_is_ongoing: true })
-            await Promise.all([
-                this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false),
-                new Promise((resolve) => {
-                    this.setState(
-                        {
-                            notebook: new_notebook,
-                        },
-                        resolve
-                    )
-                }),
-            ])
-            this.setState({ update_is_ongoing: false })
+            try {
+                await Promise.all([
+                    this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
+                        console.log(`message:`, response)
+                        if (response.message.response.you_okay === "👎") {
+                            // We only throw an error for functions that are waiting for this
+                            // Notebook state will already have the changes reversed
+                            throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                        }
+                    }),
+                    new Promise((resolve) => {
+                        this.setState(
+                            {
+                                notebook: new_notebook,
+                            },
+                            resolve
+                        )
+                    }),
+                ])
+            } finally {
+                this.setState({ update_is_ongoing: false })
+            }
         }
         this.update_notebook = update_notebook
 
-        this.submit_file_change = (new_path, reset_cm_value) => {
+        this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
                 return
             }
             console.log(`this.state.notebook.in_temp_dir:`, this.state.notebook.in_temp_dir)
-            if (this.state.notebook.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
-                // this.setState({ loading: true })
-                update_notebook((notebook) => {
+            if (!this.state.notebook.in_temp_dir) {
+                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                    throw new Error("Declined by user")
+                }
+            }
+
+            this.setState({ loading: true })
+
+            try {
+                await update_notebook((notebook) => {
                     notebook.in_temp_dir = false
                     notebook.path = new_path
                 })
-                // this.client
-                //     .send(
-                //         "move_notebook_file",
-                //         {
-                //             path: new_path,
-                //         },
-                //         { notebook_id: this.state.notebook.notebook_id }
-                //     )
-                //     .then((u) => {
-                //         this.setState({
-                //             loading: false,
-                //         })
-                //         if (u.message.success) {
-                //             this.setState({
-                //                 path: new_path,
-                //             })
-                //             // @ts-ignore
-                //             document.activeElement.blur()
-                //         } else {
-                //             this.setState({
-                //                 path: old_path,
-                //             })
-                //             reset_cm_value()
-                //             alert("Failed to move file:\n\n" + u.message.reason)
-                //         }
-                //     })
-            } else {
-                this.setState({
-                    path: old_path,
-                })
-                reset_cm_value()
+                document.activeElement?.blur()
+            } catch (error) {
+                alert("Failed to move file:\n\n" + error.message)
+            } finally {
+                this.setState({ loading: false })
             }
         }
 

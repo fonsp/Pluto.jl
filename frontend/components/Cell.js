@@ -6,58 +6,6 @@ import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
-// /**
-//  * @typedef {Object} CodeState
-//  * @property {string} body
-//  * @property {number} [timestamp]
-//  * @property {boolean} [submitted_by_me]
-//  */
-
-// /**
-//  * Cell as it could be loaded from the .jl file,
-//  * owned by the user, thus the Pluto frontend
-//  * @typedef CellData
-//  * @type {{
-//  *  id: string,
-//  *  code: string,
-//  *  folded: boolean,
-//  * }}
-//  */
-
-// /**
-//  * Running state of a cell,
-//  * owned by the worker
-//  * @typedef CellStateData
-//  * @type {{
-//  *  queued: boolean,
-//  *  running: boolean,
-//  *  errored: boolean,
-//  *  runtime?: number,
-//  *  output: {
-//  *      body: string,
-//  *      timestamp: number,
-//  *      mime: string,
-//  *      rootassignee: ?string,
-//  *  }
-//  * }}
-//  */
-
-// /**
-//  * A cell!
-//  * @typedef {Object} CellState
-//  * @property {string} cell_id
-//  * @property {CodeState} remote_code
-//  * @property {CodeState} local_code
-//  * @property {boolean} code_folded
-//  * @property {boolean} queued
-//  * @property {boolean} running
-//  * @property {?number} runtime
-//  * @property {boolean} errored
-//  * @property {{body: string, timestamp: number, mime: string, rootassignee: ?string}} output
-//  * @property {boolean} selected
-//  * @property {boolean} pasted
-//  */
-
 /**
  * @param {{
  *  cell: import("./Editor.js").CellData,

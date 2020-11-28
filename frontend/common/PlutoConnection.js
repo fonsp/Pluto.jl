@@ -40,16 +40,20 @@ const retry_until_resolved = (f, time_ms) =>
     })
 
 /**
- * @returns {{current: Promise<any>, resolve: Function}}
+ * @template T
+ * @returns {{current: Promise<T>, resolve: (value: T) => void, reject: (error: any) => void }}
  */
 export const resolvable_promise = () => {
     let resolve = () => {}
-    const p = new Promise((r) => {
-        resolve = r
+    let reject = () => {}
+    const p = new Promise((_resolve, _reject) => {
+        resolve = _resolve
+        reject = _reject
     })
     return {
         current: p,
         resolve: resolve,
+        reject: reject,
     }
 }
 
@@ -115,12 +119,17 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             last_task.then(async () => {
                 try {
                     const buffer = await event.data.arrayBuffer()
-                    const update = unpack(new Uint8Array(buffer))
+                    const message = unpack(new Uint8Array(buffer))
 
-                    on_message(update)
+                    try {
+                        on_message(message)
+                    } catch (error) {
+                        console.error("Failed to process message from websocket", error, { message })
+                        // prettier-ignore
+                        alert(`Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${error.message}\n\n${JSON.stringify(event)}`)
+                    }
                 } catch (ex) {
-                    console.error("Failed to process update!", ex)
-                    console.log(event)
+                    console.error("Failed to unpack message from websocket", ex, { event })
 
                     // prettier-ignore
                     alert(`Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`)
@@ -197,10 +206,10 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
      * @param {string} message_type
      * @param {Object} body
      * @param {{notebook_id?: string, cell_id?: string}} metadata
-     * @param {boolean} create_promise If true, returns a Promise that resolves with the server response. If false, the response will go through the on_update method of this instance.
+     * @param {boolean} no_broadcast if false, the message will be emitteed to on_update
      * @returns {(undefined|Promise<Object>)}
      */
-    const send = (message_type, body = {}, metadata = {}, create_promise = true) => {
+    const send = (message_type, body = {}, metadata = {}, no_broadcast = true) => {
         const request_id = get_unique_short_id()
 
         const message = {
@@ -213,10 +222,10 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
 
         var p = resolvable_promise()
 
-        sent_requests[request_id] = (message) => {
-            p.resolve(message)
-            if (create_promise === false) {
-                on_unrequested_update(message, true)
+        sent_requests[request_id] = (response_message) => {
+            p.resolve(response_message)
+            if (no_broadcast === false) {
+                on_unrequested_update(response_message, true)
             }
         }
 

@@ -98,8 +98,9 @@ function notebook_to_js(notebook::Notebook)
 end
 
 global current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-function send_notebook_changes!(request::NotebookRequest)
+function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
     notebook_dict = notebook_to_js(request.notebook)
+    @info "notebook_dict" notebook_dict
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
@@ -108,15 +109,21 @@ function send_notebook_changes!(request::NotebookRequest)
             current_state_for_clients[client] = notebook_dict
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
-            send_anyway = request.initiator !== nothing && client == request.initiator.client
+            is_response = request.initiator !== nothing && client == request.initiator.client
 
-            if length(patches) != 0 || send_anyway
+            if length(patches) != 0 || is_response
                 initiator = isnothing(request.initiator) ? missing : request.initiator
-                putclientupdates!(client, UpdateMessage(:notebook_diff, patches_as_dict, request.notebook, nothing, initiator))
+                response = Dict(
+                    :patches => patches_as_dict,
+                    :response => is_response ? response : nothing
+                )
+                putclientupdates!(client, UpdateMessage(:notebook_diff, response, request.notebook, nothing, initiator))
             end
         end
     end
 end
+
+
 
 function convert_jsonpatch(::Type{Firebase.JSONPatch}, patch_dict::Dict)
 	if patch_dict["op"] == "add"
@@ -126,7 +133,7 @@ function convert_jsonpatch(::Type{Firebase.JSONPatch}, patch_dict::Dict)
 	elseif patch_dict["op"] == "replace"
 		Firebase.ReplacePatch(patch_dict["path"], patch_dict["value"])
 	else
-		throw("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion")
+		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
 	end
 end
 
@@ -136,7 +143,7 @@ function trigger_resolver(anything, path, values=[])
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if length(path) == 0
-		throw("No key matched")
+		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
 	end
 	
 	segment = path[firstindex(path)]
@@ -152,8 +159,8 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	
 	if haskey(resolvers, Wildcard())
 		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
-	else
-		throw("No key matched")
+    else
+        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
 	end
 end
 
@@ -164,8 +171,6 @@ struct FileChanged <: Changed end
 const mutators = Dict(
     "path" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
         newpath = tamepath(patch.value)
-        @info "Newpath:" newpath
-        request.notebook.path = newpath
         SessionActions.move(request.session, request.notebook, newpath)
         nothing
     end,
@@ -205,32 +210,29 @@ const mutators = Dict(
 )
 
 function update_notebook(request::NotebookRequest)
-    notebook = request.notebook
+    try
+        notebook = request.notebook
+        patches = (convert_jsonpatch(Firebase.JSONPatch, update) for update in request.message["updates"])
 
-    if length(request.message["updates"]) == 0
-        return send_notebook_changes!(request)
-    end
+        if length(patches) == 0
+            return send_notebook_changes!(request)
+        end
 
-    if !haskey(current_state_for_clients, request.initiator.client)
-        throw("Updating without having a first version of the notebook??")
-    end
+        if !haskey(current_state_for_clients, request.initiator.client)
+            throw(ErrorException("Updating without having a first version of the notebook??"))
+        end
 
-    # TODO Immutable ??
-    for update in request.message["updates"]
-        patch = convert_jsonpatch(Firebase.JSONPatch, update)
-        Firebase.update!(current_state_for_clients[request.initiator.client], patch)
-    end
+        # TODO Immutable ??
+        for patch in patches
+            Firebase.update!(current_state_for_clients[request.initiator.client], patch)
+        end
 
-    changes = Set{Changed}()
+        changes = Set{Changed}()
 
-    for update in request.message["updates"]
-        patch = convert_jsonpatch(Firebase.JSONPatch, update)
-
-        match = trigger_resolver(mutators, patch.path)
-        if match !== nothing
-            (mutator, matches, rest) = match
+        for patch in patches
+            (mutator, matches, rest) = trigger_resolver(mutators, patch.path)
             
-            current_changes = if length(rest) == 0 && hasmethod(mutator, Tuple{fill(Any, length(matches))...})
+            current_changes = if length(rest) == 0 && applicable(mutator, matches...)
                 mutator(matches...; request=request, patch=patch)
             else
                 mutator(matches..., rest; request=request, patch=patch)
@@ -239,21 +241,40 @@ function update_notebook(request::NotebookRequest)
             if current_changes !== nothing && current_changes isa AbstractVector{Changed}
                 push!(changes, current_changes...)
             end
-        else
-            @warn "Not matching" patch
         end
+
+        if FileChanged ∈ changes
+            @info "SAVE NOTEBOOK"
+            save_notebook(notebook)
+        end
+    
+        send_notebook_changes!(request; response=Dict(:you_okay => :👍))    
+
+        # if code_changed ????
+
+        # end
+    catch e
+        response = if e isa SessionActions.UserError
+            Dict(
+                :you_okay => :👎,
+                :why_not => sprint(showerror, e),
+                :should_i_tell_the_user => true,
+            )
+        elseif e isa Exception
+            Dict(
+                :you_okay => :👎,
+                :why_not => sprint(showerror, e),
+                :should_i_tell_the_user => false,
+            )
+        else
+            Dict(
+                :you_okay => :👎,
+                :why_not => string(e),
+                :should_i_tell_the_user => false,
+            )
+        end
+        send_notebook_changes!(request; response=response)
     end
-
-    # if code_changed ????
-
-    # end
-
-    if FileChanged ∈ changes
-        @info "SAVE NOTEBOOK"
-        save_notebook(notebook)
-    end
-
-    send_notebook_changes!(request)
 end
 
 responses[:update_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
