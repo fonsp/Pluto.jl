@@ -63,6 +63,82 @@ end
 # Yeah I am including a Pluto Notebook!!
 module Firebase include("./FirebaseSimple.jl") end
 
+Base.@kwdef struct DiffableCellData
+    cell_id::UUID
+    code::String
+    code_folded::Bool
+end
+Base.@kwdef struct DiffableCellOutput
+    last_run_timestamp
+    persist_js_state
+    mime
+    body
+    rootassignee
+end
+Base.@kwdef struct DiffableCellState
+    cell_id::UUID
+    queued::Bool
+    running::Bool
+    errored::Bool
+    runtime
+    output::Union{Nothing,DiffableCellOutput}
+end
+Base.@kwdef struct DiffableNotebook
+    notebook_id::UUID
+    path::AbstractString
+    in_temp_dir::Bool
+    shortpath::AbstractString
+    cell_dict::Dict{UUID,DiffableCellData}
+    cells_running::Dict{UUID,DiffableCellState}
+    cell_order::Array{UUID}
+    bonds::Dict{Symbol,Any}
+end
+
+MsgPack.msgpack_type(::Type{DiffableCellData}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{DiffableCellOutput}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{DiffableCellState}) = MsgPack.StructType()
+MsgPack.msgpack_type(::Type{DiffableNotebook}) = MsgPack.StructType()
+
+Firebase.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
+Firebase.diff(o1::DiffableCellData, o2::DiffableCellData) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
+Firebase.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
+Firebase.diff(o1::DiffableCellState, o2::DiffableCellState) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
+
+# function notebook_to_js(notebook::Notebook)
+#     return DiffableNotebook(
+#         notebook_id = notebook.notebook_id,
+#         path = notebook.path,
+#         in_temp_dir = startswith(notebook.path, new_notebooks_directory()),
+#         shortpath = basename(notebook.path),
+#         cell_dict = Dict(map(collect(notebook.cell_dict)) do (id, cell)
+#             id => DiffableCellData(
+#                 cell_id = cell.cell_id,
+#                 code = cell.code,
+#                 code_folded = cell.code_folded,
+#             )
+#         end),
+#         cells_running = Dict(map(collect(notebook.cell_dict)) do (id, cell)
+#             id => DiffableCellState(
+#                 cell_id = cell.cell_id,
+#                 queued = cell.queued,
+#                 running = cell.running,
+#                 errored = cell.errored,
+#                 runtime = ismissing(cell.runtime) ? nothing : cell.runtime,
+#                 output = DiffableCellOutput(                
+#                     last_run_timestamp = cell.last_run_timestamp,
+#                     persist_js_state = cell.persist_js_state,
+#                     mime = cell.repr_mime,
+#                     body = cell.output_repr,
+#                     rootassignee = cell.rootassignee,
+#                 ),
+#             )
+#         end),
+#         cell_order = notebook.cell_order,
+#         bonds = Dict(notebook.bonds),     
+#     )
+# end
+
+
 function notebook_to_js(notebook::Notebook)
     return Dict(
         "notebook_id" => notebook.notebook_id,
@@ -93,14 +169,99 @@ function notebook_to_js(notebook::Notebook)
             )
         end),
         "cell_order" => notebook.cell_order,
-        "bonds" => Dict(notebook.bonds),     
+        "bonds" => Dict(notebook.bonds),
     )
+end
+
+# using Crayons
+function prettytime(time_ns::Number)
+    suffices = ["ns", "μs", "ms", "s"]
+	
+	current_amount = time_ns
+	suffix = ""
+	for current_suffix in suffices
+    	if current_amount >= 1000.0
+        	current_amount = current_amount / 1000.0
+		else
+			suffix = current_suffix
+			break
+		end
+	end
+    
+    # const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
+	roundedtime = current_amount >= 100.0 ? round(current_amount; digits=0) : round(current_amount; digits=1)
+    return "$(roundedtime) $(suffix)"
+end
+function printtime(expr, time_ns, bytes)
+    time = prettytime(time_ns)
+    if time_ns > 1e8
+        # println(crayon"light_red", time, " ", crayon"reset", string(expr))
+        println("[$(time)] $(string(expr))")
+    elseif time_ns > 10e6
+        # println(crayon"red", time, " ", crayon"reset", string(expr))
+        println("[$(time)] $(string(expr))")
+    else
+        nothing
+    end
+end
+
+struct Remove end
+function visit_expr(fn, something)
+	visit(fn, something, [])
+end
+function visit_expr(fn, expr::Expr, stack)
+	substack = [expr, stack...]
+	args = []
+	for arg in expr.args
+		result = visit(fn, arg, substack)
+		if result isa Remove 
+			nothing
+		else
+			push!(args, result)
+		end
+	end
+	fn(Expr(expr.head, args...), substack)
+end
+function visit_expr(fn, something, stack)
+	fn(something, stack)
+end
+
+function remove_blocks(expr)
+    visit_expr(expr) do expr, (parent,)
+        if expr.head == :block
+            QuoteNode(:(...))
+        else
+            expr
+        end
+	end
+end
+function remove_line_nodes(expr)
+    visit_expr(expr) do expr, (parent,)
+		if expr isa LineNumberNode
+			if parent.head == :block
+				Remove()
+			else
+				nothing
+			end
+		else
+			expr
+		end
+	end
+end
+
+
+
+macro track(expr)
+    quote
+        local expr = $(QuoteNode(expr))
+        local value, time_seconds, bytes = @timed $(esc(expr))
+        printtime(expr, time_seconds * 1e9, bytes)
+	end
 end
 
 global current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
     notebook_dict = notebook_to_js(request.notebook)
-    @info "notebook_dict" notebook_dict
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
@@ -168,18 +329,24 @@ abstract type Changed end
 struct CodeChanged <: Changed end
 struct FileChanged <: Changed end
 
-const mutators = Dict(
+mutators = Dict(
     "path" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
         newpath = tamepath(patch.value)
-        SessionActions.move(request.session, request.notebook, newpath)
+        # SessionActions.move(request.session, request.notebook, newpath)
+
+        if isfile(newpath)
+            throw(UserError("File exists already - you need to delete the old file manually."))
+        else
+            move_notebook!(notebook, newpath)
+            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+            WorkspaceManager.cd_workspace((session, notebook), newpath)
+        end
         nothing
     end,
     "in_temp_dir" => function(; _...) nothing end,
     "cell_dict" => Dict(
         Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebase.JSONPatch)
-            # cell = request.notebook.cell_dict[UUID(cell_id)]
             Firebase.update!(request.notebook, patch)
-            @info "Updating cell" patch
 
             if length(rest) == 0
                 [CodeChanged(), FileChanged()]
@@ -198,12 +365,16 @@ const mutators = Dict(
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
-            # @assert patch isa Firebase.ReplacePatch || patch isa Firebase.AddPatch
             name = Symbol(name)
-            # request.notebook.bonds[name] = patch.value
             Firebase.update!(request.notebook, patch)
-            @info "Bond" name patch.value
-            refresh_bond(session=request.session, notebook=request.notebook, name=name)
+            @info "Bonds update" name
+            refresh_bond(
+                session=request.session,
+                notebook=request.notebook,
+                name=name,
+                is_first_value=patch isa Firebase.AddPatch
+            )
+            # [BondChanged]
             nothing
         end,
     )
@@ -229,6 +400,8 @@ function update_notebook(request::NotebookRequest)
 
         changes = Set{Changed}()
 
+        
+        @info "Patches" patches
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(mutators, patch.path)
             
@@ -243,33 +416,35 @@ function update_notebook(request::NotebookRequest)
             end
         end
 
+        # if CodeChanged ∈ changes
+        #     update_caches!(notebook, cells)
+        #     old = notebook.topology
+        #     new = notebook.topology = updated_topology(old, notebook, cells)
+        # end
+
         if FileChanged ∈ changes
-            @info "SAVE NOTEBOOK"
             save_notebook(notebook)
         end
     
         send_notebook_changes!(request; response=Dict(:you_okay => :👍))    
-
-        # if code_changed ????
-
-        # end
-    catch e
-        response = if e isa SessionActions.UserError
+    catch error
+        @error "Update notebook failed" error stacktrace=stacktrace(catch_backtrace()) request.message["updates"]
+        response = if error isa SessionActions.UserError
             Dict(
                 :you_okay => :👎,
-                :why_not => sprint(showerror, e),
+                :why_not => sprint(showerror, error),
                 :should_i_tell_the_user => true,
             )
-        elseif e isa Exception
+        elseif error isa Exception
             Dict(
                 :you_okay => :👎,
-                :why_not => sprint(showerror, e),
+                :why_not => sprint(showerror, error),
                 :should_i_tell_the_user => false,
             )
         else
             Dict(
                 :you_okay => :👎,
-                :why_not => string(e),
+                :why_not => string(error),
                 :should_i_tell_the_user => false,
             )
         end
@@ -281,43 +456,39 @@ responses[:update_notebook] = (session::ServerSession, body, notebook::Notebook;
     update_notebook(NotebookRequest(session=session, message=body, notebook=notebook, initiator=initiator))
 end
 
-
-function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol)
+function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false)
     bound_sym = name
+    new_value = notebook.bonds[name]
 
     variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
-    if variable_exists
-        any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
-        
-        # Assume `body["is_first_value"] == false` if you want to skip an edge case in this code
-        # cancel_run_early = if body["is_first_value"]
-        #     # fix for https://github.com/fonsp/Pluto.jl/issues/275
-        #     # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-            
-        #     # check if the variable does not already have that value.
-        #     # because if the initial value is already set, then we don't want to run dependent cells again.
-        #     eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_val) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-        #     WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-        # else
-        #     false
-        # end
-    
-        # reponse = Dict(body..., "triggered_other_cells" => any_dependents && (!cancel_run_early))
-        
-        # putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, reponse, notebook, nothing, initiator))
-        
-        # if !cancel_run_early
-            function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
-                push!(to_delete_vars, bound_sym) # also delete the bound symbol
-                WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-                WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(notebook.bonds[bound_sym])))
-            end
-            to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
-
-            update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
-        # end
-    else
+    if !variable_exists
         # a bond was set while the cell is in limbo state
         # we don't need to do anything
+        return
     end
+
+    # Not checking for any dependents now
+    # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
+
+    # Assume `body["is_first_value"] == false` if you want to skip an edge case in this code
+    # fix for https://github.com/fonsp/Pluto.jl/issues/275
+    # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+    
+    # check if the variable does not already have that value.
+    # because if the initial value is already set, then we don't want to run dependent cells again.
+    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end)
+    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        return
+    end
+
+    # @info "Refresh bond" stacktrace()
+        
+    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
+        push!(to_delete_vars, bound_sym) # also delete the bound symbol
+        WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+        WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+    end
+    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
 end

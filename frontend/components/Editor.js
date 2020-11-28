@@ -327,7 +327,6 @@ export class Editor extends Component {
                         delete state.cells_local[cell_id]
                     })
                 )
-                console.log("RUN MULTIPLE CELLS", cell_id)
                 await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
@@ -465,7 +464,6 @@ export class Editor extends Component {
                         }
                     }
                 })
-                console.log(`run_multiple_cells cells_ids:`, cells_ids)
                 await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
             },
             set_bond: async (symbol, value, is_first_value) => {
@@ -536,8 +534,7 @@ export class Editor extends Component {
                         handle_log(message, this.state.notebook.path)
                         break
                     default:
-                        console.error("Received unknown update type!")
-                        console.log(update)
+                        console.error("Received unknown update type!", update)
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
                         break
                 }
@@ -612,10 +609,10 @@ export class Editor extends Component {
                 return
             }
 
-            try {
-                let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-            } catch (error) {}
+            // try {
+            //     let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+            //     console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+            // } catch (error) {}
 
             for (let change of changes) {
                 if (change.path.some((x) => typeof x === "number")) {
@@ -653,7 +650,6 @@ export class Editor extends Component {
             if (old_path === new_path) {
                 return
             }
-            console.log(`this.state.notebook.in_temp_dir:`, this.state.notebook.in_temp_dir)
             if (!this.state.notebook.in_temp_dir) {
                 if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
                     throw new Error("Declined by user")
@@ -826,9 +822,11 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
-        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done) {
+        if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+            let bonds_patches = this.bonds_changes_to_apply_when_done
+            this.bonds_changes_to_apply_when_done = []
             this.update_notebook((notebook) => {
-                applyPatches(notebook, this.bonds_changes_to_apply_when_done)
+                applyPatches(notebook, bonds_patches)
             })
         }
     }

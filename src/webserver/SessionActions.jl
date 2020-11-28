@@ -73,14 +73,4 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
     end
     success = WorkspaceManager.unmake_workspace((session, notebook))
 end
-
-function move(session::ServerSession, notebook::Notebook, newpath::AbstractString)
-    if isfile(newpath)
-        throw(UserError("File exists already - you need to delete the old file manually."))
-    else
-        move_notebook!(notebook, newpath)
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-        WorkspaceManager.cd_workspace((session, notebook), newpath)
-    end
-end
 end
