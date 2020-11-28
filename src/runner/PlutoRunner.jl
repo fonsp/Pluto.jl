@@ -1060,7 +1060,8 @@ The first cell will show a slider as the cell's output, ranging from 0 until 100
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
 macro bind(def, element)
-	if def isa Symbol
+    is_element_valid = element isa Symbol || (element isa Expr && element.head ∉ [:(=), :(::)])
+	if def isa Symbol && is_element_valid
 		quote
 			local el = $(esc(element))
             global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
