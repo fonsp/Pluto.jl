@@ -12,13 +12,7 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const is_unix_path = (path) => path.includes("/")
-
-const split_at_level = (path, level) => {
-    let isunix = is_unix_path(path)
-    let sep = isunix ? "/" : "\\"
-    return path.split(sep).slice(-level).join(sep)
-}
+const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join(sep)
 
 const shortest_path = (path, allpaths) => {
     let level = 1
