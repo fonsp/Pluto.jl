@@ -241,7 +241,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
-            update_notebook: this.update_notebook,
+            update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val) => {
                 this.setState(
@@ -627,7 +627,6 @@ export class Editor extends Component {
             try {
                 await Promise.all([
                     this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                        console.log(`message:`, response)
                         if (response.message.response.you_okay === "👎") {
                             // We only throw an error for functions that are waiting for this
                             // Notebook state will already have the changes reversed
