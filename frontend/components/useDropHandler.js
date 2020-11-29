@@ -1,6 +1,7 @@
 import { useState, useMemo } from "../imports/Preact.js"
 
 const MAGIC_TIMEOUT = 500
+const DEBOUNCE_MAGIC_MS = 250
 
 const prepareFile = (file) =>
     new Promise((resolve, reject) => {
@@ -17,7 +18,7 @@ const prepareFile = (file) =>
 export const useDropHandler = (requests, on_change, cell_id) => {
     const [savingFile, setSavingFile] = useState(false)
     const [dragActive, setDragActiveFast] = useState(false)
-    const setDragActive = useMemo(() => _.debounce(setDragActiveFast, 200), [setDragActiveFast])
+    const setDragActive = useMemo(() => _.debounce(setDragActiveFast, DEBOUNCE_MAGIC_MS), [setDragActiveFast])
     const inactiveHandler = useMemo(
         () => (ev) => {
             switch (ev.type) {

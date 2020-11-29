@@ -4,7 +4,7 @@ import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
-import { useDropHandler } from "./dropHandler.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 /**
  * @typedef {Object} CodeState
