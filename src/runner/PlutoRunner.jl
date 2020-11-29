@@ -84,12 +84,15 @@ struct Computer
     output_globals::Vector{Symbol}
 end
 
+expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, e.args; init=zero(ObjectID))
+expr_hash(x) = objectid(x)
 # TODO: clear key when a cell is deleted furever
-const computers = Dict{Expr,Computer}()
+const computers = Dict{ObjectID,Computer}()
 
 const computer_workspace = Main
 
-function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+
+function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
     proof = ReturnProof()
 
     @gensym result
@@ -103,7 +106,7 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
 
     f = Core.eval(computer_workspace, e)
 
-    computers[expr] = Computer(f, proof, input_globals, output_globals)
+    computers[key] = Computer(f, proof, input_globals, output_globals)
 end
 
 function compute(computer::Computer)
@@ -190,10 +193,11 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
     else
-        local computer = get(computers, expr, nothing)
+        key = expr_hash(expr)
+        local computer = get(computers, key, nothing)
         if computer === nothing
             try
-                computer = register_computer(expr, collect.(function_wrapped_info)...)
+                computer = register_computer(expr, key, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
                 return run_expression(expr, cell_id, nothing)

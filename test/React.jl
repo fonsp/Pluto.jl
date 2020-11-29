@@ -861,6 +861,8 @@ import Distributed
                 false
             end |> length
             """),
+            Cell("4"),
+            Cell("[5]"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -884,6 +886,16 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
         @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
+
+        old = notebook.cells[4].output_repr
+        setcode(notebook.cells[4], "4.0")
+        update_run!(🍭, notebook, notebook.cells[4])
+        @test old != notebook.cells[4].output_repr
+        
+        old = notebook.cells[5].output_repr
+        setcode(notebook.cells[5], "[5.0]")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test old != notebook.cells[5].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
