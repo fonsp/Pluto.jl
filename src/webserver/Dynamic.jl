@@ -367,7 +367,6 @@ mutators = Dict(
         Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
             name = Symbol(name)
             Firebase.update!(request.notebook, patch)
-            @info "Bonds update" name
             refresh_bond(
                 session=request.session,
                 notebook=request.notebook,
@@ -400,8 +399,6 @@ function update_notebook(request::NotebookRequest)
 
         changes = Set{Changed}()
 
-        
-        @info "Patches" patches
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(mutators, patch.path)
             
@@ -458,7 +455,7 @@ end
 
 function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false)
     bound_sym = name
-    new_value = notebook.bonds[name]
+    new_value = notebook.bonds[name].value
 
     variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
     if !variable_exists
@@ -470,18 +467,14 @@ function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol
     # Not checking for any dependents now
     # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
 
-    # Assume `body["is_first_value"] == false` if you want to skip an edge case in this code
     # fix for https://github.com/fonsp/Pluto.jl/issues/275
     # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-    
-    # check if the variable does not already have that value.
+    # Check if the variable does not already have that value.
     # because if the initial value is already set, then we don't want to run dependent cells again.
     eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end)
     if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
         return
     end
-
-    # @info "Refresh bond" stacktrace()
         
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
         push!(to_delete_vars, bound_sym) # also delete the bound symbol

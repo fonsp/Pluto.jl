@@ -13,6 +13,12 @@ function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
     get!(ReactiveNode, topology.nodes, cell)
 end
 
+struct BondValue
+    value::Any
+end
+function Base.convert(::Type{BondValue}, dict::Dict)
+    BondValue(dict["value"])
+end
 
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
@@ -34,7 +40,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-    bonds::Dict{Symbol,Any}=Dict()
+    bonds::Dict{Symbol,BondValue}=Dict()
 end
 
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.

@@ -467,10 +467,15 @@ export class Editor extends Component {
                 await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
             },
             set_bond: async (symbol, value, is_first_value) => {
+                // For now I discard is_first_value, basing it on if there
+                // is a value already present in the state.
+                // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
+
                 this.counter_statistics.numBondSets++
 
+                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
-                    notebook.bonds[symbol] = value
+                    notebook.bonds[symbol] = { value: value }
                 })
             },
             reshow_cell: (cell_id, objectid, dim) => {
