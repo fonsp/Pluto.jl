@@ -93,9 +93,9 @@ export const Cell = ({
 }) => {
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-    const { savingFile, dragActive, eventHandler, inactiveHandler } = useDropHandler(requests, on_change, cell_id)
+    const { saving_file, drag_active, event_handler, inactive_handler } = useDropHandler(requests, on_change, cell_id)
     const has_code = local_code.body?.length > 0
-    const handler = !has_code ? eventHandler : inactiveHandler
+    const handler = !has_code ? event_handler : inactive_handler
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
@@ -135,9 +135,9 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
-                drop_target: dragActive,
-                drop_invalid: has_code && !savingFile,
-                saving_file: savingFile,
+                drop_target: drag_active,
+                drop_invalid: has_code && !saving_file,
+                saving_file: saving_file,
             })}
             id=${cell_id}
         >
@@ -174,7 +174,7 @@ export const Cell = ({
                 scroll_into_view_after_creation=${scroll_into_view_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
-                on_drag_drop_events=${eventHandler}
+                on_drag_drop_events=${event_handler}
                 on_submit=${(new_code) => {
                     requests.change_remote_cell(cell_id, new_code)
                 }}

@@ -16,10 +16,10 @@ const prepareFile = (file) =>
     })
 
 export const useDropHandler = (requests, on_change, cell_id) => {
-    const [savingFile, setSavingFile] = useState(false)
-    const [dragActive, setDragActiveFast] = useState(false)
-    const setDragActive = useMemo(() => _.debounce(setDragActiveFast, DEBOUNCE_MAGIC_MS), [setDragActiveFast])
-    const inactiveHandler = useMemo(
+    const [saving_file, set_saving_file] = useState(false)
+    const [drag_active, set_drag_active_fast] = useState(false)
+    const set_drag_active = useMemo(() => _.debounce(set_drag_active_fast, DEBOUNCE_MAGIC_MS), [set_drag_active_fast])
+    const inactive_handler = useMemo(
         () => (ev) => {
             switch (ev.type) {
                 case "drop":
@@ -28,25 +28,25 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 case "dragover":
                     ev.preventDefault()
                     ev.dataTransfer.dropEffect = "none"
-                    setDragActive(true)
-                    setTimeout(() => setDragActive(false), MAGIC_TIMEOUT)
+                    set_drag_active(true)
+                    setTimeout(() => set_drag_active(false), MAGIC_TIMEOUT)
                     break
                 case "dragenter":
-                    setDragActiveFast(true)
+                    set_drag_active_fast(true)
                     break
                 case "dragleave":
-                    setDragActive(false)
+                    set_drag_active(false)
                     break
                 default:
                     break
             }
         },
-        [setDragActive, setDragActiveFast]
+        [set_drag_active, set_drag_active_fast]
     )
-    const eventHandler = useMemo(() => {
+    const event_handler = useMemo(() => {
         const uploadAndCreateCodeTemplate = async (file) => {
             if (!(file instanceof File)) return " #  File can't be read"
-            setSavingFile(true)
+            set_saving_file(true)
             const {
                 message: { success, code },
             } = await prepareFile(file).then(
@@ -55,8 +55,8 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 },
                 () => alert("Pluto can't save this file 😥")
             )
-            setSavingFile(false)
-            setDragActiveFast(false)
+            set_saving_file(false)
+            set_drag_active_fast(false)
             if (!success) {
                 alert("Pluto can't save this file 😥")
                 return "# File save failed"
@@ -72,7 +72,7 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 case "cmdrop":
                 case "drop":
                     ev.preventDefault() // don't file open
-                    setDragActive(false)
+                    set_drag_active(false)
                     if (!ev.dataTransfer.files.length) {
                         return
                     }
@@ -86,19 +86,19 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 case "dragover":
                     ev.preventDefault()
                     ev.dataTransfer.dropEffect = "copy"
-                    setDragActive(true)
-                    setTimeout(() => setDragActive(false), MAGIC_TIMEOUT)
+                    set_drag_active(true)
+                    setTimeout(() => set_drag_active(false), MAGIC_TIMEOUT)
                     break
                 case "dragenter":
-                    setDragActiveFast(true)
+                    set_drag_active_fast(true)
                     break
                 case "dragleave":
-                    setDragActive(false)
+                    set_drag_active(false)
                     break
                 default:
             }
         }
-    }, [setDragActive, setDragActiveFast, setSavingFile, requests, cell_id, on_change])
+    }, [set_drag_active, set_drag_active_fast, set_saving_file, requests, cell_id, on_change])
 
-    return { savingFile, dragActive, eventHandler, inactiveHandler }
+    return { saving_file, drag_active, event_handler, inactive_handler }
 }
