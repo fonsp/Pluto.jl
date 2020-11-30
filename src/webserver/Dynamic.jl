@@ -216,7 +216,7 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
         false
     end
 
-    code = get_template_code(body["name"], reldir)
+    code = get_template_code(body["name"], reldir, body["file"])
 
     msg = UpdateMessage(:write_file_reply, 
         Dict(
@@ -227,7 +227,7 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     putclientupdates!(session, initiator, msg)
 end
 
-get_template_code = (filename, directory) -> begin
+get_template_code = (filename, directory, iofilecontents) -> begin
     path = string(raw"$(dirname(@__FILE__))", "/", directory, "/", filename)
     varname = replace(filename, r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
     extension = split(filename, ".")[end]
@@ -247,8 +247,9 @@ end"""
 end"""
 
     elseif extension ∈ ["jl"]
-        file = open(path)
-        code = read(file, String)
+        io = IOBuffer();
+        write(io, iofilecontents)
+        code = String(take!(io))
 
     elseif is_extension_supported(extension)
         code = get_example_code(directory, filename)
