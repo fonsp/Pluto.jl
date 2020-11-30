@@ -424,8 +424,13 @@ md"## Update"
 STRICT = false
 
 # ╔═╡ 640663fc-06ba-491e-bd85-299514237651
-function force_convert_key(::Dict{T,<:Any}, value) where T
-  T(value)
+begin
+	function force_convert_key(::Dict{T,<:Any}, value::T) where T
+		value
+	end
+	function force_convert_key(::Dict{T,<:Any}, value::Any) where T
+		T(value)
+	end
 end
 
 # ╔═╡ 48a45941-2489-4666-b4e5-88d3f82e5145

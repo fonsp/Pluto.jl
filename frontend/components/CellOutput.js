@@ -3,11 +3,11 @@ import { html, Component, useRef, useLayoutEffect, useContext } from "../imports
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
 
-import { add_bonds_listener } from "../common/Bond.js"
+import { add_bonds_listener, set_bonds_values } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -255,11 +255,16 @@ let run = (f) => f()
 
 export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
     let pluto_actions = useContext(PlutoContext)
+    let pluto_bonds = useContext(PlutoBondsContext)
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
 
     let container = useRef()
+
+    useLayoutEffect(() => {
+        set_bonds_values(container.current, pluto_bonds)
+    }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
         // Invalidate current scripts and create a new invalidation token immediately
@@ -281,6 +286,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
             })
 
             if (pluto_actions != null) {
+                set_bonds_values(container.current, pluto_bonds)
                 let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
                     pluto_actions.set_bond(name, value, is_first_value)
                 })
@@ -309,7 +315,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
         return () => {
             invalidate_scripts.current?.()
         }
-    })
+    }, [body, persist_js_state, pluto_actions])
 
     return html`<div ref=${container}></div>`
 }

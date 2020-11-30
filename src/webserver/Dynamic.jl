@@ -169,7 +169,9 @@ function notebook_to_js(notebook::Notebook)
             )
         end),
         "cell_order" => notebook.cell_order,
-        "bonds" => Dict(notebook.bonds),
+        "bonds" => Dict{String,Dict{String,Any}}(map(collect(notebook.bonds)) do (key, bondvalue)
+            String(key) => Dict("value" => bondvalue.value)
+        end),
     )
 end
 
@@ -267,13 +269,13 @@ function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
             current_dict = get(current_state_for_clients, client, :empty)
             patches = Firebase.diff(current_dict, notebook_dict)
             patches_as_dict::Array{Dict} = patches
-            current_state_for_clients[client] = notebook_dict
+            current_state_for_clients[client] = deepcopy(notebook_dict)
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
             is_response = request.initiator !== nothing && client == request.initiator.client
 
             if length(patches) != 0 || is_response
-                initiator = isnothing(request.initiator) ? missing : request.initiator
+                initiator = request.initiator === nothing ? missing : request.initiator
                 response = Dict(
                     :patches => patches_as_dict,
                     :response => is_response ? response : nothing
@@ -367,7 +369,7 @@ mutators = Dict(
         Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
             name = Symbol(name)
             Firebase.update!(request.notebook, patch)
-            refresh_bond(
+            @async refresh_bond(
                 session=request.session,
                 notebook=request.notebook,
                 name=name,
@@ -385,7 +387,8 @@ function update_notebook(request::NotebookRequest)
         patches = (convert_jsonpatch(Firebase.JSONPatch, update) for update in request.message["updates"])
 
         if length(patches) == 0
-            return send_notebook_changes!(request)
+            send_notebook_changes!(request)
+            return nothing
         end
 
         if !haskey(current_state_for_clients, request.initiator.client)
@@ -483,5 +486,5 @@ function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=true, save=false, persist_js_state=true)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true)
 end

@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import { v4 as uuidv4 } from "../imports/uuid.js"
 import _ from "../imports/lodash.js"
@@ -21,9 +21,10 @@ import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
+const DEBUG_DIFFING = false
 
 /**
  * Serialize an array of cells into a string form (similar to the .jl file).
@@ -316,18 +317,7 @@ export class Editor extends Component {
             },
             change_remote_cell: async (cell_id, new_code, create_promise = false) => {
                 this.counter_statistics.numEvals++
-
-                await update_notebook((notebook) => {
-                    notebook.cell_dict[cell_id].code = new_code
-                })
-                // Just making sure there is no local state to overwrite left
-                // TODO I'm not sure if this is useful/necessary/required actually
-                this.setState(
-                    immer((state) => {
-                        delete state.cells_local[cell_id]
-                    })
-                )
-                await this.client.send("run_multiple_cells", { cells: [cell_id] }, { notebook_id: this.state.notebook.notebook_id })
+                this.actions.set_and_run_multiple([cell_id])
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
                 const cell = this.state.notebook.cell_dict[cell_id]
@@ -397,6 +387,7 @@ export class Editor extends Component {
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
+                this.actions.run_cells([id])
                 await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
             },
             add_remote_cell: async (cell_id, before_or_after) => {
@@ -456,15 +447,28 @@ export class Editor extends Component {
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
             },
-            set_and_run_multiple: async (cells_ids) => {
+            set_and_run_multiple: async (cell_ids) => {
                 await update_notebook((notebook) => {
-                    for (let cell_id of cells_ids) {
+                    for (let cell_id of cell_ids) {
                         if (this.state.cells_local[cell_id]) {
                             notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
                         }
                     }
                 })
-                await this.client.send("run_multiple_cells", { cells: cells_ids }, { notebook_id: this.state.notebook.notebook_id })
+                // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
+                // But for now... this is fine 😼
+                this.setState(
+                    immer((state) => {
+                        for (let cell_id of cell_ids) {
+                            if (state.notebook.cells_running[cell_id]) {
+                                state.notebook.cells_running[cell_id].queued = true
+                            } else {
+                                // nothing
+                            }
+                        }
+                    })
+                )
+                await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
             },
             set_bond: async (symbol, value, is_first_value) => {
                 // For now I discard is_first_value, basing it on if there
@@ -518,16 +522,22 @@ export class Editor extends Component {
                             this.setState((state) => {
                                 let new_notebook = applyPatches(state.notebook, message.patches)
 
-                                // console.group("Update!")
-                                // for (let patch of message.patches) {
-                                //     console.group(`Patch :${patch.op}`)
-                                //     console.log(`patch.path:`, patch.path)
-                                //     console.log(`patch.value:`, patch.value)
-                                //     console.groupEnd()
-                                // }
-                                // console.log(`message:`, message)
-                                // console.log(`new_notebook:`, new_notebook)
-                                // console.groupEnd()
+                                if (DEBUG_DIFFING) {
+                                    console.group("Update!")
+                                    for (let patch of message.patches) {
+                                        console.group(`Patch :${patch.op}`)
+                                        console.log(patch.path)
+                                        console.log(patch.value)
+                                        console.groupEnd()
+                                    }
+                                    console.groupEnd()
+                                }
+
+                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_dict[cell_id] == null)
+                                if (cells_stuck_in_limbo.length !== 0) {
+                                    console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_dict[cell_id] != null)
+                                }
 
                                 return {
                                     notebook: new_notebook,
@@ -614,10 +624,12 @@ export class Editor extends Component {
                 return
             }
 
-            // try {
-            //     let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-            //     console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-            // } catch (error) {}
+            if (DEBUG_DIFFING) {
+                try {
+                    let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                    console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+                } catch (error) {}
+            }
 
             for (let change of changes) {
                 if (change.path.some((x) => typeof x === "number")) {
@@ -688,6 +700,9 @@ export class Editor extends Component {
         }
 
         document.addEventListener("keydown", (e) => {
+            // if (e.defaultPrevented) {
+            //     return
+            // }
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cells_running).some((c) => c.running || c.queued)) {
@@ -838,108 +853,111 @@ export class Editor extends Component {
 
     render() {
         let { export_menu_open } = this.state
+
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
-                <${Scroller} active=${this.state.scroller} />
-                <header className=${export_menu_open ? "show_export" : ""}>
-                    <${ExportBanner}
-                        pluto_version=${this.client?.version_info?.pluto}
-                        notebook=${this.state.notebook}
-                        open=${export_menu_open}
-                        onClose=${() => this.setState({ export_menu_open: false })}
-                    />
-                    <nav id="at_the_top">
-                        <a href="./">
-                            <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
-                        </a>
-                        <${FilePicker}
-                            client=${this.client}
-                            value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
-                            on_submit=${this.submit_file_change}
-                            suggest_new_file=${{
-                                base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                name: this.state.notebook.shortpath,
-                            }}
-                            placeholder="Save notebook..."
-                            button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                    <${Scroller} active=${this.state.scroller} />
+                    <header className=${export_menu_open ? "show_export" : ""}>
+                        <${ExportBanner}
+                            pluto_version=${this.client?.version_info?.pluto}
+                            notebook=${this.state.notebook}
+                            open=${export_menu_open}
+                            onClose=${() => this.setState({ export_menu_open: false })}
                         />
-                        <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
-                            <span></span>
-                        </button>
-                    </nav>
-                </header>
-                <main>
-                    <preamble>
-                        <button
-                            onClick=${() => {
-                                this.actions.set_and_run_all_changed_remote_cells()
+                        <nav id="at_the_top">
+                            <a href="./">
+                                <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
+                            </a>
+                            <${FilePicker}
+                                client=${this.client}
+                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                on_submit=${this.submit_file_change}
+                                suggest_new_file=${{
+                                    base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                    name: this.state.notebook.shortpath,
+                                }}
+                                placeholder="Save notebook..."
+                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                            />
+                            <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
+                                <span></span>
+                            </button>
+                        </nav>
+                    </header>
+                    <main>
+                        <preamble>
+                            <button
+                                onClick=${() => {
+                                    this.actions.set_and_run_all_changed_remote_cells()
+                                }}
+                                class="runallchanged"
+                                title="Save and run all changed cells"
+                            >
+                                <span></span>
+                            </button>
+                        </preamble>
+                        <${Notebook}
+                            is_loading=${this.state.loading}
+                            notebook=${this.state.notebook}
+                            selected_cells=${this.state.selected_cells}
+                            cells_local=${this.state.cells_local}
+                            on_update_doc_query=${this.actions.set_doc_query}
+                            on_cell_input=${this.actions.set_local_cell}
+                            on_focus_neighbor=${this.actions.focus_on_neighbor}
+                            disable_input=${!this.state.connected}
+                            last_created_cell=${this.state.last_created_cell}
+                        />
+
+                        <${DropRuler} actions=${this.actions} selected_cells=${this.state.selected_cells} />
+
+                        <${SelectionArea}
+                            actions=${this.actions}
+                            cell_order=${this.state.notebook.cell_order}
+                            selected_cell_ids=${this.state.selected_cell_ids}
+                            on_selection=${(selected_cell_ids) => {
+                                // @ts-ignore
+                                if (
+                                    selected_cell_ids.length !== this.state.selected_cells ||
+                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                ) {
+                                    this.setState({
+                                        selected_cells: selected_cell_ids,
+                                    })
+                                }
                             }}
-                            class="runallchanged"
-                            title="Save and run all changed cells"
-                        >
-                            <span></span>
-                        </button>
-                    </preamble>
-                    <${Notebook}
-                        is_loading=${this.state.loading}
-                        notebook=${this.state.notebook}
-                        selected_cells=${this.state.selected_cells}
-                        cells_local=${this.state.cells_local}
+                        />
+                    </main>
+                    <${LiveDocs}
+                        desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
-                        on_cell_input=${this.actions.set_local_cell}
-                        on_focus_neighbor=${this.actions.focus_on_neighbor}
-                        disable_input=${!this.state.connected}
-                        last_created_cell=${this.state.last_created_cell}
+                        notebook=${this.state.notebook}
                     />
-
-                    <${DropRuler} actions=${this.actions} selected_cells=${this.state.selected_cells} />
-
-                    <${SelectionArea}
-                        actions=${this.actions}
-                        cell_order=${this.state.notebook.cell_order}
-                        selected_cell_ids=${this.state.selected_cell_ids}
-                        on_selection=${(selected_cell_ids) => {
-                            // @ts-ignore
-                            if (
-                                selected_cell_ids.length !== this.state.selected_cells ||
-                                _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                            ) {
-                                this.setState({
-                                    selected_cells: selected_cell_ids,
-                                })
-                            }
+                    <${UndoDelete}
+                        recently_deleted=${this.state.recently_deleted}
+                        on_click=${() => {
+                            this.update_notebook((notebook) => {
+                                for (let { index, cell } of this.state.recently_deleted) {
+                                    notebook.cell_dict[cell.cell_id] = cell
+                                    notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
+                                }
+                            })
                         }}
                     />
-                </main>
-                <${LiveDocs}
-                    desired_doc_query=${this.state.desired_doc_query}
-                    on_update_doc_query=${this.actions.set_doc_query}
-                    notebook=${this.state.notebook}
-                />
-                <${UndoDelete}
-                    recently_deleted=${this.state.recently_deleted}
-                    on_click=${() => {
-                        this.update_notebook((notebook) => {
-                            for (let { index, cell } of this.state.recently_deleted) {
-                                notebook.cell_dict[cell.cell_id] = cell
-                                notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
-                            }
-                        })
-                    }}
-                />
-                <${SlideControls} />
-                <footer>
-                    <div id="info">
-                        <form id="feedback" action="#" method="post">
-                            <a href="statistics-info">Statistics</a>
-                            <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
-                            <span style="flex: 1"></span>
-                            <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                            <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                            <button>Send</button>
-                        </form>
-                    </div>
-                </footer>
+                    <${SlideControls} />
+                    <footer>
+                        <div id="info">
+                            <form id="feedback" action="#" method="post">
+                                <a href="statistics-info">Statistics</a>
+                                <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                                <span style="flex: 1"></span>
+                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
+                                <button>Send</button>
+                            </form>
+                        </div>
+                    </footer>
+                </${PlutoBondsContext.Provider}>
             </${PlutoContext.Provider}>
         `
     }

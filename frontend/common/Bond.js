@@ -3,6 +3,15 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
+export const set_bonds_values = (node, bond_values) => {
+    for (let bond_node of node.querySelectorAll("bond")) {
+        let bond_name = bond_node.getAttribute("def")
+        if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
+            bond_node.firstElementChild.value = bond_values[bond_name].value
+        }
+    }
+}
+
 /**
  * @param {HTMLElement} node
  * @param {(name: string, value_to_send: any, is_first_value: boolean) => void} on_bond_change

@@ -102,13 +102,13 @@ export const CellInput = ({
 
         const keys = {}
 
-        keys["Shift-Enter"] = () => on_submit(cm.getValue())
+        keys["Shift-Enter"] = () => on_submit()
         keys["Ctrl-Enter"] = () => {
             on_add_after()
 
             const new_value = cm.getValue()
             if (new_value !== remote_code_ref.current.body) {
-                on_submit(new_value)
+                on_submit()
             }
         }
         // Page up and page down are fn+Up and fn+Down on recent apple keyboards

@@ -107,8 +107,8 @@ export const Cell = ({
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
-                on_submit=${(new_code) => {
-                    pluto_actions.change_remote_cell(cell_id, new_code)
+                on_submit=${() => {
+                    pluto_actions.change_remote_cell(cell_id)
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]
