@@ -23,7 +23,7 @@ import Tables
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
+MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}}, MIME}
 ObjectID = typeof(objectid("hello computer"))
 ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -84,12 +84,15 @@ struct Computer
     output_globals::Vector{Symbol}
 end
 
+expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, e.args; init=zero(ObjectID))
+expr_hash(x) = objectid(x)
 # TODO: clear key when a cell is deleted furever
-const computers = Dict{Expr,Computer}()
+const computers = Dict{ObjectID,Computer}()
 
 const computer_workspace = Main
 
-function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+
+function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
     proof = ReturnProof()
 
     @gensym result
@@ -103,7 +106,7 @@ function register_computer(expr::Expr, input_globals::Vector{Symbol}, output_glo
 
     f = Core.eval(computer_workspace, e)
 
-    computers[expr] = Computer(f, proof, input_globals, output_globals)
+    computers[key] = Computer(f, proof, input_globals, output_globals)
 end
 
 function compute(computer::Computer)
@@ -190,10 +193,11 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
     else
-        local computer = get(computers, expr, nothing)
+        key = expr_hash(expr)
+        local computer = get(computers, key, nothing)
         if computer === nothing
             try
-                computer = register_computer(expr, collect.(function_wrapped_info)...)
+                computer = register_computer(expr, key, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
                 return run_expression(expr, cell_id, nothing)
@@ -470,16 +474,16 @@ function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
                 String(io_sprinted), mime
             end
         else
-            value, mime
+            (value, mime)::MimedOutput
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
         bt = stacktrace(catch_backtrace())
-        format_output(CapturedException(title, bt))
+        format_output(CapturedException(title, bt))::MimedOutput
     end
 end
 
-format_output(@nospecialize(x); context=nothing) = format_output_default(x; context=context)
+format_output(x; context=nothing)::MimedOutput = format_output_default(x; context=context)
 
 format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
 
@@ -506,11 +510,11 @@ function format_output(val::CapturedException; context=nothing)::MimedOutput
             :line => s.line,
         )
     end
-    Dict(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 # from the Julia source code:
-function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
+function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)::String
     if frame.func isa Symbol
         if occursin("function_wrapped_cell", String(frame.func))
             "top-level scope"
@@ -546,9 +550,7 @@ struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
-function use_tree_viewer_for_struct(@nospecialize(x))
-    T = typeof(x)
-
+function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
     isstruct = try
@@ -575,7 +577,7 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    mime = Iterators.filter(m -> pluto_showable(m ,x), allmimes) |> first
+    mime = Iterators.filter(m -> pluto_showable(m, x), allmimes) |> first
     
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
@@ -603,7 +605,7 @@ end
 # but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
 # Baee.showable(m::MIME, x::Plots.Plot)
 # because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
-pluto_showable(m::MIME, x::Any) = Base.invokelatest(showable, m, x)
+pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m, x)
 
 ###
 # TREE VIEWER
@@ -622,7 +624,7 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = fal
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
 
 
-pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x) catch; false end
+pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
 pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
 pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
 
@@ -630,8 +632,8 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:N
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)::Vector
-    [
+function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any, 1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+    Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i]; context=context)
         else
@@ -641,15 +643,15 @@ function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractV
     ] |> collect
 end
 
-function array_prefix(x::Array{<:Any, 1})
+function array_prefix(@nospecialize(x::Array{<:Any, 1}))::String
     string(eltype(x))
 end
-function array_prefix(x)
+function array_prefix(@nospecialize(x))::String
     original = sprint(Base.showarg, x, false)
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(x, dim::Int64, context::IOContext, a::Int64, b::Int64)
+function get_my_display_limit(@nospecialize(x), dim::Int64, context::IOContext, a::Int64, b::Int64)::Int64
     a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
@@ -660,7 +662,7 @@ function get_my_display_limit(x, dim::Int64, context::IOContext, a::Int64, b::In
     end
 end
 
-function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
+function tree_data(@nospecialize(x::AbstractArray{<:Any, 1}), context::IOContext)
     indices = eachindex(x)
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
@@ -670,14 +672,14 @@ function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     else
         firsti = firstindex(x)
         from_end = my_limit > 20 ? 10 : 1
-        [
+        Any[
             tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], context)...,
             "more",
             tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
         ]
     end
     
-    Dict(
+    Dict{Symbol,Any}(
         :prefix => array_prefix(x),
         :objectid => string(objectid(x), base=16),
         :type => :Array,
@@ -685,15 +687,15 @@ function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     )
 end
 
-function tree_data(x::Tuple, context::IOContext)
-    Dict(
+function tree_data(@nospecialize(x::Tuple), context::IOContext)
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
         :elements => collect(enumerate(format_output_default.(x; context=context))),
     )
 end
 
-function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any, <:Any}), context::IOContext)
     elements = []
 
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
@@ -708,7 +710,7 @@ function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
         row_index += 1
     end
     
-    Dict(
+    Dict{Symbol,Any}(
         :prefix => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Dict,
@@ -723,17 +725,17 @@ function tree_data_nt_row(pair::Tuple, context::IOContext)
 end
 
 
-function tree_data(x::NamedTuple, context::IOContext)
-    Dict(
+function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
         :elements => tree_data_nt_row.(zip(eachindex(x), x), (context,))
     )
 end
 
-function tree_data(x::Pair, context::IOContext)
+function tree_data(@nospecialize(x::Pair), context::IOContext)
     k, v = x
-    Dict(
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Pair,
         :key_value => (format_output_default(k; context=context), format_output_default(v; context=context)),
@@ -747,7 +749,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
     nb = sizeof(x)
     
     if Base.show_circular(context, x)
-        Dict(
+        Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
             :type => :circular,
         )
@@ -765,7 +767,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
             end
         end
     
-        Dict(
+        Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
@@ -791,7 +793,7 @@ function maptruncated(f::Function, xs, filler, limit; truncate=true)
         push!(result, filler)
         result
     else
-        [f(x) for x in xs]
+        Any[f(x) for x in xs]
     end
 end
 
@@ -838,12 +840,12 @@ function table_data(x::Any, io::IOContext)
     # TODO: render entire schema by default?
 
     schema = Tables.schema(rows)
-    schema_data = schema === nothing ? nothing : Dict(
+    schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
         :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
         :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
     )
 
-    Dict(
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :schema => schema_data,
         :rows => row_data,

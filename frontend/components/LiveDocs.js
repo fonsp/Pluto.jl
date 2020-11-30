@@ -107,7 +107,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                         ? "Live docs"
                         : html`
                         <input
-                            title=${no_docs_found ? `"${state.searched_query}" not found!` : ""}
+                            title=${no_docs_found ? `"${state.searched_query}" not found` : ""}
                             id="live-docs-search"
                             placeholder="Search docs..."
                             ref=${live_doc_search_ref}
