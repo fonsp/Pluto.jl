@@ -337,9 +337,9 @@ mutators = Dict(
         if isfile(newpath)
             throw(UserError("File exists already - you need to delete the old file manually."))
         else
-            move_notebook!(notebook, newpath)
-            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace((session, notebook), newpath)
+            move_notebook!(request.notebook, newpath)
+            putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
+            WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
         nothing
     end,

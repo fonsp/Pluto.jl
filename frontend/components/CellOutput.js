@@ -12,6 +12,10 @@ import { PlutoContext } from "../common/PlutoContext.js"
 export class CellOutput extends Component {
     constructor() {
         super()
+        this.state = {
+            error: null,
+        }
+
         this.old_height = 0
         // @ts-ignore Is there a way to use the latest DOM spec?
         this.resize_observer = new ResizeObserver((entries) => {
@@ -27,6 +31,11 @@ export class CellOutput extends Component {
 
             this.old_height = new_height
         })
+    }
+
+    componentDidCatch(error) {
+        console.log(`error:`, error)
+        this.setState({ error })
     }
 
     shouldComponentUpdate({ last_run_timestamp }) {
@@ -56,7 +65,7 @@ export class CellOutput extends Component {
                 mime=${this.props.mime}
             >
                 <assignee>${this.props.rootassignee}</assignee>
-                <${OutputBody} ...${this.props} />
+                ${this.state.error ? html`<div>${error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
     }
