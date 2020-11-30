@@ -136,7 +136,7 @@ export const Cell = ({
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
                 drop_target: dragActive,
-                drop_invalid: has_code,
+                drop_invalid: has_code && !savingFile,
                 saving_file: savingFile,
             })}
             id=${cell_id}

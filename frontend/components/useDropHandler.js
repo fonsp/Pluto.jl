@@ -56,6 +56,7 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 () => alert("Pluto can't save this file 😥")
             )
             setSavingFile(false)
+            setDragActiveFast(false)
             if (!success) {
                 alert("Pluto can't save this file 😥")
                 return "# File save failed"
