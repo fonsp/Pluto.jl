@@ -271,9 +271,11 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                 # try_delete_toplevel_methods(old_workspace, symbol)
 
                 try
-                    # it could be that `symbol ∈ vars_to_move`, but the _value_ has already been moved to the new reference in `new_module`.
-                    # so clearing the value of this reference does not affect the reference in `new_workspace`.
-                    Core.eval(old_workspace, :($(symbol) = nothing))
+                    # We are clearing this variable from the notebook, so we need to find it's root
+                    # Just clearing out the definition in the old_module, besides giving an error (so that's what that `catch; end` is for)
+                    # will not actually free it from Julia, the older module will still have a reference.
+                    module_to_remove_from = which(old_workspace, symbol)
+                    Core.eval(module_to_remove_from, :($(symbol) = nothing))
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
         else

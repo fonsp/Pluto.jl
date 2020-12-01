@@ -74,6 +74,7 @@ jobs:
                   PUPPETEER_EXECUTABLE_PATH: "/usr/bin/google-chrome-stable"
 
             - uses: actions/upload-artifact@v2
+              if: failure()
               with:
                   name: test-screenshot-artefacts
                   path: ${{ github.workspace }}/test/frontend/artefacts/*.png

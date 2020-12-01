@@ -1,12 +1,16 @@
 import path from 'path'
 
+export const getTextContent = (selector) => {
+    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+}
+
 export const waitForContent = async (page, selector) => {
     await page.waitForSelector(selector, { visible: true })
     await page.waitFor((selector) => {
         const element = document.querySelector(selector)
         return element !== null && element.textContent.length > 0
     }, {}, selector)
-    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+    return getTextContent(selector)
 }
 
 export const waitForContentToChange = async (page, selector, currentContent) => {
@@ -15,7 +19,7 @@ export const waitForContentToChange = async (page, selector, currentContent) => 
         const element = document.querySelector(selector)
         return element !== null && element.textContent !== currentContent
     }, {}, selector, currentContent)
-    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+    return getTextContent(selector)
 }
 
 export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click(selector)])
