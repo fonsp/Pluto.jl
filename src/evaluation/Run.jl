@@ -25,6 +25,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
+	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
+	for cell::Cell in removed_cells
+		cell.code = ""
+		cell.parsedcode = parse_custom(notebook, cell)
+		cell.module_usings = Set{Expr}()
+		cell.rootassignee = nothing
+	end
+	cells::Vector{Cell} = [cells..., removed_cells...]
+	new_topology = NotebookTopology(merge(
+		new_topology.nodes,
+		Dict(cell => ReactiveNode() for cell in removed_cells),
+	))
+
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
 	old_order = topological_order(notebook, old_topology, cells)
 
@@ -36,19 +49,18 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
+
 	# change the bar on the sides of cells to "queued"
-	local listeners = ClientSession[]
+	# local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
+		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
 		relay_reactivity_error!(cell, error)
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
-	flushallclients(session, listeners)
-
+	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -70,7 +82,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
@@ -80,9 +92,9 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		end
 		
 		cell.running = false
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
-
+	
+	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
@@ -139,9 +151,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
 		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
-			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-			notebook)
+			(
+				ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
+				notebook,
 			)
+		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
@@ -159,5 +173,6 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 end
 
+# Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)

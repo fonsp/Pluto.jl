@@ -328,16 +328,6 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
         end
         
         push!(args, notebook)
-
-        if haskey(parentbody, "cell_id")
-            cell_id = UUID(parentbody["cell_id"])
-            index = cell_index_from_id(notebook, cell_id)
-            if index === nothing
-                @warn "Remote cell not found locally!"
-            else
-                push!(args, notebook.cells[index])
-            end
-        end
     end
 
     body = parentbody["body"]
@@ -345,7 +335,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(session, body, args..., initiator=Initiator(client.id, request_id))
+            responsefunc(session, body, args..., initiator=Initiator(client, request_id))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

@@ -8,6 +8,7 @@ export class DropRuler extends Component {
         this.cell_edges = []
         this.mouse_position = {}
         this.precompute_cell_edges = () => {
+            /** @type {Array<HTMLElement>} */
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
             this.cell_edges = cell_nodes.map((el) => el.offsetTop)
             this.cell_edges.push(last(cell_nodes).offsetTop + last(cell_nodes).scrollHeight)
@@ -27,7 +28,8 @@ export class DropRuler extends Component {
 
     componentDidMount() {
         document.addEventListener("dragstart", (e) => {
-            if (!e.target.matches("pluto-shoulder")) {
+            let target = /** @type {Element} */ (e.target)
+            if (!target.matches("pluto-shoulder")) {
                 this.setState({
                     drag_start: false,
                     drag_target: false,
@@ -35,8 +37,8 @@ export class DropRuler extends Component {
                 this.props.actions.set_scroller({ up: false, down: false })
                 this.dropee = null
             } else {
-                this.dropee = e.target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee))
+                this.dropee = target.parentElement
+                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee.id))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -83,8 +85,8 @@ export class DropRuler extends Component {
             if (this.dropee && this.state.drag_start) {
                 // Called when drag-dropped somewhere on the page
                 const drop_index = this.getDropIndexOf(e)
-                const friends = this.props.selected_friends(this.dropee.id)
-                this.props.requests.move_remote_cells(friends, drop_index)
+                const friend_ids = this.props.selected_cells.includes(this.dropee.id) ? this.props.selected_cells : [this.dropee.id]
+                this.props.actions.move_remote_cells(friend_ids, drop_index)
             } else {
                 // Called when cell(s) from another window are dragged onto the page
                 const drop_index = this.getDropIndexOf(e)

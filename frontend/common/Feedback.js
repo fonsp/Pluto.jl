@@ -1,4 +1,3 @@
-import { code_differs } from "../components/Cell.js"
 import { timeout_promise } from "./PlutoConnection.js"
 
 export const create_counter_statistics = () => {
@@ -9,7 +8,7 @@ export const create_counter_statistics = () => {
     }
 }
 
-const first_line = (cell) => /(.*)/.exec(cell.local_code.body)[0]
+const first_line = (cell) => /(.*)/.exec(cell.code)[0]
 const count_matches = (pattern, haystack) => (haystack.match(pattern) || []).length
 const value_counts = (values) =>
     values.reduce((prev_counts, val) => {
@@ -18,30 +17,45 @@ const value_counts = (values) =>
     }, {})
 const sum = (values) => values.reduce((a, b) => a + b, 0)
 
+/**
+ * @param {{
+ *  notebook: import("../components/Editor.js").NotebookData
+ *  cells_local: { [id: string]: import("../components/Editor.js").CellData }
+ * }} state
+ * */
 export const finalize_statistics = async (state, client, counter_statistics) => {
-    const cells = state.notebook.cells
+    const cells_running = state.notebook.cell_order.map((cell_id) => state.notebook.cells_running[cell_id]).filter((x) => x != null)
+    const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_dict[cell_id]).filter((x) => x != null)
+    const cells_local = state.notebook.cell_order.map((cell_id) => {
+        return {
+            ...(state.cells_local[cell_id] ?? state.notebook.cell_dict[cell_id]),
+            ...state.cells_local[cell_id],
+        }
+    })
 
     const statistics = {
         numCells: cells.length,
         // integer
-        numErrored: cells.filter((c) => c.errored).length,
+        numErrored: cells_running.filter((c) => c.errored).length,
         // integer
         numFolded: cells.filter((c) => c.code_folded).length,
         // integer
-        numCodeDiffers: cells.filter(code_differs).length,
+        numCodeDiffers: state.notebook.cell_order.filter(
+            (cell_id) => state.notebook.cell_dict[cell_id].code === (state.cells_local[cell_id]?.code ?? state.notebook.cell_dict[cell_id].code)
+        ).length,
         // integer
-        numMarkdowns: cells.filter((c) => first_line(c).startsWith('md"')).length,
+        numMarkdowns: cells_local.filter((c) => first_line(c).startsWith('md"')).length,
         // integer
-        numBinds: sum(cells.map((c) => count_matches(/\@bind/g, c.local_code.body))),
+        numBinds: sum(cells_local.map((c) => count_matches(/\@bind/g, c.code))),
         // integer
-        numBegins: cells.filter((c) => first_line(c).endsWith("begin")).length,
+        numBegins: cells_local.filter((c) => first_line(c).endsWith("begin")).length,
         // integer
-        numLets: cells.filter((c) => first_line(c).endsWith("let")).length,
+        numLets: cells_local.filter((c) => first_line(c).endsWith("let")).length,
         // integer
-        cellSizes: value_counts(cells.map((c) => count_matches(/\n/g, c.local_code.body) + 1)),
+        cellSizes: value_counts(cells_local.map((c) => count_matches(/\n/g, c.code) + 1)),
         // {numLines: numCells, ...}
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
-        runtimes: value_counts(cells.map((c) => Math.floor(Math.log10(c.runtime + 1)))),
+        runtimes: value_counts(cells_running.map((c) => Math.floor(Math.log10(c.runtime + 1)))),
         // {runtime: numCells, ...}
         // where `runtime` is log10, rounded
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
@@ -50,6 +64,7 @@ export const finalize_statistics = async (state, client, counter_statistics) => 
         // string, e.g. "v0.7.10"
         // versionJulia: client.julia_version,
         //     // string, e.g. "v1.0.5"
+        // @ts-ignore
         timestamp: firebase.firestore.Timestamp.now(),
         // timestamp (ms)
         screenWidthApprox: 100 * Math.round(document.body.clientWidth / 100),
@@ -94,11 +109,13 @@ const feedbackdb = {
     instance: null,
 }
 const init_firebase = () => {
+    // @ts-ignore
     firebase.initializeApp({
         apiKey: "AIzaSyC0DqEcaM8AZ6cvApXuNcNU2RgZZOj7F68",
         authDomain: "localhost",
         projectId: "pluto-feedback",
     })
+    // @ts-ignore
     feedbackdb.instance = firebase.firestore()
 }
 
@@ -111,7 +128,9 @@ export const init_feedback = () => {
 
         timeout_promise(
             feedbackdb.instance.collection("feedback").add({
+                // @ts-ignore
                 feedback: new FormData(e.target).get("opinion"),
+                // @ts-ignore
                 timestamp: firebase.firestore.Timestamp.now(),
                 email: email ? email : "",
             }),
@@ -121,6 +140,7 @@ export const init_feedback = () => {
                 let message = "Submitted. Thank you for your feedback! 💕"
                 console.log(message)
                 alert(message)
+                // @ts-ignore
                 feedbackform.querySelector("#opinion").value = ""
             })
             .catch((error) => {
