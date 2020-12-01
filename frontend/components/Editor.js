@@ -340,10 +340,20 @@ export class Editor extends Component {
                     }
                 })
 
-                update_notebook((notebook) => {
+                this.setState(
+                    immer((state) => {
+                        for (let cell of cells_to_add) {
+                            state.cells_local[cell.cell_id] = cell
+                        }
+                    })
+                )
+                await update_notebook((notebook) => {
                     delete notebook.cell_dict[cell_id]
                     for (let cell of cells_to_add) {
-                        notebook.cell_dict[cell.cell_id] = cell
+                        notebook.cell_dict[cell.cell_id] = {
+                            ...cell,
+                            code: "", // Default to empty (before it is run)
+                        }
                     }
                     notebook.cell_order = notebook.cell_order.flatMap((c) => {
                         if (cell_id === c) {
@@ -355,7 +365,7 @@ export class Editor extends Component {
                 })
 
                 if (submit) {
-                    await this.actions.set_and_run_multiple([cell_id, ...cells_to_add.map((x) => x.cell_id)])
+                    await this.actions.set_and_run_multiple(cells_to_add.map((x) => x.cell_id))
                 }
             },
             interrupt_remote: (cell_id) => {
@@ -448,6 +458,7 @@ export class Editor extends Component {
                 return changed.length > 0
             },
             set_and_run_multiple: async (cell_ids) => {
+                console.log(`cell_ids:`, cell_ids)
                 await update_notebook((notebook) => {
                     for (let cell_id of cell_ids) {
                         if (this.state.cells_local[cell_id]) {
