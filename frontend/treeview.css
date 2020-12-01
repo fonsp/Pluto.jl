@@ -242,22 +242,25 @@ table.pluto-table .schema-types {
 table.pluto-table .schema-types th {
     border-bottom: 1px solid rgba(0, 0, 0, 0.2);
     background-color: white;
-    position: sticky;
-    top: calc(2.25rem - var(--pluto-cell-spacing));
     height: 2rem;
-    z-index: 1;
 }
 
 table.pluto-table thead:hover .schema-types {
     opacity: 1;
 }
 
-table.pluto-table .schema-names {
+table.pluto-table .schema-names th {
     transform: translate(0, 0.5em);
     transition: transform 0.1s ease-in-out;
 }
+table.pluto-table .schema-names th:first-child,
+table.pluto-table .schema-types th:first-child {
+    z-index: 2;
+    left: -10px;
+}
 
-table.pluto-table .schema-names th {
+table.pluto-table .schema-names th,
+table.pluto-table .schema-types th:first-child {
     background-color: white;
     position: sticky;
     top: calc(0.25rem - var(--pluto-cell-spacing));
@@ -265,7 +268,7 @@ table.pluto-table .schema-names th {
     z-index: 1;
 }
 
-table.pluto-table thead:hover .schema-names {
+table.pluto-table thead:hover .schema-names th {
     transform: translate(0, 0);
 }
 
@@ -273,7 +276,6 @@ table.pluto-table tbody th:first-child {
     background-color: white;
     position: sticky;
     left: -10px; /* padding-left of pluto-output*/
-    top: 2rem;
 }
 
 table.pluto-table .jlmore-td {

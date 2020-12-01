@@ -361,7 +361,9 @@ pluto-output table th {
 pluto-output table > tbody tr:hover {
     background-color: rgba(224, 203, 158, 0.15);
 }
-
+pluto-output table pre {
+    white-space: pre;
+}
 /* HEADER */
 
 body > header {
