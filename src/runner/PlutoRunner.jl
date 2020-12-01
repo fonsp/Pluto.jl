@@ -653,7 +653,7 @@ function array_prefix(@nospecialize(x))::String
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Int64, context::IOContext, a::Int64, b::Int64)::Int64
+function get_my_display_limit(@nospecialize(x), dim::Int, context::IOContext, a::Int, b::Int)::Int
     a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
