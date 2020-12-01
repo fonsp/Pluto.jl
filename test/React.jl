@@ -488,7 +488,7 @@ import Distributed
         Cell("g(a,b) = a+b"),
         Cell("g(5,6)"),
 
-        Cell("h(x::Int64) = x"),
+        Cell("h(x::Int) = x"),
         Cell("h(7)"),
         Cell("h(8.0)"),
 
@@ -500,7 +500,7 @@ import Distributed
             a(x::String) = \"🐟\"
         end"),
         Cell("using .Something"),
-        Cell("a(x::Int64) = x"),
+        Cell("a(x::Int) = x"),
         Cell("a(\"i am a \")"),
         Cell("a(15)"),
         
@@ -509,7 +509,7 @@ import Distributed
             b(x::String) = \"🐟\"
         end"),
         Cell("import .Different: b"),
-        Cell("b(x::Int64) = x"),
+        Cell("b(x::Int) = x"),
         Cell("b(\"i am a \")"),
         Cell("b(20)"),
         
@@ -519,7 +519,7 @@ import Distributed
         end"),
         Cell("begin
             import .Wow: c
-            c(x::Int64) = x
+            c(x::Int) = x
         end"),
         Cell("c(\"i am a \")"),
         Cell("c(24)"),
