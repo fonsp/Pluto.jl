@@ -96,7 +96,7 @@ end
 md"""
 Now the only rules left to implement are the rules for moving disks. 
 
-We could implement this as another check on states, but it's easier to just write a legal `move` function. Your solution will specify moves for the `move` function, so this will be the only way that the stacks are actually manipulated. That we, we are sure that nothing fishy is happening.
+We could implement this as another check on states, but it's easier to just write a legal `move` function. Your solution will specify moves for the `move` function, so this will be the only way that the stacks are actually manipulated. That way, we are sure that nothing fishy is happening.
 
 We will make our `move` function so that its input consists of a state of the game, and instructions for what to do. Its output will be the new state of the game.
 
