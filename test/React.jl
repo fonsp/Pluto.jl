@@ -185,10 +185,10 @@ import Distributed
             Cell("d(\"seventeen\")"),
             Cell("d"),
 
-            Cell("struct e; x; y; end"),
+            Cell("struct asdf; x; y; end"),
             Cell(""),
-            Cell("e(21, 21)"),
-            Cell("e(22)"),
+            Cell("asdf(21, 21)"),
+            Cell("asdf(22)"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -306,10 +306,12 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[20], "e(x) = e(x,x)")
+        setcode(notebook.cells[20], "asdf(x) = asdf(x,x)")
         update_run!(🍭, notebook, notebook.cells[20])
         @test occursinerror("Multiple definitions", notebook.cells[19])
         @test occursinerror("Multiple definitions", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
         @test notebook.cells[21].errored == true
         @test notebook.cells[22].errored == true
 
@@ -320,7 +322,7 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[19], "begin struct e; x; y; end; e(x) = e(x,x); end")
+        setcode(notebook.cells[19], "begin struct asdf; x; y; end; asdf(x) = asdf(x,x); end")
         setcode(notebook.cells[20], "")
         update_run!(🍭, notebook, notebook.cells[19:20])
         @test notebook.cells[19].errored == false
@@ -339,7 +341,10 @@ import Distributed
         notebook = Notebook([
             Cell("xxx = yyy"),
             Cell("yyy = xxx"),
-            Cell("zzz = yyy")
+            Cell("zzz = yyy"),
+
+            Cell("aaa() = bbb"),
+            Cell("bbb = aaa()"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -378,6 +383,14 @@ import Distributed
         @test notebook.cells[1].output_repr == "3"
         @test notebook.cells[2].output_repr == "3"
         @test notebook.cells[3].output_repr == "3"
+
+        update_run!(🍭, notebook, notebook.cells[4:5])
+        @test occursinerror("Cyclic reference", notebook.cells[4])
+        @test occursinerror("aaa", notebook.cells[4])
+        @test occursinerror("bbb", notebook.cells[4])
+        @test occursinerror("Cyclic reference", notebook.cells[5])
+        @test occursinerror("aaa", notebook.cells[5])
+        @test occursinerror("bbb", notebook.cells[5])
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -861,6 +874,8 @@ import Distributed
                 false
             end |> length
             """),
+            Cell("4"),
+            Cell("[5]"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -884,6 +899,16 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
         @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
+
+        old = notebook.cells[4].output_repr
+        setcode(notebook.cells[4], "4.0")
+        update_run!(🍭, notebook, notebook.cells[4])
+        @test old != notebook.cells[4].output_repr
+        
+        old = notebook.cells[5].output_repr
+        setcode(notebook.cells[5], "[5.0]")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test old != notebook.cells[5].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

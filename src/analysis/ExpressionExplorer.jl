@@ -936,7 +936,8 @@ function can_be_function_wrapped(x::Expr)
         x.head === :macrocall || # we might want to get rid of this one, but that requires some work
         x.head === :struct ||
         x.head === :abstract ||
-        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call) # f(x) = ...
+        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call) || # f(x) = ...
+        (x.head === :call && (x.args[1] === :eval || x.args[1] === :include))
         false
     else
         all(can_be_function_wrapped, x.args)
