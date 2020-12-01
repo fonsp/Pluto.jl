@@ -446,7 +446,7 @@ export class Editor extends Component {
                             const inputs_promise = Promise.all(
                                 this.state.notebook.cells.map((cell_data) => {
                                     return this.client.send(
-                                        "getinput",
+                                        "get_input",
                                         {},
                                         {
                                             notebook_id: this.state.notebook.notebook_id,

@@ -185,10 +185,10 @@ import Distributed
             Cell("d(\"seventeen\")"),
             Cell("d"),
 
-            Cell("struct e; x; y; end"),
+            Cell("struct asdf; x; y; end"),
             Cell(""),
-            Cell("e(21, 21)"),
-            Cell("e(22)"),
+            Cell("asdf(21, 21)"),
+            Cell("asdf(22)"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -306,10 +306,12 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[20], "e(x) = e(x,x)")
+        setcode(notebook.cells[20], "asdf(x) = asdf(x,x)")
         update_run!(🍭, notebook, notebook.cells[20])
         @test occursinerror("Multiple definitions", notebook.cells[19])
         @test occursinerror("Multiple definitions", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
         @test notebook.cells[21].errored == true
         @test notebook.cells[22].errored == true
 
@@ -320,7 +322,7 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[19], "begin struct e; x; y; end; e(x) = e(x,x); end")
+        setcode(notebook.cells[19], "begin struct asdf; x; y; end; asdf(x) = asdf(x,x); end")
         setcode(notebook.cells[20], "")
         update_run!(🍭, notebook, notebook.cells[19:20])
         @test notebook.cells[19].errored == false
@@ -339,7 +341,10 @@ import Distributed
         notebook = Notebook([
             Cell("xxx = yyy"),
             Cell("yyy = xxx"),
-            Cell("zzz = yyy")
+            Cell("zzz = yyy"),
+
+            Cell("aaa() = bbb"),
+            Cell("bbb = aaa()"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -378,6 +383,14 @@ import Distributed
         @test notebook.cells[1].output_repr == "3"
         @test notebook.cells[2].output_repr == "3"
         @test notebook.cells[3].output_repr == "3"
+
+        update_run!(🍭, notebook, notebook.cells[4:5])
+        @test occursinerror("Cyclic reference", notebook.cells[4])
+        @test occursinerror("aaa", notebook.cells[4])
+        @test occursinerror("bbb", notebook.cells[4])
+        @test occursinerror("Cyclic reference", notebook.cells[5])
+        @test occursinerror("aaa", notebook.cells[5])
+        @test occursinerror("bbb", notebook.cells[5])
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -798,6 +811,7 @@ import Distributed
         notebook = Notebook([
             Cell("return 10"),
             Cell("return (0, 0)"),
+            Cell("return (0, 0)"),
             Cell("return (0, 0, 0)"),
             Cell("begin return \"a string\" end"),
             Cell("""
@@ -805,12 +819,96 @@ import Distributed
                     return []
                 end
             """),
+            Cell("""filter(1:3) do x
+                return true
+            end"""),
+
+            # create struct to disable the function-generating optimization
+            Cell("struct A1 end; return 10"),
+            Cell("struct A2 end; return (0, 0)"),
+            Cell("struct A3 end; return (0, 0)"),
+            Cell("struct A4 end; return (0, 0, 0)"),
+            Cell("struct A5 end; begin return \"a string\" end"),
+            Cell("""
+                struct A6 end; let
+                    return []
+                end
+            """),
+            Cell("""struct A7 end; filter(1:3) do x
+                return true
+            end"""),
         ])
 
-        for cell in notebook.cells
-            update_run!(🍭, notebook, cell)
-            @test occursinerror("You can only use return inside a function.", cell)
+        update_run!(🍭, notebook, notebook.cells)
+        @test occursinerror("You can only use return inside a function.", notebook.cells[1])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[2])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[3])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[4])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[5])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[6])
+        @test notebook.cells[7].errored == false
+
+        @test occursinerror("You can only use return inside a function.", notebook.cells[8])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[9])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[10])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[11])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[12])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[13])
+        @test notebook.cells[14].errored == false
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Function generation" begin
+        notebook = Notebook([
+            Cell("false && jlaksdfjalskdfj"),
+            Cell("fonsi = 2"),
+            Cell("""
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
+            """),
+            Cell("4"),
+            Cell("[5]"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[1].output_repr == "false"
+
+        function benchmark(fonsi)
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
         end
+
+        bad = @elapsed benchmark(2)
+        good = @elapsed benchmark(2)
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
+
+        old = notebook.cells[4].output_repr
+        setcode(notebook.cells[4], "4.0")
+        update_run!(🍭, notebook, notebook.cells[4])
+        @test old != notebook.cells[4].output_repr
+        
+        old = notebook.cells[5].output_repr
+        setcode(notebook.cells[5], "[5.0]")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test old != notebook.cells[5].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
