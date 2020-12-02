@@ -488,7 +488,7 @@ import Distributed
         Cell("g(a,b) = a+b"),
         Cell("g(5,6)"),
 
-        Cell("h(x::Int64) = x"),
+        Cell("h(x::Int) = x"),
         Cell("h(7)"),
         Cell("h(8.0)"),
 
@@ -500,7 +500,7 @@ import Distributed
             a(x::String) = \"🐟\"
         end"),
         Cell("using .Something"),
-        Cell("a(x::Int64) = x"),
+        Cell("a(x::Int) = x"),
         Cell("a(\"i am a \")"),
         Cell("a(15)"),
         
@@ -509,7 +509,7 @@ import Distributed
             b(x::String) = \"🐟\"
         end"),
         Cell("import .Different: b"),
-        Cell("b(x::Int64) = x"),
+        Cell("b(x::Int) = x"),
         Cell("b(\"i am a \")"),
         Cell("b(20)"),
         
@@ -519,7 +519,7 @@ import Distributed
         end"),
         Cell("begin
             import .Wow: c
-            c(x::Int64) = x
+            c(x::Int) = x
         end"),
         Cell("c(\"i am a \")"),
         Cell("c(24)"),
@@ -876,6 +876,7 @@ import Distributed
             """),
             Cell("4"),
             Cell("[5]"),
+            Cell("6 / 66"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -909,6 +910,11 @@ import Distributed
         setcode(notebook.cells[5], "[5.0]")
         update_run!(🍭, notebook, notebook.cells[5])
         @test old != notebook.cells[5].output_repr
+
+        old = notebook.cells[6].output_repr
+        setcode(notebook.cells[6], "66 / 6")
+        update_run!(🍭, notebook, notebook.cells[6])
+        @test old != notebook.cells[6].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

@@ -84,7 +84,7 @@ struct Computer
     output_globals::Vector{Symbol}
 end
 
-expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, e.args; init=zero(ObjectID))
+expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, enumerate(e.args); init=zero(ObjectID))
 expr_hash(x) = objectid(x)
 # TODO: clear key when a cell is deleted furever
 const computers = Dict{ObjectID,Computer}()
@@ -653,7 +653,7 @@ function array_prefix(@nospecialize(x))::String
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Int64, context::IOContext, a::Int64, b::Int64)::Int64
+function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
     a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
