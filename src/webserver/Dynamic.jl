@@ -25,6 +25,12 @@ responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebo
     cells = map(uuids) do uuid
         notebook.cell_dict[uuid]
     end
+
+    for cell in cells
+        cell.queued = true
+    end
+    send_notebook_changes!(NotebookRequest(session::ServerSession, notebook::Notebook, body, initiator))
+
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
     update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
@@ -57,7 +63,6 @@ Base.@kwdef struct NotebookRequest
     notebook::Notebook
     message::Any=nothing
     initiator::Union{Initiator,Nothing,Missing}=nothing
-    client::Union{ClientSession,Nothing}=nothing
 end
 
 # Yeah I am including a Pluto Notebook!!

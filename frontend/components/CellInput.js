@@ -396,24 +396,7 @@ export const CellInput = ({
         })
 
         if (focus_after_creation) {
-            // if (!isInViewport(dom_node_ref.current)) {
-            // let offset_from_viewport = offsetFromViewport(dom_node_ref.current)
-            // console.log(`offset_from_viewport:`, offset_from_viewport)
-            // if (offset_from_viewport) {
-            //     console.log("SCROLLING")
-            //     document.body.scrollBy({
-            //         behavior: "auto",
-            //         top: offset_from_viewport.top,
-            //     })
-            // }
-            // console.log(`isInViewport(dom_node_ref.current):`, isInViewport(dom_node_ref.current))
-            // console.log("Scrolling into view (smooth")
-            // dom_node_ref.current.scrollIntoView({
-            //     behavior: "smooth",
-            //     block: "center",
-            // })
-            // }
-            // console.log("FOCUS")
+            // TODO Smooth scroll into view?
             cm.focus()
         }
 
