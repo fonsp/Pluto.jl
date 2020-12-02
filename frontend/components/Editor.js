@@ -839,8 +839,9 @@ export class Editor extends Component {
     componentDidUpdate() {
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
-        // TODO Local state
-        const any_code_differs = false // this.state.notebook.cells.some((cell) => code_differs(cell))
+        const any_code_differs = this.state.notebook.cell_order.some(
+            (cell_id) => this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id].code
+        )
         document.body.classList.toggle("code_differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.loading)
         if (this.state.connected) {
