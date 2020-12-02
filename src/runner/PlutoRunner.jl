@@ -84,7 +84,7 @@ struct Computer
     output_globals::Vector{Symbol}
 end
 
-expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, e.args; init=zero(ObjectID))
+expr_hash(e::Expr) = objectid(e.head) + mapreduce(expr_hash, +, enumerate(e.args); init=zero(ObjectID))
 expr_hash(x) = objectid(x)
 # TODO: clear key when a cell is deleted furever
 const computers = Dict{ObjectID,Computer}()

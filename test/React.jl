@@ -876,6 +876,7 @@ import Distributed
             """),
             Cell("4"),
             Cell("[5]"),
+            Cell("6 / 66"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -909,6 +910,11 @@ import Distributed
         setcode(notebook.cells[5], "[5.0]")
         update_run!(🍭, notebook, notebook.cells[5])
         @test old != notebook.cells[5].output_repr
+
+        old = notebook.cells[6].output_repr
+        setcode(notebook.cells[6], "66 / 6")
+        update_run!(🍭, notebook, notebook.cells[6])
+        @test old != notebook.cells[6].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
