@@ -21,6 +21,7 @@ export const useDropHandler = (requests, on_change, cell_id) => {
     const set_drag_active = useMemo(() => _.debounce(set_drag_active_fast, DEBOUNCE_MAGIC_MS), [set_drag_active_fast])
     const inactive_handler = useMemo(
         () => (ev) => {
+            if (ev.dataTransfer.types[0] === "text/pluto-cell") return
             switch (ev.type) {
                 case "drop":
                     ev.preventDefault() // don't file open
