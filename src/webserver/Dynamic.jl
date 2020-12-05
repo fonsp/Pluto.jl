@@ -202,7 +202,9 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     path = notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
-    save_path = joinpath(dir, body["name"])
+    file_noext = reduce(*, split(body["name"], ".")[1:end - 1])
+    extension = split(body["name"], ".")[end]
+    save_path = numbered_until_new(joinpath(dir, file_noext); sep=" ", suffix=".$(extension)", create_file=false)
     
     if !ispath(dir)
         mkpath(dir)
@@ -216,7 +218,7 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
         false
     end
 
-    code = get_template_code(body["name"], reldir, body["file"])
+    code = get_template_code(basename(save_path), reldir, body["file"])
 
     msg = UpdateMessage(:write_file_reply, 
         Dict(
@@ -229,15 +231,14 @@ end
 
 get_template_code = (filename, directory, iofilecontents) -> begin
     path = string(raw"$(dirname(@__FILE__))", "/", directory, "/", filename)
-    varname = replace(filename, r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
     extension = split(filename, ".")[end]
+    varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
 
-    if extension ∈ ["jpg", "jpeg", "png", "gif"]
-        req_code = "import Images"
-        code = """img_$(varname) = let
-# Make sure to Pkg.add both Images and "ImageMagick!";
+    if extension ∈ ["jpg", "jpeg", "png", "svg", "webp", "tiff", "bmp", "gif", "wav", "aac", "mp3", "mpeg", "mp4", "webm", "ogg"]
+        req_code = "import PlutoUI"
+        code = """$(extension)_$(varname) = let
     $(req_code)
-    Images.load("$(path)")
+    PlutoUI.LocalResource("$(path)")
 end"""
 
     elseif extension ∈ ["txt", "text"]
