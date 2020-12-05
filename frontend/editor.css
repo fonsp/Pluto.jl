@@ -1015,9 +1015,9 @@ pluto-cell.drop_target.saving_file pluto-input::after {
 }
 
 pluto-cell.drop_target.drop_invalid pluto-input::after {
-    background-color: rgba(206, 50, 50, 0.75);
-    color: white;
-    content: "🛑 🚫 This cell is not empty ❗ ⛔ Try dropping your file in an empty one!";
+    background-color: #ece5e5bf;
+    color: rgba(0, 0, 0, 0.85);
+    content: "Try dropping your file in an empty cell!";
 }
 
 /* Define --patternHeight for this keyframes animation to work! */
