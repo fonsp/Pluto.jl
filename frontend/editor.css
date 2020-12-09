@@ -1685,7 +1685,7 @@ li.CodeMirror-hint.c_Array::before,
 
 .cm-s-default span.cm-error {
     background: #ef6155;
-    color: #776e71;
+    color: #f7f7f7;
 }
 
 .cm-s-default .CodeMirror-activeline-background {
