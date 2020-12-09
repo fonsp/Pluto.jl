@@ -359,7 +359,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcname = ex.args[1] |> split_funcname
         # Macros can transform the expression into anything - the best way to treat them is to macroexpand
         # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
-        if (length(funcname) == 1 || (length(funcname) >= 2 && funcname[1] == :Base))
+        if (length(funcname) == 1 || (length(funcname) >= 2 && (funcname[1] == :Base || funcname[1] == :PlutoRunner)))
             if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
                 # we macroexpand these, and recurse
                 expanded = macroexpand(PlutoRunner, ex; recursive=false)
