@@ -917,21 +917,6 @@ import Distributed
         @test old != notebook.cells[6].output_repr
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
-
-
-        @testset "Expression hash" begin
-            same(a,b) = Pluto.PlutoRunner.expr_hash(a) == Pluto.PlutoRunner.expr_hash(b)
-
-            @test same(:(1), :(1))
-            @test !same(:(1), :(1.0))
-            @test same(:(x + 1), :(x + 1))
-            @test !same(:(x + 1), :(x + 1.0))
-            @test same(:(1 |> a |> a |> a), :(1 |> a |> a |> a))
-            @test same(:(a(b(1,2))), :(a(b(1,2))))
-            @test !same(:(a(b(1,2))), :(a(b(1,3))))
-            @test !same(:(a(b(1,2))), :(a(b(1,1))))
-            @test !same(:(a(b(1,2))), :(a(b(2,1))))
-        end
     end
 
     @testset "Run multiple" begin
