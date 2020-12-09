@@ -291,9 +291,18 @@ export const CellInput = ({
                 return CodeMirror.Pass
             }
         })
+        const open_close_selection = (opening_char, closing_char) => (cm_) => {
+            for (const selection of cm_.getSelections())
+                if (selection?.length) cm_.replaceSelection(`${opening_char}${selection}${closing_char}`)
+                else cm_.replaceSelection(opening_char)
+        }
+
+        ;["()", "{}", "[]"].forEach((pair) => {
+            const [opening_char, closing_char] = pair.split("")
+            keys[`'${opening_char}'`] = open_close_selection(opening_char, closing_char)
+        })
 
         cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
-        cm.setOption("autoCloseBrackets", true)
 
         let is_good_token = (token) => {
             if (token.type == null && token.string === "]") {
