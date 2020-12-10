@@ -37,4 +37,4 @@ jobs:
             - name: Test launch Pluto
               run: |
                   echo "hello world"
-                  julia -e "exit(-1)"
+                  julia -e "exit(1)"
