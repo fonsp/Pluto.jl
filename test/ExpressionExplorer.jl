@@ -193,7 +193,7 @@ using Test
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
-        @test testee(:(f = function(a, b) a + b * n end), [:n], [:f], [:+, :*], [])
+        @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
@@ -297,6 +297,8 @@ using Test
         @test testee(quote "asdf" f(x) = x end, [], [], [], [:f => ([], [], [], [])])
 
         @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [])
+        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
         @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
