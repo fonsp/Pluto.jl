@@ -58,6 +58,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
+		cell.queued = false
 		relay_reactivity_error!(cell, error)
 	end
 	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))

@@ -23,8 +23,8 @@ end
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cell_dict::Dict{UUID, Cell}
-    cell_order::Array{UUID, 1}
+    cell_dict::Dict{UUID,Cell}
+    cell_order::Array{UUID,1}
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
@@ -43,7 +43,7 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict()
 end
 
-# We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
+# We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
     cell_dict=Dict(map(cells) do cell
