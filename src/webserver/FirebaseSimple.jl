@@ -1,161 +1,8 @@
 ### A Pluto.jl notebook ###
-# v0.12.14
+# v0.12.16
 
 using Markdown
 using InteractiveUtils
-
-# ╔═╡ 0e1c6442-9040-49d9-b754-173583db7ba2
-Base.@kwdef struct Tracked
-	expr
-	value
-	time
-	bytes
-	times_ran=1
-	which=nothing
-	code_info=nothing
-end
-
-# ╔═╡ 7618aef7-1884-4e32-992d-0fd988e1ab20
-macro track(expr)
-	times_ran_expr = :(1)
-	expr_to_show = expr
-	if expr.head == :for
-		@assert expr.args[1].head == :(=)
-		times_ran_expr = expr.args[1].args[2]
-		expr_to_show = expr.args[2].args[2]
-	end
-				
-	quote
-		local times_ran = length($(esc(times_ran_expr)))
-		local value, time, bytes = @timed $(esc(expr))
-		
-		local method = nothing
-		local code_info = nothing
-		try
-			# Uhhh
-			method = @which $(expr_to_show)
-			code_info = @code_typed $(expr_to_show)
-		catch nothing end
-		Tracked(
-			expr=$(QuoteNode(expr_to_show)),
-			value=value,
-			time=time,
-			bytes=bytes,
-			times_ran=times_ran,
-			which=method,
-			code_info=code_info
-		)
-	end
-end
-
-# ╔═╡ 1020b11e-1364-42bc-a91a-2e96f6228c42
-@track for _ in 1:100 Base.isless(1, 2) end
-
-# ╔═╡ 3ab3b8a0-19fe-424d-8857-604b1e805a26
-xxxxxz = 4
-
-# ╔═╡ f958a11c-27bd-47c5-b239-564fd082f014
-@track for _ in 1:100 Base.isless(xxxxxz, 2) end
-
-# ╔═╡ 71b95468-c934-43dd-833e-33683015597f
-@track for _ in 1:100 Base.isless(1, 2) end
-
-# ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
-@track sleep(0.1)
-
-# ╔═╡ a3e8fe70-cbf5-4758-a0f2-d329d138728c
-function prettytime(time_ns::Number)
-    suffices = ["ns", "μs", "ms", "s"]
-	
-	current_amount = time_ns
-	suffix = ""
-	for current_suffix in suffices
-    	if current_amount >= 1000.0
-        	current_amount = current_amount / 1000.0
-		else
-			suffix = current_suffix
-			break
-		end
-	end
-    
-    # const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
-	roundedtime = if current_amount >= 100.0
-		round(current_amount; digits=0)
-	else
-		round(current_amount; digits=1)
-	end
-    return "$(roundedtime) $(suffix)"
-end
-
-# ╔═╡ 6fa759ca-143f-4564-9f1c-a93225d44fab
-function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
-	times_ran = if value.times_ran === 1
-		""
-	else
-		"""<span style="opacity: 0.5"> ($(value.times_ran)×)</span>"""
-	end
-	# method = sprint(show, MIME("text/plain"), value.which)
-	code_info = if value.code_info ≠ nothing
-		codelength = length(value.code_info.first.code)
-		"$(codelength) frames in @code_typed"
-	else
-		""
-	end
-	color = if value.time > 1
-		"red"
-	elseif value.time > 0.001
-		"orange"
-	elseif value.time > 0.0001
-		"blue"
-	else
-		"green"
-	end
-		
-	
-	show(io, mime, HTML("""
-		<div
-			style="
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-			"
-		>
-			<div
-				style="
-					width: 12px;
-					height: 12px;
-					border-radius: 50%;
-					background-color: $(color);
-				"
-			></div>
-			<div style="width: 12px"></div>
-			<div>
-				<code
-					class="language-julia"
-					style="
-						background-color: transparent;
-						filter: grayscale(1) brightness(0.8);
-					"
-				>$(value.expr)</code>
-				<div style="
-					font-family: monospace;
-					font-size: 12px;
-					color: $(color);
-				">
-					$(prettytime(value.time * 1e9))
-					$(times_ran)
-				</div>
-				<div style="
-					font-family: monospace;
-					font-size: 12px;
-					color: gray;
-				">$(code_info)</div>
-
-			</div>
-			
-		</div>
-	"""))
-end
 
 # ╔═╡ d948dc6e-2de1-11eb-19e7-cb3bb66353b6
 md"# Immer"
@@ -676,7 +523,7 @@ function Base.show(io::IO, mime::MIME"text/html", value::Error)
 					font-size: 12px;
 					color: red;
 					padding-left: 8px;
-				">Error: $(value.error)</div>
+				">Error: $(sprint(showerror, value.error))</div>
 			</div>
 			
 		</div>
@@ -703,13 +550,13 @@ macro test(expr)
 end
 
 # ╔═╡ 7b8ab89b-bf56-4ddf-b220-b4881f4a2050
-@test convert(JSONPatch, convert(Dict, add_patch)) == add_patch
+@test Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
 
 # ╔═╡ 48ccd28a-060d-4214-9a39-f4c4e506d1aa
-@test convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
+@test Base.convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
 
 # ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
-@test convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
+@test Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
 
 # ╔═╡ c3e4738f-4568-4910-a211-6a46a9d447ee
 @test update!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
@@ -745,19 +592,9 @@ end
 """
 	@displayonly expression
 
-Marks a expression as Pluto-only,
-this won't be executed when running outside Pluto.
+Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
 macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
-
-# ╔═╡ fa959806-3264-4dd5-9f94-ba369697689b
-@displayonly @track for _ in 1:1000 direct_diff(cell2, cell1) end
-
-# ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
-@displayonly @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
-
-# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
-@displayonly @track for _ in 1:100 diff(celldict1, celldict2) end
 
 # ╔═╡ 664cd334-91c7-40dd-a2bf-0da720307cfc
 @displayonly notebook1 = Dict(
@@ -798,16 +635,173 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
 @displayonly @test throw("Oh my god") == x
 
+# ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
+md"## Track"
+
+# ╔═╡ 7618aef7-1884-4e32-992d-0fd988e1ab20
+macro track(expr)
+	times_ran_expr = :(1)
+	expr_to_show = expr
+	if expr.head == :for
+		@assert expr.args[1].head == :(=)
+		times_ran_expr = expr.args[1].args[2]
+		expr_to_show = expr.args[2].args[2]
+	end
+				
+	quote
+		local times_ran = length($(esc(times_ran_expr)))
+		local value, time, bytes = @timed $(esc(expr))
+		
+		local method = nothing
+		local code_info = nothing
+		try
+			# Uhhh
+			method = @which $(expr_to_show)
+			code_info = @code_typed $(expr_to_show)
+		catch nothing end
+		Tracked(
+			expr=$(QuoteNode(expr_to_show)),
+			value=value,
+			time=time,
+			bytes=bytes,
+			times_ran=times_ran,
+			which=method,
+			code_info=code_info
+		)
+	end
+end
+
+# ╔═╡ fa959806-3264-4dd5-9f94-ba369697689b
+@displayonly @track for _ in 1:1000 direct_diff(cell2, cell1) end
+
+# ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
+@displayonly @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
+
+# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
+@displayonly @track for _ in 1:100 diff(celldict1, celldict2) end
+
+# ╔═╡ 1020b11e-1364-42bc-a91a-2e96f6228c42
+@track for _ in 1:100 Base.isless(1, 2) end
+
+# ╔═╡ 3ab3b8a0-19fe-424d-8857-604b1e805a26
+xxxxxz = 4
+
+# ╔═╡ f958a11c-27bd-47c5-b239-564fd082f014
+@track for _ in 1:100 Base.isless(xxxxxz, 2) end
+
+# ╔═╡ 71b95468-c934-43dd-833e-33683015597f
+@track for _ in 1:100 Base.isless(1, 2) end
+
+# ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
+@track sleep(0.1)
+
+# ╔═╡ a3e8fe70-cbf5-4758-a0f2-d329d138728c
+function prettytime(time_ns::Number)
+    suffices = ["ns", "μs", "ms", "s"]
+	
+	current_amount = time_ns
+	suffix = ""
+	for current_suffix in suffices
+    	if current_amount >= 1000.0
+        	current_amount = current_amount / 1000.0
+		else
+			suffix = current_suffix
+			break
+		end
+	end
+    
+    # const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
+	roundedtime = if current_amount >= 100.0
+		round(current_amount; digits=0)
+	else
+		round(current_amount; digits=1)
+	end
+    return "$(roundedtime) $(suffix)"
+end
+
+# ╔═╡ 0e1c6442-9040-49d9-b754-173583db7ba2
+begin
+Base.@kwdef struct Tracked
+	expr
+	value
+	time
+	bytes
+	times_ran=1
+	which=nothing
+	code_info=nothing
+end
+function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
+	times_ran = if value.times_ran === 1
+		""
+	else
+		"""<span style="opacity: 0.5"> ($(value.times_ran)×)</span>"""
+	end
+	# method = sprint(show, MIME("text/plain"), value.which)
+	code_info = if value.code_info ≠ nothing
+		codelength = length(value.code_info.first.code)
+		"$(codelength) frames in @code_typed"
+	else
+		""
+	end
+	color = if value.time > 1
+		"red"
+	elseif value.time > 0.001
+		"orange"
+	elseif value.time > 0.0001
+		"blue"
+	else
+		"green"
+	end
+		
+	
+	show(io, mime, HTML("""
+		<div
+			style="
+				display: flex;
+				flex-direction: row;
+				align-items: center;
+			"
+		>
+			<div
+				style="
+					width: 12px;
+					height: 12px;
+					border-radius: 50%;
+					background-color: $(color);
+				"
+			></div>
+			<div style="width: 12px"></div>
+			<div>
+				<code
+					class="language-julia"
+					style="
+						background-color: transparent;
+						filter: grayscale(1) brightness(0.8);
+					"
+				>$(value.expr)</code>
+				<div style="
+					font-family: monospace;
+					font-size: 12px;
+					color: $(color);
+				">
+					$(prettytime(value.time * 1e9))
+					$(times_ran)
+				</div>
+				<div style="
+					font-family: monospace;
+					font-size: 12px;
+					color: gray;
+				">$(code_info)</div>
+
+			</div>
+			
+		</div>
+	"""))
+end
+	Tracked
+end
+
 # ╔═╡ Cell order:
-# ╠═0e1c6442-9040-49d9-b754-173583db7ba2
-# ╠═7618aef7-1884-4e32-992d-0fd988e1ab20
-# ╠═1020b11e-1364-42bc-a91a-2e96f6228c42
-# ╠═3ab3b8a0-19fe-424d-8857-604b1e805a26
-# ╠═f958a11c-27bd-47c5-b239-564fd082f014
-# ╠═71b95468-c934-43dd-833e-33683015597f
-# ╠═1a26eed8-670c-43bf-9726-2db84b1afdab
-# ╟─a3e8fe70-cbf5-4758-a0f2-d329d138728c
-# ╠═6fa759ca-143f-4564-9f1c-a93225d44fab
 # ╟─d948dc6e-2de1-11eb-19e7-cb3bb66353b6
 # ╟─3a99e22d-42d6-4b2d-9381-022b41b0e852
 # ╟─831d84a6-1c71-4e68-8c7c-27d9093a82c4
@@ -817,11 +811,11 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╟─84c87031-7733-4d1f-aa90-f8ab71506251
 # ╟─8f265a33-3a2d-4508-9477-ca62e8ce3c12
 # ╟─aad7ab32-eecf-4aad-883d-1c802cad6c0c
-# ╟─f649f67c-aab0-4d35-a799-f398e5f3ecc4
-# ╟─63087738-d70c-46f5-b072-21cd8953df35
-# ╟─aa81974a-7254-45e0-9bfe-840c4793147f
-# ╟─31188a03-76ba-40cf-a333-4d339ce37711
-# ╟─7524a9e8-1a6d-4851-b50e-19415f25a84b
+# ╠═f649f67c-aab0-4d35-a799-f398e5f3ecc4
+# ╠═63087738-d70c-46f5-b072-21cd8953df35
+# ╠═aa81974a-7254-45e0-9bfe-840c4793147f
+# ╠═31188a03-76ba-40cf-a333-4d339ce37711
+# ╠═7524a9e8-1a6d-4851-b50e-19415f25a84b
 # ╟─f658a72d-871d-49b3-9b73-7efedafbd7a6
 # ╟─07eeb122-6706-4544-a007-1c8d6581eec8
 # ╠═230bafe2-aaa7-48f0-9fd1-b53956281684
@@ -840,7 +834,7 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╟─0fd3e910-abcc-4421-9d0b-5cfb90034338
 # ╠═db116c0a-2de1-11eb-2a56-872af797c547
 # ╟─73631aea-5e93-4da2-a32d-649029660d4e
-# ╟─bd0d46bb-3e58-4522-bae0-83eb799196c4
+# ╠═bd0d46bb-3e58-4522-bae0-83eb799196c4
 # ╠═db2d8a3e-2de1-11eb-02b8-9ffbfaeff61c
 # ╠═ffe9b3d9-8e35-4a31-bab2-8787a4140594
 # ╠═894de8a7-2757-4d7a-a2be-1069fa872911
@@ -865,9 +859,9 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╟─200516da-8cfb-42fe-a6b9-cb4730168923
 # ╟─76326e6c-b95a-4b2d-a78c-e283e5fadbe2
 # ╟─95ff676d-73c8-44cb-ac35-af94418737e9
-# ╟─664cd334-91c7-40dd-a2bf-0da720307cfc
-# ╟─b7fa5625-6178-4da8-a889-cd4f014f43ba
-# ╟─dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
+# ╠═664cd334-91c7-40dd-a2bf-0da720307cfc
+# ╠═b7fa5625-6178-4da8-a889-cd4f014f43ba
+# ╠═dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
 # ╠═595fdfd4-3960-4fbd-956c-509c4cf03473
 # ╟─dd312598-2de1-11eb-144c-f92ed6484f5d
 # ╠═d2af2a4b-8982-4e43-9fd7-0ecfdfb70511
@@ -881,12 +875,12 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╟─dd87ca7e-2de1-11eb-2ec3-d5721c32f192
 # ╟─be6b6fc4-e12a-4cef-81d8-d5115fda50b7
 # ╟─a560fdca-ee12-469c-bda5-62d7203235b8
-# ╠═f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
+# ╟─f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
 # ╟─01e3417e-334e-4a8d-b086-4bddc42737b3
 # ╟─6509d62e-77b6-499c-8dab-4a608e44720a
 # ╟─f3ef354b-b480-4b48-8358-46dbf37e1d95
 # ╟─96a80a23-7c56-4c41-b489-15bc1c4e3700
-# ╠═df41caa7-f0fc-4b0d-ab3d-ebdab4804040
+# ╟─df41caa7-f0fc-4b0d-ab3d-ebdab4804040
 # ╟─fac65755-2a2a-4a3c-b5a8-fc4f6d256754
 # ╟─ddaf5b66-2de1-11eb-3348-b905b94a984b
 # ╟─e55d1cea-2de1-11eb-0d0e-c95009eedc34
@@ -910,3 +904,12 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╟─ea45104e-2de1-11eb-3248-5dd833d350e4
 # ╟─ea6650bc-2de1-11eb-3016-4542c5c333a5
 # ╟─ea934d9c-2de1-11eb-3f1d-3b60465decde
+# ╟─ee70e282-36d5-4772-8585-f50b9a67ca54
+# ╟─0e1c6442-9040-49d9-b754-173583db7ba2
+# ╟─7618aef7-1884-4e32-992d-0fd988e1ab20
+# ╠═1020b11e-1364-42bc-a91a-2e96f6228c42
+# ╠═3ab3b8a0-19fe-424d-8857-604b1e805a26
+# ╠═f958a11c-27bd-47c5-b239-564fd082f014
+# ╠═71b95468-c934-43dd-833e-33683015597f
+# ╠═1a26eed8-670c-43bf-9726-2db84b1afdab
+# ╟─a3e8fe70-cbf5-4758-a0f2-d329d138728c
