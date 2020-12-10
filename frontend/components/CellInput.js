@@ -291,10 +291,14 @@ export const CellInput = ({
                 return CodeMirror.Pass
             }
         })
-        const open_close_selection = (opening_char, closing_char) => (cm_) => {
-            for (const selection of cm_.getSelections())
-                if (selection?.length) cm_.replaceSelection(`${opening_char}${selection}${closing_char}`)
-                else cm_.replaceSelection(opening_char)
+        const open_close_selection = (opening_char, closing_char) => () => {
+            if (cm.somethingSelected()) {
+                for (const selection of cm.getSelections()) {
+                    cm.replaceSelection(`${opening_char}${selection}${closing_char}`, "around")
+                }
+            } else {
+                return CodeMirror.Pass
+            }
         }
 
         ;["()", "{}", "[]"].forEach((pair) => {
