@@ -26,7 +26,7 @@ jobs:
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-            - uses: actions/checkout@v2
+            # - uses: actions/checkout@v2
 
             # Makes thes `julia` command available
             - uses: julia-actions/setup-julia@v1
@@ -37,9 +37,9 @@ jobs:
             - name: Test launch Pluto
               run: |
                   echo "hello world"
-                  julia <<__EOF__
+                  julia -e "
                   import Pkg
                   @show 1+1
                   @show 2+2
                   exit(0)
-                  __EOF__
+                  "
