@@ -298,7 +298,7 @@ using Test
 
         @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
         @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [])
-        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [])
+        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
         @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
