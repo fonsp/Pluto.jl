@@ -37,4 +37,4 @@ jobs:
             - name: Test launch Pluto
               run: |
                   echo "hello world"
-                  julia $GITHUB_WORKSPACE/test/run_notebook.jl $GITHUB_WORKSPACE
+                  julia ${{ github.workspace }}/test/run_notebook.jl $GITHUB_WORKSPACE
