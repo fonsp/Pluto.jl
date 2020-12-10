@@ -1,5 +1,5 @@
 import Pkg
-Pkg.add("Pluto")
+Pkg.develop(path=ARGS[1])
 import Pluto
 s = Pluto.ServerSession()
 nb = Pluto.SessionActions.open_url(s, "https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.12.16/sample/Basic.jl"; run_async=false)
