@@ -37,13 +37,4 @@ jobs:
             - name: Test launch Pluto
               run: |
                   echo "hello world"
-                  julia -e "
-                  import Pkg
-                  Pkg.develop(\"$GITHUB_WORKSPACE\")
-                  import Pluto
-                  s = Pluto.ServerSession()
-                  nb = Pluto.SessionActions.open_url(s, \"https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.12.16/sample/Basic.jl\"; run_async=false)
-                  @show [c.output_repr for c in nb.cells]
-                  success = \!any(c.errored for c in nb.cells)
-                  exit(success ? 0 : 1)
-                  "
+                  julia ${{ github.workspace }}/test/run_notebook.jl ${{ github.workspace }}
