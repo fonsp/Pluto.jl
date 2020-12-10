@@ -21,8 +21,8 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.0", "1.5"]
-                os: [ubuntu-latest, macOS-latest, windows-latest]
+                julia-version: ["1.5"]
+                os: [windows-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -37,4 +37,4 @@ jobs:
             - name: Test launch Pluto
               run: |
                   echo "hello world"
-                  julia -e "@show 1+1"
+                  julia -e "exit(-1)"
