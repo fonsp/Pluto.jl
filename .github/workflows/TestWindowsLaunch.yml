@@ -39,7 +39,7 @@ jobs:
                   echo "hello world"
                   julia -e "
                   import Pkg
-                  Pkg.develop(\"${{GITHUB_WORKSPACE}}\")
+                  Pkg.develop(\"$GITHUB_WORKSPACE\")
                   import Pluto
                   s = Pluto.ServerSession()
                   nb = Pluto.SessionActions.open_url(s, \"https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.12.16/sample/Basic.jl\"; run_async=false)
