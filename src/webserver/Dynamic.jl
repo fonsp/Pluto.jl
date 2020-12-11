@@ -230,7 +230,7 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
 end
 
 get_template_code = (filename, directory, iofilecontents) -> begin
-    path = string(raw"$(dirname(@__FILE__))", "/", directory, "/", filename)
+    path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
     extension = split(filename, ".")[end]
     varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
 
@@ -238,12 +238,12 @@ get_template_code = (filename, directory, iofilecontents) -> begin
         req_code = "import PlutoUI"
         code = """$(extension)_$(varname) = let
     $(req_code)
-    PlutoUI.LocalResource("$(path)")
+    PlutoUI.LocalResource($(path))
 end"""
 
     elseif extension ∈ ["txt", "text"]
         code = """txt_$(varname) = let
-    $(varname) = open("$(path)")
+    $(varname) = open($(path))
     read($(varname), String)
 end"""
 
