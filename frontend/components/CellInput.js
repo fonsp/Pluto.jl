@@ -106,8 +106,9 @@ export const CellInput = ({
         const keys = {}
 
         keys["Shift-Enter"] = () => on_submit()
-        keys["Ctrl-Enter"] = () => {
-            on_add_after()
+        keys["Ctrl-Enter"] = async () => {
+            // we await to prevent an out-of-sync issue
+            await on_add_after()
 
             const new_value = cm.getValue()
             if (new_value !== remote_code_ref.current.body) {
