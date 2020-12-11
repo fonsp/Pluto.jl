@@ -14,10 +14,8 @@ import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
+import { ExportBanner } from "./ExportBanner.js"
 
-import { link_open_path } from "./Welcome.js"
-
-import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
@@ -25,6 +23,10 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
+
+/**
+ * @typedef {import('../imports/immer').Patch} Patch
+ * */
 
 /**
  * Serialize an array of cells into a string form (similar to the .jl file).
@@ -40,10 +42,6 @@ function serialize_cells(cells) {
 }
 
 /**
- * @typedef {import('../imports/immer').Patch} Patch
- * */
-
-/**
  * Deserialize a Julia program or output from `serialize_cells`.
  *
  * If a Julia program, it will return a single String containing it. Otherwise,
@@ -55,111 +53,6 @@ function serialize_cells(cells) {
 function deserialize_cells(serialized_cells) {
     const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
     return segments.map((s) => s.trim()).filter((s) => s !== "")
-}
-
-const Circle = ({ fill }) => html`
-    <svg
-        width="48"
-        height="48"
-        viewBox="0 0 48 48"
-        style="
-            height: .7em;
-            width: .7em;
-            margin-left: .3em;
-            margin-right: .2em;
-        "
-    >
-        <circle cx="24" cy="24" r="24" fill=${fill}></circle>
-    </svg>
-`
-const Triangle = ({ fill }) => html`
-    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">
-        <polygon points="24,0 48,40 0,40" fill=${fill} stroke="none" />
-    </svg>
-`
-
-let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
-    // let [html_export, set_html_export] = useState(null)
-
-    // useEffect(() => {
-    //     if (open) {
-    //         offline_html({
-    //             pluto_version: pluto_version,
-    //             head: document.head,
-    //             body: document.body,
-    //         }).then((html) => {
-    //             set_html_export(html)
-    //         })
-    //     } else {
-    //         set_html_export(null)
-    //     }
-    // }, [notebook, open, set_html_export])
-
-    // @ts-ignore
-    let is_chrome = window.chrome == null
-
-    return html`
-        <aside id="export">
-            <div id="container">
-                <div class="export_title">export</div>
-                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
-                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>
-                    <section>Download a copy of the <b>.jl</b> script.</section>
-                </a>
-                <a
-                    href="#"
-                    class="export_card"
-                    onClick=${(e) => {
-                        offline_html({
-                            pluto_version: pluto_version,
-                            head: document.head,
-                            body: document.body,
-                        }).then((html) => {
-                            if (html != null) {
-                                const fake_anchor = document.createElement("a")
-                                fake_anchor.download = `${notebook.shortpath}.html`
-                                fake_anchor.href = URL.createObjectURL(
-                                    new Blob([html], {
-                                        type: "text/html",
-                                    })
-                                )
-                                document.body.appendChild(fake_anchor)
-                                fake_anchor.click()
-                                document.body.removeChild(fake_anchor)
-                            }
-                        })
-                    }}
-                >
-                    <header><${Circle} fill="#E86F51" /> Static HTML</header>
-                    <section>An <b>.html</b> file for your web page, or to share online.</section>
-                </a>
-                <a
-                    href="#"
-                    class="export_card"
-                    style=${!is_chrome ? "opacity: .7;" : ""}
-                    onClick=${() => {
-                        if (!is_chrome) {
-                            alert("PDF generation works best on Google Chome.\n\n(We're working on it!)")
-                        }
-                        window.print()
-                    }}
-                >
-                    <header><${Circle} fill="#3D6117" /> Static PDF</header>
-                    <section>A static <b>.pdf</b> file for print or email.</section>
-                </a>
-                <!--<div class="export_title">
-                    future
-                </div>
-                <a class="export_card" style="border-color: #00000021; opacity: .7;">
-                    <header>mybinder.org</header>
-                    <section>Publish an interactive notebook online.</section>
-                </a>-->
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
-                    <span></span>
-                </button>
-            </div>
-        </aside>
-    `
 }
 
 /**
