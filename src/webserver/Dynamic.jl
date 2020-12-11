@@ -4,7 +4,7 @@ import UUIDs: uuid1
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
 
-responses[:connect] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:connect] = function response_connect(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
     putclientupdates!(session, initiator, UpdateMessage(:👋, Dict(
         :notebook_exists => (notebook !== nothing),
         :options => session.options,
@@ -16,11 +16,11 @@ responses[:connect] = (session::ServerSession, body, notebook = nothing; initiat
     ), nothing, nothing, initiator))
 end
 
-responses[:ping] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:ping] = function response_ping(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
     putclientupdates!(session, initiator, UpdateMessage(:pong, Dict(), nothing, nothing, initiator))
 end
 
-responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:run_multiple_cells] = function response_run_multiple_cells(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     uuids = UUID.(body["cells"])
     cells = map(uuids) do uuid
         notebook.cell_dict[uuid]
@@ -35,21 +35,21 @@ responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebo
     update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
 
-responses[:get_all_notebooks] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_all_notebooks] = function response_get_all_notebooks(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
     putplutoupdates!(session, clientupdate_notebook_list(session.notebooks, initiator=initiator))
 end
 
-responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:interrupt_all] = function response_interrupt_all(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     success = WorkspaceManager.interrupt_workspace((session, notebook))
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
-responses[:shutdown_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:shutdown_notebook] = function response_shutdown_notebook(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     SessionActions.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
 end
 
 
-responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:reshow_cell] = function response_reshow_cell(session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
     run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
@@ -457,7 +457,7 @@ function update_notebook(request::NotebookRequest)
     end
 end
 
-responses[:update_notebook] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:update_notebook] = function response_update_notebook(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     update_notebook(NotebookRequest(session=session, message=body, notebook=notebook, initiator=initiator))
 end
 

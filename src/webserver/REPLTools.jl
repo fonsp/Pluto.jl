@@ -6,7 +6,7 @@ function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
 
-responses[:completepath] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> begin
+responses[:completepath] = function response_completepath(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
     path = body["query"]
     pos = lastindex(path)
 
@@ -53,7 +53,7 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     putclientupdates!(session, initiator, msg)
 end
 
-responses[:complete] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
+responses[:complete] = function response_complete(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     query = body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 
@@ -81,7 +81,7 @@ responses[:complete] = (session::ServerSession, body, notebook::Notebook; initia
     putclientupdates!(session, initiator, msg)
 end
 
-responses[:docs] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> begin
+responses[:docs] = function response_docs(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     query = body["query"]
 
     doc_html, status = if haskey(Docs.keywords, query |> Symbol)
