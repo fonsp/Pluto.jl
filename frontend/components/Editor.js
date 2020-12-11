@@ -953,6 +953,8 @@ export class Editor extends Component {
                                     notebook.cell_dict[cell.cell_id] = cell
                                     notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
                                 }
+                            }).then(() => {
+                                this.actions.set_and_run_multiple(this.state.recently_deleted.map(({ cell }) => cell.cell_id))
                             })
                         }}
                     />
