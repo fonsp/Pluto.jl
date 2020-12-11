@@ -1,6 +1,7 @@
 name: CompatHelper
 on:
   schedule:
+    # Every day at 00:00.
     - cron: '00 00 * * *'
   workflow_dispatch:
 jobs:
