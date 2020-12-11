@@ -503,6 +503,7 @@ export class Editor extends Component {
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cells_running).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
+        console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
             // if (this.state.loading) {
@@ -524,15 +525,15 @@ export class Editor extends Component {
                 changes = changes.filter((x) => x.path[0] !== "bonds")
             }
 
-            if (changes.length === 0) {
-                return
-            }
-
             if (DEBUG_DIFFING) {
                 try {
                     let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
                     console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                 } catch (error) {}
+            }
+
+            if (changes.length === 0) {
+                return
             }
 
             for (let change of changes) {

@@ -66,6 +66,9 @@ export const CellInput = ({
 
     useEffect(() => {
         remote_code_ref.current = remote_code
+        if (cm_ref.current?.getValue() !== remote_code) {
+            cm_ref.current?.setValue(remote_code)
+        }
     }, [remote_code])
 
     useLayoutEffect(() => {

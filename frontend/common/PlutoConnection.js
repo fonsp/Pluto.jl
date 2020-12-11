@@ -140,7 +140,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
         }
 
         socket.onerror = async (e) => {
-            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
+            console.error(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
 
             if (await socket_is_alright_with_grace_period(socket)) {
                 console.log("The socket somehow recovered from an error?! Onbegrijpelijk")
@@ -156,7 +156,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             }
         }
         socket.onclose = async (e) => {
-            console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
+            console.error(`Socket did an oopsie - ${e.type}`, new Date().toLocaleTimeString(), "was open:", has_been_open, e)
 
             if (has_been_open) {
                 on_socket_close()
