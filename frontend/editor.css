@@ -830,7 +830,8 @@ nav#slide_controls > button {
     cursor: pointer;
     /* color: hsl(204, 86%, 35%); */
     color: black;
-    font-family: "Segoe UI Emoji", JuliaMono, monospace;
+    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-size: 0.75rem;
     z-index: 3;
     /* CodeMirror is 2 */
 }
@@ -1394,6 +1395,7 @@ footer a {
 }
 
 footer input {
+    margin: 0px;
     border: 2px solid #818181;
     font-family: inherit;
     font-size: inherit;
@@ -1404,6 +1406,7 @@ footer input {
 
 body > header pluto-filepicker button,
 footer button {
+    margin: 0px;
     background: #896c6c;
     border-radius: 0 3px 3px 0;
     border: 2px solid #896c6c;
@@ -1508,9 +1511,16 @@ body > nav#slide_controls > button.next > span::after {
 
 /* CODEMIRROR HINTS */
 
+.CodeMirror-hints {
+    max-height: calc(20 * 16px);
+    box-sizing: content-box;
+}
+
 li.CodeMirror-hint {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
+    /* font-size: 16px; */
+    line-height: 16px;
 }
 
 li.CodeMirror-hint.c_notexported {
