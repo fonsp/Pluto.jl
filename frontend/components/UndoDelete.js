@@ -9,7 +9,7 @@ export const UndoDelete = ({ recently_deleted, on_click }) => {
             set_hidden(false)
             const interval = setTimeout(() => {
                 set_hidden(true)
-            }, 8000)
+            }, 8000 * Math.pow(recently_deleted.length, 1 / 3))
 
             return () => {
                 clearTimeout(interval)
