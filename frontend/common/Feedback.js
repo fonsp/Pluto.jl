@@ -6,6 +6,7 @@ export const create_counter_statistics = () => {
         numEvals: 0, // integer
         numRuns: 0, // integer
         numBondSets: 0, // integer
+        numFileDrops: 0, // integer
     }
 }
 
