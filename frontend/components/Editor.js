@@ -352,28 +352,30 @@ export class Editor extends Component {
                 return changed.length > 0
             },
             set_and_run_multiple: async (cell_ids) => {
-                console.log(`cell_ids:`, cell_ids)
-                await update_notebook((notebook) => {
-                    for (let cell_id of cell_ids) {
-                        if (this.state.cells_local[cell_id]) {
-                            notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
-                        }
-                    }
-                })
-                // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
-                // But for now... this is fine 😼
-                this.setState(
-                    immer((state) => {
+                // TODO: this function is called with an empty list sometimes, where?
+                if (cell_ids.length > 0) {
+                    await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (state.notebook.cells_running[cell_id]) {
-                                state.notebook.cells_running[cell_id].queued = true
-                            } else {
-                                // nothing
+                            if (this.state.cells_local[cell_id]) {
+                                notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
                             }
                         }
                     })
-                )
-                await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                    // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
+                    // But for now... this is fine 😼
+                    this.setState(
+                        immer((state) => {
+                            for (let cell_id of cell_ids) {
+                                if (state.notebook.cells_running[cell_id]) {
+                                    state.notebook.cells_running[cell_id].queued = true
+                                } else {
+                                    // nothing
+                                }
+                            }
+                        })
+                    )
+                    await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
+                }
             },
             set_bond: async (symbol, value, is_first_value) => {
                 // For now I discard is_first_value, basing it on if there

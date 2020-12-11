@@ -266,14 +266,14 @@ macro track(expr)
 	end
 end
 
-global current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
     notebook_dict = notebook_to_js(request.notebook)
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
             patches = Firebase.diff(current_dict, notebook_dict)
-            patches_as_dict::Array{Dict} = patches
+            patches_as_dicts::Array{Dict} = patches
             current_state_for_clients[client] = deepcopy(notebook_dict)
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
@@ -282,7 +282,7 @@ function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
             if length(patches) != 0 || is_response
                 initiator = request.initiator === nothing ? missing : request.initiator
                 response = Dict(
-                    :patches => patches_as_dict,
+                    :patches => patches_as_dicts,
                     :response => is_response ? response : nothing
                 )
                 putclientupdates!(client, UpdateMessage(:notebook_diff, response, request.notebook, nothing, initiator))
@@ -332,9 +332,11 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	end
 end
 
-abstract type Changed end
-struct CodeChanged <: Changed end
-struct FileChanged <: Changed end
+@enum Changed CodeChanged FileChanged
+const no_changes = Changed[]
+
+# to support push!(x, y...) # with y = []
+Base.push!(x::Set{Changed}) = x
 
 mutators = Dict(
     "path" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
@@ -348,27 +350,29 @@ mutators = Dict(
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
-        nothing
+        no_changes
     end,
-    "in_temp_dir" => function(; _...) nothing end,
+    "in_temp_dir" => function(; _...) no_changes end,
     "cell_dict" => Dict(
         Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebase.JSONPatch)
             Firebase.update!(request.notebook, patch)
 
+            @info "cell_dict" rest patch
+
             if length(rest) == 0
-                [CodeChanged(), FileChanged()]
+                [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
                 request.notebook.cell_dict[UUID(cell_id)].parsedcode = nothing
-                [CodeChanged(), FileChanged()]
+                [CodeChanged, FileChanged]
             else
-                [FileChanged()]
+                [FileChanged]
             end
         end,
     ),
     "cell_order" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
         Firebase.update!(request.notebook, patch)
         # request.notebook.cell_order = patch.value
-        return [FileChanged()]
+        [FileChanged]
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
@@ -381,7 +385,7 @@ mutators = Dict(
                 is_first_value=patch isa Firebase.AddPatch
             )
             # [BondChanged]
-            nothing
+            no_changes
         end,
     )
 )
@@ -416,9 +420,7 @@ function update_notebook(request::NotebookRequest)
                 mutator(matches..., rest; request=request, patch=patch)
             end
 
-            if current_changes !== nothing && current_changes isa AbstractVector{Changed}
-                push!(changes, current_changes...)
-            end
+            push!(changes, current_changes...)
         end
 
         # if CodeChanged ∈ changes
@@ -427,32 +429,21 @@ function update_notebook(request::NotebookRequest)
         #     new = notebook.topology = updated_topology(old, notebook, cells)
         # end
 
-        if FileChanged ∈ changes
+        # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
+        # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
+        # (You can put a log in save_notebook to track how often the file is saved)
+        if FileChanged ∈ changes && CodeChanged ∉ changes
             save_notebook(notebook)
         end
     
         send_notebook_changes!(request; response=Dict(:you_okay => :👍))    
-    catch error
-        @error "Update notebook failed" error stacktrace=stacktrace(catch_backtrace()) request.message["updates"]
-        response = if error isa SessionActions.UserError
-            Dict(
-                :you_okay => :👎,
-                :why_not => sprint(showerror, error),
-                :should_i_tell_the_user => true,
-            )
-        elseif error isa Exception
-            Dict(
-                :you_okay => :👎,
-                :why_not => sprint(showerror, error),
-                :should_i_tell_the_user => false,
-            )
-        else
-            Dict(
-                :you_okay => :👎,
-                :why_not => string(error),
-                :should_i_tell_the_user => false,
-            )
-        end
+    catch ex
+        @error "Update notebook failed" ex stacktrace=stacktrace(catch_backtrace()) request.message["updates"]
+        response = Dict(
+            :you_okay => :👎,
+            :why_not => sprint(showerror, ex),
+            :should_i_tell_the_user => ex isa SessionActions.UserError,
+        )
         send_notebook_changes!(request; response=response)
     end
 end
