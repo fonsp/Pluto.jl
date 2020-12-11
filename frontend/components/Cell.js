@@ -13,6 +13,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  *  cell_local: import("./Editor.js").CellData,
  *  selected: boolean,
  *  focus_after_creation: boolean,
+ *  force_hide_input: boolean,
  *  selected_cells: Array<string>,
  *  [key: string]: any,
  * }} props
@@ -27,6 +28,7 @@ export const Cell = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
+    force_hide_input,
     selected_cells,
     notebook_id,
 }) => {
@@ -58,7 +60,8 @@ export const Cell = ({
     const class_code_differs = code !== (cell_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
 
-    let show_input = errored || class_code_differs || !class_code_folded
+    // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
+    let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
     return html`
         <pluto-cell

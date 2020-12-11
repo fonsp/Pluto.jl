@@ -1,5 +1,5 @@
 import { PlutoContext } from "../common/PlutoContext.js"
-import { html, useContext, useEffect, useMemo } from "../imports/Preact.js"
+import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
 
@@ -14,6 +14,7 @@ let CellMemo = ({
     on_focus_neighbor,
     disable_input,
     focus_after_creation,
+    force_hide_input,
     selected_cells,
 }) => {
     return useMemo(() => {
@@ -29,6 +30,7 @@ let CellMemo = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
+                force_hide_input=${force_hide_input}
                 selected_cells=${selected_cells}
             />
         `
@@ -43,13 +45,14 @@ let CellMemo = ({
         on_focus_neighbor,
         disable_input,
         focus_after_creation,
+        force_hide_input,
         selected_cells,
     ])
 }
 
 /**
  * @param {{
- *  is_loading: boolean
+ *  is_initializing: boolean
  *  notebook: import("./Editor.js").NotebookData,
  *  selected_cells: Array<string>,
  *  cells_local: { [uuid: string]: import("./Editor.js").CellData },
@@ -62,7 +65,7 @@ let CellMemo = ({
  * }} props
  * */
 export const Notebook = ({
-    is_loading,
+    is_initializing,
     notebook,
     selected_cells,
     cells_local,
@@ -76,12 +79,22 @@ export const Notebook = ({
     // and it is... but it covers all the cases... - DRAL
     let pluto_actions = useContext(PlutoContext)
     useEffect(() => {
-        if (notebook.cell_order.length === 0 && !is_loading) {
+        if (notebook.cell_order.length === 0 && !is_initializing) {
             console.log("GO ADD CELL")
-            // pluto_actions.add_remote_cell_at(0)
+            pluto_actions.add_remote_cell_at(0)
         }
-    }, [is_loading, notebook.cell_order.length])
+    }, [is_initializing, notebook.cell_order.length])
 
+    const [is_first_load, set_is_first_load] = useState(true)
+
+    if (is_first_load && notebook.cell_order.length > 0) {
+        setTimeout(
+            () => {
+                set_is_first_load(false)
+            },
+            notebook.cell_order.length > 20 ? 500 : 100
+        )
+    }
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order.map(
@@ -104,6 +117,7 @@ export const Notebook = ({
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${last_created_cell === cell_id}
+                    force_hide_input=${is_first_load}
                     selected_cells=${selected_cells}
                 />`
             )}
@@ -112,7 +126,7 @@ export const Notebook = ({
 }
 
 export const NotebookMemo = ({
-    is_loading,
+    is_initializing,
     notebook,
     cells_local,
     on_update_doc_query,
@@ -125,7 +139,7 @@ export const NotebookMemo = ({
     return useMemo(() => {
         return html`
             <${Notebook}
-                is_loading=${is_loading}
+                is_initializing=${is_initializing}
                 notebook=${notebook}
                 cells_local=${cells_local}
                 on_update_doc_query=${on_update_doc_query}
@@ -136,5 +150,5 @@ export const NotebookMemo = ({
                 selected_cells=${selected_cells}
             />
         `
-    }, [is_loading, notebook, cells_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
+    }, [is_initializing, notebook, cells_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
 }
