@@ -638,62 +638,8 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"
 
-# ╔═╡ 7618aef7-1884-4e32-992d-0fd988e1ab20
-macro track(expr)
-	times_ran_expr = :(1)
-	expr_to_show = expr
-	if expr.head == :for
-		@assert expr.args[1].head == :(=)
-		times_ran_expr = expr.args[1].args[2]
-		expr_to_show = expr.args[2].args[2]
-	end
-				
-	quote
-		local times_ran = length($(esc(times_ran_expr)))
-		local value, time, bytes = @timed $(esc(expr))
-		
-		local method = nothing
-		local code_info = nothing
-		try
-			# Uhhh
-			method = @which $(expr_to_show)
-			code_info = @code_typed $(expr_to_show)
-		catch nothing end
-		Tracked(
-			expr=$(QuoteNode(expr_to_show)),
-			value=value,
-			time=time,
-			bytes=bytes,
-			times_ran=times_ran,
-			which=method,
-			code_info=code_info
-		)
-	end
-end
-
-# ╔═╡ fa959806-3264-4dd5-9f94-ba369697689b
-@displayonly @track for _ in 1:1000 direct_diff(cell2, cell1) end
-
-# ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
-@displayonly @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
-
-# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
-@displayonly @track for _ in 1:100 diff(celldict1, celldict2) end
-
-# ╔═╡ 1020b11e-1364-42bc-a91a-2e96f6228c42
-@track for _ in 1:100 Base.isless(1, 2) end
-
 # ╔═╡ 3ab3b8a0-19fe-424d-8857-604b1e805a26
 xxxxxz = 4
-
-# ╔═╡ f958a11c-27bd-47c5-b239-564fd082f014
-@track for _ in 1:100 Base.isless(xxxxxz, 2) end
-
-# ╔═╡ 71b95468-c934-43dd-833e-33683015597f
-@track for _ in 1:100 Base.isless(1, 2) end
-
-# ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
-@track sleep(0.1)
 
 # ╔═╡ a3e8fe70-cbf5-4758-a0f2-d329d138728c
 function prettytime(time_ns::Number)
@@ -800,6 +746,62 @@ function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
 end
 	Tracked
 end
+
+# ╔═╡ 7618aef7-1884-4e32-992d-0fd988e1ab20
+macro track(expr)
+	times_ran_expr = :(1)
+	expr_to_show = expr
+	if expr.head == :for
+		@assert expr.args[1].head == :(=)
+		times_ran_expr = expr.args[1].args[2]
+		expr_to_show = expr.args[2].args[2]
+	end
+
+	Tracked # reference so that baby Pluto understands
+				
+	quote
+		local times_ran = length($(esc(times_ran_expr)))
+		local value, time, bytes = @timed $(esc(expr))
+		
+		local method = nothing
+		local code_info = nothing
+		try
+			# Uhhh
+			method = @which $(expr_to_show)
+			code_info = @code_typed $(expr_to_show)
+		catch nothing end
+		Tracked(
+			expr=$(QuoteNode(expr_to_show)),
+			value=value,
+			time=time,
+			bytes=bytes,
+			times_ran=times_ran,
+			which=method,
+			code_info=code_info
+		)
+	end
+end
+
+# ╔═╡ fa959806-3264-4dd5-9f94-ba369697689b
+@displayonly @track for _ in 1:1000 direct_diff(cell2, cell1) end
+
+# ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
+@displayonly @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
+
+# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
+@displayonly @track for _ in 1:100 diff(celldict1, celldict2) end
+
+# ╔═╡ 1020b11e-1364-42bc-a91a-2e96f6228c42
+@track for _ in 1:100 Base.isless(1, 2) end
+
+# ╔═╡ f958a11c-27bd-47c5-b239-564fd082f014
+@track for _ in 1:100 Base.isless(xxxxxz, 2) end
+
+# ╔═╡ 71b95468-c934-43dd-833e-33683015597f
+@track for _ in 1:100 Base.isless(1, 2) end
+
+# ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
+@track sleep(0.1)
 
 # ╔═╡ Cell order:
 # ╟─d948dc6e-2de1-11eb-19e7-cb3bb66353b6
