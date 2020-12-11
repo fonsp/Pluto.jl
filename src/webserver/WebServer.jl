@@ -172,7 +172,7 @@ function run(session::ServerSession)
                     catch ex
                         if ex isa InterruptException
                             shutdown_server[]()
-                        elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                        elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
                             # that's fine!
                         else
                             bt = stacktrace(catch_backtrace())
