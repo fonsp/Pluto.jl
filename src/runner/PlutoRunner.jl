@@ -43,6 +43,9 @@ ObjectDimPair = Tuple{ObjectID,Int64}
 current_module = Main
 
 function set_current_module(newname)
+    if current_module !== Main
+        return
+    end
     # Revise.jl support
     if isdefined(current_module, :Revise) && 
         isdefined(current_module.Revise, :revise) && current_module.Revise.revise isa Function &&
