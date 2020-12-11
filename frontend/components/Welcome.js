@@ -12,7 +12,7 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join(sep)
+const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join("/")
 
 const shortest_path = (path, allpaths) => {
     let level = 1
@@ -194,10 +194,10 @@ export class Welcome extends Component {
                     console.log(`Newer version ${remote} is available`)
                     alert(
                         "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                        local +
-                        ", the latest is " +
-                        remote +
-                        '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
+                            local +
+                            ", the latest is " +
+                            remote +
+                            '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
                     )
                 }
             })
@@ -291,10 +291,10 @@ export class Welcome extends Component {
                 return html`<li
                     key=${nb.path}
                     class=${cl({
-                    running: running,
-                    recent: !running,
-                    transitioning: nb.transitioning,
-                })}
+                        running: running,
+                        recent: !running,
+                        transitioning: nb.transitioning,
+                    })}
                 >
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
