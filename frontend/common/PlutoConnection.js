@@ -5,7 +5,8 @@ import "./Polyfill.js"
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
 
-const RECONNECT_DELAY = 500
+const reconnect_after_close_delay = 500
+const retry_after_connect_failure_delay = 5000
 
 /**
  * Return a promise that resolves to:
@@ -47,6 +48,7 @@ export const resolvable_promise = () => {
     let resolve = () => {}
     let reject = () => {}
     const p = new Promise((_resolve, _reject) => {
+        //@ts-ignore
         resolve = _resolve
         reject = _reject
     })
@@ -155,7 +157,6 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
         }
         socket.onclose = async (e) => {
             console.error(`SOCKET DID AN OOPSIE - ${e.type}`, new Date().toLocaleTimeString(), e)
-            console.assert(has_been_open)
 
             if (has_been_open) {
                 on_socket_close()
@@ -244,7 +245,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     history.replaceState({}, "", url.toString())
                 }
             } catch (error) {
-                console.error("Error while setting binder url:", error)
+                console.warn("Error while setting binder url:", error)
             }
         }
         update_url_with_binder_token()
@@ -274,7 +275,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     on_connection_status(false)
 
                     console.log(`Starting new websocket`, new Date().toLocaleTimeString())
-                    await Promises.delay(RECONNECT_DELAY)
+                    await Promises.delay(reconnect_after_close_delay)
                     await connect() // reconnect!
 
                     console.log(`Starting state sync`, new Date().toLocaleTimeString())
@@ -318,7 +319,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             return u.message
         } catch (ex) {
             console.error("connect() failed", ex)
-            await Promises.delay(RECONNECT_DELAY)
+            await Promises.delay(retry_after_connect_failure_delay)
             return await connect()
         }
     }

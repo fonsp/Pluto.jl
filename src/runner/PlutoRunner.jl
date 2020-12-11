@@ -920,7 +920,8 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
     else
-        filter!(≥(0) ∘ score, results) # too many candiates otherwise
+        isenough(x) = x ≥ 0
+        filter!(isenough ∘ score, results) # too many candiates otherwise
     end
 
     texts = completion_text.(results)
