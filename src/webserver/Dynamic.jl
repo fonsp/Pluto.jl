@@ -103,10 +103,6 @@ responses[:fold_cell] = (session::ServerSession, body, notebook::Notebook, cell:
     putnotebookupdates!(session, notebook, clientupdate_cell_folded(notebook, cell, newfolded, initiator=initiator))
 end
 
-responses[:run] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    update_save_run!(session, notebook, [cell]; run_async=true, save=false)
-end
-
 responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
     indices = cell_index_from_id.([notebook], UUID.(body["cells"]))
     cells = [notebook.cells[i] for i in indices if i !== nothing]
@@ -114,7 +110,7 @@ responses[:run_multiple_cells] = (session::ServerSession, body, notebook::Notebo
     update_save_run!(session, notebook, cells; run_async=true, save=true)
 end
 
-responses[:getinput] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
+responses[:get_input] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
     putclientupdates!(session, initiator, clientupdate_cell_input(notebook, cell, initiator=initiator))
 end
 

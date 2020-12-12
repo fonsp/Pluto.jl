@@ -107,15 +107,20 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
                         }).then((html) => {
                             if (html != null) {
                                 const fake_anchor = document.createElement("a")
-                                fake_anchor.download = `${notebook.shortpath}.html`
-                                fake_anchor.href = URL.createObjectURL(
-                                    new Blob([html], {
-                                        type: "text/html",
-                                    })
+                                fake_anchor.setAttribute("download", `${notebook.shortpath}.html`)
+                                fake_anchor.setAttribute(
+                                    "href",
+                                    URL.createObjectURL(
+                                        new Blob([html], {
+                                            type: "text/html",
+                                        })
+                                    )
                                 )
                                 document.body.appendChild(fake_anchor)
-                                fake_anchor.click()
-                                document.body.removeChild(fake_anchor)
+                                setTimeout(() => {
+                                    fake_anchor.click()
+                                    document.body.removeChild(fake_anchor)
+                                }, 100)
                             }
                         })
                     }}
@@ -446,7 +451,7 @@ export class Editor extends Component {
                             const inputs_promise = Promise.all(
                                 this.state.notebook.cells.map((cell_data) => {
                                     return this.client.send(
-                                        "getinput",
+                                        "get_input",
                                         {},
                                         {
                                             notebook_id: this.state.notebook.notebook_id,

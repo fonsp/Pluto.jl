@@ -124,15 +124,13 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
             </div>`
             break
         case "application/vnd.pluto.table+object":
-            return html`<div>
-                <${TableView}
-                    cell_id=${cell_id}
-                    body=${body}
-                    all_completed_promise=${all_completed_promise}
-                    requests=${requests}
-                    persist_js_state=${persist_js_state}
-                />
-            </div>`
+            return html` <${TableView}
+                cell_id=${cell_id}
+                body=${body}
+                all_completed_promise=${all_completed_promise}
+                requests=${requests}
+                persist_js_state=${persist_js_state}
+            />`
             break
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`

@@ -4,11 +4,22 @@ import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, Functio
 
 @testset "Method signatures" begin
 
+
+disjoint(x,y) = isempty(x ∩ y)
+
+function mutually_disjoint(x, xs...)
+    all(xs) do y
+        disjoint(x,y)
+    end && mutually_disjoint(xs...)
+end
+mutually_disjoint(x) = true
+
 function methods_can_coexist(defs::Expr...)
     symstates = compute_symbolreferences.(defs)
-    funcnamesigs = [first(keys(syms.funcdefs)) for syms in symstates]
-    length(Set(funcnamesigs)) == length(defs)
+    funcnamesigs = [keys(syms.funcdefs) for syms in symstates]
+    mutually_disjoint(funcnamesigs...)
 end
+
 
 @testset "Different method signatures across cells" begin
     @test methods_can_coexist(
@@ -72,7 +83,7 @@ end
         :(f(x) = 3),
         :(f(y::Any) = 3),
     )
-    # function using build in type synonyms
+    # function using built in type synonyms
     # like Int and Int64
     @assert string(Int) == "Int64" || string(Int) == "Int32"
     @test_broken !methods_can_coexist(

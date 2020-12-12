@@ -1,4 +1,4 @@
-import REPL.REPLCompletions: completions, complete_path, completion_text
+import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 using Markdown
 
@@ -11,6 +11,8 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
+    isenough(x) = x ≥ -0.1
+    filter!(isenough ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:
@@ -35,11 +37,17 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     end
     stop_utf8 = nextind(path, pos) # advance one unicode char, js uses exclusive upper bound
 
+    scores = [max(0.0, score(r)) for r in results]
+    formatted = format_path_completion.(results)
+
+    # sort on score. If a tie (e.g. both score 0.0), sort on dir/file. If a tie, sort alphabetically.
+    perm = sortperm(collect(zip(.-scores, (!isdirpath).(formatted), formatted)))
+
     msg = UpdateMessage(:completion_result, 
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => sort(format_path_completion.(results), by=s -> (!isdirpath(s), s))
+            :results => formatted[perm]
             ), notebook, nothing, initiator)
 
     putclientupdates!(session, initiator, msg)

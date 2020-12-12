@@ -24,6 +24,7 @@ Base.@kwdef mutable struct Cell
     parsedcode::Union{Nothing,Expr}=nothing
     module_usings::Set{Expr}=Set{Expr}()
     rootassignee::Union{Nothing,Symbol}=nothing
+    function_wrapped::Bool=false
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
