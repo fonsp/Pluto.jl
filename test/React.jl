@@ -859,7 +859,7 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Function generation" begin
+    @testset "Function wrapping" begin
         notebook = Notebook([
             Cell("false && jlaksdfjalskdfj"),
             Cell("fonsi = 2"),
@@ -877,6 +877,13 @@ import Distributed
             Cell("4"),
             Cell("[5]"),
             Cell("6 / 66"),
+            Cell("false && (seven = 7)"),
+            Cell("seven"),
+            Cell("nine = :identity"),
+            Cell("nine"),
+            Cell("@__FILE__; nine"),
+            Cell("@__FILE__; twelve = :identity"),
+            Cell("twelve"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -899,7 +906,7 @@ import Distributed
         good = @elapsed benchmark(2)
 
         update_run!(🍭, notebook, notebook.cells)
-        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
+        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
         old = notebook.cells[4].output_repr
         setcode(notebook.cells[4], "4.0")
@@ -915,6 +922,17 @@ import Distributed
         setcode(notebook.cells[6], "66 / 6")
         update_run!(🍭, notebook, notebook.cells[6])
         @test old != notebook.cells[6].output_repr
+
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[7].output_repr == "false"
+
+        @test occursinerror("UndefVarError", notebook.cells[8])
+
+        @test notebook.cells[9].output_repr == ":identity"
+        @test notebook.cells[10].output_repr == ":identity"
+        @test notebook.cells[11].output_repr == ":identity"
+        @test notebook.cells[12].output_repr == ":identity"
+        @test notebook.cells[13].output_repr == ":identity"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 

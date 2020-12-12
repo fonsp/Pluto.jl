@@ -23,7 +23,7 @@ import Tables
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}}, MIME}
+MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 ObjectID = typeof(objectid("hello computer"))
 ObjectDimPair = Tuple{ObjectID,Int64}
 
@@ -38,7 +38,7 @@ ObjectDimPair = Tuple{ObjectID,Int64}
 # WORKSPACE MANAGER
 ###
 
-#Will be set to the latest workspace module
+# Will be set to the latest workspace module
 "The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
 
@@ -109,6 +109,9 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
     computers[key] = Computer(f, proof, input_globals, output_globals)
 end
 
+valuequoted(x) = x
+valuequoted(x::Symbol) = QuoteNode(x)
+
 function compute(computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
@@ -120,7 +123,7 @@ function compute(computer::Computer)
         result, output_global_values = out
 
         for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(current_module, Expr(:(=), name, val))
+            Core.eval(current_module, Expr(:(=), name, valuequoted(val)))
         end
 
         result
@@ -396,13 +399,13 @@ const table_row_display_limit_increase = 60
 const table_column_display_limit = 8
 const table_column_display_limit_increase = 30
 
-const tree_display_extra_items = Dict{UUID, Dict{ObjectDimPair, Int64}}()
+const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair, Int64}()
+        tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
     else
-        old = get!(() -> Dict{ObjectDimPair, Int64}(), tree_display_extra_items, id)
+        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, id)
         old[showmore] = get(old, showmore, 0) + 1
         old
     end
@@ -491,7 +494,7 @@ format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
 
 function format_output(val::CapturedException; context=nothing)::MimedOutput
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s,_) in val.processed_bt]
+    stack = [s for (s, _) in val.processed_bt]
 
     function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
 
@@ -615,8 +618,8 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
-pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
@@ -634,7 +637,7 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:N
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any, 1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i]; context=context)
@@ -645,7 +648,7 @@ function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any, 1}), ind
     ] |> collect
 end
 
-function array_prefix(@nospecialize(x::Array{<:Any, 1}))::String
+function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
     string(eltype(x))
 end
 function array_prefix(@nospecialize(x))::String
@@ -659,12 +662,12 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext
         if d === nothing
             0
         else
-            b * get(d, (objectid(x),dim), 0)
+            b * get(d, (objectid(x), dim), 0)
         end
     end
 end
 
-function tree_data(@nospecialize(x::AbstractArray{<:Any, 1}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
     indices = eachindex(x)
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
@@ -697,7 +700,7 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     )
 end
 
-function tree_data(@nospecialize(x::AbstractDict{<:Any, <:Any}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
     elements = []
 
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
@@ -828,7 +831,7 @@ function table_data(x::Any, io::IOContext)
     # not rows[i] because `getindex` is not guaranteed to exist
     L = truncate_rows ? my_row_limit : length(rows)
     row_data = Array{Any,1}(undef, L)
-    for (i,row) in zip(1:L,rows)
+    for (i, row) in zip(1:L,rows)
         row_data[i] = (i, row_data_for(row))
     end
 
@@ -1125,15 +1128,13 @@ Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     try
-        put!(log_channel, (
-            level=string(level),
+        put!(log_channel, (level=string(level),
             msg=(msg isa String) ? msg : repr(msg),
             group=group,
             # id=id,
             file=file,
             line=line,
-            kwargs=Dict((k=>repr(v) for (k,v) in kwargs)...),
-        ))
+            kwargs=Dict((k=>repr(v) for (k, v) in kwargs)...),))
         # also print to console
         Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
