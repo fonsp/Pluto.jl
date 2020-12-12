@@ -246,12 +246,12 @@ export class Editor extends Component {
                     })
                 )
                 await update_notebook((notebook) => {
+                    // delete the old cell
                     delete notebook.cell_dict[cell_id]
+
+                    // add the new ones
                     for (let cell of cells_to_add) {
-                        notebook.cell_dict[cell.cell_id] = {
-                            ...cell,
-                            code: "", // Default to empty (before it is run)
-                        }
+                        notebook.cell_dict[cell.cell_id] = cell
                     }
                     notebook.cell_order = notebook.cell_order.flatMap((c) => {
                         if (cell_id === c) {
