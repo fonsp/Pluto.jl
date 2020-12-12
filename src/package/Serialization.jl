@@ -27,7 +27,7 @@ serialize_project(project::Vector{<:NamedTuple}) = sprint(serialize_project, pro
 
 function deserialize_project(str::String, start::Integer)::Vector{<:NamedTuple}
 	expr = Meta.parse(str, start; raise=false)[1]
-	@assert safe_pkg_vect(expr.args[2])
+	@assert is_safe_pkg_vect(expr.args[2])
 	Core.eval(Main, expr.args[2])
 end
 
@@ -39,7 +39,7 @@ end
 
 
 
-function safe_pkg_vect(e::Expr)
+function is_safe_pkg_vect(e::Expr)
 	e.head == :vect &&
 	all(e.args) do a
 		a isa Expr && a.head == :tuple && all(a.args) do f
@@ -50,14 +50,14 @@ function safe_pkg_vect(e::Expr)
 		end
 	end
 end
-safe_pkg_vect(::Any) = false
+is_safe_pkg_vect(::Any) = false
 
 function safe_pkg_entry_field_value(e::Expr)
 	e.head == :macrocall && length(e.args) == 3 && (
 		e.args[1] == Symbol("@v_str") &&
 		e.args[2] isa LineNumberNode &&
 		e.args[3] isa String
-		)
+	)
 end
 safe_pkg_entry_field_value(::String) = true
 safe_pkg_entry_field_value(::Any) = false

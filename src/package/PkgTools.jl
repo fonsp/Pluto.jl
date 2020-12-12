@@ -3,6 +3,7 @@ module PkgTools
 export package_versions, package_completions
 
 import Pkg
+import Pkg.Types: VersionRange
 
 
 # TODO: technically this is not constant
@@ -75,5 +76,32 @@ function package_versions(package_name::String)::Vector
         end
     end
 end
+
+function simple_ranges(available::AbstractVector{VersionNumber})
+	unique(
+		if v.major == 0
+			VersionRange("0.$(v.minor)")
+		else
+			VersionRange("$(v.major)")
+		end
+	for v in available) |> reverse!
+end
+
+simple_ranges(x::AbstractVector{<:Any}) = x
+
+function opinionated_ranges(available::AbstractVector{VersionNumber})
+	prerelease = filter(v -> v.major == 0, available)
+	release = filter(v -> v.major != 0, available)
+
+	if isempty(release)
+		(recommended=simple_ranges(prerelease), other=[])
+	else
+		(recommended=simple_ranges(release), other=simple_ranges(prerelease))
+	end
+end
+
+opinionated_ranges(x::AbstractVector{<:Any}) = (recommended=x, other=[])
+
+
 
 end

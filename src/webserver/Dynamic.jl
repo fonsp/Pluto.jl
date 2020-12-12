@@ -201,9 +201,11 @@ responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cel
 end
 
 responses[:package_versions] = (session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing) -> let
-    result = PkgTools.package_versions(body["package_name"])
+    all_versions = PkgTools.package_versions(body["package_name"])
+    opinionated = PkgTools.opinionated_ranges(all_versions)
     putclientupdates!(session, initiator, UpdateMessage(:🍕, Dict(
-        :versions => result,
+        :versions => all_versions,
+        :opinionated_ranges => opinionated,
     ), nothing, nothing, initiator))
 end
 
