@@ -1,3 +1,5 @@
+Posting an issue? [Read this first!](https://github.com/fonsp/Pluto.jl/issues/182)
+
 # Instructions for `Pluto.jl` developers
 
 Hey! Thank you for your interested in working on ~THE FUTURE~ our modest little project! There are a number of ways that you can contribute:
