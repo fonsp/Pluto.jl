@@ -46,48 +46,76 @@ export const PkgBubble = ({ client, package_name, refresh, actions }) => {
             ${is_stdlib
                 ? ""
                 : html`<optgroup label="Advanced">
-                      <option>Refresh registry</option>
-                      <option value="action_version_range">Version range...</option>
-                      <option value="action_git">Git...</option>
-                      <option value="action_local_path">Local path...</option>
+                      <option value="action_refresh_registry" title="Update the list of possible versions">Refresh registry</option>
+                      <option
+                          value="action_version_range"
+                          title="Choose this option if you need a more specific version range. Note that the options above are also version ranges, hover to see how they work."
+                      >
+                          Version range...
+                      </option>
+                      <option value="action_git" title="Choose this option if want a specific branch or commit of ${package_name}.">Git...</option>
+                      <option value="action_local_path" title="Choose this option if you are creating or modifying ${package_name} yourself.">
+                          Local path...
+                      </option>
                   </optgroup>`}
         </select>`
 
+        const default_version_range = or.recommended.length > 0 ? or.recommended[0] : ""
         if (!is_set) {
-            select.value = or.recommended.length > 0 ? or.recommended[0] : ""
+            select.value = default_version_range
         }
 
+        const old_value = select.value
+
         select.onchange = (e) => {
-            const new_version = select.value
-            if (new_version === "action_version_range") {
-                const answer = prompt(`Enter a version range for ${package_name}:`)
-                actions.update_local_pkg_state((state) => {
-                    state.packages[package_name] = {
-                        running_version: state.packages[package_name]?.running_version,
-                        type: "version_range",
-                        version_range: answer,
-                    }
-                })
-            } else if (new_version === "action_git") {
+            const choice = select.value
+            if (choice === old_value) {
+                return
+            }
+            if (choice === "action_version_range") {
+                const answer = prompt(
+                    `Enter a version range for ${package_name}:\n\nTo learn about the format, see\nhttps://julialang.github.io/Pkg.jl/v1/compatibility`,
+                    default_version_range
+                )
+                if (answer != null) {
+                    actions.update_local_pkg_state((state) => {
+                        state.packages[package_name] = {
+                            running_version: state.packages[package_name]?.running_version,
+                            type: "version_range",
+                            version_range: answer,
+                        }
+                    })
+                } else {
+                    select.value = old_value
+                }
+            } else if (choice === "action_git") {
                 const answer = prompt(`Enter a git branch name or commit SHA for ${package_name}:`)
-                actions.update_local_pkg_state((state) => {
-                    state.packages[package_name] = {
-                        running_version: state.packages[package_name]?.running_version,
-                        type: "git_revision",
-                        git_revision: "#" + answer,
-                    }
-                })
-            } else if (new_version === "action_local_path") {
+                if (answer != null) {
+                    actions.update_local_pkg_state((state) => {
+                        state.packages[package_name] = {
+                            running_version: state.packages[package_name]?.running_version,
+                            type: "git_revision",
+                            git_revision: "#" + answer,
+                        }
+                    })
+                } else {
+                    select.value = old_value
+                }
+            } else if (choice === "action_local_path") {
                 const answer = prompt(`Enter a local path for ${package_name}:`)
-                actions.update_local_pkg_state((state) => {
-                    state.packages[package_name] = {
-                        running_version: state.packages[package_name]?.running_version,
-                        type: "local_path",
-                        local_path: answer,
-                    }
-                })
+                if (answer != null) {
+                    actions.update_local_pkg_state((state) => {
+                        state.packages[package_name] = {
+                            running_version: state.packages[package_name]?.running_version,
+                            type: "local_path",
+                            local_path: answer,
+                        }
+                    })
+                } else {
+                    select.value = old_value
+                }
             } else {
-                node.classList.toggle("installed", me != null && new_version === me[me.type])
+                node.classList.toggle("installed", me != null && choice === me[me.type])
 
                 actions.update_local_pkg_state((state) => {
                     state.packages[package_name] = {
