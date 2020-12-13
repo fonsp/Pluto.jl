@@ -1128,9 +1128,9 @@ pkg-bubble select {
     width: 100%;
     border: none;
     background-color: transparent;
-    font-size: 0.75rem;
+    font-size: 0.65rem;
     font-family: "Space Mono", monospace;
-    font-weight: 700;
+    font-weight: 500;
     text-align: center;
     text-align-last: center;
 }

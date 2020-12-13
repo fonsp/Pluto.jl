@@ -913,9 +913,9 @@ export class Editor extends Component {
             packages: [
                 {
                     name: "PlutoUI",
-                    running_version: "0.6.5",
+                    running_version: "0.5.1",
                     type: "version_range",
-                    version_range: "0.6",
+                    version_range: "0.5",
                 },
                 {
                     name: "Plots",
