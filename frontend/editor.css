@@ -1122,7 +1122,7 @@ pkg-bubble.installed {
     background: #b6bcc738;
 }
 pkg-bubble.not_found {
-    width: 2em;
+    /* width: 2em; */
 }
 pkg-bubble select {
     width: 100%;

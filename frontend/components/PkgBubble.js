@@ -35,42 +35,43 @@ export const PkgBubble = ({ client, package_name, refresh }) => {
             o.selected = installed
             return o
         }
+        const or = opinionated_ranges_ref.current
         const select = html`<select>
-            <optgroup label="Releases">${opinionated_ranges_ref.current.recommended.map(v_entry)}</optgroup>
-            ${opinionated_ranges_ref.current.other.length === 0
-                ? ""
-                : html`<optgroup label="Pre-releases">${opinionated_ranges_ref.current.other.map(v_entry)}</optgroup>`}
+            ${or.recommended.length === 0 && or.other.length === 0 ? html`<option selected>...</option>` : ""}
+            ${or.recommended.length === 0 ? "" : html`<optgroup label="Releases">${or.recommended.map(v_entry)}</optgroup>`}
+            ${or.other.length === 0 ? "" : html`<optgroup label="Pre-releases">${or.other.map(v_entry)}</optgroup>`}
             ${is_stdlib
                 ? ""
                 : html`<optgroup label="Advanced">
-                      <option>Version range</option>
-                      <option>Git revision</option>
-                      <option>Local path</option>
+                      <option>Refresh registry</option>
+                      <option value="action_version_range">Version range...</option>
+                      <option value="action_git">Git...</option>
+                      <option value="action_local_path">Local path...</option>
                   </optgroup>`}
         </select>`
 
         // very sometimes this doesn't happen by default so let's force it
         if (!installed) {
-            select.value = select.options[0].value
+            select.value = or.recommended.length > 0 ? or.recommended[0] : ""
         }
 
         select.onchange = (e) => {
             const new_version = select.value
-            if (new_version === "Version range") {
+            if (new_version === "action_version_range") {
                 const answer = prompt(`Enter a version range for ${package_name}:`)
                 select.value = null
             }
-            if (new_version === "Git revision") {
-                const answer = prompt(`Enter a git revision for ${package_name}:`)
+            if (new_version === "action_git") {
+                const answer = prompt(`Enter a git branch name or commit SHA for ${package_name}:`)
             }
-            if (new_version === "Local path") {
+            if (new_version === "action_local_path") {
                 const answer = prompt(`Enter a local path for ${package_name}:`)
             }
             node.classList.toggle("installed", me != null && new_version === me[me.type])
         }
 
         node.innerHTML = ""
-        if (opinionated_ranges_ref.current.length !== 0) {
+        if (or.length !== 0) {
         }
         node.appendChild(select)
 

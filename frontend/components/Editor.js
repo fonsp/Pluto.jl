@@ -168,6 +168,23 @@ export class Editor extends Component {
                 in_temp_dir: true,
                 notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
+                pkg_state_local: {
+                    is_pluto_managed: true,
+                    packages: [
+                        {
+                            name: "PlutoUI",
+                            running_version: "0.5.1",
+                            type: "version_range",
+                            version_range: "0.5",
+                        },
+                        {
+                            name: "Plots",
+                            running_version: "1.2.3",
+                            type: "version_range",
+                            version_range: "1",
+                        },
+                    ],
+                },
             },
             desired_doc_query: null,
             recently_deleted: null,
@@ -304,6 +321,9 @@ export class Editor extends Component {
                         cells: [...before, ...cells, ...after],
                     }
                 })
+            },
+            update_local_pkg_state: (mutator) => {
+                this.setState(({ notebook }) => ({ ...notebook, pkg_state_local: mutator(notebook.pkg_state_local) }))
             },
         }
 
@@ -908,24 +928,6 @@ export class Editor extends Component {
             }
         })
 
-        this.pkg_state = {
-            is_pluto_managed: true,
-            packages: [
-                {
-                    name: "PlutoUI",
-                    running_version: "0.5.1",
-                    type: "version_range",
-                    version_range: "0.5",
-                },
-                {
-                    name: "Plots",
-                    running_version: "1.2.3",
-                    type: "version_range",
-                    version_range: "1",
-                },
-            ],
-        }
-
         window.addEventListener("beforeunload", (event) => {
             const first_unsaved = this.state.notebook.cells.find((cell) => code_differs(cell))
             if (first_unsaved != null) {
@@ -1050,7 +1052,7 @@ export class Editor extends Component {
                     focus_after_creation=${!this.state.loading}
                     all_completed_promise=${this.all_completed_promise}
                     selected_friends=${this.selected_friends}
-                    pkg_state=${this.pkg_state}
+                    pkg_state=${this.state.notebook.pkg_state_local}
                     requests=${this.requests}
                     client=${this.client}
                 />
