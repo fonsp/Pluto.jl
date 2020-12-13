@@ -170,20 +170,18 @@ export class Editor extends Component {
                 cells: [],
                 pkg_state_local: {
                     is_pluto_managed: true,
-                    packages: [
-                        {
-                            name: "PlutoUI",
+                    packages: {
+                        PlutoUI: {
                             running_version: "0.5.1",
                             type: "version_range",
                             version_range: "0.5",
                         },
-                        {
-                            name: "Plots",
+                        Plots: {
                             running_version: "1.2.3",
                             type: "version_range",
                             version_range: "1",
                         },
-                    ],
+                    },
                 },
             },
             desired_doc_query: null,
@@ -323,7 +321,12 @@ export class Editor extends Component {
                 })
             },
             update_local_pkg_state: (mutator) => {
-                this.setState(({ notebook }) => ({ ...notebook, pkg_state_local: mutator(notebook.pkg_state_local) }))
+                this.setState(({ notebook }) => ({
+                    notebook: {
+                        ...notebook,
+                        pkg_state_local: immer(notebook.pkg_state_local, mutator),
+                    },
+                }))
             },
         }
 
@@ -1054,6 +1057,7 @@ export class Editor extends Component {
                     selected_friends=${this.selected_friends}
                     pkg_state=${this.state.notebook.pkg_state_local}
                     requests=${this.requests}
+                    actions=${this.actions}
                     client=${this.client}
                 />
 

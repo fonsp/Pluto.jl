@@ -15,28 +15,31 @@ const range_hint = (v) => {
 }
 
 // not preact because we're too cool
-export const PkgBubble = ({ client, package_name, refresh }) => {
+export const PkgBubble = ({ client, package_name, refresh, actions }) => {
     const node = html`<pkg-bubble>...</pkg-bubble>`
     const pkg_state_ref = { current: null }
     const opinionated_ranges_ref = { current: { recommended: [], other: [] } }
 
     const render = () => {
-        const me = pkg_state_ref.current?.packages.find((p) => p.name === package_name)
-        const installed = me != null
+        const me = pkg_state_ref.current?.packages[package_name]
+        const is_set = me != null
+        const is_running = is_set && me.running_version != null
         const is_stdlib = opinionated_ranges_ref.current.recommended.includes("stdlib")
-        node.classList.toggle("installed", installed)
+        node.classList.toggle("installed", is_running)
         node.classList.toggle("not_found", opinionated_ranges_ref.current.recommended.length === 0)
-        node.title = installed ? "" : "This version will be installed"
+        node.title = is_running ? "" : "This version will be installed"
 
         const v_entry = (x, i) => {
             const o = html`<option title="${range_hint(x)}">${x}</option>`
-            const installed = me != null && me[me.type] === x
+            const installed = is_set && me[me.type] === x
             o.classList.toggle("installed", installed)
             o.selected = installed
             return o
         }
         const or = opinionated_ranges_ref.current
+        const non_traditional_choice = is_set && (me.type !== "version_range" || (!or.recommended.includes(me[me.type]) && !or.other.includes(me[me.type])))
         const select = html`<select>
+            ${non_traditional_choice ? html`<optgroup label="Custom"><option>${me[me.type]}</option></optgroup>` : ""}
             ${or.recommended.length === 0 && or.other.length === 0 ? html`<option selected>...</option>` : ""}
             ${or.recommended.length === 0 ? "" : html`<optgroup label="Releases">${or.recommended.map(v_entry)}</optgroup>`}
             ${or.other.length === 0 ? "" : html`<optgroup label="Pre-releases">${or.other.map(v_entry)}</optgroup>`}
@@ -50,8 +53,7 @@ export const PkgBubble = ({ client, package_name, refresh }) => {
                   </optgroup>`}
         </select>`
 
-        // very sometimes this doesn't happen by default so let's force it
-        if (!installed) {
+        if (!is_set) {
             select.value = or.recommended.length > 0 ? or.recommended[0] : ""
         }
 
@@ -59,15 +61,42 @@ export const PkgBubble = ({ client, package_name, refresh }) => {
             const new_version = select.value
             if (new_version === "action_version_range") {
                 const answer = prompt(`Enter a version range for ${package_name}:`)
-                select.value = null
-            }
-            if (new_version === "action_git") {
+                actions.update_local_pkg_state((state) => {
+                    state.packages[package_name] = {
+                        running_version: state.packages[package_name]?.running_version,
+                        type: "version_range",
+                        version_range: answer,
+                    }
+                })
+            } else if (new_version === "action_git") {
                 const answer = prompt(`Enter a git branch name or commit SHA for ${package_name}:`)
-            }
-            if (new_version === "action_local_path") {
+                actions.update_local_pkg_state((state) => {
+                    state.packages[package_name] = {
+                        running_version: state.packages[package_name]?.running_version,
+                        type: "git_revision",
+                        git_revision: "#" + answer,
+                    }
+                })
+            } else if (new_version === "action_local_path") {
                 const answer = prompt(`Enter a local path for ${package_name}:`)
+                actions.update_local_pkg_state((state) => {
+                    state.packages[package_name] = {
+                        running_version: state.packages[package_name]?.running_version,
+                        type: "local_path",
+                        local_path: answer,
+                    }
+                })
+            } else {
+                node.classList.toggle("installed", me != null && new_version === me[me.type])
+
+                actions.update_local_pkg_state((state) => {
+                    state.packages[package_name] = {
+                        running_version: state.packages[package_name]?.running_version,
+                        type: "version_range",
+                        version_range: select.value,
+                    }
+                })
             }
-            node.classList.toggle("installed", me != null && new_version === me[me.type])
         }
 
         node.innerHTML = ""

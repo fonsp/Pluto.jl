@@ -14,6 +14,7 @@ export const Notebook = ({
     selected_friends,
     pkg_state,
     requests,
+    actions,
     client,
     notebook_id,
 }) => {
@@ -40,6 +41,7 @@ export const Notebook = ({
                     all_completed_promise=${all_completed_promise}
                     selected_friends=${selected_friends}
                     requests=${requests}
+                    actions=${actions}
                     pkg_state=${pkg_state}
                     client=${client}
                     notebook_id=${notebook_id}

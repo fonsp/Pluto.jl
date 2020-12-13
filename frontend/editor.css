@@ -1126,6 +1126,7 @@ pkg-bubble.not_found {
 }
 pkg-bubble select {
     width: 100%;
+    white-space: nowrap;
     border: none;
     background-color: transparent;
     font-size: 0.65rem;

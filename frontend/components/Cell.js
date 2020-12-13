@@ -88,6 +88,7 @@ export const Cell = ({
     selected_friends,
     pkg_state,
     requests,
+    actions,
     client,
     notebook_id,
 }) => {
@@ -185,6 +186,7 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 pkg_state=${pkg_state}
                 client=${client}
+                actions=${actions}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />`}

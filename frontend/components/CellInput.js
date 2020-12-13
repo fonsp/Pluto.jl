@@ -51,6 +51,7 @@ export const CellInput = ({
     on_focus_neighbor,
     pkg_state,
     client,
+    actions,
     cell_id,
     notebook_id,
 }) => {
@@ -69,7 +70,7 @@ export const CellInput = ({
         pkg_bubbles.current.forEach((b) => {
             b.on_pkg_state(pkg_state)
         })
-    }, pkg_state.packages)
+    }, [pkg_state.packages, pkg_state.is_pluto_managed])
 
     useEffect(() => {
         remote_code_ref.current = remote_code
@@ -446,6 +447,7 @@ export const CellInput = ({
                                             client: client,
                                             package_name: package_name,
                                             refresh: () => cm.refresh(),
+                                            actions: actions,
                                         })
                                         b.on_pkg_state(pkg_state)
                                         return b
