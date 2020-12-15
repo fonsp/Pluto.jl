@@ -468,31 +468,31 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=nothing))::MimedOutput
     try
         new_iocontext = IOContext(default_iocontext, context)
         io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=new_iocontext)
         if value === nothing
             if mime ∈ imagemimes
-                io_sprinted, mime
+                (io_sprinted, mime)
             else
-                String(io_sprinted), mime
+                (String(io_sprinted), mime)
             end
         else
-            (value, mime)::MimedOutput
+            (value, mime)
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
         bt = stacktrace(catch_backtrace())
-        format_output(CapturedException(title, bt))::MimedOutput
+        format_output(CapturedException(title, bt))
     end
 end
 
-format_output(x; context=nothing)::MimedOutput = format_output_default(x; context=context)
+format_output(@nospecialize(x); context=nothing) = format_output_default(x, context)
 
-format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
+format_output(::Nothing; context=nothing) = ("", MIME"text/plain"())
 
-function format_output(val::CapturedException; context=nothing)::MimedOutput
+function format_output(val::CapturedException; context=nothing)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s, _) in val.processed_bt]
 
@@ -640,9 +640,9 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:N
 function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
-            i, format_output_default(x[i]; context=context)
+            i, format_output_default(x[i], context)
         else
-            i, format_output_default(Text(Base.undef_ref_str); context=context)
+            i, format_output_default(Text(Base.undef_ref_str), context)
         end
         for i in indices
     ] |> collect
@@ -696,7 +696,7 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x; context=context))),
+        :elements => collect(enumerate(format_output_default.(x, [context]))),
     )
 end
 
@@ -707,7 +707,7 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     row_index = 1
     for pair in x
         k, v = pair
-        push!(elements, (format_output_default(k; context=context), format_output_default(v; context=context)))
+        push!(elements, (format_output_default(k, context), format_output_default(v, context)))
         if row_index == my_limit
             push!(elements, "more")
             break
@@ -726,7 +726,7 @@ end
 function tree_data_nt_row(pair::Tuple, context::IOContext)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
-    string(k), format_output_default(element; context=context)
+    string(k), format_output_default(element, context)
 end
 
 
@@ -743,7 +743,7 @@ function tree_data(@nospecialize(x::Pair), context::IOContext)
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Pair,
-        :key_value => (format_output_default(k; context=context), format_output_default(v; context=context)),
+        :key_value => (format_output_default(k, context), format_output_default(v, context)),
     )
 end
 
@@ -766,9 +766,9 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
             f = fieldname(t, i)
             if !isdefined(x, f)
                 Base.undef_ref_str
-                f, format_output_default(Text(Base.undef_ref_str); context=recur_io)
+                f, format_output_default(Text(Base.undef_ref_str), recur_io)
             else
-                f, format_output_default(getfield(x, i); context=recur_io)
+                f, format_output_default(getfield(x, i), recur_io)
             end
         end
     
@@ -821,7 +821,7 @@ function table_data(x::Any, io::IOContext)
     end
 
     row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-        format_output_default(el; context=io)
+        format_output_default(el, io)
     end
 
     # ugliest code in Pluto:
