@@ -9,29 +9,23 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
-const package_root_dir = dirname(dirname(pathof(Pluto)))
+project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
 
-project_relative_path(xs...) = normpath(joinpath(package_root_dir, xs...))
 import Pkg
-
-# why o why
-c = Pkg.Types.Context(env=Pkg.Types.EnvCache(project_relative_path("Project.toml")))
-Pkg.instantiate(c)
-
-
 
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
+# We need to Pkg.instantiate the package environment that notebook worker process will launch in
+c = Pkg.Types.Context(env=Pkg.Types.EnvCache(project_relative_path("Project.toml")))
+Pkg.instantiate(c)
+
+
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
-# import .PlutoRunner
-# @eval Main begin
-#   PlutoRunner = $(PlutoRunner)
-# end
 include("./analysis/ExpressionExplorer.jl")
 include("./analysis/ReactiveNode.jl")
 
