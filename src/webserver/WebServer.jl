@@ -141,58 +141,61 @@ function run(session::ServerSession)
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
-            try
-                @assert is_authenticated(session, http.message)
+            if is_authenticated(session, http.message)
+                try
 
-                HTTP.WebSockets.upgrade(http) do clientstream
-                    if !isopen(clientstream)
-                        return
-                    end
-                    try
-                    while !eof(clientstream)
-                        # This stream contains data received over the WebSocket.
-                        # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
-                        local parentbody
+                    HTTP.WebSockets.upgrade(http) do clientstream
+                        if !isopen(clientstream)
+                            return
+                        end
                         try
-                            message = collect(WebsocketFix.readmessage(clientstream))
-                            parentbody = unpack(message)
+                        while !eof(clientstream)
+                            # This stream contains data received over the WebSocket.
+                            # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+                            local parentbody
+                            try
+                                message = collect(WebsocketFix.readmessage(clientstream))
+                                parentbody = unpack(message)
 
-                            process_ws_message(session, parentbody, clientstream)
+                                process_ws_message(session, parentbody, clientstream)
+                            catch ex
+                                if ex isa InterruptException
+                                    shutdown_server[]()
+                                elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                                    # that's fine!
+                                else
+                                    bt = stacktrace(catch_backtrace())
+                                    @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                end
+                            end
+                        end
                         catch ex
                             if ex isa InterruptException
                                 shutdown_server[]()
-                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
                                 # that's fine!
                             else
                                 bt = stacktrace(catch_backtrace())
-                                @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
+                                @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
                             end
                         end
                     end
-                    catch ex
-                        if ex isa InterruptException
-                            shutdown_server[]()
-                        elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
-                            # that's fine!
-                        else
-                            bt = stacktrace(catch_backtrace())
-                            @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
-                        end
+                catch ex
+                    if ex isa InterruptException
+                        shutdown_server[]()
+                    elseif ex isa Base.IOError
+                        # that's fine!
+                    elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
+                        # that's fine!
+                    else
+                        bt = stacktrace(catch_backtrace())
+                        @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                     end
                 end
-            catch ex
-                if ex isa InterruptException
-                    shutdown_server[]()
-                elseif ex isa Base.IOError
-                    # that's fine!
-                elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
-                    # that's fine!
-                elseif ex isa AssertionError && occursin("is_authenticated", ex.msg)
-                    # That's fine!
-                else
-                    bt = stacktrace(catch_backtrace())
-                    @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
-                end
+            else
+                HTTP.setstatus(http, 403)
+                HTTP.startwrite(http)
+                HTTP.closewrite(http)
             end
         else
             request::HTTP.Request = http.message
