@@ -1,4 +1,5 @@
 import Pkg
+Pkg.activate(mktempdir())
 Pkg.develop(path=ARGS[1])
 import Pluto
 s = Pluto.ServerSession()
