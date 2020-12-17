@@ -11,7 +11,8 @@ responses[:completepath] = (session::ServerSession, body, notebook = nothing; in
     pos = lastindex(path)
 
     results, loc, found = complete_path(path, pos)
-    filter!(≥(-0.1) ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
+    isenough(x) = x ≥ -0.1
+    filter!(isenough ∘ score, results) # too many candiates otherwise. -0.1 instead of 0 to enable autocompletions for paths: `/` or `/asdf/`
 
     start_utf8 = let
         # REPLCompletions takes into account that spaces need to be prefixed with `\` in the shell, so it subtracts the number of spaces in the filename from `start`:

@@ -56,7 +56,7 @@ export class FilePicker extends Component {
                 value: "",
                 lineNumbers: false,
                 lineWrapping: false,
-                theme: "plutoheader",
+                theme: "nothing",
                 viewportMargin: Infinity,
                 placeholder: this.props.placeholder,
                 indentWithTabs: true,
