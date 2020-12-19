@@ -65,8 +65,14 @@ export const CellInput = ({
     const time_last_genuine_backspace = useRef(0)
 
     useEffect(() => {
+        const current_value = cm_ref.current?.getValue() ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
         remote_code_ref.current = remote_code
-        if (cm_ref.current?.getValue() !== remote_code) {
+        if (current_value !== remote_code) {
             cm_ref.current?.setValue(remote_code)
         }
     }, [remote_code])

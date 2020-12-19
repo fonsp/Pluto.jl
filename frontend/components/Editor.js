@@ -180,26 +180,28 @@ export class Editor extends Component {
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
                 /** @type {Array<CellInputData>} */
-                let new_cells = new_codes.map((code) => {
-                    return {
-                        cell_id: uuidv4(),
-                        code: code,
-                        code_folded: false,
-                    }
-                })
+                let new_cells = new_codes.map((code) => ({
+                    cell_id: uuidv4(),
+                    code: code,
+                    code_folded: false,
+                }))
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
 
-                this.setState(
-                    immer((state) => {
-                        for (let cell of new_cells) {
-                            state.cell_inputs_local[cell.cell_id] = cell
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id
-                    })
+                await new Promise((resolve) =>
+                    this.setState(
+                        immer((state) => {
+                            for (let cell of new_cells) {
+                                state.cell_inputs_local[cell.cell_id] = cell
+                            }
+                            state.last_created_cell = new_cells[0]?.cell_id
+                        }),
+                        resolve
+                    )
                 )
-                update_notebook((notebook) => {
+
+                await update_notebook((notebook) => {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
@@ -296,24 +298,13 @@ export class Editor extends Component {
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
-                this.actions.run_cells([id])
                 await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
             },
             add_remote_cell: async (cell_id, before_or_after) => {
                 const index = this.state.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
 
-                let uuid = uuidv4()
-                this.setState({ last_created_cell: uuid })
-                await update_notebook((notebook) => {
-                    notebook.cell_inputs[uuid] = {
-                        cell_id: uuid,
-                        code: "",
-                        code_folded: false,
-                    }
-                    notebook.cell_order = [...notebook.cell_order.slice(0, index + delta), uuid, ...notebook.cell_order.slice(index + delta, Infinity)]
-                })
-                await this.client.send("run_multiple_cells", { cells: [uuid] }, { notebook_id: this.state.notebook.notebook_id })
+                await this.actions.add_remote_cell_at(index + delta)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
