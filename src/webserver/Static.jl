@@ -209,6 +209,22 @@ function http_router_for(session::ServerSession)
         end
     end
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
+
+    serve_auth_github = with_authentication(
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        github_token = query["token"]
+
+        response = HTTP.Response(302, "")
+        push!(response.headers, "Content-Type" => "text/plain")
+        push!(response.headers, "Set-Cookie" => "ghtoken=$(github_token); Path=/; SameSite=Strict")
+        push!(response.headers, "Location" => "/")
+        response
+    end
+    HTTP.@register(router, "GET", "/auth/github", serve_auth_github)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)

@@ -169,6 +169,7 @@ export class Editor extends Component {
                 notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
             },
+            gist: null,
             desired_doc_query: null,
             recently_deleted: null,
             connected: false,
@@ -305,6 +306,37 @@ export class Editor extends Component {
                     }
                 })
             },
+            save_as_gist: (gist_id, gist_file, immediate=false) => {
+                return new Promise((resolve, reject) => {
+                    const save = () => {
+                        const gh = new GitHub({ token: localStorage.getItem("ghtoken") });
+                        fetch("notebookfile" + window.location.search).then(res => res.text()).then(nb_content => {
+                            gh.getGist(gist_id).update({
+                                files: {
+                                    [gist_file]: {
+                                        content: nb_content
+                                    }
+                                }
+                            }).then(resolve).catch(reject)
+                        })
+                    }
+
+                    // The code below here waits until updates cease for 1 second before updating the gist
+                    if(this.state.gist && this.state.gist.timeout) {
+                        clearTimeout(this.state.gist.timeout)
+                    }
+
+                    if(immediate) save()
+                    else {
+                        this.setState({
+                            gist: {
+                                ...this.state.gist,
+                                timeout: setTimeout(save, 1000)
+                            }
+                        })
+                    }
+                })
+            }
         }
 
         const on_remote_notebooks = ({ message }) => {
@@ -328,6 +360,10 @@ export class Editor extends Component {
                 }
             } else {
                 if (this.state.notebook.notebook_id === update.notebook_id) {
+                    if(this.state.gist) {
+                        this.actions.save_as_gist(this.state.gist.id, this.state.gist.file);
+                    }
+
                     const message = update.message
                     const cell = this.state.notebook.cells.find((c) => c.cell_id == update.cell_id)
                     switch (update.type) {
@@ -766,6 +802,25 @@ export class Editor extends Component {
             if (old_path === new_path) {
                 return
             }
+            // gist://f50b8cc19fbd2c4cf54a9997e3393a2d/notebook.jl
+            const file_url = new URL(new_path);
+            if (file_url.protocol === 'gist:') {
+                const path_split = file_url.pathname.split('/')
+                const gist_id = path_split[2];
+                const gist_file = path_split[3];
+                
+                this.actions.save_as_gist(gist_id, gist_file, true);
+
+                this.setState({
+                    gist: {
+                        id: gist_id,
+                        file: gist_file
+                    },
+                })
+
+                return
+            }
+
             if (this.state.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
                 this.setState({ loading: true })
                 this.client
@@ -982,7 +1037,7 @@ export class Editor extends Component {
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                        value=${this.state.gist ? (`gist://${this.state.gist.id}/${this.state.gist.file}`) : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
                             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
