@@ -149,6 +149,7 @@ export class Editor extends Component {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
+                        state.selected_cells = []
                     })
                 )
             },
@@ -331,11 +332,11 @@ export class Editor extends Component {
                     }
                 }
             },
-            fold_remote_cell: (cell_id, newFolded) => {
+            fold_remote_cell: async (cell_id, newFolded) => {
                 if (!newFolded) {
                     this.setState({ last_created_cell: cell_id })
                 }
-                update_notebook((notebook) => {
+                await update_notebook((notebook) => {
                     notebook.cell_inputs[cell_id].code_folded = newFolded
                 })
             },
@@ -392,8 +393,9 @@ export class Editor extends Component {
                     {
                         objectid: objectid,
                         dim: dim,
+                        cell_id: cell_id,
                     },
-                    { notebook_id: this.state.notebook.notebook_id, cell_id: cell_id },
+                    { notebook_id: this.state.notebook.notebook_id },
                     false
                 )
             },

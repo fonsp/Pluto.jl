@@ -23,7 +23,7 @@ end
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cell_inputs::Dict{UUID,Cell}
+    cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
@@ -32,6 +32,8 @@ Base.@kwdef mutable struct Notebook
     topology::NotebookTopology=NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
+    # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
+    # This does mean that the Notebook can't be used if nothing is clearing the update channel.
     pendingupdates::Channel=Channel(1024)
 
     executetoken::Token=Token()
@@ -43,10 +45,8 @@ Base.@kwdef mutable struct Notebook
     bonds::Dict{Symbol,BondValue}=Dict()
 end
 
-# We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
-# This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
-    cell_inputs=Dict(map(cells) do cell
+    cells_dict=Dict(map(cells) do cell
         (cell.cell_id, cell)
     end),
     cell_order=map(x -> x.cell_id, cells),
@@ -58,10 +58,10 @@ Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells
-        cell_inputs = getfield(notebook, :cell_inputs)
+        cells_dict = getfield(notebook, :cells_dict)
         cell_order = getfield(notebook, :cell_order)
         map(cell_order) do id
-            cell_inputs[id]
+            cells_dict[id]
         end
     else
         getfield(notebook, property)

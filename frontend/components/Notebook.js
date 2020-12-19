@@ -80,7 +80,6 @@ export const Notebook = ({
     let pluto_actions = useContext(PlutoContext)
     useEffect(() => {
         if (notebook.cell_order.length === 0 && !is_initializing) {
-            console.log("GO ADD CELL")
             pluto_actions.add_remote_cell_at(0)
         }
     }, [is_initializing, notebook.cell_order.length])

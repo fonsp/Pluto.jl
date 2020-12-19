@@ -23,7 +23,7 @@ end
 responses[:run_multiple_cells] = function response_run_multiple_cells(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     uuids = UUID.(body["cells"])
     cells = map(uuids) do uuid
-        notebook.cell_inputs[uuid]
+        notebook.cells_dict[uuid]
     end
 
     for cell in cells
@@ -49,7 +49,11 @@ responses[:shutdown_notebook] = function response_shutdown_notebook(session::Ser
 end
 
 
-responses[:reshow_cell] = function response_reshow_cell(session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing)
+responses[:reshow_cell] = function response_reshow_cell(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
+    cell = let
+        cell_id = UUID(body["cell_id"])
+        notebook.cells_dict[cell_id]
+    end
     run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
@@ -93,7 +97,7 @@ module Firebasey include("./FirebaseySimple.jl") end
 #     path::AbstractString
 #     in_temp_dir::Bool
 #     shortpath::AbstractString
-#     cell_inputs::Dict{UUID,DiffableCellInputState}
+#     cells_dict::Dict{UUID,DiffableCellInputState}
 #     cell_results::Dict{UUID,DiffableCellResultState}
 #     cell_order::Array{UUID}
 #     bonds::Dict{Symbol,Any}
@@ -115,14 +119,14 @@ module Firebasey include("./FirebaseySimple.jl") end
 #         path = notebook.path,
 #         in_temp_dir = startswith(notebook.path, new_notebooks_directory()),
 #         shortpath = basename(notebook.path),
-#         cell_inputs = Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+#         cells_dict = Dict(map(collect(notebook.cells_dict)) do (id, cell)
 #             id => DiffableCellInputState(
 #                 cell_id = cell.cell_id,
 #                 code = cell.code,
 #                 code_folded = cell.code_folded,
 #             )
 #         end),
-#         cell_results = Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+#         cell_results = Dict(map(collect(notebook.cells_dict)) do (id, cell)
 #             id => DiffableCellResultState(
 #                 cell_id = cell.cell_id,
 #                 queued = cell.queued,
@@ -150,14 +154,14 @@ function notebook_to_js(notebook::Notebook)
         "path" => notebook.path,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
-        "cell_inputs" => Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+        "cell_inputs" => Dict(map(collect(notebook.cells_dict)) do (id, cell)
             id => Dict(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
             )
         end),
-        "cell_results" => Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+        "cell_results" => Dict(map(collect(notebook.cells_dict)) do (id, cell)
             id => Dict(
                 "cell_id" => cell.cell_id,
                 "queued" => cell.queued,
@@ -357,12 +361,10 @@ mutators = Dict(
         Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebasey.JSONPatch)
             Firebasey.update!(request.notebook, patch)
 
-            @info "cell_inputs" rest patch
-
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cell_inputs[UUID(cell_id)].parsedcode = nothing
+                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]
