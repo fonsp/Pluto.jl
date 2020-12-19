@@ -66,7 +66,7 @@ Base.@kwdef struct NotebookRequest
 end
 
 # Yeah I am including a Pluto Notebook!!
-module Firebase include("./FirebaseSimple.jl") end
+module Firebasey include("./FirebaseySimple.jl") end
 
 Base.@kwdef struct DiffableCellData
     cell_id::UUID
@@ -104,10 +104,10 @@ MsgPack.msgpack_type(::Type{DiffableCellOutput}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{DiffableCellState}) = MsgPack.StructType()
 MsgPack.msgpack_type(::Type{DiffableNotebook}) = MsgPack.StructType()
 
-Firebase.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
-Firebase.diff(o1::DiffableCellData, o2::DiffableCellData) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
-Firebase.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
-Firebase.diff(o1::DiffableCellState, o2::DiffableCellState) = Firebase.diff(Firebase.Deep(o1), Firebase.Deep(o2))
+Firebasey.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+Firebasey.diff(o1::DiffableCellData, o2::DiffableCellData) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+Firebasey.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+Firebasey.diff(o1::DiffableCellState, o2::DiffableCellState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
 
 # function notebook_to_js(notebook::Notebook)
 #     return DiffableNotebook(
@@ -272,7 +272,7 @@ function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
-            patches = Firebase.diff(current_dict, notebook_dict)
+            patches = Firebasey.diff(current_dict, notebook_dict)
             patches_as_dicts::Array{Dict} = patches
             current_state_for_clients[client] = deepcopy(notebook_dict)
 
@@ -293,13 +293,13 @@ end
 
 
 
-function convert_jsonpatch(::Type{Firebase.JSONPatch}, patch_dict::Dict)
+function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
 	if patch_dict["op"] == "add"
-		Firebase.AddPatch(patch_dict["path"], patch_dict["value"])
+		Firebasey.AddPatch(patch_dict["path"], patch_dict["value"])
 	elseif patch_dict["op"] == "remove"
-		Firebase.RemovePatch(patch_dict["path"])
+		Firebasey.RemovePatch(patch_dict["path"])
 	elseif patch_dict["op"] == "replace"
-		Firebase.ReplacePatch(patch_dict["path"], patch_dict["value"])
+		Firebasey.ReplacePatch(patch_dict["path"], patch_dict["value"])
 	else
 		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
 	end
@@ -339,7 +339,7 @@ const no_changes = Changed[]
 Base.push!(x::Set{Changed}) = x
 
 mutators = Dict(
-    "path" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
+    "path" => function(; request::NotebookRequest, patch::Firebasey.ReplacePatch)
         newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
 
@@ -354,8 +354,8 @@ mutators = Dict(
     end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_dict" => Dict(
-        Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebase.JSONPatch)
-            Firebase.update!(request.notebook, patch)
+        Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebasey.JSONPatch)
+            Firebasey.update!(request.notebook, patch)
 
             @info "cell_dict" rest patch
 
@@ -369,20 +369,20 @@ mutators = Dict(
             end
         end,
     ),
-    "cell_order" => function(; request::NotebookRequest, patch::Firebase.ReplacePatch)
-        Firebase.update!(request.notebook, patch)
+    "cell_order" => function(; request::NotebookRequest, patch::Firebasey.ReplacePatch)
+        Firebasey.update!(request.notebook, patch)
         # request.notebook.cell_order = patch.value
         [FileChanged]
     end,
     "bonds" => Dict(
-        Wildcard() => function(name; request::NotebookRequest, patch::Firebase.JSONPatch)
+        Wildcard() => function(name; request::NotebookRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
-            Firebase.update!(request.notebook, patch)
+            Firebasey.update!(request.notebook, patch)
             @async refresh_bond(
                 session=request.session,
                 notebook=request.notebook,
                 name=name,
-                is_first_value=patch isa Firebase.AddPatch
+                is_first_value=patch isa Firebasey.AddPatch
             )
             # [BondChanged]
             no_changes
@@ -393,7 +393,7 @@ mutators = Dict(
 function update_notebook(request::NotebookRequest)
     try
         notebook = request.notebook
-        patches = (convert_jsonpatch(Firebase.JSONPatch, update) for update in request.message["updates"])
+        patches = (convert_jsonpatch(Firebasey.JSONPatch, update) for update in request.message["updates"])
 
         if length(patches) == 0
             send_notebook_changes!(request)
@@ -406,7 +406,7 @@ function update_notebook(request::NotebookRequest)
 
         # TODO Immutable ??
         for patch in patches
-            Firebase.update!(current_state_for_clients[request.initiator.client], patch)
+            Firebasey.update!(current_state_for_clients[request.initiator.client], patch)
         end
 
         changes = Set{Changed}()
