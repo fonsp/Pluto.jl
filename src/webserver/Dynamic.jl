@@ -23,7 +23,7 @@ end
 responses[:run_multiple_cells] = function response_run_multiple_cells(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
     uuids = UUID.(body["cells"])
     cells = map(uuids) do uuid
-        notebook.cell_dict[uuid]
+        notebook.cell_inputs[uuid]
     end
 
     for cell in cells
@@ -68,46 +68,46 @@ end
 # Yeah I am including a Pluto Notebook!!
 module Firebasey include("./FirebaseySimple.jl") end
 
-Base.@kwdef struct DiffableCellData
-    cell_id::UUID
-    code::String
-    code_folded::Bool
-end
-Base.@kwdef struct DiffableCellOutput
-    last_run_timestamp
-    persist_js_state
-    mime
-    body
-    rootassignee
-end
-Base.@kwdef struct DiffableCellState
-    cell_id::UUID
-    queued::Bool
-    running::Bool
-    errored::Bool
-    runtime
-    output::Union{Nothing,DiffableCellOutput}
-end
-Base.@kwdef struct DiffableNotebook
-    notebook_id::UUID
-    path::AbstractString
-    in_temp_dir::Bool
-    shortpath::AbstractString
-    cell_dict::Dict{UUID,DiffableCellData}
-    cells_running::Dict{UUID,DiffableCellState}
-    cell_order::Array{UUID}
-    bonds::Dict{Symbol,Any}
-end
+# Base.@kwdef struct DiffableCellInputState
+#     cell_id::UUID
+#     code::String
+#     code_folded::Bool
+# end
+# Base.@kwdef struct DiffableCellOutput
+#     last_run_timestamp
+#     persist_js_state
+#     mime
+#     body
+#     rootassignee
+# end
+# Base.@kwdef struct DiffableCellResultState
+#     cell_id::UUID
+#     queued::Bool
+#     running::Bool
+#     errored::Bool
+#     runtime
+#     output::Union{Nothing,DiffableCellOutput}
+# end
+# Base.@kwdef struct DiffableNotebook
+#     notebook_id::UUID
+#     path::AbstractString
+#     in_temp_dir::Bool
+#     shortpath::AbstractString
+#     cell_inputs::Dict{UUID,DiffableCellInputState}
+#     cell_results::Dict{UUID,DiffableCellResultState}
+#     cell_order::Array{UUID}
+#     bonds::Dict{Symbol,Any}
+# end
 
-MsgPack.msgpack_type(::Type{DiffableCellData}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{DiffableCellOutput}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{DiffableCellState}) = MsgPack.StructType()
-MsgPack.msgpack_type(::Type{DiffableNotebook}) = MsgPack.StructType()
+# MsgPack.msgpack_type(::Type{DiffableCellInputState}) = MsgPack.StructType()
+# MsgPack.msgpack_type(::Type{DiffableCellOutput}) = MsgPack.StructType()
+# MsgPack.msgpack_type(::Type{DiffableCellResultState}) = MsgPack.StructType()
+# MsgPack.msgpack_type(::Type{DiffableNotebook}) = MsgPack.StructType()
 
-Firebasey.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-Firebasey.diff(o1::DiffableCellData, o2::DiffableCellData) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-Firebasey.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-Firebasey.diff(o1::DiffableCellState, o2::DiffableCellState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+# Firebasey.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+# Firebasey.diff(o1::DiffableCellInputState, o2::DiffableCellInputState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+# Firebasey.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
+# Firebasey.diff(o1::DiffableCellResultState, o2::DiffableCellResultState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
 
 # function notebook_to_js(notebook::Notebook)
 #     return DiffableNotebook(
@@ -115,15 +115,15 @@ Firebasey.diff(o1::DiffableCellState, o2::DiffableCellState) = Firebasey.diff(Fi
 #         path = notebook.path,
 #         in_temp_dir = startswith(notebook.path, new_notebooks_directory()),
 #         shortpath = basename(notebook.path),
-#         cell_dict = Dict(map(collect(notebook.cell_dict)) do (id, cell)
-#             id => DiffableCellData(
+#         cell_inputs = Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+#             id => DiffableCellInputState(
 #                 cell_id = cell.cell_id,
 #                 code = cell.code,
 #                 code_folded = cell.code_folded,
 #             )
 #         end),
-#         cells_running = Dict(map(collect(notebook.cell_dict)) do (id, cell)
-#             id => DiffableCellState(
+#         cell_results = Dict(map(collect(notebook.cell_inputs)) do (id, cell)
+#             id => DiffableCellResultState(
 #                 cell_id = cell.cell_id,
 #                 queued = cell.queued,
 #                 running = cell.running,
@@ -150,14 +150,14 @@ function notebook_to_js(notebook::Notebook)
         "path" => notebook.path,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
-        "cell_dict" => Dict(map(collect(notebook.cell_dict)) do (id, cell)
+        "cell_inputs" => Dict(map(collect(notebook.cell_inputs)) do (id, cell)
             id => Dict(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
             )
         end),
-        "cells_running" => Dict(map(collect(notebook.cell_dict)) do (id, cell)
+        "cell_results" => Dict(map(collect(notebook.cell_inputs)) do (id, cell)
             id => Dict(
                 "cell_id" => cell.cell_id,
                 "queued" => cell.queued,
@@ -181,90 +181,90 @@ function notebook_to_js(notebook::Notebook)
 end
 
 # using Crayons
-function prettytime(time_ns::Number)
-    suffices = ["ns", "μs", "ms", "s"]
+# function prettytime(time_ns::Number)
+#     suffices = ["ns", "μs", "ms", "s"]
 	
-	current_amount = time_ns
-	suffix = ""
-	for current_suffix in suffices
-    	if current_amount >= 1000.0
-        	current_amount = current_amount / 1000.0
-		else
-			suffix = current_suffix
-			break
-		end
-	end
+# 	current_amount = time_ns
+# 	suffix = ""
+# 	for current_suffix in suffices
+#     	if current_amount >= 1000.0
+#         	current_amount = current_amount / 1000.0
+# 		else
+# 			suffix = current_suffix
+# 			break
+# 		end
+# 	end
     
-    # const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
-	roundedtime = current_amount >= 100.0 ? round(current_amount; digits=0) : round(current_amount; digits=1)
-    return "$(roundedtime) $(suffix)"
-end
-function printtime(expr, time_ns, bytes)
-    time = prettytime(time_ns)
-    if time_ns > 1e8
-        # println(crayon"light_red", time, " ", crayon"reset", string(expr))
-        println("[$(time)] $(string(expr))")
-    elseif time_ns > 10e6
-        # println(crayon"red", time, " ", crayon"reset", string(expr))
-        println("[$(time)] $(string(expr))")
-    else
-        nothing
-    end
-end
+#     # const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
+# 	roundedtime = current_amount >= 100.0 ? round(current_amount; digits=0) : round(current_amount; digits=1)
+#     return "$(roundedtime) $(suffix)"
+# end
+# function printtime(expr, time_ns, bytes)
+#     time = prettytime(time_ns)
+#     if time_ns > 1e8
+#         # println(crayon"light_red", time, " ", crayon"reset", string(expr))
+#         println("[$(time)] $(string(expr))")
+#     elseif time_ns > 10e6
+#         # println(crayon"red", time, " ", crayon"reset", string(expr))
+#         println("[$(time)] $(string(expr))")
+#     else
+#         nothing
+#     end
+# end
 
-struct Remove end
-function visit_expr(fn, something)
-	visit(fn, something, [])
-end
-function visit_expr(fn, expr::Expr, stack)
-	substack = [expr, stack...]
-	args = []
-	for arg in expr.args
-		result = visit(fn, arg, substack)
-		if result isa Remove 
-			nothing
-		else
-			push!(args, result)
-		end
-	end
-	fn(Expr(expr.head, args...), substack)
-end
-function visit_expr(fn, something, stack)
-	fn(something, stack)
-end
+# struct Remove end
+# function visit_expr(fn, something)
+# 	visit(fn, something, [])
+# end
+# function visit_expr(fn, expr::Expr, stack)
+# 	substack = [expr, stack...]
+# 	args = []
+# 	for arg in expr.args
+# 		result = visit(fn, arg, substack)
+# 		if result isa Remove 
+# 			nothing
+# 		else
+# 			push!(args, result)
+# 		end
+# 	end
+# 	fn(Expr(expr.head, args...), substack)
+# end
+# function visit_expr(fn, something, stack)
+# 	fn(something, stack)
+# end
 
-function remove_blocks(expr)
-    visit_expr(expr) do expr, (parent,)
-        if expr.head == :block
-            QuoteNode(:(...))
-        else
-            expr
-        end
-	end
-end
-function remove_line_nodes(expr)
-    visit_expr(expr) do expr, (parent,)
-		if expr isa LineNumberNode
-			if parent.head == :block
-				Remove()
-			else
-				nothing
-			end
-		else
-			expr
-		end
-	end
-end
+# function remove_blocks(expr)
+#     visit_expr(expr) do expr, (parent,)
+#         if expr.head == :block
+#             QuoteNode(:(...))
+#         else
+#             expr
+#         end
+# 	end
+# end
+# function remove_line_nodes(expr)
+#     visit_expr(expr) do expr, (parent,)
+# 		if expr isa LineNumberNode
+# 			if parent.head == :block
+# 				Remove()
+# 			else
+# 				nothing
+# 			end
+# 		else
+# 			expr
+# 		end
+# 	end
+# end
 
 
 
-macro track(expr)
-    quote
-        local expr = $(QuoteNode(expr))
-        local value, time_seconds, bytes = @timed $(esc(expr))
-        printtime(expr, time_seconds * 1e9, bytes)
-	end
-end
+# macro track(expr)
+#     quote
+#         local expr = $(QuoteNode(expr))
+#         local value, time_seconds, bytes = @timed $(esc(expr))
+#         printtime(expr, time_seconds * 1e9, bytes)
+# 	end
+# end
 
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
@@ -353,16 +353,16 @@ mutators = Dict(
         no_changes
     end,
     "in_temp_dir" => function(; _...) no_changes end,
-    "cell_dict" => Dict(
+    "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebasey.JSONPatch)
             Firebasey.update!(request.notebook, patch)
 
-            @info "cell_dict" rest patch
+            @info "cell_inputs" rest patch
 
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cell_dict[UUID(cell_id)].parsedcode = nothing
+                request.notebook.cell_inputs[UUID(cell_id)].parsedcode = nothing
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]

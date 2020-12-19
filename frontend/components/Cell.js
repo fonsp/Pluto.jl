@@ -8,9 +8,9 @@ import { PlutoContext } from "../common/PlutoContext.js"
 
 /**
  * @param {{
- *  cell: import("./Editor.js").CellData,
- *  cell_state: import("./Editor.js").CellState,
- *  cell_local: import("./Editor.js").CellData,
+ *  cell_input: import("./Editor.js").CellInputData,
+ *  cell_result: import("./Editor.js").CellState,
+ *  cell_input_local: import("./Editor.js").CellInputData,
  *  selected: boolean,
  *  focus_after_creation: boolean,
  *  force_hide_input: boolean,
@@ -19,9 +19,9 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * }} props
  * */
 export const Cell = ({
-    cell: { cell_id, code, code_folded },
-    cell_state: { queued, running, runtime, errored, output },
-    cell_local,
+    cell_input: { cell_id, code, code_folded },
+    cell_result: { queued, running, runtime, errored, output },
+    cell_input_local,
     selected,
     on_change,
     on_update_doc_query,
@@ -57,7 +57,7 @@ export const Cell = ({
         }
     }, [])
 
-    const class_code_differs = code !== (cell_local?.code ?? code)
+    const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
@@ -81,7 +81,7 @@ export const Cell = ({
                         let cells_to_fold = selected ? selected_cells : [cell_id]
                         pluto_actions.update_notebook((notebook) => {
                             for (let cell_id of cells_to_fold) {
-                                notebook.cell_dict[cell_id].code_folded = !code_folded
+                                notebook.cell_inputs[cell_id].code_folded = !code_folded
                             }
                         })
                     }}
@@ -104,7 +104,7 @@ export const Cell = ({
             <${CellOutput} ...${output} cell_id=${cell_id} />
             ${show_input &&
             html`<${CellInput}
-                local_code=${cell_local?.code ?? code}
+                local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}

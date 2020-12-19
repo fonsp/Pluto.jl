@@ -23,7 +23,7 @@ end
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cell_dict::Dict{UUID,Cell}
+    cell_inputs::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
@@ -46,7 +46,7 @@ end
 # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
-    cell_dict=Dict(map(cells) do cell
+    cell_inputs=Dict(map(cells) do cell
         (cell.cell_id, cell)
     end),
     cell_order=map(x -> x.cell_id, cells),
@@ -58,10 +58,10 @@ Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(
 
 function Base.getproperty(notebook::Notebook, property::Symbol)
     if property == :cells
-        cell_dict = getfield(notebook, :cell_dict)
+        cell_inputs = getfield(notebook, :cell_inputs)
         cell_order = getfield(notebook, :cell_order)
         map(cell_order) do id
-            cell_dict[id]
+            cell_inputs[id]
         end
     else
         getfield(notebook, property)

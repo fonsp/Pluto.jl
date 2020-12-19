@@ -4,10 +4,10 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 import { Cell } from "./Cell.js"
 
 let CellMemo = ({
-    cell,
-    cell_state,
+    cell_input,
+    cell_result,
     selected,
-    cell_local,
+    cell_input_local,
     notebook_id,
     on_update_doc_query,
     on_cell_input,
@@ -20,11 +20,11 @@ let CellMemo = ({
     return useMemo(() => {
         return html`
             <${Cell}
-                on_change=${(val) => on_cell_input(cell.cell_id, val)}
-                cell=${cell}
-                cell_state=${cell_state}
+                on_change=${(val) => on_cell_input(cell_input.cell_id, val)}
+                cell_input=${cell_input}
+                cell_result=${cell_result}
                 selected=${selected}
-                cell_local=${cell_local}
+                cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
@@ -35,10 +35,10 @@ let CellMemo = ({
             />
         `
     }, [
-        cell,
-        cell_state,
+        cell_input,
+        cell_result,
         selected,
-        cell_local,
+        cell_input_local,
         notebook_id,
         on_update_doc_query,
         on_cell_input,
@@ -55,7 +55,7 @@ let CellMemo = ({
  *  is_initializing: boolean
  *  notebook: import("./Editor.js").NotebookData,
  *  selected_cells: Array<string>,
- *  cells_local: { [uuid: string]: import("./Editor.js").CellData },
+ *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
  *  last_created_cell: string,
  *  on_update_doc_query: any,
  *  on_cell_input: any,
@@ -68,7 +68,7 @@ export const Notebook = ({
     is_initializing,
     notebook,
     selected_cells,
-    cells_local,
+    cell_inputs_local,
     last_created_cell,
     on_update_doc_query,
     on_cell_input,
@@ -100,8 +100,8 @@ export const Notebook = ({
             ${notebook.cell_order.map(
                 (cell_id) => html`<${CellMemo}
                     key=${cell_id}
-                    cell=${notebook.cell_dict[cell_id]}
-                    cell_state=${notebook.cells_running[cell_id] ?? {
+                    cell_input=${notebook.cell_inputs[cell_id]}
+                    cell_result=${notebook.cell_results[cell_id] ?? {
                         cell_id: cell_id,
                         queued: false,
                         running: false,
@@ -110,7 +110,7 @@ export const Notebook = ({
                         output: null,
                     }}
                     selected=${selected_cells.includes(cell_id)}
-                    cell_local=${cells_local[cell_id]}
+                    cell_input_local=${cell_inputs_local[cell_id]}
                     notebook_id=${notebook.notebook_id}
                     on_update_doc_query=${on_update_doc_query}
                     on_cell_input=${on_cell_input}
@@ -128,7 +128,7 @@ export const Notebook = ({
 export const NotebookMemo = ({
     is_initializing,
     notebook,
-    cells_local,
+    cell_inputs_local,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
@@ -141,7 +141,7 @@ export const NotebookMemo = ({
             <${Notebook}
                 is_initializing=${is_initializing}
                 notebook=${notebook}
-                cells_local=${cells_local}
+                cell_inputs_local=${cell_inputs_local}
                 on_update_doc_query=${on_update_doc_query}
                 on_cell_input=${on_cell_input}
                 on_focus_neighbor=${on_focus_neighbor}
@@ -150,5 +150,5 @@ export const NotebookMemo = ({
                 selected_cells=${selected_cells}
             />
         `
-    }, [is_initializing, notebook, cells_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
+    }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
 }

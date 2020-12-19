@@ -26,6 +26,7 @@ const DEBUG_DIFFING = false
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
+    //@ts-ignore
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
 /**
@@ -38,7 +39,7 @@ const uuidv4 = () =>
  * Used for implementing clipboard functionality. This isn't in topological
  * order, so you won't necessarily be able to run it directly.
  *
- * @param {Array<CellData>} cells
+ * @param {Array<CellInputData>} cells
  * @return {String}
  */
 function serialize_cells(cells) {
@@ -60,7 +61,7 @@ function deserialize_cells(serialized_cells) {
 }
 
 /**
- * @typedef CellData
+ * @typedef CellInputData
  * @type {{
  *  cell_id: string,
  *  code: string,
@@ -95,8 +96,8 @@ function deserialize_cells(serialized_cells) {
  *  shortpath: string,
  *  in_temp_dir: boolean,
  *  notebook_id: string,
- *  cell_dict: { [uuid: string]: CellData },
- *  cells_running: { [uuid: string]: CellState }
+ *  cell_inputs: { [uuid: string]: CellInputData },
+ *  cell_results: { [uuid: string]: CellState }
  *  cell_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
@@ -112,13 +113,13 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
-                cell_dict: {},
-                cells_running: {},
+                cell_inputs: {},
+                cell_results: {},
                 cell_order: [],
             }),
-            cells_local: /** @type {{ [id: string]: CellData }} */ ({}),
+            cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
-            recently_deleted: /** @type {Array<{ index: number, cell: CellData }>} */ (null),
+            recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             connected: false,
             initializing: true,
             moving_file: false,
@@ -145,7 +146,7 @@ export class Editor extends Component {
             set_local_cell: (cell_id, new_val) => {
                 this.setState(
                     immer((state) => {
-                        state.cells_local[cell_id] = {
+                        state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                     })
@@ -173,12 +174,12 @@ export class Editor extends Component {
             serialize_selected: (cell_id) => {
                 const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
                 if (cells_to_serialize.length) {
-                    return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_dict[id]))
+                    return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
                 }
             },
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
-                /** @type {Array<CellData>} */
+                /** @type {Array<CellInputData>} */
                 let new_cells = new_codes.map((code) => {
                     return {
                         cell_id: uuidv4(),
@@ -193,14 +194,14 @@ export class Editor extends Component {
                 this.setState(
                     immer((state) => {
                         for (let cell of new_cells) {
-                            state.cells_local[cell.cell_id] = cell
+                            state.cell_inputs_local[cell.cell_id] = cell
                         }
                         state.last_created_cell = new_cells[0]?.cell_id
                     })
                 )
                 update_notebook((notebook) => {
                     for (const cell of new_cells) {
-                        notebook.cell_dict[cell.cell_id] = {
+                        notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
                             // Fill the cell with empty code remotely, so it doesn't run unsafe code
                             code: "",
@@ -218,18 +219,18 @@ export class Editor extends Component {
                 this.actions.set_and_run_multiple([cell_id])
             },
             wrap_remote_cell: (cell_id, block = "begin") => {
-                const cell = this.state.notebook.cell_dict[cell_id]
+                const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
                 this.actions.change_remote_cell(cell_id, new_code)
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
-                const cell = this.state.notebook.cell_dict[cell_id]
+                const cell = this.state.notebook.cell_inputs[cell_id]
 
                 const old_code = cell.code
                 const padded_boundaries = [0, ...boundaries]
                 /** @type {Array<String>} */
                 const parts = boundaries.map((b, i) => slice_utf8(old_code, padded_boundaries[i], b).trim()).filter((x) => x !== "")
-                /** @type {Array<CellData>} */
+                /** @type {Array<CellInputData>} */
                 const cells_to_add = parts.map((code) => {
                     return {
                         cell_id: uuidv4(),
@@ -241,17 +242,17 @@ export class Editor extends Component {
                 this.setState(
                     immer((state) => {
                         for (let cell of cells_to_add) {
-                            state.cells_local[cell.cell_id] = cell
+                            state.cell_inputs_local[cell.cell_id] = cell
                         }
                     })
                 )
                 await update_notebook((notebook) => {
                     // delete the old cell
-                    delete notebook.cell_dict[cell_id]
+                    delete notebook.cell_inputs[cell_id]
 
                     // add the new ones
                     for (let cell of cells_to_add) {
-                        notebook.cell_dict[cell.cell_id] = cell
+                        notebook.cell_inputs[cell.cell_id] = cell
                     }
                     notebook.cell_order = notebook.cell_order.flatMap((c) => {
                         if (cell_id === c) {
@@ -288,7 +289,7 @@ export class Editor extends Component {
                 let id = uuidv4()
                 this.setState({ last_created_cell: id })
                 await update_notebook((notebook) => {
-                    notebook.cell_dict[id] = {
+                    notebook.cell_inputs[id] = {
                         cell_id: id,
                         code: "",
                         code_folded: false,
@@ -305,7 +306,7 @@ export class Editor extends Component {
                 let uuid = uuidv4()
                 this.setState({ last_created_cell: uuid })
                 await update_notebook((notebook) => {
-                    notebook.cell_dict[uuid] = {
+                    notebook.cell_inputs[uuid] = {
                         cell_id: uuid,
                         code: "",
                         code_folded: false,
@@ -316,7 +317,7 @@ export class Editor extends Component {
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
-                    if (cell_ids.some((cell_id) => this.state.notebook.cells_running[cell_id].running || this.state.notebook.cells_running[cell_id].queued)) {
+                    if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
                         if (confirm("This cell is still running - would you like to interrupt the notebook?")) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
@@ -325,13 +326,13 @@ export class Editor extends Component {
                             recently_deleted: cell_ids.map((cell_id) => {
                                 return {
                                     index: this.state.notebook.cell_order.indexOf(cell_id),
-                                    cell: this.state.notebook.cell_dict[cell_id],
+                                    cell: this.state.notebook.cell_inputs[cell_id],
                                 }
                             }),
                         })
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
-                                delete notebook.cell_dict[cell_id]
+                                delete notebook.cell_inputs[cell_id]
                             }
                             notebook.cell_order = notebook.cell_order.filter((cell_id) => !cell_ids.includes(cell_id))
                         })
@@ -344,13 +345,14 @@ export class Editor extends Component {
                     this.setState({ last_created_cell: cell_id })
                 }
                 update_notebook((notebook) => {
-                    notebook.cell_dict[cell_id].code_folded = newFolded
+                    notebook.cell_inputs[cell_id].code_folded = newFolded
                 })
             },
             set_and_run_all_changed_remote_cells: () => {
                 const changed = this.state.notebook.cell_order.filter(
                     (cell_id) =>
-                        this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id]?.code
+                        this.state.cell_inputs_local[cell_id] != null &&
+                        this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id]?.code
                 )
                 this.actions.set_and_run_multiple(changed)
                 return changed.length > 0
@@ -360,8 +362,8 @@ export class Editor extends Component {
                 if (cell_ids.length > 0) {
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
-                            if (this.state.cells_local[cell_id]) {
-                                notebook.cell_dict[cell_id].code = this.state.cells_local[cell_id].code
+                            if (this.state.cell_inputs_local[cell_id]) {
+                                notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
                             }
                         }
                     })
@@ -370,8 +372,8 @@ export class Editor extends Component {
                     this.setState(
                         immer((state) => {
                             for (let cell_id of cell_ids) {
-                                if (state.notebook.cells_running[cell_id]) {
-                                    state.notebook.cells_running[cell_id].queued = true
+                                if (state.notebook.cell_results[cell_id]) {
+                                    state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -444,10 +446,10 @@ export class Editor extends Component {
                                     console.groupEnd()
                                 }
 
-                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_dict[cell_id] == null)
+                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
                                 if (cells_stuck_in_limbo.length !== 0) {
                                     console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_dict[cell_id] != null)
+                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                                 }
 
                                 return {
@@ -508,7 +510,7 @@ export class Editor extends Component {
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
         this.notebook_is_idle = () =>
-            !Object.values(this.state.notebook.cells_running).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
+            !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
         console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -617,7 +619,7 @@ export class Editor extends Component {
             // }
             if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
-                if (Object.values(this.state.notebook.cells_running).some((c) => c.running || c.queued)) {
+                if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
@@ -705,7 +707,7 @@ export class Editor extends Component {
 
         window.addEventListener("beforeunload", (event) => {
             const unsaved_cells = this.state.notebook.cell_order.filter(
-                (id) => this.state.cells_local[id] && this.state.notebook.cell_dict[id].code !== this.state.cells_local[id].code
+                (id) => this.state.cell_inputs_local[id] && this.state.notebook.cell_inputs[id].code !== this.state.cell_inputs_local[id].code
             )
             const first_unsaved = unsaved_cells[0]
             if (first_unsaved != null) {
@@ -741,7 +743,8 @@ export class Editor extends Component {
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         const any_code_differs = this.state.notebook.cell_order.some(
-            (cell_id) => this.state.cells_local[cell_id] != null && this.state.notebook.cell_dict[cell_id].code !== this.state.cells_local[cell_id].code
+            (cell_id) =>
+                this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
         document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
@@ -814,7 +817,7 @@ export class Editor extends Component {
                             is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
                             selected_cells=${this.state.selected_cells}
-                            cells_local=${this.state.cells_local}
+                            cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
@@ -851,7 +854,7 @@ export class Editor extends Component {
                         on_click=${() => {
                             this.update_notebook((notebook) => {
                                 for (let { index, cell } of this.state.recently_deleted) {
-                                    notebook.cell_dict[cell.cell_id] = cell
+                                    notebook.cell_inputs[cell.cell_id] = cell
                                     notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
                                 }
                             }).then(() => {

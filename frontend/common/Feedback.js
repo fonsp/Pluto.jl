@@ -20,42 +20,42 @@ const sum = (values) => values.reduce((a, b) => a + b, 0)
 /**
  * @param {{
  *  notebook: import("../components/Editor.js").NotebookData
- *  cells_local: { [id: string]: import("../components/Editor.js").CellData }
+ *  cell_inputs_local: { [id: string]: import("../components/Editor.js").CellInputData }
  * }} state
  * */
 export const finalize_statistics = async (state, client, counter_statistics) => {
-    const cells_running = state.notebook.cell_order.map((cell_id) => state.notebook.cells_running[cell_id]).filter((x) => x != null)
-    const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_dict[cell_id]).filter((x) => x != null)
-    const cells_local = state.notebook.cell_order.map((cell_id) => {
+    const cell_results = state.notebook.cell_order.map((cell_id) => state.notebook.cell_results[cell_id]).filter((x) => x != null)
+    const cells = state.notebook.cell_order.map((cell_id) => state.notebook.cell_inputs[cell_id]).filter((x) => x != null)
+    const cell_inputs_local = state.notebook.cell_order.map((cell_id) => {
         return {
-            ...(state.cells_local[cell_id] ?? state.notebook.cell_dict[cell_id]),
-            ...state.cells_local[cell_id],
+            ...(state.cell_inputs_local[cell_id] ?? state.notebook.cell_inputs[cell_id]),
+            ...state.cell_inputs_local[cell_id],
         }
     })
 
     const statistics = {
         numCells: cells.length,
         // integer
-        numErrored: cells_running.filter((c) => c.errored).length,
+        numErrored: cell_results.filter((c) => c.errored).length,
         // integer
         numFolded: cells.filter((c) => c.code_folded).length,
         // integer
         numCodeDiffers: state.notebook.cell_order.filter(
-            (cell_id) => state.notebook.cell_dict[cell_id].code === (state.cells_local[cell_id]?.code ?? state.notebook.cell_dict[cell_id].code)
+            (cell_id) => state.notebook.cell_inputs[cell_id].code === (state.cell_inputs_local[cell_id]?.code ?? state.notebook.cell_inputs[cell_id].code)
         ).length,
         // integer
-        numMarkdowns: cells_local.filter((c) => first_line(c).startsWith('md"')).length,
+        numMarkdowns: cell_inputs_local.filter((c) => first_line(c).startsWith('md"')).length,
         // integer
-        numBinds: sum(cells_local.map((c) => count_matches(/\@bind/g, c.code))),
+        numBinds: sum(cell_inputs_local.map((c) => count_matches(/\@bind/g, c.code))),
         // integer
-        numBegins: cells_local.filter((c) => first_line(c).endsWith("begin")).length,
+        numBegins: cell_inputs_local.filter((c) => first_line(c).endsWith("begin")).length,
         // integer
-        numLets: cells_local.filter((c) => first_line(c).endsWith("let")).length,
+        numLets: cell_inputs_local.filter((c) => first_line(c).endsWith("let")).length,
         // integer
-        cellSizes: value_counts(cells_local.map((c) => count_matches(/\n/g, c.code) + 1)),
+        cellSizes: value_counts(cell_inputs_local.map((c) => count_matches(/\n/g, c.code) + 1)),
         // {numLines: numCells, ...}
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}
-        runtimes: value_counts(cells_running.map((c) => Math.floor(Math.log10(c.runtime + 1)))),
+        runtimes: value_counts(cell_results.map((c) => Math.floor(Math.log10(c.runtime + 1)))),
         // {runtime: numCells, ...}
         // where `runtime` is log10, rounded
         // e.g. {1: 28,  3: 14,  5: 7,  7: 1,  12: 1,  14: 1}

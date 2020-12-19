@@ -64,7 +64,7 @@
 
 #         @test update_local_notebook() do notebook
 #             id = UUID("c2b7f6c9-2161-4d18-9e5b-0bad03e9ea59")
-#             notebook["cell_dict"][id] = Dict(
+#             notebook["cell_inputs"][id] = Dict(
 #                 "cell_id" => id,
 #                 "code_folded" => false,
 #                 "code" => "10 + 20"
