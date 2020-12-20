@@ -149,20 +149,20 @@ module Firebasey include("./FirebaseySimple.jl") end
 
 
 function notebook_to_js(notebook::Notebook)
-    return Dict(
+    Dict{String,Any}(
         "notebook_id" => notebook.notebook_id,
         "path" => notebook.path,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
-        "cell_inputs" => Dict(map(collect(notebook.cells_dict)) do (id, cell)
-            id => Dict(
+        "cell_inputs" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
             )
-        end),
-        "cell_results" => Dict(map(collect(notebook.cells_dict)) do (id, cell)
-            id => Dict(
+        for (id, cell) in notebook.cells_dict),
+        "cell_results" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "queued" => cell.queued,
                 "running" => cell.running,
@@ -176,11 +176,11 @@ function notebook_to_js(notebook::Notebook)
                     "rootassignee" => cell.rootassignee,
                 ),
             )
-        end),
+        for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
-        "bonds" => Dict{String,Dict{String,Any}}(map(collect(notebook.bonds)) do (key, bondvalue)
+        "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
-        end),
+        for (key, bondvalue) in notebook.bonds),
     )
 end
 
@@ -440,7 +440,7 @@ function update_notebook(request::NotebookRequest)
     
         send_notebook_changes!(request; response=Dict(:you_okay => :👍))    
     catch ex
-        @error "Update notebook failed" ex stacktrace=stacktrace(catch_backtrace()) request.message["updates"]
+        @error "Update notebook failed"  request.message["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
             :you_okay => :👎,
             :why_not => sprint(showerror, ex),
@@ -477,7 +477,7 @@ function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol
         return
     end
         
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
+    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         push!(to_delete_vars, bound_sym) # also delete the bound symbol
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
         WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
