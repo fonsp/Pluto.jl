@@ -3,7 +3,7 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
-export const set_bonds_values = (node, bond_values) => {
+export const set_bound_elements_to_their_value = (node, bond_values) => {
     for (let bond_node of node.querySelectorAll("bond")) {
         let bond_name = bond_node.getAttribute("def")
         if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
