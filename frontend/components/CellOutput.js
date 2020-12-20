@@ -33,11 +33,6 @@ export class CellOutput extends Component {
         })
     }
 
-    componentDidCatch(error) {
-        console.log(`error:`, error)
-        this.setState({ error })
-    }
-
     shouldComponentUpdate({ last_run_timestamp }) {
         return last_run_timestamp !== this.props.last_run_timestamp
     }
