@@ -63,6 +63,8 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
         map(cell_order) do id
             cells_dict[id]
         end
+    elseif property == :cell_inputs
+        getfield(notebook, :cells_dict)
     else
         getfield(notebook, property)
     end
