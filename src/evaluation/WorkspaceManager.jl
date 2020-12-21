@@ -2,7 +2,7 @@ module WorkspaceManager
 import UUIDs: UUID
 import ..Neptune: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions
-import ..Pluto.ExpressionExplorer: FunctionName
+import ..Neptune.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Distributed
 
