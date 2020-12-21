@@ -321,8 +321,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    args = []
-    if haskey(parentbody, "notebook_id")
+    notebook = if haskey(parentbody, "notebook_id")
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)
@@ -336,7 +335,9 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
             end
         end
         
-        push!(args, notebook)
+        notebook
+    else
+        nothing
     end
 
     body = parentbody["body"]
@@ -344,7 +345,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(session, body, args..., initiator=Initiator(client, request_id))
+            responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

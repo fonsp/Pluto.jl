@@ -548,7 +548,7 @@ export class Editor extends Component {
             try {
                 await Promise.all([
                     this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                        if (response.message.response.you_okay === "👎") {
+                        if (response.message.response.update_went_well === "👎") {
                             // We only throw an error for functions that are waiting for this
                             // Notebook state will already have the changes reversed
                             throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)

@@ -285,9 +285,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
                 let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
                     pluto_actions.set_bond(name, value, is_first_value)
                 })
-                invalidation.then(() => {
-                    remove_bonds_listener()
-                })
+                invalidation.then(remove_bonds_listener)
             }
 
             // convert LaTeX to svg

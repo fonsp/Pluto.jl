@@ -7,7 +7,7 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
     if message.cell !== nothing
         to_send[:cell_id] = message.cell.cell_id
     end
-    if message.initiator !== missing
+    if message.initiator !== nothing
         to_send[:initiator_id] = message.initiator.client_id
         to_send[:request_id] = message.initiator.request_id
     end

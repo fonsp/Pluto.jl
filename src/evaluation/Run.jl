@@ -61,7 +61,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		relay_reactivity_error!(cell, error)
 	end
-	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
+	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -85,7 +85,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
-		send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
+		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
@@ -97,7 +97,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.running = false
 	end
 	
-	send_notebook_changes!(NotebookRequest(session=session, notebook=notebook))
+	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
@@ -154,10 +154,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
 		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
-			(
-				ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-				notebook,
-			)
+			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
+				notebook,)
 		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)

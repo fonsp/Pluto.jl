@@ -4,149 +4,81 @@ import UUIDs: uuid1
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 const responses = Dict{Symbol,Function}()
 
-responses[:connect] = function response_connect(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
-    putclientupdates!(session, initiator, UpdateMessage(:👋, Dict(
-        :notebook_exists => (notebook !== nothing),
-        :options => session.options,
+
+Base.@kwdef struct ClientRequest
+    session::ServerSession
+    notebook::Union{Nothing,Notebook}
+    body::Any=nothing
+    initiator::Union{Initiator,Nothing}=nothing
+end
+
+require_notebook(r::ClientRequest) = if r.notebook === nothing
+    throw(ArgumentError("Notebook request called without a notebook 😗"))
+end
+
+responses[:connect] = function response_connect(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
+        :notebook_exists => (🙋.notebook !== nothing),
+        :options => 🙋.session.options,
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
         ),
-        # :notebook => notebook === nothing ? nothing : notebook_to_js(notebook),
-    ), nothing, nothing, initiator))
+    ), nothing, nothing, 🙋.initiator))
 end
 
-responses[:ping] = function response_ping(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
-    putclientupdates!(session, initiator, UpdateMessage(:pong, Dict(), nothing, nothing, initiator))
+responses[:ping] = function response_ping(🙋::ClientRequest)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:pong, Dict(), nothing, nothing, 🙋.initiator))
 end
 
-responses[:run_multiple_cells] = function response_run_multiple_cells(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
-    uuids = UUID.(body["cells"])
+responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
+    require_notebook(🙋)
+    uuids = UUID.(🙋.body["cells"])
     cells = map(uuids) do uuid
-        notebook.cells_dict[uuid]
+        🙋.notebook.cells_dict[uuid]
     end
 
     for cell in cells
         cell.queued = true
     end
-    send_notebook_changes!(NotebookRequest(session::ServerSession, notebook::Notebook, body, initiator))
+    send_notebook_changes!(🙋)
 
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
-    update_save_run!(session, notebook, cells; run_async=true, save=true)
+    update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
 end
 
-responses[:get_all_notebooks] = function response_get_all_notebooks(session::ServerSession, body, notebook = nothing; initiator::Union{Initiator,Missing}=missing)
-    putplutoupdates!(session, clientupdate_notebook_list(session.notebooks, initiator=initiator))
+responses[:get_all_notebooks] = function response_get_all_notebooks(🙋::ClientRequest)
+    putplutoupdates!(🙋.session, clientupdate_notebook_list(🙋.session.notebooks, initiator=🙋.initiator))
 end
 
-responses[:interrupt_all] = function response_interrupt_all(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
-    success = WorkspaceManager.interrupt_workspace((session, notebook))
-    # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
+responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
+    require_notebook(🙋)
+    success = WorkspaceManager.interrupt_workspace((🙋.session, 🙋.notebook))
+    # TODO: notify user whether interrupt was successful
 end
 
-responses[:shutdown_notebook] = function response_shutdown_notebook(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
-    SessionActions.shutdown(session, notebook; keep_in_session=body["keep_in_session"])
+responses[:shutdown_notebook] = function response_shutdown_notebook(🙋::ClientRequest)
+    require_notebook(🙋)
+    SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=🙋.body["keep_in_session"])
 end
 
 
-responses[:reshow_cell] = function response_reshow_cell(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
+responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
+    require_notebook(🙋)
     cell = let
         cell_id = UUID(body["cell_id"])
-        notebook.cells_dict[cell_id]
+        🙋.notebook.cells_dict[cell_id]
     end
-    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
+    run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
-    send_notebook_changes!(NotebookRequest(session, notebook, body, initiator))
+    send_notebook_changes!(ClientRequest(🙋.session, 🙋.notebook, 🙋.body, missing))
 end
 
 # UPDATE STUFF
 
-Base.@kwdef struct NotebookRequest
-    session::ServerSession
-    notebook::Notebook
-    message::Any=nothing
-    initiator::Union{Initiator,Nothing,Missing}=nothing
-end
-
 # Yeah I am including a Pluto Notebook!!
 module Firebasey include("./FirebaseySimple.jl") end
-
-# Base.@kwdef struct DiffableCellInputState
-#     cell_id::UUID
-#     code::String
-#     code_folded::Bool
-# end
-# Base.@kwdef struct DiffableCellOutput
-#     last_run_timestamp
-#     persist_js_state
-#     mime
-#     body
-#     rootassignee
-# end
-# Base.@kwdef struct DiffableCellResultState
-#     cell_id::UUID
-#     queued::Bool
-#     running::Bool
-#     errored::Bool
-#     runtime
-#     output::Union{Nothing,DiffableCellOutput}
-# end
-# Base.@kwdef struct DiffableNotebook
-#     notebook_id::UUID
-#     path::AbstractString
-#     in_temp_dir::Bool
-#     shortpath::AbstractString
-#     cells_dict::Dict{UUID,DiffableCellInputState}
-#     cell_results::Dict{UUID,DiffableCellResultState}
-#     cell_order::Array{UUID}
-#     bonds::Dict{Symbol,Any}
-# end
-
-# MsgPack.msgpack_type(::Type{DiffableCellInputState}) = MsgPack.StructType()
-# MsgPack.msgpack_type(::Type{DiffableCellOutput}) = MsgPack.StructType()
-# MsgPack.msgpack_type(::Type{DiffableCellResultState}) = MsgPack.StructType()
-# MsgPack.msgpack_type(::Type{DiffableNotebook}) = MsgPack.StructType()
-
-# Firebasey.diff(o1::DiffableNotebook, o2::DiffableNotebook) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-# Firebasey.diff(o1::DiffableCellInputState, o2::DiffableCellInputState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-# Firebasey.diff(o1::DiffableCellOutput, o2::DiffableCellOutput) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-# Firebasey.diff(o1::DiffableCellResultState, o2::DiffableCellResultState) = Firebasey.diff(Firebasey.Deep(o1), Firebasey.Deep(o2))
-
-# function notebook_to_js(notebook::Notebook)
-#     return DiffableNotebook(
-#         notebook_id = notebook.notebook_id,
-#         path = notebook.path,
-#         in_temp_dir = startswith(notebook.path, new_notebooks_directory()),
-#         shortpath = basename(notebook.path),
-#         cells_dict = Dict(map(collect(notebook.cells_dict)) do (id, cell)
-#             id => DiffableCellInputState(
-#                 cell_id = cell.cell_id,
-#                 code = cell.code,
-#                 code_folded = cell.code_folded,
-#             )
-#         end),
-#         cell_results = Dict(map(collect(notebook.cells_dict)) do (id, cell)
-#             id => DiffableCellResultState(
-#                 cell_id = cell.cell_id,
-#                 queued = cell.queued,
-#                 running = cell.running,
-#                 errored = cell.errored,
-#                 runtime = ismissing(cell.runtime) ? nothing : cell.runtime,
-#                 output = DiffableCellOutput(                
-#                     last_run_timestamp = cell.last_run_timestamp,
-#                     persist_js_state = cell.persist_js_state,
-#                     mime = cell.repr_mime,
-#                     body = cell.output_repr,
-#                     rootassignee = cell.rootassignee,
-#                 ),
-#             )
-#         end),
-#         cell_order = notebook.cell_order,
-#         bonds = Dict(notebook.bonds),     
-#     )
-# end
-
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -185,7 +117,7 @@ function notebook_to_js(notebook::Notebook)
 end
 
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
+function send_notebook_changes!(request::ClientRequest; response::Any=nothing)
     notebook_dict = notebook_to_js(request.notebook)
     for (_, client) in request.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
@@ -197,19 +129,16 @@ function send_notebook_changes!(request::NotebookRequest; response::Any=nothing)
             # Make sure we do send a confirmation to the client who made the request, even without changes
             is_response = request.initiator !== nothing && client == request.initiator.client
 
-            if length(patches) != 0 || is_response
-                initiator = request.initiator === nothing ? missing : request.initiator
+            if !isempty(patches) || is_response
                 response = Dict(
                     :patches => patches_as_dicts,
                     :response => is_response ? response : nothing
                 )
-                putclientupdates!(client, UpdateMessage(:notebook_diff, response, request.notebook, nothing, initiator))
+                putclientupdates!(client, UpdateMessage(:notebook_diff, response, request.notebook, nothing, request.initiator))
             end
         end
     end
 end
-
-
 
 function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
 	if patch_dict["op"] == "add"
@@ -224,6 +153,7 @@ function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
 end
 
 struct Wildcard end
+
 function trigger_resolver(anything, path, values=[])
 	(value=anything, matches=values, rest=path)
 end
@@ -257,7 +187,7 @@ const no_changes = Changed[]
 Base.push!(x::Set{Changed}) = x
 
 const effects_of_changed_state = Dict(
-    "path" => function(; request::NotebookRequest, patch::Firebasey.ReplacePatch)
+    "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
 
@@ -272,7 +202,7 @@ const effects_of_changed_state = Dict(
     end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
-        Wildcard() => function(cell_id, rest; request::NotebookRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(cell_id, rest; request::ClientRequest, patch::Firebasey.JSONPatch)
             Firebasey.update!(request.notebook, patch)
 
             if length(rest) == 0
@@ -285,13 +215,12 @@ const effects_of_changed_state = Dict(
             end
         end,
     ),
-    "cell_order" => function(; request::NotebookRequest, patch::Firebasey.ReplacePatch)
+    "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.update!(request.notebook, patch)
-        # request.notebook.cell_order = patch.value
         [FileChanged]
     end,
     "bonds" => Dict(
-        Wildcard() => function(name; request::NotebookRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.update!(request.notebook, patch)
             @async refresh_bond(
@@ -306,23 +235,24 @@ const effects_of_changed_state = Dict(
     )
 )
 
-function update_notebook(request::NotebookRequest)
+responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
+    require_notebook(🙋)
     try
-        notebook = request.notebook
-        patches = (convert_jsonpatch(Firebasey.JSONPatch, update) for update in request.message["updates"])
+        notebook = 🙋.notebook
+        patches = (convert_jsonpatch(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
-            send_notebook_changes!(request)
+            send_notebook_changes!(🙋)
             return nothing
         end
 
-        if !haskey(current_state_for_clients, request.initiator.client)
+        if !haskey(current_state_for_clients, 🙋.initiator.client)
             throw(ErrorException("Updating without having a first version of the notebook??"))
         end
 
         # TODO Immutable ??
         for patch in patches
-            Firebasey.update!(current_state_for_clients[request.initiator.client], patch)
+            Firebasey.update!(current_state_for_clients[🙋.initiator.client], patch)
         end
 
         changes = Set{Changed}()
@@ -331,9 +261,9 @@ function update_notebook(request::NotebookRequest)
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if length(rest) == 0 && applicable(mutator, matches...)
-                mutator(matches...; request=request, patch=patch)
+                mutator(matches...; request=🙋, patch=patch)
             else
-                mutator(matches..., rest; request=request, patch=patch)
+                mutator(matches..., rest; request=🙋, patch=patch)
             end
 
             push!(changes, current_changes...)
@@ -352,20 +282,16 @@ function update_notebook(request::NotebookRequest)
             save_notebook(notebook)
         end
     
-        send_notebook_changes!(request; response=Dict(:you_okay => :👍))    
+        send_notebook_changes!(🙋; response=Dict(:update_went_well => :👍))    
     catch ex
-        @error "Update notebook failed"  request.message["updates"] exception=(ex, stacktrace(catch_backtrace()))
+        @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
-            :you_okay => :👎,
+            :update_went_well => :👎,
             :why_not => sprint(showerror, ex),
             :should_i_tell_the_user => ex isa SessionActions.UserError,
         )
-        send_notebook_changes!(request; response=response)
+        send_notebook_changes!(🙋; response=response)
     end
-end
-
-responses[:update_notebook] = function response_update_notebook(session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing)
-    update_notebook(NotebookRequest(session=session, message=body, notebook=notebook, initiator=initiator))
 end
 
 function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false)
