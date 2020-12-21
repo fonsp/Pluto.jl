@@ -401,26 +401,9 @@ export class Editor extends Component {
             },
         }
 
-        const on_remote_notebooks = ({ message }) => {
-            const old_path = this.state.notebook.path
-
-            for (let notebook of message.notebooks) {
-                if (notebook.notebook_id == this.state.notebook.notebook_id) {
-                    // TODO This is now stored locally, lets store it somewhere central 😈
-                    update_stored_recent_notebooks(notebook.path, old_path)
-                }
-            }
-        }
-
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
-            if (update.notebook_id == null) {
-                switch (update.type) {
-                    case "notebook_list":
-                        on_remote_notebooks(update)
-                        break
-                }
-            } else if (this.state.notebook.notebook_id === update.notebook_id) {
+            if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -471,17 +454,26 @@ export class Editor extends Component {
             // @ts-ignore
             window.version_info = this.client.version_info // for debugging
 
-            const run_all = this.client.session_options.evaluation.run_notebook_on_load
-            // on socket success
-            this.client.send("get_all_notebooks", {}, {}).then(on_remote_notebooks)
+            await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
 
-            this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false).then(() => {
-                this.setState({ initializing: false })
-            })
+            this.setState({ initializing: false })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
-            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+            await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+
+            setTimeout(() => {
+                init_feedback()
+                finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
+
+                setInterval(() => {
+                    finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
+                        store_statistics_sample(statistics)
+                        send_statistics_if_enabled(statistics)
+                    })
+                    this.counter_statistics = create_counter_statistics()
+                }, 10 * 60 * 1000) // 10 minutes - statistics interval
+            }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -667,7 +659,7 @@ export class Editor extends Component {
             }
         })
 
-        // Disabled until we solve https://github.com/fonsp/Pluto.jl/issues/482
+        // Disabled because we don't want to accidentally delete cells
         // or we can enable it with a prompt
         // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
         // document.addEventListener("cut", (e) => {
@@ -717,23 +709,14 @@ export class Editor extends Component {
                 // and don't prevent the unload
             }
         })
-
-        setTimeout(() => {
-            init_feedback()
-            finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
-
-            setInterval(() => {
-                finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
-                    store_statistics_sample(statistics)
-                    send_statistics_if_enabled(statistics)
-                })
-                this.counter_statistics = create_counter_statistics()
-            }, 10 * 60 * 1000) // 10 minutes - statistics interval
-        }, 20 * 1000) // 20 seconds - load feedback a little later for snappier UI
     }
 
-    componentDidUpdate() {
+    componentDidUpdate(old_props, old_state) {
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
+
+        if (old_state?.notebook?.path !== this.state.notebook.path) {
+            update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
+        }
 
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
@@ -876,13 +859,15 @@ export class Editor extends Component {
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
 
+// TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
+    console.log(also_delete)
     const storedString = localStorage.getItem("recent notebooks")
-    const storedList = !!storedString ? JSON.parse(storedString) : []
+    const storedList = storedString != null ? JSON.parse(storedString) : []
     const oldpaths = storedList
     const newpaths = [recent_path].concat(
         oldpaths.filter((path) => {
-            return path != recent_path && path != also_delete
+            return path !== recent_path && path !== also_delete
         })
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
