@@ -48,7 +48,7 @@ end
 For internal use only.
 """
 Base.@kwdef mutable struct EvaluationOptions
-    run_notebook_on_load::Bool = true
+    run_notebook_on_load::Bool = false
     workspace_use_distributed::Bool = true
 end
 

@@ -65,12 +65,12 @@ swallow_exception(f, exception_type::Type{T}) where T =
 """
     Pluto.run()
 
-Start Pluto!
+Start Neptune!
 
 ## Keyword arguments
 You can configure some of Pluto's more technical behaviour using keyword arguments, but this is mostly meant to support testing and strange setups like Docker. If you want to do something exciting with Pluto, you can probably write a creative notebook to do it!
 
-    Pluto.run(; kwargs...)
+    Neptune.run(; kwargs...)
 
 For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common parameters**:
 
