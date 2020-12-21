@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, updated_topology, is_just_text
+import Neptune: Notebook, ServerSession, ClientSession, Cell, update_caches!, updated_topology, is_just_text
 
 @testset "Analysis" begin
     notebook = Notebook([

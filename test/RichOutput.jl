@@ -1,6 +1,6 @@
 using Test
-import Pluto
-import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
+import Neptune
+import Neptune: update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
 
 @testset "Rich output" begin

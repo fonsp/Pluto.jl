@@ -1,8 +1,8 @@
 using Test
-using Pluto
-using Pluto.Configuration
-using Pluto.Configuration: overlayed, notebook_path_suggestion, from_flat_kwargs
-using Pluto.WorkspaceManager: _convert_to_flags
+using Neptune
+using Neptune.Configuration
+using Neptune.Configuration: overlayed, notebook_path_suggestion, from_flat_kwargs
+using Neptune.WorkspaceManager: _convert_to_flags
 
 @testset "Configurations" begin
 

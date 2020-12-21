@@ -1,6 +1,6 @@
 using Test
 
-import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
+import Neptune.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 
 @testset "Method signatures" begin
 

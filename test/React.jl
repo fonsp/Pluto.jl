@@ -1,6 +1,6 @@
 using Test
-import Pluto: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
-import Pluto.Configuration: Options, EvaluationOptions
+import Neptune: Configuration, Notebook, ServerSession, ClientSession, update_run!, Cell, WorkspaceManager
+import Neptune.Configuration: Options, EvaluationOptions
 import Distributed
 
 @testset "Reactivity" begin
