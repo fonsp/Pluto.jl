@@ -8,7 +8,7 @@ julia> Pluto.run()
 Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
-module Pluto
+module Neptune
 
 import Pkg
 
