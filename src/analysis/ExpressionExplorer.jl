@@ -882,11 +882,12 @@ function compute_symbolreferences(ex::Any)::SymbolsState
 end
 
 function try_compute_symbolreferences(ex::Any)::SymbolsState
-	try
+    try
+        error()
 		compute_symbolreferences(ex)
 	catch e
-		@error "Expression explorer failed on: " ex
-		showerror(stderr, e, stacktrace(catch_backtrace()))
+		# @error "Expression explorer failed on: " ex
+		# showerror(stderr, e, stacktrace(catch_backtrace()))
 		SymbolsState(references=Set{Symbol}([:fake_reference_to_prevent_it_from_looking_like_a_text_only_cell]))
 	end
 end
@@ -927,6 +928,7 @@ get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
 
 "Is this code simple enough that we can wrap it inside a function to boost performance? Look for [`PlutoRunner.Computer`](@ref) to learn more."
 function can_be_function_wrapped(x::Expr)
+    return false
     if x.head === :global || # better safe than sorry
         x.head === :using ||
         x.head === :import ||
