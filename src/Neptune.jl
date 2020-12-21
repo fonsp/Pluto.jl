@@ -12,7 +12,7 @@ module Neptune
 
 import Pkg
 
-project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
+project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Neptune))), xs...))
 
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
