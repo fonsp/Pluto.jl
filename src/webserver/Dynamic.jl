@@ -256,7 +256,7 @@ const no_changes = Changed[]
 # to support push!(x, y...) # with y = []
 Base.push!(x::Set{Changed}) = x
 
-mutators = Dict(
+const effects_of_changed_state = Dict(
     "path" => function(; request::NotebookRequest, patch::Firebasey.ReplacePatch)
         newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
@@ -328,7 +328,7 @@ function update_notebook(request::NotebookRequest)
         changes = Set{Changed}()
 
         for patch in patches
-            (mutator, matches, rest) = trigger_resolver(mutators, patch.path)
+            (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if length(rest) == 0 && applicable(mutator, matches...)
                 mutator(matches...; request=request, patch=patch)
@@ -379,15 +379,15 @@ function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol
         return
     end
 
-    # Not checking for any dependents now
+    # TODO: Not checking for any dependents now
     # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
 
     # fix for https://github.com/fonsp/Pluto.jl/issues/275
     # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
     # Check if the variable does not already have that value.
     # because if the initial value is already set, then we don't want to run dependent cells again.
-    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end)
-    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
         return
     end
         

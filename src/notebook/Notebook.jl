@@ -42,7 +42,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-    bonds::Dict{Symbol,BondValue}=Dict()
+    bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
