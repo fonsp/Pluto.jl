@@ -1,9 +1,8 @@
 import UUIDs: uuid1
 
 
-"Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
+"Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
-
 
 Base.@kwdef struct ClientRequest
     session::ServerSession
@@ -15,6 +14,13 @@ end
 require_notebook(r::ClientRequest) = if r.notebook === nothing
     throw(ArgumentError("Notebook request called without a notebook 😗"))
 end
+
+
+
+
+###
+# MISC RESPONSES
+###
 
 responses[:connect] = function response_connect(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:👋, Dict(
@@ -75,10 +81,16 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     send_notebook_changes!(ClientRequest(🙋.session, 🙋.notebook, 🙋.body, missing))
 end
 
-# UPDATE STUFF
+
+
+
+###
+# RESPONDING TO A NOTEBOOK STATE UPDATE
+###
 
 # Yeah I am including a Pluto Notebook!!
 module Firebasey include("./FirebaseySimple.jl") end
+
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -116,75 +128,52 @@ function notebook_to_js(notebook::Notebook)
     )
 end
 
+"""
+For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
+"""
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-function send_notebook_changes!(request::ClientRequest; response::Any=nothing)
-    notebook_dict = notebook_to_js(request.notebook)
-    for (_, client) in request.session.connected_clients
-        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == request.notebook.notebook_id
+
+"""
+Update the local state of all clients connected to this notebook.
+"""
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
+    notebook_dict = notebook_to_js(🙋.notebook)
+    for (_, client) in 🙋.session.connected_clients
+        if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
             patches = Firebasey.diff(current_dict, notebook_dict)
             patches_as_dicts::Array{Dict} = patches
             current_state_for_clients[client] = deepcopy(notebook_dict)
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
-            is_response = request.initiator !== nothing && client == request.initiator.client
+            is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
             if !isempty(patches) || is_response
                 response = Dict(
                     :patches => patches_as_dicts,
-                    :response => is_response ? response : nothing
+                    :response => is_response ? commentary : nothing
                 )
-                putclientupdates!(client, UpdateMessage(:notebook_diff, response, request.notebook, nothing, request.initiator))
+                putclientupdates!(client, UpdateMessage(:notebook_diff, response, 🙋.notebook, nothing, 🙋.initiator))
             end
         end
     end
 end
 
-function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
-	if patch_dict["op"] == "add"
-		Firebasey.AddPatch(patch_dict["path"], patch_dict["value"])
-	elseif patch_dict["op"] == "remove"
-		Firebasey.RemovePatch(patch_dict["path"])
-	elseif patch_dict["op"] == "replace"
-		Firebasey.ReplacePatch(patch_dict["path"], patch_dict["value"])
-	else
-		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
-	end
-end
-
+"""
+A placeholder path. The path elements that it replaced will be given to the function as arguments.
+"""
 struct Wildcard end
 
-function trigger_resolver(anything, path, values=[])
-	(value=anything, matches=values, rest=path)
+@enum Changed begin
+    CodeChanged
+    FileChanged
 end
-function trigger_resolver(resolvers::Dict, path, values=[])
-	if length(path) == 0
-		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
-	end
-	
-	segment = path[firstindex(path)]
-	rest = path[firstindex(path)+1:lastindex(path)]
-	for (key, resolver) in resolvers
-		if key isa Wildcard
-			continue
-		end
-		if key == segment
-			return trigger_resolver(resolver, rest, values)
-		end
-	end
-	
-	if haskey(resolvers, Wildcard())
-		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
-    else
-        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
-	end
-end
-
-@enum Changed CodeChanged FileChanged
-const no_changes = Changed[]
 
 # to support push!(x, y...) # with y = []
 Base.push!(x::Set{Changed}) = x
+
+const no_changes = Changed[]
+
 
 const effects_of_changed_state = Dict(
     "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
@@ -198,11 +187,11 @@ const effects_of_changed_state = Dict(
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
-        no_changes
+        return no_changes
     end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
-        Wildcard() => function(cell_id, rest; request::ClientRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
             Firebasey.update!(request.notebook, patch)
 
             if length(rest) == 0
@@ -223,17 +212,19 @@ const effects_of_changed_state = Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.update!(request.notebook, patch)
-            @async refresh_bond(
+            set_bond_value_reactive(
                 session=request.session,
                 notebook=request.notebook,
                 name=name,
-                is_first_value=patch isa Firebasey.AddPatch
+                is_first_value=patch isa Firebasey.AddPatch,
+                run_async=true,
             )
             # [BondChanged]
-            no_changes
+            return no_changes
         end,
     )
 )
+
 
 responses[:update_notebook] = function response_update_notebook(🙋::ClientRequest)
     require_notebook(🙋)
@@ -260,10 +251,10 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         for patch in patches
             (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
-            current_changes = if length(rest) == 0 && applicable(mutator, matches...)
+            current_changes = if isempty(rest) && applicable(mutator, matches...)
                 mutator(matches...; request=🙋, patch=patch)
             else
-                mutator(matches..., rest; request=🙋, patch=patch)
+                mutator(matches..., rest...; request=🙋, patch=patch)
             end
 
             push!(changes, current_changes...)
@@ -282,7 +273,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             save_notebook(notebook)
         end
     
-        send_notebook_changes!(🙋; response=Dict(:update_went_well => :👍))    
+        send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
     catch ex
         @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
@@ -290,11 +281,55 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             :why_not => sprint(showerror, ex),
             :should_i_tell_the_user => ex isa SessionActions.UserError,
         )
-        send_notebook_changes!(🙋; response=response)
+        send_notebook_changes!(🙋; commentary=response)
     end
 end
 
-function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false)
+function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
+	if patch_dict["op"] == "add"
+		Firebasey.AddPatch(patch_dict["path"], patch_dict["value"])
+	elseif patch_dict["op"] == "remove"
+		Firebasey.RemovePatch(patch_dict["path"])
+	elseif patch_dict["op"] == "replace"
+		Firebasey.ReplacePatch(patch_dict["path"], patch_dict["value"])
+	else
+		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
+	end
+end
+
+
+
+function trigger_resolver(anything, path, values=[])
+	(value=anything, matches=values, rest=path)
+end
+function trigger_resolver(resolvers::Dict, path, values=[])
+	if isempty(path)
+		throw(BoundsError("resolver path ends at Dict with keys $(keys(resolver))"))
+	end
+	
+	segment = first(path)
+	rest = path[firstindex(path)+1:end]
+	for (key, resolver) in resolvers
+		if key isa Wildcard
+			continue
+		end
+		if key == segment
+			return trigger_resolver(resolver, rest, values)
+		end
+	end
+	
+	if haskey(resolvers, Wildcard())
+		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
+    else
+        throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
+	end
+end
+
+###
+# HANDLE NEW BOND VALUES
+###
+
+function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)
     bound_sym = name
     new_value = notebook.bonds[name].value
 
@@ -324,5 +359,10 @@ function refresh_bond(; session::ServerSession, notebook::Notebook, name::Symbol
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
 end
+
+
+# helpers
+
+

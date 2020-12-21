@@ -91,7 +91,7 @@ function flushclient(client::ClientSession)
     true
 end
 
-function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractArray{ClientSession}})
+function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractVector{ClientSession}})
     disconnected = Set{Symbol}()
     for client in subset
         stillconnected = flushclient(client)
@@ -99,8 +99,8 @@ function flushallclients(session::ServerSession, subset::Union{Set{ClientSession
             push!(disconnected, client.id)
         end
     end
-    for to_deleteID in disconnected
-        delete!(session.connected_clients, to_deleteID)
+    for to_delete_id in disconnected
+        delete!(session.connected_clients, to_delete_id)
     end
 end
 

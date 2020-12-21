@@ -2,6 +2,10 @@ import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 using Markdown
 
+###
+# RESPONSES FOR AUTOCOMPLETE & DOCS
+###
+
 function format_path_completion(completion)
     replace(replace(completion_text(completion), "\\ " => " "), "\\\\" => "\\")
 end
