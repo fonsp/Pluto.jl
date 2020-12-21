@@ -2,7 +2,7 @@ name = "Neptune"
 uuid = "6741aa20-66dc-42c8-a8ae-3740631035cd"
 license = "MIT"
 authors = ["David Edelman & Fons van der Plas compleathorseplayer@gmail.com"]
-version = "0.1"
+version = "0.2"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
