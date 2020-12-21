@@ -70,9 +70,7 @@ function deserialize_cells(serialized_cells) {
  */
 
 /**
- * Running state of a cell,
- * owned by the worker
- * @typedef CellState
+ * @typedef CellResultData
  * @type {{
  *  cell_id: string,
  *  queued: boolean,
@@ -97,7 +95,7 @@ function deserialize_cells(serialized_cells) {
  *  in_temp_dir: boolean,
  *  notebook_id: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
- *  cell_results: { [uuid: string]: CellState }
+ *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
