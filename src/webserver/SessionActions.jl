@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Neptune: ServerSession, Notebook, emptynotebook, tamepath, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
