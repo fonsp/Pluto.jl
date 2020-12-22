@@ -78,7 +78,7 @@ function flushclient(client::ClientSession)
             end
         catch ex
             bt = stacktrace(catch_backtrace())
-            if ex isa Base.IOError
+            if ex isa Base.IOError || (ex isa ArgumentError && occursin("closed", ex.msg))
                 # client socket closed, so we return false (about 5 lines after this one)
             else
                 @warn "Failed to write to WebSocket of $(client.id) " exception = (ex, bt)

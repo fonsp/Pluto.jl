@@ -6,6 +6,10 @@
 
 @import url("juliamono.css");
 
+* {
+    box-sizing: border-box;
+}
+
 #title {
     /* position: absolute; */
     /* left: 0; */
@@ -51,7 +55,7 @@ body {
     margin: 0px;
     position: absolute;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
     background: white;
 }
 
@@ -59,7 +63,6 @@ main {
     width: 15em;
     margin: 0 auto;
     margin-top: 20vh;
-    margin-bottom: 10em;
     text-align: left;
     font-family: "Roboto Mono", monospace;
     color: hsl(0, 0%, 60%);
@@ -110,7 +113,7 @@ pluto-filepicker {
 }
 
 pluto-filepicker .CodeMirror {
-    height: calc(1rem + 4px + 4px);
+    height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     width: 100%;
     opacity: 0.6;
@@ -132,6 +135,7 @@ pluto-filepicker .CodeMirror-scroll {
 }
 
 pluto-filepicker button {
+    margin: 0px;
     background: #6c8489;
     border-radius: 3px;
     border: 2px solid #6c8489;
@@ -171,6 +175,10 @@ ul.CodeMirror-hints {
 
 body.nosessions ul#new ~ * {
     display: none;
+}
+
+#recent {
+    margin-bottom: 8em;
 }
 
 #recent > li.recent {

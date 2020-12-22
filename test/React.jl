@@ -859,7 +859,7 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Function generation" begin
+    @testset "Function wrapping" begin
         notebook = Notebook([
             Cell("false && jlaksdfjalskdfj"),
             Cell("fonsi = 2"),
@@ -877,6 +877,22 @@ import Distributed
             Cell("4"),
             Cell("[5]"),
             Cell("6 / 66"),
+            Cell("false && (seven = 7)"),
+            Cell("seven"),
+            
+            Cell("nine = :identity"),
+            Cell("nine"),
+            Cell("@__FILE__; nine"),
+            Cell("@__FILE__; twelve = :identity"),
+            Cell("@__FILE__; twelve"),
+            Cell("twelve"),
+
+            Cell("fifteen = :(1 + 1)"),
+            Cell("fifteen"),
+            Cell("@__FILE__; fifteen"),
+            Cell("@__FILE__; eighteen = :(1 + 1)"),
+            Cell("@__FILE__; eighteen"),
+            Cell("eighteen"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -899,7 +915,7 @@ import Distributed
         good = @elapsed benchmark(2)
 
         update_run!(🍭, notebook, notebook.cells)
-        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 1.5 * bad
+        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
         old = notebook.cells[4].output_repr
         setcode(notebook.cells[4], "4.0")
@@ -916,7 +932,41 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[6])
         @test old != notebook.cells[6].output_repr
 
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[7].output_repr == "false"
+
+        @test occursinerror("UndefVarError", notebook.cells[8])
+
+        @test notebook.cells[9].output_repr == ":identity"
+        @test notebook.cells[10].output_repr == ":identity"
+        @test notebook.cells[11].output_repr == ":identity"
+        @test notebook.cells[12].output_repr == ":identity"
+        @test notebook.cells[13].output_repr == ":identity"
+        @test notebook.cells[14].output_repr == ":identity"
+
+        @test notebook.cells[15].output_repr == ":(1 + 1)"
+        @test notebook.cells[16].output_repr == ":(1 + 1)"
+        @test notebook.cells[17].output_repr == ":(1 + 1)"
+        @test notebook.cells[18].output_repr == ":(1 + 1)"
+        @test notebook.cells[19].output_repr == ":(1 + 1)"
+        @test notebook.cells[20].output_repr == ":(1 + 1)"
+
         WorkspaceManager.unmake_workspace((🍭, notebook))
+
+
+        @testset "Expression hash" begin
+            same(a,b) = Pluto.PlutoRunner.expr_hash(a) == Pluto.PlutoRunner.expr_hash(b)
+
+            @test same(:(1), :(1))
+            @test !same(:(1), :(1.0))
+            @test same(:(x + 1), :(x + 1))
+            @test !same(:(x + 1), :(x + 1.0))
+            @test same(:(1 |> a |> a |> a), :(1 |> a |> a |> a))
+            @test same(:(a(b(1,2))), :(a(b(1,2))))
+            @test !same(:(a(b(1,2))), :(a(b(1,3))))
+            @test !same(:(a(b(1,2))), :(a(b(1,1))))
+            @test !same(:(a(b(1,2))), :(a(b(2,1))))
+        end
     end
 
     @testset "Run multiple" begin
