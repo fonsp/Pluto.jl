@@ -644,7 +644,11 @@ body.disconnected > header {
 nav:after {
     font-size: 1rem;
     font-weight: 500;
-    padding: 10px;
+    padding: 5px 10px;
+    margin: 5px;
+    background: white;
+    border-radius: 10px;
+    z-index: 1;
 }
 
 body.disconnected > header > nav#at_the_top:after {
@@ -752,6 +756,22 @@ button#launch_binder {
 }
 body.code_differs button#launch_binder {
     position: fixed;
+    animation: wiggle 0.3s ease-in-out 0s 1;
+}
+
+@keyframes wiggle {
+    0% {
+        transform: rotate(0deg);
+    }
+    30% {
+        transform: rotate(10deg);
+    }
+    70% {
+        transform: rotate(-10deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
 }
 
 button#launch_binder img {

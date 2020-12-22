@@ -798,7 +798,7 @@ export class Editor extends Component {
                                       })
                                   }}
                               >
-                                  <span>Run code with </span
+                                  <span>Run with </span
                                   ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
                               </button>`
                             : null
