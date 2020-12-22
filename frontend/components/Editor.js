@@ -118,6 +118,8 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+
+            binder_phase: null,
             connected: false,
             initializing: true,
             moving_file: false,
@@ -720,8 +722,11 @@ export class Editor extends Component {
             (cell_id) =>
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
+
+        document.body.classList.toggle("binder", true)
+        document.body.classList.toggle("static_preview", true)
         document.body.classList.toggle("code_differs", any_code_differs)
-        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
+        document.body.classList.toggle("loading", this.state.binder_phase === "requesting" || this.state.initializing || this.state.moving_file)
         if (this.state.connected) {
             // @ts-ignore
             document.querySelector("meta[name=theme-color]").content = "#fff"
@@ -749,12 +754,20 @@ export class Editor extends Component {
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
+
                         <${ExportBanner}
                             pluto_version=${this.client?.version_info?.pluto}
                             notebook=${this.state.notebook}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
+                        <loading-bar></loading-bar>
+                        <div id="binder_spinners">
+                    <binder-spinner id="ring_1"></binder-spinner>
+                    <binder-spinner id="ring_2"></binder-spinner>
+                    <binder-spinner id="ring_3"></binder-spinner>
+                    </div>
+
                         <nav id="at_the_top">
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
@@ -775,6 +788,21 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
+                    ${
+                        this.state.binder_phase == null
+                            ? html`<button
+                                  id="launch_binder"
+                                  onClick=${() => {
+                                      this.setState({
+                                          binder_phase: "requesting",
+                                      })
+                                  }}
+                              >
+                                  <span>Run code with </span
+                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
+                              </button>`
+                            : null
+                    }
                     <main>
                         <preamble>
                             <button
