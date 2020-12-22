@@ -109,8 +109,8 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
     computers[key] = Computer(f, proof, input_globals, output_globals)
 end
 
-valuequoted(x) = x
-valuequoted(x::Symbol) = QuoteNode(x)
+quote_if_needed(x) = x
+quote_if_needed(x::Union{Expr,Symbol}) = QuoteNode(x)
 
 function compute(computer::Computer)
     # 1. get the referenced global variables
@@ -123,7 +123,7 @@ function compute(computer::Computer)
         result, output_global_values = out
 
         for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(current_module, Expr(:(=), name, valuequoted(val)))
+            Core.eval(current_module, Expr(:(=), name, quote_if_needed(val)))
         end
 
         result
