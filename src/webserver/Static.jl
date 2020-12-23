@@ -95,6 +95,9 @@ function http_router_for(session::ServerSession)
             if !required || is_authenticated(session, request)
                 response = f(request)
                 add_set_secret_cookie!(response)
+                if !required
+                    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+                end
                 response
             else
                 error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")

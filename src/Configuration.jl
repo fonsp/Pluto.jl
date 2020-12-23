@@ -42,7 +42,6 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 Base.@kwdef mutable struct SecurityOptions
     require_secret_for_open_links::Bool = true
     require_secret_for_access::Bool = true
-    allow_cors::Bool = false
 end
 
 """
