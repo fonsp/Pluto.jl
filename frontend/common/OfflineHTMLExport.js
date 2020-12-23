@@ -17,7 +17,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
         body.querySelectorAll("pluto-input .CodeMirror").forEach((cm, i) => {
             const oldCM = oldBodyCMs[i].CodeMirror
             oldCM.save()
-            cm.innerHTML = `<textarea class="init-cm">${oldCM.getTextArea().value}</textarea>`
+            cm.outerHTML = `<textarea class="init-cm">${oldCM.getTextArea().value}</textarea>`
         })
         for (let iframe of body.querySelectorAll("iframe")) {
             if (iframe.dataset.datauri) {
@@ -63,12 +63,6 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                 ${body.querySelector("main").outerHTML}
                 ${body.querySelector("svg#MJX-SVG-global-cache").outerHTML}
             </body>
-            <style>
-            pluto-input .CodeMirror,
-            ul.CodeMirror-hints {
-                font-size: 0.75rem;
-            }
-            </style>
             <script>
                     const cmOptions = {
                         lineNumbers: true,
