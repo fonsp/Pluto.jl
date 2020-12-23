@@ -177,7 +177,7 @@ responses[:set_bond] = (session::ServerSession, body, notebook::Notebook; initia
         putnotebookupdates!(session, notebook, UpdateMessage(:bond_update, reponse, notebook, nothing, initiator))
         
         if !cancel_run_early
-            function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Array{Cell,1})
+            function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::Vector{Cell})
                 push!(to_delete_vars, bound_sym) # also delete the bound symbol
                 WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
                 WorkspaceManager.eval_in_workspace((session, notebook), :($bound_sym = $new_val))

@@ -21,7 +21,7 @@ macro asynclog(expr)
 end
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
@@ -34,7 +34,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
+	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 	# change the bar on the sides of cells to "queued"
 	local listeners = ClientSession[]
@@ -123,7 +123,7 @@ end
 ###
 
 "Do all the things!"
-function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
+function update_save_run!(session::ServerSession, notebook::Notebook, cells::Vector{Cell}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)

@@ -618,7 +618,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractVector{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
@@ -637,7 +637,7 @@ pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:N
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+function tree_data_array_elements(@nospecialize(x::AbstractVector{<:Any}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
     Tuple{I,Any}[
         if isassigned(x, i)
             i, format_output_default(x[i], context)
@@ -648,7 +648,7 @@ function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indi
     ] |> collect
 end
 
-function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
+function array_prefix(@nospecialize(x::Vector{<:Any}))::String
     string(eltype(x))
 end
 function array_prefix(@nospecialize(x))::String
@@ -667,7 +667,7 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext
     end
 end
 
-function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
+function tree_data(@nospecialize(x::AbstractVector{<:Any}), context::IOContext)
     indices = eachindex(x)
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
@@ -830,7 +830,7 @@ function table_data(x::Any, io::IOContext)
     # not enumerate(rows) because of some silliness
     # not rows[i] because `getindex` is not guaranteed to exist
     L = truncate_rows ? my_row_limit : length(rows)
-    row_data = Array{Any,1}(undef, L)
+    row_data = Vector{Any}(undef, L)
     for (i, row) in zip(1:L,rows)
         row_data[i] = (i, row_data_for(row))
     end

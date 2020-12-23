@@ -81,7 +81,7 @@ fix_linenumbernodes!(::Any, actual_filename) = nothing
 `expression_boundaries("sqrt(1)\n\n123") == [ncodeunits("sqrt(1)\n\n") + 1, ncodeunits("sqrt(1)\n\n123") + 1]`
 
 """
-function expression_boundaries(code::String, start=1)::Array{<:Integer,1}
+function expression_boundaries(code::String, start=1)::Vector{<:Integer}
     expr, next = Meta.parse(code, start, raise=false)
     if next <= ncodeunits(code)
         [next, expression_boundaries(code, next)...]
