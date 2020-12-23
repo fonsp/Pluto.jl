@@ -36,6 +36,7 @@ export const CellInput = ({
 }) => {
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(null)
+    const text_area_ref = useRef(null)
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
@@ -48,36 +49,31 @@ export const CellInput = ({
     }, [remote_code])
 
     useEffect(() => {
-        const cm = (cm_ref.current = CodeMirror(
-            (el) => {
-                dom_node_ref.current.appendChild(el)
-            },
-            {
-                value: local_code.body,
-                lineNumbers: true,
-                mode: "julia",
-                lineWrapping: true,
-                viewportMargin: Infinity,
-                placeholder: "Enter cell code...",
-                indentWithTabs: true,
-                indentUnit: 4,
-                hintOptions: {
-                    hint: juliahints,
-                    client: client,
-                    notebook_id: notebook_id,
-                    on_update_doc_query: on_update_doc_query,
-                    extraKeys: {
-                        ".": (cm, { pick }) => {
-                            pick()
-                            cm.replaceSelection(".")
-                            cm.showHint()
-                        },
-                        // "(": (cm, { pick }) => pick(),
+        const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
+            value: local_code.body,
+            lineNumbers: true,
+            mode: "julia",
+            lineWrapping: true,
+            viewportMargin: Infinity,
+            placeholder: "Enter cell code...",
+            indentWithTabs: true,
+            indentUnit: 4,
+            hintOptions: {
+                hint: juliahints,
+                client: client,
+                notebook_id: notebook_id,
+                on_update_doc_query: on_update_doc_query,
+                extraKeys: {
+                    ".": (cm, { pick }) => {
+                        pick()
+                        cm.replaceSelection(".")
+                        cm.showHint()
                     },
+                    // "(": (cm, { pick }) => pick(),
                 },
-                matchBrackets: true,
-            }
-        ))
+            },
+            matchBrackets: true,
+        }))
 
         const keys = {}
 
@@ -422,6 +418,7 @@ export const CellInput = ({
     return html`
         <pluto-input ref=${dom_node_ref}>
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
 }
