@@ -481,6 +481,7 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
+    z-index: 10;
 }
 
 nav#at_the_top > * {
@@ -669,8 +670,9 @@ loading-bar {
     position: fixed;
     top: 0px;
     display: block;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 5s;
-    display: none;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 5s, opacity linear 0.5s;
+    opacity: 0;
+    pointer-events: none;
 }
 
 #binder_spinners {
@@ -682,13 +684,14 @@ loading-bar {
 
     opacity: 0;
     transition: opacity 1s ease-in-out;
+    pointer-events: none;
 }
 
 body.binder.loading #binder_spinners {
     opacity: 0.25;
 }
 body.binder.loading loading-bar {
-    display: block;
+    opacity: 1;
 }
 
 binder-spinner#ring_1 {

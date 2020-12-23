@@ -2,7 +2,7 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, resolvable_promise, ws_address_from_base } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -19,6 +19,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { pack, unpack } from "../common/MsgPack.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -101,13 +102,33 @@ function deserialize_cells(serialized_cells) {
  * }}
  */
 
+const BinderPhase = {
+    wait_for_user: 0,
+    requesting: 0.1,
+    created: 0.6,
+    notebook_running: 0.9,
+
+    ready: 1.0,
+}
+
+// fake placeholder
+const request_binder = (binder_url) => {
+    return new Promise((resolve) => {
+        setTimeout(() => {
+            resolve("http://localhost:1234/")
+        }, 5000)
+    })
+}
+
 export class Editor extends Component {
     constructor() {
         super()
 
+        const url_params = new URLSearchParams(window.location.search)
+
         this.state = {
             notebook: /** @type {NotebookData} */ ({
-                notebook_id: new URLSearchParams(window.location.search).get("id"),
+                notebook_id: url_params.get("id"),
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
@@ -119,9 +140,12 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
 
+            static_preview: url_params.has("statefile"),
+            offer_binder: !url_params.has("id"),
             binder_phase: null,
             connected: false,
             initializing: true,
+
             moving_file: false,
             scroller: {
                 up: false,
@@ -456,7 +480,7 @@ export class Editor extends Component {
 
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
 
-            this.setState({ initializing: false })
+            this.setState({ initializing: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
@@ -485,19 +509,69 @@ export class Editor extends Component {
         }
 
         this.client = {}
-        create_pluto_connection({
-            on_unrequested_update: on_update,
-            on_connection_status: on_connection_status,
-            on_reconnect: on_reconnect,
-            connect_metadata: { notebook_id: this.state.notebook.notebook_id },
-        }).then(on_establish_connection)
+
+        this.connect = (ws_address = undefined) =>
+            create_pluto_connection({
+                ws_address: ws_address,
+                on_unrequested_update: on_update,
+                on_connection_status: on_connection_status,
+                on_reconnect: on_reconnect,
+                connect_metadata: { notebook_id: this.state.notebook.notebook_id },
+            }).then(on_establish_connection)
+
+        if (this.state.static_preview) {
+            ;(async () => {
+                const r = await fetch(url_params.get("statefile"))
+                const buffer = await r.arrayBuffer()
+                this.setState({
+                    notebook: unpack(new Uint8Array(buffer)),
+                    initializing: false,
+                    binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+                })
+            })()
+        } else {
+            this.connect()
+        }
+
+        const timeout = (t) => new Promise((r) => setTimeout(r, t))
+
+        this.start_binder = async () => {
+            this.setState({
+                loading: true,
+                binder_phase: BinderPhase.requesting,
+            })
+            const binder_session_url = await request_binder("asfdasdfasdf")
+
+            this.setState({
+                binder_phase: BinderPhase.created,
+            })
+            const open_url = new URL("open", binder_session_url)
+            open_url.searchParams.set("url", url_params.get("notebookfile"))
+            await timeout(2000)
+            const open_reponse = await fetch(String(open_url))
+
+            const new_notebook_id = new URL(open_reponse.url).searchParams.get("id")
+            this.setState(
+                (old_state) => ({
+                    notebook: {
+                        ...old_state.notebook,
+                        notebook_id: new_notebook_id,
+                    },
+                    binder_phase: BinderPhase.notebook_running,
+                }),
+                async () => {
+                    await timeout(2000)
+
+                    this.connect(ws_address_from_base(binder_session_url))
+                }
+            )
+        }
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
-        console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
             // if (this.state.initializing) {
@@ -723,11 +797,16 @@ export class Editor extends Component {
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
 
-        document.body.classList.toggle("binder", true)
-        document.body.classList.toggle("static_preview", true)
+        document.body.classList.toggle("binder", this.state.offer_binder || this.state.binder_phase != null)
+        document.body.classList.toggle("static_preview", this.state.static_preview)
         document.body.classList.toggle("code_differs", any_code_differs)
-        document.body.classList.toggle("loading", this.state.binder_phase === "requesting" || this.state.initializing || this.state.moving_file)
-        if (this.state.connected) {
+        document.body.classList.toggle(
+            "loading",
+            (BinderPhase.wait_for_user < this.state.binder_phase && this.state.binder_phase < BinderPhase.ready) ||
+                this.state.initializing ||
+                this.state.moving_file
+        )
+        if (this.state.connected || this.state.initializing || this.state.static_preview) {
             // @ts-ignore
             document.querySelector("meta[name=theme-color]").content = "#fff"
             document.body.classList.remove("disconnected")
@@ -744,6 +823,15 @@ export class Editor extends Component {
                 applyPatches(notebook, bonds_patches)
             })
         }
+
+        if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
+            const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
+            console.info(`Binder: ${phase} at ${new Date().toLocaleTimeString()}`)
+        }
+
+        window.notebook = this.state.notebook
+        window.pack = pack
+        window.unpack = unpack
     }
 
     render() {
@@ -761,7 +849,7 @@ export class Editor extends Component {
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
-                        <loading-bar></loading-bar>
+                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
                         <div id="binder_spinners">
                     <binder-spinner id="ring_1"></binder-spinner>
                     <binder-spinner id="ring_2"></binder-spinner>
@@ -783,21 +871,17 @@ export class Editor extends Component {
                                 placeholder="Save notebook..."
                                 button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                             />
-                            <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                console.log(export_menu_open)
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}>
                                 <span></span>
                             </button>
                         </nav>
                     </header>
                     ${
-                        this.state.binder_phase == null
-                            ? html`<button
-                                  id="launch_binder"
-                                  onClick=${() => {
-                                      this.setState({
-                                          binder_phase: "requesting",
-                                      })
-                                  }}
-                              >
+                        this.state.binder_phase === BinderPhase.wait_for_user
+                            ? html`<button id="launch_binder" onClick=${this.start_binder}>
                                   <span>Run with </span
                                   ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
                               </button>`
