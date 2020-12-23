@@ -115,7 +115,10 @@ const BinderPhase = {
 const request_binder = (binder_url) => {
     return new Promise((resolve) => {
         setTimeout(() => {
-            resolve("http://localhost:1234/")
+            resolve({
+                binder_session_url: "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-lade2u9l/pluto/",
+                binder_session_token: "JolStm2-TaKcG5OqS2mVJw",
+            })
         }, 5000)
     })
 }
@@ -540,15 +543,23 @@ export class Editor extends Component {
                 loading: true,
                 binder_phase: BinderPhase.requesting,
             })
-            const binder_session_url = await request_binder("asfdasdfasdf")
+            const { binder_session_url, binder_session_token } = await request_binder("asfdasdfasdf")
 
             this.setState({
                 binder_phase: BinderPhase.created,
             })
+            // fetch once to say hello
+            const with_token = (u) => {
+                const new_url = new URL(u)
+                new_url.searchParams.set("token", binder_session_token)
+                return String(new_url)
+            }
+            await fetch(with_token(binder_session_url))
+
             const open_url = new URL("open", binder_session_url)
             open_url.searchParams.set("url", url_params.get("notebookfile"))
             await timeout(2000)
-            const open_reponse = await fetch(String(open_url))
+            const open_reponse = await fetch(with_token(String(open_url)))
 
             const new_notebook_id = new URL(open_reponse.url).searchParams.get("id")
             this.setState(
@@ -562,7 +573,7 @@ export class Editor extends Component {
                 async () => {
                     await timeout(2000)
 
-                    this.connect(ws_address_from_base(binder_session_url))
+                    this.connect(with_token(ws_address_from_base(binder_session_url)))
                 }
             )
         }
