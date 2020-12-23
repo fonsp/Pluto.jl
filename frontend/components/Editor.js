@@ -159,6 +159,8 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
 
 const GistBanner = ({ gist, notebook_path, open, onClose, onSave }) => {
     const [error, setError] = useState('')
+    
+    const has_gh_token = !!localStorage.getItem('ghtoken')
 
     const gist_id_ref = useRef()
     const gist_file_ref = useRef()
@@ -196,18 +198,29 @@ const GistBanner = ({ gist, notebook_path, open, onClose, onSave }) => {
         onSave(gist_id, gist_file)
     }
 
+    function handleAuth() {
+        const l = window.location
+        const redirect_url = `${l.protocol}//${l.host}/auth_github`
+        // Saves the current location and will be used to redirect after authentication is complete
+        localStorage.setItem('post auth redirect', window.location.href)
+        window.location.assign(`http://auth.pluto.cot.llc/github?redirect_url=${encodeURIComponent(redirect_url)}`)
+    }
+
     return open && html`
         <aside id="gist_banner">
             <div id="gist_banner_container">
                 <div class="export_title" style="height: 40px">gist</div>
 
                 <div style="display: flex; flex-direction: column">
-                    <div style="display: flex">
-                        <form>
+                    <div style="display: flex; height: 100%; align-items: stretch">
+                        ${has_gh_token && html`<form>
                             <input ref=${gist_id_ref} value=${gist ? gist.id : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist ID (empty for new gist)" />
                             <input ref=${gist_file_ref} value=${gist ? gist.file : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist File Name" />
-                        </form>
-                        <button class="pluto-styled-button" style="margin-bottom: 3px;" onClick=${handleSave}>Save</button>
+                        </form>`}
+
+                        ${!has_gh_token && html`<span style="margin-left: 10px"/>`}
+
+                        <button class="pluto-styled-button" style="margin-bottom: 3px;" onClick=${has_gh_token ? handleSave : handleAuth}>${has_gh_token ? 'Save' : 'Authenticate with GitHub'}</button>
                         <button title="Close" class="toggle_export gist_banner_close" onClick=${onClose}>
                             <span></span>
                         </button>

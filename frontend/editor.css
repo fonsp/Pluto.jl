@@ -466,7 +466,7 @@ aside#export button.toggle_export {
     margin-left: auto;
     height: 60px;
 }
-body.loading button.toggle_export {
+body.loading button.toggle_export, body.loading button.toggle_gist {
     display: none;
 }
 
@@ -1450,6 +1450,10 @@ footer button, .pluto-styled-button {
     font-family: inherit;
     font-weight: 600;
     font-size: 0.75rem;
+}
+.pluto-styled-button {
+    cursor: pointer;
+    border-radius: 3px;
 }
 
 #info {
