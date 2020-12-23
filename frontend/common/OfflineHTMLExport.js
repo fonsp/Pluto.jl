@@ -65,7 +65,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
             </body>
             <style>
             pluto-input .CodeMirror,
-            ul.CodeMirror-hints  {
+            ul.CodeMirror-hints {
                 font-size: 0.75rem;
             }
             </style>
@@ -78,6 +78,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                         placeholder: "Enter cell code...",
                         indentWithTabs: true,
                         indentUnit: 4,
+                        readOnly: true
                     }
                     document.addEventListener("DOMContentLoaded", () => 
                         document.querySelectorAll(".init-cm").forEach(textArea => {
