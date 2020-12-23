@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useRef } from "../imports/Preact.js"
 import immer from "../imports/immer.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
@@ -157,6 +157,70 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
     `
 }
 
+const GistBanner = ({ gist, notebook_path, open, onClose, onSave }) => {
+    const [error, setError] = useState('')
+
+    const gist_id_ref = useRef()
+    const gist_file_ref = useRef()
+
+    async function handleSave() {
+        const gh = new GitHub({ token: localStorage.getItem("ghtoken") })
+
+        let gist_id = gist_id_ref.current.value
+        const gist_file = gist_file_ref.current.value
+
+        // Check to make sure its a valid gist id before proceeding
+        if(gist_id.length > 0) {
+            try {
+                await gh.getGist(gist_id).read()
+            }
+            catch(e) {
+                // Error getting gist; assume it doesn't exist
+                console.log(e)
+                setError('A gist with the provided id does not exist. Leave the gist id blank to create a new one instead')
+                return
+            }
+        }
+        // Otherwise make a new gist and provide its id
+        else {
+            gist_id = (await gh.getGist().create({
+                public: false,  // TODO: Make this configurable
+                files: {
+                    [gist_file]: { content: '# Pluto.jl init' }
+                }
+            })).data.id
+        }
+
+        update_gist_notebooks(notebook_path, { id: gist_id, file: gist_file })
+
+        onSave(gist_id, gist_file)
+    }
+
+    return open && html`
+        <aside id="gist_banner">
+            <div id="gist_banner_container">
+                <div class="export_title" style="height: 40px">gist</div>
+
+                <div style="display: flex; flex-direction: column">
+                    <div style="display: flex">
+                        <form>
+                            <input ref=${gist_id_ref} value=${gist ? gist.id : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist ID (empty for new gist)" />
+                            <input ref=${gist_file_ref} value=${gist ? gist.file : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist File Name" />
+                        </form>
+                        <button class="pluto-styled-button" style="margin-bottom: 3px;" onClick=${handleSave}>Save</button>
+                        <button title="Close" class="toggle_export gist_banner_close" onClick=${onClose}>
+                            <span></span>
+                        </button>
+                    </div>
+                    <span style="color: red">${error}</span>
+                </div>
+                
+                <!--<div style="flex-grow: 1"/>-->
+            </div>
+        </aside>
+    `
+};
+
 export class Editor extends Component {
     constructor() {
         super()
@@ -179,6 +243,7 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
+            gist_menu_open: true,
         }
         // convenience method
         const set_notebook_state = (updater) => {
@@ -346,6 +411,11 @@ export class Editor extends Component {
                 if (nb.notebook_id == this.state.notebook.notebook_id) {
                     set_notebook_state(() => nb)
                     update_stored_recent_notebooks(nb.path, old_path)
+
+                    const gist_notebook = get_gist_notebook(nb.path);
+                    if(gist_notebook) {
+                        this.setState({ gist: gist_notebook })
+                    }
                 }
             })
         }
@@ -802,7 +872,6 @@ export class Editor extends Component {
             if (old_path === new_path) {
                 return
             }
-            // gist://f50b8cc19fbd2c4cf54a9997e3393a2d/notebook.jl
             const file_url = new URL(new_path);
             if (file_url.protocol === 'gist:') {
                 const path_split = file_url.pathname.split('/')
@@ -810,6 +879,7 @@ export class Editor extends Component {
                 const gist_file = path_split[3];
                 
                 this.actions.save_as_gist(gist_id, gist_file, true);
+                update_gist_notebooks(this.state.notebook.path, { id: gist_id, file: gist_file })
 
                 this.setState({
                     gist: {
@@ -839,6 +909,9 @@ export class Editor extends Component {
                             this.setState({
                                 path: new_path,
                             })
+                            if(this.state.gist) {
+                                update_gist_notebooks(new_path, this.state.gist, old_path)
+                            }
                             document.activeElement.blur()
                         } else {
                             this.setState({
@@ -1021,7 +1094,7 @@ export class Editor extends Component {
     }
 
     render() {
-        let { export_menu_open } = this.state
+        let { export_menu_open, gist_menu_open } = this.state
         return html`
             <${Scroller} active=${this.state.scroller} />
             <header className=${export_menu_open ? "show_export" : ""}>
@@ -1031,13 +1104,30 @@ export class Editor extends Component {
                     open=${export_menu_open}
                     onClose=${() => this.setState({ export_menu_open: false })}
                 />
+                <${GistBanner}
+                    gist=${this.state.gist}
+                    notebook_path=${this.state.notebook.path}
+                    open=${gist_menu_open}
+                    onClose=${() => this.setState({ gist_menu_open: false })}
+                    onSave=${(gist_id, gist_file) => {
+                        this.actions.save_as_gist(gist_id, gist_file, true)
+
+                        this.setState({
+                            gist: {
+                                id: gist_id,
+                                file: gist_file
+                            },
+                            gist_menu_open: false
+                        })
+                    }}
+                />
                 <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        value=${this.state.gist ? (`gist://${this.state.gist.id}/${this.state.gist.file}`) : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
+                        value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
                             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
@@ -1046,7 +1136,10 @@ export class Editor extends Component {
                         placeholder="Save notebook..."
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
-                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
+                    <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open, gist_menu_open: false })}>
+                        <span></span>
+                    </button>
+                    <button class="toggle_gist" title="Save to Gist..." onClick=${() => this.setState({ gist_menu_open: !gist_menu_open, export_menu_open: false })}>
                         <span></span>
                     </button>
                 </nav>
@@ -1156,4 +1249,20 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
         })
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+}
+
+/* LOCALSTORAGE GIST LIST */
+
+// gist param should be an object with properties 'id' and 'file'
+// if old path is defined it will be deleted
+export const update_gist_notebooks = (notebook_path, gist, old_path=null) => {
+    const storedGists = JSON.parse(localStorage.getItem('gist notebooks') || '{}')
+    storedGists[notebook_path] = gist
+    if(old_path) delete storedGists[old_path]
+    localStorage.setItem('gist notebooks', JSON.stringify(storedGists))
+}
+
+export const get_gist_notebook = (notebook_path) => {
+    const storedGists = JSON.parse(localStorage.getItem('gist notebooks') || '{}')
+    return storedGists[notebook_path]
 }

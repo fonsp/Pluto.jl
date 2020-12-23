@@ -470,6 +470,33 @@ body.loading button.toggle_export {
     display: none;
 }
 
+#gist_banner {
+    display: flex;
+    justify-content: center;
+    padding: 15px 0;
+    background-color: #0000000f;
+}
+#gist_banner_container {
+    margin: auto;   
+    display: flex;
+    width: 100%;
+    max-width: 1000px;
+}
+#gist_banner form {
+    display: flex;
+    margin-left: 10px;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+#gist_banner form > input {
+    min-width: 254px;
+    margin-bottom: 3px;
+    border-right: none;
+}
+#gist_banner_container button.gist_banner_close > span {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-outline.svg);
+}
+
 nav#at_the_top h1 {
     color: black;
     letter-spacing: 2px;
@@ -558,13 +585,16 @@ nav#at_the_top > pluto-filepicker button {
     cursor: pointer;
 }
 
-button.toggle_export {
+button.toggle_export, button.toggle_gist {
     border: none;
     background: none;
     cursor: pointer;
     opacity: 0.5;
 }
-button.toggle_export span {
+button.toggle_gist {
+    opacity: 0.2;
+}
+button.toggle_export span, button.toggle_gist span {
     display: block;
     content: " " !important;
     background-size: 25px 25px;
@@ -574,6 +604,9 @@ button.toggle_export span {
 
 nav#at_the_top button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/shapes-outline.svg);
+}
+nav#at_the_top button.toggle_gist span {
+    background-image: url(/img/mark-github.svg);
 }
 aside#export button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-outline.svg);
@@ -1394,18 +1427,20 @@ footer a {
     }
 }
 
-footer input {
+footer input, .pluto-styled-input {
     margin: 0px;
     border: 2px solid #818181;
     font-family: inherit;
     font-size: inherit;
     border-radius: 3px 0 0 3px;
     padding: 3px;
+}
+footer input {
     border-right: none;
 }
 
 body > header pluto-filepicker button,
-footer button {
+footer button, .pluto-styled-button {
     margin: 0px;
     background: #896c6c;
     border-radius: 0 3px 3px 0;
