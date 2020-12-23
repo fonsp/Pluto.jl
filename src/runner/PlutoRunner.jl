@@ -582,8 +582,15 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    mime = Iterators.filter(m -> pluto_showable(m, x), allmimes) |> first
-    
+    # ugly code to fix an ugly performance problem
+    local mime = nothing
+    for m in allmimes
+        if pluto_showable(m, x)
+            mime = m
+            break
+        end
+    end
+
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
@@ -762,15 +769,18 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
                                 Pair{Symbol,Any}(:typeinfo, Any))
         
-        elements = map(1:nf) do i
-            f = fieldname(t, i)
-            if !isdefined(x, f)
-                Base.undef_ref_str
-                f, format_output_default(Text(Base.undef_ref_str), recur_io)
-            else
-                f, format_output_default(getfield(x, i), recur_io)
+        elements = Any[
+            let
+                f = fieldname(t, i)
+                if !isdefined(x, f)
+                    Base.undef_ref_str
+                    f, format_output_default(Text(Base.undef_ref_str), recur_io)
+                else
+                    f, format_output_default(getfield(x, i), recur_io)
+                end
             end
-        end
+            for i in 1:nf
+        ]
     
         Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
