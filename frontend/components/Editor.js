@@ -243,7 +243,7 @@ export class Editor extends Component {
                 down: false,
             },
             export_menu_open: false,
-            gist_menu_open: true,
+            gist_menu_open: false,
         }
         // convenience method
         const set_notebook_state = (updater) => {
