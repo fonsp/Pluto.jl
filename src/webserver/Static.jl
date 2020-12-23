@@ -96,6 +96,7 @@ function http_router_for(session::ServerSession)
                 response = f(request)
                 add_set_secret_cookie!(response)
                 if !required
+                    filter!(p -> p[1] != "Access-Control-Allow-Origin", response.headers)
                     push!(response.headers, "Access-Control-Allow-Origin" => "*")
                 end
                 response
