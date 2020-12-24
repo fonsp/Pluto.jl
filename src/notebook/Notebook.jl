@@ -42,7 +42,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-    bonds::Dict{Symbol,BondValue}=Dict()
+    bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -63,6 +63,8 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
         map(cell_order) do id
             cells_dict[id]
         end
+    elseif property == :cell_inputs
+        getfield(notebook, :cells_dict)
     else
         getfield(notebook, property)
     end

@@ -9,7 +9,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 /**
  * @param {{
  *  cell_input: import("./Editor.js").CellInputData,
- *  cell_result: import("./Editor.js").CellState,
+ *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input_local: import("./Editor.js").CellInputData,
  *  selected: boolean,
  *  focus_after_creation: boolean,

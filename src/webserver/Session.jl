@@ -24,8 +24,6 @@ end
 function Base.getproperty(initiator::Initiator, property::Symbol)
     if property == :client_id
         getfield(initiator, :client).id
-    # elseif property == :request_id
-    #     getfield(initiator, :request).id
     else
         getfield(initiator, property)
     end
@@ -60,13 +58,13 @@ struct UpdateMessage
     message::Any
     notebook::Union{Notebook,Nothing}
     cell::Union{Cell,Nothing}
-    initiator::Union{Initiator,Missing}
+    initiator::Union{Initiator,Nothing}
 end
 
-UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, missing)
-UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, missing)
+UpdateMessage(type::Symbol, message::Any) = UpdateMessage(type, message, nothing, nothing, nothing)
+UpdateMessage(type::Symbol, message::Any, notebook::Notebook) = UpdateMessage(type, message, notebook, nothing, nothing)
 
-function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Missing}=missing)
+function clientupdate_notebook_list(notebooks; initiator::Union{Initiator,Nothing}=nothing)
     UpdateMessage(:notebook_list,
         Dict(
             :notebooks => [
