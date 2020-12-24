@@ -879,11 +879,20 @@ import Distributed
             Cell("6 / 66"),
             Cell("false && (seven = 7)"),
             Cell("seven"),
+            
             Cell("nine = :identity"),
             Cell("nine"),
             Cell("@__FILE__; nine"),
             Cell("@__FILE__; twelve = :identity"),
+            Cell("@__FILE__; twelve"),
             Cell("twelve"),
+
+            Cell("fifteen = :(1 + 1)"),
+            Cell("fifteen"),
+            Cell("@__FILE__; fifteen"),
+            Cell("@__FILE__; eighteen = :(1 + 1)"),
+            Cell("@__FILE__; eighteen"),
+            Cell("eighteen"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -933,6 +942,14 @@ import Distributed
         @test notebook.cells[11].output_repr == ":identity"
         @test notebook.cells[12].output_repr == ":identity"
         @test notebook.cells[13].output_repr == ":identity"
+        @test notebook.cells[14].output_repr == ":identity"
+
+        @test notebook.cells[15].output_repr == ":(1 + 1)"
+        @test notebook.cells[16].output_repr == ":(1 + 1)"
+        @test notebook.cells[17].output_repr == ":(1 + 1)"
+        @test notebook.cells[18].output_repr == ":(1 + 1)"
+        @test notebook.cells[19].output_repr == ":(1 + 1)"
+        @test notebook.cells[20].output_repr == ":(1 + 1)"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
