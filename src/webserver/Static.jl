@@ -38,9 +38,10 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-function notebook_redirect_response(notebook; home_url="./")
+function notebook_redirect_response(notebook; home_url="./", binder_token=nothing)
     response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+    token_suffix = binder_token === nothing ? "" : "&token=" * binder_token
+    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id) * token_suffix)
     return response
 end
 
@@ -134,10 +135,10 @@ function http_router_for(session::ServerSession)
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./")
         try
             nb = action(session, path_or_url)
-            notebook_redirect_response(nb; home_url=home_url)
+            notebook_redirect_response(nb; home_url=home_url, binder_token=session.binder_token)
         catch e
             if e isa SessionActions.NotebookIsRunningException
-                notebook_redirect_response(e.notebook; home_url=home_url)
+                notebook_redirect_response(e.notebook; home_url=home_url, binder_token=session.binder_token)
             else
                 error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
             end
@@ -148,7 +149,7 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        notebook_redirect_response(SessionActions.new(session))
+        notebook_redirect_response(SessionActions.new(session); binder_token=session.binder_token)
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
 

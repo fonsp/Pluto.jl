@@ -111,17 +111,18 @@ const BinderPhase = {
     ready: 1.0,
 }
 
+import { request_binder } from "../common/Binder.js"
 // fake placeholder
-const request_binder = (binder_url) => {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            resolve({
-                binder_session_url: "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-lade2u9l/pluto/",
-                binder_session_token: "JolStm2-TaKcG5OqS2mVJw",
-            })
-        }, 5000)
-    })
-}
+// const request_binder = (binder_url) => {
+//     return new Promise((resolve) => {
+//         setTimeout(() => {
+//             resolve({
+//                 binder_session_url: "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-ubl5bnuf/proxy/1235/",
+//                 binder_session_token: "sTOcyIaiRzWN6ueJGNHTiQ",
+//             })
+//         }, 5000)
+//     })
+// }
 
 export class Editor extends Component {
     constructor() {
@@ -543,7 +544,9 @@ export class Editor extends Component {
                 loading: true,
                 binder_phase: BinderPhase.requesting,
             })
-            const { binder_session_url, binder_session_token } = await request_binder("asfdasdfasdf")
+            const br = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
+            console.log(br)
+            const { binder_session_url, binder_session_token } = br
 
             this.setState({
                 binder_phase: BinderPhase.created,
@@ -554,14 +557,24 @@ export class Editor extends Component {
                 new_url.searchParams.set("token", binder_session_token)
                 return String(new_url)
             }
-            await fetch(with_token(binder_session_url))
+            await fetch(with_token(binder_session_url), {
+                headers: {
+                    Authorization: `token ${binder_session_token}`,
+                },
+            })
 
             const open_url = new URL("open", binder_session_url)
             open_url.searchParams.set("url", url_params.get("notebookfile"))
-            await timeout(2000)
-            const open_reponse = await fetch(with_token(String(open_url)))
+            // await timeout(2000)
+            const open_reponse = await fetch(with_token(String(open_url)), {
+                headers: {
+                    Authorization: `token ${binder_session_token}`,
+                },
+            })
+            console.info(with_token(open_reponse.url))
 
             const new_notebook_id = new URL(open_reponse.url).searchParams.get("id")
+            console.info("notebook_id:", new_notebook_id)
             this.setState(
                 (old_state) => ({
                     notebook: {
@@ -571,9 +584,9 @@ export class Editor extends Component {
                     binder_phase: BinderPhase.notebook_running,
                 }),
                 async () => {
-                    await timeout(2000)
+                    // await timeout(2000)
 
-                    this.connect(with_token(ws_address_from_base(binder_session_url)))
+                    this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
                 }
             )
         }
