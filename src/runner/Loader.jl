@@ -14,7 +14,13 @@ local ptoml_contents = read(joinpath(pluto_dir, "Project.toml"), String)
 write(new_ptoml_path, ptoml_contents[findfirst("[deps]", ptoml_contents)[1]:end])
 
 local pkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(new_ptoml_path))
-Pkg.instantiate(pkg_ctx)
+
+try
+    Pkg.instantiate(pkg_ctx; io=devnull)
+catch
+    # if it failed, do it again without suppressing io
+    Pkg.instantiate(pkg_ctx)
+end
 
 
 pushfirst!(LOAD_PATH, runner_env_dir)
