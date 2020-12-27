@@ -22,7 +22,7 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-
+let localUpdates = 0
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -523,7 +523,6 @@ export class Editor extends Component {
                     console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                 } catch (error) {}
             }
-
             if (changes.length === 0) {
                 return
             }
@@ -533,8 +532,8 @@ export class Editor extends Component {
                     throw new Error("This sounds like it is editting an array!!!")
                 }
             }
-
-            this.setState({ update_is_ongoing: true })
+            localUpdates = (localUpdates || 0 ) + 1
+            this.setState({ update_is_ongoing: localUpdates > 0 })
             try {
                 await Promise.all([
                     this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
@@ -554,7 +553,8 @@ export class Editor extends Component {
                     }),
                 ])
             } finally {
-                this.setState({ update_is_ongoing: false })
+                localUpdates = (localUpdates || 0) - 1
+                this.setState({ update_is_ongoing: localUpdates > 0 })
             }
         }
         this.update_notebook = update_notebook
@@ -721,6 +721,7 @@ export class Editor extends Component {
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
+        document.body.classList.toggle("update_is_ongoing", localUpdates > 0)
         document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
         if (this.state.connected) {
             // @ts-ignore
