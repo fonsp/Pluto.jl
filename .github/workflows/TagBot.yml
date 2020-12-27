@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
-    if: github.event_name == 'workflow_dispatch' || github.actor == 'JuliaTagBot'
     TagBot:
+        if: github.event_name == 'workflow_dispatch' || github.actor == 'JuliaTagBot'
         runs-on: [ubuntu-latest]
         steps:
             - uses: JuliaRegistries/TagBot@v1
