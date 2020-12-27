@@ -17,16 +17,6 @@ const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Pr
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
-# We need to Pkg.instantiate the package environment that notebook worker processes will launch in
-let
-    new_ptoml_path = joinpath(mktempdir(), "Project.toml")
-    ptoml_contents = read(project_relative_path("Project.toml"), String)
-    write(new_ptoml_path, ptoml_contents[findfirst("[deps]", ptoml_contents)[1]:end])
-    ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(new_ptoml_path))
-    Pkg.instantiate(ctx)
-end
-
-
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
