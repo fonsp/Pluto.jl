@@ -18,8 +18,12 @@ const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
 # We need to Pkg.instantiate the package environment that notebook worker process will launch in
-c = Pkg.Types.Context(env=Pkg.Types.EnvCache(project_relative_path("Project.toml")))
-Pkg.instantiate(c)
+let
+    p = joinpath(mktempdir(), "Project.toml")
+    write(p, read(project_relative_path("Project.toml")))
+    c = Pkg.Types.Context(env=Pkg.Types.EnvCache(p))
+    Pkg.instantiate(c)
+end
 
 
 include("./Configuration.jl")
