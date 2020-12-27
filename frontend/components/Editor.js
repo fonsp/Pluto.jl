@@ -544,9 +544,8 @@ export class Editor extends Component {
                 loading: true,
                 binder_phase: BinderPhase.requesting,
             })
-            const br = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
-            console.log(br)
-            const { binder_session_url, binder_session_token } = br
+            const { binder_session_url, binder_session_token } = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
+            console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
             this.setState({
                 binder_phase: BinderPhase.created,
@@ -571,7 +570,7 @@ export class Editor extends Component {
                     Authorization: `token ${binder_session_token}`,
                 },
             })
-            console.info(with_token(open_reponse.url))
+            console.info("open_url: ", with_token(String(open_reponse.url)))
 
             const new_notebook_id = new URL(open_reponse.url).searchParams.get("id")
             console.info("notebook_id:", new_notebook_id)
