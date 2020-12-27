@@ -1,15 +1,15 @@
-const my_dir = @__DIR__
-const pluto_dir = joinpath(my_dir, "..", "..")
+begin
+local my_dir = @__DIR__
+local pluto_dir = joinpath(my_dir, "..", "..")
+local runner_env_dir = mktempdir()
 
-pushfirst!(LOAD_PATH, pluto_dir)
+write(joinpath(runner_env_dir, "Project.toml"), read(joinpath(pluto_dir, "Project.toml")))
+
+pushfirst!(LOAD_PATH, runner_env_dir)
 
 #
 include(joinpath(my_dir, "PlutoRunner.jl"))
 #
 
-let
-    i = findfirst(isequal(pluto_dir), LOAD_PATH)
-    if i !== nothing
-        deleteat!(LOAD_PATH, i)
-    end
+setdiff!(LOAD_PATH, [runner_env_dir])
 end
