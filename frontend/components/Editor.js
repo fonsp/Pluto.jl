@@ -20,6 +20,7 @@ import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
+import { GistSaveMedium } from "../common/SaveMediums.js"
 
 const default_path = "..."
 
@@ -193,8 +194,6 @@ const GistBanner = ({ gist, notebook_path, open, onClose, onSave }) => {
             })).data.id
         }
 
-        update_gist_notebooks(notebook_path, { id: gist_id, file: gist_file })
-
         onSave(gist_id, gist_file)
     }
 
@@ -246,7 +245,7 @@ export class Editor extends Component {
                 notebook_id: new URLSearchParams(window.location.search).get("id"),
                 cells: [],
             },
-            gist: null,
+            save_medium: null,
             desired_doc_query: null,
             recently_deleted: null,
             connected: false,
@@ -381,37 +380,6 @@ export class Editor extends Component {
 
                     return {
                         cells: [...before, ...cells, ...after],
-                    }
-                })
-            },
-            save_as_gist: (gist_id, gist_file, immediate=false) => {
-                return new Promise((resolve, reject) => {
-                    const save = () => {
-                        const gh = new GitHub({ token: localStorage.getItem("ghtoken") });
-                        fetch("notebookfile" + window.location.search).then(res => res.text()).then(nb_content => {
-                            gh.getGist(gist_id).update({
-                                files: {
-                                    [gist_file]: {
-                                        content: nb_content
-                                    }
-                                }
-                            }).then(resolve).catch(reject)
-                        })
-                    }
-
-                    // The code below here waits until updates cease for 1 second before updating the gist
-                    if(this.state.gist && this.state.gist.timeout) {
-                        clearTimeout(this.state.gist.timeout)
-                    }
-
-                    if(immediate) save()
-                    else {
-                        this.setState({
-                            gist: {
-                                ...this.state.gist,
-                                timeout: setTimeout(save, 1000)
-                            }
-                        })
                     }
                 })
             }
@@ -880,65 +848,62 @@ export class Editor extends Component {
             }
         }
 
-        this.submit_file_change = (new_path, reset_cm_value) => {
-            const old_path = this.state.notebook.path
-            if (old_path === new_path) {
-                return
-            }
-            const file_url = new URL(new_path);
-            if (file_url.protocol === 'gist:') {
-                const path_split = file_url.pathname.split('/')
-                const gist_id = path_split[2];
-                const gist_file = path_split[3];
-                
-                this.actions.save_as_gist(gist_id, gist_file, true);
-                update_gist_notebooks(this.state.notebook.path, { id: gist_id, file: gist_file })
-
-                this.setState({
-                    gist: {
-                        id: gist_id,
-                        file: gist_file
-                    },
-                })
-
-                return
-            }
-
-            if (this.state.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
-                this.setState({ loading: true })
-                this.client
-                    .send(
-                        "move_notebook_file",
-                        {
-                            path: new_path,
-                        },
-                        { notebook_id: this.state.notebook.notebook_id }
-                    )
-                    .then((u) => {
-                        this.setState({
-                            loading: false,
-                        })
-                        if (u.message.success) {
-                            this.setState({
+        this.submit_file_change = (save_medium, new_path, reset_cm_value) => {
+            if(save_medium === 'local') {
+                const old_path = this.state.notebook.path
+                if (old_path === new_path) {
+                    return
+                }
+    
+                if (this.state.in_temp_dir || confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                    this.setState({ loading: true })
+                    this.client
+                        .send(
+                            "move_notebook_file",
+                            {
                                 path: new_path,
-                            })
-                            if(this.state.gist) {
-                                update_gist_notebooks(new_path, this.state.gist, old_path)
-                            }
-                            document.activeElement.blur()
-                        } else {
+                            },
+                            { notebook_id: this.state.notebook.notebook_id }
+                        )
+                        .then((u) => {
                             this.setState({
-                                path: old_path,
+                                loading: false,
                             })
-                            reset_cm_value()
-                            alert("Failed to move file:\n\n" + u.message.reason)
-                        }
+                            if (u.message.success) {
+                                this.setState({
+                                    path: new_path,
+                                })
+                                document.activeElement.blur()
+                            } else {
+                                this.setState({
+                                    path: old_path,
+                                })
+                                reset_cm_value()
+                                alert("Failed to move file:\n\n" + u.message.reason)
+                            }
+                        })
+                } else {
+                    this.setState({
+                        path: old_path,
                     })
-            } else {
-                this.setState({
-                    path: old_path,
-                })
-                reset_cm_value()
+                    reset_cm_value()
+                }
+            }
+            else if(save_medium === 'gist') {
+                if(!this.state.save_medium) {
+                    this.setState({
+                        save_medium: new GistSaveMedium(new_path)
+                    })
+                }
+                // Should be treated as a file move operation
+                else {
+                    this.state.save_medium.moveTo(new_path)
+                    // Force a state update because we have mutated state_medium
+                    this.setState({ save_medium: this.state.save_medium })
+                }
+            }
+            else {
+                alert(`Saving to ${save_medium} is not yet supported`)
             }
         }
 
@@ -1140,7 +1105,7 @@ export class Editor extends Component {
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                        value=${this.state.save_medium ? this.state.save_medium.getPath() : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
                             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,

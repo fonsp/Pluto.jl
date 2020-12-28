@@ -2,6 +2,7 @@ import { html, Component } from "../imports/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { GistUtils } from "../common/SaveMediums.js"
 
 const deselect = (cm) => {
     cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
@@ -13,9 +14,17 @@ export class FilePicker extends Component {
         this.forced_value = ""
         this.cm = null
 
+        this.state = {
+            submitted_save_medium: null
+        }
+
+        this.pathhints = this.pathhints.bind(this)
+
         this.suggest_not_tmp = () => {
             const suggest = this.props.suggest_new_file
-            if (suggest != null && this.cm.getValue() === "") {
+            const save_medium = this.get_save_medium()
+            
+            if (suggest != null && this.cm.getValue() === "" && save_medium === "local") {
                 this.cm.setValue(suggest.base)
                 this.cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity })
                 this.cm.focus()
@@ -34,10 +43,26 @@ export class FilePicker extends Component {
                 this.suggest_not_tmp()
                 return
             }
-            this.props.on_submit(this.cm.getValue(), () => {
-                this.cm.setValue(this.props.value)
-                deselect(this.cm)
+            this.props.on_submit(this.get_save_medium(), this.cm.getValue(), (reset_cm) => {
+                if(reset_cm) {
+                    this.cm.setValue(this.props.value)
+                    deselect(this.cm)
+                }
+                this.setState({
+                    submitted_save_medium: this.get_save_medium()
+                })
             })
+        }
+
+        this.on_fs_change = (e) => {
+            const save_medium = e.target.value;
+            if(save_medium === 'gist' && !GistUtils.authenticated()) {
+                const l = window.location
+                const redirect_url = `${l.protocol}//${l.host}/auth_github`
+                // Saves the current location and will be used to redirect after authentication is complete
+                localStorage.setItem('post auth redirect', window.location.href)
+                window.open(`http://auth.pluto.cot.llc/github?redirect_url=${encodeURIComponent(redirect_url)}`, '_blank', 'width=640,height=480')
+            }
         }
     }
     componentDidUpdate() {
@@ -50,7 +75,7 @@ export class FilePicker extends Component {
     componentDidMount() {
         this.cm = window.CodeMirror(
             (el) => {
-                this.base.insertBefore(el, this.base.firstElementChild)
+                this.base.insertBefore(el, this.base.getElementsByTagName('button')[0])
             },
             {
                 value: "",
@@ -62,7 +87,7 @@ export class FilePicker extends Component {
                 indentWithTabs: true,
                 indentUnit: 4,
                 hintOptions: {
-                    hint: pathhints,
+                    hint: this.pathhints,
                     completeSingle: false,
                     suggest_new_file: this.props.suggest_new_file,
                     client: this.props.client,
@@ -99,6 +124,9 @@ export class FilePicker extends Component {
             setTimeout(() => {
                 if (!cm.hasFocus()) {
                     cm.setValue(this.props.value)
+                    if(this.state.submitted_save_medium) {
+                        this.set_save_medium(this.state.submitted_save_medium)  
+                    }
                     deselect(cm)
                 }
             }, 250)
@@ -116,6 +144,11 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
+                <select id="save-medium" onChange=${this.on_fs_change}>
+                    <option value="local">Local</option>
+                    <option value="gist">Gist</option>
+                    <option value="gdrive">Google Drive</option>
+                </select>
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
             </pluto-filepicker>
         `
@@ -131,61 +164,95 @@ export class FilePicker extends Component {
             }
         }
     }
-}
 
-const pathhints = (cm, options) => {
-    const cursor = cm.getCursor()
-    const oldLine = cm.getLine(cursor.line)
+    get_save_medium() {
+        return document.getElementById("save-medium").value
+    }
 
-    return options.client
-        .send("completepath", {
-            query: oldLine,
-        })
-        .then((update) => {
-            const queryFileName = oldLine.split("/").pop().split("\\").pop()
+    set_save_medium(val) {
+        document.getElementById("save-medium").value = val
+    }
 
-            const results = update.message.results
-            const from = utf8index_to_ut16index(oldLine, update.message.start)
-            const to = utf8index_to_ut16index(oldLine, update.message.stop)
+    pathhints(cm, options) {
+        const cursor = cm.getCursor()
+        const oldLine = cm.getLine(cursor.line)
+    
+        const save_medium = this.get_save_medium()
 
-            if (results.length >= 1 && results[0] == queryFileName) {
-                return null
-            }
-
-            var styledResults = results.map((r) => ({
-                text: r,
-                className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
-            }))
-
-            if (options.suggest_new_file != null) {
-                for (var initLength = 3; initLength >= 0; initLength--) {
-                    const init = ".jl".substring(0, initLength)
-                    if (queryFileName.endsWith(init)) {
-                        var suggestedFileName = queryFileName + ".jl".substring(initLength)
-
-                        if (suggestedFileName == ".jl") {
-                            suggestedFileName = "notebook.jl"
+        if(save_medium === 'local') {
+            return options.client
+            .send("completepath", {
+                query: oldLine,
+            })
+            .then((update) => {
+                const queryFileName = oldLine.split("/").pop().split("\\").pop()
+    
+                const results = update.message.results
+                const from = utf8index_to_ut16index(oldLine, update.message.start)
+                const to = utf8index_to_ut16index(oldLine, update.message.stop)
+    
+                if (results.length >= 1 && results[0] == queryFileName) {
+                    return null
+                }
+    
+                var styledResults = results.map((r) => ({
+                    text: r,
+                    className: r.endsWith("/") || r.endsWith("\\") ? "dir" : "file",
+                }))
+    
+                if (options.suggest_new_file != null) {
+                    for (var initLength = 3; initLength >= 0; initLength--) {
+                        const init = ".jl".substring(0, initLength)
+                        if (queryFileName.endsWith(init)) {
+                            var suggestedFileName = queryFileName + ".jl".substring(initLength)
+    
+                            if (suggestedFileName == ".jl") {
+                                suggestedFileName = "notebook.jl"
+                            }
+    
+                            if (initLength == 3) {
+                                return null
+                            }
+                            if (!results.includes(suggestedFileName)) {
+                                styledResults.push({
+                                    text: suggestedFileName,
+                                    displayText: suggestedFileName + " (new)",
+                                    className: "file new",
+                                })
+                            }
+                            break
                         }
-
-                        if (initLength == 3) {
-                            return null
-                        }
-                        if (!results.includes(suggestedFileName)) {
-                            styledResults.push({
-                                text: suggestedFileName,
-                                displayText: suggestedFileName + " (new)",
-                                className: "file new",
-                            })
-                        }
-                        break
                     }
                 }
-            }
-
-            return {
-                list: styledResults,
-                from: CodeMirror.Pos(cursor.line, from),
-                to: CodeMirror.Pos(cursor.line, to),
-            }
-        })
+    
+                return {
+                    list: styledResults,
+                    from: CodeMirror.Pos(cursor.line, from),
+                    to: CodeMirror.Pos(cursor.line, to),
+                }
+            })
+        }
+        else if(save_medium === 'gist') {
+            return GistUtils.search(oldLine).then((matchingGists) => {
+                const styledResults = matchingGists.filter(gist => Object.keys(gist.files)[0] !== oldLine).map(gist => ({
+                    text: Object.keys(gist.files)[0],
+                    className: 'file'
+                }))
+                if(!oldLine.endsWith('.jl')) {
+                    const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/\.?j?l?$/g, '')
+                    const nb_file = nb_name + '.jl'
+                    styledResults.push({
+                        text: nb_file,
+                        displayText: `${nb_file} (new)`,
+                        className: 'file new'
+                    });
+                }
+                return {
+                    list: styledResults,
+                    from: CodeMirror.Pos(cursor.line, 0),
+                    to: CodeMirror.Pos(cursor.line, oldLine.length)
+                }
+            })
+        }
+    }
 }

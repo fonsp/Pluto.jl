@@ -223,8 +223,8 @@ function http_router_for(session::ServerSession)
                 <script>
                     localStorage.setItem('ghtoken', '$(github_token)')
                     var paRedirect = localStorage.getItem('post auth redirect')
-                    if(paRedirect) localStorage.setItem('post auth redirect', undefined)
-                    window.location = paRedirect || '/'
+                    if(paRedirect) localStorage.removeItem('post auth redirect')
+                    window.close()
                 </script>
             </head>
             <body>

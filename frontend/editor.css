@@ -637,14 +637,33 @@ li.dir.CodeMirror-hint:before {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
+        border-top-left-radius: 0;
+        border-bottom-left-radius: 0;
+    }
+    nav#at_the_top > pluto-filepicker > select {
+        border: 2px solid transparent;
+        border-right: none;
+        transition: border 0.15s ease-in-out;
+        width: 60px;
     }
     nav#at_the_top > pluto-filepicker button {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
+    nav#at_the_top > pluto-filepicker select {
+        background-color: transparent;
+        font-family: monospace;
+        border-top-left-radius: 3px;
+        border-bottom-left-radius: 3px;
+    }
     header:hover > nav#at_the_top > pluto-filepicker .CodeMirror,
     header:focus-within > nav#at_the_top > pluto-filepicker .CodeMirror {
         border: 2px solid #818181;
+        border-right: none;
+    }
+    header:hover > nav#at_the_top > pluto-filepicker > select,
+    header:focus-within > nav#at_the_top > pluto-filepicker > select {
+        border: 2px solid #b1b1b1;
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
