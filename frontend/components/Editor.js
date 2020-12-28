@@ -20,7 +20,7 @@ import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { GistSaveMedium } from "../common/SaveMediums.js"
+import { Mediums, GistSaveMedium } from "../common/SaveMediums.js"
 
 const default_path = "..."
 
@@ -157,81 +157,6 @@ let ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
         </aside>
     `
 }
-
-const GistBanner = ({ gist, notebook_path, open, onClose, onSave }) => {
-    const [error, setError] = useState('')
-    
-    const has_gh_token = !!localStorage.getItem('ghtoken')
-
-    const gist_id_ref = useRef()
-    const gist_file_ref = useRef()
-
-    async function handleSave() {
-        const gh = new GitHub({ token: localStorage.getItem("ghtoken") })
-
-        let gist_id = gist_id_ref.current.value
-        const gist_file = gist_file_ref.current.value
-
-        // Check to make sure its a valid gist id before proceeding
-        if(gist_id.length > 0) {
-            try {
-                await gh.getGist(gist_id).read()
-            }
-            catch(e) {
-                // Error getting gist; assume it doesn't exist
-                console.log(e)
-                setError('A gist with the provided id does not exist. Leave the gist id blank to create a new one instead')
-                return
-            }
-        }
-        // Otherwise make a new gist and provide its id
-        else {
-            gist_id = (await gh.getGist().create({
-                public: false,  // TODO: Make this configurable
-                files: {
-                    [gist_file]: { content: '# Pluto.jl init' }
-                }
-            })).data.id
-        }
-
-        onSave(gist_id, gist_file)
-    }
-
-    function handleAuth() {
-        const l = window.location
-        const redirect_url = `${l.protocol}//${l.host}/auth_github`
-        // Saves the current location and will be used to redirect after authentication is complete
-        localStorage.setItem('post auth redirect', window.location.href)
-        window.location.assign(`http://auth.pluto.cot.llc/github?redirect_url=${encodeURIComponent(redirect_url)}`)
-    }
-
-    return open && html`
-        <aside id="gist_banner">
-            <div id="gist_banner_container">
-                <div class="export_title" style="height: 40px">gist</div>
-
-                <div style="display: flex; flex-direction: column">
-                    <div style="display: flex; height: 100%; align-items: stretch">
-                        ${has_gh_token && html`<form>
-                            <input ref=${gist_id_ref} value=${gist ? gist.id : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist ID (empty for new gist)" />
-                            <input ref=${gist_file_ref} value=${gist ? gist.file : ''} type="text" class="pluto-styled-input" autocomplete="off" placeholder="Gist File Name" />
-                        </form>`}
-
-                        ${!has_gh_token && html`<span style="margin-left: 10px"/>`}
-
-                        <button class="pluto-styled-button" style="margin-bottom: 3px;" onClick=${has_gh_token ? handleSave : handleAuth}>${has_gh_token ? 'Save' : 'Authenticate with GitHub'}</button>
-                        <button title="Close" class="toggle_export gist_banner_close" onClick=${onClose}>
-                            <span></span>
-                        </button>
-                    </div>
-                    <span style="color: red">${error}</span>
-                </div>
-                
-                <!--<div style="flex-grow: 1"/>-->
-            </div>
-        </aside>
-    `
-};
 
 export class Editor extends Component {
     constructor() {
@@ -393,9 +318,9 @@ export class Editor extends Component {
                     set_notebook_state(() => nb)
                     update_stored_recent_notebooks(nb.path, old_path)
 
-                    const gist_notebook = get_gist_notebook(nb.path);
-                    if(gist_notebook) {
-                        this.setState({ gist: gist_notebook })
+                    const external_notebook = get_external_notebook(nb.path);
+                    if(external_notebook) {
+                        this.setState({ save_medium: new Mediums[external_notebook.type](...external_notebook.args) })
                     }
                 }
             })
@@ -411,8 +336,8 @@ export class Editor extends Component {
                 }
             } else {
                 if (this.state.notebook.notebook_id === update.notebook_id) {
-                    if(this.state.gist) {
-                        this.actions.save_as_gist(this.state.gist.id, this.state.gist.file);
+                    if(this.state.save_medium) {
+                        this.state.save_medium.scheduleSave()
                     }
 
                     const message = update.message
@@ -872,6 +797,7 @@ export class Editor extends Component {
                             if (u.message.success) {
                                 this.setState({
                                     path: new_path,
+                                    save_medium: null  // Make sure it doesn't continue to get saved to gist, gdrive, etc.
                                 })
                                 document.activeElement.blur()
                             } else {
@@ -889,18 +815,28 @@ export class Editor extends Component {
                     reset_cm_value()
                 }
             }
-            else if(save_medium === 'gist') {
+            // Generic code to handle all other save interfaces
+            // See SaveMedium class for interface details
+            else if(Object.values(Mediums).map(m => m.name).includes(save_medium)) {
+                let sm = null;
                 if(!this.state.save_medium) {
+                    sm = new Mediums[save_medium](new_path)
+                    sm.save()
                     this.setState({
-                        save_medium: new GistSaveMedium(new_path)
+                        save_medium: sm
                     })
                 }
                 // Should be treated as a file move operation
                 else {
-                    this.state.save_medium.moveTo(new_path)
-                    // Force a state update because we have mutated state_medium
-                    this.setState({ save_medium: this.state.save_medium })
+                    this.setState({ loading: true, tmp_save_path: new_path })
+                    sm = this.state.save_medium;
+                    this.state.save_medium.moveTo(new_path).then(() => {
+                        // Force a state update because we have mutated state_medium
+                        this.setState({ save_medium: this.state.save_medium, loading: false })
+                    })
                 }
+                document.activeElement.blur()
+                update_external_notebooks(this.state.notebook.path, sm, [new_path])
             }
             else {
                 alert(`Saving to ${save_medium} is not yet supported`)
@@ -1082,30 +1018,14 @@ export class Editor extends Component {
                     open=${export_menu_open}
                     onClose=${() => this.setState({ export_menu_open: false })}
                 />
-                <${GistBanner}
-                    gist=${this.state.gist}
-                    notebook_path=${this.state.notebook.path}
-                    open=${gist_menu_open}
-                    onClose=${() => this.setState({ gist_menu_open: false })}
-                    onSave=${(gist_id, gist_file) => {
-                        this.actions.save_as_gist(gist_id, gist_file, true)
-
-                        this.setState({
-                            gist: {
-                                id: gist_id,
-                                file: gist_file
-                            },
-                            gist_menu_open: false
-                        })
-                    }}
-                />
                 <nav id="at_the_top">
                     <a href="./">
                         <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                     </a>
                     <${FilePicker}
                         client=${this.client}
-                        value=${this.state.save_medium ? this.state.save_medium.getPath() : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
+                        medium=${this.state.save_medium}
+                        value=${this.state.save_medium ? (this.state.loading ? (this.state.tmp_save_path || '') : this.state.save_medium.getPath()) : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
                         on_submit=${this.submit_file_change}
                         suggest_new_file=${{
                             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
@@ -1115,9 +1035,6 @@ export class Editor extends Component {
                         button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                     />
                     <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open, gist_menu_open: false })}>
-                        <span></span>
-                    </button>
-                    <button class="toggle_gist" title="Save to Gist..." onClick=${() => this.setState({ gist_menu_open: !gist_menu_open, export_menu_open: false })}>
                         <span></span>
                     </button>
                 </nav>
@@ -1231,16 +1148,16 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
 
 /* LOCALSTORAGE GIST LIST */
 
-// gist param should be an object with properties 'id' and 'file'
-// if old path is defined it will be deleted
-export const update_gist_notebooks = (notebook_path, gist, old_path=null) => {
-    const storedGists = JSON.parse(localStorage.getItem('gist notebooks') || '{}')
-    storedGists[notebook_path] = gist
+// if old_path is defined its entry will be deleted
+
+export const update_external_notebooks = (notebook_path, save_medium, medium_args, old_path=null) => {
+    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
+    storedGists[notebook_path] = { type: save_medium.constructor.name, args: medium_args }
     if(old_path) delete storedGists[old_path]
-    localStorage.setItem('gist notebooks', JSON.stringify(storedGists))
+    localStorage.setItem('external notebooks', JSON.stringify(storedGists))
 }
 
-export const get_gist_notebook = (notebook_path) => {
-    const storedGists = JSON.parse(localStorage.getItem('gist notebooks') || '{}')
+export const get_external_notebook = (notebook_path) => {
+    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
     return storedGists[notebook_path]
 }

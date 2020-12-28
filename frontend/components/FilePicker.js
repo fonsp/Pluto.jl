@@ -2,7 +2,7 @@ import { html, Component } from "../imports/Preact.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
-import { GistUtils } from "../common/SaveMediums.js"
+import { Mediums } from "../common/SaveMediums.js"
 
 const deselect = (cm) => {
     cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
@@ -56,12 +56,16 @@ export class FilePicker extends Component {
 
         this.on_fs_change = (e) => {
             const save_medium = e.target.value;
-            if(save_medium === 'gist' && !GistUtils.authenticated()) {
+            if(save_medium !== 'local' && !Mediums[save_medium].authenticated()) {
                 const l = window.location
                 const redirect_url = `${l.protocol}//${l.host}/auth_github`
                 // Saves the current location and will be used to redirect after authentication is complete
                 localStorage.setItem('post auth redirect', window.location.href)
                 window.open(`http://auth.pluto.cot.llc/github?redirect_url=${encodeURIComponent(redirect_url)}`, '_blank', 'width=640,height=480')
+            }
+            else {
+                this.cm.setValue('');
+                this.cm.focus();
             }
         }
     }
@@ -142,12 +146,12 @@ export class FilePicker extends Component {
         })
     }
     render() {
+        const save_medium_options = Object.values(Mediums).map(medium => html`<option value=${medium.name}>${medium.displayName}</option>`)
         return html`
             <pluto-filepicker>
-                <select id="save-medium" onChange=${this.on_fs_change}>
+                <select id="save-medium" value=${this.props.medium ? this.props.medium.constructor.name : 'local'} onChange=${this.on_fs_change}>
                     <option value="local">Local</option>
-                    <option value="gist">Gist</option>
-                    <option value="gdrive">Google Drive</option>
+                    ${save_medium_options}
                 </select>
                 <button onClick=${this.on_submit}>${this.props.button_label}</button>
             </pluto-filepicker>
@@ -232,27 +236,8 @@ export class FilePicker extends Component {
                 }
             })
         }
-        else if(save_medium === 'gist') {
-            return GistUtils.search(oldLine).then((matchingGists) => {
-                const styledResults = matchingGists.filter(gist => Object.keys(gist.files)[0] !== oldLine).map(gist => ({
-                    text: Object.keys(gist.files)[0],
-                    className: 'file'
-                }))
-                if(!oldLine.endsWith('.jl')) {
-                    const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/\.?j?l?$/g, '')
-                    const nb_file = nb_name + '.jl'
-                    styledResults.push({
-                        text: nb_file,
-                        displayText: `${nb_file} (new)`,
-                        className: 'file new'
-                    });
-                }
-                return {
-                    list: styledResults,
-                    from: CodeMirror.Pos(cursor.line, 0),
-                    to: CodeMirror.Pos(cursor.line, oldLine.length)
-                }
-            })
+        else {
+            return Mediums[save_medium].autocomplete(oldLine, cursor)
         }
     }
 }

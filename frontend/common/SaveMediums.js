@@ -1,47 +1,30 @@
-export class GistSaveMedium {
-    constructor(gist_file, token=null) {
-        this.gh = GistUtils.getGitHub(token);
-        // gist_id will be set later upon save
-        this.gist_id = null;
-        this.gist_file = gist_file;
-    }
-    getPath() {
-        return this.gist_file;
-    }
-    async moveTo(new_path) {
-        // TODO: Implement a move operation
-        this.gist_file = new_path
-    }
-    async save(immediate=false) {
-        return new Promise((resolve, reject) => {
-            const save = () => {
-                fetch("notebookfile" + window.location.search).then(res => res.text()).then(nb_content => {
-                    this.gh.getGist(this.gist_id).update({
-                        files: {
-                            [this.gist_file]: {
-                                content: nb_content
-                            }
-                        }
-                    }).then(resolve).catch(reject)
-                })
-            }
+export class SaveMedium {
+    constructor() {}
 
-            // The code below here waits until updates cease for 1 second before updating the gist
-            if(this.saveTimeout) {
-                clearTimeout(this.saveTimeout)
-            }
+    getPath() {}
+    moveTo() {}
+    save() {}
 
-            if(immediate) save()
-            else {
-                this.saveTimeout = setTimeout(save, 1000)
-            }
-        })
+    scheduleSave() {
+        // The code below here waits until updates cease for 1 second before updating the gist
+        if(this.saveTimeout) {
+            clearTimeout(this.saveTimeout)
+        }
+
+        this.saveTimeout = setTimeout(this.save.bind(this), 1000)
     }
 }
+SaveMedium.autocomplete = async (oldLine, cursor) => {
+    throw new Error('Autocomplete was not implemented by this save medium!');
+}
+SaveMedium.authenticated = async () => {}
+SaveMedium.displayName = 'IF YOU SEE THIS YOU FORGOT TO SET DISPLAY NAME ON YOUR MEDIUM';
 
+
+// WARNING: If you are exposing any of these utilities externally you are doing something WRONG
+// Please consider adding interface methods if new functionality is required externally
 let gistCache = null;
-
-export const GistUtils = {
+const GistUtils = {
     getGitHub(custom_token=null) {
         if(!custom_token && !GistUtils.authenticated()) {
             throw new Error('User is not authenticated for GitHub');
@@ -67,7 +50,7 @@ export const GistUtils = {
             gistCache = gists.data;
         }
 
-        return gistCache.filter(gist => Object.keys(gist.files)[0].toLowerCase().includes(query.toLowerCase()));
+        return gistCache.filter(gist => Object.keys(gist.files)[0].endsWith('.jl')).filter(gist => Object.keys(gist.files)[0].toLowerCase().includes(query.toLowerCase()));
     },
     async getGistByFile(filename) {
         const gh = GistUtils.getGitHub();
@@ -79,8 +62,113 @@ export const GistUtils = {
     }
 };
 
+export class GistSaveMedium extends SaveMedium {
+    constructor(gist_file, token=null) {
+        super();
+
+        this.gh = GistUtils.getGitHub(token);
+        // gist_id will be set later upon save
+        this.gist_id_checked = false;
+        this.gist_id = null;
+        this.gist_file = gist_file;
+    }
+    getPath() {
+        return this.gist_file;
+    }
+    async moveTo(new_path) {
+        // This needs to be first so it is captured in the state update
+        await this._checkGistId();
+        await this.gh.getGist(this.gist_id).delete();
+
+        this.gist_file = new_path;
+        this.gist_id = null;
+        this.gist_id_checked = false;
+
+        await this.save();
+    }
+    async save() {
+        return new Promise((async (resolve, reject) => {
+            await this._checkGistId();
+
+            fetch("notebookfile" + window.location.search).then(res => res.text()).then(nb_content => {
+                this.gh.getGist(this.gist_id).update({
+                    files: {
+                        [this.gist_file]: {
+                            content: nb_content
+                        }
+                    }
+                }).then(resolve).catch(reject)
+            })
+        }))
+    }
+    async _checkGistId() {
+        // Check to make sure its a valid gist id before proceeding
+        if(!this.gist_id_checked) {
+            if(this.gist_id && this.gist_id.length > 0) {
+                try {
+                    await this.gh.getGist(this.gist_id).read()
+                }
+                catch(e) {
+                    // Error getting gist; assume it doesn't exist
+                    console.log(e)
+                    return
+                }
+            }
+            // Otherwise make a new gist and provide its id
+            else {
+                const possible_gist = await GistUtils.getGistByFile(this.gist_file);
+
+                if(possible_gist) {
+                    this.gist_id = possible_gist.id;
+                }
+                else {
+                    this.gist_id = (await this.gh.getGist().create({
+                        public: false,  // TODO: Make this configurable
+                        files: {
+                            [this.gist_file]: { content: '# Pluto.jl init' }
+                        }
+                    })).data.id;
+                }
+            }
+            this.gist_id_checked = true;
+
+            console.log('gist id: ' + this.gist_id);
+        }
+    }
+}
+GistSaveMedium.autocomplete = (oldLine, cursor) => {
+    return GistUtils.search(oldLine).then((matchingGists) => {
+        // A confusing little line that says to give no suggestions if there is a perfect match, and
+        // otherwise give the matches from the search query
+        const styledResults = matchingGists.find(gist => Object.keys(gist.files)[0] === oldLine) ? [] : matchingGists.map(gist => ({
+            text: Object.keys(gist.files)[0],
+            className: 'file'
+        }))
+        if(!oldLine.endsWith('.jl')) {
+            const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/\.?j?l?$/g, '')
+            const nb_file = nb_name + '.jl'
+            if(!matchingGists.find(gist => Object.keys(gist.files)[0] === nb_file)) {
+                styledResults.push({
+                    text: nb_file,
+                    displayText: `${nb_file} (new)`,
+                    className: 'file new'
+                });
+            } 
+        }
+        return {
+            list: styledResults,
+            from: CodeMirror.Pos(cursor.line, 0),
+            to: CodeMirror.Pos(cursor.line, oldLine.length)
+        }
+    })
+}
+GistSaveMedium.authenticated = GistUtils.authenticated;
+GistSaveMedium.displayName = 'Gist';
+
+
 export class GDriveSaveMedium {
     // TODO: Implement Google Drive save interface
 }
 
 
+export const Mediums = { GistSaveMedium };
