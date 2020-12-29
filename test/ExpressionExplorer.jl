@@ -23,9 +23,14 @@ using Test
     @testset "Lists and structs" begin
         @test testee(:(1:3), [], [], [:(:)], [])
         @test testee(:(a[1:3,4]), [:a], [], [:(:)], [])
+        @test testee(:(a[b]), [:a, :b], [], [], [])
         @test testee(:([a[1:3,4]; b[5]]), [:b, :a], [], [:(:)], [])
-        @test testee(:(a.property), [:a], [], [], []) # `a` can also be a module
-        @test testee(:(struct a; b; c; end), [], [], [], [
+        @test testee(:(a.someproperty), [:a], [], [], []) # `a` can also be a module
+        @test testee(:([a..., b]), [:a, :b], [], [], [])
+        @test testee(:(struct a; b; c; end), [], [:a], [], [
+            :a => ([], [], [], [])
+            ])
+        @test testee(:(let struct a; b; c; end end), [], [:a], [], [
             :a => ([], [], [], [])
             ])
 
@@ -38,23 +43,26 @@ using Test
         @test testee(:(Foo[]), [:Foo], [], [], [])
         @test testee(:(x isa Foo), [:x, :Foo], [], [:isa], [])
 
-        @test testee(:(abstract type a end), [], [], [], [:a => ([], [], [], [])])
-        @test testee(:(abstract type a <: b end), [], [], [], [:a => ([:b], [], [], [])])
-        @test testee(:(abstract type a <: b{C} end), [], [], [], [:a => ([:b, :C], [], [], [])])
-        @test testee(:(abstract type a{T} end), [], [], [], [:a => ([], [], [], [])])
-        @test testee(:(abstract type a{T,S} end), [], [], [], [:a => ([], [], [], [])])
-        @test testee(:(abstract type a{T} <: b end), [], [], [], [:a => ([:b], [], [], [])])
-        @test testee(:(abstract type a{T} <: b{T} end), [], [], [], [:a => ([:b], [], [], [])])
+        @test testee(:(A{B} = B), [], [:A], [], [])
+        @test testee(:(A{T} = Union{T,Int}), [:Int, :Union], [:A], [], [])
+
+        @test testee(:(abstract type a end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a <: b{C} end), [], [:a], [], [:a => ([:b, :C], [], [], [])])
+        @test testee(:(abstract type a{T} end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T,S} end), [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(abstract type a{T} <: b end), [], [:a], [], [:a => ([:b], [], [], [])])
+        @test testee(:(abstract type a{T} <: b{T} end), [], [:a], [], [:a => ([:b], [], [], [])])
         @test_nowarn testee(macroexpand(Main, :(@enum a b c)), [], [], [], []; verbose=false)
         
         e = :(struct a end) # needs to be on its own line to create LineNumberNode
-        @test testee(e, [], [], [], [:a => ([], [], [], [])])
-        @test testee(:(struct a <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
-        @test testee(:(struct a{T,S}; c::T; d::Foo; end), [], [], [], [:a => ([:Foo], [], [], [])])
-        @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
-        @test testee(:(struct a{T} <: b{T}; c; d::Foo; end), [], [], [], [:a => ([:b, :Foo], [], [], [])])
-        @test testee(:(struct a; c; a(x=y) = new(x, z); end), [], [], [], [:a => ([:y, :z], [], [:new], [])])
-        # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [], [], [:a => ([:y, :z], [], [], [])], verbose=false)
+        @test testee(e, [], [:a], [], [:a => ([], [], [], [])])
+        @test testee(:(struct a <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a{T,S}; c::T; d::Foo; end), [], [:a], [], [:a => ([:Foo], [], [], [])])
+        @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a{T} <: b{T}; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
+        @test testee(:(struct a; c; a(x=y) = new(x, z); end), [], [:a], [], [:a => ([:y, :z], [], [:new], [])])
+        # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [:a], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
         # https://github.com/JuliaLang/julia/blob/f449765943ba414bd57c3d1a44a73e5a0bb27534/base/docs/basedocs.jl#L239-L244
@@ -98,6 +106,14 @@ using Test
         @test testee(:(for k in 1:n; k + s; end), [:n, :s], [], [:+, :(:)], [])
         @test testee(:(for k in 1:2, r in 3:4; global z = k + r; end), [], [:z], [:+, :(:)], [])
         @test testee(:(while k < 2; r = w; global z = k + r; end), [:k, :w], [:z], [:+, :(<)], [])
+    end
+    @testset "`try` & `catch`" begin
+        @test testee(:(try a = b + 1 catch; end), [:b], [], [:+], [])
+        @test testee(:(try a() catch e; e end), [], [], [:a], [])
+        @test testee(:(try a() catch; e end), [:e], [], [:a], [])
+        @test testee(:(try a + 1 catch a; a end), [:a], [], [:+], [])
+        @test testee(:(try 1 catch e; e finally a end), [:a], [], [], [])
+        @test testee(:(try 1 finally a end), [:a], [], [], [])
     end
     @testset "Comprehensions" begin
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
@@ -177,6 +193,7 @@ using Test
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
+        @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
@@ -184,8 +201,12 @@ using Test
         @test testee(:(√ b), [:b], [], [:√], [])
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
+        @test testee(:(f(a).b()), [:a], [], [:f], [])
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
         @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
+        @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
+        @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
+        @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
@@ -212,6 +233,15 @@ using Test
         ])
         @test testee(:(a(a::AbstractArray{T,R}) where {T,S} = a + b), [], [], [], [
             :a => ([:AbstractArray, :b, :R], [], [:+], [])
+        ])
+        @test testee(:(f(::A) = 1), [], [], [], [
+            :f => ([:A], [], [], [])
+        ])
+        @test testee(:(f(::A, ::B) = 1), [], [], [], [
+            :f => ([:A, :B], [], [], [])
+        ])
+        @test testee(:(f(a::A, ::B, c::C...) = a + c), [], [], [], [
+            :f => ([:A, :B, :C], [], [:+], [])
         ])
     end
     @testset "Scope modifiers" begin
@@ -255,19 +285,23 @@ using Test
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
         @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
-        @test testee(:(@f(x, y = z)), [:x, :z], [:y], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
+        @test testee(:(@f(x, y = z)), [:x, :z], [], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
         @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
         @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
         @test testee(:(@gensym a b c), [], [:a, :b, :c], [Symbol("@gensym")], [])
         @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [[:Base, Symbol("@gensym")]], [])
-        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
+        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [:A], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
             :A => ([:Int, :two], [], [], [])
         ])
         @test testee(quote "asdf" f(x) = x end, [], [], [], [:f => ([], [], [], [])])
 
         @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [])
+        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
         @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+
+        @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
 
         @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
@@ -275,6 +309,18 @@ using Test
         @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
         @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
         @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
+        @test testee(:(macro a() end), [], [], [], [
+            Symbol("@a") => ([], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int); b end), [], [], [], [
+            Symbol("@a") => ([:Int], [], [], [])
+        ])
+        @test testee(:(macro a(b::Int=c) end), [], [], [], [
+            Symbol("@a") => ([:Int, :c], [], [], [])
+        ])
+        @test testee(:(macro a(); b = c; return b end), [], [], [], [
+            Symbol("@a") => ([:c], [], [], [])
+        ])
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])

@@ -7,7 +7,7 @@ function serialize_message_to_stream(io::IO, message::UpdateMessage)
     if message.cell !== nothing
         to_send[:cell_id] = message.cell.cell_id
     end
-    if message.initiator !== missing
+    if message.initiator !== nothing
         to_send[:initiator_id] = message.initiator.client_id
         to_send[:request_id] = message.initiator.request_id
     end
@@ -18,9 +18,6 @@ end
 function serialize_message(message::UpdateMessage)
     sprint(serialize_message_to_stream, message)
 end
-
-"Appended after every WS message to say that the transmission is complete. This solves an issue where the WS message is broken up over multiple frames/packets/thingies."
-const MSG_DELIM = Vector{UInt8}(codeunits("IUUQ.km jt ejggjdvmu vhi")) # riddle me this, Julius
 
 "Send `messages` to all clients connected to the `notebook`."
 function putnotebookupdates!(session::ServerSession, notebook::Notebook, messages::UpdateMessage...; flush::Bool=true)
@@ -73,7 +70,7 @@ function flushclient(client::ClientSession)
                     if client.stream isa HTTP.WebSockets.WebSocket
                         client.stream.frame_type = HTTP.WebSockets.WS_BINARY
                     end
-                    write(client.stream, serialize_message(next_to_send), MSG_DELIM)
+                    write(client.stream, serialize_message(next_to_send))
                 else
                     put!(flushtoken)
                     return false
@@ -81,7 +78,7 @@ function flushclient(client::ClientSession)
             end
         catch ex
             bt = stacktrace(catch_backtrace())
-            if ex isa Base.IOError
+            if ex isa Base.IOError || (ex isa ArgumentError && occursin("closed", ex.msg))
                 # client socket closed, so we return false (about 5 lines after this one)
             else
                 @warn "Failed to write to WebSocket of $(client.id) " exception = (ex, bt)
@@ -94,7 +91,7 @@ function flushclient(client::ClientSession)
     true
 end
 
-function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractArray{ClientSession}})
+function flushallclients(session::ServerSession, subset::Union{Set{ClientSession},AbstractVector{ClientSession}})
     disconnected = Set{Symbol}()
     for client in subset
         stillconnected = flushclient(client)
@@ -102,8 +99,8 @@ function flushallclients(session::ServerSession, subset::Union{Set{ClientSession
             push!(disconnected, client.id)
         end
     end
-    for to_deleteID in disconnected
-        delete!(session.connected_clients, to_deleteID)
+    for to_delete_id in disconnected
+        delete!(session.connected_clients, to_delete_id)
     end
 end
 

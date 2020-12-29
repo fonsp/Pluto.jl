@@ -10,6 +10,8 @@ function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     liv >= lis && (view(vec, (liv - lis + 1):liv) == suffix)
 end
 
+include("./WebSocketFix.jl")
+
 
 # to fix lots of false error messages from HTTP
 # https://github.com/JuliaWeb/HTTP.jl/pull/546
@@ -22,6 +24,9 @@ function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: I
         catch end
     end
 end
+
+# https://github.com/JuliaWeb/HTTP.jl/pull/609
+HTTP.URIs.escapeuri(query::Union{Vector,Dict}) = isempty(query) ? HTTP.URIs.absent : join((HTTP.URIs.escapeuri(k, v) for (k, v) in query), "&")
 
 # from https://github.com/JuliaLang/julia/pull/36425
 function detectwsl()
@@ -36,7 +41,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`cmd.exe /s /c start "" /b $url`)
+            Base.run(`powershell.exe Start $url`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
@@ -49,14 +54,25 @@ function open_in_default_browser(url::AbstractString)::Bool
     end
 end
 
-"""
-    run(; kwargs...)
+isurl(s::String) = startswith(s, "http://") || startswith(s, "https://")
 
-Start Pluto! Are you excited? I am!
+swallow_exception(f, exception_type::Type{T}) where T =
+    try f()
+    catch e
+        isa(e, T) || rethrow(e)
+    end
+
+"""
+    Pluto.run()
+
+Start Pluto!
 
 ## Keyword arguments
+You can configure some of Pluto's more technical behaviour using keyword arguments, but this is mostly meant to support testing and strange setups like Docker. If you want to do something exciting with Pluto, you can probably write a creative notebook to do it!
 
-For the full list, see the [`Configuration`](@ref) module. Some **common parameters**:
+    Pluto.run(; kwargs...)
+
+For the full list, see the [`Pluto.Configuration`](@ref) module. Some **common parameters**:
 
 - `launch_browser`: Optional. Whether to launch the system default browser. Disable this on SSH and such.
 - `host`: Optional. The default `host` is `"127.0.0.1"`. For wild setups like Docker and heroku, you might need to change this to `"0.0.0.0"`.
@@ -68,12 +84,34 @@ This will start the static HTTP server and a WebSocket server. The server runs _
 Pluto notebooks can be started from the main menu in the web browser.
 """
 function run(; kwargs...)
-    session = ServerSession(;options=Configuration.from_flat_kwargs(; kwargs...))
-    return run(session)
+    options = Configuration.from_flat_kwargs(; kwargs...)
+    run(options)
 end
 
-@deprecate run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...) run(;host=host, port=port, kwargs...) false
-@deprecate run(port::Integer; kwargs...) run(;port=port, kwargs...) false
+function run(options::Configuration.Options)
+    session = ServerSession(;options=options)
+    run(session)
+end
+
+# Deprecation errors
+
+function run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...)
+    @error "Deprecated in favor of:
+    
+        run(;host=$host, port=$port)
+    "
+end
+
+function run(port::Integer; kwargs...)
+    @error "Oopsie! This is the old command to launch Pluto. The new command is:
+    
+        Pluto.run()
+    
+    without the port as argument - it will choose one automatically. If you need to specify the port, use:
+
+        Pluto.run(port=$port)
+    "
+end
 
 """
     run(session::ServerSession)
@@ -97,77 +135,67 @@ function run(session::ServerSession)
         end
     end
 
-    kill_server = Ref{Function}(identity)
+    shutdown_server = Ref{Function}(() -> ())
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
 
         if HTTP.WebSockets.is_upgrade(http.message)
-            try
-                requestURI = http.message.target |> HTTP.URIs.unescapeuri |> HTTP.URI
-                @assert endswith(requestURI.path, string(session.secret))
+            if is_authenticated(session, http.message)
+                try
 
-                HTTP.WebSockets.upgrade(http) do clientstream
-                    if !isopen(clientstream)
-                        return
-                    end
-                    try
-                    while !eof(clientstream)
-                        # This stream contains data received over the WebSocket.
-                        # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+                    HTTP.WebSockets.upgrade(http) do clientstream
+                        if !isopen(clientstream)
+                            return
+                        end
                         try
-                            parentbody = let
-                                # For some reason, long (>256*512 bytes) WS messages get split up - `readavailable` only gives the first 256*512 
-                                data = UInt8[]
-                                while !endswith(data, MSG_DELIM)
-                                    if eof(clientstream)
-                                        if isempty(data)
-                                            return
-                                        end
-                                        @warn "Unexpected eof after" data
-                                        append!(data, MSG_DELIM)
-                                        break
-                                    end
-                                    append!(data, readavailable(clientstream))
+                        while !eof(clientstream)
+                            # This stream contains data received over the WebSocket.
+                            # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
+                            local parentbody
+                            try
+                                message = collect(WebsocketFix.readmessage(clientstream))
+                                parentbody = unpack(message)
+
+                                process_ws_message(session, parentbody, clientstream)
+                            catch ex
+                                if ex isa InterruptException
+                                    shutdown_server[]()
+                                elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                                    # that's fine!
+                                else
+                                    bt = stacktrace(catch_backtrace())
+                                    @warn "Reading WebSocket client stream failed for unknown reason:" parentbody exception = (ex, bt)
                                 end
-                                # TODO: view to avoid memory allocation
-                                unpack(data[1:end - length(MSG_DELIM)])
                             end
-                            process_ws_message(session, parentbody, clientstream)
+                        end
                         catch ex
                             if ex isa InterruptException
-                                kill_server[]()
-                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError
+                                shutdown_server[]()
+                            elseif ex isa HTTP.WebSockets.WebSocketError || ex isa EOFError || (ex isa Base.IOError && occursin("connection reset", ex.msg))
                                 # that's fine!
-                            elseif ex isa InexactError
-                                # that's fine! this is a (fixed) HTTP.jl bug: https://github.com/JuliaWeb/HTTP.jl/issues/471
-                                # TODO: remove this switch
                             else
                                 bt = stacktrace(catch_backtrace())
                                 @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
                             end
                         end
                     end
-                    catch ex
-                        if ex isa InterruptException
-                            kill_server[]()
-                        else
-                            bt = stacktrace(catch_backtrace())
-                            @warn "Reading WebSocket client stream failed for unknown reason:" exception = (ex, bt)
-                        end
+                catch ex
+                    if ex isa InterruptException
+                        shutdown_server[]()
+                    elseif ex isa Base.IOError
+                        # that's fine!
+                    elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
+                        # that's fine!
+                    else
+                        bt = stacktrace(catch_backtrace())
+                        @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
                     end
                 end
-            catch ex
-                if ex isa InterruptException
-                    kill_server[]()
-                elseif ex isa Base.IOError
-                    # that's fine!
-                elseif ex isa ArgumentError && occursin("stream is closed", ex.msg)
-                    # that's fine!
-                else
-                    bt = stacktrace(catch_backtrace())
-                    @warn "HTTP upgrade failed for unknown reason" exception = (ex, bt)
-                end
+            else
+                HTTP.setstatus(http, 403)
+                HTTP.startwrite(http)
+                HTTP.closewrite(http)
             end
         else
             request::HTTP.Request = http.message
@@ -191,6 +219,7 @@ function run(session::ServerSession)
             request.response::HTTP.Response = response_body
             request.response.request = request
             try
+                HTTP.setheader(http, "Referrer-Policy" => "origin-when-cross-origin")
                 HTTP.startwrite(http)
                 write(http, request.response.body)
                 HTTP.closewrite(http)
@@ -204,15 +233,9 @@ function run(session::ServerSession)
         end
     end
 
-    address = if session.options.server.root_url === nothing
-        hostPretty = (hostStr = string(hostIP)) == "127.0.0.1" ? "localhost" : hostStr
-        portPretty = Int(port)
-        "http://$(hostPretty):$(portPretty)/"
-    else
-        session.options.server.root_url
-    end
-    Sys.set_process_title("Pluto server - $address")
+    address = pretty_address(session, hostIP, port)
 
+    println()
     if session.options.server.launch_browser && open_in_default_browser(address)
         println("Opening $address in your default browser... ~ have fun!")
     else
@@ -222,17 +245,17 @@ function run(session::ServerSession)
     println("Press Ctrl+C in this terminal to stop Pluto")
     println()
 
-    kill_server[] = () -> @sync begin
+    shutdown_server[] = () -> @sync begin
         println("\n\nClosing Pluto... Restart Julia for a fresh session. \n\nHave a nice day! 🎈")
-        @async close(serversocket)
+        @async swallow_exception(() -> close(serversocket), Base.IOError)
         # TODO: HTTP has a kill signal?
         # TODO: put do_work tokens back 
         for client in values(session.connected_clients)
-            @async close(client.stream)
+            @async swallow_exception(() -> close(client.stream), Base.IOError)
         end
         empty!(session.connected_clients)
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(ws)
+            @async WorkspaceManager.unmake_workspace(wait(ws))
         end
     end
 
@@ -241,13 +264,52 @@ function run(session::ServerSession)
         wait(servertask)
     catch e
         if e isa InterruptException
-            kill_server[]()
+            shutdown_server[]()
         elseif e isa TaskFailedException
             # nice!
         else
             rethrow(e)
         end
     end
+end
+
+function pretty_address(session::ServerSession, hostIP, port)
+    root = if session.options.server.root_url === nothing
+        host_str = string(hostIP)
+        host_pretty = if isa(hostIP, Sockets.IPv6)
+            if host_str == "::1"
+                "localhost"
+            else
+                "[$(host_str)]"
+            end
+        elseif host_str == "127.0.0.1" # Assuming the other alternative is IPv4
+            "localhost"
+        else
+            host_str
+        end
+        port_pretty = Int(port)
+        "http://$(host_pretty):$(port_pretty)/"
+    else
+        @assert endswith(session.options.server.root_url, "/")
+        session.options.server.root_url
+    end
+
+    Sys.set_process_title("Pluto server - $root")
+
+    url_params = Dict{String,String}()
+
+    if session.options.security.require_secret_for_access
+        url_params["secret"] = session.secret
+    end
+    fav_notebook = session.options.server.notebook
+    new_root = if fav_notebook !== nothing
+        key = isurl(fav_notebook) ? "url" : "path"
+        url_params[key] = string(fav_notebook)
+        root * "open"
+    else
+        root
+    end
+    merge(HTTP.URIs.URI(new_root), query=url_params) |> string
 end
 
 "All messages sent over the WebSocket get decoded+deserialized and end up here."
@@ -259,8 +321,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    args = []
-    if haskey(parentbody, "notebook_id")
+    notebook = if haskey(parentbody, "notebook_id")
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)
@@ -274,17 +335,9 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
             end
         end
         
-        push!(args, notebook)
-
-        if haskey(parentbody, "cell_id")
-            cell_id = UUID(parentbody["cell_id"])
-            index = cell_index_from_id(notebook, cell_id)
-            if index === nothing
-                @warn "Remote cell not found locally!"
-            else
-                push!(args, notebook.cells[index])
-            end
-        end
+        notebook
+    else
+        nothing
     end
 
     body = parentbody["body"]
@@ -292,7 +345,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     if haskey(responses, messagetype)
         responsefunc = responses[messagetype]
         try
-            responsefunc(session, body, args..., initiator=Initiator(client.id, request_id))
+            responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
             @warn "Response function to message of type $(messagetype) failed"
             rethrow(ex)

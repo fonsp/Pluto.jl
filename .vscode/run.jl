@@ -1,2 +1,2 @@
 import Pluto
-Pluto.run(1234)
+Pluto.run()

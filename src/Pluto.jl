@@ -9,10 +9,9 @@ Have a look at the FAQ:
 https://github.com/fonsp/Pluto.jl/wiki
 """
 module Pluto
+project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
 
 import Pkg
-
-project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
 
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
@@ -22,11 +21,8 @@ include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
-# import .PlutoRunner
-# @eval Main begin
-#   PlutoRunner = $(PlutoRunner)
-# end
 include("./analysis/ExpressionExplorer.jl")
+include("./analysis/ReactiveNode.jl")
 
 include("./notebook/PathHelpers.jl")
 include("./notebook/Cell.jl")

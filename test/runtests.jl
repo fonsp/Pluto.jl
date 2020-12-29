@@ -1,11 +1,12 @@
 include("./helpers.jl")
-include("./Configuration.jl")
-include("./Dynamic.jl")
-include("./Analysis.jl")
-include("./ExpressionExplorer.jl")
-include("./React.jl")
-include("./Notebook.jl")
 include("./RichOutput.jl")
+include("./React.jl")
+include("./ExpressionExplorer.jl")
+# include("./Dynamic.jl")
+include("./MethodSignatures.jl")
+include("./Notebook.jl")
+include("./Configuration.jl")
+include("./Analysis.jl")
 include("./WorkspaceManager.jl")
 
 # TODO: test PlutoRunner functions like:

@@ -1,5 +1,15 @@
-@import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext");
-@import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese");
+/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+
+/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+
+@import url("juliamono.css");
+
+* {
+    box-sizing: border-box;
+}
+
 #title {
     /* position: absolute; */
     /* left: 0; */
@@ -45,7 +55,7 @@ body {
     margin: 0px;
     position: absolute;
     width: 100%;
-    height: 100%;
+    min-height: 100%;
     background: white;
 }
 
@@ -53,7 +63,6 @@ main {
     width: 15em;
     margin: 0 auto;
     margin-top: 20vh;
-    margin-bottom: 10em;
     text-align: left;
     font-family: "Roboto Mono", monospace;
     color: hsl(0, 0%, 60%);
@@ -104,13 +113,13 @@ pluto-filepicker {
 }
 
 pluto-filepicker .CodeMirror {
-    height: calc(1rem + 4px + 4px);
+    height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     width: 100%;
     opacity: 0.6;
     font-style: normal;
     font-weight: 500;
-    font-family: "Roboto Mono", monospace !important;
+    font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
@@ -126,12 +135,13 @@ pluto-filepicker .CodeMirror-scroll {
 }
 
 pluto-filepicker button {
+    margin: 0px;
     background: #6c8489;
     border-radius: 3px;
     border: 2px solid #6c8489;
     color: white;
     /* border: none; */
-    font-family: "Roboto Mono";
+    font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
 }
@@ -159,12 +169,16 @@ ul.CodeMirror-hints {
 }
 
 ul.CodeMirror-hints {
-    font-family: "Roboto Mono", monospace !important;
+    font-family: JuliaMono, monospace !important;
     font-size: 0.75em;
 }
 
 body.nosessions ul#new ~ * {
     display: none;
+}
+
+#recent {
+    margin-bottom: 8em;
 }
 
 #recent > li.recent {
@@ -214,7 +228,7 @@ loading-bar {
 }
 
 body.loading loading-bar {
-    animation: 10s ease-in-out load;
+    animation: 16s ease-in-out load;
     display: block;
 }
 

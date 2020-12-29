@@ -1,53 +1,74 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-struct NotebookTopology
-	symstates::Dict{Cell,SymbolsState}
-    combined_funcdefs::Dict{Vector{Symbol},SymbolsState}
+Base.@kwdef struct NotebookTopology
+    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
 end
-NotebookTopology() = NotebookTopology(Dict{Cell,SymbolsState}(), Dict{Vector{Symbol},SymbolsState}())
 
-# `topology[cell]` is a shorthand for `get(topology, cell, SymbolsState())`
-# with the performance benefit of only generating SymbolsState() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)
-    result = get(topology.symstates, cell, nothing)
-    result === nothing ? SymbolsState() : result
+# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
+# with the performance benefit of only generating ReactiveNode() when needed
+function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
+    get!(ReactiveNode, topology.nodes, cell)
+end
+
+struct BondValue
+    value::Any
+end
+function Base.convert(::Type{BondValue}, dict::Dict)
+    BondValue(dict["value"])
 end
 
 "Like a [`Diary`](@ref) but more serious. 📓"
-mutable struct Notebook
+Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
-    cells::Array{Cell,1}
+    cells_dict::Dict{UUID,Cell}
+    cell_order::Array{UUID,1}
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
     notebook_id::UUID
-    topology::NotebookTopology
+    topology::NotebookTopology=NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
-    pendingupdates::Channel
+    # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
+    # This does mean that the Notebook can't be used if nothing is clearing the update channel.
+    pendingupdates::Channel=Channel(1024)
 
-    executetoken::Token
+    executetoken::Token=Token()
 
     # per notebook compiler options
     # nothing means to use global session compiler options
-    compiler_options::Union{Nothing,Configuration.CompilerOptions}
-end
-# We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
-# This does mean that the Notebook can't be used if nothing is clearing the update channel.
-Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
+    compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(tempdir(), cutename()))) = Notebook(cells, path, uuid1())
-
-function cell_index_from_id(notebook::Notebook, cell_id::UUID)::Union{Int,Nothing}
-    findfirst(c -> c.cell_id == cell_id, notebook.cells)
+    bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
 
+Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
+    cells_dict=Dict(map(cells) do cell
+        (cell.cell_id, cell)
+    end),
+    cell_order=map(x -> x.cell_id, cells),
+    path=path,
+    notebook_id=notebook_id,
+)
 
+Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 
+function Base.getproperty(notebook::Notebook, property::Symbol)
+    if property == :cells
+        cells_dict = getfield(notebook, :cells_dict)
+        cell_order = getfield(notebook, :cell_order)
+        map(cell_order) do id
+            cells_dict[id]
+        end
+    elseif property == :cell_inputs
+        getfield(notebook, :cells_dict)
+    else
+        getfield(notebook, property)
+    end
+end
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
@@ -64,7 +85,7 @@ Save the notebook to `io`, `file` or to `notebook.path`.
 
 In the produced file, cells are not saved in the notebook order. If `notebook.topolgy` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
 
-Have a look at or [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
+Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
 function save_notebook(io, notebook::Notebook)
     println(io, _notebook_header)
