@@ -738,7 +738,9 @@ binder-spinner {
 }
 
 button#launch_binder {
-    position: absolute;
+    /* position: absolute; */
+    position: fixed;
+
     top: 10px;
     right: 30px;
     /* width: 153.2px; */
