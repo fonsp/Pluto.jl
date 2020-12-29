@@ -124,14 +124,21 @@ pluto-filepicker .CodeMirror {
     letter-spacing: 1px;
     background: none;
     border: 2px solid #818181;
-    border-radius: 3px;
+    border-radius: 0;
     border-right: none;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
+    border-left: none;
 }
 
 pluto-filepicker .CodeMirror-scroll {
     overflow: hidden !important;
+}
+
+pluto-filepicker select {
+    border: 2px solid #b1b1b1;
+    border-radius: 3px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    font-family: "Roboto Mono", monospace;
 }
 
 pluto-filepicker button {

@@ -4,6 +4,7 @@ export class SaveMedium {
     getPath() {}
     moveTo() {}
     save() {}
+    load() {}
 
     scheduleSave() {
         // The code below here waits until updates cease for 1 second before updating the gist
@@ -14,7 +15,7 @@ export class SaveMedium {
         this.saveTimeout = setTimeout(this.save.bind(this), 1000)
     }
 }
-SaveMedium.autocomplete = async (oldLine, cursor) => {
+SaveMedium.autocomplete = async (oldLine, cursor, options) => {
     throw new Error('Autocomplete was not implemented by this save medium!');
 }
 SaveMedium.authenticated = async () => {}
@@ -86,7 +87,7 @@ export class GistSaveMedium extends SaveMedium {
 
         await this.save();
     }
-    async save() {
+    save() {
         return new Promise((async (resolve, reject) => {
             await this._checkGistId();
 
@@ -101,7 +102,13 @@ export class GistSaveMedium extends SaveMedium {
             })
         }))
     }
-    async _checkGistId() {
+    async load() {
+        await this._checkGistId(false);
+
+        const gist = await this.gh.getGist(this.gist_id).read();
+        return gist.data.files[Object.keys(gist.data.files)[0]].content;
+    }
+    async _checkGistId(create_if_missing=true) {
         // Check to make sure its a valid gist id before proceeding
         if(!this.gist_id_checked) {
             if(this.gist_id && this.gist_id.length > 0) {
@@ -121,7 +128,7 @@ export class GistSaveMedium extends SaveMedium {
                 if(possible_gist) {
                     this.gist_id = possible_gist.id;
                 }
-                else {
+                else if(create_if_missing) {
                     this.gist_id = (await this.gh.getGist().create({
                         public: false,  // TODO: Make this configurable
                         files: {
@@ -129,14 +136,18 @@ export class GistSaveMedium extends SaveMedium {
                         }
                     })).data.id;
                 }
+                else {
+                    throw new Error('No gist could be matched to the provided filename');
+                }
             }
+            
             this.gist_id_checked = true;
 
             console.log('gist id: ' + this.gist_id);
         }
     }
 }
-GistSaveMedium.autocomplete = (oldLine, cursor) => {
+GistSaveMedium.autocomplete = (oldLine, cursor, options) => {
     return GistUtils.search(oldLine).then((matchingGists) => {
         // A confusing little line that says to give no suggestions if there is a perfect match, and
         // otherwise give the matches from the search query
@@ -144,8 +155,8 @@ GistSaveMedium.autocomplete = (oldLine, cursor) => {
             text: Object.keys(gist.files)[0],
             className: 'file'
         }))
-        if(!oldLine.endsWith('.jl')) {
-            const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/\.?j?l?$/g, '')
+        if(options.suggest_new_file != null) {
+            const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/(\.|\.j|\.jl)$/g, '')
             const nb_file = nb_name + '.jl'
             if(!matchingGists.find(gist => Object.keys(gist.files)[0] === nb_file)) {
                 styledResults.push({
@@ -153,10 +164,10 @@ GistSaveMedium.autocomplete = (oldLine, cursor) => {
                     displayText: `${nb_file} (new)`,
                     className: 'file new'
                 });
-            } 
+            }
         }
         return {
-            list: styledResults,
+            list: oldLine.endsWith('.jl') ? [] : styledResults,
             from: CodeMirror.Pos(cursor.line, 0),
             to: CodeMirror.Pos(cursor.line, oldLine.length)
         }
@@ -168,6 +179,19 @@ GistSaveMedium.displayName = 'Gist';
 
 export class GDriveSaveMedium {
     // TODO: Implement Google Drive save interface
+}
+
+
+export const update_external_notebooks = (notebook_path, save_medium, medium_args, old_path=null) => {
+    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
+    storedGists[notebook_path] = { type: save_medium.constructor.name, args: medium_args }
+    if(old_path) delete storedGists[old_path]
+    localStorage.setItem('external notebooks', JSON.stringify(storedGists))
+}
+
+export const get_external_notebook = (notebook_path) => {
+    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
+    return storedGists[notebook_path]
 }
 
 

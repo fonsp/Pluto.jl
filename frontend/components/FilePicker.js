@@ -237,7 +237,7 @@ export class FilePicker extends Component {
             })
         }
         else {
-            return Mediums[save_medium].autocomplete(oldLine, cursor)
+            return Mediums[save_medium].autocomplete(oldLine, cursor, options)
         }
     }
 }

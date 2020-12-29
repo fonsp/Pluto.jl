@@ -20,7 +20,7 @@ import { offline_html } from "../common/OfflineHTMLExport.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { Mediums, GistSaveMedium } from "../common/SaveMediums.js"
+import { Mediums, update_external_notebooks, get_external_notebook } from "../common/SaveMediums.js"
 
 const default_path = "..."
 
@@ -1145,19 +1145,4 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
-
-/* LOCALSTORAGE GIST LIST */
-
 // if old_path is defined its entry will be deleted
-
-export const update_external_notebooks = (notebook_path, save_medium, medium_args, old_path=null) => {
-    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
-    storedGists[notebook_path] = { type: save_medium.constructor.name, args: medium_args }
-    if(old_path) delete storedGists[old_path]
-    localStorage.setItem('external notebooks', JSON.stringify(storedGists))
-}
-
-export const get_external_notebook = (notebook_path) => {
-    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
-    return storedGists[notebook_path]
-}

@@ -652,7 +652,7 @@ li.dir.CodeMirror-hint:before {
     }
     nav#at_the_top > pluto-filepicker select {
         background-color: transparent;
-        font-family: monospace;
+        font-family: "Roboto Mono", monospace;
         border-top-left-radius: 3px;
         border-bottom-left-radius: 3px;
     }
