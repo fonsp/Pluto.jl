@@ -754,7 +754,8 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
+        const title_name = this.state.save_medium ? this.state.save_medium.getPath() : this.state.notebook.shortpath
+        document.title = "🎈 " + title_name + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
