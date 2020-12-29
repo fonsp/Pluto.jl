@@ -125,16 +125,16 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
 
                     try {
                         on_message(message)
-                    } catch (error) {
-                        console.error("Failed to process message from websocket", error, { message })
+                    } catch (process_err) {
+                        console.error("Failed to process message from websocket", process_err, { message })
                         // prettier-ignore
-                        alert(`Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${error.message}\n\n${JSON.stringify(event)}`)
+                        alert(`Something went wrong! You might need to refresh the page.\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${process_err.message}\n\n${JSON.stringify(event)}`)
                     }
-                } catch (ex) {
-                    console.error("Failed to unpack message from websocket", ex, { event })
+                } catch (unpack_err) {
+                    console.error("Failed to unpack message from websocket", unpack_err, { event })
 
                     // prettier-ignore
-                    alert(`Something went wrong!\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${ex}\n\n${JSON.stringify(event)}`)
+                    alert(`Something went wrong! You might need to refresh the page.\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to unpack message\n${unpack_err}\n\n${JSON.stringify(event)}`)
                 }
             })
         }
@@ -269,7 +269,7 @@ export const create_pluto_connection = async ({
         update_url_with_binder_token()
 
         try {
-            ws_connection = await create_ws_connection(ws_address, {
+            ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: (update) => {
                     const by_me = update.initiator_id == client_id
                     const request_id = update.request_id

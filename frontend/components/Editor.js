@@ -873,7 +873,6 @@ export class Editor extends Component {
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
-
                         <${ExportBanner}
                             pluto_version=${this.client?.version_info?.pluto}
                             notebook=${this.state.notebook}
