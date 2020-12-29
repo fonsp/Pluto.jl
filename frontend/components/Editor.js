@@ -22,7 +22,7 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let localUpdates = 0
+let pending_local_updates = 0
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -532,8 +532,8 @@ export class Editor extends Component {
                     throw new Error("This sounds like it is editting an array!!!")
                 }
             }
-            localUpdates = (localUpdates || 0 ) + 1
-            this.setState({ update_is_ongoing: localUpdates > 0 })
+            pending_local_updates++
+            this.setState({ update_is_ongoing: pending_local_updates > 0 })
             try {
                 await Promise.all([
                     this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
@@ -553,8 +553,8 @@ export class Editor extends Component {
                     }),
                 ])
             } finally {
-                localUpdates = (localUpdates || 0) - 1
-                this.setState({ update_is_ongoing: localUpdates > 0 })
+                pending_local_updates--
+                this.setState({ update_is_ongoing: pending_local_updates > 0 })
             }
         }
         this.update_notebook = update_notebook
@@ -721,7 +721,8 @@ export class Editor extends Component {
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
-        document.body.classList.toggle("update_is_ongoing", localUpdates > 0)
+        // this class is used to tell our frontend tests that the updates are done
+        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
         document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
         if (this.state.connected) {
             // @ts-ignore
