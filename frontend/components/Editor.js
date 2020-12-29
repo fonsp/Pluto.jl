@@ -545,6 +545,11 @@ export class Editor extends Component {
                 binder_phase: BinderPhase.requesting,
             })
             const { binder_session_url, binder_session_token } = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
+
+            // you can hard-code a running session:
+            // const binder_session_url = "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-gplq5500/pluto/"
+            // const binder_session_token = "0Ki849caQR6A4oYZzB2g-w"
+
             console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
             this.setState({
@@ -566,13 +571,13 @@ export class Editor extends Component {
             open_url.searchParams.set("url", url_params.get("notebookfile"))
             // await timeout(2000)
             const open_reponse = await fetch(with_token(String(open_url)), {
+                method: "POST",
                 headers: {
                     Authorization: `token ${binder_session_token}`,
                 },
             })
-            console.info("open_url: ", with_token(String(open_reponse.url)))
 
-            const new_notebook_id = new URL(open_reponse.url).searchParams.get("id")
+            const new_notebook_id = await open_reponse.text()
             console.info("notebook_id:", new_notebook_id)
             this.setState(
                 (old_state) => ({

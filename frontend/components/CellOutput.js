@@ -288,13 +288,16 @@ export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
                 invalidation.then(remove_bonds_listener)
             }
 
-            // convert LaTeX to svg
-            try {
-                // @ts-ignore
-                window.MathJax.typeset([container.current])
-            } catch (err) {
-                console.info("Failed to typeset TeX:")
-                console.info(err)
+            // Convert LaTeX to svg
+            // @ts-ignore
+            if (window.MathJax?.typeset != undefined) {
+                try {
+                    // @ts-ignore
+                    window.MathJax.typeset([container.current])
+                } catch (err) {
+                    console.info("Failed to typeset TeX:")
+                    console.info(err)
+                }
             }
 
             // Apply julia syntax highlighting
