@@ -547,8 +547,8 @@ export class Editor extends Component {
             const { binder_session_url, binder_session_token } = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
 
             // you can hard-code a running session:
-            // const binder_session_url = "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-gplq5500/pluto/"
-            // const binder_session_token = "0Ki849caQR6A4oYZzB2g-w"
+            // const binder_session_url = "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-ftygd6yr/pluto/"
+            // const binder_session_token = "qSfpRzyXTx6A20HSvoSnoA"
 
             console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
@@ -562,19 +562,20 @@ export class Editor extends Component {
                 return String(new_url)
             }
             await fetch(with_token(binder_session_url), {
-                headers: {
-                    Authorization: `token ${binder_session_token}`,
-                },
+                // headers: {
+                //     Authorization: `token ${binder_session_token}`,
+                // },
             })
 
             const open_url = new URL("open", binder_session_url)
             open_url.searchParams.set("url", url_params.get("notebookfile"))
             // await timeout(2000)
+            console.log("open_url: ", String(open_url))
             const open_reponse = await fetch(with_token(String(open_url)), {
                 method: "POST",
-                headers: {
-                    Authorization: `token ${binder_session_token}`,
-                },
+                // headers: {
+                //     Authorization: `token ${binder_session_token}`,
+                // },
             })
 
             const new_notebook_id = await open_reponse.text()
