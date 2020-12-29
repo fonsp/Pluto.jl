@@ -254,11 +254,8 @@ export const create_pluto_connection = async ({
             try {
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
-                if (response.status !== 200) {
-                    return
-                }
                 const possible_binder_token = await response.text()
-                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                if (possible_binder_token !== "" && url.searchParams.get("token") !== possible_binder_token) {
                     url.searchParams.set("token", possible_binder_token)
                     history.replaceState({}, "", url.toString())
                 }

@@ -38,11 +38,14 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-function notebook_redirect_response(notebook; home_url="./", binder_token=nothing)
-    response = HTTP.Response(302, "")
-    token_suffix = binder_token === nothing ? "" : "&token=" * binder_token
-    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id) * token_suffix)
-    return response
+function notebook_response(notebook; home_url="./", as_redirect=true)
+    if as_redirect
+        response = HTTP.Response(302, "")
+        push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+        return response
+    else
+        HTTP.Response(200, string(notebook.notebook_id))
+    end
 end
 
 """
@@ -130,15 +133,15 @@ function http_router_for(session::ServerSession)
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(404,"") : HTTP.Response(200, session.binder_token))
+    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
-    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./")
+    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true)
         try
             nb = action(session, path_or_url)
-            notebook_redirect_response(nb; home_url=home_url, binder_token=session.binder_token)
+            notebook_response(nb; home_url=home_url, as_redirect=as_redirect)
         catch e
             if e isa SessionActions.NotebookIsRunningException
-                notebook_redirect_response(e.notebook; home_url=home_url, binder_token=session.binder_token)
+                notebook_response(e.notebook; home_url=home_url, as_redirect=as_redirect)
             else
                 error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
             end
@@ -149,9 +152,10 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        notebook_redirect_response(SessionActions.new(session); binder_token=session.binder_token)
+        notebook_response(SessionActions.new(session); as_redirect=(request.method == "GET"))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
+    HTTP.@register(router, "POST", "/new", serve_newfile)
 
     serve_openfile = with_authentication(;
         required=security.require_secret_for_access || 
@@ -163,13 +167,13 @@ function http_router_for(session::ServerSession)
             if haskey(query, "path")
                 path = tamepath(query["path"])
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 error("Empty request")
             end
@@ -179,6 +183,7 @@ function http_router_for(session::ServerSession)
     end
 
     HTTP.@register(router, "GET", "/open", serve_openfile)
+    HTTP.@register(router, "POST", "/open", serve_openfile)
     
     serve_sample = with_authentication(;
         required=security.require_secret_for_access || 
@@ -191,9 +196,10 @@ function http_router_for(session::ServerSession)
         path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
         readwrite(project_relative_path("sample", sample_path), path)
         
-        try_launch_notebook_response(SessionActions.open, path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        try_launch_notebook_response(SessionActions.open, path; as_redirect=(request.method == "GET"), home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
+    HTTP.@register(router, "POST", "/sample/*", serve_sample)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
