@@ -935,7 +935,7 @@ export class Editor extends Component {
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected}
+                            disable_input=${!this.state.connected && this.state.binder_phase == null}
                             last_created_cell=${this.state.last_created_cell}
                         />
 
