@@ -38,7 +38,7 @@ const workspaces = Dict{UUID,Promise{Workspace}}()
 Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
 only partially: you can't stop cells on Windows.
 """
-function make_workspace((session, notebook)::Tuple{ServerSession,Notebook})::Workspace
+function make_workspace((session, notebook)::Tuple{ServerSession, Notebook})::Workspace
     pid = if session.options.evaluation.workspace_use_distributed
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
@@ -64,7 +64,7 @@ function make_workspace((session, notebook)::Tuple{ServerSession,Notebook})::Wor
     return workspace
 end
 
-function start_relaying_logs((session, notebook)::Tuple{ServerSession,Notebook}, log_channel::Distributed.RemoteChannel)
+function start_relaying_logs((session, notebook)::Tuple{ServerSession, Notebook}, log_channel::Distributed.RemoteChannel)
     while true
         try
             next_log = take!(log_channel)
@@ -108,7 +108,7 @@ function _merge_notebook_compiler_options(notebook::Notebook, options::CompilerO
         return options
     end
 
-    kwargs = Dict{Symbol,Any}()
+    kwargs = Dict{Symbol, Any}()
     for each in fieldnames(CompilerOptions)
         # 1. not specified by notebook options
         # 2. notebook specified project options
@@ -182,7 +182,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
 end
 
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
-function get_workspace(session_notebook::Tuple{ServerSession,Notebook})::Workspace
+function get_workspace(session_notebook::Tuple{ServerSession, Notebook})::Workspace
     session, notebook = session_notebook
     promise = get!(workspaces, notebook.notebook_id) do
         Promise{Workspace}(() -> make_workspace(session_notebook))
@@ -252,7 +252,7 @@ function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook}
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)
+function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair, Nothing}=nothing)
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
