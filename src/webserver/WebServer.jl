@@ -144,7 +144,7 @@ function run(session::ServerSession)
                 s = session.options.security
                 s.require_secret_for_access || s.require_secret_for_open_links
             end
-            if !secret_required || a
+            if !secret_required || is_authenticated(session, http.message)
                 try
 
                     HTTP.WebSockets.upgrade(http) do clientstream
