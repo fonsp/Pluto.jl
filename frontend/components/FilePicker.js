@@ -8,13 +8,16 @@ const deselect = (cm) => {
     cm.setSelection({ line: 0, ch: Infinity }, { line: 0, ch: Infinity }, { scroll: false })
 }
 
+const save_medium_type = (sm) => (sm ? sm.constructor.name : 'local')
+
 export class FilePicker extends Component {
-    constructor() {
+    constructor(props) {
         super()
         this.forced_value = ""
         this.cm = null
 
         this.state = {
+            current_save_medium: save_medium_type(props.medium),
             submitted_save_medium: null
         }
 
@@ -57,6 +60,9 @@ export class FilePicker extends Component {
 
         this.on_fs_change = (e) => {
             const save_medium = e.target.value;
+            this.setState({
+                current_save_medium: save_medium
+            })
             if(save_medium !== 'local' && !Mediums[save_medium].authenticated()) {
                 const l = window.location
                 const redirect_url = `${l.protocol}//${l.host}/auth_github`
@@ -70,11 +76,16 @@ export class FilePicker extends Component {
             }
         }
     }
-    componentDidUpdate() {
+    componentDidUpdate(old_props) {
         if (this.forced_value != this.props.value) {
             this.cm.setValue(this.props.value)
             deselect(this.cm)
             this.forced_value = this.props.value
+        }
+        if(old_props.medium !== this.props.medium) {
+            this.setState({
+                current_save_medium: save_medium_type(this.props.medium)
+            })
         }
     }
     componentDidMount() {
@@ -150,7 +161,7 @@ export class FilePicker extends Component {
         const save_medium_options = Object.values(Mediums).map(medium => html`<option value=${medium.name}>${medium.displayName}</option>`)
         return html`
             <pluto-filepicker>
-                <select id="save-medium" value=${this.props.medium ? this.props.medium.constructor.name : 'local'} onChange=${this.on_fs_change}>
+                <select id="save-medium" value=${this.state.current_save_medium} onChange=${this.on_fs_change}>
                     <option value="local">Local</option>
                     ${save_medium_options}
                 </select>

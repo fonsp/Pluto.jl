@@ -406,9 +406,9 @@ export class Editor extends Component {
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
-                // TODO: Check and see if this line works properly now
-                this.state.save_medium.scheduleSave()
-              
+                if(this.state.save_medium) {
+                    this.state.save_medium.scheduleSave()
+                }
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -433,8 +433,17 @@ export class Editor extends Component {
                                     new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                                 }
 
+                                const possible_save_medium = {};
+                                if(!this.state.save_medium) {
+                                    const external_nb = get_external_notebook(new_notebook.path)
+                                    if(external_nb) {
+                                        possible_save_medium.save_medium = new Mediums[external_nb['type']](...external_nb['args'])
+                                    }
+                                }
+
                                 return {
                                     notebook: new_notebook,
+                                    ...possible_save_medium
                                 }
                             })
                         }
@@ -749,6 +758,9 @@ export class Editor extends Component {
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
+            if(this.state.save_medium) {
+                update_external_notebooks(this.state.notebook.path, this.state.save_medium, [this.state.save_medium.getPath()], old_state?.notebook?.path)
+            }
         }
 
         const any_code_differs = this.state.notebook.cell_order.some(
