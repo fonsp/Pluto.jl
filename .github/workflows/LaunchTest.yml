@@ -1,18 +1,8 @@
-name: Pluto backend tests
+name: Launch test
 
 # Controls when the action will run. Triggers the workflow on push or pull request
 # events but only for the master branch
-on:
-    push:
-        paths-ignore:
-            - "frontend/**"
-            - "**.md"
-        branches:
-            - master
-    pull_request:
-        paths-ignore:
-            - "frontend/**"
-            - "**.md"
+on: workflow_dispatch
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -23,18 +13,8 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5"]
-                os: [ubuntu-latest]
-                include:
-                    # macOS and windows - only the extremes, linux covers pretty much everything already i think
-                    - julia-version: "1.0"
-                      os: macOS-latest
-                    - julia-version: "1.5"
-                      os: macOS-latest
-                    - julia-version: "1.0"
-                      os: windows-latest
-                    - julia-version: "1.5"
-                      os: windows-latest
+                julia-version: ["1.0", "1.5"]
+                os: [windows-latest, ubuntu-latest]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -46,4 +26,7 @@ jobs:
                   version: ${{ matrix.julia-version }}
 
             # 🚗
-            - uses: julia-actions/julia-runtest@v0.1
+            - name: Test launch Pluto
+              run: |
+                  echo "hello world"
+                  julia ${{ github.workspace }}/test/run_notebook.jl ${{ github.workspace }}

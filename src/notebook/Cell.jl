@@ -7,12 +7,14 @@ Base.@kwdef mutable struct Cell
     cell_id::UUID=uuid1()
 
     code::String=""
+    # code_last_updated::Float64=0
+    # code_last_updated_by::Union{String,Nothing}=nothing
+    code_folded::Bool=false
     
     output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
     errored::Bool=false
     runtime::Union{Missing,UInt64}=missing
-    code_folded::Bool=false
     queued::Bool=false
     running::Bool=false
 
@@ -29,3 +31,14 @@ end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
 Cell(code) = Cell(uuid1(), code)
+
+function Base.convert(::Type{Cell}, cell::Dict)
+	Cell(
+        cell_id=UUID(cell["cell_id"]),
+        code=cell["code"],
+        code_folded=cell["code_folded"],
+    )
+end
+function Base.convert(::Type{UUID}, string::String)
+    UUID(string)
+end
