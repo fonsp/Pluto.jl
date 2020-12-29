@@ -1,4 +1,4 @@
-# This GitHub action checks daily whether a new version of this package
+# This GitHub action checks whether a new version of this package
 # has been registred in the official registry.
 # If so, it creates a new _release_:
 # https://github.com/fonsp/Pluto.jl/releases
@@ -6,12 +6,14 @@
 name: TagBot
 
 on:
-    schedule:
-        # every hour
-        - cron: "0 * * * *"
+  issue_comment:
+    types:
+      - created
+  workflow_dispatch:
 
 jobs:
     TagBot:
+        if: github.event_name == 'workflow_dispatch' || github.actor == 'JuliaTagBot'
         runs-on: [ubuntu-latest]
         steps:
             - uses: JuliaRegistries/TagBot@v1
