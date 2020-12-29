@@ -20,6 +20,7 @@ SaveMedium.autocomplete = async (oldLine, cursor, options) => {
 }
 SaveMedium.authenticated = async () => {}
 SaveMedium.displayName = 'IF YOU SEE THIS YOU FORGOT TO SET DISPLAY NAME ON YOUR MEDIUM';
+SaveMedium.displayIcon = '';
 
 
 // WARNING: If you are exposing any of these utilities externally you are doing something WRONG
@@ -175,6 +176,7 @@ GistSaveMedium.autocomplete = (oldLine, cursor, options) => {
 }
 GistSaveMedium.authenticated = GistUtils.authenticated;
 GistSaveMedium.displayName = 'Gist';
+GistSaveMedium.displayIcon = '/img/mark-github.svg';
 
 
 export class GDriveSaveMedium {

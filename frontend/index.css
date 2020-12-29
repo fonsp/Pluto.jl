@@ -225,6 +225,17 @@ body.nosessions ul#new ~ * {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
 }
 
+.save-medium-logo {
+    background-repeat: no-repeat;
+    background-size: contain;
+    opacity: 0.3;
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+    margin-left: 8px;
+}
+
 loading-bar {
     height: 6px;
     width: 100vw;

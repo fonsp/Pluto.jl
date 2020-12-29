@@ -3,7 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
-import { Mediums, update_external_notebooks } from "../common/SaveMediums.js"
+import { get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -310,10 +310,10 @@ export class Welcome extends Component {
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
-            console.log(this.state.combined_notebooks)
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
+                const external_nb_data = get_external_notebook(nb.path)
                 return html`<li
                     key=${nb.path}
                     class=${cl({
@@ -325,7 +325,10 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>
+                        ${external_nb_data ? external_nb_data.args[0] : shortest_path(nb.path, all_paths)}
+                        ${external_nb_data ? html`<span class="save-medium-logo" style="background-image: url(${Mediums[external_nb_data.type].displayIcon});"/>` : null}
+                    </a>
                 </li>`
             })
         }
