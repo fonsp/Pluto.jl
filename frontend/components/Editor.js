@@ -23,7 +23,7 @@ import { pack, unpack } from "../common/MsgPack.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-
+let pending_local_updates = 0
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -628,7 +628,6 @@ export class Editor extends Component {
                     console.log(`Changes to send to server from "${previous_function_name}":`, changes)
                 } catch (error) {}
             }
-
             if (changes.length === 0) {
                 return
             }
@@ -638,8 +637,8 @@ export class Editor extends Component {
                     throw new Error("This sounds like it is editting an array!!!")
                 }
             }
-
-            this.setState({ update_is_ongoing: true })
+            pending_local_updates++
+            this.setState({ update_is_ongoing: pending_local_updates > 0 })
             try {
                 await Promise.all([
                     this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
@@ -659,7 +658,8 @@ export class Editor extends Component {
                     }),
                 ])
             } finally {
-                this.setState({ update_is_ongoing: false })
+                pending_local_updates--
+                this.setState({ update_is_ongoing: pending_local_updates > 0 })
             }
         }
         this.update_notebook = update_notebook
@@ -826,6 +826,8 @@ export class Editor extends Component {
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
 
+        // this class is used to tell our frontend tests that the updates are done
+        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
         document.body.classList.toggle("binder", this.state.offer_binder || this.state.binder_phase != null)
         document.body.classList.toggle("static_preview", this.state.static_preview)
         document.body.classList.toggle("code_differs", any_code_differs)

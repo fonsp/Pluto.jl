@@ -2,7 +2,8 @@ import { waitForContent,
     lastElement, 
     dismissBeforeUnloadDialogs,
     saveScreenshot,
-    getTestScreenshotPath
+    getTestScreenshotPath,
+    waitForContentToBecome
 } from '../helpers/common'
 import {
     createNewNotebook,
@@ -72,8 +73,10 @@ describe('PlutoNewNotebook', () => {
             'a + b + c'
         ]
         const plutoCellIds = await manuallyEnterCells(page, cells)
-        await page.click('.runallchanged')
-        const content = await waitForCellOutput(page, lastElement(plutoCellIds))
+        await page.waitForSelector(`.runallchanged`, {visible: true, polling: 200, timeout: 0})
+        await page.click(`.runallchanged`)
+        await page.waitForSelector(`body:not(.update_is_ongoing)`, {polling: 100})
+        const content = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, '6')
         expect(content).toBe('6')
     })
 
@@ -85,8 +88,10 @@ describe('PlutoNewNotebook', () => {
             'a + b + c'
         ]
         const plutoCellIds = await manuallyEnterCells(page, cells)
-        await page.click('.runallchanged')
-        const initialLastCellContent = await waitForCellOutput(page, lastElement(plutoCellIds))
+        await page.waitForSelector(`.runallchanged`, {visible: true, polling: 200, timeout: 0})
+        await page.click(`.runallchanged`)
+        await page.waitForSelector(`body:not(.update_is_ongoing)`, {polling: 100})
+        const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe('6')
 
         // Change second cell
@@ -98,8 +103,8 @@ describe('PlutoNewNotebook', () => {
         // Enter 10
         await writeSingleLineInPlutoInput(page, secondCellInputSelector, '10')
 
-        // Re-evaluate
-        await page.click('.runallchanged')
+        await page.click(`pluto-cell[id="${plutoCellIds[1]}"] .runcell`)
+
         const reactiveLastCellContent = await waitForCellOutputToChange(page, lastElement(plutoCellIds), '6')
 
         expect(reactiveLastCellContent).toBe('14')

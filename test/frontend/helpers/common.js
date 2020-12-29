@@ -9,7 +9,7 @@ export const waitForContent = async (page, selector) => {
     await page.waitFor((selector) => {
         const element = document.querySelector(selector)
         return element !== null && element.textContent.length > 0
-    }, {}, selector)
+    }, {polling: 100}, selector)
     return getTextContent(selector)
 }
 
@@ -18,7 +18,16 @@ export const waitForContentToChange = async (page, selector, currentContent) => 
     await page.waitFor((selector, currentContent) => {
         const element = document.querySelector(selector)
         return element !== null && element.textContent !== currentContent
-    }, {}, selector, currentContent)
+    }, {polling: 100}, selector, currentContent)
+    return getTextContent(selector)
+}
+
+export const waitForContentToBecome = async (page, selector, targetContent) => {
+    await page.waitForSelector(selector, { visible: true })
+    await page.waitFor((selector, targetContent) => {
+        const element = document.querySelector(selector)
+        return element !== null && element.textContent === targetContent
+    }, {polling: 100}, selector, targetContent)
     return getTextContent(selector)
 }
 
