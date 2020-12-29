@@ -32,3 +32,11 @@ type EffectFn = () => void | UnsubscribeFn
 
 export declare function useEffect(fn: EffectFn, deps?: Array<any>): void
 export declare function useLayoutEffect(fn: EffectFn, deps?: Array<any>): void
+
+declare class ReactContextProvider<T> {}
+declare class ReactContext<T> {
+    Provider: ReactContextProvider<T>
+    Consumer: any // You're on your own with this one
+}
+export declare function createContext<T>(initialValue: T | void): ReactContext<T>
+export declare function useContext<T>(context: ReactContext<T>): T

@@ -15,15 +15,19 @@ end
 
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
 function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
-	# TODO (performance): deleted cells should not stay in the topology
 
-	updated_nodes = Dict(cell => (
+	updated_nodes = Dict{Cell,ReactiveNode}(cell => (
 			cell.parsedcode |> 
 			ExpressionExplorer.try_compute_symbolreferences |> 
 			ReactiveNode
-		) for cell in cells)::Dict{Cell,ReactiveNode}
+		) for cell in cells)
 	
 	new_nodes = merge(old_topology.nodes, updated_nodes)
+
+	# DONE (performance): deleted cells should not stay in the topology
+	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
+		delete!(new_nodes, removed_cell)
+	end
 
 	NotebookTopology(new_nodes)
 end
