@@ -119,6 +119,10 @@ function notebook_to_js(notebook::Notebook)
                     "body" => cell.output_repr,
                     "rootassignee" => cell.rootassignee,
                 ),
+                "logs" => Dict(
+                    string(i) => log
+                    for (i, log) in enumerate(cell.logs)
+                ),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,

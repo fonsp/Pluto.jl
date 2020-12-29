@@ -107,6 +107,7 @@ export const Notebook = ({
                         errored: false,
                         runtime: null,
                         output: null,
+                        logs: [],
                     }}
                     selected=${selected_cells.includes(cell_id)}
                     cell_input_local=${cell_inputs_local[cell_id]}

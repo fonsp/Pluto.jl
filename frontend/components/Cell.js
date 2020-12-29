@@ -3,6 +3,7 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
+import { Logs } from "./Logs.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
@@ -20,7 +21,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded },
-    cell_result: { queued, running, runtime, errored, output },
+    cell_result: { queued, running, runtime, errored, output, logs },
     cell_input_local,
     selected,
     on_change,
@@ -132,6 +133,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />`}
+            <${Logs} logs=${Object.values(logs)} />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {

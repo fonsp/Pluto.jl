@@ -1,4 +1,4 @@
-import { html, useRef, useEffect } from "../common/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
 
 export const Logs = ({ logs }) => {
     return html`
@@ -17,7 +17,7 @@ const Dot = ({ body, x, y, level }) => {
         label_ref.current.innerHTML = body
     }, [body])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         node_ref.current.style.top = `${17 * y}px`
         node_ref.current.style.left = `${17 * x}px`
     }, [x, y])

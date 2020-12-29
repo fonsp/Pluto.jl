@@ -85,6 +85,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
+		empty!(cell.logs)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		if any_interrupted

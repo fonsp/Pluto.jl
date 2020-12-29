@@ -70,6 +70,17 @@ function deserialize_cells(serialized_cells) {
  */
 
 /**
+ * @typedef LogEntryData
+ * @type {{
+ *   level: number,
+ *   msg: string,
+ *   file: string,
+ *   line: number,
+ *   kwargs: Object,
+ * }}
+ */
+
+/**
  * @typedef CellResultData
  * @type {{
  *  cell_id: string,
@@ -83,7 +94,8 @@ function deserialize_cells(serialized_cells) {
  *      last_run_timestamp: number,
  *      mime: string,
  *      rootassignee: ?string,
- *  }
+ *  },
+ *  logs: Array<LogEntryData>,
  * }}
  */
 

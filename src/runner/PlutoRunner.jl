@@ -1138,13 +1138,16 @@ Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     try
-        put!(log_channel, (level=string(level),
-            msg=(msg isa String) ? msg : repr(msg),
-            group=group,
-            # id=id,
-            file=file,
-            line=line,
-            kwargs=Dict((k=>repr(v) for (k, v) in kwargs)...),))
+        put!(log_channel, Dict{String,Any}(
+            "level" => string(level),
+            "msg" => (msg isa String) ? msg : repr(msg),
+            "group" => group,
+            # "id" => id,
+            "file" => file,
+            "line" => line,
+            "kwargs" => Dict{String,String}((string(k)=>repr(v) for (k, v) in kwargs)...),
+            )
+        )
         # also print to console
         Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e
