@@ -28,16 +28,19 @@ export class FilePicker extends Component {
             window.dispatchEvent(new CustomEvent("collapse_cell_selection", {}))
         }
 
-        this.on_submit = () => {
+        this.on_submit = async () => {
             const my_val = this.cm.getValue()
             if (my_val === this.forced_value) {
                 this.suggest_not_tmp()
                 return
             }
-            this.props.on_submit(this.cm.getValue(), () => {
+            try {
+                await this.props.on_submit(this.cm.getValue())
+                this.cm.blur()
+            } catch (error) {
                 this.cm.setValue(this.props.value)
                 deselect(this.cm)
-            })
+            }
         }
     }
     componentDidUpdate() {

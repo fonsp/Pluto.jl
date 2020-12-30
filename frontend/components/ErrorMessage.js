@@ -1,4 +1,5 @@
-import { html } from "../imports/Preact.js"
+import { PlutoContext } from "../common/PlutoContext.js"
+import { html, useContext } from "../imports/Preact.js"
 
 const StackFrameFilename = ({ frame, cell_id }) => {
     const sep_index = frame.file.indexOf("#==#")
@@ -35,7 +36,8 @@ const Funccall = ({ frame }) => {
     }
 }
 
-export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
+export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
+    let pluto_actions = useContext(PlutoContext)
     const rewriters = [
         {
             pattern: /syntax: extra token after end of expression/,
@@ -44,7 +46,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
                     href="#"
                     onClick=${(e) => {
                         e.preventDefault()
-                        requests.wrap_remote_cell(cell_id, "begin")
+                        pluto_actions.wrap_remote_cell(cell_id, "begin")
                     }}
                     >Wrap all code in a <em>begin ... end</em> block.</a
                 >`
@@ -55,7 +57,7 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id, requests }) => {
                             href="#"
                             onClick=${(e) => {
                                 e.preventDefault()
-                                requests.split_remote_cell(cell_id, boundaries, true)
+                                pluto_actions.split_remote_cell(cell_id, boundaries, true)
                             }}
                             >Split this cell into ${boundaries.length} cells</a
                         >, or
