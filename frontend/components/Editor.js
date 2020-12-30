@@ -67,12 +67,12 @@ const Main = ({ children }) => {
         document.body.addEventListener("drop", handler)
         document.body.addEventListener("dragover", handler)
         document.body.addEventListener("dragenter", handler)
-        document.body.addEventListener("dragleae", handler)
+        document.body.addEventListener("dragleave", handler)
         return () => {
             document.body.removeEventListener("drop", handler)
             document.body.removeEventListener("dragover", handler)
             document.body.removeEventListener("dragenter", handler)
-            document.body.removeEventListener("dragleae", handler)
+            document.body.removeEventListener("dragleave", handler)
         }
     })
     return html`<main>${children}</main>`
