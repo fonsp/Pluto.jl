@@ -1,8 +1,9 @@
-import { html, useState, useEffect, useLayoutEffect, useRef } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -15,28 +16,47 @@ const clear_selection = (cm) => {
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
 
+// Adapted from https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
+var offsetFromViewport = function (elem) {
+    let bounding = elem.getBoundingClientRect()
+    let is_in_viewport = bounding.top >= 0 && bounding.bottom <= window.innerHeight
+    if (is_in_viewport) {
+        return null
+    } else {
+        return {
+            top: bounding.top < 0 ? -bounding.top : window.innerHeight - bounding.bottom,
+        }
+    }
+}
+
+/**
+ * @param {{
+ *  local_code: string,
+ *  remote_code: string,
+ *  scroll_into_view_after_creation: boolean,
+ *  [key: string]: any,
+ * }} props
+ */
 export const CellInput = ({
     local_code,
     remote_code,
     disable_input,
     focus_after_creation,
-    scroll_into_view_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
     on_submit,
     on_delete,
     on_add_after,
-    on_fold,
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
-    on_drag_drop_events,
-    client,
-    cell_id,
+    on_drag_drop_events,    cell_id,
     notebook_id,
 }) => {
+    let pluto_actions = useContext(PlutoContext)
+
     const cm_ref = useRef(null)
-    const dom_node_ref = useRef(null)
+    const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
     change_handler_ref.current = on_change
@@ -45,16 +65,25 @@ export const CellInput = ({
     const time_last_genuine_backspace = useRef(0)
 
     useEffect(() => {
+        const current_value = cm_ref.current?.getValue() ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
         remote_code_ref.current = remote_code
+        if (current_value !== remote_code) {
+            cm_ref.current?.setValue(remote_code)
+        }
     }, [remote_code])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         const cm = (cm_ref.current = CodeMirror(
             (el) => {
                 dom_node_ref.current.appendChild(el)
             },
             {
-                value: local_code.body,
+                value: local_code,
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -64,7 +93,7 @@ export const CellInput = ({
                 indentUnit: 4,
                 hintOptions: {
                     hint: juliahints,
-                    client: client,
+                    pluto_actions: pluto_actions,
                     notebook_id: notebook_id,
                     on_update_doc_query: on_update_doc_query,
                     extraKeys: {
@@ -82,13 +111,14 @@ export const CellInput = ({
 
         const keys = {}
 
-        keys["Shift-Enter"] = () => on_submit(cm.getValue())
-        keys["Ctrl-Enter"] = () => {
-            on_add_after()
+        keys["Shift-Enter"] = () => on_submit()
+        keys["Ctrl-Enter"] = async () => {
+            // we await to prevent an out-of-sync issue
+            await on_add_after()
 
             const new_value = cm.getValue()
             if (new_value !== remote_code_ref.current.body) {
-                on_submit(new_value)
+                on_submit()
             }
         }
         // Page up and page down are fn+Up and fn+Down on recent apple keyboards
@@ -408,29 +438,38 @@ export const CellInput = ({
         })
 
         if (focus_after_creation) {
+            // TODO Smooth scroll into view?
             cm.focus()
         }
-        if (scroll_into_view_after_creation) {
-            dom_node_ref.current.scrollIntoView()
-        }
 
+        // @ts-ignore
         document.fonts.ready.then(() => {
             cm.refresh()
         })
     }, [])
 
-    useEffect(() => {
-        if (!remote_code.submitted_by_me || cm_ref.current.value !== local_code.body) {
-            cm_ref.current.setValue(remote_code.body)
-        }
-        cm_ref.current.options.disableInput = disable_input
-    }, [remote_code.timestamp])
+    // useEffect(() => {
+    //     if (!remote_code.submitted_by_me) {
+    //         cm_ref.current.setValue(remote_code.body)
+    //     }
+    // }, [remote_code.timestamp])
+
 
     useEffect(() => {
-        if (cm_ref.current.value !== local_code.body && local_code.body === remote_code.body) {
-            cm_ref.current.setValue(remote_code.body)
+        cm_ref.current.options.disableInput = disable_input
+    }, [disable_input])
+
+    useEffect(() => {
+        if (cm_ref.current.value !== local_code) {
+            cm_ref.current.setValue(remote_code)
         }
-    }, [local_code.body, remote_code.body])
+    }, [local_code, remote_code])
+
+    useEffect(() => {
+        if (cm_ref.current.value !== local_code && local_code === remote_code) {
+            cm_ref.current.setValue(remote_code)
+        }
+    }, [local_code, remote_code])
 
     useEffect(() => {
         if (cm_forced_focus == null) {
@@ -474,39 +513,29 @@ const juliahints = (cm, options) => {
     const old_line = cm.getLine(cursor.line)
     const old_line_sliced = old_line.slice(0, cursor.ch)
 
-    return options.client
-        .send(
-            "complete",
-            {
-                query: old_line_sliced,
-            },
-            {
-                notebook_id: options.notebook_id,
-            }
-        )
-        .then(({ message }) => {
-            const completions = {
-                list: message.results.map(([text, type_description, is_exported]) => ({
-                    text: text,
-                    className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                    // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
-                })),
-                from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
-                to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
-            }
-            CodeMirror.on(completions, "select", (val) => {
-                let text = typeof val === "string" ? val : val.text
-                let doc_query = module_expanded_selection({
-                    tokens_before_cursor: [
-                        { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-                        { type: "variable", string: text },
-                    ],
-                    tokens_after_cursor: [],
-                })
-                options.on_update_doc_query(doc_query)
+    return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
+        const completions = {
+            list: message.results.map(([text, type_description, is_exported]) => ({
+                text: text,
+                className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+            })),
+            from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
+            to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
+        }
+        CodeMirror.on(completions, "select", (val) => {
+            let text = typeof val === "string" ? val : val.text
+            let doc_query = module_expanded_selection({
+                tokens_before_cursor: [
+                    { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
+                    { type: "variable", string: text },
+                ],
+                tokens_after_cursor: [],
             })
-            return completions
+            options.on_update_doc_query(doc_query)
         })
+        return completions
+    })
 }
 
 // https://github.com/fonsp/Pluto.jl/issues/239

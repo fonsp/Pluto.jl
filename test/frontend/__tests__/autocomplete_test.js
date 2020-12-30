@@ -28,6 +28,7 @@ describe("PlutoAutocomplete", () => {
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "my_su")
+        await page.waitFor(500)
 
         // Trigger autocomplete suggestions
         await page.keyboard.press("Tab")
