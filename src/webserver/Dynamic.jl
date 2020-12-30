@@ -1,14 +1,15 @@
 import UUIDs: uuid1
-import TableIOInterface: get_example_code, is_extension_supported
-"Will hold all 'response handlers': functions that respond to a WebSocket request from the client. These are defined in `src/webserver/Dynamic.jl`."
 
+import TableIOInterface: get_example_code, is_extension_supported
+
+"Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
 
 Base.@kwdef struct ClientRequest
     session::ServerSession
     notebook::Union{Nothing,Notebook}
-    body::Any = nothing
-    initiator::Union{Initiator,Nothing} = nothing
+    body::Any=nothing
+    initiator::Union{Initiator,Nothing}=nothing
 end
 
 require_notebook(r::ClientRequest) = if r.notebook === nothing
@@ -176,43 +177,43 @@ const no_changes = Changed[]
 
 
 const effects_of_changed_state = Dict(
-    "path" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
-    newpath = tamepath(patch.value)
+    "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+        newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
 
-    if isfile(newpath)
-        throw(UserError("File exists already - you need to delete the old file manually."))
-    else
-        move_notebook!(request.notebook, newpath)
-        putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
-        WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
-    end
-    return no_changes
-end,
-    "in_temp_dir" => function (; _...) no_changes end,
+        if isfile(newpath)
+            throw(UserError("File exists already - you need to delete the old file manually."))
+        else
+            move_notebook!(request.notebook, newpath)
+            putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
+            WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
+        end
+        return no_changes
+    end,
+    "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
-        Wildcard() => function (cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
-    Firebasey.update!(request.notebook, patch)
+        Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
+            Firebasey.update!(request.notebook, patch)
 
-    if length(rest) == 0
-        [CodeChanged, FileChanged]
-    elseif length(rest) == 1 && Symbol(rest[1]) == :code
-        request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
-        [CodeChanged, FileChanged]
-    else
-        [FileChanged]
-    end
-end,
+            if length(rest) == 0
+                [CodeChanged, FileChanged]
+            elseif length(rest) == 1 && Symbol(rest[1]) == :code
+                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
+                [CodeChanged, FileChanged]
+            else
+                [FileChanged]
+            end
+        end,
     ),
-    "cell_order" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
-    Firebasey.update!(request.notebook, patch)
-    [FileChanged]
-end,
+    "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+        Firebasey.update!(request.notebook, patch)
+        [FileChanged]
+    end,
     "bonds" => Dict(
-        Wildcard() => function (name; request::ClientRequest, patch::Firebasey.JSONPatch)
-    name = Symbol(name)
-    Firebasey.update!(request.notebook, patch)
-    set_bond_value_reactive(
+        Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
+            name = Symbol(name)
+            Firebasey.update!(request.notebook, patch)
+            set_bond_value_reactive(
                 session=request.session,
                 notebook=request.notebook,
                 name=name,
@@ -220,8 +221,8 @@ end,
                 run_async=true,
             )
             # [BondChanged]
-    return no_changes
-end,
+            return no_changes
+        end,
     )
 )
 
@@ -275,7 +276,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
     catch ex
-        @error "Update notebook failed"  🙋.body["updates"] exception = (ex, stacktrace(catch_backtrace()))
+        @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
             :update_went_well => :👎,
             :why_not => sprint(showerror, ex),
@@ -300,7 +301,7 @@ end
 
 
 function trigger_resolver(anything, path, values=[])
-	(value = anything, matches = values, rest = path)
+	(value=anything, matches=values, rest=path)
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
@@ -308,7 +309,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	end
 	
 	segment = first(path)
-	rest = path[firstindex(path) + 1:end]
+	rest = path[firstindex(path)+1:end]
 	for (key, resolver) in resolvers
 		if key isa Wildcard
 			continue
@@ -362,13 +363,6 @@ function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, n
     update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
 end
 
-responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let
-    run = WorkspaceManager.format_fetch_in_workspace((session, notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, body["objectid"], base=16), convert(Int64, body["dim"])))
-    set_output!(cell, run)
-    # send to all clients, why not
-    putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
-end
-
 responses[:write_file] = function (🙋::ClientRequest)
     path = 🙋.notebook.path
     reldir = "$(path |> basename).assets"
@@ -376,7 +370,7 @@ responses[:write_file] = function (🙋::ClientRequest)
     file_noext = reduce(*, split(🙋.body["name"], ".")[1:end - 1])
     extension = split(🙋.body["name"], ".")[end]
     save_path = numbered_until_new(joinpath(dir, file_noext); sep=" ", suffix=".$(extension)", create_file=false)
-    
+
     if !ispath(dir)
         mkpath(dir)
     end
@@ -399,6 +393,8 @@ responses[:write_file] = function (🙋::ClientRequest)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
+
+# helpers
 
 get_template_code = (filename, directory, iofilecontents) -> begin
     path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
