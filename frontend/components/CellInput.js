@@ -50,7 +50,8 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
-    on_drag_drop_events,    cell_id,
+    on_drag_drop_events,
+    cell_id,
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -454,16 +455,9 @@ export const CellInput = ({
     //     }
     // }, [remote_code.timestamp])
 
-
     useEffect(() => {
         cm_ref.current.options.disableInput = disable_input
     }, [disable_input])
-
-    useEffect(() => {
-        if (cm_ref.current.value !== local_code) {
-            cm_ref.current.setValue(remote_code)
-        }
-    }, [local_code, remote_code])
 
     useEffect(() => {
         if (cm_ref.current.value !== local_code && local_code === remote_code) {

@@ -369,12 +369,12 @@ responses[:reshow_cell] = (session::ServerSession, body, notebook::Notebook, cel
     putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 end
 
-responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell::Cell; initiator::Union{Initiator,Missing}=missing) -> let 
-    path = notebook.path
+responses[:write_file] = function (🙋::ClientRequest)
+    path = 🙋.notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
-    file_noext = reduce(*, split(body["name"], ".")[1:end - 1])
-    extension = split(body["name"], ".")[end]
+    file_noext = reduce(*, split(🙋.body["name"], ".")[1:end - 1])
+    extension = split(🙋.body["name"], ".")[end]
     save_path = numbered_until_new(joinpath(dir, file_noext); sep=" ", suffix=".$(extension)", create_file=false)
     
     if !ispath(dir)
@@ -382,22 +382,22 @@ responses[:write_file] = (session::ServerSession, body, notebook::Notebook, cell
     end
     success = try
         io = open(save_path, "w")
-        write(io, body["file"])
+        write(io, 🙋.body["file"])
         close(io)
         true
     catch e
         false
     end
 
-    code = get_template_code(basename(save_path), reldir, body["file"])
+    code = get_template_code(basename(save_path), reldir, 🙋.body["file"])
 
     msg = UpdateMessage(:write_file_reply, 
         Dict(
             :success => success,
             :code => code
-        ), notebook, nothing, initiator)
+        ), 🙋.notebook, nothing, 🙋.initiator)
 
-    putclientupdates!(session, initiator, msg)
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
 get_template_code = (filename, directory, iofilecontents) -> begin

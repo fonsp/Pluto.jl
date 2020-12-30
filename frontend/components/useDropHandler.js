@@ -1,4 +1,5 @@
-import { useState, useMemo } from "../imports/Preact.js"
+import { PlutoContext } from "../common/PlutoContext.js"
+import { useState, useMemo, useContext } from "../imports/Preact.js"
 
 const MAGIC_TIMEOUT = 500
 const DEBOUNCE_MAGIC_MS = 250
@@ -15,44 +16,21 @@ const prepareFile = (file) =>
         fr.readAsArrayBuffer(file)
     })
 
-export const useDropHandler = (requests, on_change, cell_id) => {
+export const useDropHandler = () => {
+    let pluto_actions = useContext(PlutoContext)
     const [saving_file, set_saving_file] = useState(false)
     const [drag_active, set_drag_active_fast] = useState(false)
     const set_drag_active = useMemo(() => _.debounce(set_drag_active_fast, DEBOUNCE_MAGIC_MS), [set_drag_active_fast])
-    const inactive_handler = useMemo(
-        () => (ev) => {
-            if (ev.dataTransfer.types[0] === "text/pluto-cell") return
-            switch (ev.type) {
-                case "drop":
-                    ev.preventDefault() // don't file open
-                    break
-                case "dragover":
-                    ev.preventDefault()
-                    ev.dataTransfer.dropEffect = "none"
-                    set_drag_active(true)
-                    setTimeout(() => set_drag_active(false), MAGIC_TIMEOUT)
-                    break
-                case "dragenter":
-                    set_drag_active_fast(true)
-                    break
-                case "dragleave":
-                    set_drag_active(false)
-                    break
-                default:
-                    break
-            }
-        },
-        [set_drag_active, set_drag_active_fast]
-    )
-    const event_handler = useMemo(() => {
-        const uploadAndCreateCodeTemplate = async (file) => {
+
+    const eventFactory = useMemo(() => {
+        const uploadAndCreateCodeTemplate = async (file, drop_cell_id) => {
             if (!(file instanceof File)) return " #  File can't be read"
             set_saving_file(true)
             const {
                 message: { success, code },
             } = await prepareFile(file).then(
                 (preparedObj) => {
-                    return requests.write_file(cell_id, preparedObj)
+                    return pluto_actions.write_file(drop_cell_id, preparedObj)
                 },
                 () => alert("Pluto can't save this file 😥")
             )
@@ -73,14 +51,23 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 case "cmdrop":
                 case "drop":
                     ev.preventDefault() // don't file open
+                    const cell_element = ev.path.find((el) => el.tagName === "PLUTO-CELL")
+                    const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
+                    const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
+                    console.log(cell_element, drop_cell_id, drop_cell_value)
                     set_drag_active(false)
                     if (!ev.dataTransfer.files.length) {
                         return
                     }
-                    uploadAndCreateCodeTemplate(ev.dataTransfer.files[0]).then((code) => {
+                    uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code) => {
                         if (code) {
-                            on_change(code)
-                            requests.change_remote_cell(cell_id, code)
+                            if (drop_cell_value?.length > 0) {
+                                console.log("Add remote cell", code)
+                                pluto_actions.add_remote_cell(drop_cell_id, "after", code)
+                            } else {
+                                console.log("update this cell", drop_cell_id, code)
+                                pluto_actions.set_local_cell(drop_cell_id, code, () => pluto_actions.set_and_run_multiple([drop_cell_id]))
+                            }
                         }
                     })
                     break
@@ -99,7 +86,8 @@ export const useDropHandler = (requests, on_change, cell_id) => {
                 default:
             }
         }
-    }, [set_drag_active, set_drag_active_fast, set_saving_file, requests, cell_id, on_change])
-
+    }, [set_drag_active, set_drag_active_fast, set_saving_file, pluto_actions])
+    const event_handler = eventFactory
+    const inactive_handler = eventFactory
     return { saving_file, drag_active, event_handler, inactive_handler }
 }

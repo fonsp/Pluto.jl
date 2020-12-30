@@ -141,14 +141,15 @@ export class Editor extends Component {
             send: (...args) => this.client.send(...args),
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val) => {
-                this.setState(
+            set_local_cell: (cell_id, new_val, callback) => {
+                return this.setState(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    })
+                    }),
+                    callback
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
@@ -286,24 +287,24 @@ export class Editor extends Component {
                     notebook.cell_order = [...before, ...cell_ids, ...after]
                 })
             },
-            add_remote_cell_at: async (index) => {
+            add_remote_cell_at: async (index, code = "") => {
                 let id = uuidv4()
                 this.setState({ last_created_cell: id })
                 await update_notebook((notebook) => {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
-                        code: "",
+                        code,
                         code_folded: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
                 await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
+                return id
             },
-            add_remote_cell: async (cell_id, before_or_after) => {
+            add_remote_cell: async (cell_id, before_or_after, code) => {
                 const index = this.state.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
-
-                await this.actions.add_remote_cell_at(index + delta)
+                return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
@@ -408,7 +409,7 @@ export class Editor extends Component {
                     },
                     true
                 )
-            }
+            },
         }
 
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
