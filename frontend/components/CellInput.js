@@ -460,12 +460,6 @@ export const CellInput = ({
     }, [disable_input])
 
     useEffect(() => {
-        if (cm_ref.current.value !== local_code && local_code === remote_code) {
-            cm_ref.current.setValue(remote_code)
-        }
-    }, [local_code, remote_code])
-
-    useEffect(() => {
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
         } else {

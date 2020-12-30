@@ -45,7 +45,6 @@ export const useDropHandler = () => {
             return ""
         }
         return (ev) => {
-            console.log(ev.type, ev, ev.path)
             ev.stopPropagation()
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
             if (ev.dataTransfer.types[0] === "text/pluto-cell") return
@@ -57,7 +56,6 @@ export const useDropHandler = () => {
                     const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")
-                    console.log(cell_element, drop_cell_id, drop_cell_value)
                     set_drag_active(false)
                     if (!ev.dataTransfer.files.length) {
                         return
@@ -65,10 +63,8 @@ export const useDropHandler = () => {
                     uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code) => {
                         if (code) {
                             if (!is_empty) {
-                                console.log("Add remote cell", code)
                                 pluto_actions.add_remote_cell(drop_cell_id, "after", code)
                             } else {
-                                console.log("update this cell", drop_cell_id, code)
                                 pluto_actions.set_local_cell(drop_cell_id, code, () => pluto_actions.set_and_run_multiple([drop_cell_id]))
                             }
                         }

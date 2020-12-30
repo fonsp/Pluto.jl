@@ -117,7 +117,7 @@ function save_notebook(io, notebook::Notebook)
         print(io, c.code)
         print(io, _cell_suffix)
     end
-    
+
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
@@ -130,7 +130,7 @@ function save_notebook(notebook::Notebook, path::String)
     open(path, "w") do io
         save_notebook(io, notebook)
     end
-    end
+end
 
 save_notebook(notebook::Notebook) = save_notebook(notebook, notebook.path)
 
