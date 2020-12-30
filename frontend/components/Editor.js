@@ -19,6 +19,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -58,6 +59,23 @@ function serialize_cells(cells) {
 function deserialize_cells(serialized_cells) {
     const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
     return segments.map((s) => s.trim()).filter((s) => s !== "")
+}
+
+const Main = ({ children }) => {
+    const { handler } = useDropHandler()
+    useEffect(() => {
+        document.body.addEventListener("drop", handler)
+        document.body.addEventListener("dragover", handler)
+        document.body.addEventListener("dragenter", handler)
+        document.body.addEventListener("dragleave", handler)
+        return () => {
+            document.body.removeEventListener("drop", handler)
+            document.body.removeEventListener("dragover", handler)
+            document.body.removeEventListener("dragenter", handler)
+            document.body.removeEventListener("dragleave", handler)
+        }
+    })
+    return html`<main>${children}</main>`
 }
 
 /**
@@ -141,14 +159,15 @@ export class Editor extends Component {
             send: (...args) => this.client.send(...args),
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val) => {
-                this.setState(
+            set_local_cell: (cell_id, new_val, callback) => {
+                return this.setState(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    })
+                    }),
+                    callback
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
@@ -286,24 +305,24 @@ export class Editor extends Component {
                     notebook.cell_order = [...before, ...cell_ids, ...after]
                 })
             },
-            add_remote_cell_at: async (index) => {
+            add_remote_cell_at: async (index, code = "") => {
                 let id = uuidv4()
                 this.setState({ last_created_cell: id })
                 await update_notebook((notebook) => {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
-                        code: "",
+                        code,
                         code_folded: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
                 await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
+                return id
             },
-            add_remote_cell: async (cell_id, before_or_after) => {
+            add_remote_cell: async (cell_id, before_or_after, code) => {
                 const index = this.state.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
-
-                await this.actions.add_remote_cell_at(index + delta)
+                return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
@@ -395,6 +414,18 @@ export class Editor extends Component {
                     },
                     { notebook_id: this.state.notebook.notebook_id },
                     false
+                )
+            },
+            write_file: (cell_id, { file, name, type }) => {
+                this.counter_statistics.numFileDrops++
+                return this.client.send(
+                    "write_file",
+                    { file, name, type, path: this.state.notebook.path },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    true
                 )
             },
         }
@@ -777,7 +808,7 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
-                    <main>
+                    <${Main}>
                         <preamble>
                             <button
                                 onClick=${() => {
@@ -819,7 +850,7 @@ export class Editor extends Component {
                                 }
                             }}
                         />
-                    </main>
+                    </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}

@@ -1,5 +1,6 @@
 import UUIDs: uuid1
 
+import TableIOInterface: get_example_code, is_extension_supported
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -362,7 +363,66 @@ function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, n
     update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
 end
 
+responses[:write_file] = function (🙋::ClientRequest)
+    path = 🙋.notebook.path
+    reldir = "$(path |> basename).assets"
+    dir = joinpath(path |> dirname, reldir)
+    file_noext = reduce(*, split(🙋.body["name"], ".")[1:end - 1])
+    extension = split(🙋.body["name"], ".")[end]
+    save_path = numbered_until_new(joinpath(dir, file_noext); sep=" ", suffix=".$(extension)", create_file=false)
+
+    if !ispath(dir)
+        mkpath(dir)
+    end
+    success = try
+        io = open(save_path, "w")
+        write(io, 🙋.body["file"])
+        close(io)
+        true
+    catch e
+        false
+    end
+
+    code = get_template_code(basename(save_path), reldir, 🙋.body["file"])
+
+    msg = UpdateMessage(:write_file_reply, 
+        Dict(
+            :success => success,
+            :code => code
+        ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
 
 # helpers
 
+get_template_code = (filename, directory, iofilecontents) -> begin
+    path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
+    extension = split(filename, ".")[end]
+    varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")
 
+    if extension ∈ ["jpg", "jpeg", "png", "svg", "webp", "tiff", "bmp", "gif", "wav", "aac", "mp3", "mpeg", "mp4", "webm", "ogg"]
+        req_code = "import PlutoUI"
+        code = """$(extension)_$(varname) = let
+    $(req_code)
+    PlutoUI.LocalResource($(path))
+end"""
+
+    elseif extension ∈ ["txt", "text"]
+        code = """txt_$(varname) = let
+    $(varname) = open($(path))
+    read($(varname), String)
+end"""
+
+    elseif extension ∈ ["jl"]
+        io = IOBuffer();
+        write(io, iofilecontents)
+        code = String(take!(io))
+
+    elseif is_extension_supported(extension)
+        code = get_example_code(directory, filename)
+
+    else
+        code = missing
+    end
+end
