@@ -78,10 +78,9 @@ export const CellInput = ({
         }
     }, [remote_code])
 
-<<<<<<< HEAD
-    useEffect(() => {
+    useLayoutEffect(() => {
         const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
-            value: local_code.body,
+            value: local_code,
             lineNumbers: true,
             mode: "julia",
             lineWrapping: true,
@@ -91,7 +90,7 @@ export const CellInput = ({
             indentUnit: 4,
             hintOptions: {
                 hint: juliahints,
-                client: client,
+                pluto_actions: pluto_actions,
                 notebook_id: notebook_id,
                 on_update_doc_query: on_update_doc_query,
                 extraKeys: {
@@ -99,34 +98,6 @@ export const CellInput = ({
                         pick()
                         cm.replaceSelection(".")
                         cm.showHint()
-=======
-    useLayoutEffect(() => {
-        const cm = (cm_ref.current = CodeMirror(
-            (el) => {
-                dom_node_ref.current.appendChild(el)
-            },
-            {
-                value: local_code,
-                lineNumbers: true,
-                mode: "julia",
-                lineWrapping: true,
-                viewportMargin: Infinity,
-                placeholder: "Enter cell code...",
-                indentWithTabs: true,
-                indentUnit: 4,
-                hintOptions: {
-                    hint: juliahints,
-                    pluto_actions: pluto_actions,
-                    notebook_id: notebook_id,
-                    on_update_doc_query: on_update_doc_query,
-                    extraKeys: {
-                        ".": (cm, { pick }) => {
-                            pick()
-                            cm.replaceSelection(".")
-                            cm.showHint()
-                        },
-                        // "(": (cm, { pick }) => pick(),
->>>>>>> dff84f0d312907360ffd95d8b3b45007596703e6
                     },
                     // "(": (cm, { pick }) => pick(),
                 },
