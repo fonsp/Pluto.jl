@@ -19,6 +19,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -58,6 +59,23 @@ function serialize_cells(cells) {
 function deserialize_cells(serialized_cells) {
     const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
     return segments.map((s) => s.trim()).filter((s) => s !== "")
+}
+
+const Main = ({ children }) => {
+    const { handler } = useDropHandler()
+    useEffect(() => {
+        document.body.addEventListener("drop", handler)
+        document.body.addEventListener("dragover", handler)
+        document.body.addEventListener("dragenter", handler)
+        document.body.addEventListener("dragleae", handler)
+        return () => {
+            document.body.removeEventListener("drop", handler)
+            document.body.removeEventListener("dragover", handler)
+            document.body.removeEventListener("dragenter", handler)
+            document.body.removeEventListener("dragleae", handler)
+        }
+    })
+    return html`<main>${children}</main>`
 }
 
 /**
@@ -790,7 +808,7 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
-                    <main>
+                    <${Main}>
                         <preamble>
                             <button
                                 onClick=${() => {
@@ -832,7 +850,7 @@ export class Editor extends Component {
                                 }
                             }}
                         />
-                    </main>
+                    </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}

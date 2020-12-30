@@ -22,7 +22,7 @@ export const useDropHandler = () => {
     const [drag_active, set_drag_active_fast] = useState(false)
     const set_drag_active = useMemo(() => _.debounce(set_drag_active_fast, DEBOUNCE_MAGIC_MS), [set_drag_active_fast])
 
-    const eventFactory = useMemo(() => {
+    const handler = useMemo(() => {
         const uploadAndCreateCodeTemplate = async (file, drop_cell_id) => {
             if (!(file instanceof File)) return " #  File can't be read"
             set_saving_file(true)
@@ -45,6 +45,8 @@ export const useDropHandler = () => {
             return ""
         }
         return (ev) => {
+            console.log(ev.type, ev, ev.path)
+            ev.stopPropagation()
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
             if (ev.dataTransfer.types[0] === "text/pluto-cell") return
             switch (ev.type) {
@@ -54,6 +56,7 @@ export const useDropHandler = () => {
                     const cell_element = ev.path.find((el) => el.tagName === "PLUTO-CELL")
                     const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
+                    const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")
                     console.log(cell_element, drop_cell_id, drop_cell_value)
                     set_drag_active(false)
                     if (!ev.dataTransfer.files.length) {
@@ -61,7 +64,7 @@ export const useDropHandler = () => {
                     }
                     uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code) => {
                         if (code) {
-                            if (drop_cell_value?.length > 0) {
+                            if (!is_empty) {
                                 console.log("Add remote cell", code)
                                 pluto_actions.add_remote_cell(drop_cell_id, "after", code)
                             } else {
@@ -87,7 +90,5 @@ export const useDropHandler = () => {
             }
         }
     }, [set_drag_active, set_drag_active_fast, set_saving_file, pluto_actions])
-    const event_handler = eventFactory
-    const inactive_handler = eventFactory
-    return { saving_file, drag_active, event_handler, inactive_handler }
+    return { saving_file, drag_active, handler }
 }

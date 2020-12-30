@@ -2,6 +2,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 let CellMemo = ({
     cell_input,
