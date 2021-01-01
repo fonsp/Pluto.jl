@@ -107,10 +107,17 @@ export const FindReplace = () => {
     }
     const handler = (ev) => {
         const { path, ctrlKey, key } = ev
+        console.log(key)
+        if (key === "Escape") {
+            clear_all_markers()
+            set_visible(false)
+        }
         if (!((ctrlKey && key === "f") || (ctrlKey && key === "h") || key === "F3")) return
-        ev.preventDefault() // Don't open normal find
+        // Don't open normal find
+        ev.preventDefault()
+        // Find CM if in event path
         const cm = path.find(({ CodeMirror }) => CodeMirror)?.CodeMirror
-        const selections = cm && cm.getSelections()
+        const selections = cm?.getSelections?.()
         if (cm && selections?.length) {
             clear_all_markers()
             set_word(selections[0])
@@ -118,7 +125,7 @@ export const FindReplace = () => {
             create_textmarkers()
         } else {
             set_visible(!visible)
-            visible && create_textmarkers()
+            visible ? create_textmarkers() : clear_all_markers()
         }
     }
     useEffect(() => {
