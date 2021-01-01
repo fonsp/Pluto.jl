@@ -39,7 +39,10 @@ export default class TextMarker {
         this.marker = null
         this.highlight()
     }
-
+    offset(by) {
+        this.to.ch = this.to.ch + by
+        this.from.ch = this.from.ch + by
+    }
     /**
      * Selects the matched text (selections are the ones that are replaced)
      */

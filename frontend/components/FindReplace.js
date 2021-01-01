@@ -1,11 +1,13 @@
-import { clear_all_markers } from "../common/FindReplace.js"
 import TextMarker from "../common/TextMarker.js"
 import { html, useState, useRef, useEffect } from "../imports/Preact.js"
 
 const enter_key = 13
 
 const get_codeMirrors = () => {
-    return Array.from(document.querySelectorAll(".CodeMirror")).map((cm_node) => ({ cell_id: cm_node.parentElement.parentElement.id, cm: cm_node.CodeMirror }))
+    return Array.from(document.querySelectorAll("pluto-input .CodeMirror")).map((cm_node) => ({
+        cell_id: cm_node.parentElement.parentElement.id,
+        cm: cm_node.CodeMirror,
+    }))
 }
 
 export const FindReplace = () => {
@@ -25,44 +27,70 @@ export const FindReplace = () => {
 
     const [replace_value, set_replace_value] = useState(null)
     const input_find = useRef(null)
-    const clear_all_markers = () => textmarkers.forEach((each_marker) => each_marker.clear_highlighting())
-    const add_textmarkers = () => {
+    const clear_all_markers = () => {
+        textmarkers.forEach((each_marker) => {
+            each_marker?.clear_highlighting()
+            each_marker?.deselect()
+        })
+    }
+    const create_textmarkers = (replaceText) => {
         clear_all_markers()
         const tms = get_codeMirrors().flatMap(({ cell_id, cm }) => {
             const localCursors = []
             const cursor = cm.getSearchCursor(word)
             while (cursor.findNext()) {
+                if (replaceText) cursor.replace(replaceText)
                 const textmarker = new TextMarker(cell_id, cm, cursor.from(), cursor.to())
                 localCursors.push(textmarker)
             }
             return localCursors
         })
         set_textmarkers(tms)
-        set_marker(tms[0] || null)
-    }
-
-    const update_findreplace_word = (word) => {
-        if (word == "") {
-            clear_all_markers()
-        }
-        marker?.deselect()
-        set_word(word)
-        set_marker(null)
-        set_previous(null)
+        const [firstmarker] = tms
+        set_marker(firstmarker)
+        firstmarker?.select()
+        return firstmarker
     }
 
     const find_next = () => {
         const { length } = textmarkers
         const markerIndex = textmarkers.indexOf(marker)
+        const nextMarker = textmarkers[(markerIndex + 1) % length]
         set_previous(marker)
-        set_marker(textmarkers[(markerIndex + 1) % length])
+        set_marker(nextMarker)
+        marker?.deselect()
+        nextMarker?.select()
     }
 
-    const replace_with = (word) => {
-        marker?.replace_with(word)
+    const replace_with = (word_to_replace_with = "") => {
+        marker?.replace_with(word_to_replace_with)
+        // Now we need to recalculate the markers of this codemirror, starting at the new end position of marker.
+        const offset = word_to_replace_with?.length - word.length
+        textmarkers.forEach((tm) => {
+            // If a marker is in the same cm and after the replaced marker, adjust offsets
+            if (tm.codemirror === marker.codemirror && (tm.from.line > marker.to.line || (tm.from.line === marker.to.line && tm.from.ch > marker.to.ch))) {
+                console.log("offsetting", tm, " by ", offset)
+                tm.offset(offset)
+            }
+        })
         // replace (even if nothing is selected) results in a find-next
+        // recalculate all markers!
         find_next()
     }
+
+    const replace_all = (with_word) => {
+        clear_all_markers()
+        get_codeMirrors().forEach(({ cell_id, cm }) => {
+            const localCursors = []
+            const cursor = cm.getSearchCursor(word)
+            while (cursor.findNext()) {
+                if (with_word) cursor.replace(with_word)
+            }
+            return localCursors
+        })
+        create_textmarkers()
+    }
+
     const handle_find_value_change = (event) => {
         // Enter
         if (event.keyCode === enter_key) {
@@ -79,11 +107,19 @@ export const FindReplace = () => {
     }
     const handler = (ev) => {
         const { path, ctrlKey, key } = ev
-        console.log(ev)
-        if (!((ctrlKey && key === "f") || key === "F3")) return
+        if (!((ctrlKey && key === "f") || (ctrlKey && key === "h") || key === "F3")) return
         ev.preventDefault() // Don't open normal find
-        console.log("making this", !visible)
-        set_visible(!visible)
+        const cm = path.find(({ CodeMirror }) => CodeMirror)?.CodeMirror
+        const selections = cm && cm.getSelections()
+        if (cm && selections?.length) {
+            clear_all_markers()
+            set_word(selections[0])
+            set_visible(true)
+            create_textmarkers()
+        } else {
+            set_visible(!visible)
+            visible && create_textmarkers()
+        }
     }
     useEffect(() => {
         document.body.addEventListener("keydown", handler)
@@ -94,9 +130,10 @@ export const FindReplace = () => {
         if (visible && input_find.current) jump_to_find()
     }, [visible, input_find.current])
 
-    useEffect(() => jump_to_find(), [word])
-
-    useEffect(() => add_textmarkers(), [word])
+    useEffect(() => {
+        const firstmarker = create_textmarkers()
+        return () => firstmarker?.deselect()
+    }, [word])
 
     return html`<div id="findreplace">
         <aside id="findreplace_container" class=${visible ? "show_findreplace" : ""}>
@@ -113,14 +150,7 @@ export const FindReplace = () => {
                     }}
                 />
                 <button onClick=${() => replace_with(replace_value)}>Replace</button>
-                <button
-                    onClick=${() =>
-                        textmarkers.forEach((each_marker) => {
-                            each_marker.replace_with(replace_value)
-                        })}
-                >
-                    All
-                </button>
+                <button onClick=${() => replace_all(replace_value)}>All</button>
             </div>
         </aside>
     </div>`

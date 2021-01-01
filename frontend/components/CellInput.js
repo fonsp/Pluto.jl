@@ -3,8 +3,6 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
-import "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.44.0/addon/search/searchcursor.min.js"
-import { clear_all_markers, find_all_markers } from "../common/FindReplace.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 // @ts-ignore
@@ -473,17 +471,6 @@ export const CellInput = ({
     useEffect(() => {
         cm_ref.current.options.disableInput = disable_input
     }, [disable_input])
-
-    useEffect(() => {
-        var markers = []
-        if (cm_ref.current) {
-            clear_all_markers(cm_ref.current)
-        }
-        if (findreplace_word && findreplace_visible) {
-            markers = find_all_markers(cm_ref.current, findreplace_word, cell_id)
-        }
-        add_textmarkers(markers, cell_id)
-    }, [findreplace_word, local_code, findreplace_visible])
 
     useEffect(() => {
         if (cm_forced_focus == null) {
