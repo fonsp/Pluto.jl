@@ -122,30 +122,56 @@ jltree.collapsed r:last-child::after {
     content: "";
 }
 
-jltree r > more {
+jlmore {
     display: inline-block;
-    margin: 0.6em 0em;
+    padding: 0.6em 0em;
     cursor: pointer;
+    /* this only affects jlmore inside a table */
+    width: 100%;
+    white-space: nowrap;
 }
 
-jltree r > more::before {
+jlmore::before {
     margin-left: 0.2em;
     margin-right: 0.5em;
-    top: -0.1em;
+    bottom: -0.1em;
     display: inline-block;
     position: relative;
     content: "";
     background-size: 100%;
-    height: 17px;
-    width: 17px;
+    height: 1em;
+    width: 1em;
     opacity: 0.5;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-vertical.svg);
 }
 
-jltree.collapsed r > more {
+jlmore.loading::before {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-outline.svg);
+    animation: loadspin 3s ease-in-out infinite;
+}
+
+@keyframes loadspin {
+    0% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(180deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    75% {
+        transform: rotate(360deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+jltree.collapsed jlmore {
     margin: 0em;
 }
-jltree.collapsed r > more::before {
+jltree.collapsed jlmore::before {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal.svg);
 }
 
@@ -195,4 +221,72 @@ jlerror > section > ol > li > em > a {
 jlerror > section > ol > li > span {
     opacity: 0.8;
     padding: 0px 1em;
+}
+
+table.pluto-table {
+    table-layout: fixed;
+}
+
+table.pluto-table td {
+    max-width: 300px;
+    overflow: hidden;
+}
+
+table.pluto-table .schema-types {
+    color: rgba(0, 0, 0, 0.4);
+    font-family: "JuliaMono", monospace;
+    font-size: 0.75rem;
+    opacity: 0;
+}
+
+table.pluto-table .schema-types th {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    background-color: white;
+    height: 2rem;
+}
+
+table.pluto-table thead:hover .schema-types {
+    opacity: 1;
+}
+
+table.pluto-table .schema-names th {
+    transform: translate(0, 0.5em);
+    transition: transform 0.1s ease-in-out;
+}
+table.pluto-table .schema-names th:first-child,
+table.pluto-table .schema-types th:first-child {
+    z-index: 2;
+    left: -10px;
+}
+
+table.pluto-table .schema-names th,
+table.pluto-table .schema-types th:first-child {
+    background-color: white;
+    position: sticky;
+    top: calc(0.25rem - var(--pluto-cell-spacing));
+    height: 2rem;
+    z-index: 1;
+}
+
+table.pluto-table thead:hover .schema-names th {
+    transform: translate(0, 0);
+}
+
+table.pluto-table tbody th:first-child {
+    background-color: white;
+    position: sticky;
+    left: -10px; /* padding-left of pluto-output*/
+}
+
+table.pluto-table .jlmore-td {
+    text-align: left;
+    overflow: unset;
+}
+
+table.pluto-table .jlmore-td jlmore {
+    overflow: unset;
+    position: sticky;
+    left: 0;
+    top: 2rem;
+    max-width: 650px;
 }

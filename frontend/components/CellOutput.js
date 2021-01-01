@@ -1,19 +1,25 @@
-import { html, Component, useRef, useState, useLayoutEffect, useEffect } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView } from "./TreeView.js"
+import { TreeView, TableView } from "./TreeView.js"
 
-import { connect_bonds } from "../common/Bond.js"
+import { add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
+import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 
 export class CellOutput extends Component {
     constructor() {
         super()
+        this.state = {
+            error: null,
+        }
+
         this.old_height = 0
+        // @ts-ignore Is there a way to use the latest DOM spec?
         this.resize_observer = new ResizeObserver((entries) => {
-            const new_height = this.base.scrollHeight
+            const new_height = this.base.offsetHeight
 
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
@@ -44,12 +50,17 @@ export class CellOutput extends Component {
             <pluto-output
                 class=${cl({
                     rich_output:
-                        this.props.errored || !this.props.body || (this.props.mime !== "application/vnd.pluto.tree+object" && this.props.mime !== "text/plain"),
+                        this.props.errored ||
+                        !this.props.body ||
+                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                            this.props.mime !== "application/vnd.pluto.table+object" &&
+                            this.props.mime !== "text/plain"),
+                    scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
                 mime=${this.props.mime}
             >
                 <assignee>${this.props.rootassignee}</assignee>
-                <${OutputBody} ...${this.props} />
+                ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
     }
@@ -79,7 +90,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, all_completed_promise, requests, persist_js_state }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -98,28 +109,19 @@ export const OutputBody = ({ mime, body, cell_id, all_completed_promise, request
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer}
-                    cell_id=${cell_id}
-                    body=${body}
-                    all_completed_promise=${all_completed_promise}
-                    requests=${requests}
-                    persist_js_state=${persist_js_state}
-                />`
+                return html`<${RawHTMLContainer} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             }
             break
         case "application/vnd.pluto.tree+object":
             return html`<div>
-                <${TreeView}
-                    cell_id=${cell_id}
-                    body=${body}
-                    all_completed_promise=${all_completed_promise}
-                    requests=${requests}
-                    persist_js_state=${persist_js_state}
-                />
+                <${TreeView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />
             </div>`
             break
+        case "application/vnd.pluto.table+object":
+            return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+            break
         case "application/vnd.pluto.stacktrace+object":
-            return html`<div><${ErrorMessage} cell_id=${cell_id} requests=${requests} ...${body} /></div>`
+            return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
 
         case "text/plain":
@@ -154,6 +156,7 @@ let IframeContainer = ({ body }) => {
 
             // Apply iframe resizer from the host side
             new Promise((resolve) => x.addEventListener("load", () => resolve()))
+            // @ts-ignore
             window.iFrameResize({ checkOrigin: false }, iframeref.current)
         })
 
@@ -179,6 +182,11 @@ let execute_dynamic_function = async ({ environment, code }) => {
     return result
 }
 
+/**
+ * @typedef PlutoScript
+ * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
+ */
+
 const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
     let results_map = new Map()
 
@@ -192,8 +200,10 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 script_el = document.createElement("script")
                 script_el.src = node.src
                 script_el.type = node.type === "module" ? "module" : "text/javascript"
+                // @ts-ignore
                 script_el.pluto_is_loading_me = true
             }
+            // @ts-ignore
             const need_to_await = script_el.pluto_is_loading_me != null
             if (need_to_await) {
                 await new Promise((resolve) => {
@@ -201,6 +211,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     script_el.addEventListener("error", resolve)
                     document.head.appendChild(script_el)
                 })
+                // @ts-ignore
                 script_el.pluto_is_loading_me = undefined
             }
         } else {
@@ -237,12 +248,18 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_js_state = false }) => {
+export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
+    let pluto_actions = useContext(PlutoContext)
+    let pluto_bonds = useContext(PlutoBondsContext)
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
 
     let container = useRef()
+
+    useLayoutEffect(() => {
+        set_bound_elements_to_their_value(container.current, pluto_bonds)
+    }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
         // Invalidate current scripts and create a new invalidation token immediately
@@ -263,12 +280,17 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
-            if (all_completed_promise != null && requests != null) {
-                connect_bonds(container.current, all_completed_promise, invalidation, requests)
+            if (pluto_actions != null) {
+                set_bound_elements_to_their_value(container.current, pluto_bonds)
+                let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
+                    pluto_actions.set_bond(name, value, is_first_value)
+                })
+                invalidation.then(remove_bonds_listener)
             }
 
             // convert LaTeX to svg
             try {
+                // @ts-ignore
                 window.MathJax.typeset([container.current])
             } catch (err) {
                 console.info("Failed to typeset TeX:")
@@ -286,7 +308,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
         return () => {
             invalidate_scripts.current?.()
         }
-    })
+    }, [body, persist_js_state, pluto_actions])
 
     return html`<div ref=${container}></div>`
 }
@@ -294,6 +316,7 @@ export let RawHTMLContainer = ({ body, all_completed_promise, requests, persist_
 /** @param {HTMLElement} code_element */
 export let highlight_julia = (code_element) => {
     if (code_element.children.length === 0) {
+        // @ts-ignore
         window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
         code_element.classList.add("cm-s-default")
     }

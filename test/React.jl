@@ -185,10 +185,10 @@ import Distributed
             Cell("d(\"seventeen\")"),
             Cell("d"),
 
-            Cell("struct e; x; y; end"),
+            Cell("struct asdf; x; y; end"),
             Cell(""),
-            Cell("e(21, 21)"),
-            Cell("e(22)"),
+            Cell("asdf(21, 21)"),
+            Cell("asdf(22)"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -306,10 +306,12 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[20], "e(x) = e(x,x)")
+        setcode(notebook.cells[20], "asdf(x) = asdf(x,x)")
         update_run!(🍭, notebook, notebook.cells[20])
         @test occursinerror("Multiple definitions", notebook.cells[19])
         @test occursinerror("Multiple definitions", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
+        @test occursinerror("asdf", notebook.cells[20])
         @test notebook.cells[21].errored == true
         @test notebook.cells[22].errored == true
 
@@ -320,7 +322,7 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == true
 
-        setcode(notebook.cells[19], "begin struct e; x; y; end; e(x) = e(x,x); end")
+        setcode(notebook.cells[19], "begin struct asdf; x; y; end; asdf(x) = asdf(x,x); end")
         setcode(notebook.cells[20], "")
         update_run!(🍭, notebook, notebook.cells[19:20])
         @test notebook.cells[19].errored == false
@@ -339,7 +341,10 @@ import Distributed
         notebook = Notebook([
             Cell("xxx = yyy"),
             Cell("yyy = xxx"),
-            Cell("zzz = yyy")
+            Cell("zzz = yyy"),
+
+            Cell("aaa() = bbb"),
+            Cell("bbb = aaa()"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -378,6 +383,14 @@ import Distributed
         @test notebook.cells[1].output_repr == "3"
         @test notebook.cells[2].output_repr == "3"
         @test notebook.cells[3].output_repr == "3"
+
+        update_run!(🍭, notebook, notebook.cells[4:5])
+        @test occursinerror("Cyclic reference", notebook.cells[4])
+        @test occursinerror("aaa", notebook.cells[4])
+        @test occursinerror("bbb", notebook.cells[4])
+        @test occursinerror("Cyclic reference", notebook.cells[5])
+        @test occursinerror("aaa", notebook.cells[5])
+        @test occursinerror("bbb", notebook.cells[5])
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -475,7 +488,7 @@ import Distributed
         Cell("g(a,b) = a+b"),
         Cell("g(5,6)"),
 
-        Cell("h(x::Int64) = x"),
+        Cell("h(x::Int) = x"),
         Cell("h(7)"),
         Cell("h(8.0)"),
 
@@ -487,7 +500,7 @@ import Distributed
             a(x::String) = \"🐟\"
         end"),
         Cell("using .Something"),
-        Cell("a(x::Int64) = x"),
+        Cell("a(x::Int) = x"),
         Cell("a(\"i am a \")"),
         Cell("a(15)"),
         
@@ -496,7 +509,7 @@ import Distributed
             b(x::String) = \"🐟\"
         end"),
         Cell("import .Different: b"),
-        Cell("b(x::Int64) = x"),
+        Cell("b(x::Int) = x"),
         Cell("b(\"i am a \")"),
         Cell("b(20)"),
         
@@ -506,7 +519,7 @@ import Distributed
         end"),
         Cell("begin
             import .Wow: c
-            c(x::Int64) = x
+            c(x::Int) = x
         end"),
         Cell("c(\"i am a \")"),
         Cell("c(24)"),
@@ -798,6 +811,7 @@ import Distributed
         notebook = Notebook([
             Cell("return 10"),
             Cell("return (0, 0)"),
+            Cell("return (0, 0)"),
             Cell("return (0, 0, 0)"),
             Cell("begin return \"a string\" end"),
             Cell("""
@@ -805,14 +819,154 @@ import Distributed
                     return []
                 end
             """),
+            Cell("""filter(1:3) do x
+                return true
+            end"""),
+
+            # create struct to disable the function-generating optimization
+            Cell("struct A1 end; return 10"),
+            Cell("struct A2 end; return (0, 0)"),
+            Cell("struct A3 end; return (0, 0)"),
+            Cell("struct A4 end; return (0, 0, 0)"),
+            Cell("struct A5 end; begin return \"a string\" end"),
+            Cell("""
+                struct A6 end; let
+                    return []
+                end
+            """),
+            Cell("""struct A7 end; filter(1:3) do x
+                return true
+            end"""),
         ])
 
-        for cell in notebook.cells
-            update_run!(🍭, notebook, cell)
-            @test occursinerror("You can only use return inside a function.", cell)
-        end
+        update_run!(🍭, notebook, notebook.cells)
+        @test occursinerror("You can only use return inside a function.", notebook.cells[1])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[2])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[3])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[4])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[5])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[6])
+        @test notebook.cells[7].errored == false
+
+        @test occursinerror("You can only use return inside a function.", notebook.cells[8])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[9])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[10])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[11])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[12])
+        @test occursinerror("You can only use return inside a function.", notebook.cells[13])
+        @test notebook.cells[14].errored == false
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Function wrapping" begin
+        notebook = Notebook([
+            Cell("false && jlaksdfjalskdfj"),
+            Cell("fonsi = 2"),
+            Cell("""
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
+            """),
+            Cell("4"),
+            Cell("[5]"),
+            Cell("6 / 66"),
+            Cell("false && (seven = 7)"),
+            Cell("seven"),
+            
+            Cell("nine = :identity"),
+            Cell("nine"),
+            Cell("@__FILE__; nine"),
+            Cell("@__FILE__; twelve = :identity"),
+            Cell("@__FILE__; twelve"),
+            Cell("twelve"),
+
+            Cell("fifteen = :(1 + 1)"),
+            Cell("fifteen"),
+            Cell("@__FILE__; fifteen"),
+            Cell("@__FILE__; eighteen = :(1 + 1)"),
+            Cell("@__FILE__; eighteen"),
+            Cell("eighteen"),
+        ])
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[1].output_repr == "false"
+
+        function benchmark(fonsi)
+            filter(1:fonsi) do x
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                x = sum(1 for z in 1:x)
+                false
+            end |> length
+        end
+
+        bad = @elapsed benchmark(2)
+        good = @elapsed benchmark(2)
+
+        update_run!(🍭, notebook, notebook.cells)
+        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
+
+        old = notebook.cells[4].output_repr
+        setcode(notebook.cells[4], "4.0")
+        update_run!(🍭, notebook, notebook.cells[4])
+        @test old != notebook.cells[4].output_repr
+        
+        old = notebook.cells[5].output_repr
+        setcode(notebook.cells[5], "[5.0]")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test old != notebook.cells[5].output_repr
+
+        old = notebook.cells[6].output_repr
+        setcode(notebook.cells[6], "66 / 6")
+        update_run!(🍭, notebook, notebook.cells[6])
+        @test old != notebook.cells[6].output_repr
+
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[7].output_repr == "false"
+
+        @test occursinerror("UndefVarError", notebook.cells[8])
+
+        @test notebook.cells[9].output_repr == ":identity"
+        @test notebook.cells[10].output_repr == ":identity"
+        @test notebook.cells[11].output_repr == ":identity"
+        @test notebook.cells[12].output_repr == ":identity"
+        @test notebook.cells[13].output_repr == ":identity"
+        @test notebook.cells[14].output_repr == ":identity"
+
+        @test notebook.cells[15].output_repr == ":(1 + 1)"
+        @test notebook.cells[16].output_repr == ":(1 + 1)"
+        @test notebook.cells[17].output_repr == ":(1 + 1)"
+        @test notebook.cells[18].output_repr == ":(1 + 1)"
+        @test notebook.cells[19].output_repr == ":(1 + 1)"
+        @test notebook.cells[20].output_repr == ":(1 + 1)"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+
+        @testset "Expression hash" begin
+            same(a,b) = Pluto.PlutoRunner.expr_hash(a) == Pluto.PlutoRunner.expr_hash(b)
+
+            @test same(:(1), :(1))
+            @test !same(:(1), :(1.0))
+            @test same(:(x + 1), :(x + 1))
+            @test !same(:(x + 1), :(x + 1.0))
+            @test same(:(1 |> a |> a |> a), :(1 |> a |> a |> a))
+            @test same(:(a(b(1,2))), :(a(b(1,2))))
+            @test !same(:(a(b(1,2))), :(a(b(1,3))))
+            @test !same(:(a(b(1,2))), :(a(b(1,1))))
+            @test !same(:(a(b(1,2))), :(a(b(2,1))))
+        end
     end
 
     @testset "Run multiple" begin

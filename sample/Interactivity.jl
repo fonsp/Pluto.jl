@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.12.11
 
 using Markdown
 using InteractiveUtils
@@ -165,24 +165,17 @@ In fact, **_any package_ can add bindable values to their objects**. For example
 
 A package _does not need to add `Pluto.jl` as a dependency to do so_: only the `Base.show(io, MIME("text/html"), obj)` function needs to be extended to contain a `<script>` that triggers the `input` event with a value. (It's up to the package creator _when_ and _what_.) This _does not affect_ how the object is displayed outside of Pluto.jl: uncaught events are ignored by your browser."""
 
-# ╔═╡ 36ca3050-7f36-11ea-3caf-cb10e945ca99
-md"""## Tips
+# ╔═╡ aa8f6a0e-303a-11eb-02b7-5597c167596d
 
-#### Wrap large code blocks
-If you have a large block of code that depends on a bound variable `t`, it will be faster to wrap that code inside a function `f(my_t)` (which depends on `my_t` instead of `t`), and then _call_ that function from another cell, with `t` as parameter.
 
-This way, only the Julia code "`f(t)`" needs to be lowered and re-evaluated, instead of the entire code block."""
-
-# ╔═╡ 03701e62-7f37-11ea-3b9a-d9d5ae2344e6
-md"""#### Separate definition and reference
-
-If you put a bond and a reference to the same variable together, it will keep evaluating in a loop.
+# ╔═╡ 5c1ececa-303a-11eb-1faf-0f3a6f94ac48
+md"""## Separate definition and reference
+Interactivity works through reactivity. If you put a bond and a reference to the same variable together, then setting the bond will trigger the _entire cell_ to re-evaluate, including the bond itself.
 
 So **do not** write
 ```julia
 md""\"$(@bind r html"<input type=range>")  $(r^2)""\"
 ```
-
 Instead, create two cells:
 ```julia
 md""\"$(@bind r html"<input type=range>")""\"
@@ -193,7 +186,7 @@ r^2
 """
 
 # ╔═╡ 55783466-7eb1-11ea-32d8-a97311229e93
-md""
+
 
 # ╔═╡ 582769e6-7eb1-11ea-077d-d9b4a3226aac
 md"## Behind the scenes
@@ -272,8 +265,8 @@ md"That's it for now! Let us know what you think using the feedback button below
 # ╟─d774fafa-7f34-11ea-290d-37805806e14b
 # ╟─8db857f8-7eae-11ea-3e53-058a953f2232
 # ╟─d5b3be4a-7f52-11ea-2fc7-a5835808207d
-# ╟─36ca3050-7f36-11ea-3caf-cb10e945ca99
-# ╟─03701e62-7f37-11ea-3b9a-d9d5ae2344e6
+# ╟─aa8f6a0e-303a-11eb-02b7-5597c167596d
+# ╟─5c1ececa-303a-11eb-1faf-0f3a6f94ac48
 # ╟─55783466-7eb1-11ea-32d8-a97311229e93
 # ╟─582769e6-7eb1-11ea-077d-d9b4a3226aac
 # ╟─8f829274-7eb1-11ea-3888-13c00b3ba70f

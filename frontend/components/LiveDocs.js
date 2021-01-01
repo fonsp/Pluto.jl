@@ -1,11 +1,13 @@
-import { html, useState, useRef, useLayoutEffect, useEffect, useMemo } from "../imports/Preact.js"
+import { html, useState, useRef, useLayoutEffect, useEffect, useMemo, useContext } from "../imports/Preact.js"
 import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
-export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, notebook }) => {
+export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+    let pluto_actions = useContext(PlutoContext)
     let container_ref = useRef()
     let live_doc_search_ref = useRef()
     let [state, set_state] = useState({
@@ -67,7 +69,7 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         })
         Promise.race([
             observablehq.Promises.delay(2000, false),
-            client.send("docs", { query: new_query.replace(/^\?/, "") }, { notebook_id: notebook.notebook_id }).then((u) => {
+            pluto_actions.send("docs", { query: new_query.replace(/^\?/, "") }, { notebook_id: notebook.notebook_id }).then((u) => {
                 if (u.message.status === "⌛") {
                     return false
                 }
@@ -87,10 +89,11 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
     }
 
     let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${state.body} /> `, [state.body])
+    let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`
         <aside id="helpbox-wrapper" ref=${container_ref}>
-            <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading })}>
+            <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading, notfound: no_docs_found })}>
                 <header
                     onClick=${() => {
                         if (state.hidden) {
@@ -104,6 +107,7 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
                         ? "Live docs"
                         : html`
                         <input
+                            title=${no_docs_found ? `"${state.searched_query}" not found` : ""}
                             id="live-docs-search"
                             placeholder="Search docs..."
                             ref=${live_doc_search_ref}
@@ -114,7 +118,6 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
                         <button onClick=${(e) => {
                             set_state((state) => ({ ...state, hidden: true }))
                             e.stopPropagation()
-                            console.log(state)
                             setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
                         }}><span></span></button>
                     `}

@@ -15,21 +15,30 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import REPL.REPLCompletions: completions, complete_path, completion_text, Completion, ModuleCompletion
+import Tables
+import FuzzyCompletions: Completion, ModuleCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict}, MIME}
+MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 ObjectID = typeof(objectid("hello computer"))
+ObjectDimPair = Tuple{ObjectID,Int64}
+
+
+
+
+
+
+
 
 ###
 # WORKSPACE MANAGER
 ###
 
-#Will be set to the latest workspace module
+# Will be set to the latest workspace module
 "The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
 
@@ -45,32 +54,184 @@ function set_current_module(newname)
     end
     
     global default_iocontext = IOContext(default_iocontext, :module => current_module)
-    global default_iocontext_compact = IOContext(default_iocontext_compact, :module => current_module)
-    
     global current_module = getfield(Main, newname)
 end
 
-# TODO: clear key when a cell is deleted furever
-const cell_results = Dict{UUID, Any}()
 
-const tree_display_limit = 30
-const tree_display_limit_increase = 40
-const tree_display_extra_items = Dict{UUID, Dict{ObjectID, Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{Nothing,ObjectID}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64, Missing}}}
-    extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectID, Int64}()
-    else
-        old = get!(() -> Dict{ObjectID, Int64}(), tree_display_extra_items, id)
-        old[showmore] = get(old, showmore, 0) + tree_display_limit_increase
-        old
-    end
 
-    ans = cell_results[id]
-    errored = ans isa CapturedException
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = Main.runtime)
+
+
+
+
+
+
+
+
+
+
+###
+# EVALUATING NOTEBOOK CODE
+###
+
+struct ReturnProof end
+const return_error = "Pluto: You can only use return inside a function."
+
+struct Computer
+    f::Function
+    return_proof::ReturnProof
+    input_globals::Vector{Symbol}
+    output_globals::Vector{Symbol}
 end
+
+expr_hash(e::Expr) = objectid(e.head) + mapreduce(p -> objectid((p[1], expr_hash(p[2]))), +, enumerate(e.args); init=zero(ObjectID))
+expr_hash(x) = objectid(x)
+# TODO: clear key when a cell is deleted furever
+const computers = Dict{ObjectID,Computer}()
+
+const computer_workspace = Main
+
+
+function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+    proof = ReturnProof()
+
+    @gensym result
+    e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block, 
+        Expr(:(=), result, timed_expr(expr, proof)),
+        Expr(:tuple,
+            result,
+            Expr(:tuple, output_globals...)
+        )
+    ))
+
+    f = Core.eval(computer_workspace, e)
+
+    computers[key] = Computer(f, proof, input_globals, output_globals)
+end
+
+quote_if_needed(x) = x
+quote_if_needed(x::Union{Expr,Symbol}) = QuoteNode(x)
+
+function compute(computer::Computer)
+    # 1. get the referenced global variables
+    # this might error if the global does not exist, which is exactly what we want
+    input_global_values = getfield.([current_module], computer.input_globals)
+
+    # 2. run the function
+    out = Base.invokelatest(computer.f, input_global_values...)
+    if out isa Tuple{Any,Tuple}
+        result, output_global_values = out
+
+        for (name, val) in zip(computer.output_globals, output_global_values)
+            Core.eval(current_module, Expr(:(=), name, quote_if_needed(val)))
+        end
+
+        result
+    else
+        throw(return_error)
+    end
+end
+
+"Wrap `expr` inside a timing block."
+function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
+    # @assert ExpressionExplorer.is_toplevel_expr(expr)
+
+    linenumbernode = expr.args[1]
+    root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
+
+    @gensym result
+    @gensym elapsed_ns
+    # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
+    Expr(:block, 
+        :(local $elapsed_ns = time_ns()),
+        linenumbernode,
+        :(local $result = $root),
+        :($elapsed_ns = time_ns() - $elapsed_ns),
+        :(($result, $elapsed_ns, $return_proof)),
+    )
+end
+
+"""
+Run the expression or function inside a try ... catch block, and verify its "return proof".
+"""
+function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof)
+    # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
+    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
+
+    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
+    # way to protect people from finding this obscure bug in some way - DRAL
+
+    ans, runtime = try
+        local invocation = if f isa Expr
+            # We eval `f` in the global scope of the workspace module:
+            Core.eval(current_module, f)
+        else
+            # f is a function
+            f()
+        end
+
+        if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
+            throw(return_error)
+        else
+            local ans, runtime, _ = invocation
+            (ans, runtime)
+        end
+    catch ex
+        bt = stacktrace(catch_backtrace())
+        (CapturedException(ex, bt), missing)
+    end
+end
+
+
+"""
+Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
+
+If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the referenced and assigned variables of the expression (computed by the ExpressionExplorer), then the expression will be **wrapped inside a function**, with the references as inputs, and the assignments as outputs. Instead of running the expression directly, Pluto will call this function, with the right globals as inputs.
+
+This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
+"""
+function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+        proof = ReturnProof()
+        wrapped = timed_expr(expr, proof)
+        run_inside_trycatch(wrapped, cell_id, proof)
+    else
+        key = expr_hash(expr)
+        local computer = get(computers, key, nothing)
+        if computer === nothing
+            try
+                computer = register_computer(expr, key, collect.(function_wrapped_info)...)
+            catch e
+                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                return run_expression(expr, cell_id, nothing)
+            end
+        end
+        ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
+            compute(computer)
+        end
+
+        # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
+        # The fix is to detect this situation and run the expression in the classical way.
+        if (ans isa CapturedException) && (ans.ex isa UndefVarError)
+            run_expression(expr, cell_id, nothing)
+        else
+            ans, runtime
+        end
+    end
+end
+
+
+
+
+
+
+
+
+
+###
+# DELETING GLOBALS
+###
+
 
 """
 Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined. 
@@ -113,9 +274,11 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
                 # try_delete_toplevel_methods(old_workspace, symbol)
 
                 try
-                    # it could be that `symbol ∈ vars_to_move`, but the _value_ has already been moved to the new reference in `new_module`.
-                    # so clearing the value of this reference does not affect the reference in `new_workspace`.
-                    Core.eval(old_workspace, :($(symbol) = nothing))
+                    # We are clearing this variable from the notebook, so we need to find it's root
+                    # Just clearing out the definition in the old_module, besides giving an error (so that's what that `catch; end` is for)
+                    # will not actually free it from Julia, the older module will still have a reference.
+                    module_to_remove_from = which(old_workspace, symbol)
+                    Core.eval(module_to_remove_from, :($(symbol) = nothing))
                 catch; end # sometimes impossible, eg. when $symbol was constant
             end
         else
@@ -203,9 +366,57 @@ const primary_world = filter(in(fieldnames(Method)), [:primary_world, :min_world
 const deleted_world = filter(in(fieldnames(Method)), [:deleted_world, :max_world]) |> first # Julia v1.3 and v1.0 resp.
 const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # typemax(UInt) in Julia v1.3, Int(-1) in Julia 1.0
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # FORMATTING
 ###
+
+
+# TODO: clear key when a cell is deleted furever
+const cell_results = Dict{UUID,Any}()
+const cell_runtimes = Dict{UUID,Union{Missing,UInt64}}()
+
+const tree_display_limit = 30
+const tree_display_limit_increase = 40
+const table_row_display_limit = 10
+const table_row_display_limit_increase = 60
+const table_column_display_limit = 8
+const table_column_display_limit_increase = 30
+
+const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
+
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    extra_items = if showmore === nothing
+        tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
+    else
+        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, id)
+        old[showmore] = get(old, showmore, 0) + 1
+        old
+    end
+
+    ans = cell_results[id]
+    errored = ans isa CapturedException
+
+    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
+end
+
 
 "Because even showerror can error... 👀"
 function try_showerror(io::IO, e, args...)
@@ -240,8 +451,6 @@ Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
 default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
-default_iocontext_compact = IOContext(default_iocontext, :compact => true)
-
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -251,7 +460,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -259,18 +468,18 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=nothing))::MimedOutput
     try
         new_iocontext = IOContext(default_iocontext, context)
         io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=new_iocontext)
         if value === nothing
             if mime ∈ imagemimes
-                io_sprinted, mime
+                (io_sprinted, mime)
             else
-                String(io_sprinted), mime
+                (String(io_sprinted), mime)
             end
         else
-            value, mime
+            (value, mime)
         end
     catch ex
         title = ErrorException("Failed to show value: \n" * sprint(try_showerror, ex))
@@ -279,20 +488,26 @@ function format_output_default(@nospecialize(val); context=nothing)::MimedOutput
     end
 end
 
-format_output(x; context=nothing) = format_output_default(x; context=context)
+format_output(@nospecialize(x); context=nothing) = format_output_default(x, context)
 
-format_output(::Nothing; context=nothing)::MimedOutput = "", MIME"text/plain"()
+format_output(::Nothing; context=nothing) = ("", MIME"text/plain"())
 
-function format_output(val::CapturedException; context=nothing)::MimedOutput
+function format_output(val::CapturedException; context=nothing)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
-    stack = [s for (s,_) in val.processed_bt]
+    stack = [s for (s, _) in val.processed_bt]
 
-    for _ in 1:2
-        until = findfirst(b -> b.func == :eval, reverse(stack))
-        stack = until === nothing ? stack : stack[1:(length(stack) - until)]
+    function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+
+    if function_wrap_index === nothing
+        for _ in 1:2
+            until = findfirst(b -> b.func == :eval, reverse(stack))
+            stack = until === nothing ? stack : stack[1:end - until]
+        end
+    else
+        stack = stack[1:function_wrap_index]
     end
 
-    pretty = map(stack[1:end]) do s
+    pretty = map(stack) do s
         Dict(
             :call => pretty_stackcall(s, s.linfo),
             :inlined => s.inlined,
@@ -300,13 +515,17 @@ function format_output(val::CapturedException; context=nothing)::MimedOutput
             :line => s.line,
         )
     end
-    Dict(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+    Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
 # from the Julia source code:
-function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)
+function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)::String
     if frame.func isa Symbol
-        String(frame.func)
+        if occursin("function_wrapped_cell", String(frame.func))
+            "top-level scope"
+        else
+            String(frame.func)
+        end
     else
         repr(frame.func)
     end
@@ -336,9 +555,7 @@ struct 🥔 end
 const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
-function use_tree_viewer_for_struct(@nospecialize(x))
-    T = typeof(x)
-
+function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
     # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
     # this is how we check whether this display method is appropriate:
     isstruct = try
@@ -365,12 +582,21 @@ Like two-argument `Base.show`, except:
 3. if the first returned element is `nothing`, then we wrote our data to `io`. If it is something else (a Dict), then that object will be the cell's output, instead of the buffered io stream. This allows us to output rich objects to the frontend that are not necessarily strings or byte streams
 """
 function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
-    mime = Iterators.filter(m -> Base.invokelatest(showable, m, x), allmimes) |> first
-    
+    # ugly code to fix an ugly performance problem
+    local mime = nothing
+    for m in allmimes
+        if pluto_showable(m, x)
+            mime = m
+            break
+        end
+    end
+
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
     elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, io), mime
+        tree_data(x, IOContext(io, :compact => true)), mime
+    elseif mime isa MIME"application/vnd.pluto.table+object"
+        table_data(x, IOContext(io, :compact => true)), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -386,72 +612,86 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
     end
 end
 
+# we write our own function instead of extending Base.showable with our new MIME because:
+# we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
+# but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
+# Baee.showable(m::MIME, x::Plots.Plot)
+# because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
+pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m, x)
+
 ###
 # TREE VIEWER
 ###
 
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any, 1}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any, <:Any}) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
-Base.showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
+
+
+pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
+pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
+pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
 
 
 # in the next functions you see a `context` argument
 # this is really only used for the circular reference tracking
 
-function tree_data_array_elements(x::AbstractArray{<:Any, 1}, indices::AbstractVector{<:Integer}, context::IOContext)
-    map(indices) do i
+function tree_data_array_elements(@nospecialize(x::AbstractArray{<:Any,1}), indices::AbstractVector{I}, context::IOContext)::Vector{Tuple{I,Any}} where {I<:Integer}
+    Tuple{I,Any}[
         if isassigned(x, i)
-            i, format_output_default(x[i]; context=context)
+            i, format_output_default(x[i], context)
         else
-            i, format_output_default(Text(Base.undef_ref_str); context=context)
+            i, format_output_default(Text(Base.undef_ref_str), context)
         end
-    end
+        for i in indices
+    ] |> collect
 end
 
-function array_prefix(x::Array{<:Any, 1})
+function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
     string(eltype(x))
 end
-function array_prefix(x)
+function array_prefix(@nospecialize(x))::String
     original = sprint(Base.showarg, x, false)
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(x, context)
-    tree_display_limit + let
+function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+    a + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
         else
-            get(d, objectid(x), 0)
+            b * get(d, (objectid(x), dim), 0)
         end
     end
 end
 
-function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
+function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
     indices = eachindex(x)
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
-    elements = if length(x) <= my_limit
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    elements = if length(x) <= my_limit + 5
         tree_data_array_elements(x, indices, context)
     else
         firsti = firstindex(x)
         from_end = my_limit > 20 ? 10 : 1
-        [
+        Any[
             tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], context)...,
             "more",
             tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
         ]
     end
     
-    Dict(
+    Dict{Symbol,Any}(
         :prefix => array_prefix(x),
         :objectid => string(objectid(x), base=16),
         :type => :Array,
@@ -459,22 +699,22 @@ function tree_data(x::AbstractArray{<:Any, 1}, context::IOContext)
     )
 end
 
-function tree_data(x::Tuple, context::IOContext)
-    Dict(
+function tree_data(@nospecialize(x::Tuple), context::IOContext)
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x; context=context))),
+        :elements => collect(enumerate(format_output_default.(x, [context]))),
     )
 end
 
-function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
+function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
     elements = []
 
-    my_limit = get_my_display_limit(x, context)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
     row_index = 1
     for pair in x
         k, v = pair
-        push!(elements, (format_output_default(k; context=context), format_output_default(v; context=context)))
+        push!(elements, (format_output_default(k, context), format_output_default(v, context)))
         if row_index == my_limit
             push!(elements, "more")
             break
@@ -482,7 +722,7 @@ function tree_data(x::AbstractDict{<:Any, <:Any}, context::IOContext)
         row_index += 1
     end
     
-    Dict(
+    Dict{Symbol,Any}(
         :prefix => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Dict,
@@ -493,24 +733,24 @@ end
 function tree_data_nt_row(pair::Tuple, context::IOContext)
     # this is an entry of a NamedTuple, the first element of the Tuple is a Symbol, which we want to print as `x` instead of `:x`
     k, element = pair
-    string(k), format_output_default(element; context=context)
+    string(k), format_output_default(element, context)
 end
 
 
-function tree_data(x::NamedTuple, context::IOContext)
-    Dict(
+function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
         :elements => tree_data_nt_row.(zip(eachindex(x), x), (context,))
     )
 end
 
-function tree_data(x::Pair, context::IOContext)
+function tree_data(@nospecialize(x::Pair), context::IOContext)
     k, v = x
-    Dict(
+    Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Pair,
-        :key_value => (format_output_default(k; context=context), format_output_default(v; context=context)),
+        :key_value => (format_output_default(k, context), format_output_default(v, context)),
     )
 end
 
@@ -521,7 +761,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
     nb = sizeof(x)
     
     if Base.show_circular(context, x)
-        Dict(
+        Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
             :type => :circular,
         )
@@ -529,17 +769,20 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
                                 Pair{Symbol,Any}(:typeinfo, Any))
         
-        elements = map(1:nf) do i
-            f = fieldname(t, i)
-            if !isdefined(x, f)
-                Base.undef_ref_str
-                f, format_output_default(Text(Base.undef_ref_str); context=recur_io)
-            else
-                f, format_output_default(getfield(x, i); context=recur_io)
+        elements = Any[
+            let
+                f = fieldname(t, i)
+                if !isdefined(x, f)
+                    Base.undef_ref_str
+                    f, format_output_default(Text(Base.undef_ref_str), recur_io)
+                else
+                    f, format_output_default(getfield(x, i), recur_io)
+                end
             end
-        end
+            for i in 1:nf
+        ]
     
-        Dict(
+        Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
@@ -553,10 +796,99 @@ trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
 ###
+# TABLE VIEWER
+##
+
+function maptruncated(f::Function, xs, filler, limit; truncate=true)
+    if truncate
+        result = Any[
+            # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+            f(xs[i]) for i in 1:limit
+        ]
+        push!(result, filler)
+        result
+    else
+        Any[f(x) for x in xs]
+    end
+end
+
+function table_data(x::Any, io::IOContext)
+    rows = Tables.rows(x)
+
+    my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+
+    # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+    my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+    # my_column_limit = table_column_display_limit
+
+    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+    truncate_rows = my_row_limit + 5 < length(rows)
+    truncate_columns = if isempty(rows)
+        false
+    else
+        my_column_limit + 5 < length(first(rows))
+    end
+
+    row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+        format_output_default(el, io)
+    end
+
+    # ugliest code in Pluto:
+
+    # not a map(row) because it needs to be a Vector
+    # not enumerate(rows) because of some silliness
+    # not rows[i] because `getindex` is not guaranteed to exist
+    L = truncate_rows ? my_row_limit : length(rows)
+    row_data = Array{Any,1}(undef, L)
+    for (i, row) in zip(1:L,rows)
+        row_data[i] = (i, row_data_for(row))
+    end
+
+    if truncate_rows
+        push!(row_data, "more")
+        if applicable(lastindex, rows)
+            push!(row_data, (length(rows), row_data_for(last(rows))))
+        end
+    end
+    
+    # TODO: render entire schema by default?
+
+    schema = Tables.schema(rows)
+    schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
+        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+        :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+    )
+
+    Dict{Symbol,Any}(
+        :objectid => string(objectid(x), base=16),
+        :schema => schema_data,
+        :rows => row_data,
+    )
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###
 # REPL THINGS
 ###
 
-function completion_priority((s, description, exported))
+function basic_completion_priority((s, description, exported))
 	c = first(s)
 	if islowercase(c)
 		1 - 10exported
@@ -589,7 +921,6 @@ function completions_exported(cs::Vector{<:Completion})
         if c isa ModuleCompletion
             c.mod ∈ completed_modules_exports[c.parent]
         else
-
             true
         end
     end
@@ -598,40 +929,97 @@ end
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
+    if endswith(query, '.')
+        # we are autocompleting a module, and we want to see its fields alphabetically
+        sort!(results; by=(r -> completion_text(r)))
+    else
+        isenough(x) = x ≥ 0
+        filter!(isenough ∘ score, results) # too many candiates otherwise
+    end
 
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
 
-    smooshed_together = zip(texts, descriptions, exported)
-    
-    final = sort(collect(smooshed_together); alg=MergeSort, by=completion_priority)
+    smooshed_together = collect(zip(texts, descriptions, exported))
+
+    p = if endswith(query, '.')
+        sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
+    else
+        # we give 3 extra score points to exported fields
+        scores = score.(results)
+        sortperm(scores .+ 3.0 * exported; alg=MergeSort, rev=true)
+    end
+
+    final = smooshed_together[p]
     (final, loc, found)
 end
+
+"""
+    is_pure_expression(expression::ReturnValue{Meta.parse})
+Checks if an expression is approximately pure.
+Not sure if the type signature conveys it, but this take anything that is returned from `Meta.parse`.
+It obviously does not actually check if something is strictly pure, as `getproperty()` could be extended,
+and suddenly there can be side effects everywhere. This is just an approximation.
+"""
+function is_pure_expression(expr::Expr)
+    if expr.head == :. || expr.head === :curly || expr.head === :ref
+        all((is_pure_expression(x) for x in expr.args))
+    else
+        false
+    end
+end
+is_pure_expression(s::Symbol) = true
+is_pure_expression(q::QuoteNode) = true
+is_pure_expression(q::Number) = true
+is_pure_expression(q::String) = true
+is_pure_expression(x) = false # Better safe than sorry I guess
 
 # Based on /base/docs/bindings.jl from Julia source code
 function binding_from(x::Expr, workspace::Module=current_module)
     if x.head == :macrocall
-        Docs.Binding(workspace, x.args[1])
-    elseif x.head == :.
-        Docs.Binding(Core.eval(workspace, x.args[1]), x.args[2].value)
+        macro_name = x.args[1]
+        if is_pure_expression(macro_name)
+            Core.eval(workspace, macro_name)
+        else
+            error("Couldn't infer `$x` for Live Docs.")
+        end
+    elseif is_pure_expression(x)
+        Core.eval(workspace, x)
     else
-        error("Invalid @var syntax `$x`.")
+        error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Docs.Binding(workspace, s)
+binding_from(s::Symbol, workspace::Module=current_module) = Core.eval(workspace, s)
 binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
 
 "You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
 function doc_fetcher(query, workspace::Module=current_module)
     try
-        binding = binding_from(Meta.parse(query), workspace)::Docs.Binding
-        (repr(MIME"text/html"(), Docs.doc(binding)), :👍)
+        value = binding_from(Meta.parse(query), workspace)
+        (repr(MIME"text/html"(), Docs.doc(value)), :👍)
     catch ex
         (nothing, :👎)
     end
 end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ###
 # BONDS
@@ -712,6 +1100,23 @@ const fake_bind = """macro bind(def, element)
     end
 end"""
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ###
 # LOGGING
 ###
@@ -733,15 +1138,13 @@ Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
     try
-        put!(log_channel, (
-            level=string(level),
+        put!(log_channel, (level=string(level),
             msg=(msg isa String) ? msg : repr(msg),
             group=group,
             # id=id,
             file=file,
             line=line,
-            kwargs=Dict((k=>repr(v) for (k,v) in kwargs)...),
-        ))
+            kwargs=Dict((k=>repr(v) for (k, v) in kwargs)...),))
         # also print to console
         Logging.handle_message(old_logger[], level, msg, _module, group, id, file, line; kwargs...)
     catch e

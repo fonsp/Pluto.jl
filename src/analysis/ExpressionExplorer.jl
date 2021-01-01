@@ -225,7 +225,7 @@ function split_funcname(::Any)::FunctionName
     Symbol[]
 end
 
-"Turn :(.+) into :(+)"
+"""Turn `Symbol(".+")` into `:(+)`"""
 function without_dotprefix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[1] == '.'
@@ -235,7 +235,7 @@ function without_dotprefix(funcname::Symbol)::Symbol
     end
 end
 
-"Turn :(sqrt.) into :(sqrt)"
+"""Turn `Symbol("sqrt.")` into `:sqrt`"""
 function without_dotsuffix(funcname::Symbol)::Symbol
     fn_str = String(funcname)
     if length(fn_str) > 0 && fn_str[end] == '.'
@@ -252,6 +252,14 @@ This means that it is only the inverse of `ExpressionExplorer.split_funcname` if
 function join_funcname_parts(parts::FunctionName)::Symbol
 	join(parts .|> String, ".") |> Symbol
 end
+
+# this is stupid -- désolé
+function is_joined_funcname(joined::Symbol)
+    occursin('.', String(joined))
+end
+
+assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
+assign_to_kw(x::Any) = x
 
 
 ###
@@ -351,7 +359,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcname = ex.args[1] |> split_funcname
         # Macros can transform the expression into anything - the best way to treat them is to macroexpand
         # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
-        if (length(funcname) == 1 || (length(funcname) >= 2 && funcname[1] == :Base))
+        if (length(funcname) == 1 || (length(funcname) >= 2 && (funcname[1] == :Base || funcname[1] == :PlutoRunner)))
             if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
                 # we macroexpand these, and recurse
                 expanded = macroexpand(PlutoRunner, ex; recursive=false)
@@ -367,7 +375,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             end
         end
 
-        return explore!(Expr(:call, ex.args...), scopestate)
+        new_ex = if length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
+        else
+            Expr(:call, ex.args...)
+        end
+
+        return explore!(new_ex, scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -564,10 +578,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # 
         # 🤔
         # we turn it into two expressions:
-        #
+        # 
         # (a, b) = (2, 3)
         # (c = 1)
-        #
+        # 
         # and explore those :)
 
         indexoffirstassignment = findfirst(a -> isa(a, Expr) && a.head == :(=), ex.args)
@@ -810,10 +824,11 @@ canonalize(e1) == canonalize(e2)
 function canonalize(ex::Expr)
 	if ex.head == :where
 		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
-	elseif ex.head == :call
-		ex.args[1] # is the function name, we dont want it
+	elseif ex.head == :call || ex.head == :tuple
+		skip_index = ex.head == :call ? 2 : 1
+		ex.args[1] # if ex.head == :call this is the function name, we dont want it
 
-		interesting = filter(ex.args[2:end]) do arg
+		interesting = filter(ex.args[skip_index:end]) do arg
 			!(arg isa Expr && arg.head == :parameters)
 		end
 		
@@ -909,5 +924,26 @@ function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
 end
 
 get_rootassignee(ex::Any, recuse::Bool=true)::Union{Symbol,Nothing} = nothing
+
+"Is this code simple enough that we can wrap it inside a function to boost performance? Look for [`PlutoRunner.Computer`](@ref) to learn more."
+function can_be_function_wrapped(x::Expr)
+    if x.head === :global || # better safe than sorry
+        x.head === :using ||
+        x.head === :import ||
+        x.head === :module ||
+        x.head === :function ||
+        x.head === :macro ||
+        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
+        x.head === :struct ||
+        x.head === :abstract ||
+        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call) || # f(x) = ...
+        (x.head === :call && (x.args[1] === :eval || x.args[1] === :include))
+        false
+    else
+        all(can_be_function_wrapped, x.args)
+    end
+
+end
+can_be_function_wrapped(x::Any) = true
 
 end

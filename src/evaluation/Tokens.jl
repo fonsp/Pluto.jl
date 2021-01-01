@@ -20,6 +20,8 @@ function withtoken(f::Function, token::Token)
     result
 end
 
+###
+
 "Track whether some task needs to be done. `request!(requestqueue)` will make sure that the task is done at least once after calling it. Multiple calls might get bundled into one."
 mutable struct RequestQueue
     is_processing::Bool
@@ -41,4 +43,43 @@ function request!(queue::RequestQueue)
     if isready(queue.c)
         push!(queue.c, nothing)
     end
+end
+
+###
+
+mutable struct Promise{T}
+    value::Union{Nothing,Some{T}}
+    task::Union{Nothing,Task}
+end
+
+"
+    Promise(f::Function)
+
+Run `f` asynchronously, and return a `Promise` to its result. Call `wait` on the returned `Promise` to await the result.
+
+# Example
+
+```
+julia> p = Promise() do
+    sleep(5)
+    1 + 2
+end;
+
+julia> wait(p)
+3
+```
+
+"
+function Promise{T}(f::Function) where T
+    p = Promise{T}(nothing, nothing)
+    p.task = @async begin
+        p.value = Some(f())
+    end
+    return p
+end
+Promise(f::Function) = Promise{Any}(f)
+
+function Base.wait(p::Promise{T})::T where T
+	wait(p.task)
+	something(p.value)
 end

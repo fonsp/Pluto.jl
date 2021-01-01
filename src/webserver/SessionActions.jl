@@ -6,6 +6,14 @@ struct NotebookIsRunningException <: Exception
     notebook::Notebook
 end
 
+abstract type AbstractUserError <: Exception end
+struct UserError <: AbstractUserError
+    msg::String
+end
+function Base.showerror(io::IO, e::UserError)
+    print(io, e.msg)
+end
+
 function open_url(session::ServerSession, url::AbstractString; kwargs...)
     path = download(url, emptynotebook().path)
     open(session, path; kwargs...)
@@ -64,22 +72,5 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
         end
     end
     success = WorkspaceManager.unmake_workspace((session, notebook))
-end
-
-function move(session::ServerSession, notebook::Notebook, newpath::AbstractString)
-    result = try
-        if isfile(newpath)
-            (success = false, reason = "File exists already - you need to delete the old file manually.")
-        else
-            move_notebook!(notebook, newpath)
-            putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-            WorkspaceManager.cd_workspace((session, notebook), newpath)
-            (success = true, reason = "")
-        end
-    catch ex
-        showerror(stderr, stacktrace(catch_backtrace()))
-        (success = false, reason = sprint(showerror, ex))
-    end
-    result
 end
 end

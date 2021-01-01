@@ -1,0 +1,44 @@
+@font-face {
+    font-family: Vollkorn;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-SemiBold.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: Vollkorn;
+    font-style: italic;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-SemiBoldItalic.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 600;
+}
+
+@font-face {
+    font-family: Vollkorn;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-Bold.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: Vollkorn;
+    font-style: italic;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-BoldItalic.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: Vollkorn;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-Black.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 900;
+}
+
+@font-face {
+    font-family: Vollkorn;
+    font-style: italic;
+    src: url("https://cdn.jsdelivr.net/gh/fonsp/Vollkorn-Typeface@1/fonts/woff2/Vollkorn-BlackItalic.woff2") format("woff2");
+    font-display: swap;
+    font-weight: 900;
+}

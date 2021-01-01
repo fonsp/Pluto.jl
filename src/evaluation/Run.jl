@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
@@ -25,6 +25,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
+	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
+	for cell::Cell in removed_cells
+		cell.code = ""
+		cell.parsedcode = parse_custom(notebook, cell)
+		cell.module_usings = Set{Expr}()
+		cell.rootassignee = nothing
+	end
+	cells::Vector{Cell} = [cells..., removed_cells...]
+	new_topology = NotebookTopology(merge(
+		new_topology.nodes,
+		Dict(cell => ReactiveNode() for cell in removed_cells),
+	))
+
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
 	old_order = topological_order(notebook, old_topology, cells)
 
@@ -36,19 +49,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
+
 	# change the bar on the sides of cells to "queued"
-	local listeners = ClientSession[]
+	# local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)		
+		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
+		cell.queued = false
 		relay_reactivity_error!(cell, error)
-		listeners = putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell); flush=false)
 	end
-	flushallclients(session, listeners)
-
+	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -64,25 +77,27 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
+	delete!.([notebook.bonds], to_delete_vars)
+
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
 		
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
+		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell)
+			run = run_single!((session, notebook), cell, new_topology[cell])
 			any_interrupted |= run.interrupted
 		end
 		
 		cell.running = false
-		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
-
+	
+	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
@@ -103,8 +118,8 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code))
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
 	set_output!(cell, run)
 	return run
 end
@@ -140,12 +155,12 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
 			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-			notebook)
-			)
+				notebook,)
+		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
-			run_single!(offline_workspace, cell)
+			run_single!(offline_workspace, cell, new[cell])
 		end
 		
 		cd(original_pwd)
@@ -159,5 +174,6 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 end
 
+# Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)

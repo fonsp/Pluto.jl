@@ -4,7 +4,8 @@ import {
     getFixtureNotebookPath,
     getTemporaryNotebookPath,
     waitForContent,
-    waitForContentToChange
+    waitForContentToChange,
+    getTextContent,
 } from './common'
 
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
@@ -14,7 +15,7 @@ export const prewarmPluto = async (page) => {
     await createNewNotebook(page)
     const cellInputSelector = 'pluto-input textarea'
     await page.waitForSelector(cellInputSelector, { visible: true })
-    await page.type(cellInputSelector, '21*2')
+    await writeSingleLineInPlutoInput(page, 'pluto-input', '21*2')
 
     const runSelector = '.runcell'
     await page.waitForSelector(runSelector, { visible: true })
@@ -50,4 +51,23 @@ export const waitForCellOutput = (page, cellId) => {
 export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
+}
+
+export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
+    await page.type(`${plutoInputSelector} textarea`, text)
+    // Wait for CodeMirror to process the input and display the text
+    return page.waitFor((plutoInputSelector, text) => {
+        const codeMirrorLine = document.querySelector(`${plutoInputSelector} .CodeMirror-line`)
+        return codeMirrorLine !== null && codeMirrorLine.textContent.endsWith(text)
+    }, {polling: 100}, plutoInputSelector, text)
+}
+
+export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) => {
+    const currentLineText = await getTextContent(`${plutoInputSelector} .CodeMirror-line`)
+    await page.focus(`${plutoInputSelector} textarea`)
+    await page.waitFor(500)
+    await page.keyboard.press(key)
+    await page.waitFor(500)
+    // Wait for CodeMirror to process the input and display the text
+    return waitForContentToChange(page, `${plutoInputSelector} .CodeMirror-line`, currentLineText)
 }

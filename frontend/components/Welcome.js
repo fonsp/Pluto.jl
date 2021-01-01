@@ -12,7 +12,19 @@ const create_empty_notebook = (path, notebook_id = null) => {
     }
 }
 
-const shortpath = (path) => path.split("/").pop().split("\\").pop()
+const split_at_level = (path, level) => path.split(/\/|\\/).slice(-level).join("/")
+
+const shortest_path = (path, allpaths) => {
+    let level = 1
+    for (const otherpath of allpaths) {
+        if (otherpath !== path) {
+            while (split_at_level(path, level) === split_at_level(otherpath, level)) {
+                level++
+            }
+        }
+    }
+    return split_at_level(path, level)
+}
 
 // should strip characters similar to how github converts filenames into the #file-... URL hash.
 // test on: https://gist.github.com/fonsp/f7d230da4f067a11ad18de15bff80470
@@ -269,11 +281,11 @@ export class Welcome extends Component {
 
     render() {
         let recents = null
-
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
             console.log(this.state.combined_notebooks)
+            const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
                 return html`<li
@@ -287,7 +299,7 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortpath(nb.path)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
                 </li>`
             })
         }
