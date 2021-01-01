@@ -4,7 +4,6 @@ import _ from "../imports/lodash.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
-import { select_next_match, replace_all, clear_highlighting_all, init_findreplace, toggle_findreplace } from "../common/FindReplace.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
@@ -149,7 +148,6 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
             update_is_ongoing: false,
-            find_replace: init_findreplace(),
             code_selected: false,
         }
 
@@ -167,37 +165,6 @@ export class Editor extends Component {
             })
         }
         this.set_notebook_state = set_notebook_state.bind(this)
-
-        this.add_textmarkers = (markers, cell_id) => {
-            this.setState((prevState) => {
-                // delete old ones first
-                const prevMarkers = prevState.find_replace.textmarkers.filter((marker) => marker.id != cell_id)
-                const succ_find_replace = {
-                    ...prevState.find_replace,
-                    textmarkers: [...prevMarkers, ...markers],
-                }
-
-                return { find_replace: succ_find_replace }
-            })
-        }
-
-        this.update_findreplace_word = (word) => {
-            if (word == "") {
-                clear_highlighting_all(this.state.find_replace.textmarkers)
-            }
-            if (this.state.find_replace.marker) this.state.find_replace.marker.deselect()
-            this.setState({ find_replace: { ...this.state.find_replace, word: word, marker: null, previous: null } })
-        }
-
-        this.find_next = () => this.setState({ find_replace: select_next_match(this.state.find_replace) })
-
-        this.replace_with = (word) => {
-            if (this.state.find_replace.marker) {
-                this.state.find_replace.marker.replace_with(word)
-            }
-            // replace (even if nothing is selected) results in a find-next
-            this.find_next()
-        }
 
         // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
         this.all_completed = true
@@ -702,10 +669,6 @@ export class Editor extends Component {
                 }
             } else if (e.key === "Enter" && e.shiftKey) {
                 this.run_selected()
-            } else if (e.key === "f" && has_ctrl_or_cmd_pressed(e)) {
-                const newState = toggle_findreplace(this.state.find_replace, this.state.code_selected)
-                this.setState({ find_replace: newState })
-                e.preventDefault()
             } else if ((e.key === "?" && has_ctrl_or_cmd_pressed(e)) || e.key === "F1") {
                 // On mac "cmd+shift+?" is used by chrome, so that is why this needs to be ctrl as well on mac
                 // Also pressing "ctrl+shift" on mac causes the key to show up as "/", this madness
@@ -907,16 +870,7 @@ export class Editor extends Component {
                             }}
                         />
                     </${Main}>
-                    <div id="findreplace">
-                        <${FindReplace}
-                          visible=${this.state.find_replace.visible}
-                          word=${this.state.find_replace.word}
-                          set_word=${this.update_findreplace_word}
-                          find_next=${this.find_next}
-                          replace_with=${this.replace_with}
-                          replace_all=${(word) => replace_all(this.state.find_replace.textmarkers, word)}
-                        />
-                    </div>
+                    <${FindReplace} />
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}

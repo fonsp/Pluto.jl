@@ -60,7 +60,7 @@ export const CellInput = ({
     findreplace_word = "",
     set_findreplace_word = () => {},
 }) => {
-    let pluto_actions = useContext(PlutoContext)
+    const pluto_actions = useContext(PlutoContext)
 
     const cm_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))

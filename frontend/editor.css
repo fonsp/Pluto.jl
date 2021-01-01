@@ -394,48 +394,49 @@ body > header.show_export {
 }
 
 div#findreplace {
-/*  margin: 10px; */
-  margin-left: 20px;
-  margin-right: auto;
-  position: sticky;
-  bottom: 10px;
-  z-index: 5;
+    /*  margin: 10px; */
+    margin-left: 20px;
+    margin-right: auto;
+    position: sticky;
+    bottom: 10px;
+    z-index: 5;
 }
 
 aside#findreplace_container {
-  display: none;
-  flex-direction: row;
-  padding-right: 25px;
+    display: none;
+    flex-direction: row;
+    padding-right: 25px;
 }
+
 aside#findreplace_container.show_findreplace {
-  display: flex;
+    display: flex;
 }
 
 aside#findreplace_container > div {
-  display: flex;
-  flex-direction: row;
-  font-family: "Roboto Mono", monospace;
-  font-size: 0.75rem;
-  padding-right: 5px;
+    display: flex;
+    flex-direction: row;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.75rem;
+    padding-right: 5px;
 }
 aside#findreplace_container > div > input {
-  border: 2px solid #818181;
-  font-family: inherit;
-  font-size: inherit;
-  border-radius: 3px 0 0 3px;
-  padding: 3px;
-  border-right: none;
+    border: 2px solid #818181;
+    font-family: inherit;
+    font-size: inherit;
+    border-radius: 3px 0 0 3px;
+    padding: 3px;
+    border-right: none;
 }
 aside#findreplace_container > div > button {
-  cursor: pointer;
-  background: #651b82/*#896c6c*/;
-  border-radius: 0 3px 3px 0;
-  border: 2px solid #651b82/*#896c6c*/;
-  color: white;
-  font-family: inherit;
-  font-weight: 600;
-  font-size: 0.75rem;
-  margin-right: 2px;
+    cursor: pointer;
+    background: #651b82 /*#896c6c*/;
+    border-radius: 0 3px 3px 0;
+    border: 2px solid #651b82 /*#896c6c*/;
+    color: white;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-right: 2px;
 }
 aside#export {
     position: absolute;
