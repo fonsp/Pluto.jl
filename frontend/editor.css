@@ -531,10 +531,6 @@ nav#at_the_top {
     flex-direction: row;
 }
 
-/*nav#at_the_top.show_findreplace {
-  max-width: inherit;
-}*/
-
 nav#at_the_top > * {
     flex: 0 0 auto;
     align-self: center;

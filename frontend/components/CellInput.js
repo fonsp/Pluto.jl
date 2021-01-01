@@ -53,10 +53,6 @@ export const CellInput = ({
     on_drag_drop_events,
     cell_id,
     notebook_id,
-    add_textmarkers = () => {},
-    findreplace_visible = false,
-    findreplace_word = "",
-    set_findreplace_word = () => {},
 }) => {
     const pluto_actions = useContext(PlutoContext)
 
@@ -201,15 +197,6 @@ export const CellInput = ({
                     }
                 })
                 cm.setSelections(new_selections)
-            }
-        }
-        keys["Ctrl-F"] = () => {
-            if (cm.somethingSelected()) {
-                const sels = cm.getSelections()
-                if (all_equal(sels)) {
-                    set_findreplace_word(sels[0])
-                    return window.CodeMirror.Pass
-                }
             }
         }
         const swap = (a, i, j) => {

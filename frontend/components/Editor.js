@@ -148,28 +148,7 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
             update_is_ongoing: false,
-            code_selected: false,
         }
-
-        // convenience method
-        const set_notebook_state = (updater) => {
-            return new Promise((resolve) => {
-                this.setState((prevstate) => {
-                    return {
-                        notebook: {
-                            ...prevstate.notebook,
-                            ...updater(prevstate.notebook),
-                        },
-                    }
-                }, resolve)
-            })
-        }
-        this.set_notebook_state = set_notebook_state.bind(this)
-
-        // bonds only send their latest value to the back-end when all cells have completed - this is triggered using a promise
-        this.all_completed = true
-        this.all_completed_promise = resolvable_promise()
-
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
 
