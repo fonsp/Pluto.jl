@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useMemo, useRef } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -18,6 +18,7 @@ import { ExportBanner } from "./ExportBanner.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
+import { Mediums, update_external_notebooks, get_external_notebook } from "../common/SaveMediums.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { useDropHandler } from "./useDropHandler.js"
 
@@ -129,11 +130,13 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
+            
                 cell_inputs: {},
                 cell_results: {},
                 cell_order: [],
             }),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
+
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             connected: false,
@@ -143,12 +146,13 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
-            export_menu_open: false,
 
             last_created_cell: null,
             selected_cells: [],
 
             update_is_ongoing: false,
+          
+            save_medium: null
         }
 
         // statistics that are accumulated over time
@@ -433,6 +437,9 @@ export class Editor extends Component {
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
+                if(this.state.save_medium) {
+                    this.state.save_medium.scheduleSave()
+                }
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
@@ -457,8 +464,17 @@ export class Editor extends Component {
                                     new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                                 }
 
+                                const possible_save_medium = {};
+                                if(!this.state.save_medium) {
+                                    const external_nb = get_external_notebook(new_notebook.path)
+                                    if(external_nb) {
+                                        possible_save_medium.save_medium = new Mediums[external_nb['type']](...external_nb['args'])
+                                    }
+                                }
+
                                 return {
                                     notebook: new_notebook,
+                                    ...possible_save_medium
                                 }
                             })
                         }
@@ -590,29 +606,57 @@ export class Editor extends Component {
         }
         this.update_notebook = update_notebook
 
-        this.submit_file_change = async (new_path, reset_cm_value) => {
-            const old_path = this.state.notebook.path
-            if (old_path === new_path) {
-                return
-            }
-            if (!this.state.notebook.in_temp_dir) {
-                if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
-                    throw new Error("Declined by user")
+        this.submit_file_change = async (save_medium, new_path, reset_cm_value) => {
+            if(save_medium === 'local') {
+                const old_path = this.state.notebook.path
+                if (old_path === new_path) {
+                    return
+                }
+                if (!this.state.notebook.in_temp_dir) {
+                    if (!confirm("Are you sure? Will move from\n\n" + old_path + "\n\nto\n\n" + new_path)) {
+                        throw new Error("Declined by user")
+                    }
+                }
+
+                this.setState({ moving_file: true })
+
+                try {
+                    await update_notebook((notebook) => {
+                        notebook.in_temp_dir = false
+                        notebook.path = new_path
+                    })
+                    document.activeElement?.blur()
+                } catch (error) {
+                    alert("Failed to move file:\n\n" + error.message)
+                } finally {
+                    this.setState({ moving_file: false })
                 }
             }
-
-            this.setState({ moving_file: true })
-
-            try {
-                await update_notebook((notebook) => {
-                    notebook.in_temp_dir = false
-                    notebook.path = new_path
-                })
-                document.activeElement?.blur()
-            } catch (error) {
-                alert("Failed to move file:\n\n" + error.message)
-            } finally {
-                this.setState({ moving_file: false })
+            // Generic code to handle all other save interfaces
+            // See SaveMedium class for interface details
+            else if(Object.values(Mediums).map(m => m.name).includes(save_medium)) {
+                let sm = null;
+                if(!this.state.save_medium) {
+                    sm = new Mediums[save_medium](new_path)
+                    sm.save()
+                    this.setState({
+                        save_medium: sm
+                    })
+                }
+                // Should be treated as a file move operation
+                else {
+                    this.setState({ loading: true, tmp_save_path: new_path })
+                    sm = this.state.save_medium;
+                    this.state.save_medium.moveTo(new_path).then(() => {
+                        // Force a state update because we have mutated state_medium
+                        this.setState({ save_medium: this.state.save_medium, loading: false })
+                    })
+                }
+                document.activeElement.blur()
+                update_external_notebooks(this.state.notebook.path, sm, [new_path])
+            }
+            else {
+                alert(`Saving to ${save_medium} is not yet supported`)
             }
         }
 
@@ -741,10 +785,14 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
+        const title_name = this.state.save_medium ? this.state.save_medium.getPath() : this.state.notebook.shortpath
+        document.title = "🎈 " + title_name + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
+            if(this.state.save_medium) {
+                update_external_notebooks(this.state.notebook.path, this.state.save_medium, [this.state.save_medium.getPath()], old_state?.notebook?.path)
+            }
         }
 
         const any_code_differs = this.state.notebook.cell_order.some(
@@ -794,7 +842,8 @@ export class Editor extends Component {
                             </a>
                             <${FilePicker}
                                 client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                medium=${this.state.save_medium}
+                                value=${this.state.save_medium ? (this.state.loading ? (this.state.tmp_save_path || '') : this.state.save_medium.getPath()) : (this.state.notebook.in_temp_dir ? "" : this.state.notebook.path)}
                                 on_submit=${this.submit_file_change}
                                 suggest_new_file=${{
                                     base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
@@ -903,3 +952,4 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
     )
     localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
 }
+// if old_path is defined its entry will be deleted

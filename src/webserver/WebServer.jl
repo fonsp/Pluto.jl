@@ -208,13 +208,13 @@ function run(session::ServerSession)
                 session.binder_token = params["token"]
             end
 
-            request_body = IOBuffer(HTTP.payload(request))
-            if eof(request_body)
-                # no request body
-                response_body = HTTP.handle(pluto_router, request)
-            else
-                @warn "HTTP request contains a body, huh?" request_body
-            end
+            # request_body = IOBuffer(HTTP.payload(request))
+            # if eof(request_body)
+            #     # no request body
+            response_body = HTTP.handle(pluto_router, request)
+            # else
+            #     @warn "HTTP request contains a body, huh?" request_body
+            # end
     
             request.response::HTTP.Response = response_body
             request.response.request = request

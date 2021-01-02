@@ -209,6 +209,49 @@ function http_router_for(session::ServerSession)
         end
     end
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
+
+    serve_notebookupload = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            save_path = SessionActions.save_upload(request.body)
+
+            response = HTTP.Response(200, save_path)
+            push!(response.headers, "Content-Type" => "text/plain; charset=utf-8")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
+
+    serve_auth_github = with_authentication(
+        required=false
+    ) do request::HTTP.Request
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        github_token = query["ghtoken"]
+
+        response = HTTP.Response(200, """
+        <html>
+            <head>
+                <script>
+                    localStorage.setItem('ghtoken', '$(github_token)')
+                    var paRedirect = localStorage.getItem('post auth redirect')
+                    if(paRedirect) localStorage.removeItem('post auth redirect')
+                    window.close()
+                </script>
+            </head>
+            <body>
+                Loading...
+            </body>
+        </html>
+        """)
+        push!(response.headers, "Content-Type" => "text/html")
+        response
+    end
+    HTTP.@register(router, "GET", "/auth_github", serve_auth_github)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)

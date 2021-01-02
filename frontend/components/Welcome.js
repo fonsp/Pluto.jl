@@ -3,6 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
+import { get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -212,16 +213,41 @@ export class Welcome extends Component {
             )
         })
 
-        this.on_open_path = async (new_path) => {
-            const processed = await process_path_or_url(new_path)
-            if (processed.type === "path") {
-                document.body.classList.add("loading")
-                window.location.href = link_open_path(processed.path_or_url)
-            } else {
-                if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
-                    document.body.classList.add("loading")
-                    window.location.href = link_open_url(processed.path_or_url)
+        this.on_open_path = async (save_medium, new_path) => {
+            const set_loading = () => document.body.classList.add("loading")
+            if(save_medium === 'local') {
+                const processed = await process_path_or_url(new_path)
+                if (processed.type === "path") {
+                    set_loading()
+                    window.location.href = link_open_path(processed.path_or_url)
+                } else {
+                    if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
+                        set_loading()
+                        window.location.href = link_open_url(processed.path_or_url)
+                    }
                 }
+            }
+            else {
+                set_loading()
+                
+                // Since everything is handled client-side we have to upload the notebook from here
+                const medium = new Mediums[save_medium](new_path)
+                medium.load().then(notebookContent => {
+                    fetch("notebookupload", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "text/plain"
+                        },
+                        body: notebookContent
+                    }).then(res => res.text()).then(nb_path => {
+                        update_external_notebooks(nb_path, medium, [new_path])
+                        window.location.href = link_open_path(nb_path)
+                    })
+                }).catch(e => {
+                    // TODO: Implement an error catch for failure to load a save_medium notebook
+                    document.body.classList.remove("loading")
+                    console.log(e)
+                })
             }
         }
 
@@ -284,10 +310,10 @@ export class Welcome extends Component {
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
-            console.log(this.state.combined_notebooks)
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
+                const external_nb_data = get_external_notebook(nb.path)
                 return html`<li
                     key=${nb.path}
                     class=${cl({
@@ -299,7 +325,10 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
+                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>
+                        ${external_nb_data ? external_nb_data.args[0] : shortest_path(nb.path, all_paths)}
+                        ${external_nb_data ? html`<span class="save-medium-logo" style="background-image: url(${Mediums[external_nb_data.type].displayIcon});"/>` : null}
+                    </a>
                 </li>`
             })
         }
