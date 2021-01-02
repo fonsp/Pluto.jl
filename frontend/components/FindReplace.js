@@ -62,23 +62,32 @@ export const FindReplace = () => {
         nextMarker?.select()
     }
 
-    const replace_with = (word_to_replace_with = "") => {
-        marker?.replace_with(word_to_replace_with)
+    const replace_with = (word_to_replace_with) => {
+        marker?.replace_with(word_to_replace_with ?? "")
         // Now we need to recalculate the markers of this codemirror, starting at the new end position of marker.
         const offset = word_to_replace_with?.length - word.length
         textmarkers.forEach((tm) => {
             // If a marker is in the same cm and after the replaced marker, adjust offsets
-            if (tm.codemirror === marker.codemirror && (tm.from.line > marker.to.line || (tm.from.line === marker.to.line && tm.from.ch > marker.to.ch))) {
-                console.log("offsetting", tm, " by ", offset)
+            if (
+                tm.codemirror === marker.codemirror &&
+                tm !== marker &&
+                (tm.from.line > marker.to.line || (tm.from.line === marker.to.line && tm.from.ch >= marker.to.ch))
+            ) {
                 tm.offset(offset)
             }
         })
         // replace (even if nothing is selected) results in a find-next
         // recalculate all markers!
-        find_next()
+        if (!word_to_replace_with) {
+            const i = textmarkers.indexOf(marker)
+            const next_i = (i + 1) % textmarkers.length
+            const next = next_i !== i ? textmarkers[next_i] : null
+            set_textmarkers(textmarkers.filter((tm) => tm !== marker))
+            set_marker(next)
+        } else find_next()
     }
 
-    const replace_all = (with_word) => {
+    const replace_all = (with_word = "") => {
         clear_all_markers()
         get_codeMirrors().forEach(({ cell_id, cm }) => {
             const localCursors = []
@@ -90,13 +99,14 @@ export const FindReplace = () => {
         })
         create_textmarkers()
     }
+    const throttle_set_word = _.throttle((word) => set_word(word), 250)
 
     const handle_find_value_change = (event) => {
         // Enter
         if (event.keyCode === enter_key) {
             find_next()
         } else {
-            set_word(event.target.value)
+            throttle_set_word(event.target.value)
         }
     }
 
@@ -120,7 +130,7 @@ export const FindReplace = () => {
         const selections = cm?.getSelections?.()
         if (cm && selections?.length) {
             clear_all_markers()
-            set_word(selections[0])
+            input_find.current.value = selections[0]
             set_visible(true)
             create_textmarkers()
         } else {
@@ -145,7 +155,7 @@ export const FindReplace = () => {
     return html`<div id="findreplace">
         <aside id="findreplace_container" class=${visible ? "show_findreplace" : ""}>
             <div id="findform">
-                <input type="text" ref=${input_find} value=${word} onKeyUp=${handle_find_value_change} />
+                <input type="text" ref=${input_find} onKeyUp=${handle_find_value_change} />
                 <button onClick=${find_next}>Next</button>
             </div>
             <div id="replaceform">
