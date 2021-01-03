@@ -398,6 +398,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
             ein = new_ex.args[3]
             left = if Meta.isexpr(ein.args[1], :ref)
+                # assign to the symbol, and save LHS indices as fake RHS argument
+                push!(new_ex.args, Expr(:ref, :Float64, ein.args[1].args[2:end]...))
                 ein.args[1].args[1]
             else
                 ein.args[1]  # scalar case `c := A[i,j]`

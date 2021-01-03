@@ -303,8 +303,9 @@ using Test
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
 
-        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [:x, :y], [:a], [[Symbol("@einsum")], [:*]], [])
+        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [:x, :y, :Float64], [:a], [[Symbol("@einsum")], [:*]], [])
         @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [:x, :k, :z], [:a], [[Symbol("@tullio")], [:f], [:*], [:+]], [])
+        @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [:x, :y, :k, :Pack, :Float64], [:a], [[:Pack, Symbol("@asdf")], [:/], [:log]], [])
 
         @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
