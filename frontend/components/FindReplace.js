@@ -56,6 +56,10 @@ export const FindReplace = () => {
         const { length } = textmarkers
         const markerIndex = textmarkers.indexOf(marker)
         const nextMarker = textmarkers[(markerIndex + 1) % length]
+        if (nextMarker) {
+            const { cm, from, to } = nextMarker
+            cm?.scrollIntoView({ from, to })
+        }
         set_previous(marker)
         set_marker(nextMarker)
         marker?.deselect()
@@ -117,7 +121,6 @@ export const FindReplace = () => {
     }
     const handler = (ev) => {
         const { path, ctrlKey, key } = ev
-        console.log(key)
         if (key === "Escape") {
             clear_all_markers()
             set_visible(false)
@@ -131,11 +134,13 @@ export const FindReplace = () => {
         if (cm && selections?.length) {
             clear_all_markers()
             input_find.current.value = selections[0]
+            set_word(selections[0])
             set_visible(true)
             create_textmarkers()
         } else {
+            !visible ? create_textmarkers() : clear_all_markers()
             set_visible(!visible)
-            visible ? create_textmarkers() : clear_all_markers()
+            setTimeout(create_textmarkers, 500)
         }
     }
     useEffect(() => {

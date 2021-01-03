@@ -845,12 +845,9 @@ pluto-input .CodeMirror-empty {
     color: rgba(0, 0, 0, 0.15);
 }
 
-pluto-cell.code_folded > pluto-input {
+/* This is documentation  */
+pluto-cell:not(.show_input):not(.errored):not(.found_result):not(.code_differs).code_folded > pluto-input {
     display: none;
-}
-
-pluto-cell.code_differs > pluto-input {
-    display: unset;
 }
 
 pluto-cell.code_differs > pluto-input > .CodeMirror {
@@ -964,7 +961,7 @@ pluto-trafficlight::after {
 
 /* in ascending order of severity: */
 
-pluto-cell.code_folded > pluto-trafficlight {
+pluto-cell:not(.show_input) > pluto-trafficlight {
     background: none;
 }
 

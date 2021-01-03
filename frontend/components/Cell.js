@@ -33,8 +33,8 @@ export const Cell = ({
     selected_cells,
     notebook_id,
 }) => {
-    let pluto_actions = useContext(PlutoContext)
-
+    const pluto_actions = useContext(PlutoContext)
+    const [found_result, set_found_result] = useState(false)
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
@@ -63,7 +63,7 @@ export const Cell = ({
     const class_code_folded = code_folded && cm_forced_focus == null
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
-    let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
+    let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded || found_result)
 
     return html`
         <pluto-cell
@@ -80,6 +80,8 @@ export const Cell = ({
                 code_folded: class_code_folded,
                 drop_target: drag_active,
                 saving_file: saving_file,
+                found_result: found_result,
+                show_input: show_input,
             })}
             id=${cell_id}
         >
@@ -110,8 +112,7 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} cell_id=${cell_id} />
-            ${show_input &&
-            html`<${CellInput}
+            <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 disable_input=${disable_input}
@@ -138,9 +139,10 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                set_found_result=${set_found_result}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-            />`}
+            />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {

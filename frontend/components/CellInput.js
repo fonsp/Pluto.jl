@@ -51,6 +51,7 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
+    set_found_result,
     cell_id,
     notebook_id,
 }) => {
@@ -436,6 +437,14 @@ export const CellInput = ({
                     set_cm_forced_focus(null)
                 }
             }, 100)
+        })
+
+        const debounced_set_found_result = _.debounce(set_found_result, 10)
+        cm.on("custom_event_set_visible", (bool) => {
+            // Debounce because it will run twice, once falsy one truthy.
+            // No need to run twice actually
+            debounced_set_found_result(bool)
+            setTimeout(cm.refresh, 200) // On next run, hopefully after the effect
         })
 
         if (focus_after_creation) {

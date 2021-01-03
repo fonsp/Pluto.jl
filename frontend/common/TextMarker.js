@@ -73,6 +73,7 @@ export default class TextMarker {
      */
     clear_highlighting() {
         this.highlighter.clear()
+        window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", false)
     }
 
     /**
@@ -80,5 +81,6 @@ export default class TextMarker {
      */
     highlight() {
         this.highlighter = this.codemirror.markText(this.from, this.to, { css: "color: red; font-weight: bold" })
+        window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", true)
     }
 }
