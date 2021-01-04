@@ -147,6 +147,10 @@ export class Editor extends Component {
         super()
 
         const url_params = new URLSearchParams(window.location.search)
+        const launch_params = {
+            statefile: url_params.get("statefile") ?? window.pluto_statefile,
+            notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+        }
 
         this.state = {
             notebook: /** @type {NotebookData} */ ({
@@ -162,8 +166,8 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
 
-            static_preview: url_params.has("statefile"),
-            offer_binder: !url_params.has("id"),
+            static_preview: launch_params.statefile != null,
+            offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
             connected: false,
             initializing: true,
@@ -556,7 +560,7 @@ export class Editor extends Component {
 
         if (this.state.static_preview) {
             ;(async () => {
-                const r = await fetch(url_params.get("statefile"))
+                const r = await fetch(launch_params.statefile)
                 const buffer = await r.arrayBuffer()
                 this.setState({
                     notebook: unpack(new Uint8Array(buffer)),
@@ -599,7 +603,7 @@ export class Editor extends Component {
             })
 
             const open_url = new URL("open", binder_session_url)
-            open_url.searchParams.set("url", url_params.get("notebookfile"))
+            open_url.searchParams.set("url", launch_params.notebookfile)
             // await timeout(2000)
             console.log("open_url: ", String(open_url))
             const open_reponse = await fetch(with_token(String(open_url)), {
