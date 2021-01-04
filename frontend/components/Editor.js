@@ -21,6 +21,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
+import { request_binder } from "../common/Binder.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -128,19 +129,6 @@ const BinderPhase = {
 
     ready: 1.0,
 }
-
-import { request_binder } from "../common/Binder.js"
-// fake placeholder
-// const request_binder = (binder_url) => {
-//     return new Promise((resolve) => {
-//         setTimeout(() => {
-//             resolve({
-//                 binder_session_url: "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-ubl5bnuf/proxy/1235/",
-//                 binder_session_token: "sTOcyIaiRzWN6ueJGNHTiQ",
-//             })
-//         }, 5000)
-//     })
-// }
 
 export class Editor extends Component {
     constructor() {
