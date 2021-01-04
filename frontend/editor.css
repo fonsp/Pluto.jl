@@ -1135,6 +1135,37 @@ pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+pluto-cell.drop_target {
+    position: relative;
+}
+
+pluto-cell.drop_target pluto-input::after {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 100%;
+    color: black;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    background-color: rgba(255, 255, 255, 0.75);
+    content: "+ Drop file here";
+}
+
+pluto-cell.drop_target.saving_file pluto-input::after {
+    content: "The 💾 File you dropped is being saved... ";
+    color: white;
+    background-color: rgba(3, 92, 151, 0.75);
+}
+
+pluto-cell.drop_target.drop_invalid pluto-input::after {
+    background-color: #ece5e5bf;
+    color: rgba(0, 0, 0, 0.85);
+    content: "Try dropping your file in an empty cell!";
+}
+
 /* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {

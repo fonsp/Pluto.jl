@@ -50,17 +50,20 @@ export class DropRuler extends Component {
             }
         })
         document.addEventListener("dragenter", (e) => {
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (!this.state.drag_target) this.precompute_cell_edges()
             this.lastenter = e.target
             this.setState({ drag_target: true })
         })
         document.addEventListener("dragleave", (e) => {
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (e.target === this.lastenter) {
                 this.setState({ drag_target: false })
             }
         })
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             this.mouse_position = e
 
             this.setState({
@@ -78,6 +81,10 @@ export class DropRuler extends Component {
         })
         document.addEventListener("drop", (e) => {
             // Guaranteed to fire before the 'dragend' event
+            // Ignore files
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") {
+                return
+            }
             this.setState({
                 drag_target: false,
             })
