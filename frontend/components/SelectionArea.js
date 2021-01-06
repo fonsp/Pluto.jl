@@ -1,4 +1,4 @@
-import { html, Component } from "../imports/Preact.js"
+import { html, Component, useState, useEffect, useRef } from "../imports/Preact.js"
 
 import { has_ctrl_or_cmd_pressed } from "../common/KeyboardShortcuts.js"
 
@@ -35,37 +35,32 @@ const in_request_animation_frame = (fn) => {
     }
 }
 
-export class SelectionArea extends Component {
-    constructor() {
-        super()
-        this.state = {
-            selection_start: null,
-            selection_ends: null,
-        }
-    }
+export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
+    const mouse_position_ref = useRef()
+    const is_selecting_ref = useRef(false)
 
-    componentDidMount() {
-        /* SELECTIONS */
-        document.addEventListener("mousedown", (e) => {
+    const [selection_start, set_selection_start] = useState(null)
+    const [selection_end, set_selection_end] = useState(null)
+
+    useEffect(() => {
+        const onmousedown = (e) => {
             // @ts-ignore
             const t = e.target.tagName
             // TODO: also allow starting the selection in one codemirror and stretching it to another cell
             if (e.button === 0 && (t === "BODY" || t === "MAIN" || t === "PLUTO-NOTEBOOK" || t === "PREAMBLE")) {
-                this.props.on_selection([])
-                this.setState({
-                    selection_start: { x: e.pageX, y: e.pageY },
-                    selection_end: { x: e.pageX, y: e.pageY },
-                })
+                on_selection([])
+                set_selection_start({ x: e.pageX, y: e.pageY })
+                set_selection_end({ x: e.pageX, y: e.pageY })
+                is_selecting_ref.current = true
             }
-        })
+        }
 
-        document.addEventListener("mouseup", (e) => {
-            if (this.state.selection_start != null) {
-                this.setState({
-                    selection_start: null,
-                    selection_end: null,
-                })
-                this.props.set_scroller({ up: false, down: false })
+        const onmouseup = (e) => {
+            if (is_selecting_ref.current) {
+                set_selection_start(null)
+                set_selection_end(null)
+                set_scroller({ up: false, down: false })
+                is_selecting_ref.current = false
             } else {
                 // if you didn't click on a UI element...
                 if (
@@ -76,24 +71,23 @@ export class SelectionArea extends Component {
                     })
                 ) {
                     // ...clear the selection
-                    this.props.on_selection([])
+                    on_selection([])
                 }
             }
-        })
+        }
 
         let update_selection = in_request_animation_frame(({ pageX, pageY }) => {
-            let selection_start = this.state.selection_start
-            if (selection_start == null) return
+            if (!is_selecting_ref.current) return
 
-            let selection_end = { x: pageX, y: pageY }
+            let new_selection_end = { x: pageX, y: pageY }
 
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
 
             let A = {
-                start_left: Math.min(selection_start.x, selection_end.x),
-                start_top: Math.min(selection_start.y, selection_end.y),
-                end_left: Math.max(selection_start.x, selection_end.x),
-                end_top: Math.max(selection_start.y, selection_end.y),
+                start_left: Math.min(selection_start.x, new_selection_end.x),
+                start_top: Math.min(selection_start.y, new_selection_end.y),
+                end_left: Math.max(selection_start.x, new_selection_end.x),
+                end_top: Math.max(selection_start.y, new_selection_end.y),
             }
             let in_selection = cell_nodes.filter((cell) => {
                 let cell_position = get_element_position_in_document(cell)
@@ -108,82 +102,86 @@ export class SelectionArea extends Component {
                 return A.start_left < B.end_left && A.end_left > B.start_left && A.start_top < B.end_top && A.end_top > B.start_top
             })
 
-            this.props.set_scroller({ up: selection_start.y > selection_end.y, down: selection_start.y < selection_end.y })
-            this.props.on_selection(in_selection.map((x) => x.id))
-            this.setState({
-                selection_end: selection_end,
-            })
+            set_scroller({ up: selection_start.y > new_selection_end.y, down: selection_start.y < new_selection_end.y })
+            on_selection(in_selection.map((x) => x.id))
+            set_selection_end(new_selection_end)
         })
 
-        document.addEventListener(
-            "scroll",
-            // @ts-ignore
-            (e) => {
-                if (this.state.selection_start) {
-                    update_selection({ pageX: this.mouse_position.clientX, pageY: this.mouse_position.clientY + document.documentElement.scrollTop })
-                }
-            },
-            { passive: true }
-        )
+        const onscroll = (e) => {
+            if (is_selecting_ref.current) {
+                update_selection({ pageX: mouse_position_ref.current.clientX, pageY: mouse_position_ref.current.clientY + document.documentElement.scrollTop })
+            }
+        }
 
-        document.addEventListener("mousemove", (e) => {
-            this.mouse_position = e
-            if (this.state.selection_start) {
+        const onmousemove = (e) => {
+            mouse_position_ref.current = e
+            if (is_selecting_ref.current) {
                 update_selection({ pageX: e.pageX, pageY: e.pageY })
                 e.preventDefault()
             }
-        })
+        }
 
-        document.addEventListener("selectstart", (e) => {
-            if (this.state.selection_start) {
+        const onselectstart = (e) => {
+            if (is_selecting_ref.current) {
                 e.preventDefault()
             }
-        })
+        }
 
         // Ctrl+A to select all cells
-        document.addEventListener("keydown", (e) => {
+        const onkeydown = (e) => {
             if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
                 if (document.activeElement === document.body && window.getSelection().isCollapsed) {
-                    this.props.on_selection(this.props.cell_order)
+                    on_selection(cell_order)
                     e.preventDefault()
                 }
             }
-        })
-    }
-
-    render() {
-        let { selection_start, selection_end } = this.state
-
-        if (selection_start == null) {
-            return null
         }
 
-        // let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
-        // let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
-        // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
-        // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
+        document.addEventListener("mousedown", onmousedown)
+        document.addEventListener("mouseup", onmouseup)
+        document.addEventListener("mousemove", onmousemove)
+        document.addEventListener("selectstart", onselectstart)
+        document.addEventListener("keydown", onkeydown)
+        document.addEventListener("scroll", onscroll, { passive: true })
+        return () => {
+            document.removeEventListener("mousedown", onmousedown)
+            document.removeEventListener("mouseup", onmouseup)
+            document.removeEventListener("mousemove", onmousemove)
+            document.removeEventListener("selectstart", onselectstart)
+            document.removeEventListener("keydown", onkeydown)
+            document.removeEventListener("scroll", onscroll, { passive: true })
+        }
+    }, [selection_start])
 
-        return html`
-            <selectarea
-                style=${{
-                    position: "absolute",
-                    background: "rgba(40, 78, 189, 0.24)",
-                    zIndex: 10,
-                    top: Math.min(selection_start.y, selection_end.y),
-                    left: Math.min(selection_start.x, selection_end.x),
-                    width: Math.abs(selection_start.x - selection_end.x),
-                    height: Math.abs(selection_start.y - selection_end.y),
-
-                    // Transform could be faster
-                    // top: 0,
-                    // left: 0,
-                    // width: 1,
-                    // height: 1,
-                    // transformOrigin: "top left",
-                    // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
-                }}
-            />
-        `
+    if (selection_start == null) {
+        return null
     }
+
+    // let translateY = `translateY(${Math.min(selection_start.y, selection_end.y)}px)`
+    // let translateX = `translateX(${Math.min(selection_start.x, selection_end.x)}px)`
+    // let scaleX = `scaleX(${Math.abs(selection_start.x - selection_end.x)})`
+    // let scaleY = `scaleY(${Math.abs(selection_start.y - selection_end.y)})`
+
+    return html`
+        <selectarea
+            style=${{
+                position: "absolute",
+                background: "rgba(40, 78, 189, 0.24)",
+                zIndex: 10,
+                top: Math.min(selection_start.y, selection_end.y),
+                left: Math.min(selection_start.x, selection_end.x),
+                width: Math.abs(selection_start.x - selection_end.x),
+                height: Math.abs(selection_start.y - selection_end.y),
+
+                // Transform could be faster
+                // top: 0,
+                // left: 0,
+                // width: 1,
+                // height: 1,
+                // transformOrigin: "top left",
+                // transform: `${translateX} ${translateY} ${scaleX} ${scaleY}`,
+            }}
+        />
+    `
 }
