@@ -451,7 +451,6 @@ export class Editor extends Component {
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.body.classList.toggle("no_disable_ui", !this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             this.actions = this.state.disable_ui ? {} : real_actions //heyo
         }
@@ -512,7 +511,7 @@ export class Editor extends Component {
 
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
 
-            this.setState({ initializing: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
+            this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
