@@ -141,7 +141,8 @@ export class Editor extends Component {
         const launch_params = {
             statefile: url_params.get("statefile") ?? window.pluto_statefile,
             notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-            hideui: !!(url_params.get("hideui") ?? window.pluto_hideui),
+            disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
         }
 
         this.state = {
@@ -158,7 +159,7 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
 
-            disable_ui: launch_params.hideui,
+            disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
@@ -565,8 +566,6 @@ export class Editor extends Component {
             this.connect()
         }
 
-        const timeout = (t) => new Promise((r) => setTimeout(r, t))
-
         this.start_binder = async () => {
             fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`)
             this.setState({
@@ -574,7 +573,7 @@ export class Editor extends Component {
                 binder_phase: BinderPhase.requesting,
                 disable_ui: false,
             })
-            const { binder_session_url, binder_session_token } = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
+            const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url)
 
             // you can hard-code a running session:
             // const binder_session_url = "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-ftygd6yr/pluto/"
@@ -599,7 +598,7 @@ export class Editor extends Component {
 
             const open_url = new URL("open", binder_session_url)
             open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
-            // await timeout(2000)
+
             console.log("open_url: ", String(open_url))
             const open_reponse = await fetch(with_token(String(open_url)), {
                 method: "POST",
@@ -618,9 +617,7 @@ export class Editor extends Component {
                     },
                     binder_phase: BinderPhase.notebook_running,
                 }),
-                async () => {
-                    // await timeout(2000)
-
+                () => {
                     this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
                 }
             )
