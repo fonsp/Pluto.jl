@@ -65,7 +65,7 @@ export class SelectionArea extends Component {
                     selection_start: null,
                     selection_end: null,
                 })
-                this.props.actions.set_scroller({ up: false, down: false })
+                this.props.set_scroller({ up: false, down: false })
             } else {
                 // if you didn't click on a UI element...
                 if (
@@ -108,7 +108,7 @@ export class SelectionArea extends Component {
                 return A.start_left < B.end_left && A.end_left > B.start_left && A.start_top < B.end_top && A.end_top > B.start_top
             })
 
-            this.props.actions.set_scroller({ up: selection_start.y > selection_end.y, down: selection_start.y < selection_end.y })
+            this.props.set_scroller({ up: selection_start.y > selection_end.y, down: selection_start.y < selection_end.y })
             this.props.on_selection(in_selection.map((x) => x.id))
             this.setState({
                 selection_end: selection_end,

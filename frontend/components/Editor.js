@@ -185,16 +185,6 @@ export class Editor extends Component {
                     )
                 }
             },
-            set_scroller: (enabled) => {
-                this.setState({ scroller: enabled })
-            },
-            // Not really an action, but sure - DRAL
-            serialize_selected: (cell_id) => {
-                const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
-                if (cells_to_serialize.length) {
-                    return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
-                }
-            },
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
                 /** @type {Array<CellInputData>} */
@@ -627,6 +617,13 @@ export class Editor extends Component {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
         }
 
+        this.serialize_selected = (cell_id = null) => {
+            const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
+            if (cells_to_serialize.length) {
+                return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
+            }
+        }
+
         document.addEventListener("keydown", (e) => {
             // if (e.defaultPrevented) {
             //     return
@@ -679,7 +676,7 @@ export class Editor extends Component {
 
         document.addEventListener("copy", (e) => {
             if (!in_textarea_or_input()) {
-                const serialized = this.actions.serialize_selected()
+                const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
                         alert(`Error copying cells: ${e}`)
@@ -693,7 +690,7 @@ export class Editor extends Component {
         // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
         // document.addEventListener("cut", (e) => {
         //     if (!in_textarea_or_input()) {
-        //         const serialized = this.actions.serialize_selected()
+        //         const serialized = this.serialize_selected()
         //         if (serialized) {
         //             navigator.clipboard
         //                 .writeText(serialized)
@@ -832,12 +829,22 @@ export class Editor extends Component {
                             last_created_cell=${this.state.last_created_cell}
                         />
 
-                        <${DropRuler} actions=${this.actions} selected_cells=${this.state.selected_cells} />
+                        <${DropRuler} 
+                            actions=${this.actions}
+                            selected_cells=${this.state.selected_cells} 
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }} 
+                            serialize_selected=${this.serialize_selected}
+                        />
 
                         <${SelectionArea}
                             actions=${this.actions}
                             cell_order=${this.state.notebook.cell_order}
                             selected_cell_ids=${this.state.selected_cell_ids}
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }}
                             on_selection=${(selected_cell_ids) => {
                                 // @ts-ignore
                                 if (
@@ -892,7 +899,6 @@ export class Editor extends Component {
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    console.log(also_delete)
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = storedString != null ? JSON.parse(storedString) : []
     const oldpaths = storedList
