@@ -130,6 +130,9 @@ const BinderPhase = {
     ready: 1.0,
 }
 
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
+const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+
 export class Editor extends Component {
     constructor() {
         super()
@@ -929,7 +932,7 @@ export class Editor extends Component {
 
                         <nav id="at_the_top">
                             <a href="./">
-                                <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
+                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             <${FilePicker}
                                 client=${this.client}
