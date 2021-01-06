@@ -573,6 +573,7 @@ export class Editor extends Component {
             this.setState({
                 loading: true,
                 binder_phase: BinderPhase.requesting,
+                disable_ui: false,
             })
             const { binder_session_url, binder_session_token } = await request_binder("https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1")
 
