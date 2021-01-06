@@ -16,7 +16,7 @@ const whiteList = ["www.gstatic.com", "fonts.gstatic.com", "fonts.googleapis.com
 
 function shouldCache(request) {
     const url = new URL(request.url)
-    return whiteList.includes(url.host)
+    return whiteList.includes(url.host) && !url.search.includes("skip_sw")
 }
 
 self.addEventListener("fetch", function (event) {

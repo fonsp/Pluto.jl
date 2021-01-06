@@ -558,6 +558,7 @@ export class Editor extends Component {
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
             })()
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`)
         } else {
             this.connect()
         }
@@ -565,6 +566,7 @@ export class Editor extends Component {
         const timeout = (t) => new Promise((r) => setTimeout(r, t))
 
         this.start_binder = async () => {
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`)
             this.setState({
                 loading: true,
                 binder_phase: BinderPhase.requesting,
