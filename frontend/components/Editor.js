@@ -138,6 +138,7 @@ export class Editor extends Component {
         const launch_params = {
             statefile: url_params.get("statefile") ?? window.pluto_statefile,
             notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+            hideui: !!(url_params.get("hideui") ?? window.pluto_hideui),
         }
 
         this.state = {
@@ -154,6 +155,7 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
 
+            disable_ui: launch_params.hideui,
             static_preview: launch_params.statefile != null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
@@ -441,6 +443,14 @@ export class Editor extends Component {
                 )
             },
         }
+
+        const real_actions = this.actions
+
+        this.on_disable_ui = () => {
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            this.actions = this.state.disable_ui ? {} : real_actions //heyo
+        }
+        this.on_disable_ui()
 
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
@@ -880,6 +890,10 @@ export class Editor extends Component {
             console.info(`Binder: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
+        if (old_state.disable_ui !== this.state.disable_ui) {
+            this.on_disable_ui()
+        }
+
         window.notebook = this.state.notebook
         window.pack = pack
         window.unpack = unpack
@@ -957,7 +971,7 @@ export class Editor extends Component {
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected /* && this.state.binder_phase == null*/}
+                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                         />
 
@@ -966,7 +980,7 @@ export class Editor extends Component {
                             selected_cells=${this.state.selected_cells} 
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
-                            }} 
+                            }}
                             serialize_selected=${this.serialize_selected}
                         />
 
