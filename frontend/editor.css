@@ -58,13 +58,13 @@ main {
 /* min-width: 731px+ */
 
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-right: 500px;
         align-self: flex-end;
     }
@@ -510,7 +510,7 @@ nav#at_the_top img#logo-small {
     display: none;
 }
 
-@media screen and (max-width: 680px) {
+@media (max-width: 680px) {
     nav#at_the_top img#logo-small {
         display: unset;
     }
@@ -597,7 +597,7 @@ li.dir.CodeMirror-hint:before {
     color: black;
 }
 
-@media screen and (any-pointer: fine) {
+@media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .CodeMirror {
         border: 2px solid transparent;
         border-right: none;
@@ -1063,19 +1063,19 @@ pluto-trafficlight::after {
 }
 
 /* in ascending order of severity: */
-
-pluto-cell.code_folded > pluto-trafficlight {
+/* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
+body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
     background: none;
 }
 
 @media screen and (any-pointer: fine) {
-    pluto-cell:hover > pluto-trafficlight {
+    body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
         transition: background 0.05s ease-in;
     }
 }
 
-pluto-cell:focus-within > pluto-trafficlight {
+body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
@@ -1083,39 +1083,39 @@ pluto-cell:focus-within > pluto-trafficlight {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
-pluto-cell.selected > pluto-trafficlight {
+body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
     background-clip: content-box;
 }
 
-pluto-cell.code_differs > pluto-trafficlight {
+body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
     background-clip: content-box;
 }
 
-pluto-cell.errored > pluto-trafficlight {
+body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
     background-clip: content-box;
 }
 
-pluto-cell.queued > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
     animation: 1s linear 0s infinite running scrollbackground;
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.running > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
     animation: 1s linear 0s infinite running scrollbackground;
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.queued.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         hsla(0, 70%, 80%, 0.7),
@@ -1128,7 +1128,7 @@ pluto-cell.queued.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.running.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
     animation: 1s linear 0s infinite running scrollbackground;

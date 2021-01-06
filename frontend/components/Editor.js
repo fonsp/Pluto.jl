@@ -447,6 +447,8 @@ export class Editor extends Component {
         const real_actions = this.actions
 
         this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.body.classList.toggle("no_disable_ui", !this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             this.actions = this.state.disable_ui ? {} : real_actions //heyo
         }
@@ -842,6 +844,11 @@ export class Editor extends Component {
                 // and don't prevent the unload
             }
         })
+
+        window.pack = pack
+        window.unpack = unpack
+        window.editor_state = this.state
+        window.set_editor_state = this.setState
     }
 
     componentDidUpdate(old_props, old_state) {
@@ -895,8 +902,6 @@ export class Editor extends Component {
         }
 
         window.notebook = this.state.notebook
-        window.pack = pack
-        window.unpack = unpack
     }
 
     render() {
@@ -936,7 +941,6 @@ export class Editor extends Component {
                                 button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                             />
                             <button class="toggle_export" title="Export..." onClick=${() => {
-                                console.log(export_menu_open)
                                 this.setState({ export_menu_open: !export_menu_open })
                             }}>
                                 <span></span>
@@ -974,7 +978,6 @@ export class Editor extends Component {
                             disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                         />
-
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells} 
@@ -983,26 +986,28 @@ export class Editor extends Component {
                             }}
                             serialize_selected=${this.serialize_selected}
                         />
-
-                        <${SelectionArea}
-                            actions=${this.actions}
-                            cell_order=${this.state.notebook.cell_order}
-                            selected_cell_ids=${this.state.selected_cell_ids}
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }}
-                            on_selection=${(selected_cell_ids) => {
-                                // @ts-ignore
-                                if (
-                                    selected_cell_ids.length !== this.state.selected_cells ||
-                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                ) {
-                                    this.setState({
-                                        selected_cells: selected_cell_ids,
-                                    })
-                                }
-                            }}
-                        />
+                        ${
+                            this.state.disable_ui ||
+                            html`<${SelectionArea}
+                                actions=${this.actions}
+                                cell_order=${this.state.notebook.cell_order}
+                                selected_cell_ids=${this.state.selected_cell_ids}
+                                set_scroller=${(enabled) => {
+                                    this.setState({ scroller: enabled })
+                                }}
+                                on_selection=${(selected_cell_ids) => {
+                                    // @ts-ignore
+                                    if (
+                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                    ) {
+                                        this.setState({
+                                            selected_cells: selected_cell_ids,
+                                        })
+                                    }
+                                }}
+                            />`
+                        }
                     </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
