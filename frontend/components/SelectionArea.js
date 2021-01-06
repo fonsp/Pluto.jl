@@ -77,7 +77,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
         }
 
         let update_selection = in_request_animation_frame(({ pageX, pageY }) => {
-            if (!is_selecting_ref.current) return
+            if (!is_selecting_ref.current || selection_start == null) return
 
             let new_selection_end = { x: pageX, y: pageY }
 
