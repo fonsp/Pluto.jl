@@ -1380,7 +1380,7 @@ dropruler {
     z-index: 5;
 }
 
-@media screen and (min-width: 500px) {
+@media (min-width: 500px) {
     #helpbox-wrapper {
         display: block;
     }
