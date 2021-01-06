@@ -598,7 +598,7 @@ export class Editor extends Component {
             })
 
             const open_url = new URL("open", binder_session_url)
-            open_url.searchParams.set("url", launch_params.notebookfile)
+            open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
             // await timeout(2000)
             console.log("open_url: ", String(open_url))
             const open_reponse = await fetch(with_token(String(open_url)), {
