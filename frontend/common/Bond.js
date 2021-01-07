@@ -15,15 +15,21 @@ const set_input = (input, value) => {
     switch (input.type) {
         case "range":
         case "number": {
-            input.valueAsNumber = value
+            if (input.valueAsNumber !== value) {
+                input.valueAsNumber = value
+            }
             return
         }
         case "date": {
-            input.valueAsDate = value
+            if (input.valueAsDate == null || Number(input.valueAsDate) !== Number(value)) {
+                input.valueAsDate = value
+            }
             return
         }
         case "checkbox": {
-            input.checked = value
+            if (input.checked !== value) {
+                input.checked = value
+            }
             return
         }
         case "file": {
@@ -38,7 +44,9 @@ const set_input = (input, value) => {
             return
         }
         default: {
-            input.value = value
+            if (input.value !== value) {
+                input.value = value
+            }
             return
         }
     }
