@@ -1,7 +1,6 @@
 import { html } from "../imports/Preact.js"
 
 import { offline_html } from "../common/OfflineHTMLExport.js"
-import { pack } from "../common/MsgPack.js"
 
 const Circle = ({ fill }) => html`
     <svg
@@ -35,32 +34,6 @@ export const ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
                 <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
                     <header><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
-                </a>
-                <a
-                    href="#"
-                    class="export_card"
-                    onClick=${(e) => {
-                        const state_dump = pack(notebook)
-
-                        const fake_anchor = document.createElement("a")
-                        fake_anchor.setAttribute("download", `${notebook.shortpath}.plutostate`)
-                        fake_anchor.setAttribute(
-                            "href",
-                            URL.createObjectURL(
-                                new Blob([state_dump], {
-                                    type: "application/msgpack",
-                                })
-                            )
-                        )
-                        document.body.appendChild(fake_anchor)
-                        setTimeout(() => {
-                            fake_anchor.click()
-                            document.body.removeChild(fake_anchor)
-                        }, 100)
-                    }}
-                >
-                    <header><${Triangle} fill="#a270ba" /> State dump</header>
-                    <section>For the binder static thing, temporary.</section>
                 </a>
                 <a
                     href="#"
