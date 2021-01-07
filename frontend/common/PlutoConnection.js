@@ -187,12 +187,35 @@ export const ws_address_from_base = (base_url) => {
 const default_ws_address = () => ws_address_from_base(window.location.href)
 
 /**
+ * @typedef PlutoConnection
+ * @type {{
+ *  session_options: Object,
+ *  send: () => void,
+ *  kill: () => void,
+ *  version_info: {
+ *      julia: string,
+ *      pluto: string,
+ *  },
+ * }}
+ */
+
+/**
+ * @typedef PlutoMessage
+ * @type {any}
+ */
+
+/**
  * Open a connection with Pluto, that supports a question-response mechanism. The method is asynchonous, and resolves to a @see PlutoConnection when the connection is established.
  *
  * The server can also send messages to all clients, without being requested by them. These end up in the @see on_unrequested_update callback.
  *
- * @typedef {{session_options: Object, send: Function, kill: Function, version_info: {julia: String, pluto: String}}} PlutoConnection
- * @param {{ws_address?: String, on_unrequested_update: Function, on_reconnect: Function, on_connection_status: Function, connect_metadata?: Object}} callbacks
+ * @param {{
+ *  on_unrequested_update: (message: PlutoMessage, by_me: boolean) => void,
+ *  on_reconnect: () => boolean,
+ *  on_connection_status: (connection_status: boolean) => void,
+ *  connect_metadata?: Object,
+ *  ws_address?: String,
+ * }} options
  * @return {Promise<PlutoConnection>}
  */
 export const create_pluto_connection = async ({
@@ -341,8 +364,8 @@ export const create_pluto_connection = async ({
     return client
 }
 
-export const fetch_latest_pluto_version = () => {
-    return fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
+export const fetch_latest_pluto_version = async () => {
+    let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
         cache: "no-cache",
@@ -352,10 +375,6 @@ export const fetch_latest_pluto_version = () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-        .then((response) => {
-            return response.json()
-        })
-        .then((response) => {
-            return response[0].tag_name
-        })
+    let json = await response.json()
+    return json[0].tag_name
 }

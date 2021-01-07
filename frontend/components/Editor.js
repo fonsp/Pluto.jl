@@ -252,14 +252,22 @@ export class Editor extends Component {
                     ]
                 })
             },
-            change_remote_cell: async (cell_id, new_code, create_promise = false) => {
-                this.counter_statistics.numEvals++
-                this.actions.set_and_run_multiple([cell_id])
-            },
-            wrap_remote_cell: (cell_id, block = "begin") => {
+            wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
-                this.actions.change_remote_cell(cell_id, new_code)
+                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
+                await new Promise((resolve) => {
+                    this.setState(
+                        immer((state) => {
+                            state.cell_inputs_local[cell_id] = {
+                                ...cell,
+                                ...state.cell_inputs_local[cell_id],
+                                code: new_code,
+                            }
+                        }),
+                        resolve
+                    )
+                })
+                await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
@@ -387,6 +395,7 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    this.counter_statistics.numEvals++
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -709,6 +718,7 @@ export class Editor extends Component {
                     notebook.in_temp_dir = false
                     notebook.path = new_path
                 })
+                // @ts-ignore
                 document.activeElement?.blur()
             } catch (error) {
                 alert("Failed to move file:\n\n" + error.message)
