@@ -298,8 +298,6 @@ function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
 	end
 end
 
-
-
 function trigger_resolver(anything, path, values=[])
 	(value=anything, matches=values, rest=path)
 end
@@ -354,7 +352,7 @@ function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, n
     end
         
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        push!(to_delete_vars, bound_sym) # also delete the bound symbol
+        to_delete_vars = Set([to_delete_vars..., bound_sym]) # also delete the bound symbol
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
         WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
     end
