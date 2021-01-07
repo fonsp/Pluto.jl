@@ -261,6 +261,18 @@ end
 assign_to_kw(e::Expr) = e.head == :(=) ? Expr(:kw, e.args...) : e
 assign_to_kw(x::Any) = x
 
+"Turn `A[i] * B[j,K[l+m]]` into `A[0] * B[0,K[0+0]]` to hide loop indices"
+function strip_indexing(x, inside::Bool=false)
+    if Meta.isexpr(x, :ref)
+        Expr(:ref, strip_indexing(x.args[1]), strip_indexing.(x.args[2:end], true)...)
+    elseif Meta.isexpr(x, :call)
+        Expr(x.head, x.args[1], strip_indexing.(x.args[2:end], inside)...)
+    elseif x isa Symbol && inside
+        0
+    else
+        x
+    end
+end
 
 ###
 # MAIN RECURSIVE FUNCTION
@@ -376,9 +388,24 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         end
 
         new_ex = if length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
         else
             Expr(:call, ex.args...)
+        end
+
+	   if length(new_ex.args) >= 3 && Meta.isexpr(new_ex.args[3], :(:=))
+            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
+            ein = new_ex.args[3]
+            left = if Meta.isexpr(ein.args[1], :ref)
+                # assign to the symbol, and save LHS indices as fake RHS argument
+                push!(new_ex.args, Expr(:ref, :Float64, ein.args[1].args[2:end]...))
+                ein.args[1].args[1]
+            else
+                ein.args[1]  # scalar case `c := A[i,j]`
+            end
+            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
+            new_ex = Expr(:call, new_ex.args[1:2]..., ein_done, strip_indexing.(new_ex.args[4:end])...)
         end
 
         return explore!(new_ex, scopestate)
