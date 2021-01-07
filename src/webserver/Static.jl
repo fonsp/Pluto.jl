@@ -155,16 +155,17 @@ function http_router_for(session::ServerSession)
         try
             uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
+            as_sample = haskey(query, "as_sample")
             if haskey(query, "path")
                 path = tamepath(query["path"])
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(SessionActions.open, path; as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(SessionActions.open_url, url; as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 error("Empty request")
             end
