@@ -608,6 +608,7 @@ export class Editor extends Component {
                     notebook.in_temp_dir = false
                     notebook.path = new_path
                 })
+                // @ts-ignore
                 document.activeElement?.blur()
             } catch (error) {
                 alert("Failed to move file:\n\n" + error.message)

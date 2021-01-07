@@ -43,10 +43,16 @@ export const add_bonds_listener = (node, on_bond_change) => {
     }
 }
 
-// The identity function in most cases, loads file contents when appropriate
+/**
+ * The identity function in most cases, loads file contents when appropriate
+ * @type {((val: FileList) => Promise<Array<File>>)
+ *  & ((val: File) => Promise<{ name: string, type: string, data: Uint8Array }>)
+ *  & ((val: any) => Promise<any>)
+ * }
+ */
 const transformed_val = async (val) => {
     if (val instanceof FileList) {
-        return await Array.from(val).map(transformed_val)
+        return Promise.all(Array.from(val).map((file) => transformed_val(file)))
     } else if (val instanceof File) {
         return await new Promise((res) => {
             const reader = new FileReader()
