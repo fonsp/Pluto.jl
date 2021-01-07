@@ -1,4 +1,12 @@
-// based on https://github.com/executablebooks/thebe
+export const BinderPhase = {
+    wait_for_user: 0,
+    requesting: 0.4,
+    created: 0.6,
+    notebook_running: 0.9,
+    ready: 1.0,
+}
+
+// The following function is based on the wonderful https://github.com/executablebooks/thebe which has the following license:
 
 /*
 LICENSE

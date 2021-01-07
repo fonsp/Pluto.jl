@@ -670,7 +670,7 @@ loading-bar {
     position: fixed;
     top: 0px;
     display: block;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 5s, opacity linear 0.5s;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
     opacity: 0;
     pointer-events: none;
 }

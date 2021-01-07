@@ -21,7 +21,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { request_binder } from "../common/Binder.js"
+import { request_binder, BinderPhase } from "../common/Binder.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -121,15 +121,6 @@ const Main = ({ children }) => {
  * }}
  */
 
-const BinderPhase = {
-    wait_for_user: 0,
-    requesting: 0.1,
-    created: 0.6,
-    notebook_running: 0.9,
-
-    ready: 1.0,
-}
-
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
 const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
@@ -139,9 +130,13 @@ export class Editor extends Component {
 
         const url_params = new URLSearchParams(window.location.search)
         const launch_params = {
+            //@ts-ignore
             statefile: url_params.get("statefile") ?? window.pluto_statefile,
+            //@ts-ignore
             notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+            //@ts-ignore
             disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+            //@ts-ignore
             binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
         }
 
@@ -185,6 +180,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
+            //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val, callback) => {
@@ -584,10 +580,6 @@ export class Editor extends Component {
             })
             const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url)
 
-            // you can hard-code a running session:
-            // const binder_session_url = "https://hub.gke2.mybinder.org/user/fonsp-pluto-on-binder-ftygd6yr/pluto/"
-            // const binder_session_token = "qSfpRzyXTx6A20HSvoSnoA"
-
             console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
             this.setState({
@@ -599,11 +591,7 @@ export class Editor extends Component {
                 new_url.searchParams.set("token", binder_session_token)
                 return String(new_url)
             }
-            await fetch(with_token(binder_session_url), {
-                // headers: {
-                //     Authorization: `token ${binder_session_token}`,
-                // },
-            })
+            await fetch(with_token(binder_session_url))
 
             const open_url = new URL("open", binder_session_url)
             open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
@@ -611,9 +599,6 @@ export class Editor extends Component {
             console.log("open_url: ", String(open_url))
             const open_reponse = await fetch(with_token(String(open_url)), {
                 method: "POST",
-                // headers: {
-                //     Authorization: `token ${binder_session_token}`,
-                // },
             })
 
             const new_notebook_id = await open_reponse.text()
@@ -859,8 +844,6 @@ export class Editor extends Component {
 
         window.pack = pack
         window.unpack = unpack
-        window.editor_state = this.state
-        window.set_editor_state = this.setState
     }
 
     componentDidUpdate(old_props, old_state) {
@@ -912,8 +895,6 @@ export class Editor extends Component {
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
-
-        window.notebook = this.state.notebook
     }
 
     render() {
