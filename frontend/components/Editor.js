@@ -841,9 +841,6 @@ export class Editor extends Component {
                 // and don't prevent the unload
             }
         })
-
-        window.pack = pack
-        window.unpack = unpack
     }
 
     componentDidUpdate(old_props, old_state) {
@@ -889,7 +886,7 @@ export class Editor extends Component {
 
         if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
             const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
-            console.info(`Binder: ${phase} at ${new Date().toLocaleTimeString()}`)
+            console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
         if (old_state.disable_ui !== this.state.disable_ui) {

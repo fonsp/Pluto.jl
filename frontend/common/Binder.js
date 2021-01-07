@@ -31,7 +31,7 @@ export const request_binder = (build_url) =>
     new Promise(async (resolve, reject) => {
         let es = new EventSource(build_url)
         es.onerror = (err) => {
-            console.error("Lost connection to " + build_url, err)
+            console.error("Binder error: Lost connection to " + build_url, err)
             es.close()
             reject(err)
         }
@@ -40,18 +40,18 @@ export const request_binder = (build_url) =>
             let msg = JSON.parse(evt.data)
             if (msg.phase && msg.phase !== phase) {
                 phase = msg.phase.toLowerCase()
-                console.log("Binder phase: " + phase)
+                console.log("Binder subphase: " + phase)
                 let status = phase
                 if (status === "ready") {
                     status = "server-ready"
                 }
             }
             if (msg.message) {
-                console.log("Binder: " + msg.message)
+                console.log("Binder message: " + msg.message)
             }
             switch (msg.phase) {
                 case "failed":
-                    console.error("Failed to build", build_url, msg)
+                    console.error("Binder error: Failed to build", build_url, msg)
                     es.close()
                     reject(new Error(msg))
                     break
