@@ -25,7 +25,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 */
 
-const trailingslash = (s) => (s.endsWith("/") ? s : s + "/")
+export const trailingslash = (s) => (s.endsWith("/") ? s : s + "/")
 
 export const request_binder = (build_url) =>
     new Promise(async (resolve, reject) => {

@@ -21,7 +21,8 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { request_binder, BinderPhase } from "../common/Binder.js"
+import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
+import { hash_arraybuffer, hash_str } from "../common/PlutoHash.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -138,6 +139,8 @@ export class Editor extends Component {
             disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
             //@ts-ignore
             binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
+            //@ts-ignore
+            bind_server_url: url_params.get("bind_server_url") ?? window.pluto_bind_server_url,
         }
 
         this.state = {
@@ -453,47 +456,41 @@ export class Editor extends Component {
             },
         }
 
-        const real_actions = this.actions
+        const apply_notebook_patches = (patches, old_state = undefined) => {
+            if (patches.length !== 0) {
+                this.setState((state) => {
+                    let new_notebook = applyPatches(old_state ?? state.notebook, patches)
 
-        this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-            this.actions = this.state.disable_ui ? {} : real_actions //heyo
+                    if (DEBUG_DIFFING) {
+                        console.group("Update!")
+                        for (let patch of patches) {
+                            console.group(`Patch :${patch.op}`)
+                            console.log(patch.path)
+                            console.log(patch.value)
+                            console.groupEnd()
+                        }
+                        console.groupEnd()
+                    }
+
+                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                    if (cells_stuck_in_limbo.length !== 0) {
+                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                    }
+
+                    return {
+                        notebook: new_notebook,
+                    }
+                })
+            }
         }
-        this.on_disable_ui()
-
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        if (message.patches.length !== 0) {
-                            this.setState((state) => {
-                                let new_notebook = applyPatches(state.notebook, message.patches)
-
-                                if (DEBUG_DIFFING) {
-                                    console.group("Update!")
-                                    for (let patch of message.patches) {
-                                        console.group(`Patch :${patch.op}`)
-                                        console.log(patch.path)
-                                        console.log(patch.value)
-                                        console.groupEnd()
-                                    }
-                                    console.groupEnd()
-                                }
-
-                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                if (cells_stuck_in_limbo.length !== 0) {
-                                    console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                }
-
-                                return {
-                                    notebook: new_notebook,
-                                }
-                            })
-                        }
+                        apply_notebook_patches(message.patches)
                         break
                     case "log":
                         handle_log(message, this.state.notebook.path)
@@ -556,12 +553,61 @@ export class Editor extends Component {
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
+        const mybonds = {}
+
+        const notebookfile_hash = fetch(launch_params.notebookfile)
+            .then((r) => r.arrayBuffer())
+            .then(hash_arraybuffer)
+
+        notebookfile_hash.then(console.log)
+
+        const request_bond_response = async () => {
+            console.log("requesting bonds")
+            const base = trailingslash(launch_params.bind_server_url)
+            const hash = await notebookfile_hash
+
+            const packed = pack(mybonds)
+
+            const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+
+            let response = await fetch(url, {
+                method: "POST",
+                body: packed,
+            })
+
+            const notebook_patches = unpack(new Uint8Array(await response.arrayBuffer()))
+
+            apply_notebook_patches(notebook_patches, this.original_state)
+            console.log("done!")
+        }
+
+        const real_actions = this.actions
+        const fake_actions =
+            launch_params.bind_server_url == null
+                ? {}
+                : {
+                      set_bond: async (symbol, value, is_first_value) => {
+                          mybonds[symbol] = { value: value }
+                          await request_bond_response()
+                      },
+                  }
+
+        this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
+        }
+        this.on_disable_ui()
+
+        this.original_state = null
         if (this.state.static_preview) {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
                 const buffer = await r.arrayBuffer()
+                const state = unpack(new Uint8Array(buffer))
+                this.original_state = state
                 this.setState({
-                    notebook: unpack(new Uint8Array(buffer)),
+                    notebook: state,
                     initializing: false,
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
