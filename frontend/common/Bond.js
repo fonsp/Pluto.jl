@@ -3,11 +3,56 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
+/**
+ * @param {HTMLInputElement} input
+ * @param {any} value
+ */
+const set_input = (input, value) => {
+    if (value == null) {
+        input.value = null
+        return
+    }
+    switch (input.type) {
+        case "range":
+        case "number": {
+            input.valueAsNumber = value
+            return
+        }
+        case "date": {
+            input.valueAsDate = value
+            return
+        }
+        case "checkbox": {
+            input.checked = value
+            return
+        }
+        case "file": {
+            // Can't set files :(
+            return
+        }
+        case "select-multiple": {
+            // @ts-ignore
+            for (let option of input.options) {
+                option.selected = value.includes(option.value)
+            }
+            return
+        }
+        default: {
+            input.value = value
+            return
+        }
+    }
+}
+
 export const set_bound_elements_to_their_value = (node, bond_values) => {
     for (let bond_node of node.querySelectorAll("bond")) {
         let bond_name = bond_node.getAttribute("def")
         if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
-            bond_node.firstElementChild.value = bond_values[bond_name].value
+            try {
+                set_input(bond_node.firstElementChild, bond_values[bond_name].value)
+            } catch (error) {
+                console.error(`error while setting input`, bond_node.firstElementChild, `to value`, bond_values[bond_name].value, `:`, error)
+            }
         }
     }
 }
