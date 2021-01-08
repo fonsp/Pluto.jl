@@ -456,34 +456,37 @@ export class Editor extends Component {
             },
         }
 
-        const apply_notebook_patches = (patches, old_state = undefined) => {
-            if (patches.length !== 0) {
-                this.setState((state) => {
-                    let new_notebook = applyPatches(old_state ?? state.notebook, patches)
+        const apply_notebook_patches = (patches, old_state = undefined) =>
+            new Promise((resolve) => {
+                if (patches.length !== 0) {
+                    this.setState((state) => {
+                        let new_notebook = applyPatches(old_state ?? state.notebook, patches)
 
-                    if (DEBUG_DIFFING) {
-                        console.group("Update!")
-                        for (let patch of patches) {
-                            console.group(`Patch :${patch.op}`)
-                            console.log(patch.path)
-                            console.log(patch.value)
+                        if (DEBUG_DIFFING) {
+                            console.group("Update!")
+                            for (let patch of patches) {
+                                console.group(`Patch :${patch.op}`)
+                                console.log(patch.path)
+                                console.log(patch.value)
+                                console.groupEnd()
+                            }
                             console.groupEnd()
                         }
-                        console.groupEnd()
-                    }
 
-                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                    if (cells_stuck_in_limbo.length !== 0) {
-                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                    }
+                        let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                        if (cells_stuck_in_limbo.length !== 0) {
+                            console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                            new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                        }
 
-                    return {
-                        notebook: new_notebook,
-                    }
-                })
-            }
-        }
+                        return {
+                            notebook: new_notebook,
+                        }
+                    }, resolve)
+                } else {
+                    resolve()
+                }
+            })
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
@@ -553,15 +556,33 @@ export class Editor extends Component {
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        const mybonds = {}
-
         const notebookfile_hash = fetch(launch_params.notebookfile)
             .then((r) => r.arrayBuffer())
             .then(hash_arraybuffer)
 
         notebookfile_hash.then(console.log)
 
-        const request_bond_response = async () => {
+        const debounced_promises = (async_function) => {
+            let currently_running = false
+            let rerun_when_done = false
+
+            return async () => {
+                if (currently_running) {
+                    rerun_when_done = true
+                } else {
+                    currently_running = true
+                    rerun_when_done = true
+                    while (rerun_when_done) {
+                        rerun_when_done = false
+                        await async_function()
+                    }
+                    currently_running = false
+                }
+            }
+        }
+
+        const mybonds = {}
+        const request_bond_response = debounced_promises(async () => {
             console.log("requesting bonds")
             const base = trailingslash(launch_params.bind_server_url)
             const hash = await notebookfile_hash
@@ -577,9 +598,9 @@ export class Editor extends Component {
 
             const notebook_patches = unpack(new Uint8Array(await response.arrayBuffer()))
 
-            apply_notebook_patches(notebook_patches, this.original_state)
+            await apply_notebook_patches(notebook_patches, this.original_state)
             console.log("done!")
-        }
+        })
 
         const real_actions = this.actions
         const fake_actions =
