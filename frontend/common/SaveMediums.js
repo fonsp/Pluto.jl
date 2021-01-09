@@ -14,6 +14,9 @@ export class SaveMedium {
 
         this.saveTimeout = setTimeout(this.save.bind(this), 1000)
     }
+    getNotebookContent() {
+        return fetch("notebookfile" + window.location.search).then(res => res.text())
+    }
 }
 SaveMedium.autocomplete = async (oldLine, cursor, options) => {
     throw new Error('Autocomplete was not implemented by this save medium!');
@@ -92,7 +95,7 @@ export class GistSaveMedium extends SaveMedium {
         return new Promise((async (resolve, reject) => {
             await this._checkGistId();
 
-            fetch("notebookfile" + window.location.search).then(res => res.text()).then(nb_content => {
+            super.getNotebookContent().then(nb_content => {
                 this.gh.getGist(this.gist_id).update({
                     files: {
                         [this.gist_file]: {
@@ -179,9 +182,82 @@ GistSaveMedium.displayName = 'Gist';
 GistSaveMedium.displayIcon = '/img/mark-github.svg';
 
 
-export class GDriveSaveMedium {
-    // TODO: Implement Google Drive save interface
+export class ClientLocalSaveMedium extends SaveMedium {
+    constructor() {
+        super();
+
+        this.fileHandle = null;
+
+        this._openSystemDialog()
+    }
+
+    getPath() {
+        return this.fileHandle?.name || 'notebook.jl'
+    }
+    async moveTo() {
+        await this._openSystemDialog()
+        return true
+    }
+    async save() {
+        const content = await super.getNotebookContent()
+
+        if(this.fileHandle) {
+            const stream = await this.fileHandle.createWritable()
+            await stream.write(content)
+            await stream.close()
+        }
+        else {
+            this.saveAfterSelected = true
+        }
+        console.log('written to file')
+    }
+    load() {}
+
+    async _openSystemDialog() {
+        try {
+            console.log('requesting file picker open')
+            const options = {
+                types: [{
+                    description: 'Pluto Notebook',
+                    accept: {
+                      'application/julia': ['.jl'],
+                    }
+                }]
+            }
+            this.fileHandle = await window.showSaveFilePicker(options)
+            
+            if(this.saveAfterSelected) {
+                this.saveAfterSelected = false
+
+                await this.save()
+            }
+        }
+        catch(e) {
+            console.log('failed')
+        }
+    }
 }
+ClientLocalSaveMedium.autocomplete = (oldLine, cursor, options) => {
+    const styledResults = []
+    if(options.suggest_new_file != null) {
+        const nb_name = oldLine.trim() === '' ? 'notebook' : oldLine.trim().replace(/(\.|\.j|\.jl)$/g, '')
+        const nb_file = nb_name + '.jl'
+
+        styledResults.push({
+            text: nb_file,
+            displayText: `${nb_file} (new)`,
+            className: 'file new'
+        });
+    }
+    return {
+        list: oldLine.endsWith('.jl') ? [] : styledResults,
+        from: CodeMirror.Pos(cursor.line, 0),
+        to: CodeMirror.Pos(cursor.line, oldLine.length)
+    }
+}
+ClientLocalSaveMedium.authenticated = () => true; // No need for token auth here
+ClientLocalSaveMedium.displayName = 'Client-side Local';
+ClientLocalSaveMedium.displayIcon = '/img/mark-github.svg';
 
 
 export const update_external_notebooks = (notebook_path, save_medium, medium_args, old_path=null) => {
@@ -197,4 +273,4 @@ export const get_external_notebook = (notebook_path) => {
 }
 
 
-export const Mediums = { GistSaveMedium };
+export const Mediums = { GistSaveMedium, ClientLocalSaveMedium };

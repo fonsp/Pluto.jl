@@ -644,7 +644,7 @@ li.dir.CodeMirror-hint:before {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
-        width: 60px;
+        width: 64px;
     }
     nav#at_the_top > pluto-filepicker button {
         opacity: 0;
