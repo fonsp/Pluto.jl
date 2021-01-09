@@ -18,7 +18,7 @@ import { ExportBanner } from "./ExportBanner.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { Mediums, update_external_notebooks, get_external_notebook } from "../common/SaveMediums.js"
+import { Mediums, BrowserLocalSaveMedium, update_external_notebooks, get_external_notebook } from "../common/SaveMediums.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 
 const default_path = "..."
@@ -616,13 +616,12 @@ export class Editor extends Component {
                 else {
                     this.setState({ loading: true, tmp_save_path: new_path })
                     sm = this.state.save_medium;
-                    this.state.save_medium.moveTo(new_path).then(() => {
-                        // Force a state update because we have mutated state_medium
-                        this.setState({ save_medium: this.state.save_medium, loading: false })
-                    })
+                    await this.state.save_medium.moveTo(new_path)
+                    // Force a state update because we have mutated state_medium
+                    this.setState({ save_medium: this.state.save_medium, loading: false })
                 }
                 document.activeElement.blur()
-                update_external_notebooks(this.state.notebook.path, sm, [new_path])
+                update_external_notebooks(this.state.notebook.path, sm, [new_path, this.state.save_medium.getExtras()])
             }
             else {
                 alert(`Saving to ${save_medium} is not yet supported`)
