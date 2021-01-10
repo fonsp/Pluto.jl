@@ -3,7 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
-import { get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
+import { get_all_external_notebooks, get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -93,6 +93,7 @@ export class Welcome extends Component {
             // running_notebooks: null,
             // recent_notebooks: null,
             combined_notebooks: null, // will become an array
+            external_notebooks: null, // will become a dictionary (js object)
             connected: false,
         }
         const set_notebook_state = (path, new_state_props) => {
@@ -155,19 +156,22 @@ export class Welcome extends Component {
         this.client_promise.then((client) => {
             Object.assign(this.client, client)
 
-            this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
+            this.client.send("get_all_notebooks", {}, {}).then(async ({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
                 // we are going to construct the combined list:
                 const combined_notebooks = [...running] // shallow copy but that's okay
+
                 get_stored_recent_notebooks().forEach((stored) => {
                     if (!running.some((nb) => nb.path === stored.path)) {
                         // if not already in the list...
                         combined_notebooks.push(stored) // ...add it.
                     }
                 })
+                
+                const external_notebooks = await get_all_external_notebooks();
 
-                this.setState({ combined_notebooks: combined_notebooks })
+                this.setState({ combined_notebooks, external_notebooks })
 
                 document.body.classList.remove("loading")
             })
@@ -313,7 +317,6 @@ export class Welcome extends Component {
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
-                const external_nb_data = get_external_notebook(nb.path)
                 return html`<li
                     key=${nb.path}
                     class=${cl({
@@ -326,8 +329,7 @@ export class Welcome extends Component {
                         <span></span>
                     </button>
                     <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>
-                        ${external_nb_data ? external_nb_data.args[0] : shortest_path(nb.path, all_paths)}
-                        ${external_nb_data ? html`<span class="save-medium-logo" style="background-image: url(${Mediums[external_nb_data.type].displayIcon});"/>` : null}
+                        ${Object.keys(this.state.external_notebooks).includes(nb.path) ? this.state.external_notebooks[nb.path].args[0] : shortest_path(nb.path, all_paths)}
                     </a>
                 </li>`
             })

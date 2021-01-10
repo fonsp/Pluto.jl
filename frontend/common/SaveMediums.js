@@ -32,7 +32,7 @@ export class BrowserLocalSaveMedium extends SaveMedium {
     constructor(path, extras) {
         super();
 
-        this.fileHandle = null;
+        this.fileHandle = extras ? extras : null;
 
         this._openSystemDialog()
     }
@@ -41,7 +41,6 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         return this.fileHandle?.name || 'notebook.jl'
     }
     getExtras() {
-        console.log(this.fileHandle)
         if(this.fileHandle) return this.fileHandle;
         return {}
     }
@@ -60,13 +59,11 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         else {
             this.saveAfterSelected = true
         }
-        console.log('written to file')
     }
     load() {}
 
     async _openSystemDialog() {
         try {
-            console.log('requesting file picker open')
             const options = {
                 types: [{
                     description: 'Pluto Notebook',
@@ -84,7 +81,7 @@ export class BrowserLocalSaveMedium extends SaveMedium {
             }
         }
         catch(e) {
-            console.log('failed')
+            // Not a huge deal. Usually happens because the user doesn't initiate the open themselves
         }
     }
 }
@@ -111,16 +108,118 @@ BrowserLocalSaveMedium.displayName = 'Client-side Local';
 BrowserLocalSaveMedium.displayIcon = '/img/mark-github.svg';
 
 
-export const update_external_notebooks = (notebook_path, save_medium, medium_args, old_path=null) => {
-    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
-    storedGists[notebook_path] = { type: save_medium.constructor.name, args: medium_args }
-    if(old_path) delete storedGists[old_path]
-    localStorage.setItem('external notebooks', JSON.stringify(storedGists))
+let idb = null;
+
+const request_idb = () => {
+    return new Promise((resolve, reject) => {
+        if(idb) {
+            resolve(idb);
+            return;
+        }
+
+        const request = indexedDB.open('ExternalNotebooks')
+        request.onerror = reject;
+        request.onsuccess = (e) => {
+            idb = e.target.result;
+            resolve(idb);
+        };
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            const store = db.createObjectStore('notebooks', { keyPath: 'path' });
+            store.transaction.oncomplete = (e) => {
+                console.log('Created IndexedDB for External Notebooks')
+            }
+        }
+    });
+}
+
+
+export const update_external_notebooks = (notebook_path, save_medium, old_path=null) => {
+    return new Promise((resolve, reject) => {
+        const medium_type = save_medium.constructor.name;
+        const medium_args = [save_medium.getPath(), save_medium.getExtras()]
+
+        request_idb().then(db => {
+            const store = db.transaction('notebooks', 'readwrite').objectStore('notebooks');
+
+            // Handle deletion of old entry
+            if(old_path) {
+                const delOldReq = store.delete(old_path);
+                delOldReq.onerror = (e) => {
+                    console.warn('Failed to remove old_path external notebook entry');
+                    console.log(e);
+                }
+                delOldReq.onsuccess = (e) => {} // No-op
+            }
+
+            // Handle creation / update
+            const nbReq = store.get(notebook_path);
+            nbReq.onerror = (e) => reject;
+            nbReq.onsuccess = (e) => {
+                const data = e.target.result;
+
+                // An entry already exists, so update it
+                if(data) {
+                    data.type = medium_type;
+                    data.args = medium_args;
+
+                    const nbReqUpdate = store.put(data);
+                    nbReqUpdate.onerror = reject;
+                    nbReqUpdate.onsuccess = resolve;
+                }
+                // An entry doesn't exist, so create it
+                else {
+                    const nbReqAdd = store.add({
+                        path: notebook_path,
+                        type: medium_type,
+                        args: medium_args
+                    });
+                    nbReqAdd.onerror = reject;
+                    nbReqAdd.onsuccess = resolve;
+                }
+            }
+        })
+    });
+
+    // const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
+    // storedGists[notebook_path] = { type: save_medium.constructor.name, args: medium_args }
+    // if(old_path) delete storedGists[old_path]
+    // localStorage.setItem('external notebooks', JSON.stringify(storedGists))
 }
 
 export const get_external_notebook = (notebook_path) => {
-    const storedGists = JSON.parse(localStorage.getItem('external notebooks') || '{}')
-    return storedGists[notebook_path]
+    return new Promise((resolve, reject) => {
+        request_idb().then((db) => {
+            const store = db.transaction('notebooks', 'readwrite').objectStore('notebooks')
+            const nbReq = store.get(notebook_path)
+            nbReq.onerror = (e) => {
+                // Entry doesn't exist
+                reject(e);
+            }
+            nbReq.onsuccess = (e) => {
+                resolve(e.target.result);
+            }
+        }).catch(reject);
+    });
+}
+
+export const get_all_external_notebooks = () => {
+    return new Promise((resolve, reject) => {
+        request_idb().then((db) => {
+            const store = db.transaction('notebooks').objectStore('notebooks');
+            const out_obj = {};
+            store.openCursor().onsuccess = (e) => {
+                const cursor = e.target.result;
+                if(cursor) {
+                    out_obj[cursor.key] = cursor.value;
+                    cursor.continue();
+                }
+                else {
+                    resolve(out_obj);
+                }
+            };
+        }).catch(reject);
+    });
 }
 
 

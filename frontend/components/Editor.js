@@ -433,17 +433,27 @@ export class Editor extends Component {
                                     new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                                 }
 
-                                const possible_save_medium = {};
+                                // TODO: Put this code in a better spot that only runs once after notebook loads
                                 if(!this.state.save_medium) {
-                                    const external_nb = get_external_notebook(new_notebook.path)
-                                    if(external_nb) {
-                                        possible_save_medium.save_medium = new Mediums[external_nb['type']](...external_nb['args'])
-                                    }
+                                    get_external_notebook(new_notebook.path).then(external_nb => {
+                                        if(external_nb) {
+                                            const recovered_medium = new Mediums[external_nb['type']](...external_nb['args'])
+                                            this.setState({ save_medium: recovered_medium })
+                                        }
+                                        else {
+                                            // Check if we should upgrade to built-in browser saving
+                                            if(window.showSaveFilePicker) {
+                                                // Local saving is supported
+                                                const browser_medium = new BrowserLocalSaveMedium()
+                                                this.setState({ save_medium: browser_medium })
+                                                update_external_notebooks(new_notebook.path, browser_medium).catch(console.log)
+                                            }
+                                        }
+                                    }).catch(console.log);
                                 }
 
                                 return {
-                                    notebook: new_notebook,
-                                    ...possible_save_medium
+                                    notebook: new_notebook
                                 }
                             })
                         }
@@ -621,7 +631,7 @@ export class Editor extends Component {
                     this.setState({ save_medium: this.state.save_medium, loading: false })
                 }
                 document.activeElement.blur()
-                update_external_notebooks(this.state.notebook.path, sm, [new_path, this.state.save_medium.getExtras()])
+                await update_external_notebooks(this.state.notebook.path, sm)
             }
             else {
                 alert(`Saving to ${save_medium} is not yet supported`)
@@ -759,7 +769,9 @@ export class Editor extends Component {
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
             if(this.state.save_medium) {
-                update_external_notebooks(this.state.notebook.path, this.state.save_medium, [this.state.save_medium.getPath()], old_state?.notebook?.path)
+                update_external_notebooks(this.state.notebook.path, this.state.save_medium, old_state?.notebook?.path).then(() => {
+                    
+                }).catch(console.log)
             }
         }
 
