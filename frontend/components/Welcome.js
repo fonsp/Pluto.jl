@@ -217,7 +217,7 @@ export class Welcome extends Component {
             )
         })
 
-        this.on_open_path = async (save_medium, new_path) => {
+        this.on_open_path = async (save_medium, new_path, extras) => {
             const set_loading = () => document.body.classList.add("loading")
             if(save_medium === 'local') {
                 const processed = await process_path_or_url(new_path)
@@ -235,7 +235,7 @@ export class Welcome extends Component {
                 set_loading()
                 
                 // Since everything is handled client-side we have to upload the notebook from here
-                const medium = new Mediums[save_medium](new_path)
+                const medium = new Mediums[save_medium](new_path, extras)
                 medium.load().then(notebookContent => {
                     fetch("notebookupload", {
                         method: "POST",
@@ -243,8 +243,8 @@ export class Welcome extends Component {
                             "Content-Type": "text/plain"
                         },
                         body: notebookContent
-                    }).then(res => res.text()).then(nb_path => {
-                        update_external_notebooks(nb_path, medium, [new_path])
+                    }).then(res => res.text()).then(async nb_path => {
+                        await update_external_notebooks(nb_path, medium)
                         window.location.href = link_open_path(nb_path)
                     })
                 }).catch(e => {
@@ -341,7 +341,7 @@ export class Welcome extends Component {
                 <li>Create a <a href="new">new notebook</a></li>
                 <li>
                     Open from file:
-                    <${FilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path or URL..." />
+                    <${FilePicker} native=${!!window.showOpenFilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path or URL..." />
                 </li>
             </ul>
             <br />

@@ -126,7 +126,6 @@ pluto-filepicker .CodeMirror {
     border: 2px solid #818181;
     border-radius: 0;
     border-right: none;
-    border-left: none;
 }
 
 pluto-filepicker .CodeMirror-scroll {
@@ -155,8 +154,8 @@ pluto-filepicker button {
 
 pluto-filepicker button {
     cursor: pointer;
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
+    /* border-top-left-radius: 0; */
+    /* border-bottom-left-radius: 0; */
 }
 
 li.file.new.CodeMirror-hint:before {

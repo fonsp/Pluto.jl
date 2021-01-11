@@ -33,12 +33,13 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         super();
 
         this.fileHandle = extras ? extras : null;
-
-        this._openSystemDialog()
+        if(!this.fileHandle) {
+            this._openSystemDialog()
+        }
     }
 
     getPath() {
-        return this.fileHandle?.name || 'notebook.jl'
+        return this.fileHandle?.name || 'Save notebook...'
     }
     getExtras() {
         if(this.fileHandle) return this.fileHandle;
@@ -60,7 +61,15 @@ export class BrowserLocalSaveMedium extends SaveMedium {
             this.saveAfterSelected = true
         }
     }
-    load() {}
+    async load() {
+        if(this.fileHandle) {
+            const file = await this.fileHandle.getFile()
+            return await file.text()
+        }
+        else {
+            throw new Error('A browser-saved notebook cannot be loaded without an initialized FileHandle')
+        }
+    }
 
     async _openSystemDialog() {
         try {

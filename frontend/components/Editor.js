@@ -585,7 +585,7 @@ export class Editor extends Component {
         }
         this.update_notebook = update_notebook
 
-        this.submit_file_change = async (save_medium, new_path, reset_cm_value) => {
+        this.submit_file_change = async (save_medium, new_path, extras, reset_cm_value) => {
             if(save_medium === 'local') {
                 const old_path = this.state.notebook.path
                 if (old_path === new_path) {
@@ -616,7 +616,7 @@ export class Editor extends Component {
             else if(Object.values(Mediums).map(m => m.name).includes(save_medium)) {
                 let sm = null;
                 if(!this.state.save_medium) {
-                    sm = new Mediums[save_medium](new_path)
+                    sm = new Mediums[save_medium](new_path, extras)
                     sm.save()
                     this.setState({
                         save_medium: sm
