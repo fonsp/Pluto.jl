@@ -119,6 +119,9 @@ using Test
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
         @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
+        @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
+        @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
+        @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
