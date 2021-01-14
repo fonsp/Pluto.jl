@@ -43,7 +43,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # project_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    project_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
+    project_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -230,7 +230,12 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     end
 
-    Notebook(cells_dict=collected_cells, cell_order=cell_order, path=path, project_ctx=project_ctx)
+    appeared_order = cell_order ∩ keys(collected_cells)
+    appeared_cells_dict = filter(collected_cells) do (k, v)
+        k ∈ appeared_order
+    end
+
+    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, project_ctx=project_ctx)
 end
 
 function load_notebook_nobackup(path::String)::Notebook
