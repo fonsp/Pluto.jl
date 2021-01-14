@@ -1,6 +1,7 @@
 using Test
 import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new
 import Random
+import Pkg
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -64,7 +65,7 @@ function shuffled_with_imports_notebook()
 end
 
 function bad_code_notebook()
-    Notebook([
+    n = Notebook([
         Cell("z = y"),
         Cell("y = z"),
         Cell(""";lka;fd;jasdf;;;\n\n\n\n\nasdfasdf
@@ -72,6 +73,9 @@ function bad_code_notebook()
         [[["""),
         Cell("using Aasdfdsf"),
     ])
+
+    Pkg.instantiate(n.project_ctx)
+    n
 end
 
 function bonds_notebook()
@@ -90,8 +94,22 @@ function bonds_notebook()
     ])
 end
 
+
+function project_notebook()
+    n = Notebook([
+        Cell("using Dates"),
+        Cell("using Plots"),
+    ])
+
+    n.project_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
+    Pkg.add(n.project_ctx, [Pkg.PackageSpec(name="Dates"), Pkg.PackageSpec(name="Plots")])
+    Pkg.instantiate(n.project_ctx)
+
+    n
+end
+
 @testset "Notebook Files" begin
-    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook]]
+    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook, project_notebook]]
 
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
@@ -100,6 +118,7 @@ end
 
             @testset "$(file)" begin
                 nb = @test_nowarn load_notebook_nobackup(path)
+                @test length(nb.cells) > 0
                 push!(nbs, "sample " * file => nb)
             end
         end
@@ -119,6 +138,7 @@ end
         @testset "$(name)" for (name, nb) in nbs
             @test let
                 save_notebook(nb)
+                # @info "File" name Text(read(nb.path,String))
                 result = load_notebook_nobackup(nb.path)
                 notebook_inputs_equal(nb, result)
             end
@@ -143,7 +163,7 @@ end
     end
 
     # Some notebooks are designed to error (inside/outside Pluto)
-    expect_error = [String(nameof(bad_code_notebook)), "sample Interactivity.jl"]
+    expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
@@ -199,18 +219,21 @@ end
             @test num_backups_in(new_dir) == 0
 
             # Delete last line
+            # cp(nb.path, new_path, force=true)
+            # to_write = readlines(new_path)[1:end - 1]
+            # write(new_path, join(to_write, '\n'))
+            # @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
+            # @test num_backups_in(new_dir) == 1
+
+            # Duplicate first line
             cp(nb.path, new_path, force=true)
-            to_write = readlines(new_path)[1:end - 1]
+            to_write = let
+                old_lines = readlines(new_path)
+                [old_lines[1], old_lines...]
+            end
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
-
-            # Add a line
-            cp(nb.path, new_path, force=true)
-            to_write = push!(readlines(new_path), "1+1")
-            write(new_path, join(to_write, '\n'))
-            @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
-            @test num_backups_in(new_dir) == 2
         end
     end
 

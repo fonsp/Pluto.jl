@@ -1,6 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
+import Pkg
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 Base.@kwdef struct NotebookTopology
@@ -41,7 +42,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    project_ctx::Union{Nothing,Pkg.Types.Context}=nothing # Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
+    # project_ctx::Union{Nothing,Pkg.Types.Context}=nothing
+    project_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -125,16 +127,20 @@ function save_notebook(io, notebook::Notebook)
         println(io, delim, string(c.cell_id))
     end
 
-    if notebook.project_ctx !== nothing && isfile(notebook.project_ctx.env.project_file)
-        println(io)
-        println(io, _cell_id_delimiter, "Package environment:")
-        println(io, "_PLUTO_PROJECT_TOML_CONTENTS = \"\"\"")
-        isfile(notebook.project_ctx.env.project_file) && write(io, read(notebook.project_ctx.env.project_file))
-        println(io, "\"\"\"")
-        println(io)
-        println(io, "_PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"")
-        isfile(notebook.project_ctx.env.manifest_file) && write(io, read(notebook.project_ctx.env.manifest_file))
-        println(io, "\"\"\"")
+    if notebook.project_ctx !== nothing && isfile(notebook.project_ctx.env.project_file) && isfile(notebook.project_ctx.env.manifest_file)
+        ptoml_contents = read(notebook.project_ctx.env.project_file, String)
+        mtoml_contents = read(notebook.project_ctx.env.manifest_file, String)
+        if !isempty(ptoml_contents) && !isempty(mtoml_contents)
+            println(io)
+            print(io, _cell_id_delimiter, "Package environment:\n")
+            print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
+            write(io, ptoml_contents)
+            println(io, "\"\"\"")
+            println(io)
+            print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
+            write(io, mtoml_contents)
+            println(io, "\"\"\"")
+        end
     end
 
     notebook
@@ -187,21 +193,44 @@ function load_notebook_nobackup(io, path)::Notebook
     cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
-        if startswith(cell_id_str, _order_delimiter)
-            if length(cell_id_str) >= 36
-                cell_id = let
-                    UUID(cell_id_str[end - 35:end])
-                end
-                next_cell = collected_cells[cell_id]
-                next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
-                push!(cell_order, cell_id)
+        if length(cell_id_str) >= 36
+            cell_id = let
+                UUID(cell_id_str[end - 35:end])
             end
+            next_cell = collected_cells[cell_id]
+            next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+            push!(cell_order, cell_id)
         else
             break
         end
     end
 
-    Notebook(cells_dict=collected_cells, cell_order=cell_order, path=path)
+    readuntil(io, "Package environment:")
+    project_ctx = if eof(io)
+        nothing
+    else
+        readuntil(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"")
+        readline(io)
+        ptoml_contents = readuntil(io, "\"\"\""; keep=false)
+        
+        readuntil(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"")
+        readline(io)
+        mtoml_contents = readuntil(io, "\"\"\""; keep=false)
+
+        env_dir = mktempdir()
+        write(joinpath(env_dir, "Project.toml"), ptoml_contents)
+        write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
+
+        try
+            Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+        catch e
+            error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents))
+            CompositeException
+            ErrorException
+        end
+    end
+
+    Notebook(cells_dict=collected_cells, cell_order=cell_order, path=path, project_ctx=project_ctx)
 end
 
 function load_notebook_nobackup(path::String)::Notebook
