@@ -28,7 +28,7 @@ Base.@kwdef mutable struct Notebook
     
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
-    notebook_id::UUID
+    notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
@@ -41,6 +41,7 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+    project_ctx::Union{Nothing,Pkg.Types.Context}=nothing # Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -123,6 +124,19 @@ function save_notebook(io, notebook::Notebook)
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
         println(io, delim, string(c.cell_id))
     end
+
+    if notebook.project_ctx !== nothing && isfile(notebook.project_ctx.env.project_file)
+        println(io)
+        println(io, _cell_id_delimiter, "Package environment:")
+        println(io, "_PLUTO_PROJECT_TOML_CONTENTS = \"\"\"")
+        isfile(notebook.project_ctx.env.project_file) && write(io, read(notebook.project_ctx.env.project_file))
+        println(io, "\"\"\"")
+        println(io)
+        println(io, "_PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"")
+        isfile(notebook.project_ctx.env.manifest_file) && write(io, read(notebook.project_ctx.env.manifest_file))
+        println(io, "\"\"\"")
+    end
+
     notebook
 end
 
@@ -147,7 +161,7 @@ function load_notebook_nobackup(io, path)::Notebook
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
-    collected_cells = Dict()
+    collected_cells = Dict{UUID,Cell}()
 
     # ignore first bits of file
     readuntil(io, _cell_id_delimiter)
@@ -170,21 +184,24 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     end
 
-    ordered_cells = Cell[]
+    cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
-        o, c = startswith(cell_id_str, _order_delimiter),
-        if length(cell_id_str) >= 36
-            cell_id = let
-                UUID(cell_id_str[end - 35:end])
+        if startswith(cell_id_str, _order_delimiter)
+            if length(cell_id_str) >= 36
+                cell_id = let
+                    UUID(cell_id_str[end - 35:end])
+                end
+                next_cell = collected_cells[cell_id]
+                next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+                push!(cell_order, cell_id)
             end
-            next_cell = collected_cells[cell_id]
-            next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
-            push!(ordered_cells, next_cell)
+        else
+            break
         end
     end
 
-    Notebook(ordered_cells, path)
+    Notebook(cells_dict=collected_cells, cell_order=cell_order, path=path)
 end
 
 function load_notebook_nobackup(path::String)::Notebook
