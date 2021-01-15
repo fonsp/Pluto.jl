@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 
 Base.push!(x::Set{Cell}) = x
 
@@ -145,6 +145,24 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
+
+	try
+		pkg_result = update_project_pkg(notebook, old, new)
+
+		if pkg_result.did_something
+			@info "PlutoPkg: success!" pkg_result
+
+			# TODO: these warning should be in the frontend
+			pkg_result.restart_recommended && @warn "PlutoPkg: Notebook restart recommended"
+			pkg_result.restart_required && @error "PlutoPkg: Notebook restart REQUIRED"
+
+			save && save_notebook(notebook)
+		end
+	catch e
+		new_packages = external_package_names(new)
+		old_packages = keys(notebook.project_pkg_ctx.env.project.deps)
+		@error "PlutoPkg: Failed to add/remove package" new_packages old_packages exception=(e, catch_backtrace())
+	end
 	
 	# _assume `prerender_text == false` if you want to skip some details_
 
