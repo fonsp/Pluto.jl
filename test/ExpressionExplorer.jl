@@ -333,4 +333,34 @@ using Test
         @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
     end
+    @testset "Extracting `using` and `import`" begin
+        expr = quote
+            using A
+            import B
+            if x
+                using .C: r
+                import ..D.E: f, g
+            else
+                import H.I, J, K.L
+            end
+            
+            quote
+                using Nonono
+            end
+        end
+        result = compute_usings_imports(expr)
+        @test result.usings == Set{Expr}([
+            :(using A),
+            :(using .C: r),
+        ])
+        @test result.imports == Set{Expr}([
+            :(import B),
+            :(import ..D.E: f, g),
+            :(import H.I, J, K.L),
+        ])
+
+        @test ExpressionExplorer.external_package_names(result) == Set{Symbol}([
+            :A, :B, :H, :J, :K
+        ])
+    end
 end

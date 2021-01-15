@@ -931,13 +931,34 @@ function compute_usings_imports!(out::UsingsImports, ex::Any)
 			push!(out.usings, ex)
 		elseif ex.head == :import
 			push!(out.imports, ex)
-        else
+        elseif ex.head != :quote
 			for a in ex.args
 				compute_usings_imports!(out, a)
 			end
         end
     end
 	out
+end
+
+function external_package_names(ex::Expr)::Set{Symbol}
+	@assert ex.head == :import || ex.head == :using
+	if Meta.isexpr(ex.args[1], :(:))
+		external_package_names(Expr(ex.head, ex.args[1].args[1]))
+	else
+		out = Set{Symbol}()
+		for a in ex.args
+			if Meta.isexpr(a, :(.))
+				if a.args[1] != :(.)
+					push!(out, a.args[1])
+				end
+			end
+		end
+		out
+	end
+end
+
+function external_package_names(x::UsingsImports)::Set{Symbol}
+    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
 end
 
 "Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."
