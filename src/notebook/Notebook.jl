@@ -42,8 +42,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    # project_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    project_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+    # project_pkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
+    project_pkg_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -127,9 +127,9 @@ function save_notebook(io, notebook::Notebook)
         println(io, delim, string(c.cell_id))
     end
 
-    if notebook.project_ctx !== nothing && isfile(notebook.project_ctx.env.project_file) && isfile(notebook.project_ctx.env.manifest_file)
-        ptoml_contents = read(notebook.project_ctx.env.project_file, String)
-        mtoml_contents = read(notebook.project_ctx.env.manifest_file, String)
+    if notebook.project_pkg_ctx !== nothing && isfile(notebook.project_pkg_ctx.env.project_file) && isfile(notebook.project_pkg_ctx.env.manifest_file)
+        ptoml_contents = read(notebook.project_pkg_ctx.env.project_file, String)
+        mtoml_contents = read(notebook.project_pkg_ctx.env.manifest_file, String)
         if !isempty(ptoml_contents) && !isempty(mtoml_contents)
             println(io)
             print(io, _cell_id_delimiter, "Package environment:\n")
@@ -206,7 +206,7 @@ function load_notebook_nobackup(io, path)::Notebook
     end
 
     readuntil(io, "Package environment:")
-    project_ctx = if eof(io)
+    project_pkg_ctx = if eof(io)
         nothing
     else
         readuntil(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"")
@@ -235,7 +235,7 @@ function load_notebook_nobackup(io, path)::Notebook
         k ∈ appeared_order
     end
 
-    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, project_ctx=project_ctx)
+    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, project_pkg_ctx=project_pkg_ctx)
 end
 
 function load_notebook_nobackup(path::String)::Notebook
