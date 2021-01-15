@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports
 
 Base.push!(x::Set{Cell}) = x
 
@@ -29,13 +29,15 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	for cell::Cell in removed_cells
 		cell.code = ""
 		cell.parsedcode = parse_custom(notebook, cell)
-		cell.module_usings = Set{Expr}()
+		cell.module_usings_imports = UsingsImports()
 		cell.rootassignee = nothing
 	end
-	cells::Vector{Cell} = [cells..., removed_cells...]
+
+	# include removed cells as empty cells in our new topology to simplify our algorithm
+	cells = Cell[cells..., removed_cells...]
 	new_topology = NotebookTopology(merge(
 		new_topology.nodes,
-		Dict(cell => ReactiveNode() for cell in removed_cells),
+		Dict{Cell,ReactiveNode}(cell => ReactiveNode() for cell in removed_cells),
 	))
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
@@ -73,7 +75,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
+	to_reimport = union(Set{Expr}(), map(c -> c.module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
 
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
@@ -174,6 +176,6 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 end
 
-# Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
+# Only used in tests!
 update_run!(args...) = update_save_run!(args...; save=false)

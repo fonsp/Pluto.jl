@@ -110,7 +110,7 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Numb
 	if :LOAD_PATH ∈ topology[cell].references
 		# https://github.com/fonsp/Pluto.jl/issues/323
 		1
-	elseif !isempty(cell.module_usings)
+	elseif !isempty(cell.module_usings_imports.usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
 		2
 	elseif :include ∈ topology[cell].references

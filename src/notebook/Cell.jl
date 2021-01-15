@@ -1,5 +1,5 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, UsingsImports
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
 Base.@kwdef mutable struct Cell
@@ -24,7 +24,7 @@ Base.@kwdef mutable struct Cell
     persist_js_state::Bool=false
     
     parsedcode::Union{Nothing,Expr}=nothing
-    module_usings::Set{Expr}=Set{Expr}()
+    module_usings_imports::UsingsImports=UsingsImports()
     rootassignee::Union{Nothing,Symbol}=nothing
     function_wrapped::Bool=false
 end
