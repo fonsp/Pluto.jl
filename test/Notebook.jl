@@ -101,7 +101,7 @@ function project_notebook()
         Cell("using Plots"),
     ])
 
-    n.project_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(mktempdir()))
+    n.project_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
     Pkg.add(n.project_ctx, [Pkg.PackageSpec(name="Dates"), Pkg.PackageSpec(name="Plots")])
     Pkg.instantiate(n.project_ctx)
 
