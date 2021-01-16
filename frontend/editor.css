@@ -1637,7 +1637,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #8d86875e;
 }
 
-.cm-s-default .CodeMirror-linenumber::before {
+.cm-s-default .CodeMirror-linenumber::after {
     content: "⋅";
     font-size: 0.75rem;
 }
@@ -1650,7 +1650,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     font-size: 0.75rem;
 }
 
-.cm-s-default .CodeMirror-linenumber:hover::before {
+.cm-s-default .CodeMirror-linenumber:hover::after {
     font-size: 0px;
 }
 
