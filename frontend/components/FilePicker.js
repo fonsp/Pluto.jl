@@ -39,19 +39,18 @@ export class FilePicker extends Component {
         }
 
         this.on_submit = async () => {
-            if(this.props.native) {
+            const my_val = this.cm.getValue();
+            if(this.props.native && my_val.length === 0) {
                 const [fileHandle] = await window.showOpenFilePicker()
                 
                 this.props.on_submit('BrowserLocalSaveMedium', null, fileHandle)
             }
             else {
-                const my_val = this.cm.getValue()
                 if (my_val === this.forced_value && this.state.current_save_medium !== 'BrowserLocalSaveMedium') {
                     this.suggest_not_tmp()
                     return
                 }
                 try {
-                    console.log(this.props.medium)
                     await this.props.on_submit(this.state.current_save_medium, this.cm.getValue(), null)
                     this.cm.blur()
                 } catch (error) {
@@ -96,13 +95,6 @@ export class FilePicker extends Component {
                 current_save_medium: sm_type
             })
         }
-
-        if(this.props.native) {
-            this.cm.getWrapperElement().style.display = 'none'
-        }
-        else {
-            this.cm.getWrapperElement().style.display = ''
-        }
     }
     componentDidMount() {
         this.cm = window.CodeMirror(
@@ -129,11 +121,6 @@ export class FilePicker extends Component {
                 cursorBlinkRate: this.is_browser_medium() ? -1 : undefined
             }
         )
-
-        // Hide the CodeMirror if native filepickers are supported
-        if(this.props.native) {
-            this.cm.getWrapperElement().style.display = 'none'
-        }
 
         this.cm.setOption(
             "extraKeys",
@@ -180,7 +167,7 @@ export class FilePicker extends Component {
     render() {
         return html`
             <pluto-filepicker>
-                <button onClick=${this.on_submit}>${this.is_browser_medium() ? 'Change' : this.props.button_label}</button>
+                <button onClick=${this.on_submit}>${this.is_browser_medium() ? 'Save As' : this.props.button_label}</button>
             </pluto-filepicker>
         `
     }

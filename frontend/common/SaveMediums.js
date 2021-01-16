@@ -1,3 +1,9 @@
+export const SaveStatuses = {
+    IDLE: 0,
+    SAVING: 1,
+    ERROR: 2
+}
+
 export class SaveMedium {
     constructor() {}
 
@@ -32,8 +38,20 @@ export class BrowserLocalSaveMedium extends SaveMedium {
     constructor(path, extras) {
         super();
 
+        this.saveStatus = SaveStatuses.IDLE;
+
         this.fileHandle = extras ? extras : null;
-        if(!this.fileHandle) {
+        if(this.fileHandle) {
+            this.firstSave = true;
+            // TODO: Find better solution for activating editor
+            // window.addEventListener('mousedown', () => {
+            //     if(this.firstSave) {
+            //         this.save()
+            //         this.firstSave = false;
+            //     }
+            // });
+        }
+        else {
             this._openSystemDialog()
         }
     }
@@ -46,19 +64,29 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         return {}
     }
     async moveTo() {
+        this.saveAfterSelected = true
         await this._openSystemDialog()
         return true
     }
     async save() {
+        this.saveStatus = SaveStatuses.SAVING;
         const content = await super.getNotebookContent()
 
         if(this.fileHandle) {
-            const stream = await this.fileHandle.createWritable()
-            await stream.write(content)
-            await stream.close()
+            try {
+                const stream = await this.fileHandle.createWritable()
+                await stream.write(content)
+                await stream.close()
+                // this.saveStatus = SaveStatuses.IDLE;
+            }
+            catch(e) {
+                this.saveStatus = SaveStatuses.ERROR;
+                throw e;
+            }
         }
         else {
             this.saveAfterSelected = true
+            this.saveStatus = SaveStatuses.IDLE;
         }
     }
     async load() {
@@ -69,6 +97,9 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         else {
             throw new Error('A browser-saved notebook cannot be loaded without an initialized FileHandle')
         }
+    }
+    status() {
+        return this.saveStatus;
     }
 
     async _openSystemDialog() {

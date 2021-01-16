@@ -1482,6 +1482,23 @@ footer button, .pluto-styled-button {
     text-align: right;
 }
 
+#saveIndicator {
+    position: sticky;
+    bottom: 0px;
+    height: 0px;
+    width: 100%;
+    z-index: 5;
+}
+#saveIndicator > span {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    width: 10px;
+    height: 10px;
+    border-radius: 5px;
+    transition: background-color 0.5s;
+}
+
 /* UNDO DELETED CELL */
 
 nav#undo_delete {

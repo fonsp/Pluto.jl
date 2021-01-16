@@ -137,6 +137,9 @@ export class Editor extends Component {
             save_medium: null
         }
 
+        this.saveIndicatorLabels = ['All changes saved', 'Saving...', 'Error saving changes']
+        this.saveIndicatorColors = ['#6bab5b', '#aa7dc0', '#d66661']
+
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
 
@@ -803,7 +806,8 @@ export class Editor extends Component {
     }
 
     render() {
-        let { export_menu_open } = this.state
+        const { export_menu_open } = this.state
+        const save_status = this.state.save_medium?.status()
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -885,6 +889,9 @@ export class Editor extends Component {
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
+                    <div id="saveIndicator">
+                        <span title="${this.saveIndicatorLabels[save_status]}" style="background-color: ${this.saveIndicatorColors[save_status]}"></span>
+                    </div>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

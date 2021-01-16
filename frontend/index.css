@@ -154,8 +154,8 @@ pluto-filepicker button {
 
 pluto-filepicker button {
     cursor: pointer;
-    /* border-top-left-radius: 0; */
-    /* border-bottom-left-radius: 0; */
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 
 li.file.new.CodeMirror-hint:before {
