@@ -34,11 +34,11 @@ export class DropRuler extends Component {
                     drag_start: false,
                     drag_target: false,
                 })
-                this.props.actions.set_scroller({ up: false, down: false })
+                this.props.set_scroller({ up: false, down: false })
                 this.dropee = null
             } else {
                 this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee.id))
+                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee.id))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -46,7 +46,7 @@ export class DropRuler extends Component {
                     drag_start: true,
                     drop_index: this.getDropIndexOf(e),
                 })
-                this.props.actions.set_scroller({ up: true, down: true })
+                this.props.set_scroller({ up: true, down: true })
             }
         })
         document.addEventListener("dragenter", (e) => {
@@ -77,7 +77,7 @@ export class DropRuler extends Component {
                 drag_start: false,
                 drag_target: false,
             })
-            this.props.actions.set_scroller({ up: false, down: false })
+            this.props.set_scroller({ up: false, down: false })
         })
         document.addEventListener("drop", (e) => {
             // Guaranteed to fire before the 'dragend' event

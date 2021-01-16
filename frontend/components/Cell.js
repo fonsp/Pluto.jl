@@ -121,7 +121,7 @@ export const Cell = ({
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
-                    pluto_actions.change_remote_cell(cell_id)
+                    pluto_actions.set_and_run_multiple([cell_id])
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]

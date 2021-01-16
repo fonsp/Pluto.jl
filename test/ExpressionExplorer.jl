@@ -119,6 +119,9 @@ using Test
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
         @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
+        @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
+        @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
+        @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -302,6 +305,10 @@ using Test
         @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
+
+        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [:x, :y, :Float64], [:a], [[Symbol("@einsum")], [:*]], [])
+        @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [:x, :k, :z], [:a], [[Symbol("@tullio")], [:f], [:*], [:+]], [])
+        @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [:x, :y, :k, :Pack, :Float64], [:a], [[:Pack, Symbol("@asdf")], [:/], [:log]], [])
 
         @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
