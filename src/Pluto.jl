@@ -35,6 +35,7 @@ include("./analysis/Parse.jl")
 include("./analysis/Topology.jl")
 
 include("./evaluation/WorkspaceManager.jl")
+include("./packages/PkgTools.jl")
 include("./packages/Packages.jl")
 include("./evaluation/Update.jl")
 include("./evaluation/Run.jl")

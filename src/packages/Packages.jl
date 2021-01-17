@@ -1,5 +1,6 @@
 
 import .ExpressionExplorer: external_package_names
+import .PkgTools
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for (c, _) in topology.nodes)...)
@@ -36,9 +37,11 @@ function update_project_pkg(notebook::Notebook, old::NotebookTopology, new::Note
                 # TODO: we might want to upgrade other packages now that constraints have loosened???
             end
             
+            # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
+            # Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules
 
             # TODO: check if packages exist
-            to_add = added
+            to_add = filter(PkgTools.package_exists, added)
             if !isempty(to_add)
                 for tier in [
                     Pkg.PRESERVE_ALL,
