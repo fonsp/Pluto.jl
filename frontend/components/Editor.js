@@ -151,7 +151,7 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
 
-            pkg_state_local: {
+            nbpkg_local_local: {
                 is_pluto_managed: true,
                 packages: {
                     PlutoUI: {
@@ -410,11 +410,11 @@ export class Editor extends Component {
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
             },
-            update_local_pkg_state: (mutator) => {
+            update_local_nbpkg_local: (mutator) => {
                 this.setState(({ notebook }) => ({
                     notebook: {
                         ...notebook,
-                        pkg_state_local: immer(notebook.pkg_state_local, mutator),
+                        nbpkg_local_local: immer(notebook.nbpkg_local_local, mutator),
                     },
                 }))
             },
@@ -869,7 +869,7 @@ export class Editor extends Component {
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
-                            pkg_state=${this.state.pkg_state_local}
+                            nbpkg_local=${this.state.nbpkg_local_local}
                         />
 
                         <${DropRuler} 

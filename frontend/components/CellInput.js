@@ -70,7 +70,7 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
-    pkg_state,
+    nbpkg_local,
     cell_id,
     notebook_id,
 }) => {
@@ -89,9 +89,9 @@ export const CellInput = ({
 
     useEffect(() => {
         pkg_bubbles.current.forEach((b) => {
-            b.on_pkg_state(pkg_state)
+            b.on_nbpkg_local(nbpkg_local)
         })
-    }, [pkg_state.packages, pkg_state.is_pluto_managed])
+    }, [nbpkg_local.packages, nbpkg_local.is_pluto_managed])
 
     useEffect(() => {
         const current_value = cm_ref.current?.getValue() ?? ""
@@ -498,7 +498,7 @@ export const CellInput = ({
                                             package_name: package_name,
                                             refresh: () => cm.refresh(),
                                         })
-                                        b.on_pkg_state(pkg_state)
+                                        b.on_nbpkg_local(nbpkg_local)
                                         return b
                                     })
 

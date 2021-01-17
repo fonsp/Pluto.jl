@@ -17,11 +17,11 @@ const range_hint = (v) => {
 // not preact because we're too cool
 export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
     const node = html`<pkg-bubble>...</pkg-bubble>`
-    const pkg_state_ref = { current: null }
+    const nbpkg_local_ref = { current: null }
     const opinionated_ranges_ref = { current: { recommended: [], other: [] } }
 
     const render = () => {
-        const me = pkg_state_ref.current?.packages[package_name]
+        const me = nbpkg_local_ref.current?.packages[package_name]
         const is_set = me != null
         const is_running = is_set && me.running_version != null
         const is_stdlib = opinionated_ranges_ref.current.recommended.includes("stdlib")
@@ -78,7 +78,7 @@ export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
                     default_version_range
                 )
                 if (answer != null) {
-                    pluto_actions.update_local_pkg_state((state) => {
+                    pluto_actions.update_local_nbpkg_local((state) => {
                         state.packages[package_name] = {
                             running_version: state.packages[package_name]?.running_version,
                             type: "version_range",
@@ -91,7 +91,7 @@ export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
             } else if (choice === "action_git") {
                 const answer = prompt(`Enter a git branch name or commit SHA for ${package_name}:`)
                 if (answer != null) {
-                    pluto_actions.update_local_pkg_state((state) => {
+                    pluto_actions.update_local_nbpkg_local((state) => {
                         state.packages[package_name] = {
                             running_version: state.packages[package_name]?.running_version,
                             type: "git_revision",
@@ -104,7 +104,7 @@ export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
             } else if (choice === "action_local_path") {
                 const answer = prompt(`Enter a local path for ${package_name}:`)
                 if (answer != null) {
-                    pluto_actions.update_local_pkg_state((state) => {
+                    pluto_actions.update_local_nbpkg_local((state) => {
                         state.packages[package_name] = {
                             running_version: state.packages[package_name]?.running_version,
                             type: "local_path",
@@ -117,7 +117,7 @@ export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
             } else {
                 node.classList.toggle("installed", me != null && choice === me[me.type])
 
-                pluto_actions.update_local_pkg_state((state) => {
+                pluto_actions.update_local_nbpkg_local((state) => {
                     state.packages[package_name] = {
                         running_version: state.packages[package_name]?.running_version,
                         type: "version_range",
@@ -135,8 +135,8 @@ export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
         refresh()
     }
 
-    node.on_pkg_state = (p) => {
-        pkg_state_ref.current = p
+    node.on_nbpkg_local = (p) => {
+        nbpkg_local_ref.current = p
         render()
     }
 

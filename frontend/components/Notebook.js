@@ -17,7 +17,7 @@ let CellMemo = ({
     focus_after_creation,
     force_hide_input,
     selected_cells,
-    pkg_state,
+    nbpkg_local,
 }) => {
     return useMemo(() => {
         return html`
@@ -34,7 +34,7 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 force_hide_input=${force_hide_input}
                 selected_cells=${selected_cells}
-                pkg_state=${pkg_state}
+                nbpkg_local=${nbpkg_local}
             />
         `
     }, [
@@ -50,7 +50,7 @@ let CellMemo = ({
         focus_after_creation,
         force_hide_input,
         selected_cells,
-        pkg_state,
+        nbpkg_local,
     ])
 }
 
@@ -76,7 +76,7 @@ const render_cell_inputs_minimum = 5
  *  on_focus_neighbor: any,
  *  disable_input: any,
  *  focus_after_creation: any,
- *  pkg_state: Object,
+ *  nbpkg_local: Object,
  * }} props
  * */
 export const Notebook = ({
@@ -89,7 +89,7 @@ export const Notebook = ({
     on_cell_input,
     on_focus_neighbor,
     disable_input,
-    pkg_state,
+    nbpkg_local,
 }) => {
     // This might look kinda silly...
     // and it is... but it covers all the cases... - DRAL
@@ -134,7 +134,7 @@ export const Notebook = ({
                     focus_after_creation=${last_created_cell === cell_id}
                     force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
                     selected_cells=${selected_cells}
-                    pkg_state=${pkg_state}
+                    nbpkg_local=${nbpkg_local}
                 />`
             )}
         </pluto-notebook>
@@ -151,7 +151,7 @@ export const NotebookMemo = ({
     disable_input,
     last_created_cell,
     selected_cells,
-    pkg_state,
+    nbpkg_local,
 }) => {
     return useMemo(() => {
         return html`
@@ -165,7 +165,7 @@ export const NotebookMemo = ({
                 disable_input=${disable_input}
                 last_created_cell=${last_created_cell}
                 selected_cells=${selected_cells}
-                pkg_state=${pkg_state}
+                nbpkg_local=${nbpkg_local}
             />
         `
     }, [
@@ -178,6 +178,6 @@ export const NotebookMemo = ({
         disable_input,
         last_created_cell,
         selected_cells,
-        pkg_state,
+        nbpkg_local,
     ])
 }
