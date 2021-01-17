@@ -31,6 +31,7 @@ export const Cell = ({
     focus_after_creation,
     force_hide_input,
     selected_cells,
+    pkg_state,
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -138,6 +139,7 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                pkg_state=${pkg_state}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />`}

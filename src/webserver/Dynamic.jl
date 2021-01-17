@@ -438,3 +438,20 @@ end"""
         code = missing
     end
 end
+
+responses[:package_versions] = function response_package_versions(🙋::ClientRequest)
+    require_notebook(🙋)
+    all_versions = PkgTools.package_versions(🙋.body["package_name"])
+    opinionated = PkgTools.opinionated_ranges(all_versions)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
+        :versions => all_versions,
+        :opinionated_ranges => opinionated,
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
+    results = PkgTools.package_completions(🙋.body["query"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
+        :results => results,
+    ), nothing, nothing, 🙋.initiator))
+end

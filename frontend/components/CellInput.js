@@ -4,6 +4,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+import { PkgBubble } from "./PkgBubble.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -15,6 +16,24 @@ const clear_selection = (cm) => {
 
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
+const swap = (a, i, j) => {
+    ;[a[i], a[j]] = [a[j], a[i]]
+}
+const range = (a, b) => {
+    const x = Math.min(a, b)
+    const y = Math.max(a, b)
+    return [...Array(y + 1 - x).keys()].map((i) => i + x)
+}
+
+const get = (map, key, creator) => {
+    if (map.has(key)) {
+        return map.get(key)
+    } else {
+        const val = creator()
+        map.set(key, val)
+        return val
+    }
+}
 
 // Adapted from https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
 var offsetFromViewport = function (elem) {
@@ -51,6 +70,7 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
+    pkg_state,
     cell_id,
     notebook_id,
 }) => {
@@ -64,6 +84,14 @@ export const CellInput = ({
 
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
+
+    const pkg_bubbles = useRef(new Map())
+
+    useEffect(() => {
+        pkg_bubbles.current.forEach((b) => {
+            b.on_pkg_state(pkg_state)
+        })
+    }, [pkg_state.packages, pkg_state.is_pluto_managed])
 
     useEffect(() => {
         const current_value = cm_ref.current?.getValue() ?? ""
@@ -199,14 +227,7 @@ export const CellInput = ({
                 cm.setSelections(new_selections)
             }
         }
-        const swap = (a, i, j) => {
-            ;[a[i], a[j]] = [a[j], a[i]]
-        }
-        const range = (a, b) => {
-            const x = Math.min(a, b)
-            const y = Math.max(a, b)
-            return [...Array(y + 1 - x).keys()].map((i) => i + x)
-        }
+
         const alt_move = (delta) => {
             const selections = cm.listSelections()
             const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
@@ -420,12 +441,79 @@ export const CellInput = ({
             }, 0)
         })
 
-        cm.on("change", (_, e) => {
+        cm.on("change", (cm, e) => {
+            // console.log(e)
             const new_value = cm.getValue()
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
             change_handler_ref.current(new_value)
+
+            // cm.replaceRange()
+            cm.getAllMarks().forEach((m) => {
+                const m_position = m.find()
+                if (e.from.line <= m_position.line && m_position.line <= e.to.line) {
+                    m.clear()
+                }
+            })
+
+            // TODO: put this search in a function that returns the list of mathces
+            // we can use that when you submit the cell to definitively find the list of import
+            // and then purge the map?
+
+            // TODO: debounce _any_ edit to update all imports for this cell
+            // because adding #= to the start of a cell will remove imports later
+
+            range(e.from.line, e.to.line).map((line_i) => {
+                /** @type {string} */
+                const line = cm.getLine(line_i)
+                if (line != undefined) {
+                    // dunno
+                    // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
+
+                    // import A: b. c
+                    // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
+
+                    // import A, B, C
+                    const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
+                    // const re = /(using|import)\s*(\w+)/g
+                    for (const import_match of line.matchAll(re)) {
+                        // console.log(import_match)
+
+                        const start = import_match.index + import_match[1].length
+
+                        const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
+
+                        if (import_token.type === "keyword") {
+                            const inner = import_match[0].substr(import_match[1].length)
+
+                            const inner_re = /(\w+)(\.\w+)*/g
+                            for (const package_match of inner.matchAll(inner_re)) {
+                                const package_name = package_match[1]
+
+                                if (package_name !== "Base" && package_name !== "Core") {
+                                    const widget = get(pkg_bubbles.current, package_name, () => {
+                                        const b = PkgBubble({
+                                            pluto_actions: pluto_actions,
+                                            package_name: package_name,
+                                            refresh: () => cm.refresh(),
+                                        })
+                                        b.on_pkg_state(pkg_state)
+                                        return b
+                                    })
+
+                                    cm.setBookmark(
+                                        { line: line_i, ch: start + package_match.index + package_match[0].length },
+                                        {
+                                            widget: widget,
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            })
         })
 
         cm.on("blur", () => {

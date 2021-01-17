@@ -17,6 +17,7 @@ let CellMemo = ({
     focus_after_creation,
     force_hide_input,
     selected_cells,
+    pkg_state,
 }) => {
     return useMemo(() => {
         return html`
@@ -33,6 +34,7 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 force_hide_input=${force_hide_input}
                 selected_cells=${selected_cells}
+                pkg_state=${pkg_state}
             />
         `
     }, [
@@ -48,6 +50,7 @@ let CellMemo = ({
         focus_after_creation,
         force_hide_input,
         selected_cells,
+        pkg_state,
     ])
 }
 
@@ -73,6 +76,7 @@ const render_cell_inputs_minimum = 5
  *  on_focus_neighbor: any,
  *  disable_input: any,
  *  focus_after_creation: any,
+ *  pkg_state: Object,
  * }} props
  * */
 export const Notebook = ({
@@ -85,6 +89,7 @@ export const Notebook = ({
     on_cell_input,
     on_focus_neighbor,
     disable_input,
+    pkg_state,
 }) => {
     // This might look kinda silly...
     // and it is... but it covers all the cases... - DRAL
@@ -113,7 +118,7 @@ export const Notebook = ({
                     cell_input=${notebook.cell_inputs[cell_id]}
                     cell_result=${notebook.cell_results[cell_id] ?? {
                         cell_id: cell_id,
-                        queued: false,
+                        queued: true,
                         running: false,
                         errored: false,
                         runtime: null,
@@ -129,6 +134,7 @@ export const Notebook = ({
                     focus_after_creation=${last_created_cell === cell_id}
                     force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
                     selected_cells=${selected_cells}
+                    pkg_state=${pkg_state}
                 />`
             )}
         </pluto-notebook>
@@ -145,6 +151,7 @@ export const NotebookMemo = ({
     disable_input,
     last_created_cell,
     selected_cells,
+    pkg_state,
 }) => {
     return useMemo(() => {
         return html`
@@ -158,7 +165,19 @@ export const NotebookMemo = ({
                 disable_input=${disable_input}
                 last_created_cell=${last_created_cell}
                 selected_cells=${selected_cells}
+                pkg_state=${pkg_state}
             />
         `
-    }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
+    }, [
+        is_initializing,
+        notebook,
+        cell_inputs_local,
+        on_update_doc_query,
+        on_cell_input,
+        on_focus_neighbor,
+        disable_input,
+        last_created_cell,
+        selected_cells,
+        pkg_state,
+    ])
 }

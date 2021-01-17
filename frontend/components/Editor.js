@@ -138,6 +138,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+
             connected: false,
             initializing: true,
             moving_file: false,
@@ -149,6 +150,22 @@ export class Editor extends Component {
 
             last_created_cell: null,
             selected_cells: [],
+
+            pkg_state_local: {
+                is_pluto_managed: true,
+                packages: {
+                    PlutoUI: {
+                        running_version: "0.5.1",
+                        type: "version_range",
+                        version_range: "0.5",
+                    },
+                    Plots: {
+                        running_version: "1.2.3",
+                        type: "version_range",
+                        version_range: "1",
+                    },
+                },
+            },
 
             update_is_ongoing: false,
         }
@@ -392,6 +409,14 @@ export class Editor extends Component {
                     )
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
+            },
+            update_local_pkg_state: (mutator) => {
+                this.setState(({ notebook }) => ({
+                    notebook: {
+                        ...notebook,
+                        pkg_state_local: immer(notebook.pkg_state_local, mutator),
+                    },
+                }))
             },
             set_bond: async (symbol, value, is_first_value) => {
                 // For now I discard is_first_value, basing it on if there
@@ -844,6 +869,7 @@ export class Editor extends Component {
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
                             disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
+                            pkg_state=${this.state.pkg_state_local}
                         />
 
                         <${DropRuler} 
