@@ -44,8 +44,8 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
     nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
-    nbpkg_notebook_restart_recommended::Union{Nothing,String}=nothing
-    nbpkg_notebook_restart_required::Union{Nothing,String}=nothing
+    nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
+    nbpkg_restart_required_msg::Union{Nothing,String}=nothing
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end

@@ -132,8 +132,8 @@ function notebook_to_js(notebook::Notebook)
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(
                 "enabled" => ctx !== nothing,
-                "notebook_restart_recommended" => notebook.nbpkg_notebook_restart_recommended,
-                "notebook_restart_required" => notebook.nbpkg_notebook_restart_required,
+                "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
+                "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
                 "installed_versions" => ctx === nothing ? nothing : Dict{String,String}(
                     x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)

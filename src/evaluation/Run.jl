@@ -155,11 +155,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 			# TODO: these warning should be in the frontend
 			if pkg_result.restart_recommended
 				@warn "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_notebook_restart_recommended = "yes"
+				notebook.nbpkg_restart_recommended_msg = "yes"
 			end
 			if pkg_result.restart_required
 				@error "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_notebook_restart_required = "yes"
+				notebook.nbpkg_restart_required_msg = "yes"
 			end
 
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
