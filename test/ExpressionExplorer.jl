@@ -119,6 +119,9 @@ using Test
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
         @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
+        @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
+        @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
+        @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -202,8 +205,9 @@ using Test
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
-        @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
+        @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])

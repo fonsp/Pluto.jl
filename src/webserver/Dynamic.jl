@@ -73,7 +73,7 @@ end
 responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     require_notebook(🙋)
     cell = let
-        cell_id = UUID(body["cell_id"])
+        cell_id = UUID(🙋.body["cell_id"])
         🙋.notebook.cells_dict[cell_id]
     end
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
