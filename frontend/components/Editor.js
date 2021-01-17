@@ -116,6 +116,7 @@ const Main = ({ children }) => {
  *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
  *  bonds: { [name: string]: any },
+ *  nbpkg: Object,
  * }}
  */
 
@@ -132,6 +133,7 @@ export class Editor extends Component {
                 cell_inputs: {},
                 cell_results: {},
                 cell_order: [],
+                nbpkg: {},
             }),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
@@ -772,6 +774,9 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
+        document.body.classList.toggle("nbpkg_restart_recommended", this.state.notebook.nbpkg.notebook_restart_recommended != null)
+        document.body.classList.toggle("nbpkg_restart_required", this.state.notebook.nbpkg.notebook_restart_required != null)
+
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
             this.bonds_changes_to_apply_when_done = []
@@ -779,6 +784,8 @@ export class Editor extends Component {
                 applyPatches(notebook, bonds_patches)
             })
         }
+
+        console.log(this.state.notebook.nbpkg)
     }
 
     render() {

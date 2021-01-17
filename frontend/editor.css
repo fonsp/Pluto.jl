@@ -620,12 +620,23 @@ li.dir.CodeMirror-hint:before {
     }
 }
 
-body.disconnected > header {
+body.disconnected > header,
+body.nbpkg_restart_recommended > header,
+body.nbpkg_restart_required > header {
     background-color: rgba(255, 169, 114, 0.56);
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+}
+body.disconnected > header {
+    background-color: rgba(255, 169, 114, 0.56);
+}
+body.nbpkg_restart_recommended > header {
+    background-color: rgba(114, 192, 255, 0.56);
+}
+body.nbpkg_restart_required > header {
+    background-color: rgba(170, 41, 32, 0.56);
 }
 
 nav:after {
@@ -638,8 +649,12 @@ body.disconnected > header > nav#at_the_top:after {
     content: "Reconnecting...";
 }
 
-body.loading > header > nav:after {
-    content: "Loading...";
+body.nbpkg_restart_recommended > header > nav:after {
+    content: "Notebook restart recommended";
+}
+
+body.nbpkg_restart_required > header > nav:after {
+    content: "Notebook restart required";
 }
 
 /* PREAMBLE */

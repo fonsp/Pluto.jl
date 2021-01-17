@@ -5,6 +5,14 @@ export package_versions, package_completions
 import Pkg
 import Pkg.Types: VersionRange
 
+function getfirst(f::Function, xs)
+	for x in xs
+		if f(x)
+			return x
+		end
+	end
+	error("Not found")
+end
 
 # TODO: technically this is not constant
 const registry_paths = @static if isdefined(Pkg.Types, :registries)
@@ -81,6 +89,18 @@ end
 package_exists(package_name::String) =
     package_name ∈ stdlibs || 
     registries_path(registries, package_name) !== nothing
+
+get_manifest_entry(ctx::Pkg.Types.Context, pkg_name::String) = 
+    getfirst(e -> e.name == pkg_name, values(ctx.env.manifest))
+
+function get_manifest_version(ctx, pkg_name)
+    if pkg_name ∈ stdlibs
+        "sdtlib"
+    else
+        entry = get_manifest_entry(ctx, pkg_name)
+        entry.version
+    end
+end
 
 # function simple_ranges(available::AbstractVector{VersionNumber})
 # 	unique(
