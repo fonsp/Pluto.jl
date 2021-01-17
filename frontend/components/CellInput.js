@@ -4,7 +4,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { PkgBubble } from "./PkgBubble.js"
+import { PkgStatusMark } from "./PkgStatusMark.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -493,7 +493,7 @@ export const CellInput = ({
 
                                 if (package_name !== "Base" && package_name !== "Core") {
                                     const widget = get(pkg_bubbles.current, package_name, () => {
-                                        const b = PkgBubble({
+                                        const b = PkgStatusMark({
                                             pluto_actions: pluto_actions,
                                             package_name: package_name,
                                             refresh: () => cm.refresh(),

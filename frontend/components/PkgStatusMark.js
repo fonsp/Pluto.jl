@@ -15,8 +15,8 @@ const range_hint = (v) => {
 }
 
 // not preact because we're too cool
-export const PkgBubble = ({ package_name, refresh, pluto_actions }) => {
-    const node = html`<pkg-bubble>...</pkg-bubble>`
+export const PkgStatusMark = ({ package_name, refresh, pluto_actions }) => {
+    const node = html`<pkg-status-mark>...</pkg-status-mark>`
     const nbpkg_local_ref = { current: null }
     const opinionated_ranges_ref = { current: { recommended: [], other: [] } }
 
