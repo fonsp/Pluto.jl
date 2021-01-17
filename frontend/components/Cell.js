@@ -42,9 +42,18 @@ export const Cell = ({
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
+                if (e.detail.reason === "search/replace set highlight") {
+                    set_cm_forced_focus([e.detail.from, e.detail.to, { scroll: true, focus: false }])
+                    return
+                }
+                if (e.detail.reason === "search/replace unset highlight") {
+                    set_cm_forced_focus(null)
+                    return
+                }
                 if (e.detail.line != null) {
                     const ch = e.detail.ch
                     if (ch == null) {
+                        // arrow up/down
                         set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
                     } else {
                         set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])

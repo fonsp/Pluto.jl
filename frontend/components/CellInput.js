@@ -474,7 +474,7 @@ export const CellInput = ({
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
             let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line === Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
-            cm_ref.current.focus()
+            if (cm_forced_focus?.[2]?.focus !== false) cm_ref.current.focus()
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])

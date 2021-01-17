@@ -175,6 +175,7 @@ export class Editor extends Component {
                     window.dispatchEvent(
                         new CustomEvent("cell_focus", {
                             detail: {
+                                reason: "focus neighbor", // that's just documentation - page up/down!
                                 cell_id: this.state.notebook.cell_order[new_i],
                                 line: line,
                                 ch: ch,

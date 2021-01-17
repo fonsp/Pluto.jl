@@ -28,8 +28,8 @@ export default class TextMarker {
     /**
      * @param {string} id Simply used to later identify an instance
      * @param {window.CodeMirror} codemirror CodeMirror instance that contains the matched text
-     * @param {number} from Begin of the matched text
-     * @param {number} to End of the matched text
+     * @param {{ch:number, line:number}} from Begin of the matched text
+     * @param {{ch:number, line:number}} to End of the matched text
      */
     constructor(id, codemirror, from, to) {
         this.id = id
@@ -49,6 +49,17 @@ export default class TextMarker {
     select() {
         this.marker = this.codemirror.markText(this.from, this.to, { css: "background: #D9D5D5; color: red; font-weight: bold" })
         scrollToCodeMirrorIfNeeded(this.codemirror)
+        window.dispatchEvent(
+            new CustomEvent("cell_focus", {
+                detail: {
+                    reason: "search/replace set highlight",
+                    cm: this.codemirror,
+                    cell_id: this.codemirror.getWrapperElement().parentElement.parentElement.id,
+                    from: this.from,
+                    to: this.to,
+                },
+            })
+        )
     }
 
     /**
@@ -57,6 +68,15 @@ export default class TextMarker {
     deselect() {
         if (this.marker) {
             this.marker.clear()
+            window.dispatchEvent(
+                new CustomEvent("cell_focus", {
+                    detail: {
+                        reason: "search/replace unset highlight",
+                        cm: this.codemirror,
+                        cell_id: this.codemirror.getWrapperElement().parentElement.parentElement.id,
+                    },
+                })
+            )
         }
     }
 
@@ -73,7 +93,8 @@ export default class TextMarker {
      */
     clear_highlighting() {
         this.highlighter.clear()
-        window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", false)
+        // use window. cell_focus event!! --- Make the ch == null something else {focus_from_stacktrace, change_cell, }
+        // window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", false)
     }
 
     /**
@@ -81,6 +102,7 @@ export default class TextMarker {
      */
     highlight() {
         this.highlighter = this.codemirror.markText(this.from, this.to, { css: "color: red; font-weight: bold" })
-        window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", true)
+        // use window. cell_focus event!!
+        //window.CodeMirror.signal(this.codemirror, "custom_event_set_visible", true)
     }
 }
