@@ -147,21 +147,30 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	save && save_notebook(notebook)
 
 	try
-		pkg_result = update_project_pkg(notebook, old, new)
+		pkg_result = update_nbpkg(notebook, old, new)
 
 		if pkg_result.did_something
 			@info "PlutoPkg: success!" pkg_result
 
 			# TODO: these warning should be in the frontend
-			pkg_result.restart_recommended && @warn "PlutoPkg: Notebook restart recommended"
-			pkg_result.restart_required && @error "PlutoPkg: Notebook restart REQUIRED"
+			if pkg_result.restart_recommended
+				@warn "PlutoPkg: Notebook restart recommended"
+				notebook.nbpkg_notebook_restart_recommended = "yes"
+			end
+			if pkg_result.restart_required
+				@error "PlutoPkg: Notebook restart REQUIRED"
+				notebook.nbpkg_notebook_restart_required = "yes"
+			end
 
+			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			save && save_notebook(notebook)
 		end
 	catch e
 		new_packages = external_package_names(new)
-		old_packages = keys(notebook.project_pkg_ctx.env.project.deps)
+		old_packages = keys(notebook.nbpkg_ctx.env.project.deps)
 		@error "PlutoPkg: Failed to add/remove package" new_packages old_packages exception=(e, catch_backtrace())
+
+		# TODO: send to user
 	end
 	
 	# _assume `prerender_text == false` if you want to skip some details_

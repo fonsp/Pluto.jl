@@ -2,6 +2,8 @@ import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
+import .PkgTools
+
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
 
@@ -126,6 +128,18 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
+        "nbpkg" => Dict{String,Any}(
+            "notebook_restart_recommended" => notebook.nbpkg_notebook_restart_recommended,
+            "notebook_restart_required" => notebook.nbpkg_notebook_restart_required,
+            # TODO: cache this
+            "installed_versions" => let
+                ctx = notebook.nbpkg_ctx
+                installed = keys(ctx.env.project.deps)
+                Dict{String,String}(
+                    x => string(PkgTools.get_manifest_version(ctx, x)) for x in installed
+                )
+            end
+        ),
     )
 end
 

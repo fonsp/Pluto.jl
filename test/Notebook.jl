@@ -74,7 +74,7 @@ function bad_code_notebook()
         Cell("using Aasdfdsf"),
     ])
 
-    Pkg.instantiate(n.project_pkg_ctx)
+    Pkg.instantiate(n.nbpkg_ctx)
     n
 end
 
@@ -101,9 +101,9 @@ function project_notebook()
         Cell("using Plots"),
     ])
 
-    n.project_pkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
-    Pkg.add(n.project_pkg_ctx, [Pkg.PackageSpec(name="Dates"), Pkg.PackageSpec(name="Plots")])
-    Pkg.instantiate(n.project_pkg_ctx)
+    n.nbpkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+    Pkg.add(n.nbpkg_ctx, [Pkg.PackageSpec(name="Dates"), Pkg.PackageSpec(name="Plots")])
+    Pkg.instantiate(n.nbpkg_ctx)
 
     n
 end

@@ -62,13 +62,13 @@ function make_workspace((session, notebook)::Tuple{ServerSession,Notebook})::Wor
     cd_workspace(workspace, notebook.path)
 
     if pid != Distributed.myid()
-        if notebook.project_pkg_ctx === nothing
+        if notebook.nbpkg_ctx === nothing
             # okaeyo
         else
             Distributed.remotecall_eval(Main, [pid], quote
                 empty!(LOAD_PATH)
                 push!(LOAD_PATH, "@")
-                Base.ACTIVE_PROJECT[] = $(dirname(notebook.project_pkg_ctx.env.project_file))
+                Base.ACTIVE_PROJECT[] = $(dirname(notebook.nbpkg_ctx.env.project_file))
             end)
         end
     else

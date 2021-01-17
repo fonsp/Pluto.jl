@@ -15,8 +15,8 @@ const tiers = [
 
 const pkg_token = Token()
 
-function update_project_pkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology)
-    ctx = notebook.project_pkg_ctx
+function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology)
+    ctx = notebook.nbpkg_ctx
     if ctx !== nothing
         new_packages = String.(external_package_names(new))
         
@@ -65,7 +65,7 @@ function update_project_pkg(notebook::Notebook, old::NotebookTopology, new::Note
                     end
                 end
                 
-                ## This code adds compat entries for packages:
+                ## This code adds compat entries for packages
                 # TODO: disabled because sometimes we need to Pkg.PRESERVE_NONE sometimes (this is easier to fix than to explain)
 
                 # for p in to_add
