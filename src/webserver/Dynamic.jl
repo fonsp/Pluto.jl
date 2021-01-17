@@ -128,18 +128,18 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-        "nbpkg" => Dict{String,Any}(
-            "notebook_restart_recommended" => notebook.nbpkg_notebook_restart_recommended,
-            "notebook_restart_required" => notebook.nbpkg_notebook_restart_required,
-            # TODO: cache this
-            "installed_versions" => let
-                ctx = notebook.nbpkg_ctx
-                installed = keys(ctx.env.project.deps)
-                Dict{String,String}(
-                    x => string(PkgTools.get_manifest_version(ctx, x)) for x in installed
-                )
-            end
-        ),
+        "nbpkg" => let
+            ctx = notebook.nbpkg_ctx
+            Dict{String,Any}(
+                "enabled" => ctx !== nothing,
+                "notebook_restart_recommended" => notebook.nbpkg_notebook_restart_recommended,
+                "notebook_restart_required" => notebook.nbpkg_notebook_restart_required,
+                # TODO: cache this
+                "installed_versions" => ctx === nothing ? nothing : Dict{String,String}(
+                    x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
+                ),
+            )
+        end,
     )
 end
 
