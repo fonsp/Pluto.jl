@@ -18,6 +18,7 @@ let CellMemo = ({
     force_hide_input,
     selected_cells,
     nbpkg_local,
+    nbpkg,
 }) => {
     return useMemo(() => {
         return html`
@@ -35,6 +36,7 @@ let CellMemo = ({
                 force_hide_input=${force_hide_input}
                 selected_cells=${selected_cells}
                 nbpkg_local=${nbpkg_local}
+                nbpkg=${nbpkg}
             />
         `
     }, [
@@ -51,6 +53,9 @@ let CellMemo = ({
         force_hide_input,
         selected_cells,
         nbpkg_local,
+        ...Object.values(nbpkg),
+        ...Object.keys(nbpkg.installed_versions),
+        ...Object.values(nbpkg.installed_versions),
     ])
 }
 
@@ -135,6 +140,7 @@ export const Notebook = ({
                     force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
                     selected_cells=${selected_cells}
                     nbpkg_local=${nbpkg_local}
+                    nbpkg=${notebook.nbpkg}
                 />`
             )}
         </pluto-notebook>

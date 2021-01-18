@@ -439,13 +439,11 @@ end"""
     end
 end
 
-responses[:package_versions] = function response_package_versions(🙋::ClientRequest)
-    require_notebook(🙋)
+responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
+    # require_notebook(🙋)
     all_versions = PkgTools.package_versions(🙋.body["package_name"])
-    opinionated = PkgTools.opinionated_ranges(all_versions)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
-        :versions => all_versions,
-        :opinionated_ranges => opinionated,
+        :versions => string.(all_versions),
     ), nothing, nothing, 🙋.initiator))
 end
 

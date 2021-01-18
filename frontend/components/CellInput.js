@@ -71,6 +71,7 @@ export const CellInput = ({
     on_focus_neighbor,
     on_drag_drop_events,
     nbpkg_local,
+    nbpkg,
     cell_id,
     notebook_id,
 }) => {
@@ -92,6 +93,13 @@ export const CellInput = ({
             b.on_nbpkg_local(nbpkg_local)
         })
     }, [nbpkg_local.packages, nbpkg_local.is_pluto_managed])
+
+    useEffect(() => {
+        pkg_bubbles.current.forEach((b) => {
+            b.on_nbpkg(nbpkg)
+        })
+        console.log("effect!")
+    }, [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)])
 
     useEffect(() => {
         const current_value = cm_ref.current?.getValue() ?? ""
@@ -496,9 +504,11 @@ export const CellInput = ({
                                         const b = PkgStatusMark({
                                             pluto_actions: pluto_actions,
                                             package_name: package_name,
-                                            refresh: () => cm.refresh(),
+                                            refresh_cm: () => cm.refresh(),
+                                            notebook_id: notebook_id,
                                         })
                                         b.on_nbpkg_local(nbpkg_local)
+                                        b.on_nbpkg(nbpkg)
                                         return b
                                     })
 
