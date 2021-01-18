@@ -14,6 +14,7 @@ import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
+import { PkgPopup } from "./PkgPopup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -871,7 +872,6 @@ export class Editor extends Component {
                             last_created_cell=${this.state.last_created_cell}
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
-
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells} 
@@ -880,7 +880,6 @@ export class Editor extends Component {
                             }} 
                             serialize_selected=${this.serialize_selected}
                         />
-
                         <${SelectionArea}
                             actions=${this.actions}
                             cell_order=${this.state.notebook.cell_order}
@@ -906,6 +905,7 @@ export class Editor extends Component {
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
+                    <${PkgPopup} notebook=${this.state.notebook}/>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

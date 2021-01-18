@@ -1,19 +1,49 @@
 import _ from "../imports/lodash.js"
+import { html as phtml } from "../imports/Preact.js"
 
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
-
 const html = observablehq_for_myself.html
 
-const fillr = (parts, filler) => [...parts, ...new Array(3 - parts.length).fill(filler)]
+export const package_status = ({ nbpkg, package_name, available_versions }) => {
+    console.log(available_versions)
 
-const range_hint = (v) => {
-    if (v === "stdlib") {
-        return "Standard library included with Julia"
+    let status = null
+    let hint_raw = null
+    let hint = null
+    const installed_version = nbpkg?.installed_versions[package_name]
+
+    if (installed_version != null || _.isEqual(available_versions, ["stdlib"])) {
+        status = "installed"
+        hint_raw =
+            installed_version == null
+                ? `${package_name} is part of Julia's pre-installed 'standard library'.`
+                : `${package_name} (v${installed_version}) is installed in the notebook.`
+        hint =
+            installed_version == null
+                ? phtml`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
+                : phtml`<header><b>${package_name}</b> <pkg-version>v${installed_version}</pkg-version></header> is installed in the notebook.`
+    } else {
+        if (_.isArray(available_versions)) {
+            if (available_versions.length === 0) {
+                status = "not_found"
+                hint_raw = `The package "${package_name}" could not be found in the registry. Did you make a typo?`
+                hint = phtml`The package <em>"${package_name}"</em> could not be found in the registry. <section><em>Did you make a typo?</em></section>`
+            } else {
+                status = "will_be_installed"
+                hint_raw = `${package_name} (v${_.last(available_versions)}) will be installed in the notebook when you run this cell.`
+                hint = phtml`<header><b>${package_name}</b> <pkg-version>v${_.last(
+                    available_versions
+                )}</pkg-version></header> will be installed in the notebook when you run this cell.`
+            }
+        }
     }
-    const parts = v.split(".")
 
-    return `${fillr(parts, 0).join(".")} until ${fillr(parts, "99").join(".")}${parts.length < 3 ? "+" : ""}`
-    // that's right, 99
+    return { status, hint, hint_raw, available_versions, installed_version }
+}
+
+export const get_avaible_versions = async ({ package_name, pluto_actions, notebook_id }) => {
+    const { message } = await pluto_actions.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+    return message.versions
 }
 
 // not preact because we're too cool
@@ -22,30 +52,17 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
     const node = html`<pkg-status-mark>${button}</pkg-status-mark>`
     // const nbpkg_local_ref = { current: null }
     const nbpkg_ref = { current: null }
-    const available_ranges_ref = { current: null }
+    const available_versions_ref = { current: null }
 
     const render = () => {
-        console.log(nbpkg_ref.current)
-        const me = nbpkg_ref.current?.installed_versions[package_name]
-        if (nbpkg_ref.current != null) {
-            node.title = me
-        }
-        let status = null
-        if (me != null || _.isEqual(available_ranges_ref.current, ["stdlib"])) {
-            status = "installed"
-            node.title =
-                me == null ? `${package_name} is part of Julia's pre-installed 'standard library'.` : `${package_name} (v${me}) is installed in the notebook.`
-        } else {
-            if (_.isArray(available_ranges_ref.current)) {
-                if (available_ranges_ref.current.length === 0) {
-                    status = "not_found"
-                    node.title = `The package "${package_name}" could not be found in the registry. Did you make a typo?`
-                } else {
-                    status = "will_be_installed"
-                    node.title = `${package_name} (v${_.last(available_ranges_ref.current)}) will be installed in the notebook when you run this cell.`
-                }
-            }
-        }
+        const { status, hint_raw } = package_status({
+            nbpkg: nbpkg_ref.current,
+            package_name: package_name,
+            available_versions: available_versions_ref.current,
+        })
+
+        node.title = hint_raw
+
         node.classList.toggle("installed", status === "installed")
         node.classList.toggle("not_found", status === "not_found")
         node.classList.toggle("will_be_installed", status === "will_be_installed")
@@ -62,11 +79,22 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         render()
     }
 
-    pluto_actions.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id }).then(({ message }) => {
-        available_ranges_ref.current = message.versions
-        console.log(message.versions)
+    get_avaible_versions({ package_name, pluto_actions, notebook_id }).then((versions) => {
+        available_versions_ref.current = versions
+        console.log(versions)
         render()
     })
+
+    button.onclick = () => {
+        window.dispatchEvent(
+            new CustomEvent("open nbpkg popup", {
+                detail: {
+                    status_mark_element: node,
+                    package_name: package_name,
+                },
+            })
+        )
+    }
 
     return node
 }

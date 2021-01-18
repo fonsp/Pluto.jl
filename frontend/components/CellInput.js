@@ -120,7 +120,7 @@ export const CellInput = ({
                 dom_node_ref.current.appendChild(el)
             },
             {
-                value: local_code,
+                value: "",
                 lineNumbers: true,
                 mode: "julia",
                 lineWrapping: true,
@@ -545,6 +545,9 @@ export const CellInput = ({
         document.fonts.ready.then(() => {
             cm.refresh()
         })
+
+        // we initialize with "" and then call setValue to trigger the "change" event
+        cm.setValue(local_code)
     }, [])
 
     // useEffect(() => {
