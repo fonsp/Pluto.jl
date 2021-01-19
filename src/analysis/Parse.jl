@@ -64,7 +64,7 @@ function fix_linenumbernodes!(ex::Expr, actual_filename)
         if a isa Expr
             fix_linenumbernodes!(a, actual_filename)
         elseif a isa LineNumberNode
-            if a.file == nothing || a.file == :none
+            if a.file === nothing || a.file == :none
                 ex.args[i] = LineNumberNode(a.line, Symbol(actual_filename))
             end
         end

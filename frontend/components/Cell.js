@@ -1,9 +1,10 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
+import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 /**
@@ -36,6 +37,7 @@ export const Cell = ({
 
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const { saving_file, drag_active, handler } = useDropHandler()
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
@@ -65,6 +67,10 @@ export const Cell = ({
 
     return html`
         <pluto-cell
+            onDragOver=${handler}
+            onDrop=${handler}
+            onDragEnter=${handler}
+            onDragLeave=${handler}
             class=${cl({
                 queued: queued,
                 running: running,
@@ -72,6 +78,8 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                drop_target: drag_active,
+                saving_file: saving_file,
             })}
             id=${cell_id}
         >
@@ -110,8 +118,9 @@ export const Cell = ({
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                on_drag_drop_events=${handler}
                 on_submit=${() => {
-                    pluto_actions.change_remote_cell(cell_id)
+                    pluto_actions.set_and_run_multiple([cell_id])
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]

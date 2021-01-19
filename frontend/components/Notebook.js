@@ -2,6 +2,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 let CellMemo = ({
     cell_input,
@@ -51,6 +52,16 @@ let CellMemo = ({
 }
 
 /**
+ * We render all cell outputs directly when the page loads. Rendering cell *inputs* can slow down the initial page load significantly, so we delay rendering them using this heuristic function to determine the length of the delay (as a function of the number of cells in the notebook).
+ * @param {Number} num_cells
+ */
+const render_cell_inputs_delay = (num_cells) => (num_cells > 20 ? 500 : 100)
+/**
+ * The first <x> cells will bypass the {@link render_cell_inputs_delay} heuristic and render directly.
+ */
+const render_cell_inputs_minimum = 5
+
+/**
  * @param {{
  *  is_initializing: boolean
  *  notebook: import("./Editor.js").NotebookData,
@@ -86,18 +97,18 @@ export const Notebook = ({
 
     const [is_first_load, set_is_first_load] = useState(true)
 
-    if (is_first_load && notebook.cell_order.length > 0) {
-        setTimeout(
-            () => {
+    useEffect(() => {
+        if (is_first_load && notebook.cell_order.length > 0) {
+            setTimeout(() => {
                 set_is_first_load(false)
-            },
-            notebook.cell_order.length > 20 ? 500 : 100
-        )
-    }
+            }, render_cell_inputs_delay(notebook.cell_order.length))
+        }
+    }, [is_first_load, notebook.cell_order.length])
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order.map(
-                (cell_id) => html`<${CellMemo}
+                (cell_id, i) => html`<${CellMemo}
                     key=${cell_id}
                     cell_input=${notebook.cell_inputs[cell_id]}
                     cell_result=${notebook.cell_results[cell_id] ?? {
@@ -116,7 +127,7 @@ export const Notebook = ({
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${last_created_cell === cell_id}
-                    force_hide_input=${is_first_load}
+                    force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
                     selected_cells=${selected_cells}
                 />`
             )}

@@ -171,36 +171,41 @@ export class Welcome extends Component {
                 document.body.classList.remove("loading")
             })
 
-            fetch_latest_pluto_version().then((version) => {
-                const remote = version
-                const local = this.client.version_info.pluto
+            fetch_latest_pluto_version()
+                .then((version) => {
+                    const remote = version
+                    const local = this.client.version_info.pluto
 
-                const base1 = (n) => "1".repeat(n)
+                    const base1 = (n) => "1".repeat(n)
 
-                console.log(`Pluto version ${local}`)
-                if (remote != local) {
-                    const rs = remote.slice(1).split(".").map(Number)
-                    const ls = local.slice(1).split(".").map(Number)
+                    console.log(`Pluto version ${local}`)
+                    if (remote != local) {
+                        const rs = remote.slice(1).split(".").map(Number)
+                        const ls = local.slice(1).split(".").map(Number)
 
-                    // if the semver can't be parsed correctly, we always show it to the user
-                    if (rs.length == 3 && ls.length == 3) {
-                        if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                            // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
-                            if (rs.map(base1) <= ls.map(base1)) {
-                                return
+                        // if the semver can't be parsed correctly, we always show it to the user
+                        if (rs.length == 3 && ls.length == 3) {
+                            if (!rs.some(isNaN) && !ls.some(isNaN)) {
+                                // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
+                                if (rs.map(base1) <= ls.map(base1)) {
+                                    return
+                                }
                             }
                         }
+                        console.log(`Newer version ${remote} is available`)
+                        alert(
+                            "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                local +
+                                ", the latest is " +
+                                remote +
+                                '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
+                        )
                     }
-                    console.log(`Newer version ${remote} is available`)
-                    alert(
-                        "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                            local +
-                            ", the latest is " +
-                            remote +
-                            '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
-                    )
-                }
-            })
+                })
+                .catch(() => {
+                    // Having this as a uncaught promise broke the frontend tests for me
+                    // so I'm just swallowing the error explicitly - DRAL
+                })
 
             // to start JIT'ting
             this.client.send(

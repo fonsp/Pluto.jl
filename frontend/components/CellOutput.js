@@ -90,7 +90,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_timestamp }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -109,7 +109,12 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             if (body.startsWith("<!DOCTYPE") || body.startsWith("<html")) {
                 return html`<${IframeContainer} body=${body} />`
             } else {
-                return html`<${RawHTMLContainer} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
+                return html`<${RawHTMLContainer}
+                    cell_id=${cell_id}
+                    body=${body}
+                    persist_js_state=${persist_js_state}
+                    last_run_timestamp=${last_run_timestamp}
+                />`
             }
             break
         case "application/vnd.pluto.tree+object":
@@ -248,7 +253,7 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
 
 let run = (f) => f()
 
-export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
+export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
     let previous_results_map = useRef(new Map())
@@ -308,7 +313,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false }) => {
         return () => {
             invalidate_scripts.current?.()
         }
-    }, [body, persist_js_state, pluto_actions])
+    }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
     return html`<div ref=${container}></div>`
 }
