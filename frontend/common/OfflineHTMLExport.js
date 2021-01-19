@@ -72,7 +72,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                         placeholder: "Enter cell code...",
                         indentWithTabs: true,
                         indentUnit: 4,
-                        readOnly: "nocursor",
+                        readOnly: false,
                     }
                     document.addEventListener("DOMContentLoaded", () => 
                         document.querySelectorAll(".init-cm").forEach(textArea => {
