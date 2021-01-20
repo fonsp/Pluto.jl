@@ -928,7 +928,7 @@ export class Editor extends Component {
                     </div>
 
                         <nav id="at_the_top">
-                            <a href="./">
+                            <a href=${this.state.static_preview || this.state.binder_phase != null ? "#" : "./"}>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             <${FilePicker}
