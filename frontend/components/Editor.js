@@ -593,15 +593,27 @@ export class Editor extends Component {
             }
             await fetch(with_token(binder_session_url))
 
-            const open_url = new URL("open", binder_session_url)
-            open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
+            let open_response = null
 
-            console.log("open_url: ", String(open_url))
-            const open_reponse = await fetch(with_token(String(open_url)), {
+            const open_path = new URL("open", binder_session_url)
+            open_path.searchParams.set("path", launch_params.notebookfile)
+
+            console.log("open_path: ", String(open_path))
+            open_response = await fetch(with_token(String(open_path)), {
                 method: "POST",
             })
 
-            const new_notebook_id = await open_reponse.text()
+            if (!open_response.ok) {
+                const open_url = new URL("open", binder_session_url)
+                open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
+
+                console.log("open_url: ", String(open_url))
+                open_response = await fetch(with_token(String(open_url)), {
+                    method: "POST",
+                })
+            }
+
+            const new_notebook_id = await open_response.text()
             console.info("notebook_id:", new_notebook_id)
             this.setState(
                 (old_state) => ({
