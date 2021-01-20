@@ -135,7 +135,7 @@ function notebook_to_js(notebook::Notebook)
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
-                "installed_versions" => ctx === nothing ? nothing : Dict{String,String}(
+                "installed_versions" => ctx === nothing ? Dict{String,String}() : Dict{String,String}(
                     x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
                 ),
             )

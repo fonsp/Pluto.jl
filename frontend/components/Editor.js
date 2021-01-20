@@ -134,7 +134,7 @@ export class Editor extends Component {
                 cell_inputs: {},
                 cell_results: {},
                 cell_order: [],
-                nbpkg: {},
+                nbpkg: null,
             }),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
@@ -800,8 +800,8 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
-        document.body.classList.toggle("nbpkg_restart_recommended", this.state.notebook.nbpkg.restart_recommended_msg != null)
-        document.body.classList.toggle("nbpkg_restart_required", this.state.notebook.nbpkg.restart_required_msg != null)
+        document.body.classList.toggle("nbpkg_restart_recommended", this.state.notebook.nbpkg?.restart_recommended_msg != null)
+        document.body.classList.toggle("nbpkg_restart_required", this.state.notebook.nbpkg?.restart_required_msg != null)
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done

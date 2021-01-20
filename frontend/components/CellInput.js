@@ -94,12 +94,15 @@ export const CellInput = ({
         })
     }, [nbpkg_local.packages, nbpkg_local.is_pluto_managed])
 
-    useEffect(() => {
-        pkg_bubbles.current.forEach((b) => {
-            b.on_nbpkg(nbpkg)
-        })
-        console.log("effect!")
-    }, [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)])
+    useEffect(
+        () => {
+            pkg_bubbles.current.forEach((b) => {
+                b.on_nbpkg(nbpkg)
+            })
+            console.log("effect!")
+        },
+        nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+    )
 
     useEffect(() => {
         const current_value = cm_ref.current?.getValue() ?? ""

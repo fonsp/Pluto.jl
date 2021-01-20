@@ -4,6 +4,9 @@ import { html, useContext, useEffect, useMemo, useState } from "../imports/Preac
 import { Cell } from "./Cell.js"
 import { useDropHandler } from "./useDropHandler.js"
 
+const nbpkg_fingerprint = (nbpkg) =>
+    nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+
 let CellMemo = ({
     cell_input,
     cell_result,
@@ -53,9 +56,7 @@ let CellMemo = ({
         force_hide_input,
         selected_cells,
         nbpkg_local,
-        ...Object.values(nbpkg),
-        ...Object.keys(nbpkg.installed_versions),
-        ...Object.values(nbpkg.installed_versions),
+        ...nbpkg_fingerprint(nbpkg),
     ])
 }
 
