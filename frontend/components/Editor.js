@@ -158,6 +158,7 @@ export class Editor extends Component {
             static_preview: launch_params.statefile != null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
+            binder_session_url_with_token: null,
             connected: false,
             initializing: true,
 
@@ -584,6 +585,7 @@ export class Editor extends Component {
 
             this.setState({
                 binder_phase: BinderPhase.created,
+                binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`,
             })
             // fetch once to say hello
             const with_token = (u) => {
@@ -928,7 +930,7 @@ export class Editor extends Component {
                     </div>
 
                         <nav id="at_the_top">
-                            <a href=${this.state.static_preview || this.state.binder_phase != null ? "#" : "./"}>
+                            <a href=${this.state.static_preview || this.state.binder_phase != null ? this.state.binder_session_url_with_token ?? "#" : "./"}>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             <${FilePicker}
