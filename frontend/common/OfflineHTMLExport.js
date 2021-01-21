@@ -72,6 +72,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                         placeholder: "Enter cell code...",
                         indentWithTabs: true,
                         indentUnit: 4,
+                        cursorBlinkRate: -1,
                         readOnly: false,
                     }
                     document.addEventListener("DOMContentLoaded", () => 
