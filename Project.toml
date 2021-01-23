@@ -25,9 +25,9 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 FuzzyCompletions = "0.3,0.4"
 HTTP = "0.8.18,0.9"
 MsgPack = "1.1"
+TableIOInterface = "0.1"
 Tables = "1"
 julia = "^1.0.4"
-TableIOInterface = "0.1"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"

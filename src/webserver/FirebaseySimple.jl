@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.16
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -23,7 +23,7 @@ md"## Diff"
 abstract type JSONPatch end
 
 # ╔═╡ 73631aea-5e93-4da2-a32d-649029660d4e
-Patches = Array{JSONPatch, 1}
+Patches = Array{JSONPatch,1}
 
 # ╔═╡ 0fd3e910-abcc-4421-9d0b-5cfb90034338
 NoChanges = Patches()
@@ -253,10 +253,10 @@ function direct_diff(old::Cell, new::Cell)
 end
 
 # ╔═╡ 2d084dd1-240d-4443-a8a2-82ae6e0b8900
-cell1 = Cell(1,2,3)
+cell1 = Cell(1, 2, 3)
 
 # ╔═╡ 3e05200f-071a-4ebe-b685-ff980f07cde7
-cell2 = Cell(1,2,4)
+cell2 = Cell(1, 2, 4)
 
 # ╔═╡ 200516da-8cfb-42fe-a6b9-cb4730168923
 celldict1 = Dict(:x => 1, :y => 2, :z => 3)
@@ -287,7 +287,7 @@ function getpath(value, path)
 	end
 	
 	current = path[firstindex(path)]
-	rest = path[firstindex(path)+1:end]
+	rest = path[firstindex(path) + 1:end]
 	if value isa AbstractDict
 		key = force_convert_key(value, current)
 		getpath(getindex(value, key), rest)
@@ -316,7 +316,7 @@ function update!(value, patch::AddPatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end-1]
+		rest = patch.path[firstindex(patch.path):end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -347,7 +347,7 @@ function update!(value, patch::ReplacePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end-1]
+		rest = patch.path[firstindex(patch.path):end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -378,7 +378,7 @@ function update!(value, patch::RemovePatch)
 		throw("Impossible")
 	else
 		last = patch.path[end]
-		rest = patch.path[firstindex(patch.path):end-1]
+		rest = patch.path[firstindex(patch.path):end - 1]
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
@@ -530,51 +530,10 @@ function Base.show(io::IO, mime::MIME"text/html", value::Error)
 	"""))
 end
 
-# ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
-macro test(expr)	
-	quote				
-		expr_raw = $(expr |> QuoteNode)
-		try
-			result = $(esc(expr))
-			if result == true
-				Pass(expr_raw)
-			else
-				Wrong(expr_raw, result)
-			end
-		catch e
-			Error(expr_raw, e)
-		end
-		
-		# Base.@locals()
-	end
+# ╔═╡ b05fcb88-3781-45d0-9f24-e88c339a72e5
+macro test2(expr)
+	quote nothing end
 end
-
-# ╔═╡ 7b8ab89b-bf56-4ddf-b220-b4881f4a2050
-@test Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
-
-# ╔═╡ 48ccd28a-060d-4214-9a39-f4c4e506d1aa
-@test Base.convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
-
-# ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
-@test Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
-
-# ╔═╡ c3e4738f-4568-4910-a211-6a46a9d447ee
-@test update!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
-
-# ╔═╡ 0f094932-10e5-40f9-a3fc-db27a85b4999
-@test update!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
-
-# ╔═╡ a560fdca-ee12-469c-bda5-62d7203235b8
-@test update!(Dict(:x => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-")
-
-# ╔═╡ 01e3417e-334e-4a8d-b086-4bddc42737b3
-@test update!(Dict(:y => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-", :y => "x")
-
-# ╔═╡ 96a80a23-7c56-4c41-b489-15bc1c4e3700
-@test update!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
-
-# ╔═╡ fac65755-2a2a-4a3c-b5a8-fc4f6d256754
-@test update!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
 
 # ╔═╡ e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
 md"## DisplayOnly"
@@ -602,9 +561,6 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 	:y => 2,
 )
 
-# ╔═╡ e7e8d076-2de1-11eb-0214-8160bb81370a
-@test notebook1 == deepcopy(notebook1)
-
 # ╔═╡ b7fa5625-6178-4da8-a889-cd4f014f43ba
 @displayonly notebook2 = Dict(
 	:y => 4,
@@ -614,14 +570,75 @@ macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
 # ╔═╡ dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
 @displayonly notebook1_to_notebook2 = diff(notebook1, notebook2)
 
-# ╔═╡ e78b7408-2de1-11eb-2f1a-3f0783049c7d
-@test to_jsonpatch(flatten(notebook1_to_notebook2)) == test_jsonpatch
+# ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
+# The opposite of display only
+macro runonly(ex) displayonly(__module__) ? nothing : esc(ex) end
 
-# ╔═╡ e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
-@test update(notebook1, from_jsonpatch(to_jsonpatch(notebook1_to_notebook2))) == notebook2
+# ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
+# Only define this in Pluto - assume we are `using Test` otherwise
+begin
+	@displayonly macro test(expr)
+		quote				
+			expr_raw = $(expr |> QuoteNode)
+			try
+				result = $(esc(expr))
+				if result == true
+					Pass(expr_raw)
+    				else
+					Wrong(expr_raw, result)
+				end
+			catch e
+				Error(expr_raw, e)
+			end
+			
+			# Base.@locals()
+		end
+	end
+	# Do nothing inside pluto (so we don't need to have Test as dependency)
+	# test/Firebasey is `using Test` before including this file
+	@runonly ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
+end
+
+# ╔═╡ 7b8ab89b-bf56-4ddf-b220-b4881f4a2050
+@test Base.convert(JSONPatch, convert(Dict, add_patch)) == add_patch
+
+# ╔═╡ 48ccd28a-060d-4214-9a39-f4c4e506d1aa
+@test Base.convert(JSONPatch, convert(Dict, remove_patch)) == remove_patch
+
+# ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
+@test Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
 
 # ╔═╡ 595fdfd4-3960-4fbd-956c-509c4cf03473
 @displayonly @test update!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
+
+# ╔═╡ c3e4738f-4568-4910-a211-6a46a9d447ee
+@test update!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
+
+# ╔═╡ 0f094932-10e5-40f9-a3fc-db27a85b4999
+@test update!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
+
+# ╔═╡ a560fdca-ee12-469c-bda5-62d7203235b8
+@test update!(Dict(:x => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-")
+
+# ╔═╡ 01e3417e-334e-4a8d-b086-4bddc42737b3
+@test update!(Dict(:y => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-", :y => "x")
+
+# ╔═╡ 96a80a23-7c56-4c41-b489-15bc1c4e3700
+@test update!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
+
+# ╔═╡ fac65755-2a2a-4a3c-b5a8-fc4f6d256754
+@test update!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
+
+# ╔═╡ e78b7408-2de1-11eb-2f1a-3f0783049c7d
+# Flatten, to_jsonpatch are missing
+@displayonly @test to_jsonpatch(flatten(notebook1_to_notebook2)) == test_jsonpatch
+
+# ╔═╡ e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
+# to_jsonpatch and from_jsonpatch are missing
+@displayonly @test update(notebook1, from_jsonpatch(to_jsonpatch(notebook1_to_notebook2))) == notebook2
+
+# ╔═╡ e7e8d076-2de1-11eb-0214-8160bb81370a
+@displayonly @test notebook1 == deepcopy(notebook1)
 
 # ╔═╡ e9d2eba8-2de1-11eb-16bf-bd2a16537a97
 @displayonly x = 2
@@ -667,16 +684,16 @@ end
 
 # ╔═╡ 0e1c6442-9040-49d9-b754-173583db7ba2
 begin
-Base.@kwdef struct Tracked
+    Base.@kwdef struct Tracked
 	expr
 	value
 	time
 	bytes
-	times_ran=1
-	which=nothing
-	code_info=nothing
-end
-function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
+	times_ran = 1
+	which = nothing
+	code_info = nothing
+    end
+    function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
 	times_ran = if value.times_ran === 1
 		""
 	else
@@ -743,7 +760,7 @@ function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
 			
 		</div>
 	"""))
-end
+    end
 	Tracked
 end
 
@@ -872,13 +889,13 @@ end
 # ╟─752b2da3-ff24-4758-8843-186368069888
 # ╟─3e285076-1d97-4728-87cf-f71b22569e57
 # ╟─c3e4738f-4568-4910-a211-6a46a9d447ee
-# ╟─a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
-# ╟─0f094932-10e5-40f9-a3fc-db27a85b4999
+# ╠═a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
+# ╠═0f094932-10e5-40f9-a3fc-db27a85b4999
 # ╟─dd87ca7e-2de1-11eb-2ec3-d5721c32f192
 # ╟─be6b6fc4-e12a-4cef-81d8-d5115fda50b7
 # ╟─a560fdca-ee12-469c-bda5-62d7203235b8
 # ╟─f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
-# ╟─01e3417e-334e-4a8d-b086-4bddc42737b3
+# ╠═01e3417e-334e-4a8d-b086-4bddc42737b3
 # ╟─6509d62e-77b6-499c-8dab-4a608e44720a
 # ╟─f3ef354b-b480-4b48-8358-46dbf37e1d95
 # ╟─96a80a23-7c56-4c41-b489-15bc1c4e3700
@@ -886,29 +903,31 @@ end
 # ╟─fac65755-2a2a-4a3c-b5a8-fc4f6d256754
 # ╟─ddaf5b66-2de1-11eb-3348-b905b94a984b
 # ╟─e55d1cea-2de1-11eb-0d0e-c95009eedc34
-# ╟─e598832a-2de1-11eb-3831-371aa2e54828
-# ╟─e5b46afe-2de1-11eb-0de5-6d571c0fbbcf
-# ╟─e5dbaf38-2de1-11eb-13a9-a994ac40bf9f
-# ╟─e616c708-2de1-11eb-2e66-f972030a7ec5
-# ╟─e6501fda-2de1-11eb-33ba-4bb34dc13d00
-# ╟─e66c8454-2de1-11eb-1d79-499e6873d0d2
-# ╟─e699ae9a-2de1-11eb-3ff0-c31222ac399e
+# ╠═e598832a-2de1-11eb-3831-371aa2e54828
+# ╠═e5b46afe-2de1-11eb-0de5-6d571c0fbbcf
+# ╠═e5dbaf38-2de1-11eb-13a9-a994ac40bf9f
+# ╠═e616c708-2de1-11eb-2e66-f972030a7ec5
+# ╠═e6501fda-2de1-11eb-33ba-4bb34dc13d00
+# ╠═e66c8454-2de1-11eb-1d79-499e6873d0d2
+# ╠═e699ae9a-2de1-11eb-3ff0-c31222ac399e
 # ╟─e6c17fae-2de1-11eb-1397-1b1cdfcc387c
 # ╠═e705bd90-2de1-11eb-3759-3d59a90e6e44
 # ╠═e748600a-2de1-11eb-24be-d5f0ecab8fa4
-# ╟─e78b7408-2de1-11eb-2f1a-3f0783049c7d
-# ╟─e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
-# ╟─e7e8d076-2de1-11eb-0214-8160bb81370a
+# ╠═b05fcb88-3781-45d0-9f24-e88c339a72e5
+# ╠═e78b7408-2de1-11eb-2f1a-3f0783049c7d
+# ╠═e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
+# ╠═e7e8d076-2de1-11eb-0214-8160bb81370a
 # ╟─e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
-# ╟─e907d862-2de1-11eb-11a9-4b3ac37cb0f3
-# ╟─e924a0be-2de1-11eb-2170-71d56e117af2
-# ╟─e9d2eba8-2de1-11eb-16bf-bd2a16537a97
-# ╟─ea45104e-2de1-11eb-3248-5dd833d350e4
-# ╟─ea6650bc-2de1-11eb-3016-4542c5c333a5
-# ╟─ea934d9c-2de1-11eb-3f1d-3b60465decde
+# ╠═e907d862-2de1-11eb-11a9-4b3ac37cb0f3
+# ╠═e924a0be-2de1-11eb-2170-71d56e117af2
+# ╠═c2c2b057-a88f-4cc6-ada4-fc55ac29931e
+# ╠═e9d2eba8-2de1-11eb-16bf-bd2a16537a97
+# ╠═ea45104e-2de1-11eb-3248-5dd833d350e4
+# ╠═ea6650bc-2de1-11eb-3016-4542c5c333a5
+# ╠═ea934d9c-2de1-11eb-3f1d-3b60465decde
 # ╟─ee70e282-36d5-4772-8585-f50b9a67ca54
-# ╟─0e1c6442-9040-49d9-b754-173583db7ba2
-# ╟─7618aef7-1884-4e32-992d-0fd988e1ab20
+# ╠═0e1c6442-9040-49d9-b754-173583db7ba2
+# ╠═7618aef7-1884-4e32-992d-0fd988e1ab20
 # ╠═1020b11e-1364-42bc-a91a-2e96f6228c42
 # ╠═3ab3b8a0-19fe-424d-8857-604b1e805a26
 # ╠═f958a11c-27bd-47c5-b239-564fd082f014
