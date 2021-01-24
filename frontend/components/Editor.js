@@ -436,30 +436,29 @@ export class Editor extends Component {
                 switch (update.type) {
                     case "notebook_diff":
                         if (message.patches.length !== 0) {
-                            this.setState((state) => {
-                                let new_notebook = applyPatches(state.notebook, message.patches)
+                            this.setState(
+                                immer((state) => {
+                                    let new_notebook = applyPatches(state.notebook, message.patches)
 
-                                if (DEBUG_DIFFING) {
-                                    console.group("Update!")
-                                    for (let patch of message.patches) {
-                                        console.group(`Patch :${patch.op}`)
-                                        console.log(patch.path)
-                                        console.log(patch.value)
+                                    if (DEBUG_DIFFING) {
+                                        console.group("Update!")
+                                        for (let patch of message.patches) {
+                                            console.group(`Patch :${patch.op}`)
+                                            console.log(patch.path)
+                                            console.log(patch.value)
+                                            console.groupEnd()
+                                        }
                                         console.groupEnd()
                                     }
-                                    console.groupEnd()
-                                }
 
-                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                if (cells_stuck_in_limbo.length !== 0) {
-                                    console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                }
-
-                                return {
-                                    notebook: new_notebook,
-                                }
-                            })
+                                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                                    if (cells_stuck_in_limbo.length !== 0) {
+                                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                                    }
+                                    state.notebook = new_notebook
+                                })
+                            )
                         }
                         break
                     case "log":
