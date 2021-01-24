@@ -5,4 +5,5 @@ export { applyPatches, produceWithPatches }
 export default immer
 
 enablePatches()
+// Probably https://github.com/immerjs/immer/issues/576, in conjuction with not-only-using-immer for this.setState
 setAutoFreeze(false)
