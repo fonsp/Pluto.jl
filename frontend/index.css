@@ -140,7 +140,7 @@ pluto-filepicker select {
     font-family: "Roboto Mono", monospace;
 }
 
-pluto-filepicker button {
+pluto-filepicker button, .browser-open-button {
     margin: 0px;
     background: #6c8489;
     border-radius: 3px;
@@ -150,12 +150,24 @@ pluto-filepicker button {
     font-family: "Roboto Mono", monospace;
     font-weight: 600;
     font-size: 0.75rem;
+    cursor: pointer;
 }
 
 pluto-filepicker button {
-    cursor: pointer;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+.divider-line {
+    width: 100%;
+    position: relative;
+}
+.divider-line > div {
+    border-top: 1px solid #e0e0e0;
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 50%;
 }
 
 li.file.new.CodeMirror-hint:before {

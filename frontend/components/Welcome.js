@@ -342,6 +342,20 @@ export class Welcome extends Component {
                 <li>
                     Open from file:
                     <${FilePicker} native=${!!window.showOpenFilePicker} client=${this.client} value="" on_submit=${this.on_open_path} button_label="Open" placeholder="Enter path or URL..." />
+                    ${window.showOpenFilePicker &&
+                        html`
+                        <div style="display: flex">
+                            <div class="divider-line"><div/></div>
+                            <div style="padding: 10px 0">or</div>
+                            <div class="divider-line"><div/></div>
+                        </div>
+                        <button class="browser-open-button" onclick=${async () => {
+                            const [fileHandle] = await window.showOpenFilePicker()
+                    
+                            this.on_open_path('BrowserLocalSaveMedium', null, fileHandle)
+                        }}>Open Local File</button>
+                        `
+                    }
                 </li>
             </ul>
             <br />
