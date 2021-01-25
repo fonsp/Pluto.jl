@@ -439,15 +439,21 @@ export class Editor extends Component {
                                 // TODO: Put this code in a better spot that only runs once after notebook loads
                                 if(!this.state.save_medium) {
                                     get_external_notebook(new_notebook.path).then(external_nb => {
+                                        const medium_update = () => {
+                                            this.setState({ save_status: this.state.save_medium.status() })
+                                        };
                                         if(external_nb) {
                                             const recovered_medium = new Mediums[external_nb['type']](...external_nb['args'])
+                                            console.log(recovered_medium);
+                                            recovered_medium.onUpdate(medium_update)
                                             this.setState({ save_medium: recovered_medium })
                                         }
                                         else {
                                             // Check if we should upgrade to built-in browser saving
                                             if(window.showSaveFilePicker) {
                                                 // Local saving is supported
-                                                const browser_medium = new BrowserLocalSaveMedium()
+                                                const browser_medium = new BrowserLocalSaveMedium();
+                                                browser_medium.onUpdate(medium_update);
                                                 this.setState({ save_medium: browser_medium })
                                                 update_external_notebooks(new_notebook.path, browser_medium).catch(console.log)
                                             }

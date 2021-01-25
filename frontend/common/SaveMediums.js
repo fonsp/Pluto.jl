@@ -5,21 +5,40 @@ export const SaveStatuses = {
 }
 
 export class SaveMedium {
-    constructor() {}
+    constructor() {
+        this.updateListeners = [];
+        this.saveTimeout = null;
+    }
 
     getPath() {}
     getExtras() { return {} }
     moveTo() {}
     save() {}
     load() {}
+    status() {}
+
+    // Listener for state changes
+    onUpdate(listener) {
+        this.updateListeners.push(listener);
+    }
+    update() {
+        for(let listener of this.updateListeners) {
+            listener();
+        }
+    }
 
     scheduleSave() {
         // The code below here waits until updates cease for 1 second before updating the gist
-        if(this.saveTimeout) {
-            clearTimeout(this.saveTimeout)
+        if(this.saveTimeout === null) {
+            const handleSave = () => {
+                this.save();
+                this.saveTimeout = null;
+            };
+            handleSave.bind(this);
+            this.saveStatus = SaveStatuses.SAVING;
+            this.update();
+            this.saveTimeout = setTimeout(handleSave, 1000)
         }
-
-        this.saveTimeout = setTimeout(this.save.bind(this), 1000)
     }
     getNotebookContent() {
         return fetch("notebookfile" + window.location.search).then(res => res.text())
@@ -69,7 +88,6 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         return true
     }
     async save() {
-        this.saveStatus = SaveStatuses.SAVING;
         const content = await super.getNotebookContent()
 
         if(this.fileHandle) {
@@ -77,16 +95,21 @@ export class BrowserLocalSaveMedium extends SaveMedium {
                 const stream = await this.fileHandle.createWritable()
                 await stream.write(content)
                 await stream.close()
-                // this.saveStatus = SaveStatuses.IDLE;
+                this.saveStatus = SaveStatuses.IDLE;
+                setTimeout(() => {
+                    this.update();
+                }, 1000);
             }
             catch(e) {
                 this.saveStatus = SaveStatuses.ERROR;
+                this.update();
                 throw e;
             }
         }
         else {
             this.saveAfterSelected = true
             this.saveStatus = SaveStatuses.IDLE;
+            this.update();
         }
     }
     async load() {
