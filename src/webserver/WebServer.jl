@@ -294,8 +294,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         session.options.server.root_url
     end
 
-    Sys.set_process_title("Pluto server - $root")
-
     url_params = Dict{String,String}()
 
     if session.options.security.require_secret_for_access
