@@ -82,7 +82,6 @@ end
 function cd_workspace(workspace, path::AbstractString)
     eval_in_workspace(workspace, quote
         cd($(path |> dirname))
-        Sys.set_process_title("Pluto - " * $(path |> basename))
     end)
 end
 
