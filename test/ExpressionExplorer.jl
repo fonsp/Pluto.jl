@@ -205,8 +205,9 @@ using Test
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
-        @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
+        @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])

@@ -396,10 +396,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 if funcname[1] ∈ scopestate.hiddenglobals
                     SymbolsState()
                 else
-                SymbolsState(funccalls=Set{FunctionName}([funcname]))
+                    SymbolsState(funccalls=Set{FunctionName}([funcname]))
                 end
             else
-                SymbolsState(references=Set{Symbol}([funcname[end - 1]]), funccalls=Set{FunctionName}([funcname]))
+                SymbolsState(references=Set{Symbol}([funcname[1]]), funccalls=Set{FunctionName}([funcname]))
             end
             # Explore code inside function arguments:
             union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
