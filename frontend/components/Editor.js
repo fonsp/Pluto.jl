@@ -188,6 +188,7 @@ export class Editor extends Component {
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
                 /** @type {Array<CellInputData>} */
+                /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
@@ -197,6 +198,10 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
+                /** Update local_code. Local code doesn't force CM to update it's state
+                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
+                 * See ** 1 **
+                 */
                 await new Promise((resolve) =>
                     this.setState(
                         immer((state) => {
@@ -209,6 +214,10 @@ export class Editor extends Component {
                     )
                 )
 
+                /**
+                 * Create an empty cell in the julia-side.
+                 * Code will differ, until the user clicks 'run' on the new code
+                 */
                 await update_notebook((notebook) => {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
@@ -223,6 +232,15 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
+                /** ** 1 **
+                 * Notify codemirrors that the code is updated
+                 *
+                 *  */
+
+                for (const cell of new_cells) {
+                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
+                    cm.setValue(cell.code) // Update codemirror synchronously
+                }
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
