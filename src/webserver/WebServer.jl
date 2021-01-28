@@ -157,6 +157,8 @@ function run(session::ServerSession)
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
 
+                                sleep(session.options.server.simulated_lag)
+
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
                                 if ex isa InterruptException

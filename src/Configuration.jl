@@ -16,6 +16,7 @@ Base.@kwdef mutable struct ServerOptions
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
     notebook::Union{Nothing,String} = nothing
+    simulated_lag::Real=0.0
 end
 
 """
