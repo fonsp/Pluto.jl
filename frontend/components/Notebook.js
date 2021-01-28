@@ -2,7 +2,6 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
-import { useDropHandler } from "./useDropHandler.js"
 
 let CellMemo = ({
     cell_input,
@@ -18,6 +17,10 @@ let CellMemo = ({
     force_hide_input,
     selected_cells,
 }) => {
+    const selected_cells_diffable_primitive = (selected_cells || []).join("")
+    const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
+    const { queued, running, runtime, errored } = cell_result || {}
+    const { cell_id, code, code_folded } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -36,8 +39,18 @@ let CellMemo = ({
             />
         `
     }, [
-        cell_input,
-        cell_result,
+        cell_id,
+        code,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        body,
+        last_run_timestamp,
+        mime,
+        persist_js_state,
+        rootassignee,
         selected,
         cell_input_local,
         notebook_id,
@@ -47,7 +60,7 @@ let CellMemo = ({
         disable_input,
         focus_after_creation,
         force_hide_input,
-        selected_cells,
+        selected_cells_diffable_primitive,
     ])
 }
 
