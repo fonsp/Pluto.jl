@@ -193,9 +193,15 @@ function run(session::ServerSession)
                     end
                 end
             else
-                HTTP.setstatus(http, 403)
-                HTTP.startwrite(http)
-                HTTP.closewrite(http)
+                try
+                    HTTP.setstatus(http, 403)
+                    HTTP.startwrite(http)
+                    HTTP.closewrite(http)
+                catch e
+                    if !(e isa Base.IOError)
+                        rethrow(e)
+                    end
+                end
             end
         else
             request::HTTP.Request = http.message
@@ -293,8 +299,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         @assert endswith(session.options.server.root_url, "/")
         session.options.server.root_url
     end
-
-    Sys.set_process_title("Pluto server - $root")
 
     url_params = Dict{String,String}()
 
