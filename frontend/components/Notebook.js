@@ -147,7 +147,7 @@ export const Notebook = ({
         </pluto-notebook>
     `
 }
-
+/* Disable this until we understand Notebook memoization better
 export const NotebookMemo = ({
     is_initializing,
     notebook,
@@ -175,3 +175,5 @@ export const NotebookMemo = ({
         `
     }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
 }
+*/
+export const NotebookMemo = Notebook
