@@ -41,7 +41,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`powershell.exe Start $url`)
+            Base.run(`powershell.exe Start "$url"`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
