@@ -303,6 +303,32 @@ end
 # ╔═╡ 7ca087b8-73ac-49ea-9c5a-2971f0da491f
 example_patches = diff(dict_1, dict_2)
 
+# ╔═╡ 59b46bfe-da74-43af-9c11-cb0bdb2c13a2
+md"""
+### Dict example
+"""
+
+# ╔═╡ 200516da-8cfb-42fe-a6b9-cb4730168923
+celldict1 = Dict(:x => 1, :y => 2, :z => 3)
+
+# ╔═╡ 76326e6c-b95a-4b2d-a78c-e283e5fadbe2
+celldict2 = Dict(:x => 1, :y => 2, :z => 4)
+
+# ╔═╡ 664cd334-91c7-40dd-a2bf-0da720307cfc
+notebook1 = Dict(
+	:x => 1,
+	:y => 2,
+)
+
+# ╔═╡ b7fa5625-6178-4da8-a889-cd4f014f43ba
+notebook2 = Dict(
+	:y => 4,
+	:z => 5
+)
+
+# ╔═╡ dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
+notebook1_to_notebook2 = diff(notebook1, notebook2)
+
 # ╔═╡ 3924953f-787a-4912-b6ee-9c9d3030f0f0
 md"""
 ### Large Dict example 1
@@ -414,25 +440,11 @@ cell1 = Cell(1, 2, 3)
 # ╔═╡ 3e05200f-071a-4ebe-b685-ff980f07cde7
 cell2 = Cell(1, 2, 4)
 
-# ╔═╡ 59b46bfe-da74-43af-9c11-cb0bdb2c13a2
-md"""
-### Dict example
-"""
-
-# ╔═╡ 200516da-8cfb-42fe-a6b9-cb4730168923
-celldict1 = Dict(:x => 1, :y => 2, :z => 3)
-
-# ╔═╡ 76326e6c-b95a-4b2d-a78c-e283e5fadbe2
-celldict2 = Dict(:x => 1, :y => 2, :z => 4)
-
-# ╔═╡ 28fcbcba-112d-41ef-913f-01081e0d7dc1
-
-
 # ╔═╡ dd312598-2de1-11eb-144c-f92ed6484f5d
 md"## Update"
 
 # ╔═╡ d2af2a4b-8982-4e43-9fd7-0ecfdfb70511
-const STRICT = false
+const strict_applypatch = Ref(false)
 
 # ╔═╡ 640663fc-06ba-491e-bd85-299514237651
 begin
@@ -461,21 +473,18 @@ function getpath(value, path)
 end
 
 # ╔═╡ 752b2da3-ff24-4758-8843-186368069888
-function update!(value, patches::Array{JSONPatch})
+function applypatch!(value, patches::Array{JSONPatch})
 	for patch in patches
-		update!(value, patch)
+		applypatch!(value, patch)
 	end
 	return value
 end
 
 # ╔═╡ 3e285076-1d97-4728-87cf-f71b22569e57
-md"### update! AddPatch"
-
-# ╔═╡ a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
-md"*Should throw in strict mode:*"
+md"### applypatch! AddPatch"
 
 # ╔═╡ dd87ca7e-2de1-11eb-2ec3-d5721c32f192
-function update!(value, patch::AddPatch)
+function applypatch!(value, patch::AddPatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
@@ -484,13 +493,13 @@ function update!(value, patch::AddPatch)
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
-			if STRICT
+			if strict_applypatch[]
 				@assert get(subvalue, key, nothing) === nothing
 			end
 			subvalue[key] = patch.value
 		else
 			key = Symbol(last)
-			if STRICT
+			if strict_applypatch[]
 				@assert getproperty(subvalue, key) === nothing
 			end
 			setproperty!(subvalue, key, patch.value)
@@ -499,14 +508,14 @@ function update!(value, patch::AddPatch)
 	return value
 end
 
-# ╔═╡ be6b6fc4-e12a-4cef-81d8-d5115fda50b7
-md"### update! ReplacePatch"
-
-# ╔═╡ f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
+# ╔═╡ a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
 md"*Should throw in strict mode:*"
 
+# ╔═╡ be6b6fc4-e12a-4cef-81d8-d5115fda50b7
+md"### applypatch! ReplacePatch"
+
 # ╔═╡ 6509d62e-77b6-499c-8dab-4a608e44720a
-function update!(value, patch::ReplacePatch)
+function applypatch!(value, patch::ReplacePatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
@@ -515,13 +524,13 @@ function update!(value, patch::ReplacePatch)
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
-			if STRICT
+			if strict_applypatch[]
 				@assert get(subvalue, key, nothing) !== nothing
 			end
 			subvalue[key] = patch.value
 		else
 			key = Symbol(last)
-			if STRICT
+			if strict_applypatch[]
 				@assert getproperty(subvalue, key) !== nothing
 			end
 			setproperty!(subvalue, key, patch.value)
@@ -530,14 +539,14 @@ function update!(value, patch::ReplacePatch)
 	return value
 end
 
-# ╔═╡ f3ef354b-b480-4b48-8358-46dbf37e1d95
-md"### update! RemovePatch"
-
-# ╔═╡ df41caa7-f0fc-4b0d-ab3d-ebdab4804040
+# ╔═╡ f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
 md"*Should throw in strict mode:*"
 
+# ╔═╡ f3ef354b-b480-4b48-8358-46dbf37e1d95
+md"### applypatch! RemovePatch"
+
 # ╔═╡ ddaf5b66-2de1-11eb-3348-b905b94a984b
-function update!(value, patch::RemovePatch)
+function applypatch!(value, patch::RemovePatch)
 	if length(patch.path) == 0
 		throw("Impossible")
 	else
@@ -546,13 +555,13 @@ function update!(value, patch::RemovePatch)
 		subvalue = getpath(value, rest)
 		if subvalue isa AbstractDict
 			key = force_convert_key(subvalue, last)
-			if STRICT
+			if strict_applypatch[]
 				@assert get(subvalue, key, nothing) !== nothing
 			end
 			delete!(subvalue, key)
 		else
 			key = Symbol(last)
-			if STRICT
+			if strict_applypatch[]
 				@assert getproperty(subvalue, key) !== nothing
 			end
 			setproperty!(subvalue, key, nothing)
@@ -564,8 +573,11 @@ end
 # ╔═╡ e65d483a-4c13-49ba-bff1-1d54de78f534
 let
 	dict_1_copy = deepcopy(dict_1)
-	update!(dict_1, example_patches)
+	applypatch!(dict_1, example_patches)
 end
+
+# ╔═╡ df41caa7-f0fc-4b0d-ab3d-ebdab4804040
+md"*Should throw in strict mode:*"
 
 # ╔═╡ e55d1cea-2de1-11eb-0d0e-c95009eedc34
 md"## Testing"
@@ -709,7 +721,7 @@ end
 md"## DisplayOnly"
 
 # ╔═╡ e907d862-2de1-11eb-11a9-4b3ac37cb0f3
-function displayonly(m::Module)
+function skip_as_script(m::Module)
 	if isdefined(m, :PlutoForceDisplay)
 		return m.PlutoForceDisplay
 	else
@@ -723,31 +735,16 @@ end
 
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
-macro displayonly(ex) displayonly(__module__) ? esc(ex) : nothing end
-
-# ╔═╡ 664cd334-91c7-40dd-a2bf-0da720307cfc
-@displayonly notebook1 = Dict(
-	:x => 1,
-	:y => 2,
-)
-
-# ╔═╡ b7fa5625-6178-4da8-a889-cd4f014f43ba
-@displayonly notebook2 = Dict(
-	:y => 4,
-	:z => 5
-)
-
-# ╔═╡ dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
-@displayonly notebook1_to_notebook2 = diff(notebook1, notebook2)
+macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
-# The opposite of display only
-macro runonly(ex) displayonly(__module__) ? nothing : esc(ex) end
+"The opposite of `@skip_as_script`"
+macro only_as_script(ex) skip_as_script(__module__) ? nothing : esc(ex) end
 
 # ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # Only define this in Pluto - assume we are `using Test` otherwise
 begin
-	@displayonly macro test(expr)
+	@skip_as_script macro test(expr)
 		quote				
 			expr_raw = $(expr |> QuoteNode)
 			try
@@ -766,8 +763,11 @@ begin
 	end
 	# Do nothing inside pluto (so we don't need to have Test as dependency)
 	# test/Firebasey is `using Test` before including this file
-	@runonly ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
+	@only_as_script ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
 end
+
+# ╔═╡ 595fdfd4-3960-4fbd-956c-509c4cf03473
+@test applypatch!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
 
 # ╔═╡ 2983f6d4-c1ca-4b66-a2d3-f858b0df2b4c
 @test fairly_equal(diff(large_dict_1, large_dict_2), [
@@ -789,55 +789,41 @@ end
 # ╔═╡ 62de3e79-4b4e-41df-8020-769c3c255c3e
 @test isempty(diff(many_items_1, many_items_1))
 
-# ╔═╡ 595fdfd4-3960-4fbd-956c-509c4cf03473
-@displayonly @test update!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
-
 # ╔═╡ c3e4738f-4568-4910-a211-6a46a9d447ee
-@test update!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
+@test applypatch!(Dict(:y => "x"), AddPatch([:x], "-")) == Dict(:y => "x", :x => "-")
 
 # ╔═╡ 0f094932-10e5-40f9-a3fc-db27a85b4999
-@test update!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
+@test applypatch!(Dict(:x => "x"), AddPatch([:x], "-")) == Dict(:x => "-")
 
 # ╔═╡ a560fdca-ee12-469c-bda5-62d7203235b8
-@test update!(Dict(:x => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-")
+@test applypatch!(Dict(:x => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-")
 
 # ╔═╡ 01e3417e-334e-4a8d-b086-4bddc42737b3
-@test update!(Dict(:y => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-", :y => "x")
+@test applypatch!(Dict(:y => "x"), ReplacePatch([:x], "-")) == Dict(:x => "-", :y => "x")
 
 # ╔═╡ 96a80a23-7c56-4c41-b489-15bc1c4e3700
-@test update!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
+@test applypatch!(Dict(:x => "x"), RemovePatch([:x])) == Dict()
 
 # ╔═╡ fac65755-2a2a-4a3c-b5a8-fc4f6d256754
-@test update!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
-
-# ╔═╡ e78b7408-2de1-11eb-2f1a-3f0783049c7d
-# Flatten, to_jsonpatch are missing
-@displayonly @test to_jsonpatch(flatten(notebook1_to_notebook2)) == test_jsonpatch
-
-# ╔═╡ e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
-# to_jsonpatch and from_jsonpatch are missing
-@displayonly @test update(notebook1, from_jsonpatch(to_jsonpatch(notebook1_to_notebook2))) == notebook2
+@test applypatch!(Dict(:y => "x"), RemovePatch([:x])) == Dict(:y => "x")
 
 # ╔═╡ e7e8d076-2de1-11eb-0214-8160bb81370a
-@displayonly @test notebook1 == deepcopy(notebook1)
+@skip_as_script @test notebook1 == deepcopy(notebook1)
 
 # ╔═╡ e9d2eba8-2de1-11eb-16bf-bd2a16537a97
-@displayonly x = 2
+@skip_as_script x = 2
 
 # ╔═╡ ea45104e-2de1-11eb-3248-5dd833d350e4
-@displayonly @test 1 + 1 == x
+@skip_as_script @test 1 + 1 == x
 
 # ╔═╡ ea6650bc-2de1-11eb-3016-4542c5c333a5
-@displayonly @test 1 + 1 + 1 == x
+@skip_as_script @test 1 + 1 + 1 == x
 
 # ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
-@displayonly @test throw("Oh my god") == x
+@skip_as_script @test throw("Oh my god") == x
 
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"
-
-# ╔═╡ 3ab3b8a0-19fe-424d-8857-604b1e805a26
-xxxxxz = 4
 
 # ╔═╡ a3e8fe70-cbf5-4758-a0f2-d329d138728c
 function prettytime(time_ns::Number)
@@ -989,14 +975,17 @@ end
 # ╔═╡ 34d86e02-dd34-4691-bb78-3023568a5d16
 @track Base.convert(JSONPatch, convert(Dict, replace_patch)) == replace_patch
 
+# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
+@skip_as_script @track for _ in 1:100 diff(celldict1, celldict2) end
+
 # ╔═╡ 8c069015-d922-4c60-9340-8d65c80b1a06
-@displayonly @track for _ in 1:1000 diff(large_dict_1, large_dict_1) end
+@skip_as_script @track for _ in 1:1000 diff(large_dict_1, large_dict_1) end
 
 # ╔═╡ bc9a0822-1088-4ee7-8c79-98e06fd50f11
-@displayonly @track for _ in 1:1000 diff(large_dict_1, large_dict_2) end
+@skip_as_script @track for _ in 1:1000 diff(large_dict_1, large_dict_2) end
 
 # ╔═╡ ddf1090c-5239-41df-ae4d-70aeb3a75f2b
-@displayonly let
+@skip_as_script let
 	old = use_triple_equals_for_arrays[]
 	use_triple_equals_for_arrays[] = true
 	
@@ -1007,7 +996,7 @@ end
 end
 
 # ╔═╡ 88009db3-f40e-4fd0-942a-c7f4a7eecb5a
-@displayonly let
+@skip_as_script let
 	old = use_triple_equals_for_arrays[]
 	use_triple_equals_for_arrays[] = true
 	
@@ -1018,31 +1007,19 @@ end
 end
 
 # ╔═╡ c287009f-e864-45d2-a4d0-a525c988a6e0
-@displayonly @track for _ in 1:1000 diff(many_items_1, many_items_1) end
+@skip_as_script @track for _ in 1:1000 diff(many_items_1, many_items_1) end
 
 # ╔═╡ 67a1ae27-f7df-4f84-8809-1cc6a9bcd1ce
-@displayonly @track for _ in 1:1000 diff(many_items_1, many_items_2) end
+@skip_as_script @track for _ in 1:1000 diff(many_items_1, many_items_2) end
 
 # ╔═╡ fa959806-3264-4dd5-9f94-ba369697689b
-@displayonly @track for _ in 1:1000 direct_diff(cell2, cell1) end
+@skip_as_script @track for _ in 1:1000 direct_diff(cell2, cell1) end
 
 # ╔═╡ a9088341-647c-4fe1-ab85-d7da049513ae
-@displayonly @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
-
-# ╔═╡ 95ff676d-73c8-44cb-ac35-af94418737e9
-@displayonly @track for _ in 1:100 diff(celldict1, celldict2) end
-
-# ╔═╡ 1020b11e-1364-42bc-a91a-2e96f6228c42
-@displayonly @track for _ in 1:100 Base.isless(1, 2) end
-
-# ╔═╡ f958a11c-27bd-47c5-b239-564fd082f014
-@displayonly @track for _ in 1:100 Base.isless(xxxxxz, 2) end
-
-# ╔═╡ 71b95468-c934-43dd-833e-33683015597f
-@displayonly @track for _ in 1:100 Base.isless(1, 2) end
+@skip_as_script @track for _ in 1:1000 diff(Deep(cell1), Deep(cell2)) end
 
 # ╔═╡ 1a26eed8-670c-43bf-9726-2db84b1afdab
-@displayonly @track sleep(0.1)
+@skip_as_script @track sleep(0.1)
 
 # ╔═╡ Cell order:
 # ╟─d948dc6e-2de1-11eb-19e7-cb3bb66353b6
@@ -1078,11 +1055,11 @@ end
 # ╟─7feeee3a-3aec-47ce-b8d7-74a0d9b0b381
 # ╠═921a130e-b028-4f91-b077-3bd79dcb6c6d
 # ╟─6d67f8a5-0e0c-4b6e-a267-96b34d580946
-# ╠═7b8ab89b-bf56-4ddf-b220-b4881f4a2050
+# ╟─7b8ab89b-bf56-4ddf-b220-b4881f4a2050
 # ╟─56b28842-4a67-44d7-95e7-55d457a44fb1
-# ╠═48ccd28a-060d-4214-9a39-f4c4e506d1aa
+# ╟─48ccd28a-060d-4214-9a39-f4c4e506d1aa
 # ╟─f10e31c0-1d2c-4727-aba5-dd676a10041b
-# ╠═34d86e02-dd34-4691-bb78-3023568a5d16
+# ╟─34d86e02-dd34-4691-bb78-3023568a5d16
 # ╟─3a99e22d-42d6-4b2d-9381-022b41b0e852
 # ╟─831d84a6-1c71-4e68-8c7c-27d9093a82c4
 # ╟─2ad11c73-4691-4283-8f98-3d2a87926b99
@@ -1101,6 +1078,14 @@ end
 # ╠═b8c58aa4-c24d-48a3-b2a8-7c01d50a3349
 # ╠═5ab390f9-3b0c-4978-9e21-2aaa61db2ce4
 # ╠═09f53db0-21ae-490b-86b5-414eba403d57
+# ╟─59b46bfe-da74-43af-9c11-cb0bdb2c13a2
+# ╟─200516da-8cfb-42fe-a6b9-cb4730168923
+# ╟─76326e6c-b95a-4b2d-a78c-e283e5fadbe2
+# ╠═95ff676d-73c8-44cb-ac35-af94418737e9
+# ╠═664cd334-91c7-40dd-a2bf-0da720307cfc
+# ╠═b7fa5625-6178-4da8-a889-cd4f014f43ba
+# ╠═dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
+# ╠═595fdfd4-3960-4fbd-956c-509c4cf03473
 # ╟─3924953f-787a-4912-b6ee-9c9d3030f0f0
 # ╠═80689881-1b7e-49b2-af97-9e3ab639d006
 # ╠═fd22b6af-5fd2-428a-8291-53e223ea692c
@@ -1122,45 +1107,36 @@ end
 # ╠═b8061c1b-dd03-4cd1-b275-90359ae2bb39
 # ╠═aeab3363-08ba-47c2-bd33-04a004ed72c4
 # ╟─62de3e79-4b4e-41df-8020-769c3c255c3e
-# ╠═c287009f-e864-45d2-a4d0-a525c988a6e0
-# ╠═67a1ae27-f7df-4f84-8809-1cc6a9bcd1ce
+# ╟─c287009f-e864-45d2-a4d0-a525c988a6e0
+# ╟─67a1ae27-f7df-4f84-8809-1cc6a9bcd1ce
 # ╟─c7de406d-ccfe-41cf-8388-6bd2d7c42d64
 # ╠═b9cc11ae-394b-44b9-bfbe-541d7720ead0
 # ╠═c3c675be-9178-4176-afe0-30501786b72c
 # ╠═02585c72-1d92-4526-98c2-1ca07aad87a3
 # ╟─2d084dd1-240d-4443-a8a2-82ae6e0b8900
 # ╟─3e05200f-071a-4ebe-b685-ff980f07cde7
-# ╟─fa959806-3264-4dd5-9f94-ba369697689b
-# ╟─a9088341-647c-4fe1-ab85-d7da049513ae
-# ╟─59b46bfe-da74-43af-9c11-cb0bdb2c13a2
-# ╟─200516da-8cfb-42fe-a6b9-cb4730168923
-# ╟─76326e6c-b95a-4b2d-a78c-e283e5fadbe2
-# ╟─95ff676d-73c8-44cb-ac35-af94418737e9
-# ╠═664cd334-91c7-40dd-a2bf-0da720307cfc
-# ╠═b7fa5625-6178-4da8-a889-cd4f014f43ba
-# ╠═dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
-# ╠═595fdfd4-3960-4fbd-956c-509c4cf03473
-# ╠═28fcbcba-112d-41ef-913f-01081e0d7dc1
+# ╠═fa959806-3264-4dd5-9f94-ba369697689b
+# ╠═a9088341-647c-4fe1-ab85-d7da049513ae
 # ╟─dd312598-2de1-11eb-144c-f92ed6484f5d
 # ╠═d2af2a4b-8982-4e43-9fd7-0ecfdfb70511
 # ╠═640663fc-06ba-491e-bd85-299514237651
 # ╠═48a45941-2489-4666-b4e5-88d3f82e5145
 # ╠═752b2da3-ff24-4758-8843-186368069888
 # ╟─3e285076-1d97-4728-87cf-f71b22569e57
-# ╠═c3e4738f-4568-4910-a211-6a46a9d447ee
+# ╠═dd87ca7e-2de1-11eb-2ec3-d5721c32f192
+# ╟─c3e4738f-4568-4910-a211-6a46a9d447ee
 # ╟─a11e4082-4ff4-4c1b-9c74-c8fa7dcceaa6
-# ╠═0f094932-10e5-40f9-a3fc-db27a85b4999
-# ╟─dd87ca7e-2de1-11eb-2ec3-d5721c32f192
+# ╟─0f094932-10e5-40f9-a3fc-db27a85b4999
 # ╟─be6b6fc4-e12a-4cef-81d8-d5115fda50b7
+# ╠═6509d62e-77b6-499c-8dab-4a608e44720a
 # ╟─a560fdca-ee12-469c-bda5-62d7203235b8
 # ╟─f1dde1bd-3fa4-48b7-91ed-b2f98680fcc1
-# ╠═01e3417e-334e-4a8d-b086-4bddc42737b3
-# ╠═6509d62e-77b6-499c-8dab-4a608e44720a
+# ╟─01e3417e-334e-4a8d-b086-4bddc42737b3
 # ╟─f3ef354b-b480-4b48-8358-46dbf37e1d95
+# ╠═ddaf5b66-2de1-11eb-3348-b905b94a984b
 # ╟─96a80a23-7c56-4c41-b489-15bc1c4e3700
 # ╟─df41caa7-f0fc-4b0d-ab3d-ebdab4804040
 # ╟─fac65755-2a2a-4a3c-b5a8-fc4f6d256754
-# ╟─ddaf5b66-2de1-11eb-3348-b905b94a984b
 # ╟─e55d1cea-2de1-11eb-0d0e-c95009eedc34
 # ╠═e598832a-2de1-11eb-3831-371aa2e54828
 # ╠═e5b46afe-2de1-11eb-0de5-6d571c0fbbcf
@@ -1173,8 +1149,6 @@ end
 # ╠═e705bd90-2de1-11eb-3759-3d59a90e6e44
 # ╠═e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # ╠═b05fcb88-3781-45d0-9f24-e88c339a72e5
-# ╠═e78b7408-2de1-11eb-2f1a-3f0783049c7d
-# ╠═e7c85c1c-2de1-11eb-1a2a-65f8f21e4a05
 # ╠═e7e8d076-2de1-11eb-0214-8160bb81370a
 # ╟─e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
 # ╠═e907d862-2de1-11eb-11a9-4b3ac37cb0f3
@@ -1185,11 +1159,7 @@ end
 # ╠═ea6650bc-2de1-11eb-3016-4542c5c333a5
 # ╠═ea934d9c-2de1-11eb-3f1d-3b60465decde
 # ╟─ee70e282-36d5-4772-8585-f50b9a67ca54
+# ╠═1a26eed8-670c-43bf-9726-2db84b1afdab
 # ╠═0e1c6442-9040-49d9-b754-173583db7ba2
 # ╠═7618aef7-1884-4e32-992d-0fd988e1ab20
-# ╠═1020b11e-1364-42bc-a91a-2e96f6228c42
-# ╠═3ab3b8a0-19fe-424d-8857-604b1e805a26
-# ╠═f958a11c-27bd-47c5-b239-564fd082f014
-# ╠═71b95468-c934-43dd-833e-33683015597f
-# ╠═1a26eed8-670c-43bf-9726-2db84b1afdab
 # ╠═a3e8fe70-cbf5-4758-a0f2-d329d138728c
