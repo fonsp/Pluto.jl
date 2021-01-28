@@ -58,6 +58,14 @@ export const Cell = ({
         }
     }, [])
 
+    // When you click to run a cell, we use `waiting_to_run` to immediately set the cell's traffic light to 'queued', while waiting for the backend to catch up.
+    const [waiting_to_run, set_waiting_to_run] = useState(false)
+    useEffect(() => {
+        if (waiting_to_run) {
+            set_waiting_to_run(false)
+        }
+    }, [queued, running, output?.last_run_timestamp])
+
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
 
@@ -71,7 +79,7 @@ export const Cell = ({
             onDragEnter=${handler}
             onDragLeave=${handler}
             class=${cl({
-                queued: queued,
+                queued: queued || waiting_to_run,
                 running: running,
                 errored: errored,
                 selected: selected,
@@ -119,6 +127,7 @@ export const Cell = ({
                 set_cm_forced_focus=${set_cm_forced_focus}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
+                    set_waiting_to_run(true)
                     pluto_actions.set_and_run_multiple([cell_id])
                 }}
                 on_delete=${() => {
