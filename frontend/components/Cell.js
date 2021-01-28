@@ -34,7 +34,7 @@ export const Cell = ({
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-
+    console.log("Cell updates", `code: ${code}`, `localcode: ${cell_input_local?.code}`, "??")
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
