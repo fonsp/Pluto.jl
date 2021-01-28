@@ -90,8 +90,15 @@ end
 ###
 
 # Yeah I am including a Pluto Notebook!!
-module Firebasey include("./FirebaseySimple.jl") end
+module Firebasey include("./Firebasey.jl") end
 
+# All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
+Firebasey.use_triple_equals_for_arrays[] = true
+
+# the only possible Arrays are:
+# - cell_order
+# - cell_result > * > output > body
+# - bonds > * > value > *
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
