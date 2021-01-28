@@ -90,8 +90,15 @@ end
 ###
 
 # Yeah I am including a Pluto Notebook!!
-module Firebasey include("./FirebaseySimple.jl") end
+module Firebasey include("./Firebasey.jl") end
 
+# All of the arrays in the notebook_to_js object are 'immutable' (we write code as if they are), so we can enable this optimization:
+Firebasey.use_triple_equals_for_arrays[] = true
+
+# the only possible Arrays are:
+# - cell_order
+# - cell_result > * > output > body
+# - bonds > * > value > *
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -193,7 +200,7 @@ const effects_of_changed_state = Dict(
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
         Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
-            Firebasey.update!(request.notebook, patch)
+            Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
                 [CodeChanged, FileChanged]
@@ -206,13 +213,13 @@ const effects_of_changed_state = Dict(
         end,
     ),
     "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
-        Firebasey.update!(request.notebook, patch)
+        Firebasey.applypatch!(request.notebook, patch)
         [FileChanged]
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
-            Firebasey.update!(request.notebook, patch)
+            Firebasey.applypatch!(request.notebook, patch)
             set_bond_value_reactive(
                 session=request.session,
                 notebook=request.notebook,
@@ -244,7 +251,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
         # TODO Immutable ??
         for patch in patches
-            Firebasey.update!(current_state_for_clients[🙋.initiator.client], patch)
+            Firebasey.applypatch!(current_state_for_clients[🙋.initiator.client], patch)
         end
 
         changes = Set{Changed}()

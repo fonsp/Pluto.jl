@@ -1,4 +1,7 @@
-module Firebasey
-    using Test
-    include("../src/webserver/FirebaseySimple.jl")
+module Firebasey end
+@testset "Firebasey" begin
+    Core.eval(Firebasey, quote
+        using Test
+        include("../src/webserver/Firebasey.jl")
+    end)
 end
