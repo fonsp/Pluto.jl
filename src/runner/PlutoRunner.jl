@@ -333,6 +333,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
             setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
+            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end

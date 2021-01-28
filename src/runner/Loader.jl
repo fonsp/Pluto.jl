@@ -7,7 +7,7 @@ popfirst!(LOAD_PATH)
 local my_dir = @__DIR__
 local pluto_dir = joinpath(my_dir, "..", "..")
 
-local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot"))
+local runner_env_dir = mkpath(joinpath(Pkg.envdir(Pkg.depots()[1]), "__pluto_boot_" * string(VERSION)))
 local new_ptoml_path = joinpath(runner_env_dir, "Project.toml")
 
 local ptoml_contents = read(joinpath(pluto_dir, "Project.toml"), String)
