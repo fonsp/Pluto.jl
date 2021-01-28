@@ -10,7 +10,6 @@ on:
             - "**.md"
         branches:
             - master
-            - release-14.0.0
     pull_request:
         paths-ignore:
             - "frontend/**"
