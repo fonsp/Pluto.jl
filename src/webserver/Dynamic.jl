@@ -247,7 +247,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
     require_notebook(🙋)
     try
         notebook = 🙋.notebook
-        patches = (convert_jsonpatch(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
+        patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
             send_notebook_changes!(🙋)
@@ -300,18 +300,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         )
         send_notebook_changes!(🙋; commentary=response)
     end
-end
-
-function convert_jsonpatch(::Type{Firebasey.JSONPatch}, patch_dict::Dict)
-	if patch_dict["op"] == "add"
-		Firebasey.AddPatch(patch_dict["path"], patch_dict["value"])
-	elseif patch_dict["op"] == "remove"
-		Firebasey.RemovePatch(patch_dict["path"])
-	elseif patch_dict["op"] == "replace"
-		Firebasey.ReplacePatch(patch_dict["path"], patch_dict["value"])
-	else
-		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
-	end
 end
 
 function trigger_resolver(anything, path, values=[])
