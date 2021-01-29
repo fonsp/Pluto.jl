@@ -765,6 +765,7 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
+        window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
