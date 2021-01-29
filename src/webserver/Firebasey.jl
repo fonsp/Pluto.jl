@@ -55,7 +55,7 @@ md"""
 abstract type JSONPatch end
 
 # ╔═╡ bd0d46bb-3e58-4522-bae0-83eb799196c4
-PatchPath = AbstractVector{Any}
+PatchPath = Vector
 
 # ╔═╡ db2d8a3e-2de1-11eb-02b8-9ffbfaeff61c
 struct AddPatch <: JSONPatch
@@ -87,10 +87,10 @@ struct MovePatch <: JSONPatch
 end
 
 # ╔═╡ 73631aea-5e93-4da2-a32d-649029660d4e
-Patches = Array{JSONPatch,1}
+const Patches = Vector{JSONPatch}
 
 # ╔═╡ 0fd3e910-abcc-4421-9d0b-5cfb90034338
-NoChanges = Patches()
+const NoChanges = Patches()
 
 # ╔═╡ aad7ab32-eecf-4aad-883d-1c802cad6c0c
 md"### =="
@@ -255,7 +255,7 @@ function diff(old::Deep{T}, new::Deep{T})::Patches where T
 end
 
 # ╔═╡ dbc7f97a-2de1-11eb-362f-055a734d1a9e
-function diff(o1::AbstractDict, o2::AbstractDict)::Patches
+function diff(o1::AbstractDict, o2::AbstractDict)
 	changes = JSONPatch[]
 	# for key in keys(o1) ∪ keys(o2)
 	# 	for change in diff(get(o1, key, nothing), get(o2, key, nothing))
@@ -281,22 +281,22 @@ function diff(o1::AbstractDict, o2::AbstractDict)::Patches
 end
 
 # ╔═╡ 67ade214-2de3-11eb-291d-135a397d629b
-function diff(o1, o2)::Patches
-	[ReplacePatch([], o2)]
+function diff(o1, o2)
+	JSONPatch[ReplacePatch([], o2)]
 end
 
 # ╔═╡ b8c58aa4-c24d-48a3-b2a8-7c01d50a3349
-function diff(o1::Nothing, o2)::Patches
-	[AddPatch([], o2)]
+function diff(o1::Nothing, o2)
+	JSONPatch[AddPatch([], o2)]
 end
 
 # ╔═╡ 5ab390f9-3b0c-4978-9e21-2aaa61db2ce4
-function diff(o1, o2::Nothing)::Patches
-	[RemovePatch([])]
+function diff(o1, o2::Nothing)
+	JSONPatch[RemovePatch([])]
 end
 
 # ╔═╡ 09f53db0-21ae-490b-86b5-414eba403d57
-function diff(o1::Nothing, o2::Nothing)::Patches
+function diff(o1::Nothing, o2::Nothing)
 	NoChanges
 end
 
@@ -432,6 +432,7 @@ function direct_diff(old::Cell, new::Cell)
 	if old.folded ≠ new.folded
 		push!(changes, ReplacePatch([:folded], new.folded))
 	end
+	changes
 end
 
 # ╔═╡ 2d084dd1-240d-4443-a8a2-82ae6e0b8900
@@ -573,7 +574,7 @@ end
 # ╔═╡ e65d483a-4c13-49ba-bff1-1d54de78f534
 let
 	dict_1_copy = deepcopy(dict_1)
-	applypatch!(dict_1, example_patches)
+	applypatch!(dict_1_copy, example_patches)
 end
 
 # ╔═╡ df41caa7-f0fc-4b0d-ab3d-ebdab4804040
@@ -737,6 +738,9 @@ Marks a expression as Pluto-only, which means that it won't be executed when run
 """
 macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
 
+# ╔═╡ 267d73ed-67d5-44c4-a9b4-47f29abad0be
+@skip_as_script using BenchmarkTools
+
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
 macro only_as_script(ex) skip_as_script(__module__) ? nothing : esc(ex) end
@@ -852,13 +856,13 @@ end
 # ╔═╡ 0e1c6442-9040-49d9-b754-173583db7ba2
 begin
     Base.@kwdef struct Tracked
-	expr
-	value
-	time
-	bytes
-	times_ran = 1
-	which = nothing
-	code_info = nothing
+		expr
+		value
+		time
+		bytes
+		times_ran = 1
+		which = nothing
+		code_info = nothing
     end
     function Base.show(io::IO, mime::MIME"text/html", value::Tracked)
 	times_ran = if value.times_ran === 1
@@ -914,7 +918,7 @@ begin
 					font-size: 12px;
 					color: $(color);
 				">
-					$(prettytime(value.time * 1e9))
+					$(prettytime(value.time * 1e9 / value.times_ran))
 					$(times_ran)
 				</div>
 				<div style="
