@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.19
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -125,31 +125,30 @@ md"### convert(::Type{Dict}, ::JSONPatch)"
 
 # ╔═╡ 230bafe2-aaa7-48f0-9fd1-b53956281684
 function Base.convert(::Type{Dict}, patch::AddPatch)
-	Dict{Symbol,Any}(:op => :add, :path => patch.path, :value => patch.value)
+	Dict{String,Any}("op" => "add", "path" => patch.path, "value" => patch.value)
 end
 
 # ╔═╡ b48e2c08-a94a-4247-877d-949d92dde626
 function Base.convert(::Type{Dict}, patch::RemovePatch)
-	Dict{Symbol,Any}(:op => :remove, :path => patch.path)
+	Dict{String,Any}("op" => "remove", "path" => patch.path)
 end
 
 # ╔═╡ fafcb8b8-cde9-4f99-9bab-8128025953a4
 function Base.convert(::Type{<:Dict}, patch::ReplacePatch)
-	Dict{Symbol,Any}(:op => :replace, :path => patch.path, :value => patch.value)
+	Dict{String,Any}("op" => "replace", "path" => patch.path, "value" => patch.value)
 end
 
 # ╔═╡ 921a130e-b028-4f91-b077-3bd79dcb6c6d
 function Base.convert(::Type{JSONPatch}, patch_dict::Dict)
-	op = patch_dict[:op]
-	
-	if op === :add
-		AddPatch(patch_dict[:path], patch_dict[:value])
-	elseif op === :remove
-		RemovePatch(patch_dict[:path])
-	elseif op === :replace
-		ReplacePatch(patch_dict[:path], patch_dict[:value])
+	op = patch_dict["op"]
+	if op == "add"
+		AddPatch(patch_dict["path"], patch_dict["value"])
+	elseif op == "remove"
+		RemovePatch(patch_dict["path"])
+	elseif op == "replace"
+		ReplacePatch(patch_dict["path"], patch_dict["value"])
 	else
-		throw("Unknown operation :$(patch_dict[:op]) in Dict to JSONPatch conversion")
+		throw(ArgumentError("Unknown operation :$(patch_dict["op"]) in Dict to JSONPatch conversion"))
 	end
 end
 
@@ -213,22 +212,22 @@ md"## Diff"
 const use_triple_equals_for_arrays = Ref(false)
 
 # ╔═╡ 59e94cb2-c2f9-4f6c-9562-45e8c15931af
-function diff(old::T, new::T)::Patches where T <: AbstractArray
+function diff(old::T, new::T) where T <: AbstractArray
 	if use_triple_equals_for_arrays[] ? 
 		((old === new) || (old == new)) : 
 		(old == new)
 		NoChanges
 	else
-		[ReplacePatch([], new)]
+		JSONPatch[ReplacePatch([], new)]
 	end
 end
 
 # ╔═╡ 5e360fcd-9943-4a17-9672-f1fded2f7e3a
-function diff(old::T, new::T)::Patches where T
+function diff(old::T, new::T) where T
 	if old == new
 		NoChanges
 	else
-		[ReplacePatch([], new)]
+		JSONPatch[ReplacePatch([], new)]
 	end
 end
 
@@ -236,7 +235,7 @@ end
 struct Deep{T} value::T end
 
 # ╔═╡ db75df12-2de1-11eb-0726-d1995cebd382
-function diff(old::Deep{T}, new::Deep{T})::Patches where T
+function diff(old::Deep{T}, new::Deep{T}) where T
 	changes = JSONPatch[]
 	for property in propertynames(old.value)
 		for change in diff(getproperty(old.value, property), getproperty(new.value, property))
@@ -737,9 +736,6 @@ end
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
 macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
-
-# ╔═╡ 267d73ed-67d5-44c4-a9b4-47f29abad0be
-@skip_as_script using BenchmarkTools
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
