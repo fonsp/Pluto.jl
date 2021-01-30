@@ -21,7 +21,6 @@ end
 # RESPONDING TO A NOTEBOOK STATE UPDATE
 ###
 
-# Yeah I am including a Pluto Notebook!!
 """
 ## State management in Pluto
 
