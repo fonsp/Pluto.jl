@@ -12,18 +12,10 @@ const get_codeMirrors = () => {
 
 export const FindReplace = () => {
     // for reference!!
-    const find_replace_state = {
-        visible: false,
-        textmarkers: [],
-        word: "", //
-        marker: null,
-        previous: null,
-    }
     const [word, set_word] = useState("")
     const [visible, set_visible] = useState(false)
     const [textmarkers, set_textmarkers] = useState([])
     const [marker, set_marker] = useState(null)
-    const [previous, set_previous] = useState(null)
 
     const [replace_value, set_replace_value] = useState(null)
     const input_find = useRef(null)
@@ -60,7 +52,6 @@ export const FindReplace = () => {
             const { cm, from, to } = nextMarker
             cm?.scrollIntoView({ from, to })
         }
-        set_previous(marker)
         set_marker(nextMarker)
         marker?.deselect()
         nextMarker?.select()
@@ -162,6 +153,7 @@ export const FindReplace = () => {
             <div id="findform">
                 <input type="text" ref=${input_find} onKeyUp=${handle_find_value_change} />
                 <button onClick=${find_next}>Next</button>
+                <output>${textmarkers?.indexOf(marker) + 1 || "?"}/${textmarkers?.length || 0}</output>
             </div>
             <div id="replaceform">
                 <input
