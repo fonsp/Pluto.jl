@@ -16,10 +16,13 @@ const whiteList = ["www.gstatic.com", "fonts.gstatic.com", "fonts.googleapis.com
 
 function shouldCache(request) {
     const url = new URL(request.url)
-    return whiteList.includes(url.host)
+    return request.method === "GET" && whiteList.includes(url.host)
 }
 
 self.addEventListener("fetch", function (event) {
+    if (navigator.userAgent.includes("Firefox")) {
+        return
+    }
     if (!shouldCache(event.request)) {
         // console.log("skipping cache")
         return
@@ -37,12 +40,11 @@ self.addEventListener("fetch", function (event) {
                     return response
                 }
 
-                // IMPORTANT: Clone the response. A response is a stream
+                // Clone the response. A response is a stream
                 // and because we want the browser to consume the response
                 // as well as the cache consuming the response, we need
                 // to clone it so we have two streams.
                 var responseToCache = response.clone()
-
                 caches.open(CACHE_NAME).then(function (cache) {
                     cache.put(event.request, responseToCache)
                 })

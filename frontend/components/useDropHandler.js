@@ -52,7 +52,7 @@ export const useDropHandler = () => {
                 case "cmdrop":
                 case "drop":
                     ev.preventDefault() // don't file open
-                    const cell_element = ev.path.find((el) => el.tagName === "PLUTO-CELL")
+                    const cell_element = (ev.path || ev.composedPath()).find((el) => el.tagName === "PLUTO-CELL")
                     const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")

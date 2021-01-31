@@ -17,6 +17,10 @@ let CellMemo = ({
     force_hide_input,
     selected_cells,
 }) => {
+    const selected_cells_diffable_primitive = (selected_cells || []).join("")
+    const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
+    const { queued, running, runtime, errored } = cell_result || {}
+    const { cell_id, code, code_folded } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -35,8 +39,18 @@ let CellMemo = ({
             />
         `
     }, [
-        cell_input,
-        cell_result,
+        cell_id,
+        code,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        body,
+        last_run_timestamp,
+        mime,
+        persist_js_state,
+        rootassignee,
         selected,
         cell_input_local,
         notebook_id,
@@ -46,7 +60,7 @@ let CellMemo = ({
         disable_input,
         focus_after_creation,
         force_hide_input,
-        selected_cells,
+        selected_cells_diffable_primitive,
     ])
 }
 
@@ -133,7 +147,7 @@ export const Notebook = ({
         </pluto-notebook>
     `
 }
-
+/* Disable this until we understand Notebook memoization better
 export const NotebookMemo = ({
     is_initializing,
     notebook,
@@ -161,3 +175,5 @@ export const NotebookMemo = ({
         `
     }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
 }
+*/
+export const NotebookMemo = Notebook
