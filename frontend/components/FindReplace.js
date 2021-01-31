@@ -111,7 +111,8 @@ export const FindReplace = () => {
         //input_find.current.select()
     }
     const handler = (ev) => {
-        const { path, ctrlKey, key } = ev
+        const { composedPath, ctrlKey, key, path: p } = ev
+        const path = p || composedPath()
         if (key === "Escape") {
             clear_all_markers()
             set_visible(false)
