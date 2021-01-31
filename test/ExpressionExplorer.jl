@@ -223,7 +223,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         #     :anon => ([:y], [], [], [])
         # ])
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
-        # @test_broken testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
+        @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
