@@ -278,9 +278,27 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             :f => ([:A, :B, :C], [], [:+], [])
         ])
 
-        @test_broken testee(:((obj::MyType)(x,y) = x + z), [:z], [:MyType], [:+], [], verbose=false)
-        @test_broken testee(:((obj::MyType)() = 1), [], [:MyType], [], [], verbose=false)
-        @test_broken testee(:((obj::MyType)(x, args...; kwargs...) = [x, y, args..., kwargs...]), [:y], [:MyType], [], [], verbose=false)
+        @test testee(:((obj::MyType)(x,y) = x + z), [], [], [], [
+            :MyType => ([:z], [], [:+], [])
+        ])
+        @test testee(:((obj::MyType)() = 1), [], [], [], [
+            :MyType => ([], [], [], [])
+        ])
+        @test testee(:((obj::MyType)(x, args...; kwargs...) = [x, y, args..., kwargs...]), [], [], [], [
+            :MyType => ([:y], [], [], [])
+        ])
+        @test testee(:(function (obj::MyType)(x, y) x + z end), [], [], [], [
+            :MyType => ([:z], [], [:+], [])
+        ])
+        @test testee(:(begin struct MyType x::String end; (obj::MyType)(y) = obj.x + y; end), [], [:MyType], [], [
+            :MyType => ([:String], [], [:+], [])
+        ])
+        @test testee(:(begin struct MyType x::String end; function(obj::MyType)(y) obj.x + y; end; end), [], [:MyType], [], [
+            :MyType => ([:String], [], [:+], [])
+        ])
+        @test testee(:((::MyType)(x,y) = x + y), [], [], [], [
+            :MyType => ([], [], [:+], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
