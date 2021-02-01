@@ -3,11 +3,64 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
+/**
+ * @param {HTMLInputElement} input
+ * @param {any} value
+ */
+const set_input = (input, value) => {
+    if (value == null) {
+        input.value = null
+        return
+    }
+    switch (input.type) {
+        case "range":
+        case "number": {
+            if (input.valueAsNumber !== value) {
+                input.valueAsNumber = value
+            }
+            return
+        }
+        case "date": {
+            if (input.valueAsDate == null || Number(input.valueAsDate) !== Number(value)) {
+                input.valueAsDate = value
+            }
+            return
+        }
+        case "checkbox": {
+            if (input.checked !== value) {
+                input.checked = value
+            }
+            return
+        }
+        case "file": {
+            // Can't set files :(
+            return
+        }
+        case "select-multiple": {
+            // @ts-ignore
+            for (let option of input.options) {
+                option.selected = value.includes(option.value)
+            }
+            return
+        }
+        default: {
+            if (input.value !== value) {
+                input.value = value
+            }
+            return
+        }
+    }
+}
+
 export const set_bound_elements_to_their_value = (node, bond_values) => {
     for (let bond_node of node.querySelectorAll("bond")) {
         let bond_name = bond_node.getAttribute("def")
         if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
-            bond_node.firstElementChild.value = bond_values[bond_name].value
+            try {
+                set_input(bond_node.firstElementChild, bond_values[bond_name].value)
+            } catch (error) {
+                console.error(`error while setting input`, bond_node.firstElementChild, `to value`, bond_values[bond_name].value, `:`, error)
+            }
         }
     }
 }
@@ -43,10 +96,16 @@ export const add_bonds_listener = (node, on_bond_change) => {
     }
 }
 
-// The identity function in most cases, loads file contents when appropriate
+/**
+ * The identity function in most cases, loads file contents when appropriate
+ * @type {((val: FileList) => Promise<Array<File>>)
+ *  & ((val: File) => Promise<{ name: string, type: string, data: Uint8Array }>)
+ *  & ((val: any) => Promise<any>)
+ * }
+ */
 const transformed_val = async (val) => {
     if (val instanceof FileList) {
-        return await Array.from(val).map(transformed_val)
+        return Promise.all(Array.from(val).map((file) => transformed_val(file)))
     } else if (val instanceof File) {
         return await new Promise((res) => {
             const reader = new FileReader()

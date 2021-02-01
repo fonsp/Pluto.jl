@@ -17,6 +17,10 @@ let CellMemo = ({
     force_hide_input,
     selected_cells,
 }) => {
+    const selected_cells_diffable_primitive = (selected_cells || []).join("")
+    const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
+    const { queued, running, runtime, errored } = cell_result || {}
+    const { cell_id, code, code_folded } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -35,8 +39,18 @@ let CellMemo = ({
             />
         `
     }, [
-        cell_input,
-        cell_result,
+        cell_id,
+        code,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        body,
+        last_run_timestamp,
+        mime,
+        persist_js_state,
+        rootassignee,
         selected,
         cell_input_local,
         notebook_id,
@@ -46,9 +60,19 @@ let CellMemo = ({
         disable_input,
         focus_after_creation,
         force_hide_input,
-        selected_cells,
+        selected_cells_diffable_primitive,
     ])
 }
+
+/**
+ * We render all cell outputs directly when the page loads. Rendering cell *inputs* can slow down the initial page load significantly, so we delay rendering them using this heuristic function to determine the length of the delay (as a function of the number of cells in the notebook).
+ * @param {Number} num_cells
+ */
+const render_cell_inputs_delay = (num_cells) => (num_cells > 20 ? 500 : 100)
+/**
+ * The first <x> cells will bypass the {@link render_cell_inputs_delay} heuristic and render directly.
+ */
+const render_cell_inputs_minimum = 5
 
 /**
  * @param {{
@@ -86,18 +110,18 @@ export const Notebook = ({
 
     const [is_first_load, set_is_first_load] = useState(true)
 
-    if (is_first_load && notebook.cell_order.length > 0) {
-        setTimeout(
-            () => {
+    useEffect(() => {
+        if (is_first_load && notebook.cell_order.length > 0) {
+            setTimeout(() => {
                 set_is_first_load(false)
-            },
-            notebook.cell_order.length > 20 ? 500 : 100
-        )
-    }
+            }, render_cell_inputs_delay(notebook.cell_order.length))
+        }
+    }, [is_first_load, notebook.cell_order.length])
+
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
             ${notebook.cell_order.map(
-                (cell_id) => html`<${CellMemo}
+                (cell_id, i) => html`<${CellMemo}
                     key=${cell_id}
                     cell_input=${notebook.cell_inputs[cell_id]}
                     cell_result=${notebook.cell_results[cell_id] ?? {
@@ -117,14 +141,14 @@ export const Notebook = ({
                     on_focus_neighbor=${on_focus_neighbor}
                     disable_input=${disable_input}
                     focus_after_creation=${last_created_cell === cell_id}
-                    force_hide_input=${is_first_load}
+                    force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
                     selected_cells=${selected_cells}
                 />`
             )}
         </pluto-notebook>
     `
 }
-
+/* Disable this until we understand Notebook memoization better
 export const NotebookMemo = ({
     is_initializing,
     notebook,
@@ -152,3 +176,5 @@ export const NotebookMemo = ({
         `
     }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
 }
+*/
+export const NotebookMemo = Notebook

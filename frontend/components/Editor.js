@@ -19,6 +19,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { useDropHandler } from "./useDropHandler.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -58,6 +59,23 @@ function serialize_cells(cells) {
 function deserialize_cells(serialized_cells) {
     const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
     return segments.map((s) => s.trim()).filter((s) => s !== "")
+}
+
+const Main = ({ children }) => {
+    const { handler } = useDropHandler()
+    useEffect(() => {
+        document.body.addEventListener("drop", handler)
+        document.body.addEventListener("dragover", handler)
+        document.body.addEventListener("dragenter", handler)
+        document.body.addEventListener("dragleave", handler)
+        return () => {
+            document.body.removeEventListener("drop", handler)
+            document.body.removeEventListener("dragover", handler)
+            document.body.removeEventListener("dragenter", handler)
+            document.body.removeEventListener("dragleave", handler)
+        }
+    })
+    return html`<main>${children}</main>`
 }
 
 /**
@@ -153,14 +171,15 @@ export class Editor extends Component {
             send: (...args) => this.client.send(...args),
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val) => {
-                this.setState(
+            set_local_cell: (cell_id, new_val, callback) => {
+                return this.setState(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    })
+                    }),
+                    callback
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
@@ -178,19 +197,10 @@ export class Editor extends Component {
                     )
                 }
             },
-            set_scroller: (enabled) => {
-                this.setState({ scroller: enabled })
-            },
-            // Not really an action, but sure - DRAL
-            serialize_selected: (cell_id) => {
-                const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
-                if (cells_to_serialize.length) {
-                    return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
-                }
-            },
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
                 /** @type {Array<CellInputData>} */
+                /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
@@ -200,6 +210,10 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
+                /** Update local_code. Local code doesn't force CM to update it's state
+                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
+                 * See ** 1 **
+                 */
                 await new Promise((resolve) =>
                     this.setState(
                         immer((state) => {
@@ -212,6 +226,10 @@ export class Editor extends Component {
                     )
                 )
 
+                /**
+                 * Create an empty cell in the julia-side.
+                 * Code will differ, until the user clicks 'run' on the new code
+                 */
                 await update_notebook((notebook) => {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
@@ -226,15 +244,32 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
+                /** ** 1 **
+                 * Notify codemirrors that the code is updated
+                 *
+                 *  */
+
+                for (const cell of new_cells) {
+                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
+                    cm.setValue(cell.code) // Update codemirror synchronously
+                }
             },
-            change_remote_cell: async (cell_id, new_code, create_promise = false) => {
-                this.counter_statistics.numEvals++
-                this.actions.set_and_run_multiple([cell_id])
-            },
-            wrap_remote_cell: (cell_id, block = "begin") => {
+            wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
-                const new_code = block + "\n\t" + cell.code.replace(/\n/g, "\n\t") + "\n" + "end"
-                this.actions.change_remote_cell(cell_id, new_code)
+                const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
+                await new Promise((resolve) => {
+                    this.setState(
+                        immer((state) => {
+                            state.cell_inputs_local[cell_id] = {
+                                ...cell,
+                                ...state.cell_inputs_local[cell_id],
+                                code: new_code,
+                            }
+                        }),
+                        resolve
+                    )
+                })
+                await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
@@ -298,24 +333,24 @@ export class Editor extends Component {
                     notebook.cell_order = [...before, ...cell_ids, ...after]
                 })
             },
-            add_remote_cell_at: async (index) => {
+            add_remote_cell_at: async (index, code = "") => {
                 let id = uuidv4()
                 this.setState({ last_created_cell: id })
                 await update_notebook((notebook) => {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
-                        code: "",
+                        code,
                         code_folded: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
                 await this.client.send("run_multiple_cells", { cells: [id] }, { notebook_id: this.state.notebook.notebook_id })
+                return id
             },
-            add_remote_cell: async (cell_id, before_or_after) => {
+            add_remote_cell: async (cell_id, before_or_after, code) => {
                 const index = this.state.notebook.cell_order.indexOf(cell_id)
                 const delta = before_or_after == "before" ? 0 : 1
-
-                await this.actions.add_remote_cell_at(index + delta)
+                return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
                 if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
@@ -362,6 +397,7 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
+                    this.counter_statistics.numEvals++
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -409,6 +445,18 @@ export class Editor extends Component {
                     false
                 )
             },
+            write_file: (cell_id, { file, name, type }) => {
+                this.counter_statistics.numFileDrops++
+                return this.client.send(
+                    "write_file",
+                    { file, name, type, path: this.state.notebook.path },
+                    {
+                        notebook_id: this.state.notebook.notebook_id,
+                        cell_id: cell_id,
+                    },
+                    true
+                )
+            },
         }
 
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
@@ -418,30 +466,29 @@ export class Editor extends Component {
                 switch (update.type) {
                     case "notebook_diff":
                         if (message.patches.length !== 0) {
-                            this.setState((state) => {
-                                let new_notebook = applyPatches(state.notebook, message.patches)
+                            this.setState(
+                                immer((state) => {
+                                    let new_notebook = applyPatches(state.notebook, message.patches)
 
-                                if (DEBUG_DIFFING) {
-                                    console.group("Update!")
-                                    for (let patch of message.patches) {
-                                        console.group(`Patch :${patch.op}`)
-                                        console.log(patch.path)
-                                        console.log(patch.value)
+                                    if (DEBUG_DIFFING) {
+                                        console.group("Update!")
+                                        for (let patch of message.patches) {
+                                            console.group(`Patch :${patch.op}`)
+                                            console.log(patch.path)
+                                            console.log(patch.value)
+                                            console.groupEnd()
+                                        }
                                         console.groupEnd()
                                     }
-                                    console.groupEnd()
-                                }
 
-                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                if (cells_stuck_in_limbo.length !== 0) {
-                                    console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                }
-
-                                return {
-                                    notebook: new_notebook,
-                                }
-                            })
+                                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                                    if (cells_stuck_in_limbo.length !== 0) {
+                                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                                    }
+                                    state.notebook = new_notebook
+                                })
+                            )
                         }
                         break
                     case "log":
@@ -589,6 +636,7 @@ export class Editor extends Component {
                     notebook.in_temp_dir = false
                     notebook.path = new_path
                 })
+                // @ts-ignore
                 document.activeElement?.blur()
             } catch (error) {
                 alert("Failed to move file:\n\n" + error.message)
@@ -606,6 +654,13 @@ export class Editor extends Component {
 
         this.run_selected = () => {
             return this.actions.set_and_run_multiple(this.state.selected_cells)
+        }
+
+        this.serialize_selected = (cell_id = null) => {
+            const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
+            if (cells_to_serialize.length) {
+                return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
+            }
         }
 
         document.addEventListener("keydown", (e) => {
@@ -660,7 +715,7 @@ export class Editor extends Component {
 
         document.addEventListener("copy", (e) => {
             if (!in_textarea_or_input()) {
-                const serialized = this.actions.serialize_selected()
+                const serialized = this.serialize_selected()
                 if (serialized) {
                     navigator.clipboard.writeText(serialized).catch((err) => {
                         alert(`Error copying cells: ${e}`)
@@ -674,7 +729,7 @@ export class Editor extends Component {
         // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
         // document.addEventListener("cut", (e) => {
         //     if (!in_textarea_or_input()) {
-        //         const serialized = this.actions.serialize_selected()
+        //         const serialized = this.serialize_selected()
         //         if (serialized) {
         //             navigator.clipboard
         //                 .writeText(serialized)
@@ -722,6 +777,7 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
+        window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
@@ -789,7 +845,7 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
-                    <main>
+                    <${Main}>
                         <preamble>
                             <button
                                 onClick=${() => {
@@ -813,12 +869,22 @@ export class Editor extends Component {
                             last_created_cell=${this.state.last_created_cell}
                         />
 
-                        <${DropRuler} actions=${this.actions} selected_cells=${this.state.selected_cells} />
+                        <${DropRuler} 
+                            actions=${this.actions}
+                            selected_cells=${this.state.selected_cells} 
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }} 
+                            serialize_selected=${this.serialize_selected}
+                        />
 
                         <${SelectionArea}
                             actions=${this.actions}
                             cell_order=${this.state.notebook.cell_order}
                             selected_cell_ids=${this.state.selected_cell_ids}
+                            set_scroller=${(enabled) => {
+                                this.setState({ scroller: enabled })
+                            }}
                             on_selection=${(selected_cell_ids) => {
                                 // @ts-ignore
                                 if (
@@ -831,7 +897,7 @@ export class Editor extends Component {
                                 }
                             }}
                         />
-                    </main>
+                    </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
                         on_update_doc_query=${this.actions.set_doc_query}
@@ -873,7 +939,6 @@ export class Editor extends Component {
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    console.log(also_delete)
     const storedString = localStorage.getItem("recent notebooks")
     const storedList = storedString != null ? JSON.parse(storedString) : []
     const oldpaths = storedList

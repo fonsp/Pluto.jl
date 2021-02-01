@@ -34,11 +34,11 @@ export class DropRuler extends Component {
                     drag_start: false,
                     drag_target: false,
                 })
-                this.props.actions.set_scroller({ up: false, down: false })
+                this.props.set_scroller({ up: false, down: false })
                 this.dropee = null
             } else {
                 this.dropee = target.parentElement
-                e.dataTransfer.setData("text/pluto-cell", this.props.actions.serialize_selected(this.dropee.id))
+                e.dataTransfer.setData("text/pluto-cell", this.props.serialize_selected(this.dropee.id))
                 this.dropped = false
                 this.precompute_cell_edges()
 
@@ -46,21 +46,24 @@ export class DropRuler extends Component {
                     drag_start: true,
                     drop_index: this.getDropIndexOf(e),
                 })
-                this.props.actions.set_scroller({ up: true, down: true })
+                this.props.set_scroller({ up: true, down: true })
             }
         })
         document.addEventListener("dragenter", (e) => {
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (!this.state.drag_target) this.precompute_cell_edges()
             this.lastenter = e.target
             this.setState({ drag_target: true })
         })
         document.addEventListener("dragleave", (e) => {
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             if (e.target === this.lastenter) {
                 this.setState({ drag_target: false })
             }
         })
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") return
             this.mouse_position = e
 
             this.setState({
@@ -74,10 +77,14 @@ export class DropRuler extends Component {
                 drag_start: false,
                 drag_target: false,
             })
-            this.props.actions.set_scroller({ up: false, down: false })
+            this.props.set_scroller({ up: false, down: false })
         })
         document.addEventListener("drop", (e) => {
             // Guaranteed to fire before the 'dragend' event
+            // Ignore files
+            if (e.dataTransfer.types[0] !== "text/pluto-cell") {
+                return
+            }
             this.setState({
                 drag_target: false,
             })

@@ -1,10 +1,11 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
 import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { Logs } from "./Logs.js"
 import { cl } from "../common/ClassTable.js"
+import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 /**
@@ -34,9 +35,9 @@ export const Cell = ({
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
-
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const { saving_file, drag_active, handler } = useDropHandler()
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
@@ -58,6 +59,14 @@ export const Cell = ({
         }
     }, [])
 
+    // When you click to run a cell, we use `waiting_to_run` to immediately set the cell's traffic light to 'queued', while waiting for the backend to catch up.
+    const [waiting_to_run, set_waiting_to_run] = useState(false)
+    useEffect(() => {
+        if (waiting_to_run) {
+            set_waiting_to_run(false)
+        }
+    }, [queued, running, output?.last_run_timestamp])
+
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
 
@@ -66,13 +75,19 @@ export const Cell = ({
 
     return html`
         <pluto-cell
+            onDragOver=${handler}
+            onDrop=${handler}
+            onDragEnter=${handler}
+            onDragLeave=${handler}
             class=${cl({
-                queued: queued,
+                queued: queued || waiting_to_run,
                 running: running,
                 errored: errored,
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                drop_target: drag_active,
+                saving_file: saving_file,
             })}
             id=${cell_id}
         >
@@ -111,8 +126,10 @@ export const Cell = ({
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                on_drag_drop_events=${handler}
                 on_submit=${() => {
-                    pluto_actions.change_remote_cell(cell_id)
+                    set_waiting_to_run(true)
+                    pluto_actions.set_and_run_multiple([cell_id])
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]

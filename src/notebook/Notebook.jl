@@ -254,5 +254,8 @@ function move_notebook!(notebook::Notebook, newpath::String)
     if oldpath_tame != newpath_tame
         rm(oldpath_tame)
     end
+    if isdir("$oldpath_tame.assets")
+        mv("$oldpath_tame.assets", "$newpath_tame.assets")
+    end
     notebook
 end

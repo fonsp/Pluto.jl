@@ -50,12 +50,14 @@ export const CellInput = ({
     on_change,
     on_update_doc_query,
     on_focus_neighbor,
+    on_drag_drop_events,
     cell_id,
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
     const cm_ref = useRef(null)
+    const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
@@ -78,36 +80,31 @@ export const CellInput = ({
     }, [remote_code])
 
     useLayoutEffect(() => {
-        const cm = (cm_ref.current = CodeMirror(
-            (el) => {
-                dom_node_ref.current.appendChild(el)
-            },
-            {
-                value: local_code,
-                lineNumbers: true,
-                mode: "julia",
-                lineWrapping: true,
-                viewportMargin: Infinity,
-                placeholder: "Enter cell code...",
-                indentWithTabs: true,
-                indentUnit: 4,
-                hintOptions: {
-                    hint: juliahints,
-                    pluto_actions: pluto_actions,
-                    notebook_id: notebook_id,
-                    on_update_doc_query: on_update_doc_query,
-                    extraKeys: {
-                        ".": (cm, { pick }) => {
-                            pick()
-                            cm.replaceSelection(".")
-                            cm.showHint()
-                        },
-                        // "(": (cm, { pick }) => pick(),
+        const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
+            value: local_code,
+            lineNumbers: true,
+            mode: "julia",
+            lineWrapping: true,
+            viewportMargin: Infinity,
+            placeholder: "Enter cell code...",
+            indentWithTabs: true,
+            indentUnit: 4,
+            hintOptions: {
+                hint: juliahints,
+                pluto_actions: pluto_actions,
+                notebook_id: notebook_id,
+                on_update_doc_query: on_update_doc_query,
+                extraKeys: {
+                    ".": (cm, { pick }) => {
+                        pick()
+                        cm.replaceSelection(".")
+                        cm.showHint()
                     },
+                    // "(": (cm, { pick }) => pick(),
                 },
-                matchBrackets: true,
-            }
-        ))
+            },
+            matchBrackets: true,
+        }))
 
         const keys = {}
 
@@ -354,6 +351,25 @@ export const CellInput = ({
             }
             return true
         }
+
+        cm.on("dragover", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+        cm.on("drop", (cm_, e) => {
+            on_drag_drop_events(e)
+            e.preventDefault()
+            return true
+        })
+        cm.on("dragenter", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+        cm.on("dragleave", (cm_, e) => {
+            on_drag_drop_events(e)
+            return true
+        })
+
         cm.on("cursorActivity", () => {
             setTimeout(() => {
                 if (!cm.hasFocus()) return
@@ -455,6 +471,7 @@ export const CellInput = ({
     return html`
         <pluto-input ref=${dom_node_ref}>
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
 }

@@ -1,5 +1,6 @@
 import .ExpressionExplorer
 import .ExpressionExplorer: join_funcname_parts, FunctionNameSignaturePair
+import REPL: ends_with_semicolon
 
 "Update the cell's caches, i.e. parse code and collect metadata."
 function update_caches!(notebook::Notebook, cells)
@@ -7,7 +8,7 @@ function update_caches!(notebook::Notebook, cells)
         if cell.parsedcode === nothing
             cell.parsedcode = parse_custom(notebook, cell)
 			cell.module_usings = ExpressionExplorer.compute_usings(cell.parsedcode)
-			cell.rootassignee = ExpressionExplorer.get_rootassignee(cell.parsedcode)
+			cell.rootassignee = ends_with_semicolon(cell.code) ? nothing : ExpressionExplorer.get_rootassignee(cell.parsedcode)
 			cell.function_wrapped = ExpressionExplorer.can_be_function_wrapped(cell.parsedcode)
         end
 	end
