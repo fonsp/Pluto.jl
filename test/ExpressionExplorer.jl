@@ -216,12 +216,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
-        # @test_broken testee(:(f = (args...) -> [args..., y]), [], [:f], [], [
-        #     :anon => ([:y], [], [], [])
-        # ])
-        # @test_broken testee(:(f = (x, args...; kwargs...) -> [x, y, args..., kwargs...]), [], [:f], [], [
-        #     :anon => ([:y], [], [], [])
-        # ])
+        @test testee(:((a...) -> f(a...)), [], [], [], [
+            :anon => ([], [], [:f], [])
+        ])
+        @test testee(:(f = (args...) -> [args..., y]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
+        @test testee(:(f = (x, args...; kwargs...) -> [x, y, args..., kwargs...]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
         @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
