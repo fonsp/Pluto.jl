@@ -856,7 +856,7 @@ function canonalize(ex::Expr)
 		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
 	elseif ex.head == :call || ex.head == :tuple
 		skip_index = ex.head == :call ? 2 : 1
-		ex.args[1] # if ex.head == :call this is the function name, we dont want it
+		# ex.args[1], if ex.head == :call this is the function name, we dont want it
 
 		interesting = filter(ex.args[skip_index:end]) do arg
 			!(arg isa Expr && arg.head == :parameters)
