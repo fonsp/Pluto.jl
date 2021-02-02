@@ -88,6 +88,16 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 	end
 end
 
+function where_assigned(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
+	filter(notebook.cells) do cell
+		other = topology[cell]
+		!(
+			disjoint(to_compare, other.definitions) &&
+			disjoint(to_compare, other.funcdefs_without_signatures)
+		)
+	end
+end
+
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
 function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
 	any(notebook.cells) do cell
