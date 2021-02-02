@@ -1,104 +1,151 @@
-# using Test
-# import Pluto
-# import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
+using Test
+import Pluto
+import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell
 
-# import UUIDs: UUID, uuid1
+import UUIDs: UUID, uuid1
 
-# function get_unique_short_id()
-#     string(uuid1())[1:8]
-# end
+function get_unique_short_id()
+    string(uuid1())[1:8]
+end
 
-# function stringify_keys(d::Dict)
-#     Dict(string(k) => stringify_keys(v) for (k, v) in d)
-# end
-# stringify_keys(x::Any) = x
+function stringify_keys(d::Dict)
+    Dict(string(k) => stringify_keys(v) for (k, v) in d)
+end
+stringify_keys(x::Any) = x
 
-# module Firebase include("../src/webserver/FirebaseSimple.jl") end
-
-# @testset "Communication protocol" begin
-
-#     @testset "Functionality sweep" begin
-#         buffer = IOBuffer()
-#         client = ClientSession(:buffery, buffer)
-
-#         🍭 = ServerSession()
-#         # 🍭.connected_clients[client.id] = client
+import Pluto.Firebasey
 
 
-#         notebook = Notebook([Cell(UUID("40bc3c5e-fd6c-4774-8f7a-5e3336e82d47"), "")])
-#         🍭.notebooks[notebook.notebook_id] = notebook
-#         update_save_run!(🍭, notebook, notebook.cells)
+function await_with_timeout(check::Function, timeout::Real=60.0, interval::Real=.05)
+    starttime = time()
+    while !check()
+        sleep(interval)
+        if time() - starttime >= timeout
+            error("Timeout after $(timeout) seconds")
+        end
+    end
+end
 
-#         local_notebook = Pluto.notebook_to_js(notebook)
+@testset "Communication protocol" begin
 
-#         # client.connected_notebook = notebook
-#         n = notebook.notebook_id |> string
-#         c(cell) = cell.cell_id |> string
+    @testset "Functionality sweep" begin
+        u = [uuid1() for _ in 1:100]
 
+        buffer = IOBuffer()
+        client = ClientSession(:buffery, buffer)
 
-
-#         function send(type, body, metadata = Dict(:notebook_id => n))
-#             request_id = get_unique_short_id()
-#             Pluto.process_ws_message(🍭, Dict(
-#                 "type" => string(type),
-#                 "client_id" => string(client.id),
-#                 "request_id" => request_id,
-#                 "body" => body,
-#                 metadata...
-#             ) |> stringify_keys, client.stream)
-#         end
-
-#         function update_local_notebook(mutate_fn)
-#             old_local_notebook = deepcopy(local_notebook)
-#             mutate_fn(local_notebook)
-#             patches::Array{Dict} = Firebase.diff(old_local_notebook, local_notebook)
-#             @info "patches" patches
-#             send(:update_notebook, Dict("updates" => patches))
-
-#             # while (isready(IOBuffer))
-#         end
+        🍭 = ServerSession()
+        # 🍭.connected_clients[client.id] = client
 
 
-#         @test_nowarn send(:connect, Dict())
+        notebook = Notebook([
+            Cell(
+                u[1], 
+                ""
+            ),
+        ])
+        🍭.notebooks[notebook.notebook_id] = notebook
+        update_save_run!(🍭, notebook, notebook.cells)
+        client.connected_notebook = notebook
+        read(buffer)
+
+        local_state = Pluto.notebook_to_js(notebook)
 
 
-#         @test update_local_notebook() do notebook
-#             id = UUID("c2b7f6c9-2161-4d18-9e5b-0bad03e9ea59")
-#             notebook["cell_inputs"][id] = Dict(
-#                 "cell_id" => id,
-#                 "code_folded" => false,
-#                 "code" => "10 + 20"
-#             )
-#             notebook["cell_order"] = [notebook["cell_order"]..., id]
-#         end
+        function send(type, body, metadata = Dict(:notebook_id => string(notebook.notebook_id)))
+            request_id = get_unique_short_id()
+            Pluto.process_ws_message(🍭, Dict(
+                "type" => string(type),
+                "client_id" => string(client.id),
+                "request_id" => request_id,
+                "body" => body,
+                metadata...
+            ) |> stringify_keys, client.stream)
+        end
 
-#         # @test
-#         @info "notebook" notebook
+        function send_new_state(new_state)
+            patches::Array{Dict} = Firebasey.diff(new_state, local_state)
+            # @info "patches" patches
+            send(:update_notebook, Dict("updates" => patches))
 
-#         @test_nowarn send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
-#         send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
-#         send(:add_cell, Dict(:index => 0), Dict(:notebook_id => n))
-#         @test length(notebook.cells) == 4
-#         @test_nowarn send(:set_input, Dict(:code => "1 + 2"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
-#         @test_nowarn send(:run_multiple_cells, Dict(:cells => [string(c.cell_id) for c in notebook.cells[1:2]]), Dict(:notebook_id => n))
-#         @test_nowarn send(:set_bond, Dict(:sym => "x", :val => 9, :is_first_value => true), Dict(:notebook_id => n))
-#         @test_nowarn send(:change_cell, Dict(:code => "1+1"), Dict(:notebook_id => n, :cell_id => c(notebook.cells[3])))
-#         @test_nowarn send(:delete_cell, Dict(), Dict(:notebook_id => n, :cell_id => c(notebook.cells[4])))
+            new_state
+        end
 
-#         @test_nowarn send(:move_multiple_cells, Dict(:cells => [c(notebook.cells[3])], :index => 1), Dict(:notebook_id => n))
-#         @test_nowarn send(:fold_cell, Dict(:folded => true), Dict(:notebook_id => n, :cell_id => c(notebook.cells[1])))
+        # function update_local_notebook(mutate_fn::Function)
+        #     mutable_notebook = deepcopy(notebook)
 
-#         @test_nowarn send(:move_notebook_file, Dict(:path => tempname()), Dict(:notebook_id => n))
-        
-#         # TODO: we need to wait for all above command to finish before we can do this:
-#         # send(:shutdown_notebook, Dict(:keep_in_session => false), Dict(:notebook_id => n))
-#     end
+        #     mutate_fn(mutable_notebook)
 
-#     @testset "Docs" begin
-#         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
-#         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
-#         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
-#     end
-# end
+        #     new_state = Pluto.notebook_to_js(mutable_notebook)
+        #     send_new_state(new_state)
+        # end
 
-# # TODO: test returned data
+        last_position = position(buffer)
+        function wait_for_updates(process=true)
+            # @info "Waiting for updates"
+            await_with_timeout() do
+                position(buffer) != last_position
+            end
+            seek(buffer, last_position)
+            response = Pluto.unpack(buffer)
+            last_position = position(buffer)
+
+            if process
+                if response["type"] == "notebook_diff"
+                    message = response["message"]
+                    patches = [Base.convert(Firebasey.JSONPatch, update) for update in message["patches"]]
+                    # @show patches
+                    for patch in patches
+                        Firebasey.applypatch!(local_state, patch)
+                    end
+                end
+            end
+
+            # @info "Response received" response
+
+            local_state
+        end
+
+        # function patch_and_check(mutate_fn::Function)
+        #     desired = update_local_notebook(mutate_fn)
+        #     result = wait_for_updates()
+        #     desired == result
+        # end
+
+        @test_nowarn send(:connect, Dict())
+        wait_for_updates()
+
+        @test_nowarn send_new_state(local_state)
+        wait_for_updates(false)
+
+        read(buffer)
+
+        #= 
+        We would also like to test:
+        - add cell
+        - set code and run
+        - fold cell
+        - move cell
+        - delete cell
+
+        - run multiple cells
+        - move cells
+        - set bond
+
+        - move notebook file
+        - search for docs
+        - show more items of an array =#
+
+        send(:shutdown_notebook, Dict("keep_in_session" => false))
+
+        @test_nowarn await_with_timeout() do
+            !haskey(🍭.notebooks, notebook.notebook_id)
+        end
+    end
+
+    @testset "Docs" begin
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
+        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
+    end
+end

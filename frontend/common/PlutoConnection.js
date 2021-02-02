@@ -118,7 +118,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             // but some message are read and deserialized much faster than others, because of varying sizes, so _after_ async read & deserialization, messages are no longer guaranteed to be in order
             //
             // the solution is a task queue, where each task includes the deserialization and the update handler
-            last_task.then(async () => {
+            last_task = last_task.then(async () => {
                 try {
                     const buffer = await event.data.arrayBuffer()
                     const message = unpack(new Uint8Array(buffer))
@@ -346,7 +346,8 @@ export const create_pluto_connection = async ({
             const ping = () => {
                 send("ping", {}, {})
                     .then(() => {
-                        setTimeout(ping, 30 * 1000)
+                        // Ping faster than timeout?
+                        setTimeout(ping, 28 * 1000)
                     })
                     .catch()
             }

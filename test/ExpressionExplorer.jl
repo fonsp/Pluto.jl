@@ -1,5 +1,22 @@
 using Test
 
+
+#= 
+`@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
+Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
+
+# When working on ExpressionExplorer:
+
+- Go to runtests.jl and move `include("ExpressionExplorer.jl")` to the second line, so that they run instantly (after loading the helper functions). Be careful not to commit this change.
+- If you are fixing a `@test_broken`:
+  - uncomment that line if needed
+  - change `@test_broken` to `@test`
+  - remove `verbose=false` at the end of the line
+- If you are fixing something else:
+  - you can add lots of tests! They run super fast, don't worry about duplicates too much
+
+-fons =#
+
 @testset "Explore Expressions" begin
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
@@ -119,6 +136,9 @@ using Test
         @test testee(:([sqrt(s) for s in 1:n]), [:n], [], [:sqrt, :(:)], [])
         @test testee(:([sqrt(s + r) for s in 1:n, r in k]), [:n, :k], [], [:sqrt, :(:), :+], [])
         @test testee(:([s + j + r + m for s in 1:3 for j in 4:5 for (r, l) in [(1, 2)]]), [:m], [], [:+, :(:)], [])
+        @test testee(:([a for a in b if a != 2]), [:b], [], [:(!=)], [])
+        @test testee(:([a for a in f() if g(a)]), [], [], [:f, :g], [])
+        @test testee(:([c(a) for a in f() if g(a)]), [], [], [:c, :f, :g], [])
 
         @test testee(:([a for a in a]), [:a], [], [], [])
         @test testee(:(for a in a; a; end), [:a], [], [], [])
@@ -160,6 +180,9 @@ using Test
         @test testee(:(function f(x) a end; function f(x, y) b end), [], [], [], [
             :f => ([:a, :b], [], [], [])
         ])
+        @test testee(:(function f(x, args...; kwargs...) return [x, y, args..., kwargs...] end), [], [], [], [
+            :f => ([:y], [], [], [])
+        ])
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
@@ -193,7 +216,17 @@ using Test
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
+        @test testee(:((a...) -> f(a...)), [], [], [], [
+            :anon => ([], [], [:f], [])
+        ])
+        @test testee(:(f = (args...) -> [args..., y]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
+        @test testee(:(f = (x, args...; kwargs...) -> [x, y, args..., kwargs...]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
+        @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
@@ -202,8 +235,9 @@ using Test
         @test testee(:(funcs[i](b)), [:funcs, :i, :b], [], [], [])
         @test testee(:(f(a)(b)), [:a, :b], [], [:f], [])
         @test testee(:(f(a).b()), [:a], [], [:f], [])
+
         @test testee(:(a.b(c)), [:a, :c], [], [[:a,:b]], [])
-        @test testee(:(a.b.c(d)), [:b, :d], [], [[:a,:b,:c]], []) # only referencing :b, and not :a, matches the behaviour of `import a.b`
+        @test testee(:(a.b.c(d)), [:a, :d], [], [[:a,:b,:c]], [])
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
@@ -243,6 +277,10 @@ using Test
         @test testee(:(f(a::A, ::B, c::C...) = a + c), [], [], [], [
             :f => ([:A, :B, :C], [], [:+], [])
         ])
+
+        @test_broken testee(:((obj::MyType)(x,y) = x + z), [:z], [:MyType], [:+], [], verbose=false)
+        @test_broken testee(:((obj::MyType)() = 1), [], [:MyType], [], [], verbose=false)
+        @test_broken testee(:((obj::MyType)(x, args...; kwargs...) = [x, y, args..., kwargs...]), [:y], [:MyType], [], [], verbose=false)
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
@@ -303,6 +341,10 @@ using Test
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
 
+        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [:x, :y, :Float64], [:a], [[Symbol("@einsum")], [:*]], [])
+        @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [:x, :k, :z], [:a], [[Symbol("@tullio")], [:f], [:*], [:+]], [])
+        @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [:x, :y, :k, :Pack, :Float64], [:a], [[:Pack, Symbol("@asdf")], [:/], [:log]], [])
+
         @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(html"a $(b = c)"), [], [], [Symbol("@html_str")], [])
@@ -325,6 +367,8 @@ using Test
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
         @test testee(:("a $(b = c)"), [:c], [:b], [], [])
+        # @test_broken testee(:(`a $b`), [:b], [], [], [])
+        # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
         @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
