@@ -668,6 +668,11 @@ export class Editor extends Component {
 
             console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
+            const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
+            window.shutdown_binder = () => {
+                fetch(shutdown_url, { method: "POST" })
+            }
+
             this.setState({
                 binder_phase: BinderPhase.created,
                 binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`,
