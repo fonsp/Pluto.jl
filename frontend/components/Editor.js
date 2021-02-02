@@ -626,9 +626,12 @@ export class Editor extends Component {
             launch_params.bind_server_url == null
                 ? {}
                 : {
+                      set_local_cell: () => {},
                       set_bond: async (symbol, value, is_first_value) => {
-                          mybonds[symbol] = { value: value }
-                          await request_bond_response()
+                          if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
+                              mybonds[symbol] = { value: value }
+                              await request_bond_response()
+                          }
                       },
                   }
 
