@@ -587,7 +587,7 @@ export class Editor extends Component {
 
             const bond_connections = use_bind_server
                 ? notebookfile_hash
-                      .then((hash) => fetch(trailingslash(launch_params.bind_server_url) + "bondconnections/" + hash + "/"))
+                      .then((hash) => fetch(trailingslash(launch_params.bind_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
                       .then((r) => r.arrayBuffer())
                       .then((b) => unpack(new Uint8Array(b)))
                 : null
