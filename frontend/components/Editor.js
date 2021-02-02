@@ -444,7 +444,6 @@ export class Editor extends Component {
                                         };
                                         if(external_nb) {
                                             const recovered_medium = new Mediums[external_nb['type']](...external_nb['args'])
-                                            console.log(recovered_medium);
                                             recovered_medium.onUpdate(medium_update)
                                             this.setState({ save_medium: recovered_medium })
                                         }
@@ -830,6 +829,18 @@ export class Editor extends Component {
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                             </a>
+                            ${this.state.save_medium && this.state.save_medium.firstSave && html`
+                                <div class="file-permissions-popover">
+                                    <span class="arrow-up"/>
+                                    <div>
+                                        <span>Allow Pluto.jl to edit this file?</span>
+                                        <div>
+                                            <button class="pluto-styled-button" onClick=${() => this.state.save_medium.save()}>Allow</button>
+                                            <button class="pluto-styled-button-secondary" onClick=${() => window.location.href = '/'}>Deny</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            `}
                             <${FilePicker}
                                 client=${this.client}
                                 medium=${this.state.save_medium}

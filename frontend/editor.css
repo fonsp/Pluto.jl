@@ -1475,6 +1475,19 @@ footer button, .pluto-styled-button {
     border-radius: 3px;
 }
 
+.pluto-styled-button-secondary {
+    margin: 0px;
+    background: white;
+    border-radius: 3px;
+    border: 1px solid lightgray;
+    color: black;
+    /* border: none; */
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.75rem;
+    cursor: pointer;
+}
+
 #info {
     max-width: 9400px;
     margin: 0 auto;
@@ -1582,6 +1595,35 @@ body > nav#slide_controls > button.prev > span::after {
 }
 body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-forward-outline.svg);
+}
+
+.file-permissions-popover {
+    position: relative;
+    width:0;
+    height: 0;
+}
+.file-permissions-popover > div {
+    position: absolute;
+    top: 31px;
+    width: 300px;
+    background-color: #f2f2f2; 
+    padding: 10px;
+}
+.file-permissions-popover > div > div {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+    padding: 0 5px;
+}
+.file-permissions-popover > div > div > button {
+    margin: 0 5px;
+}
+.arrow-up {
+    width: 0; 
+    height: 0; 
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    border-bottom: 14px solid #f2f2f2;
 }
 
 /* CODEMIRROR HINTS */

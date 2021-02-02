@@ -62,13 +62,6 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         this.fileHandle = extras ? extras : null;
         if(this.fileHandle) {
             this.firstSave = true;
-            // TODO: Find better solution for activating editor
-            // window.addEventListener('mousedown', () => {
-            //     if(this.firstSave) {
-            //         this.save()
-            //         this.firstSave = false;
-            //     }
-            // });
         }
         else {
             this._openSystemDialog()
@@ -88,17 +81,16 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         return true
     }
     async save() {
-        const content = await super.getNotebookContent()
+        const content = await super.getNotebookContent();
 
         if(this.fileHandle) {
             try {
                 const stream = await this.fileHandle.createWritable()
                 await stream.write(content)
                 await stream.close()
+                this.firstSave = false;
                 this.saveStatus = SaveStatuses.IDLE;
-                setTimeout(() => {
-                    this.update();
-                }, 1000);
+                this.update();
             }
             catch(e) {
                 this.saveStatus = SaveStatuses.ERROR;
@@ -129,7 +121,7 @@ export class BrowserLocalSaveMedium extends SaveMedium {
         try {
             const options = {
                 types: [{
-                    description: 'Pluto Notebook',
+                    description: 'Pluto Notebook (.jl)',
                     accept: {
                       'application/julia': ['.jl'],
                     }
