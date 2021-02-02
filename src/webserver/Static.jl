@@ -135,9 +135,9 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
     HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
-    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true)
+    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
         try
-            nb = action(session, path_or_url)
+            nb = action(session, path_or_url; action_kwargs...)
             notebook_response(nb; home_url=home_url, as_redirect=as_redirect)
         catch e
             if e isa SessionActions.NotebookIsRunningException
@@ -164,16 +164,17 @@ function http_router_for(session::ServerSession)
         try
             uri = HTTP.URI(request.target)
             query = HTTP.queryparams(uri)
+            as_sample = haskey(query, "as_sample")
             if haskey(query, "path")
                 path = tamepath(query["path"])
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 error("Empty request")
             end
@@ -190,13 +191,13 @@ function http_router_for(session::ServerSession)
         security.require_secret_for_open_links
     ) do request::HTTP.Request
         uri = HTTP.URI(request.target)
-        sample_path = split(HTTP.unescapeuri(uri.path), "sample/")[2]
-        sample_path_without_dotjl = "sample " * sample_path[1:end - 3]
+        sample_filename = split(HTTP.unescapeuri(uri.path), "sample/")[2]
+        sample_path = project_relative_path("sample", sample_filename)
         
         path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
         readwrite(project_relative_path("sample", sample_path), path)
         
-        try_launch_notebook_response(SessionActions.open, path; as_redirect=(request.method == "GET"), home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+        try_launch_notebook_response(SessionActions.open, path; as_redirect=(request.method == "GET"), home_url="../", as_sample=true, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)

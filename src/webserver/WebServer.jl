@@ -41,7 +41,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`powershell.exe Start $url`)
+            Base.run(`powershell.exe Start "$url"`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
@@ -160,6 +160,8 @@ function run(session::ServerSession)
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
 
+                                sleep(session.options.server.simulated_lag)
+
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
                                 if ex isa InterruptException
@@ -196,9 +198,15 @@ function run(session::ServerSession)
                     end
                 end
             else
-                HTTP.setstatus(http, 403)
-                HTTP.startwrite(http)
-                HTTP.closewrite(http)
+                try
+                    HTTP.setstatus(http, 403)
+                    HTTP.startwrite(http)
+                    HTTP.closewrite(http)
+                catch e
+                    if !(e isa Base.IOError)
+                        rethrow(e)
+                    end
+                end
             end
         else
             request::HTTP.Request = http.message
@@ -296,8 +304,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         @assert endswith(session.options.server.root_url, "/")
         session.options.server.root_url
     end
-
-    Sys.set_process_title("Pluto server - $root")
 
     url_params = Dict{String,String}()
 

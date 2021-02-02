@@ -58,6 +58,19 @@ function new_notebooks_directory()
     end
 end
 
+function without_dotjl(path)
+	extension = let
+		parts = split(basename(path), '.')
+		length(parts) == 1 ? "" : last(parts)
+	end
+
+	if startswith(extension, "jl")
+		path[1:end-length(extension)-1]
+	else
+		path
+	end
+end
+
 """
 Return `base` * `suffix` if the file does not exist yet.
 
