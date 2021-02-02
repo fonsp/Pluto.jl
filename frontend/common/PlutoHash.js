@@ -15,6 +15,25 @@ export const hash_str = async (s) => {
     return await hash_arraybuffer(data)
 }
 
+export const debounced_promises = (async_function) => {
+    let currently_running = false
+    let rerun_when_done = false
+
+    return async () => {
+        if (currently_running) {
+            rerun_when_done = true
+        } else {
+            currently_running = true
+            rerun_when_done = true
+            while (rerun_when_done) {
+                rerun_when_done = false
+                await async_function()
+            }
+            currently_running = false
+        }
+    }
+}
+
 // const notebook_url = "https://mkhj.fra1.cdn.digitaloceanspaces.com/sample%20Tower%20of%20Hanoi%2016.jl"
 
 // const thehash = await myhash(await (await fetch(notebook_url)).text())

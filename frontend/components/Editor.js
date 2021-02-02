@@ -22,7 +22,7 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
-import { hash_arraybuffer, hash_str } from "../common/PlutoHash.js"
+import { hash_arraybuffer, hash_str, debounced_promises } from "../common/PlutoHash.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -575,70 +575,92 @@ export class Editor extends Component {
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        const notebookfile_hash = fetch(launch_params.notebookfile)
-            .then((r) => r.arrayBuffer())
-            .then(hash_arraybuffer)
+        let real_actions, fake_actions
+        const use_bind_server = launch_params.bind_server_url != null
+        if (use_bind_server) {
+            const notebookfile_hash = use_bind_server
+                ? fetch(launch_params.notebookfile)
+                      .then((r) => r.arrayBuffer())
+                      .then(hash_arraybuffer)
+                : null
+            use_bind_server && notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
-        notebookfile_hash.then(console.log)
+            const bond_connections = use_bind_server
+                ? notebookfile_hash
+                      .then((hash) => fetch(trailingslash(launch_params.bind_server_url) + "bondconnections/" + hash + "/"))
+                      .then((r) => r.arrayBuffer())
+                      .then((b) => unpack(new Uint8Array(b)))
+                : null
+            use_bind_server && bond_connections.then((x) => console.log("Bond connections:", x))
 
-        const debounced_promises = (async_function) => {
-            let currently_running = false
-            let rerun_when_done = false
-
-            return async () => {
-                if (currently_running) {
-                    rerun_when_done = true
-                } else {
-                    currently_running = true
-                    rerun_when_done = true
-                    while (rerun_when_done) {
-                        rerun_when_done = false
-                        await async_function()
-                    }
-                    currently_running = false
-                }
+            const mybonds = {}
+            const bonds_to_set = {
+                current: new Set(),
             }
-        }
+            const request_bond_response = debounced_promises(async () => {
+                const base = trailingslash(launch_params.bind_server_url)
+                const hash = await notebookfile_hash
+                const graph = await bond_connections
 
-        const mybonds = {}
-        const request_bond_response = debounced_promises(async () => {
-            console.log("requesting bonds")
-            const base = trailingslash(launch_params.bind_server_url)
-            const hash = await notebookfile_hash
+                console.groupCollapsed("Requesting bonds", bonds_to_set.current)
+                if (bonds_to_set.current.size > 0) {
+                    const to_send = new Set(bonds_to_set.current)
+                    bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
+                    bonds_to_set.current = new Set()
 
-            const packed = pack(mybonds)
+                    const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
 
-            const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+                    const packed = pack(mybonds_filtered)
 
-            let response = await fetch(url, {
-                method: "POST",
-                body: packed,
+                    const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
+
+                    try {
+                        let response = await fetch(url, {
+                            method: "POST",
+                            body: packed,
+                        })
+
+                        const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
+
+                        await apply_notebook_patches(
+                            patches,
+                            immer((state) => {
+                                ids_of_cells_that_ran.forEach((id) => {
+                                    state.cell_results[id] = this.original_state.cell_results[id]
+                                })
+                            })(this.state.notebook)
+                        )
+                        console.log("done!")
+                    } catch (e) {
+                        console.error(e)
+                    }
+                }
+
+                console.groupEnd()
             })
 
-            const notebook_patches = unpack(new Uint8Array(await response.arrayBuffer()))
-
-            await apply_notebook_patches(notebook_patches, this.original_state)
-            console.log("done!")
-        })
-
-        const real_actions = this.actions
-        const fake_actions =
-            launch_params.bind_server_url == null
-                ? {}
-                : {
-                      set_local_cell: () => {},
-                      set_bond: async (symbol, value, is_first_value) => {
-                          if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                              mybonds[symbol] = { value: value }
-                              await request_bond_response()
-                          }
-                      },
-                  }
+            real_actions = this.actions
+            fake_actions =
+                launch_params.bind_server_url == null
+                    ? {}
+                    : {
+                          set_local_cell: () => {},
+                          set_bond: async (symbol, value, is_first_value) => {
+                              if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
+                                  mybonds[symbol] = { value: value }
+                                  bonds_to_set.current.add(symbol)
+                                  await request_bond_response()
+                              }
+                          },
+                      }
+        }
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-            this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
+            if (use_bind_server) {
+                this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
+            }
         }
         this.on_disable_ui()
 
