@@ -646,6 +646,11 @@ export class Editor extends Component {
                     : {
                           set_local_cell: () => {},
                           set_bond: async (symbol, value, is_first_value) => {
+                              this.setState(
+                                  immer((state) => {
+                                      state.notebook.bonds[symbol] = { value: value }
+                                  })
+                              )
                               if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
                                   mybonds[symbol] = { value: value }
                                   bonds_to_set.current.add(symbol)
