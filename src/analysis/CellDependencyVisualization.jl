@@ -1,7 +1,7 @@
 """
 Gets the cell number in execution order (as saved in the notebook.jl file)
 """
-get_cell_number(uuid:: UUID, notebook:: Notebook):: Int = findfirst(==(uuid),notebook.cell_order)
+get_cell_number(uuid:: UUID, notebook:: Notebook):: Int = findfirst(==(uuid), notebook.cell_order)
 get_cell_number(cell:: Cell, notebook:: Notebook):: Int = get_cell_number(cell.cell_id, notebook)
 
 """
