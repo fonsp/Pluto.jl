@@ -22,7 +22,7 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
-import { hash_arraybuffer, hash_str, debounced_promises } from "../common/PlutoHash.js"
+import { hash_arraybuffer, hash_str, debounced_promises, base64_arraybuffer } from "../common/PlutoHash.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -615,10 +615,16 @@ export class Editor extends Component {
                     const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
 
                     try {
-                        let response = await fetch(url, {
-                            method: "POST",
-                            body: packed,
-                        })
+                        const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
+
+                        const response = use_get
+                            ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
+                                  method: "GET",
+                              })
+                            : await fetch(url, {
+                                  method: "POST",
+                                  body: packed,
+                              })
 
                         const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
 

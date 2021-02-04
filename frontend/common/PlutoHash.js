@@ -1,13 +1,16 @@
-export const hash_arraybuffer = async (data) => {
-    const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
-
+export const base64_arraybuffer = async (data) => {
     const base64url = await new Promise((r) => {
         const reader = new FileReader()
         reader.onload = () => r(reader.result)
-        reader.readAsDataURL(new Blob([hashed_buffer]))
+        reader.readAsDataURL(new Blob([data]))
     })
 
     return base64url.split(",", 2)[1]
+}
+
+export const hash_arraybuffer = async (data) => {
+    const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
+    return await base64_arraybuffer(hashed_buffer)
 }
 
 export const hash_str = async (s) => {
