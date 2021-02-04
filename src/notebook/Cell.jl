@@ -27,6 +27,11 @@ Base.@kwdef mutable struct Cell
     module_usings::Set{Expr}=Set{Expr}()
     rootassignee::Union{Nothing,Symbol}=nothing
     function_wrapped::Bool=false
+
+    # information to display cell dependencies
+    cell_execution_order:: Union{Missing, Int} = missing
+    referenced_cells:: Union{Missing, Vector{Int}} = missing
+    dependent_cells:: Union{Missing, Vector{Int}} = missing
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)

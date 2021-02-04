@@ -44,5 +44,8 @@ function relay_reactivity_error!(cell::Cell, error::Exception)
 	cell.persist_js_state = false
 	cell.errored = true
 	cell.runtime = missing
+	cell.cell_execution_order = missing
+	cell.referenced_cells = missing
+	cell.dependent_cells = missing
 	cell.output_repr, cell.repr_mime = PlutoRunner.format_output(CapturedException(error, []))
 end

@@ -91,6 +91,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			relay_reactivity_error!(cell, InterruptException())
 		else
 			run = run_single!((session, notebook), cell, new_topology[cell])
+			set_dependencies!(cell, notebook)
 			any_interrupted |= run.interrupted
 		end
 		
@@ -161,6 +162,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new[cell])
+			set_dependencies!(cell, notebook)
 		end
 		
 		cd(original_pwd)
