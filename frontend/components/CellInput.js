@@ -434,6 +434,13 @@ export const CellInput = ({
             }, 100)
         })
 
+        cm.on("paste", (e) => {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                e.codemirrorIgnore = true
+            }
+        })
+
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()
