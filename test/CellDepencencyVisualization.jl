@@ -31,4 +31,8 @@ import Pluto: Configuration, update_run!, WorkspaceManager
     @test Pluto.get_cell_numbers(Pluto.get_referenced_cells(cell, notebook), notebook) == [3, 5] # these cells depend on selected cell
     @test Pluto.get_cell_numbers(Pluto.get_dependent_cells(cell, notebook), notebook) == [1] # selected cell depends on this cell
 
+    # test if this information gets updated in the cell objects
+    @test cell.cell_execution_order == 2
+    @test cell.referenced_cells == [3, 5]
+    @test cell.dependent_cells == [1]
 end
