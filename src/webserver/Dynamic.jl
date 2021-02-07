@@ -106,6 +106,9 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
+                "cell_execution_order" => cell.cell_execution_order,
+                "referenced_cells" => cell.referenced_cells,
+                "dependent_cells" => cell.dependent_cells,
                 "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,

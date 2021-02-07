@@ -285,17 +285,17 @@ function diff(o1, o2)
 end
 
 # ╔═╡ b8c58aa4-c24d-48a3-b2a8-7c01d50a3349
-function diff(o1::Nothing, o2)
+function diff(o1::Union{Nothing, Missing}, o2)
 	JSONPatch[AddPatch([], o2)]
 end
 
 # ╔═╡ 5ab390f9-3b0c-4978-9e21-2aaa61db2ce4
-function diff(o1, o2::Nothing)
+function diff(o1, o2::Union{Nothing, Missing})
 	JSONPatch[RemovePatch([])]
 end
 
 # ╔═╡ 09f53db0-21ae-490b-86b5-414eba403d57
-function diff(o1::Nothing, o2::Nothing)
+function diff(o1::Union{Nothing, Missing}, o2::Union{Nothing, Missing})
 	NoChanges
 end
 

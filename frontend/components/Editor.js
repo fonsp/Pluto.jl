@@ -94,7 +94,10 @@ const Main = ({ children }) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime?: number,
+ *  runtime: ?number,
+ *  cell_execution_order: ?number,
+ *  referenced_cells: ?[number],
+ *  dependent_cells: ?[number],
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
