@@ -15,7 +15,7 @@ end
 isHTTPnewenough = isdefined(HTTP.WebSockets, :readmessage)
 
 readwsmessage = if isHTTPnewenough
-    HTTP.WebSockets.readframe
+    HTTP.WebSockets.readmessage
 else
     include("./WebSocketFix.jl")
     WebsocketFix.readmessage
