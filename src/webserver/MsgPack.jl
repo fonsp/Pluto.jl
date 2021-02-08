@@ -43,8 +43,9 @@ function decode_extension_and_addbits(x::MsgPack.Extension)
     if x.type == 0x0d
         # the datetime type
         millisecs_since_1970_because_thats_how_computers_work = reinterpret(Int64, x.data)[1]
+        # Dates.unix2datetime does exactly this - but with seconds
+        # Dates.unix2datetime(millisecs_since_1970_because_thats_how_computers_work/1000)
         Dates.DateTime(1970) + Dates.Millisecond(millisecs_since_1970_because_thats_how_computers_work)
-        # TODO? Dates.unix2datetime does exactly this ?? - DRAL
     else
         # the array types
         julia_type = JSTypedIntSupport[x.type - 0x10]
