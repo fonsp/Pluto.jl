@@ -156,8 +156,11 @@ function run(session::ServerSession)
                             try
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
-
-                                sleep(session.options.server.simulated_lag)
+                                
+                                let
+                                    lag = session.options.server.simulated_lag
+                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                end
 
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
