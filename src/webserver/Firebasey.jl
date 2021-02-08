@@ -224,7 +224,9 @@ end
 
 # ╔═╡ 5e360fcd-9943-4a17-9672-f1fded2f7e3a
 function diff(old::T, new::T) where T
-	if old == new
+	if old === missing || new === missing
+		JSONPatch[ReplacePatch([], new)]
+	elseif old == new
 		NoChanges
 	else
 		JSONPatch[ReplacePatch([], new)]
