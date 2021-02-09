@@ -1,5 +1,6 @@
 using Test
-import Pluto: Configuration, update_run!, WorkspaceManager
+using Pluto
+using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, ClientSession, Cell, Notebook
 
 @testset "CellDepencencyVisualization" begin
     🍭 = ServerSession()
@@ -33,6 +34,6 @@ import Pluto: Configuration, update_run!, WorkspaceManager
 
     # test if this information gets updated in the cell objects
     @test cell.cell_execution_order == 2
-    @test cell.referenced_cells == [3, 5]
-    @test cell.dependent_cells == [1]
+    @test Pluto.get_cell_numbers(cell.referenced_cells, notebook) == [3, 5]
+    @test Pluto.get_cell_numbers(cell.dependent_cells, notebook) == [1]
 end

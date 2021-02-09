@@ -31,11 +31,12 @@ get_dependent_cells(uuid:: UUID, notebook:: Notebook):: Vector{Cell} = get_depen
 get_cell_uuids(cells:: Vector{Cell}):: Vector{UUID} = getproperty.(cells, :cell_id)
 
 "Converts a list of cells to a list of execution order cell numbers."
+get_cell_numbers(cells:: Vector{UUID}, notebook:: Notebook):: Vector{Int} = get_cell_number.(cells, Ref(notebook))
 get_cell_numbers(cells:: Vector{Cell}, notebook:: Notebook):: Vector{Int} = get_cell_number.(get_cell_uuids(cells), Ref(notebook))
 
 "Fills cell dependency information for display in the GUI"
 function set_dependencies!(cell:: Cell, notebook:: Notebook)
     cell.cell_execution_order = get_cell_number(cell, notebook)
-    cell.referenced_cells = get_cell_numbers(get_referenced_cells(cell, notebook), notebook)
-    cell.dependent_cells = get_cell_numbers(get_dependent_cells(cell, notebook), notebook)
+    cell.referenced_cells = get_cell_uuids(get_referenced_cells(cell, notebook))
+    cell.dependent_cells = get_cell_uuids(get_dependent_cells(cell, notebook))
 end

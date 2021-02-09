@@ -30,8 +30,8 @@ Base.@kwdef mutable struct Cell
 
     # information to display cell dependencies
     cell_execution_order:: Union{Missing, Int} = missing
-    referenced_cells:: Union{Missing, Vector{Int}} = missing
-    dependent_cells:: Union{Missing, Vector{Int}} = missing
+    referenced_cells:: Union{Missing, Vector{UUID}} = missing
+    dependent_cells:: Union{Missing, Vector{UUID}} = missing
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
