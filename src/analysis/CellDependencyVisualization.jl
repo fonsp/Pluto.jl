@@ -11,6 +11,7 @@ get_cell_number(cell:: Cell, notebook:: Notebook):: Int = get_cell_number(cell.c
 """
 Gets a list of all cells on which the current cell depends on.
 Changes in these cells cause re-evaluation of the current cell.
+Note that only direct dependencies are given here, not indirect dependencies.
 """
 get_referenced_cells(cell:: Cell, notebook:: Notebook):: Vector{Cell} = Pluto.where_referenced(notebook, notebook.topology, cell)
 get_referenced_cells(uuid:: UUID, notebook:: Notebook):: Vector{Cell} = get_referenced_cells(notebook.cells_dict[uuid], notebook)
@@ -18,6 +19,7 @@ get_referenced_cells(uuid:: UUID, notebook:: Notebook):: Vector{Cell} = get_refe
 """
 Gets a list of all cells which are dependent on the current cell.
 Changes in the current cell cause re-evaluation of these cells.
+Note that only direct dependents are given here, not indirect dependents.
 """
 function get_dependent_cells(cell:: Cell, notebook:: Notebook):: Vector{Cell}
     node = notebook.topology.nodes[cell]
