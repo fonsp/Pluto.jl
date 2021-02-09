@@ -9,6 +9,3 @@ test/frontend/node_modules
 test/frontend/artefacts/*
 !test/frontend/artefacts/.gitkeep
 .DS_Store
-
-Manifest.toml
-.vscode/settings.json
