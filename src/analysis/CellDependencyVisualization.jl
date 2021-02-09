@@ -43,12 +43,12 @@ get_cell_numbers(cells:: Vector{UUID}, notebook:: Notebook):: Vector{Int} = get_
 get_cell_numbers(cells:: Vector{Cell}, notebook:: Notebook):: Vector{Int} = get_cell_number.(get_cell_uuids(cells), Ref(notebook))
 
 "Fills cell dependency information for display in the GUI"
-function set_dependencies!(cell:: Cell, notebook:: Notebook)
-
-    # ToDo: it is super inefficient to calculate the cell ordering of the notebook for each cell,
-    # it should be done only once.
-    cell.cell_execution_order = get_cell_number(cell, notebook)
-
+function set_dependencies!(cell:: Cell, notebook:: Notebook, ordered_cells:: Vector{Cell})
+    cell.cell_execution_order = get_cell_number(cell, ordered_cells)
     cell.referenced_cells = get_cell_uuids(get_referenced_cells(cell, notebook))
     cell.dependent_cells = get_cell_uuids(get_dependent_cells(cell, notebook))
+end
+function set_dependencies!(cell:: Cell, notebook:: Notebook)
+    ordered_cells = get_ordered_cells(notebook)
+    set_dependencies!(cell, notebook, ordered_cells)
 end

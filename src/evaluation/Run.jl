@@ -80,6 +80,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	delete!.([notebook.bonds], to_delete_vars)
 
 	local any_interrupted = false
+	ordered_cells = get_ordered_cells(notebook)
+
 	for (i, cell) in enumerate(to_run)
 		
 		cell.queued = false
@@ -91,7 +93,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			relay_reactivity_error!(cell, InterruptException())
 		else
 			run = run_single!((session, notebook), cell, new_topology[cell])
-			set_dependencies!(cell, notebook)
+			set_dependencies!(cell, notebook, ordered_cells)
 			any_interrupted |= run.interrupted
 		end
 		
@@ -160,9 +162,10 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		ordered_cells = get_ordered_cells(notebook)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new[cell])
-			set_dependencies!(cell, notebook)
+			set_dependencies!(cell, notebook, ordered_cells)
 		end
 		
 		cd(original_pwd)
