@@ -14,8 +14,6 @@ function get_cell_number(cell:: Cell, ordered_cells:: Vector{Cell}):: Int
     return cell_id === nothing ? -1 : cell_id
 end
 
-get_cell_number(cell:: Cell, notebook:: Notebook):: Int = get_cell_number(cell.cell_id, notebook)
-
 """
 Gets a list of all cells on which the current cell depends on.
 Changes in these cells cause re-evaluation of the current cell.
