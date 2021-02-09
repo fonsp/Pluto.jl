@@ -108,9 +108,7 @@ function save_notebook(io, notebook::Notebook)
 
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
     # 15 ms for a massive notebook - 120 cells, 800 lines
-    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
-
-    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
+    cells_ordered = get_ordered_cells(notebook)
 
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
@@ -124,6 +122,15 @@ function save_notebook(io, notebook::Notebook)
         println(io, delim, string(c.cell_id))
     end
     notebook
+end
+
+"""
+Calculates the topological order of cells in a notebook.
+"""
+function get_ordered_cells(notebook:: Notebook):: Vector{Cell}
+    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
+    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
+    return cells_ordered
 end
 
 function save_notebook(notebook::Notebook, path::String)

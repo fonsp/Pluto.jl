@@ -2,7 +2,15 @@
 Gets the cell number in execution order (as saved in the notebook.jl file)
 """
 function get_cell_number(uuid:: UUID, notebook:: Notebook):: Int
-    cell_id = findfirst(==(uuid), notebook.cell_order)
+    cell = notebook.cells_dict[uuid]
+    return get_cell_number(cell, notebook)
+end
+function get_cell_number(cell:: Cell, notebook:: Notebook):: Int
+    ordered_cells = get_ordered_cells(notebook)
+    return get_cell_number(cell, ordered_cells)
+end
+function get_cell_number(cell:: Cell, ordered_cells:: Vector{Cell}):: Int
+    cell_id = findfirst(==(cell), ordered_cells)
     return cell_id === nothing ? -1 : cell_id
 end
 
@@ -36,7 +44,11 @@ get_cell_numbers(cells:: Vector{Cell}, notebook:: Notebook):: Vector{Int} = get_
 
 "Fills cell dependency information for display in the GUI"
 function set_dependencies!(cell:: Cell, notebook:: Notebook)
+
+    # ToDo: it is super inefficient to calculate the cell ordering of the notebook for each cell,
+    # it should be done only once.
     cell.cell_execution_order = get_cell_number(cell, notebook)
+
     cell.referenced_cells = get_cell_uuids(get_referenced_cells(cell, notebook))
     cell.dependent_cells = get_cell_uuids(get_dependent_cells(cell, notebook))
 end

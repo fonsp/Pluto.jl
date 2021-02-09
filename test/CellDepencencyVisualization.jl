@@ -10,15 +10,15 @@ using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, Client
     🍭.connected_clients[fakeclient.id] = fakeclient
 
     notebook = Notebook([
-                Cell("x = 1"),
-                Cell("y = x"),
-                Cell("f(x) = x + y"),
+                Cell("x = 1"), # prerequisite of test cell
+                Cell("f(x) = x + y"), # depends on test cell
                 Cell("f(4)"),
 
                 Cell("""begin
                     g(a) = x
                     g(a,b) = y
-                end"""),
+                end"""), # depends on test cell
+                Cell("y = x"), # test cell below
                 Cell("g(6) + g(6,6)"),
 
                 Cell("import Distributed"),
@@ -27,7 +27,8 @@ using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, Client
     fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
-    cell = notebook.cells_dict[notebook.cell_order[2]] # example cell
+    ordered_cells = Pluto.get_cell_uuids(Pluto.get_ordered_cells(notebook))
+    cell = notebook.cells_dict[notebook.cell_order[5]] # example cell
     @test Pluto.get_cell_number(cell, notebook) == 2
     @test Pluto.get_cell_numbers(Pluto.get_referenced_cells(cell, notebook), notebook) == [3, 5] # these cells depend on selected cell
     @test Pluto.get_cell_numbers(Pluto.get_dependent_cells(cell, notebook), notebook) == [1] # selected cell depends on this cell
