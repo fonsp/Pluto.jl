@@ -46,7 +46,7 @@ export const useDropHandler = () => {
         }
         return (ev) => {
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
-            if (ev.dataTransfer.types[0] === "text/pluto-cell") return
+            if (ev.dataTransfer.types[0] === "text/pluto-cell" || ev.dataTransfer.types[0] === "text/plain") return
             ev.stopPropagation()
             switch (ev.type) {
                 case "cmdrop":
