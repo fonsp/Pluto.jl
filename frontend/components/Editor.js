@@ -690,7 +690,7 @@ export class Editor extends Component {
                 const state = unpack(data)
                 this.original_state = state
                 this.setState({
-                    notebook: unpack(data),
+                    notebook: state,
                     initializing: false,
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
