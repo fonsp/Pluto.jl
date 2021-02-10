@@ -552,9 +552,6 @@ nav#at_the_top img#logo-small {
 }
 
 nav#at_the_top > pluto-filepicker {
-    width: 0px;
-    flex-grow: 1;
-
     display: flex;
     flex-direction: row;
 }
@@ -1496,20 +1493,10 @@ footer button, .pluto-styled-button {
 }
 
 #saveIndicator {
-    position: sticky;
-    bottom: 0px;
-    height: 0px;
-    width: 100%;
-    z-index: 5;
-}
-#saveIndicator > span {
-    position: absolute;
-    bottom: 15px;
-    left: 15px;
-    width: 10px;
-    height: 10px;
-    border-radius: 5px;
-    transition: background-color 0.5s;
+    flex-grow: 1 !important;
+    text-align: right;
+    color: hsl(0, 0%, 55%);
+    padding-right: 15px;
 }
 
 /* UNDO DELETED CELL */

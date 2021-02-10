@@ -137,8 +137,7 @@ export class Editor extends Component {
             save_medium: null
         }
 
-        this.saveIndicatorLabels = ['All changes saved', 'Saving...', 'Error saving changes']
-        this.saveIndicatorColors = ['#6bab5b', '#aa7dc0', '#d66661']
+        this.saveIndicatorLabels = ['Saved ✓', 'Saving...', 'Error saving ✕']
 
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
@@ -853,6 +852,11 @@ export class Editor extends Component {
                                 placeholder="Save notebook..."
                                 button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
                             />
+                            ${ this.state.save_medium && html`
+                                <div id="saveIndicator">
+                                    <span>${this.saveIndicatorLabels[save_status]}</span>
+                                </div>
+                            `}
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
@@ -906,9 +910,6 @@ export class Editor extends Component {
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
-                    <div id="saveIndicator">
-                        <span title="${this.saveIndicatorLabels[save_status]}" style="background-color: ${this.saveIndicatorColors[save_status]}"></span>
-                    </div>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {
