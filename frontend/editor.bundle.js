@@ -4390,21 +4390,29 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
             return true;
         };
         cm.on("dragover", (cm_, e2)=>{
-            on_drag_drop_events(e2);
-            return true;
+            if (e2.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e2);
+                return true;
+            }
         });
         cm.on("drop", (cm_, e2)=>{
-            on_drag_drop_events(e2);
-            e2.preventDefault();
-            return true;
+            if (e2.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e2);
+                e2.preventDefault();
+                return true;
+            }
         });
         cm.on("dragenter", (cm_, e2)=>{
-            on_drag_drop_events(e2);
-            return true;
+            if (e2.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e2);
+                return true;
+            }
         });
         cm.on("dragleave", (cm_, e2)=>{
-            on_drag_drop_events(e2);
-            return true;
+            if (e2.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e2);
+                return true;
+            }
         });
         cm.on("cursorActivity", ()=>{
             setTimeout(()=>{
@@ -4468,6 +4476,12 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
                     set_cm_forced_focus(null);
                 }
             }, 100);
+        });
+        cm.on("paste", (e2)=>{
+            const topaste = e2.clipboardData.getData("text/plain");
+            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                e2.codemirrorIgnore = true;
+            }
         });
         if (focus_after_creation) {
             cm.focus();
@@ -4702,7 +4716,7 @@ const useDropHandler = ()=>{
             return "";
         };
         return (ev)=>{
-            if (ev.dataTransfer.types[0] === "text/pluto-cell") return;
+            if (ev.dataTransfer.types[0] === "text/pluto-cell" || ev.dataTransfer.types[0] === "text/plain") return;
             ev.stopPropagation();
             switch(ev.type){
                 case "cmdrop":
@@ -6205,6 +6219,39 @@ const debounced_promises = (async_function)=>{
         }
     };
 };
+const read_Uint8Array_with_progress = async (response, on_progress)=>{
+    if (response.headers.has("Content-Length")) {
+        const length = response.headers.get("Content-Length");
+        const reader = response.body.getReader();
+        let receivedLength = 0;
+        let chunks = [];
+        while(true){
+            const { done , value  } = await reader.read();
+            if (done) {
+                break;
+            }
+            chunks.push(value);
+            receivedLength += value.length;
+            on_progress(Math.min(1, receivedLength / length));
+        }
+        on_progress(1);
+        const buffer = new Uint8Array(receivedLength);
+        let position = 0;
+        for (let chunk of chunks){
+            buffer.set(chunk, position);
+            position += chunk.length;
+        }
+        return buffer;
+    } else {
+        return new Uint8Array(await response.arrayBuffer());
+    }
+};
+const FetchProgress = ({ progress  })=>progress == null || progress === 1 ? null : re`<div\n              style="\n              width: 200px;\n              height: 27px;\n              background: white;\n              border: 5px solid #d1d9e4;\n              border-radius: 6px;\n              position: fixed;\n              left: calc(50vw - 100px);\n              top: calc(50vh - 50px);\n              z-index: 300;\n              box-sizing: content-box;\n"\n          >\n              <div\n                  style=${{
+        height: "100%",
+        width: progress * 200 + "px",
+        background: "rgb(117 135 177)"
+    }}\n              ></div>\n          </div>`
+;
 const default_path = "...";
 let pending_local_updates = 0;
 const uuidv4 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c8)=>(c8 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c8 / 4).toString(16)
@@ -6269,6 +6316,7 @@ class Editor extends d4 {
             recently_deleted: null,
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
+            statefile_download_progress: null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
             binder_session_url_with_token: null,
@@ -6745,11 +6793,16 @@ class Editor extends d4 {
         if (this.state.static_preview) {
             (async ()=>{
                 const r2 = await fetch(launch_params.statefile);
-                const buffer = await r2.arrayBuffer();
-                const state = unpack(new Uint8Array(buffer));
+                const data = await read_Uint8Array_with_progress(r2, (progress)=>{
+                    this.setState({
+                        statefile_download_progress: progress
+                    });
+                    console.log(progress);
+                });
+                const state = unpack(data);
                 this.original_state = state;
                 this.setState({
-                    notebook: state,
+                    notebook: unpack(data),
                     initializing: false,
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null
                 });
@@ -6759,57 +6812,63 @@ class Editor extends d4 {
             this.connect();
         }
         this.start_binder = async ()=>{
-            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`);
-            this.setState({
-                loading: true,
-                binder_phase: BinderPhase1.requesting,
-                disable_ui: false
-            });
-            const { binder_session_url , binder_session_token  } = await request_binder1(launch_params.binder_url);
-            console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`);
-            const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`;
-            window.shutdown_binder = ()=>{
-                fetch(shutdown_url, {
+            try {
+                fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(()=>{
+                });
+                this.setState({
+                    loading: true,
+                    binder_phase: BinderPhase1.requesting,
+                    disable_ui: false
+                });
+                const { binder_session_url , binder_session_token  } = await request_binder1(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"));
+                console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`);
+                const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`;
+                window.shutdown_binder = ()=>{
+                    fetch(shutdown_url, {
+                        method: "POST"
+                    });
+                };
+                this.setState({
+                    binder_phase: BinderPhase1.created,
+                    binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`
+                });
+                const with_token = (u6)=>{
+                    const new_url = new URL(u6);
+                    new_url.searchParams.set("token", binder_session_token);
+                    return String(new_url);
+                };
+                await fetch(with_token(binder_session_url));
+                let open_response = null;
+                const open_path = new URL("open", binder_session_url);
+                open_path.searchParams.set("path", launch_params.notebookfile);
+                console.log("open_path: ", String(open_path));
+                open_response = await fetch(with_token(String(open_path)), {
                     method: "POST"
                 });
-            };
-            this.setState({
-                binder_phase: BinderPhase1.created,
-                binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`
-            });
-            const with_token = (u6)=>{
-                const new_url = new URL(u6);
-                new_url.searchParams.set("token", binder_session_token);
-                return String(new_url);
-            };
-            await fetch(with_token(binder_session_url));
-            let open_response = null;
-            const open_path = new URL("open", binder_session_url);
-            open_path.searchParams.set("path", launch_params.notebookfile);
-            console.log("open_path: ", String(open_path));
-            open_response = await fetch(with_token(String(open_path)), {
-                method: "POST"
-            });
-            if (!open_response.ok) {
-                const open_url = new URL("open", binder_session_url);
-                open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href);
-                console.log("open_url: ", String(open_url));
-                open_response = await fetch(with_token(String(open_url)), {
-                    method: "POST"
+                if (!open_response.ok) {
+                    const open_url = new URL("open", binder_session_url);
+                    open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href);
+                    console.log("open_url: ", String(open_url));
+                    open_response = await fetch(with_token(String(open_url)), {
+                        method: "POST"
+                    });
+                }
+                const new_notebook_id = await open_response.text();
+                console.info("notebook_id:", new_notebook_id);
+                this.setState((old_state)=>({
+                        notebook: {
+                            ...old_state.notebook,
+                            notebook_id: new_notebook_id
+                        },
+                        binder_phase: BinderPhase1.notebook_running
+                    })
+                , ()=>{
+                    this.connect(with_token(ws_address_from_base1(binder_session_url) + "channels"));
                 });
+            } catch (err) {
+                console.error("Failed to initialize binder!", err);
+                alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.");
             }
-            const new_notebook_id = await open_response.text();
-            console.info("notebook_id:", new_notebook_id);
-            this.setState((old_state)=>({
-                    notebook: {
-                        ...old_state.notebook,
-                        notebook_id: new_notebook_id
-                    },
-                    binder_phase: BinderPhase1.notebook_running
-                })
-            , ()=>{
-                this.connect(with_token(ws_address_from_base1(binder_session_url) + "channels"));
-            });
         };
         this.bonds_changes_to_apply_when_done = [];
         this.notebook_is_idle = ()=>!Object.values(this.state.notebook.cell_results).some((cell)=>cell.running || cell.queued
@@ -6953,7 +7012,8 @@ class Editor extends d4 {
             }
         });
         document.addEventListener("paste", async (e2)=>{
-            if (!in_textarea_or_input()) {
+            const topaste = e2.clipboardData.getData("text/plain");
+            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 this.setState({
                     selected_cells: []
                 });
@@ -7029,7 +7089,7 @@ class Editor extends d4 {
             this.setState({
                 export_menu_open: !export_menu_open
             });
-        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    ${this.state.binder_phase === BinderPhase.wait_for_user ? re`<button id="launch_binder" onClick=${this.start_binder}>\n                                  <span>Run with </span\n                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n                              </button>` : null}\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
+        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    ${this.state.binder_phase === BinderPhase.wait_for_user ? re`<button id="launch_binder" onClick=${this.start_binder}>\n                                  <span>Run with </span\n                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n                              </button>` : null}\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
             this.actions.set_and_run_all_changed_remote_cells();
         }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            is_initializing=${this.state.initializing}\n                            notebook=${this.state.notebook}\n                            selected_cells=${this.state.selected_cells}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
             this.setState({
