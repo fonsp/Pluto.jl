@@ -22,6 +22,7 @@ import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { request_binder, BinderPhase } from "../common/Binder.js"
+import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -156,6 +157,7 @@ export class Editor extends Component {
 
             disable_ui: launch_params.disable_ui,
             static_preview: launch_params.statefile != null,
+            statefile_download_progress: null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
             binder_session_url_with_token: null,
@@ -577,9 +579,14 @@ export class Editor extends Component {
         if (this.state.static_preview) {
             ;(async () => {
                 const r = await fetch(launch_params.statefile)
-                const buffer = await r.arrayBuffer()
+                const data = await read_Uint8Array_with_progress(r, (progress) => {
+                    this.setState({
+                        statefile_download_progress: progress,
+                    })
+                    console.log(progress)
+                })
                 this.setState({
-                    notebook: unpack(new Uint8Array(buffer)),
+                    notebook: unpack(data),
                     initializing: false,
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
@@ -992,6 +999,7 @@ export class Editor extends Component {
                               </button>`
                             : null
                     }
+                    <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <preamble>
                             <button
