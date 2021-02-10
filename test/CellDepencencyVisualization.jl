@@ -27,14 +27,19 @@ using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, Client
     fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
-    ordered_cells = Pluto.get_cell_uuids(Pluto.get_ordered_cells(notebook))
+    ordered_cells = Pluto.get_ordered_cells(notebook)
     cell = notebook.cells_dict[notebook.cell_order[5]] # example cell
-    @test Pluto.get_cell_number(cell, notebook) == 2
-    @test Pluto.get_cell_numbers(Pluto.get_referenced_cells(cell, notebook), notebook) == [3, 5] # these cells depend on selected cell
-    @test Pluto.get_cell_numbers(Pluto.get_dependent_cells(cell, notebook), notebook) == [1] # selected cell depends on this cell
+    @test Pluto.get_cell_number(cell, ordered_cells) == 2
+    referenced_symbols = Pluto.get_referenced_symbols(cell, notebook)
+    @test referenced_symbols == Set((:y,))
+
+    references = Pluto.get_references(cell, notebook)
+    @test Pluto.get_cell_number.(references[:y], Ref(notebook), Ref(ordered_cells)) == [3, 5] # these cells depend on selected cell
+    dependencies = Pluto.get_dependencies(cell, notebook)
+    @test Pluto.get_cell_number.(dependencies[:x], Ref(notebook), Ref(ordered_cells)) == [1] # selected cell depends on this cell
 
     # test if this information gets updated in the cell objects
     @test cell.cell_execution_order == 2
-    @test Pluto.get_cell_numbers(cell.referenced_cells, notebook) == [3, 5]
-    @test Pluto.get_cell_numbers(cell.dependent_cells, notebook) == [1]
+    @test cell.referenced_cells == references
+    @test cell.dependent_cells == dependencies
 end

@@ -1,52 +1,60 @@
 """
 Gets the cell number in execution order (as saved in the notebook.jl file)
 """
-function get_cell_number(uuid:: UUID, notebook:: Notebook):: Int
-    cell = notebook.cells_dict[uuid]
-    return get_cell_number(cell, notebook)
-end
-function get_cell_number(cell:: Cell, notebook:: Notebook):: Int
-    ordered_cells = get_ordered_cells(notebook)
-    return get_cell_number(cell, ordered_cells)
-end
 function get_cell_number(cell:: Cell, ordered_cells:: Vector{Cell}):: Int
     cell_id = findfirst(==(cell), ordered_cells)
     return cell_id === nothing ? -1 : cell_id
 end
+function get_cell_number(uuid:: UUID, notebook:: Notebook, ordered_cells:: Vector{Cell}):: Int
+    cell = notebook.cells_dict[uuid]
+    return get_cell_number(cell, ordered_cells)
+end
 
 """
-Gets a list of all cells on which the current cell depends on.
-Changes in these cells cause re-evaluation of the current cell.
-Note that only direct dependencies are given here, not indirect dependencies.
+Gets the global variables on which are defined in the current cell.
 """
-get_referenced_cells(cell:: Cell, notebook:: Notebook):: Vector{Cell} = Pluto.where_referenced(notebook, notebook.topology, cell)
-get_referenced_cells(uuid:: UUID, notebook:: Notebook):: Vector{Cell} = get_referenced_cells(notebook.cells_dict[uuid], notebook)
+function get_referenced_symbols(cell:: Cell, notebook:: Notebook):: Set{Symbol}
+    node = notebook.topology.nodes[cell]
+    return node.definitions #∪ convert_to_symbols(node.funcdefs_with_signatures) ∪ node.funcdefs_without_signatures
+end
 
 """
-Gets a list of all cells which are dependent on the current cell.
+Gets a dictionary of all symbols and the respective cell UUIDs which are dependent on the current cell.
 Changes in the current cell cause re-evaluation of these cells.
 Note that only direct dependents are given here, not indirect dependents.
 """
-function get_dependent_cells(cell:: Cell, notebook:: Notebook):: Vector{Cell}
-    node = notebook.topology.nodes[cell]
-    return Pluto.where_assigned(notebook, notebook.topology, node.references)
+function get_references(cell:: Cell, notebook:: Notebook):: Dict{Symbol, Vector{UUID}}
+    referenced_symbols = get_referenced_symbols(cell, notebook)
+    return Dict(sym => get_cell_uuids(where_referenced(notebook, notebook.topology, Set((sym,)) ))
+    for sym in referenced_symbols)
 end
-get_dependent_cells(uuid:: UUID, notebook:: Notebook):: Vector{Cell} = get_dependent_cells(notebook.cells_dict[uuid], notebook)
 
-"Converts a list of cells to a list of UUIDs."
-get_cell_uuids(cells:: Vector{Cell}):: Vector{UUID} = getproperty.(cells, :cell_id)
+"""
+Gets the global variables on which the current cell depends on.
+"""
+get_dependent_symbols(cell:: Cell, notebook:: Notebook):: Set{Symbol} = notebook.topology.nodes[cell].references
 
-"Converts a list of cells to a list of execution order cell numbers."
-get_cell_numbers(cells:: Vector{UUID}, notebook:: Notebook):: Vector{Int} = get_cell_number.(cells, Ref(notebook))
-get_cell_numbers(cells:: Vector{Cell}, notebook:: Notebook):: Vector{Int} = get_cell_number.(get_cell_uuids(cells), Ref(notebook))
+"""
+Gets a dictionary of all symbols and the respective cell UUIDs on which the current cell depends on.
+Changes in these cells cause re-evaluation of the current cell.
+Note that only direct dependencies are given here, not indirect dependencies.
+"""
+function get_dependencies(cell:: Cell, notebook:: Notebook):: Dict{Symbol, Vector{UUID}}
+    dependent_symbols = get_dependent_symbols(cell, notebook)
+    return Dict(sym => get_cell_uuids(where_assigned(notebook, notebook.topology, Set((sym,)) ))
+        for sym in dependent_symbols)
+end
 
 "Fills cell dependency information for display in the GUI"
 function set_dependencies!(cell:: Cell, notebook:: Notebook, ordered_cells:: Vector{Cell})
     cell.cell_execution_order = get_cell_number(cell, ordered_cells)
-    cell.referenced_cells = get_cell_uuids(get_referenced_cells(cell, notebook))
-    cell.dependent_cells = get_cell_uuids(get_dependent_cells(cell, notebook))
+    cell.referenced_cells = get_references(cell, notebook)
+    cell.dependent_cells = get_dependencies(cell, notebook)
 end
 function set_dependencies!(cell:: Cell, notebook:: Notebook)
     ordered_cells = get_ordered_cells(notebook)
     set_dependencies!(cell, notebook, ordered_cells)
 end
+
+"Converts a list of cells to a list of UUIDs."
+get_cell_uuids(cells:: Vector{Cell}):: Vector{UUID} = getproperty.(cells, :cell_id)
