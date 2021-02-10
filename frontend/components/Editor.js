@@ -590,67 +590,76 @@ export class Editor extends Component {
         }
 
         this.start_binder = async () => {
-            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`)
-            this.setState({
-                loading: true,
-                binder_phase: BinderPhase.requesting,
-                disable_ui: false,
-            })
-            const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url)
+            try {
+                fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
+                this.setState({
+                    loading: true,
+                    binder_phase: BinderPhase.requesting,
+                    disable_ui: false,
+                })
+                const { binder_session_url, binder_session_token } = await request_binder(
+                    launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
+                )
 
-            console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
+                console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
-            const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
-            window.shutdown_binder = () => {
-                fetch(shutdown_url, { method: "POST" })
-            }
+                const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
+                window.shutdown_binder = () => {
+                    fetch(shutdown_url, { method: "POST" })
+                }
 
-            this.setState({
-                binder_phase: BinderPhase.created,
-                binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`,
-            })
-            // fetch once to say hello
-            const with_token = (u) => {
-                const new_url = new URL(u)
-                new_url.searchParams.set("token", binder_session_token)
-                return String(new_url)
-            }
-            await fetch(with_token(binder_session_url))
+                this.setState({
+                    binder_phase: BinderPhase.created,
+                    binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`,
+                })
+                // fetch once to say hello
+                const with_token = (u) => {
+                    const new_url = new URL(u)
+                    new_url.searchParams.set("token", binder_session_token)
+                    return String(new_url)
+                }
+                await fetch(with_token(binder_session_url))
 
-            let open_response = null
+                let open_response = null
 
-            const open_path = new URL("open", binder_session_url)
-            open_path.searchParams.set("path", launch_params.notebookfile)
+                const open_path = new URL("open", binder_session_url)
+                open_path.searchParams.set("path", launch_params.notebookfile)
 
-            console.log("open_path: ", String(open_path))
-            open_response = await fetch(with_token(String(open_path)), {
-                method: "POST",
-            })
-
-            if (!open_response.ok) {
-                const open_url = new URL("open", binder_session_url)
-                open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
-
-                console.log("open_url: ", String(open_url))
-                open_response = await fetch(with_token(String(open_url)), {
+                console.log("open_path: ", String(open_path))
+                open_response = await fetch(with_token(String(open_path)), {
                     method: "POST",
                 })
-            }
 
-            const new_notebook_id = await open_response.text()
-            console.info("notebook_id:", new_notebook_id)
-            this.setState(
-                (old_state) => ({
-                    notebook: {
-                        ...old_state.notebook,
-                        notebook_id: new_notebook_id,
-                    },
-                    binder_phase: BinderPhase.notebook_running,
-                }),
-                () => {
-                    this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+                if (!open_response.ok) {
+                    const open_url = new URL("open", binder_session_url)
+                    open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
+
+                    console.log("open_url: ", String(open_url))
+                    open_response = await fetch(with_token(String(open_url)), {
+                        method: "POST",
+                    })
                 }
-            )
+
+                const new_notebook_id = await open_response.text()
+                console.info("notebook_id:", new_notebook_id)
+                this.setState(
+                    (old_state) => ({
+                        notebook: {
+                            ...old_state.notebook,
+                            notebook_id: new_notebook_id,
+                        },
+                        binder_phase: BinderPhase.notebook_running,
+                    }),
+                    () => {
+                        this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+                    }
+                )
+            } catch (err) {
+                console.error("Failed to initialize binder!", err)
+                alert(
+                    "Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later."
+                )
+            }
         }
 
         // Not completely happy with this yet, but it will do for now - DRAL
