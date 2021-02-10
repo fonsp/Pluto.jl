@@ -2,6 +2,27 @@ import Pluto
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 using Test
 
+function Base.show(io::IO, s::SymbolsState)
+    print(io, "SymbolsState([")
+    join(io, s.references, ", ")
+    print(io, "], [")
+    join(io, s.assignments, ", ")
+    print(io, "], [")
+    join(io, s.funccalls, ", ")
+    print(io, "], [")
+    if isempty(s.funcdefs)
+        print(io, "]")
+    else
+        println(io)
+        for (k, v) in s.funcdefs
+            print(io, "    ", k, ": ", v)
+            println(io)
+        end
+        print(io, "]")
+    end
+    print(io, ")")
+end
+
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
 # Example

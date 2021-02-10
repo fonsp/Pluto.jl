@@ -28,27 +28,6 @@ Base.@kwdef mutable struct SymbolsState
     funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
 end
 
-function Base.show(io::IO, s::SymbolsState)
-    print(io, "SymbolsState([")
-    join(io, s.references, ", ")
-    print(io, "], [")
-    join(io, s.assignments, ", ")
-    print(io, "], [")
-    join(io, s.funccalls, ", ")
-    print(io, "], [")
-    if isempty(s.funcdefs)
-        print(io, "]")
-    else
-        println(io)
-        for (k, v) in s.funcdefs
-            print(io, "    ", k, ": ", v)
-            println(io)
-        end
-        print(io, "]")
-    end
-    print(io, ")")
-end
-
 
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints."
 mutable struct ScopeState

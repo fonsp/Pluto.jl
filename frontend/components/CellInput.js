@@ -353,21 +353,29 @@ export const CellInput = ({
         }
 
         cm.on("dragover", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("drop", (cm_, e) => {
-            on_drag_drop_events(e)
-            e.preventDefault()
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                e.preventDefault()
+                return true
+            }
         })
         cm.on("dragenter", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("dragleave", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
 
         cm.on("cursorActivity", () => {
@@ -432,6 +440,13 @@ export const CellInput = ({
                     set_cm_forced_focus(null)
                 }
             }, 100)
+        })
+
+        cm.on("paste", (e) => {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                e.codemirrorIgnore = true
+            }
         })
 
         if (focus_after_creation) {
