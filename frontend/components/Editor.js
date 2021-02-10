@@ -96,8 +96,8 @@ const Main = ({ children }) => {
  *  errored: boolean,
  *  runtime: ?number,
  *  cell_execution_order: ?number,
- *  referenced_cells: ?[string],
- *  dependent_cells: ?[string],
+ *  referenced_cells: ?Object.<string, [string]>,
+ *  dependent_cells: ?Object.<string, [string]>,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
