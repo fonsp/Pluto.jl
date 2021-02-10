@@ -15,7 +15,7 @@ Gets the global variables on which are defined in the current cell.
 """
 function get_referenced_symbols(cell:: Cell, notebook:: Notebook):: Set{Symbol}
     node = notebook.topology.nodes[cell]
-    return node.definitions #∪ convert_to_symbols(node.funcdefs_with_signatures) ∪ node.funcdefs_without_signatures
+    return node.definitions ∪ node.funcdefs_without_signatures
 end
 
 """

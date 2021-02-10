@@ -42,4 +42,14 @@ using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, Client
     @test cell.cell_execution_order == 2
     @test cell.referenced_cells == references
     @test cell.dependent_cells == dependencies
+
+    # test if this also works for function definitions
+    cell2 = notebook.cells_dict[notebook.cell_order[2]]
+    references2 = Pluto.get_references(cell2, notebook)
+    @test Pluto.get_cell_number.(references2[:f], Ref(notebook), Ref(ordered_cells)) == [4] # these cells depend on selected cell
+    dependencies2 = Pluto.get_dependencies(cell2, notebook)
+    @test Pluto.get_cell_number.(dependencies2[:y], Ref(notebook), Ref(ordered_cells)) == [2] # selected cell depends on this cell
+    @test Pluto.get_cell_number.(dependencies2[:+], Ref(notebook), Ref(ordered_cells)) == [] # + function is not defined / extended in the notebook
+
+
 end
