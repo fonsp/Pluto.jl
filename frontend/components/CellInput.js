@@ -114,7 +114,7 @@ export const CellInput = ({
             await on_add_after()
 
             const new_value = cm.getValue()
-            if (new_value !== remote_code_ref.current.body) {
+            if (new_value !== remote_code_ref.current) {
                 on_submit()
             }
         }
