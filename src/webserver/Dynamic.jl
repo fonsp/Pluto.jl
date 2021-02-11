@@ -124,6 +124,7 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
+        "cell_execution_order" => notebook.cell_execution_order,
     )
 end
 
