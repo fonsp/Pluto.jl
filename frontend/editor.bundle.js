@@ -6252,6 +6252,38 @@ const FetchProgress = ({ progress  })=>progress == null || progress === 1 ? null
         background: "rgb(117 135 177)"
     }}\n              ></div>\n          </div>`
 ;
+const BinderButton = ({ binder_phase , start_binder  })=>{
+    const [popupOpen, setPopupOpen] = q1(false);
+    $1(()=>{
+        const handlekeyup = (e2)=>{
+            e2.key === "Escape" && setPopupOpen(false);
+        };
+        const handleclick = (e2)=>{
+            if (popupOpen && !e2.composedPath().find((el)=>el.id === "binder_help_text"
+            )) {
+                setPopupOpen(false);
+                e2.stopPropagation();
+                e2.preventDefault();
+            }
+        };
+        document.body.addEventListener("keyup", handlekeyup);
+        document.body.addEventListener("click", handleclick);
+        return ()=>{
+            document.body.removeEventListener("keyup", handlekeyup);
+            document.body.removeEventListener("click", handleclick);
+        };
+    }, [
+        popupOpen
+    ]);
+    const show = binder_phase === BinderPhase.wait_for_user;
+    if (!show) return null;
+    return re` <div id="launch_binder">\n        <button onClick=${start_binder}>\n            <span>Run with </span><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n        </button>\n        <span\n            id="binder_launch_help"\n            onClick=${(e2)=>{
+        e2.stopPropagation();
+        e2.preventDefault();
+        setPopupOpen(!popupOpen);
+    }}\n            class="explain_binder"\n            >Help!</span\n        >\n        ${popupOpen && re` <div id="binder_help_text">\n            <span onClick=${()=>setPopupOpen(false)
+    } class="close"></span>\n            <h3>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here some answers</h3>\n            <h4>What is binder?</h4>\n            <p>\n                <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible\n                science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7\n                minutes to get a session. Otherwise, you can always run this notebook locally:\n            </p>\n            <h4>How to run locally:</h4>\n        </div>`}\n    </div>`;
+};
 const default_path = "...";
 let pending_local_updates = 0;
 const uuidv4 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c8)=>(c8 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c8 / 4).toString(16)
@@ -7089,7 +7121,7 @@ class Editor extends d4 {
             this.setState({
                 export_menu_open: !export_menu_open
             });
-        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    ${this.state.binder_phase === BinderPhase.wait_for_user ? re`<button id="launch_binder" onClick=${this.start_binder}>\n                                  <span>Run with </span\n                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n                              </button>` : null}\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
+        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
             this.actions.set_and_run_all_changed_remote_cells();
         }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            is_initializing=${this.state.initializing}\n                            notebook=${this.state.notebook}\n                            selected_cells=${this.state.selected_cells}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
             this.setState({

@@ -737,56 +737,6 @@ binder-spinner {
     }
 }
 
-button#launch_binder {
-    /* position: absolute; */
-    position: fixed;
-
-    top: 10px;
-    right: 30px;
-    /* width: 153.2px; */
-    /* height: 60px; */
-    padding: 7px 20px;
-    background: #fffdf7;
-    border: 3px solid #3f448c5e;
-    border-radius: 30px;
-    z-index: 20;
-    box-shadow: 0px 0px 20px 0px #ffffff;
-    cursor: pointer;
-    font-size: 14px;
-    font-style: italic;
-    font-family: "Roboto Mono";
-    letter-spacing: -0.2px;
-    color: #0000009c;
-    white-space: nowrap;
-}
-body.code_differs button#launch_binder {
-    position: fixed;
-    animation: wiggle 0.3s ease-in-out 0s 1;
-}
-
-@keyframes wiggle {
-    0% {
-        transform: rotate(0deg);
-    }
-    30% {
-        transform: rotate(10deg);
-    }
-    70% {
-        transform: rotate(-10deg);
-    }
-    100% {
-        transform: rotate(0deg);
-    }
-}
-
-button#launch_binder img {
-    margin: -8px;
-    margin-left: 0px;
-    font-style: normal;
-    color: black;
-    font-weight: 900;
-}
-
 /* PREAMBLE */
 
 main > preamble {

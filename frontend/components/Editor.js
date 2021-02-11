@@ -24,6 +24,7 @@ import { useDropHandler } from "./useDropHandler.js"
 import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
 import { hash_arraybuffer, hash_str, debounced_promises, base64_arraybuffer } from "../common/PlutoHash.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
+import { BinderButton } from "./BinderButton.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1095,14 +1096,7 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
-                    ${
-                        this.state.binder_phase === BinderPhase.wait_for_user
-                            ? html`<button id="launch_binder" onClick=${this.start_binder}>
-                                  <span>Run with </span
-                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
-                              </button>`
-                            : null
-                    }
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <preamble>

@@ -1,0 +1,100 @@
+#launch_binder {
+    /* position: absolute; */
+    position: fixed;
+    z-index: 20;
+    top: 10px;
+    right: 30px;
+    /* width: 153.2px; */
+    /* height: 60px; */
+}
+#launch_binder button {
+    padding: 7px 20px;
+    background: #fffdf7;
+    border: 3px solid #3f448c5e;
+    border-radius: 30px;
+    box-shadow: 0px 0px 20px 0px #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+    font-style: italic;
+    font-family: "Roboto Mono";
+    letter-spacing: -0.2px;
+    color: #0000009c;
+    white-space: nowrap;
+}
+
+body.code_differs button#launch_binder {
+    position: fixed;
+    animation: wiggle 0.3s ease-in-out 0s 1;
+}
+
+@keyframes wiggle {
+    0% {
+        transform: rotate(0deg);
+    }
+    30% {
+        transform: rotate(10deg);
+    }
+    70% {
+        transform: rotate(-10deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+#launch_binder button img {
+    margin: -8px;
+    margin-left: 0px;
+    font-style: normal;
+    color: black;
+    font-weight: 900;
+}
+
+#binder_launch_help {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    width: 100%;
+    text-align: center;
+    /* width: 153.2px; */
+    /* height: 60px; */
+    z-index: 20;
+    box-shadow: none;
+    cursor: pointer;
+    background: unset;
+    border: unset;
+    border-radius: unset;
+    font-size: 14px;
+    font-style: italic;
+    font-family: "Roboto Mono";
+    letter-spacing: -0.2px;
+    color: #0000009c;
+    white-space: nowrap;
+}
+
+#binder_launch_help:hover {
+    text-decoration: underline;
+}
+
+#binder_help_text {
+    --width: max(50vh, 700px);
+    position: fixed;
+    top: 5rem;
+    width: var(--width);
+    padding: 8px;
+    border-radius: 8px;
+    left: calc(50vw - var(--width) / 2);
+    background-color: white;
+    box-shadow: 0px 0px 0px 100vmax #0000001a;
+}
+
+#binder_help_text .close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 24px;
+    height: 24px;
+    background-size: 24px 24px;
+    cursor: pointer;
+    background-image: url(https://unpkg.com/ionicons@5.4.0/dist/svg/close-outline.svg);
+}
