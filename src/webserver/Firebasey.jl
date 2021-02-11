@@ -235,7 +235,11 @@ function diff(old::T, new::T) where T
 	catch
 		# if anything goes wrong, do the Update
 		# required for compatibility with Julia <= 1.4
-		JSONPatch[ReplacePatch([], new)]
+		if VERSION > v"1.4"
+			rethrow()
+		else
+			JSONPatch[ReplacePatch([], new)]
+		end
 	end
 end
 
