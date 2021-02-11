@@ -14,6 +14,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
 
+	# https://xkcd.com/2407/
 	function dfs(cell::Cell)
 		if cell in exits
 			return
