@@ -61,7 +61,12 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		relay_reactivity_error!(cell, error)
 	end
-	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+
+	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
+	send_notebook_changes_throttled = throttled(1.0/20, 1.0/20) do
+		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+	end
+	send_notebook_changes_throttled()
 
 	# delete new variables that will be defined by a cell
 	new_runnable = new_order.runnable
@@ -85,7 +90,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.queued = false
 		cell.running = true
 		cell.persist_js_state = persist_js_state || cell ∉ cells
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+		send_notebook_changes_throttled()
 
 		if any_interrupted
 			relay_reactivity_error!(cell, InterruptException())
@@ -177,3 +182,23 @@ end
 # Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
+
+
+
+"Create a throttled function, which calls the given function `f` at most once per given interval `max_delay`.
+
+It is _leading_ (`f` is invoked immediately) and _not trailing_ (calls during a cooldown period are ignored).
+
+An optional third argument sets an initial cooldown period, default is `0`. With a non-zero value, the throttle is no longer _leading_."
+function throttled(f::Function, max_delay::Real, initial_offset::Real=0)
+	local last_run_at = time() - max_delay + initial_offset
+	# return f
+	() -> begin
+		now = time()
+		if now - last_run_at >= max_delay
+			f()
+			last_run_at = now
+		end
+		nothing
+	end
+end
