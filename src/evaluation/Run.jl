@@ -80,7 +80,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	delete!.([notebook.bonds], to_delete_vars)
 
 	local any_interrupted = false
-	ordered_cells = get_ordered_cells(notebook)
+	ordered_cells = union(new_order.runnable, keys(new_order.errable))
 
 	for (i, cell) in enumerate(to_run)
 		
