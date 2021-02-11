@@ -120,6 +120,7 @@ const Main = ({ children }) => {
  *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
  *  bonds: { [name: string]: any },
+ *  cell_execution_order: ?[string],
  * }}
  */
 

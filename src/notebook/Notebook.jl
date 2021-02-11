@@ -26,8 +26,7 @@ Base.@kwdef mutable struct Notebook
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
-    # i still don't really know what an AbstractString is but it makes this package look more professional
-    path::AbstractString
+    path::String
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
 
@@ -43,6 +42,8 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
+    cell_execution_order:: Union{Missing, Vector{UUID}}=missing
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -129,9 +130,12 @@ Calculates the topological order of cells in a notebook.
 """
 function get_ordered_cells(notebook:: Notebook):: Vector{Cell}
     notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
-    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
-    return cells_ordered
+    return get_ordered_cells(notebook_topo_order)
 end
+
+# notebook_topo_order:: TopologicalOrder, but this would create an issue with the file include order, 
+# therefore avoiding this type constraint here.
+get_ordered_cells(notebook_topo_order) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
 function save_notebook(notebook::Notebook, path::String)
     open(path, "w") do io
