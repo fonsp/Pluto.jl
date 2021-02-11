@@ -50,6 +50,7 @@ function set_dependencies!(cell:: Cell, notebook:: Notebook, ordered_cells:: Vec
     cell.cell_execution_order = get_cell_number(cell, ordered_cells)
     cell.referenced_cells = get_references(cell, notebook)
     cell.dependent_cells = get_dependencies(cell, notebook)
+    cell.precedence_heuristic = cell_precedence_heuristic(notebook.topology, cell)
 end
 function set_dependencies!(cell:: Cell, notebook:: Notebook)
     ordered_cells = get_ordered_cells(notebook)

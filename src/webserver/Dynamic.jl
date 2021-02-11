@@ -109,6 +109,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_execution_order" => cell.cell_execution_order,
                 "referenced_cells" => cell.referenced_cells,
                 "dependent_cells" => cell.dependent_cells,
+                "precedence_heuristic" => cell.precedence_heuristic,
                 "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,

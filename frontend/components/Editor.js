@@ -98,6 +98,7 @@ const Main = ({ children }) => {
  *  cell_execution_order: ?number,
  *  referenced_cells: ?Object.<string, [string]>,
  *  dependent_cells: ?Object.<string, [string]>,
+ *  precedence_heuristic: ?number,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
