@@ -330,7 +330,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    notebook = if haskey(parentbody, "notebook_id") && !isnothing(parentbody["notebook_id"])
+    notebook = if haskey(parentbody, "notebook_id") && parentbody["notebook_id"] !== nothing
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)
