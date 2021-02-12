@@ -4142,7 +4142,7 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
         keys["Ctrl-Enter"] = async ()=>{
             await on_add_after();
             const new_value = cm.getValue();
-            if (new_value !== remote_code_ref.current.body) {
+            if (new_value !== remote_code_ref.current) {
                 on_submit();
             }
         };
@@ -6252,8 +6252,13 @@ const FetchProgress = ({ progress  })=>progress == null || progress === 1 ? null
         background: "rgb(117 135 177)"
     }}\n              ></div>\n          </div>`
 ;
-const BinderButton = ({ binder_phase , start_binder  })=>{
+const BinderButton = ({ binder_phase , start_binder , notebook_url  })=>{
     const [popupOpen, setPopupOpen] = q1(false);
+    const [fileURL, setFileURL] = q1("");
+    const [showPopup, setShowPopup] = q1(false);
+    $1(()=>{
+        setFileURL(new URLSearchParams(window.location.search).get("notebookfile") ?? window.pluto_notebookfile);
+    });
     $1(()=>{
         const handlekeyup = (e2)=>{
             e2.key === "Escape" && setPopupOpen(false);
@@ -6282,8 +6287,23 @@ const BinderButton = ({ binder_phase , start_binder  })=>{
         e2.preventDefault();
         setPopupOpen(!popupOpen);
     }}\n            class="explain_binder"\n            >Help!</span\n        >\n        ${popupOpen && re` <div id="binder_help_text">\n            <span onClick=${()=>setPopupOpen(false)
-    } class="close"></span>\n            <h3>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here some answers</h3>\n            <h4>What is binder?</h4>\n            <p>\n                <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible\n                science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7\n                minutes to get a session. Otherwise, you can always run this notebook locally:\n            </p>\n            <h4>How to run locally:</h4>\n        </div>`}\n    </div>`;
+    } class="close"></span>\n            <h3>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here some answers</h3>\n            <h4>What is binder?</h4>\n            <p>\n                <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible\n                science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7\n                minutes to get a session. Otherwise, you can always run this notebook locally:\n            </p>\n            <h4>How to run locally:</h4>\n            <ol>\n                <li>\n                    <div class="copy_div">\n                        <input value=${fileURL} readonly />\n                        <span\n                            class=${`copy_icon ${showPopup ? "success_copy" : ""}`}\n                            onClick=${()=>{
+        copyTextToClipboard(fileURL);
+        setShowPopup(true);
+        setTimeout(()=>setShowPopup(false)
+        , 3000);
+    }}\n                        />\n                    </div>\n                </li>\n            </ol>\n        </div>`}\n    </div>`;
 };
+function copyTextToClipboard(text, onSuccess, onFail) {
+    if (!navigator.clipboard) {
+        alert("Please use a newer browser");
+    }
+    navigator.clipboard.writeText(text).then(function() {
+        console.error("Copied to clipboard!");
+    }, function(err) {
+        console.error("Async: Could not copy text: ", err);
+    });
+}
 const default_path = "...";
 let pending_local_updates = 0;
 const uuidv4 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c8)=>(c8 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c8 / 4).toString(16)

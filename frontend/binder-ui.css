@@ -98,3 +98,48 @@ body.code_differs button#launch_binder {
     cursor: pointer;
     background-image: url(https://unpkg.com/ionicons@5.4.0/dist/svg/close-outline.svg);
 }
+
+.copy_div {
+    border: 1px solid #0000001a;
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 2rem;
+}
+
+.copy_div input {
+    width: calc(100% - 8px - 1rem);
+    outline: none;
+    border: none;
+    font-size: 1rem;
+    font-family: JuliaMono, monospace;
+    line-height: 1.4;
+}
+
+.copy_icon {
+    position: relative;
+    cursor: pointer;
+    height: 1.5rem;
+    width: 1.5rem;
+    background-size: 1rem 1rem;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-image: url(https://unpkg.com/ionicons@5.4.0/dist/svg/copy-outline.svg);
+}
+
+.copy_icon.success_copy::after {
+    content: "Copied!";
+    position: absolute;
+    background-color: rgb(220, 235, 245);
+    border-radius: 0.5rem;
+    line-height: 1.5rem;
+    text-align: center;
+    width: 4rem;
+    font-size: 0.75rem;
+    font-family: JuliaMono, monospace;
+    font-weight: bold;
+    top: -100%;
+    left: calc(-2rem + 0.75rem);
+}

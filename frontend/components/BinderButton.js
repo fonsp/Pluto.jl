@@ -1,8 +1,14 @@
 import { BinderPhase } from "../common/Binder.js"
 import { html, useEffect, useState } from "../imports/Preact.js"
 
-export const BinderButton = ({ binder_phase, start_binder }) => {
+export const BinderButton = ({ binder_phase, start_binder, notebook_url }) => {
     const [popupOpen, setPopupOpen] = useState(false)
+    const [fileURL, setFileURL] = useState("")
+    const [showPopup, setShowPopup] = useState(false)
+    useEffect(() => {
+        /** This is equivalent to constructor and will only run once. Doing here to avoid adding more notebook state props */
+        setFileURL(new URLSearchParams(window.location.search).get("notebookfile") ?? window.pluto_notebookfile)
+    })
     useEffect(() => {
         const handlekeyup = (e) => {
             e.key === "Escape" && setPopupOpen(false)
@@ -50,6 +56,35 @@ export const BinderButton = ({ binder_phase, start_binder }) => {
                 minutes to get a session. Otherwise, you can always run this notebook locally:
             </p>
             <h4>How to run locally:</h4>
+            <ol>
+                <li>
+                    <div class="copy_div">
+                        <input value=${fileURL} readonly />
+                        <span
+                            class=${`copy_icon ${showPopup ? "success_copy" : ""}`}
+                            onClick=${() => {
+                                copyTextToClipboard(fileURL)
+                                setShowPopup(true)
+                                setTimeout(() => setShowPopup(false), 3000)
+                            }}
+                        />
+                    </div>
+                </li>
+            </ol>
         </div>`}
     </div>`
+}
+
+function copyTextToClipboard(text, onSuccess, onFail) {
+    if (!navigator.clipboard) {
+        alert("Please use a newer browser")
+    }
+    navigator.clipboard.writeText(text).then(
+        function () {
+            console.error("Copied to clipboard!")
+        },
+        function (err) {
+            console.error("Async: Could not copy text: ", err)
+        }
+    )
 }
