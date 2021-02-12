@@ -128,10 +128,11 @@ end
 """
 Calculates the topological order of cells in a notebook.
 """
-function get_ordered_cells(notebook:: Notebook):: Vector{Cell}
-    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
+function get_ordered_cells(notebook:: Notebook, topology:: NotebookTopology):: Vector{Cell}
+    notebook_topo_order = topological_order(notebook, topology, notebook.cells)
     return get_ordered_cells(notebook_topo_order)
 end
+get_ordered_cells(notebook:: Notebook) = get_ordered_cells(notebook, notebook.topology)
 
 # notebook_topo_order:: TopologicalOrder, but this would create an issue with the file include order, 
 # therefore avoiding this type constraint here.
@@ -221,6 +222,8 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     # Analyze cells so that the initial save is in topological order
     update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
+    set_dependencies!(loaded, loaded.topology)
+
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if run_notebook_on_load

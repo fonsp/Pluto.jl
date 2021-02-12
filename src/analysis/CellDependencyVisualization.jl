@@ -46,25 +46,34 @@ function get_dependencies(cell:: Cell, notebook:: Notebook):: Dict{Symbol, Vecto
 end
 
 "Fills cell dependency information for display in the GUI"
-function set_dependencies!(cell:: Cell, notebook:: Notebook, ordered_cells:: Vector{Cell})
+function set_cell_dependencies(cell:: Cell, notebook:: Notebook, ordered_cells:: Vector{Cell})
     cell.cell_execution_order = get_cell_number(cell, ordered_cells)
     cell.referenced_cells = get_references(cell, notebook)
     cell.dependent_cells = get_dependencies(cell, notebook)
     cell.precedence_heuristic = cell_precedence_heuristic(notebook.topology, cell)
 end
-function set_dependencies!(cell:: Cell, notebook:: Notebook)
+function set_cell_dependencies(cell:: Cell, notebook:: Notebook)
     ismissing(notebook.cell_execution_order) && error("cell execution order not defined")
     ordered_cells = [notebook.cells_dict[uuid] for uuid in notebook.cell_execution_order]
-    set_dependencies!(cell, notebook, ordered_cells)
+    set_cell_dependencies(cell, notebook, ordered_cells)
 end
 
 "Fills cell execution order information on notebook level"
-function set_dependencies!(notebook:: Notebook)
+function set_notebook_dependencies(notebook:: Notebook)
     ordered_cells = get_ordered_cells(notebook)
-    set_dependencies!(notebook, ordered_cells)
+    set_notebook_dependencies(notebook, ordered_cells)
 end
-function set_dependencies!(notebook:: Notebook, ordered_cells:: Vector{Cell})
+function set_notebook_dependencies(notebook:: Notebook, ordered_cells:: Vector{Cell})
     notebook.cell_execution_order = get_cell_uuids(ordered_cells)
+end
+
+"Fills dependency information on notebook and cell level."
+function set_dependencies!(notebook:: Notebook, topology:: NotebookTopology)
+    ordered_cells = get_ordered_cells(notebook, topology)
+    set_notebook_dependencies(notebook, ordered_cells)
+    for cell in ordered_cells
+        set_cell_dependencies(cell, notebook, ordered_cells)
+    end
 end
 
 "Converts a list of cells to a list of UUIDs."
