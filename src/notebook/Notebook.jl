@@ -103,13 +103,12 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    # TODO: this can be optimised by caching the topological order:
-    # maintain cache with ordered UUIDs
-    # whenever a run_reactive! is done, move the found cells **down** until they are in one group, and order them topologically within that group. Errable cells go to the bottom.
-
-    # the next call took 2ms for a small-medium sized notebook: (so not too bad)
-    # 15 ms for a massive notebook - 120 cells, 800 lines
-    cells_ordered = get_ordered_cells(notebook)
+    if ismissing(notebook.cell_execution_order)
+        cells_ordered = get_ordered_cells(notebook)
+    else
+        # take already calculated cell order to avoid recalculating it for performance reasons
+        cells_ordered = [notebook.cells_dict[uuid] for uuid ∈ notebook.cell_execution_order]
+    end
 
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
