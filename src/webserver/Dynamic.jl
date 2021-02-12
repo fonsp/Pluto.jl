@@ -106,11 +106,11 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "cell_execution_order" => cell.cell_execution_order,
-                "referenced_cells" => cell.referenced_cells,
-                "dependent_cells" => cell.dependent_cells,
-                "precedence_heuristic" => cell.precedence_heuristic,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "cell_execution_order" => missing_to_nothing(cell.cell_execution_order),
+                "referenced_cells" => missing_to_nothing(cell.referenced_cells),
+                "dependent_cells" => missing_to_nothing(cell.dependent_cells),
+                "precedence_heuristic" => missing_to_nothing(cell.precedence_heuristic),
+                "runtime" => missing_to_nothing(cell.runtime),
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -124,9 +124,11 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-        "cell_execution_order" => notebook.cell_execution_order,
+        "cell_execution_order" => missing_to_nothing(notebook.cell_execution_order),
     )
 end
+
+missing_to_nothing(val) = ismissing(val) ? nothing : val
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
