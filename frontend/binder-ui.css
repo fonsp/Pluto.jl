@@ -80,6 +80,8 @@ body.code_differs button#launch_binder {
     --width: max(50vh, 700px);
     position: fixed;
     top: 5rem;
+    max-height: calc(100vh - 7rem);
+    overflow: auto;
     width: var(--width);
     padding: 8px;
     border-radius: 8px;
@@ -107,6 +109,7 @@ body.code_differs button#launch_binder {
     justify-content: space-between;
     align-items: center;
     height: 2rem;
+    width: calc(100% - 2rem);
 }
 
 .copy_div input {
@@ -142,4 +145,22 @@ body.code_differs button#launch_binder {
     font-weight: bold;
     top: -100%;
     left: calc(-2rem + 0.75rem);
+}
+
+.copy_icon:not(.success_copy):hover::after {
+    content: "Copy!!";
+    position: absolute;
+    background-color: rgb(244, 245, 220);
+    border-radius: 0.5rem;
+    line-height: 1.5rem;
+    text-align: center;
+    width: 4rem;
+    font-size: 0.75rem;
+    font-family: JuliaMono, monospace;
+    font-weight: bold;
+    top: -100%;
+    left: calc(-2rem + 0.75rem);
+}
+
+.command {
 }
