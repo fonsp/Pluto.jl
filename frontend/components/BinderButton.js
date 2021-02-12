@@ -40,23 +40,26 @@ export const BinderButton = ({ binder_phase, start_binder, notebook_url }) => {
                 setPopupOpen(!popupOpen)
             }}
             class="explain_binder"
-            >Help!</span
-        >
+            >Run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨
+        </span>
         ${popupOpen &&
         html` <div id="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            <h3>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here some answers</h3>
-            <h4>Run with Binder [Experimental]</h4>
+            <h2>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here is how you can run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨</h3>
+            <h3> → In the cloud (experimental)</h4>
             <button onClick=${start_binder}>
                 <span>Run with </span><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
             </button>
-            <p>
+            <p style="margin-left:1rem; padding-left: .5rem; border-left: 4px solid lightgrey">
                 <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible
                 science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7
                 minutes to get a session. Otherwise, you can always run this notebook locally:
             </p>
-            <h4>Run locally</h4>
-            <ol>
+            <h3> → On your computer</h4>
+            <ol>            
+                <li>Make sure to <a href="https://computationalthinking.mit.edu/Spring21/installation/">install</a> 
+                ${" "}all required software following the instructions found <a href="https://computationalthinking.mit.edu/Spring21/installation/">here</a>!
+                </li>
                 <li>
                     <div>
                         <div class="command">Copy this link:</div>
@@ -79,7 +82,7 @@ export const BinderButton = ({ binder_phase, start_binder, notebook_url }) => {
                     <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/bmWpRIU.mp4" />
                 </li>
                 <li>
-                    <div class="command">Run Notebook</div>
+                    <div class="command">Paste URL in the 'Open' box and click 'Open'</div>
                     <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />
                 </li>
             </ol>

@@ -2,7 +2,7 @@
     /* position: absolute; */
     position: fixed;
     z-index: 20;
-    top: 10px;
+    top: 16px;
     right: 30px;
     /* width: 153.2px; */
     /* height: 60px; */
@@ -51,9 +51,6 @@ body.code_differs button#launch_binder {
 }
 
 #binder_launch_help {
-    position: absolute;
-    top: calc(100% + 0.5rem);
-    left: 0;
     width: 100%;
     text-align: center;
     /* width: 153.2px; */
@@ -62,14 +59,16 @@ body.code_differs button#launch_binder {
     box-shadow: none;
     cursor: pointer;
     background: unset;
+    background-color: white;
     border: unset;
-    border-radius: unset;
     font-size: 14px;
     font-style: italic;
     font-family: "Roboto Mono";
     letter-spacing: -0.2px;
     color: #0000009c;
     white-space: nowrap;
+    padding: 8px;
+    border-radius: 8px;
 }
 
 #binder_launch_help:hover {
@@ -77,17 +76,17 @@ body.code_differs button#launch_binder {
 }
 
 #binder_help_text {
-    --width: max(50vh, 700px);
+    --width: max(70vh, 900px);
     position: fixed;
     top: 5rem;
     max-height: calc(100vh - 7rem);
     overflow: auto;
     width: var(--width);
-    padding: 8px;
+    padding: 16px;
     border-radius: 8px;
     left: calc(50vw - var(--width) / 2);
     background-color: white;
-    box-shadow: 0px 0px 0px 100vmax #0000001a;
+    box-shadow: 0px 0px 0px 100vmax #0000004a;
 }
 
 #binder_help_text .close {
@@ -110,6 +109,7 @@ body.code_differs button#launch_binder {
     align-items: center;
     height: 2rem;
     width: calc(100% - 2rem);
+    margin-bottom: 0.75rem;
 }
 
 .copy_div input {
@@ -163,4 +163,13 @@ body.code_differs button#launch_binder {
 }
 
 .command {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 0.75rem;
+}
+#launch_binder li {
+    margin-bottom: 2rem;
+}
+#launch_binder video {
+    outline: 1px solid black;
 }
