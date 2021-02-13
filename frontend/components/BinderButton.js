@@ -1,14 +1,12 @@
 import { BinderPhase } from "../common/Binder.js"
-import { html, useEffect, useState } from "../imports/Preact.js"
+import { html, useEffect, useState, useRef } from "../imports/Preact.js"
 
-export const BinderButton = ({ binder_phase, start_binder, notebook_url }) => {
+export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
     const [popupOpen, setPopupOpen] = useState(false)
-    const [fileURL, setFileURL] = useState("")
-    const [showPopup, setShowPopup] = useState(false)
-    useEffect(() => {
-        /** This is equivalent to constructor and will only run once. Doing here to avoid adding more notebook state props */
-        setFileURL(new URLSearchParams(window.location.search).get("notebookfile") ?? window.pluto_notebookfile)
-    })
+    const [showCopyPopup, setShowCopyPopup] = useState(false)
+    const notebookfile_ref = useRef("")
+    notebookfile_ref.current = notebookfile
+
     useEffect(() => {
         const handlekeyup = (e) => {
             e.key === "Escape" && setPopupOpen(false)
@@ -40,49 +38,51 @@ export const BinderButton = ({ binder_phase, start_binder, notebook_url }) => {
                 setPopupOpen(!popupOpen)
             }}
             class="explain_binder"
-            >Run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨
-        </span>
+            ><b>Edit</b> or <b>run</b> this notebook</span
+        >
         ${popupOpen &&
         html` <div id="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            <h2>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here is how you can run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨</h3>
-            <h3> → In the cloud (experimental)</h4>
-            <button onClick=${start_binder}>
-                <span>Run with </span><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
-            </button>
-            <p style="margin-left:1rem; padding-left: .5rem; border-left: 4px solid lightgrey">
-                <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible
-                science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7
-                minutes to get a session. Otherwise, you can always run this notebook locally:
+            <p style="text-align: center;">Where would you like to run the notebook?</p>
+            <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
+            <div style="padding: 0 2rem;">
+                <button onClick=${start_binder}>
+                    <img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
+                </button>
+            </div>
+            <p style="opacity: .5; margin: 20px 10px;">
+                <a target="_blank" href="https://mybinder.org">Binder</a> is a free, open source service that runs scientific notebooks in the cloud! It will
+                take a while, usually 2-7 minutes to get a session.
             </p>
-            <h3> → On your computer</h4>
-            <ol>            
-                <li>Make sure to <a href="https://computationalthinking.mit.edu/Spring21/installation/">install</a> 
-                ${" "}all required software following the instructions found <a href="https://computationalthinking.mit.edu/Spring21/installation/">here</a>!
-                </li>
+            <h2 style="margin-top: 4em;">On your computer</h2>
+            <p style="opacity: .5;">(Recommended for working on the homework exercises.)</p>
+            <ol style="padding: 0 2rem;">
                 <li>
                     <div>
-                        <div class="command">Copy this link:</div>
+                        <div class="command">Copy the notebook URL:</div>
                         <div class="copy_div">
-                            <input value=${fileURL} readonly />
+                            <input onClick=${(e) => e.target.select()} value=${notebookfile_ref.current} readonly />
                             <span
-                                class=${`copy_icon ${showPopup ? "success_copy" : ""}`}
+                                class=${`copy_icon ${showCopyPopup ? "success_copy" : ""}`}
                                 onClick=${() => {
-                                    copyTextToClipboard(fileURL)
-                                    setShowPopup(true)
-                                    setTimeout(() => setShowPopup(false), 3000)
+                                    copyTextToClipboard(notebookfile_ref.current)
+                                    setShowCopyPopup(true)
+                                    setTimeout(() => setShowCopyPopup(false), 3000)
                                 }}
                             />
                         </div>
-                        <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/YdTDAht.mp4" />
                     </div>
                 </li>
                 <li>
                     <div class="command">Run Pluto</div>
-                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/bmWpRIU.mp4" />
+                    <p>
+                        ${"(Also see: "}
+                        <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)
+                    </p>
+                    <img style="width: 450px" src="https://user-images.githubusercontent.com/6933510/107861934-73d5ee00-6e49-11eb-8272-614538aa62ad.png" />
                 </li>
                 <li>
-                    <div class="command">Paste URL in the 'Open' box and click 'Open'</div>
+                    <div class="command">Paste URL in the <em>Open</em> box</div>
                     <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />
                 </li>
             </ol>

@@ -6143,43 +6143,49 @@ const BinderPhase = {
 const BinderPhase1 = BinderPhase;
 const trailingslash = (s11)=>s11.endsWith("/") ? s11 : s11 + "/"
 ;
-const request_binder = (build_url)=>new Promise(async (resolve, reject)=>{
-        let es = new EventSource(build_url);
-        es.onerror = (err)=>{
-            console.error("Binder error: Lost connection to " + build_url, err);
-            es.close();
-            reject(err);
-        };
-        let phase = null;
-        es.onmessage = (evt)=>{
-            let msg = JSON.parse(evt.data);
-            if (msg.phase && msg.phase !== phase) {
-                phase = msg.phase.toLowerCase();
-                console.log("Binder subphase: " + phase);
-                let status = phase;
-                if (status === "ready") {
-                    status = "server-ready";
+const request_binder = (build_url)=>new Promise((resolve, reject)=>{
+        console.log("Starting binder connection to", build_url);
+        try {
+            let es = new EventSource(build_url);
+            es.onerror = (err)=>{
+                console.error("Binder error: Lost connection to " + build_url, err);
+                es.close();
+                reject(err);
+            };
+            let phase = null;
+            es.onmessage = (evt)=>{
+                let msg = JSON.parse(evt.data);
+                if (msg.phase && msg.phase !== phase) {
+                    phase = msg.phase.toLowerCase();
+                    console.log("Binder subphase: " + phase);
+                    let status = phase;
+                    if (status === "ready") {
+                        status = "server-ready";
+                    }
                 }
-            }
-            if (msg.message) {
-                console.log("Binder message: " + msg.message);
-            }
-            switch(msg.phase){
-                case "failed":
-                    console.error("Binder error: Failed to build", build_url, msg);
-                    es.close();
-                    reject(new Error(msg));
-                    break;
-                case "ready":
-                    es.close();
-                    resolve({
-                        binder_session_url: trailingslash(msg.url) + "pluto/",
-                        binder_session_token: msg.token
-                    });
-                    break;
-                default:
-            }
-        };
+                if (msg.message) {
+                    console.log("Binder message: " + msg.message);
+                }
+                switch(msg.phase){
+                    case "failed":
+                        console.error("Binder error: Failed to build", build_url, msg);
+                        es.close();
+                        reject(new Error(msg));
+                        break;
+                    case "ready":
+                        es.close();
+                        resolve({
+                            binder_session_url: trailingslash(msg.url) + "pluto/",
+                            binder_session_token: msg.token
+                        });
+                        break;
+                    default:
+                }
+            };
+        } catch (err) {
+            console.error(err);
+            reject("Failed to open event source the mybinder.org. This probably means that the URL is invalid.");
+        }
     })
 ;
 const request_binder1 = request_binder;
@@ -6252,13 +6258,11 @@ const FetchProgress = ({ progress  })=>progress == null || progress === 1 ? null
         background: "rgb(117 135 177)"
     }}\n              ></div>\n          </div>`
 ;
-const BinderButton = ({ binder_phase , start_binder , notebook_url  })=>{
+const BinderButton = ({ binder_phase , start_binder , notebookfile  })=>{
     const [popupOpen, setPopupOpen] = q1(false);
-    const [fileURL, setFileURL] = q1("");
-    const [showPopup, setShowPopup] = q1(false);
-    $1(()=>{
-        setFileURL(new URLSearchParams(window.location.search).get("notebookfile") ?? window.pluto_notebookfile);
-    });
+    const [showCopyPopup, setShowCopyPopup] = q1(false);
+    const notebookfile_ref = z2("");
+    notebookfile_ref.current = notebookfile;
     $1(()=>{
         const handlekeyup = (e2)=>{
             e2.key === "Escape" && setPopupOpen(false);
@@ -6286,13 +6290,14 @@ const BinderButton = ({ binder_phase , start_binder , notebook_url  })=>{
         e2.stopPropagation();
         e2.preventDefault();
         setPopupOpen(!popupOpen);
-    }}\n            class="explain_binder"\n            >Run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨\n        </span>\n        ${popupOpen && re` <div id="binder_help_text">\n            <span onClick=${()=>setPopupOpen(false)
-    } class="close"></span>\n            <h2>Hey!! 👋🏽👋🏽🙋🏽‍♀️ Here is how you can run this notebook 🏃🏽‍♀️🏃🏽‍♂️🏃🏽💨💨</h3>\n            <h3> → In the cloud (experimental)</h4>\n            <button onClick=${start_binder}>\n                <span>Run with </span><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n            </button>\n            <p style="margin-left:1rem; padding-left: .5rem; border-left: 4px solid lightgrey">\n                <a target="_blank" href="https://mybinder.org">Binder</a> is a service that turns static notebooks to live! It is build to support reproducible\n                science and is available for free. Clicking the binder button will open a session to the service. Note that it will take a while, usually 2-7\n                minutes to get a session. Otherwise, you can always run this notebook locally:\n            </p>\n            <h3> → On your computer</h4>\n            <ol>            \n                <li>Make sure to <a href="https://computationalthinking.mit.edu/Spring21/installation/">install</a> \n                ${" "}all required software following the instructions found <a href="https://computationalthinking.mit.edu/Spring21/installation/">here</a>!\n                </li>\n                <li>\n                    <div>\n                        <div class="command">Copy this link:</div>\n                        <div class="copy_div">\n                            <input value=${fileURL} readonly />\n                            <span\n                                class=${`copy_icon ${showPopup ? "success_copy" : ""}`}\n                                onClick=${()=>{
-        copyTextToClipboard(fileURL);
-        setShowPopup(true);
-        setTimeout(()=>setShowPopup(false)
+    }}\n            class="explain_binder"\n            ><b>Edit</b> or <b>run</b> this notebook</span\n        >\n        ${popupOpen && re` <div id="binder_help_text">\n            <span onClick=${()=>setPopupOpen(false)
+    } class="close"></span>\n            <p style="text-align: center;">Where would you like to run the notebook?</p>\n            <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>\n            <div style="padding: 0 2rem;">\n                <button onClick=${start_binder}>\n                    <img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />\n                </button>\n            </div>\n            <p style="opacity: .5; margin: 20px 10px;">\n                <a target="_blank" href="https://mybinder.org">Binder</a> is a free, open source service that runs scientific notebooks in the cloud! It will\n                take a while, usually 2-7 minutes to get a session.\n            </p>\n            <h2 style="margin-top: 4em;">On your computer</h2>\n            <p style="opacity: .5;">(Recommended for working on the homework exercises.)</p>\n            <ol style="padding: 0 2rem;">\n                <li>\n                    <div>\n                        <div class="command">Copy the notebook URL:</div>\n                        <div class="copy_div">\n                            <input onClick=${(e2)=>e2.target.select()
+    } value=${notebookfile_ref.current} readonly />\n                            <span\n                                class=${`copy_icon ${showCopyPopup ? "success_copy" : ""}`}\n                                onClick=${()=>{
+        copyTextToClipboard(notebookfile_ref.current);
+        setShowCopyPopup(true);
+        setTimeout(()=>setShowCopyPopup(false)
         , 3000);
-    }}\n                            />\n                        </div>\n                        <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/YdTDAht.mp4" />\n                    </div>\n                </li>\n                <li>\n                    <div class="command">Run Pluto</div>\n                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/bmWpRIU.mp4" />\n                </li>\n                <li>\n                    <div class="command">Paste URL in the 'Open' box and click 'Open'</div>\n                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />\n                </li>\n            </ol>\n        </div>`}\n    </div>`;
+    }}\n                            />\n                        </div>\n                    </div>\n                </li>\n                <li>\n                    <div class="command">Run Pluto</div>\n                    <p>\n                        ${"(Also see: "}\n                        <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)\n                    </p>\n                    <img style="width: 450px" src="https://user-images.githubusercontent.com/6933510/107861934-73d5ee00-6e49-11eb-8272-614538aa62ad.png" />\n                </li>\n                <li>\n                    <div class="command">Paste URL in the <em>Open</em> box</div>\n                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />\n                </li>\n            </ol>\n        </div>`}\n    </div>`;
 };
 function copyTextToClipboard(text, onSuccess, onFail) {
     if (!navigator.clipboard) {
@@ -6350,6 +6355,8 @@ class Editor extends d4 {
             binder_url: (url_params.get("binder_url") ?? window.pluto_binder_url) ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
             bind_server_url: url_params.get("bind_server_url") ?? window.pluto_bind_server_url
         };
+        this.launch_params = launch_params;
+        console.log(this.launch_params);
         this.state = {
             notebook: {
                 notebook_id: url_params.get("id"),
@@ -6849,7 +6856,6 @@ class Editor extends d4 {
                     this.setState({
                         statefile_download_progress: progress
                     });
-                    console.log(progress);
                 });
                 const state = unpack(data);
                 this.original_state = state;
@@ -7090,6 +7096,9 @@ class Editor extends d4 {
                 event.returnValue = "";
             } else {
                 console.warn("unloading 👉 disconnecting websocket");
+                if (window.shutdown_binder != null) {
+                    window.shutdown_binder();
+                }
             }
         });
     }
@@ -7141,7 +7150,7 @@ class Editor extends d4 {
             this.setState({
                 export_menu_open: !export_menu_open
             });
-        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
+        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${this.launch_params.notebookfile} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
             this.actions.set_and_run_all_changed_remote_cells();
         }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            is_initializing=${this.state.initializing}\n                            notebook=${this.state.notebook}\n                            selected_cells=${this.state.selected_cells}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
             this.setState({

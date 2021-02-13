@@ -144,6 +144,8 @@ export class Editor extends Component {
             //@ts-ignore
             bind_server_url: url_params.get("bind_server_url") ?? window.pluto_bind_server_url,
         }
+        this.launch_params = launch_params
+        console.log(this.launch_params)
 
         this.state = {
             notebook: /** @type {NotebookData} */ ({
@@ -686,7 +688,6 @@ export class Editor extends Component {
                     this.setState({
                         statefile_download_progress: progress,
                     })
-                    console.log(progress)
                 })
                 const state = unpack(data)
                 this.original_state = state
@@ -997,6 +998,9 @@ export class Editor extends Component {
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
                 // and don't prevent the unload
+                if (window.shutdown_binder != null) {
+                    window.shutdown_binder()
+                }
             }
         })
     }
@@ -1096,7 +1100,9 @@ export class Editor extends Component {
                             </button>
                         </nav>
                     </header>
-                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} />
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${
+            this.launch_params.notebookfile
+        } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <preamble>

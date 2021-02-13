@@ -3,15 +3,13 @@
     position: fixed;
     z-index: 20;
     top: 16px;
-    right: 30px;
+    right: 8px;
     /* width: 153.2px; */
     /* height: 60px; */
 }
 #launch_binder button {
     padding: 7px 20px;
     background: #fffdf7;
-    border: 3px solid #3f448c5e;
-    border-radius: 30px;
     box-shadow: 0px 0px 20px 0px #ffffff;
     cursor: pointer;
     font-size: 14px;
@@ -53,22 +51,22 @@ body.code_differs button#launch_binder {
 #binder_launch_help {
     width: 100%;
     text-align: center;
-    /* width: 153.2px; */
-    /* height: 60px; */
+    width: 153.2px;
+    height: 60px;
     z-index: 20;
     box-shadow: none;
     cursor: pointer;
     background: unset;
     background-color: white;
-    border: unset;
+    border: 3px solid #3f448c5e;
     font-size: 14px;
     font-style: italic;
     font-family: "Roboto Mono";
     letter-spacing: -0.2px;
     color: #0000009c;
     white-space: nowrap;
-    padding: 8px;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: 30px;
 }
 
 #binder_launch_help:hover {
@@ -76,10 +74,10 @@ body.code_differs button#launch_binder {
 }
 
 #binder_help_text {
-    --width: max(70vh, 900px);
+    --width: min(85vw, 570px);
     position: fixed;
     top: 5rem;
-    max-height: calc(100vh - 7rem);
+    max-height: calc(100vh - 4rem);
     overflow: auto;
     width: var(--width);
     padding: 16px;
@@ -87,6 +85,17 @@ body.code_differs button#launch_binder {
     left: calc(50vw - var(--width) / 2);
     background-color: white;
     box-shadow: 0px 0px 0px 100vmax #0000004a;
+
+    font-family: "Lato", sans-serif;
+}
+
+@media (max-width: 500px) {
+    #binder_help_text {
+        top: 0;
+        width: 100vw;
+        left: 0;
+        max-height: 100vh;
+    }
 }
 
 #binder_help_text .close {
@@ -97,28 +106,35 @@ body.code_differs button#launch_binder {
     height: 24px;
     background-size: 24px 24px;
     cursor: pointer;
-    background-image: url(https://unpkg.com/ionicons@5.4.0/dist/svg/close-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-outline.svg);
 }
 
 .copy_div {
-    border: 1px solid #0000001a;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 4px 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    height: 2rem;
-    width: calc(100% - 2rem);
+    height: 40px;
     margin-bottom: 0.75rem;
+}
+
+#launch_binder button,
+.copy_div {
+    width: calc(100% - 8rem);
+    margin: 0px 4rem;
+    border: 3px solid #3f448c5e;
+    border-radius: 8px;
+    overflow: hidden;
 }
 
 .copy_div input {
     width: calc(100% - 8px - 1rem);
     outline: none;
     border: none;
-    font-size: 1rem;
-    font-family: JuliaMono, monospace;
+    font-size: 0.7rem;
+    font-family: "Roboto Mono", monospace;
     line-height: 1.4;
+    cursor: text;
 }
 
 .copy_icon {
@@ -129,7 +145,8 @@ body.code_differs button#launch_binder {
     background-size: 1rem 1rem;
     background-position: center;
     background-repeat: no-repeat;
-    background-image: url(https://unpkg.com/ionicons@5.4.0/dist/svg/copy-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/copy-outline.svg);
+    box-shadow: 0px 0px 60px 60px white;
 }
 
 .copy_icon.success_copy::after {
@@ -143,12 +160,12 @@ body.code_differs button#launch_binder {
     font-size: 0.75rem;
     font-family: JuliaMono, monospace;
     font-weight: bold;
-    top: -100%;
-    left: calc(-2rem + 0.75rem);
+    /* left: calc(-2rem + 0.75rem); */
+    animation: fadeout 3s;
 }
 
 .copy_icon:not(.success_copy):hover::after {
-    content: "Copy!!";
+    content: "Copy";
     position: absolute;
     background-color: rgb(244, 245, 220);
     border-radius: 0.5rem;
@@ -158,8 +175,25 @@ body.code_differs button#launch_binder {
     font-size: 0.75rem;
     font-family: JuliaMono, monospace;
     font-weight: bold;
-    top: -100%;
-    left: calc(-2rem + 0.75rem);
+}
+
+.copy_icon::after {
+    right: 1.5rem;
+}
+
+@keyframes fadeout {
+    0% {
+        opacity: 1;
+    }
+    20% {
+        opacity: 1;
+    }
+    40% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 0;
+    }
 }
 
 .command {
@@ -171,5 +205,7 @@ body.code_differs button#launch_binder {
     margin-bottom: 2rem;
 }
 #launch_binder video {
-    outline: 1px solid black;
+    /* outline: 1px solid black; */
+    border: 5px solid rgb(212, 212, 212);
+    border-radius: 5px;
 }
