@@ -888,7 +888,9 @@ export class Editor extends Component {
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
                 if (this.shutdown_binder != null) {
-                    this.shutdown_binder()
+                    // hmmmm that would also shut down the binder if you refreshed, or if you navigate to the binder session main menu by clicking the pluto logo.
+                    // Let's keep it disabled for now and let the timeout take care of shutting down the binder
+                    // this.shutdown_binder()
                 }
                 // and don't prevent the unload
             }
