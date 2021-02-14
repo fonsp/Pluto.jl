@@ -1,7 +1,7 @@
 #launch_binder {
     /* position: absolute; */
     position: fixed;
-    z-index: 20;
+    z-index: 2000;
     top: 16px;
     right: 8px;
     /* width: 153.2px; */
@@ -53,7 +53,7 @@ body.code_differs button#launch_binder {
     text-align: center;
     width: 153.2px;
     height: 60px;
-    z-index: 20;
+    z-index: 2000;
     box-shadow: none;
     cursor: pointer;
     background: unset;
@@ -204,8 +204,10 @@ body.code_differs button#launch_binder {
 #launch_binder li {
     margin-bottom: 2rem;
 }
-#launch_binder video {
+#launch_binder li video,
+#launch_binder li img {
     /* outline: 1px solid black; */
     border: 5px solid rgb(212, 212, 212);
     border-radius: 5px;
+    width: 100%;
 }

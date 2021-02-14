@@ -6076,9 +6076,9 @@ const Circle = ({ fill  })=>re`\n    <svg\n        width="48"\n        height="4
 ;
 const Triangle = ({ fill  })=>re`\n    <svg width="48" height="48" viewBox="0 0 48 48" style="height: .7em; width: .7em; margin-left: .3em; margin-right: .2em; margin-bottom: -.1em;">\n        <polygon points="24,0 48,40 0,40" fill=${fill} stroke="none" />\n    </svg>\n`
 ;
-const ExportBanner = ({ notebook , pluto_version , onClose , open  })=>{
+const ExportBanner = ({ notebook , pluto_version , onClose , notebook_export_url  })=>{
     let is_chrome = window.chrome == null;
-    return re`\n        <aside id="export">\n            <div id="container">\n                <div class="export_title">export</div>\n                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">\n                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>\n                    <section>Download a copy of the <b>.jl</b> script.</section>\n                </a>\n                <a\n                    href="#"\n                    class="export_card"\n                    onClick=${(e2)=>{
+    return re`\n        <aside id="export">\n            <div id="container">\n                <div class="export_title">export</div>\n                <a href=${notebook_export_url} target="_blank" class="export_card">\n                    <header><${Triangle} fill="#a270ba" /> Notebook file</header>\n                    <section>Download a copy of the <b>.jl</b> script.</section>\n                </a>\n                <a\n                    href="#"\n                    class="export_card"\n                    onClick=${(e2)=>{
         offline_html({
             pluto_version: pluto_version,
             head: document.head,
@@ -6297,7 +6297,7 @@ const BinderButton = ({ binder_phase , start_binder , notebookfile  })=>{
         setShowCopyPopup(true);
         setTimeout(()=>setShowCopyPopup(false)
         , 3000);
-    }}\n                            />\n                        </div>\n                    </div>\n                </li>\n                <li>\n                    <div class="command">Run Pluto</div>\n                    <p>\n                        ${"(Also see: "}\n                        <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)\n                    </p>\n                    <img style="width: 450px" src="https://user-images.githubusercontent.com/6933510/107861934-73d5ee00-6e49-11eb-8272-614538aa62ad.png" />\n                </li>\n                <li>\n                    <div class="command">Paste URL in the <em>Open</em> box</div>\n                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />\n                </li>\n            </ol>\n        </div>`}\n    </div>`;
+    }}\n                            />\n                        </div>\n                    </div>\n                </li>\n                <li>\n                    <div class="command">Run Pluto</div>\n                    <p>\n                        ${"(Also see: "}\n                        <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)\n                    </p>\n                    <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />\n                </li>\n                <li>\n                    <div class="command">Paste URL in the <em>Open</em> box</div>\n                    <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />\n                </li>\n            </ol>\n        </div>`}\n    </div>`;
 };
 function copyTextToClipboard(text, onSuccess, onFail) {
     if (!navigator.clipboard) {
@@ -6378,7 +6378,8 @@ class Editor extends d4 {
             statefile_download_progress: null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
-            binder_session_url_with_token: null,
+            binder_session_url: null,
+            binder_session_token: null,
             connected: false,
             initializing: true,
             moving_file: false,
@@ -6391,6 +6392,9 @@ class Editor extends d4 {
             selected_cells: [],
             update_is_ongoing: false
         };
+        this.setStatePromise = (fn1)=>new Promise((r2)=>this.setState(fn1, r2)
+            )
+        ;
         this.counter_statistics = create_counter_statistics1();
         this.actions = {
             send: (...args)=>this.client.send(...args)
@@ -6433,13 +6437,12 @@ class Editor extends d4 {
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length;
                 }
-                await new Promise((resolve)=>this.setState(immer((state)=>{
-                        for (let cell of new_cells){
-                            state.cell_inputs_local[cell.cell_id] = cell;
-                        }
-                        state.last_created_cell = new_cells[0]?.cell_id;
-                    }), resolve)
-                );
+                await this.setStatePromise(immer((state)=>{
+                    for (let cell of new_cells){
+                        state.cell_inputs_local[cell.cell_id] = cell;
+                    }
+                    state.last_created_cell = new_cells[0]?.cell_id;
+                }));
                 await update_notebook((notebook)=>{
                     for (const cell of new_cells){
                         notebook.cell_inputs[cell.cell_id] = {
@@ -6462,15 +6465,13 @@ class Editor extends d4 {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end")=>{
                 const cell = this.state.notebook.cell_inputs[cell_id];
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`;
-                await new Promise((resolve)=>{
-                    this.setState(immer((state)=>{
-                        state.cell_inputs_local[cell_id] = {
-                            ...cell,
-                            ...state.cell_inputs_local[cell_id],
-                            code: new_code
-                        };
-                    }), resolve);
-                });
+                await this.setStatePromise(immer((state)=>{
+                    state.cell_inputs_local[cell_id] = {
+                        ...cell,
+                        ...state.cell_inputs_local[cell_id],
+                        code: new_code
+                    };
+                }));
                 await this.actions.set_and_run_multiple([
                     cell_id
                 ]);
@@ -6820,25 +6821,31 @@ class Editor extends d4 {
                 console.groupEnd();
             });
             real_actions = this.actions;
-            fake_actions = launch_params.bind_server_url == null ? {
-            } : {
-                set_local_cell: ()=>{
-                },
-                set_bond: async (symbol, value, is_first_value)=>{
-                    this.setState(immer((state)=>{
-                        state.notebook.bonds[symbol] = {
-                            value: value
-                        };
-                    }));
-                    if (mybonds[symbol] == null || !_6.isEqual(mybonds[symbol].value, value)) {
-                        mybonds[symbol] = {
-                            value: value
-                        };
-                        bonds_to_set.current.add(symbol);
-                        await request_bond_response();
+            fake_actions = Object.fromEntries(Object.keys(this.actions).map((k3)=>[
+                    k3,
+                    ()=>{
                     }
-                }
-            };
+                ]
+            ));
+            if (launch_params.bind_server_url != null) {
+                fake_actions = {
+                    ...fake_actions,
+                    set_bond: async (symbol, value, is_first_value)=>{
+                        this.setState(immer((state)=>{
+                            state.notebook.bonds[symbol] = {
+                                value: value
+                            };
+                        }));
+                        if (mybonds[symbol] == null || !_6.isEqual(mybonds[symbol].value, value)) {
+                            mybonds[symbol] = {
+                                value: value
+                            };
+                            bonds_to_set.current.add(symbol);
+                            await request_bond_response();
+                        }
+                    }
+                };
+            }
         }
         this.on_disable_ui = ()=>{
             document.body.classList.toggle("disable_ui", this.state.disable_ui);
@@ -6873,23 +6880,24 @@ class Editor extends d4 {
             try {
                 fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(()=>{
                 });
-                this.setState({
-                    loading: true,
-                    binder_phase: BinderPhase1.requesting,
-                    disable_ui: false
-                });
+                await this.setStatePromise(immer((state)=>{
+                    state.binder_phase = BinderPhase1.requesting;
+                    state.loading = true;
+                    state.disable_ui = false;
+                }));
                 const { binder_session_url , binder_session_token  } = await request_binder1(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"));
                 console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`);
                 const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`;
-                window.shutdown_binder = ()=>{
+                window.shutdown_binder = this.shutdown_binder = ()=>{
                     fetch(shutdown_url, {
                         method: "POST"
                     });
                 };
-                this.setState({
-                    binder_phase: BinderPhase1.created,
-                    binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`
-                });
+                await this.setStatePromise(immer((state)=>{
+                    state.binder_phase = BinderPhase1.created;
+                    state.binder_session_url = binder_session_url;
+                    state.binder_session_token = binder_session_token;
+                }));
                 const with_token = (u6)=>{
                     const new_url = new URL(u6);
                     new_url.searchParams.set("token", binder_session_token);
@@ -6913,16 +6921,13 @@ class Editor extends d4 {
                 }
                 const new_notebook_id = await open_response.text();
                 console.info("notebook_id:", new_notebook_id);
-                this.setState((old_state)=>({
-                        notebook: {
-                            ...old_state.notebook,
-                            notebook_id: new_notebook_id
-                        },
-                        binder_phase: BinderPhase1.notebook_running
-                    })
-                , ()=>{
-                    this.connect(with_token(ws_address_from_base1(binder_session_url) + "channels"));
-                });
+                console.log(this.state);
+                await this.setStatePromise(immer((state)=>{
+                    state.notebook.notebook_id = new_notebook_id;
+                    state.binder_phase = BinderPhase1.notebook_running;
+                }));
+                console.log("Connecting ws");
+                this.connect(with_token(ws_address_from_base1(binder_session_url) + "channels"));
             } catch (err) {
                 console.error("Failed to initialize binder!", err);
                 alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.");
@@ -6977,10 +6982,8 @@ class Editor extends d4 {
                             throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`);
                         }
                     }),
-                    new Promise((resolve)=>{
-                        this.setState({
-                            notebook: new_notebook
-                        }, resolve);
+                    this.setStatePromise({
+                        notebook: new_notebook
                     }), 
                 ]);
             } finally{
@@ -7096,6 +7099,8 @@ class Editor extends d4 {
                 event.returnValue = "";
             } else {
                 console.warn("unloading 👉 disconnecting websocket");
+                if (this.shutdown_binder != null) {
+                }
                 if (window.shutdown_binder != null) {
                     window.shutdown_binder();
                 }
@@ -7140,13 +7145,14 @@ class Editor extends d4 {
     }
     render() {
         let { export_menu_open  } = this.state;
-        return re`\n            <${PlutoContext.Provider} value=${this.actions}>\n                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>\n                    <${Scroller} active=${this.state.scroller} />\n                    <header className=${export_menu_open ? "show_export" : ""}>\n                        <${ExportBanner}\n                            pluto_version=${this.client?.version_info?.pluto}\n                            notebook=${this.state.notebook}\n                            open=${export_menu_open}\n                            onClose=${()=>this.setState({
+        const notebook_export_url = this.state.binder_session_url == null ? `./notebookfile?id=${this.state.notebook.notebook_id}` : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`;
+        return re`\n            <${PlutoContext.Provider} value=${this.actions}>\n                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>\n                    <${Scroller} active=${this.state.scroller} />\n                    <header className=${export_menu_open ? "show_export" : ""}>\n                        <${ExportBanner}\n                            pluto_version=${this.client?.version_info?.pluto}\n                            notebook=${this.state.notebook}\n                            notebook_export_url=${notebook_export_url}\n                            open=${export_menu_open}\n                            onClose=${()=>this.setState({
                 export_menu_open: false
             })
-        }\n                        />\n                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>\n                        <div id="binder_spinners">\n                    <binder-spinner id="ring_1"></binder-spinner>\n                    <binder-spinner id="ring_2"></binder-spinner>\n                    <binder-spinner id="ring_3"></binder-spinner>\n                    </div>\n\n                        <nav id="at_the_top">\n                            <a href=${this.state.static_preview || this.state.binder_phase != null ? this.state.binder_session_url_with_token ?? "#" : "./"}>\n                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>\n                            </a>\n                            <${FilePicker}\n                                client=${this.client}\n                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}\n                                on_submit=${this.submit_file_change}\n                                suggest_new_file=${{
+        }\n                        />\n                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>\n                        <div id="binder_spinners">\n                    <binder-spinner id="ring_1"></binder-spinner>\n                    <binder-spinner id="ring_2"></binder-spinner>\n                    <binder-spinner id="ring_3"></binder-spinner>\n                    </div>\n\n                        <nav id="at_the_top">\n                            <a href=${this.state.static_preview || this.state.binder_phase != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"}>\n                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>\n                            </a>\n                            ${this.state.binder_phase === BinderPhase.ready ? re`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>` : re`<${FilePicker}\n                                          client=${this.client}\n                                          value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}\n                                          on_submit=${this.submit_file_change}\n                                          suggest_new_file=${{
             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
             name: this.state.notebook.shortpath
-        }}\n                                placeholder="Save notebook..."\n                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}\n                            />\n                            <button class="toggle_export" title="Export..." onClick=${()=>{
+        }}\n                                          placeholder="Save notebook..."\n                                          button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}\n                                      />`}\n                            \n                            \n                            <button class="toggle_export" title="Export..." onClick=${()=>{
             this.setState({
                 export_menu_open: !export_menu_open
             });

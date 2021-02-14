@@ -79,11 +79,11 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
                         ${"(Also see: "}
                         <a target="_blank" href="https://computationalthinking.mit.edu/Spring21/installation/">How to install Julia and Pluto</a>)
                     </p>
-                    <img style="width: 450px" src="https://user-images.githubusercontent.com/6933510/107861934-73d5ee00-6e49-11eb-8272-614538aa62ad.png" />
+                    <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />
                 </li>
                 <li>
                     <div class="command">Paste URL in the <em>Open</em> box</div>
-                    <video playsinline autoplay loop style="width:450px" src="https://i.imgur.com/wf60p5c.mp4" />
+                    <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />
                 </li>
             </ol>
         </div>`}
