@@ -163,7 +163,8 @@ export class Editor extends Component {
             statefile_download_progress: null,
             offer_binder: launch_params.notebookfile != null,
             binder_phase: null,
-            binder_session_url_with_token: null,
+            binder_session_url: null,
+            binder_session_token: null,
             connected: false,
             initializing: true,
 
@@ -179,6 +180,8 @@ export class Editor extends Component {
 
             update_is_ongoing: false,
         }
+
+        this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
@@ -232,16 +235,13 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await new Promise((resolve) =>
-                    this.setState(
-                        immer((state) => {
-                            for (let cell of new_cells) {
-                                state.cell_inputs_local[cell.cell_id] = cell
-                            }
-                            state.last_created_cell = new_cells[0]?.cell_id
-                        }),
-                        resolve
-                    )
+                await this.setStatePromise(
+                    immer((state) => {
+                        for (let cell of new_cells) {
+                            state.cell_inputs_local[cell.cell_id] = cell
+                        }
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
                 )
 
                 /**
@@ -275,18 +275,15 @@ export class Editor extends Component {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-                await new Promise((resolve) => {
-                    this.setState(
-                        immer((state) => {
-                            state.cell_inputs_local[cell_id] = {
-                                ...cell,
-                                ...state.cell_inputs_local[cell_id],
-                                code: new_code,
-                            }
-                        }),
-                        resolve
-                    )
-                })
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.cell_inputs_local[cell_id] = {
+                            ...cell,
+                            ...state.cell_inputs_local[cell_id],
+                            code: new_code,
+                        }
+                    })
+                )
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -648,24 +645,24 @@ export class Editor extends Component {
             })
 
             real_actions = this.actions
-            fake_actions =
-                launch_params.bind_server_url == null
-                    ? {}
-                    : {
-                          set_local_cell: () => {},
-                          set_bond: async (symbol, value, is_first_value) => {
-                              this.setState(
-                                  immer((state) => {
-                                      state.notebook.bonds[symbol] = { value: value }
-                                  })
-                              )
-                              if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                                  mybonds[symbol] = { value: value }
-                                  bonds_to_set.current.add(symbol)
-                                  await request_bond_response()
-                              }
-                          },
-                      }
+            fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
+            if (launch_params.bind_server_url != null) {
+                fake_actions = {
+                    ...fake_actions,
+                    set_bond: async (symbol, value, is_first_value) => {
+                        this.setState(
+                            immer((state) => {
+                                state.notebook.bonds[symbol] = { value: value }
+                            })
+                        )
+                        if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
+                            mybonds[symbol] = { value: value }
+                            bonds_to_set.current.add(symbol)
+                            await request_bond_response()
+                        }
+                    },
+                }
+            }
         }
 
         this.on_disable_ui = () => {
@@ -685,7 +682,6 @@ export class Editor extends Component {
                     this.setState({
                         statefile_download_progress: progress,
                     })
-                    console.log(progress)
                 })
                 const state = unpack(data)
                 this.original_state = state
@@ -703,11 +699,13 @@ export class Editor extends Component {
         this.start_binder = async () => {
             try {
                 fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
-                this.setState({
-                    loading: true,
-                    binder_phase: BinderPhase.requesting,
-                    disable_ui: false,
-                })
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.binder_phase = BinderPhase.requesting
+                        state.loading = true
+                        state.disable_ui = false
+                    })
+                )
                 const { binder_session_url, binder_session_token } = await request_binder(
                     launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
                 )
@@ -715,14 +713,17 @@ export class Editor extends Component {
                 console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
 
                 const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
-                window.shutdown_binder = () => {
+                window.shutdown_binder = this.shutdown_binder = () => {
                     fetch(shutdown_url, { method: "POST" })
                 }
 
-                this.setState({
-                    binder_phase: BinderPhase.created,
-                    binder_session_url_with_token: `${binder_session_url}?token=${binder_session_token}`,
-                })
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.binder_phase = BinderPhase.created
+                        state.binder_session_url = binder_session_url
+                        state.binder_session_token = binder_session_token
+                    })
+                )
                 // fetch once to say hello
                 const with_token = (u) => {
                     const new_url = new URL(u)
@@ -753,18 +754,17 @@ export class Editor extends Component {
 
                 const new_notebook_id = await open_response.text()
                 console.info("notebook_id:", new_notebook_id)
-                this.setState(
-                    (old_state) => ({
-                        notebook: {
-                            ...old_state.notebook,
-                            notebook_id: new_notebook_id,
-                        },
-                        binder_phase: BinderPhase.notebook_running,
-                    }),
-                    () => {
-                        this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
-                    }
+                console.log(this.state)
+
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.notebook.notebook_id = new_notebook_id
+                        state.binder_phase = BinderPhase.notebook_running
+                    })
                 )
+                console.log("Connecting ws")
+
+                this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
             } catch (err) {
                 console.error("Failed to initialize binder!", err)
                 alert(
@@ -825,13 +825,8 @@ export class Editor extends Component {
                             throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
                         }
                     }),
-                    new Promise((resolve) => {
-                        this.setState(
-                            {
-                                notebook: new_notebook,
-                            },
-                            resolve
-                        )
+                    this.setStatePromise({
+                        notebook: new_notebook,
                     }),
                 ])
             } finally {
@@ -995,6 +990,9 @@ export class Editor extends Component {
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
+                if (this.shutdown_binder != null) {
+                    this.shutdown_binder()
+                }
                 // and don't prevent the unload
             }
         })
@@ -1055,6 +1053,11 @@ export class Editor extends Component {
     render() {
         let { export_menu_open } = this.state
 
+        const notebook_export_url =
+            this.state.binder_session_url == null
+                ? `./notebookfile?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
+
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
@@ -1063,6 +1066,7 @@ export class Editor extends Component {
                         <${ExportBanner}
                             pluto_version=${this.client?.version_info?.pluto}
                             notebook=${this.state.notebook}
+                            notebook_export_url=${notebook_export_url}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
@@ -1074,20 +1078,30 @@ export class Editor extends Component {
                     </div>
 
                         <nav id="at_the_top">
-                            <a href=${this.state.static_preview || this.state.binder_phase != null ? this.state.binder_session_url_with_token ?? "#" : "./"}>
+                            <a href=${
+                                this.state.static_preview || this.state.binder_phase != null
+                                    ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
+                                    : "./"
+                            }>
                                 <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
-                            <${FilePicker}
-                                client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
-                                on_submit=${this.submit_file_change}
-                                suggest_new_file=${{
-                                    base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: this.state.notebook.shortpath,
-                                }}
-                                placeholder="Save notebook..."
-                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
-                            />
+                            ${
+                                this.state.binder_phase === BinderPhase.ready
+                                    ? html`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    : html`<${FilePicker}
+                                          client=${this.client}
+                                          value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                          on_submit=${this.submit_file_change}
+                                          suggest_new_file=${{
+                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              name: this.state.notebook.shortpath,
+                                          }}
+                                          placeholder="Save notebook..."
+                                          button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                                      />`
+                            }
+                            
+                            
                             <button class="toggle_export" title="Export..." onClick=${() => {
                                 this.setState({ export_menu_open: !export_menu_open })
                             }}>

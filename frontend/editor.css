@@ -621,6 +621,13 @@ li.dir.CodeMirror-hint:before {
 body.binder > header > nav#at_the_top > pluto-filepicker > * {
     display: none;
 }
+body.binder > header > nav#at_the_top > pluto-filepicker > a {
+    display: block;
+    font-size: 18px;
+    font-family: JuliaMono, monospace;
+    opacity: 0.8;
+    text-decoration: none;
+}
 
 body.binder.loading > header {
     background-color: hsl(51deg 64% 90% / 50%);
