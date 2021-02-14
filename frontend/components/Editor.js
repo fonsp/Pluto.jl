@@ -1130,7 +1130,7 @@ export class Editor extends Component {
                         </nav>
                     </header>
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${
-            this.launch_params.notebookfile
+            this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>

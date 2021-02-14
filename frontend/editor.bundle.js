@@ -4096,6 +4096,7 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
     const remote_code_ref = z2(null);
     const change_handler_ref = z2(null);
     change_handler_ref.current = on_change;
+    const disable_input_ref = z2(disable_input);
     const time_last_being_force_focussed_ref = z2(0);
     const time_last_genuine_backspace = z2(0);
     $1(()=>{
@@ -4279,6 +4280,9 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
         keys["Alt-Down"] = ()=>alt_move(+1)
         ;
         keys["Backspace"] = keys["Ctrl-Backspace"] = ()=>{
+            if (disable_input_ref.current) {
+                return;
+            }
             const BACKSPACE_CELL_DELETE_COOLDOWN = 300;
             const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300;
             if (cm.lineCount() === 1 && cm.getValue() === "") {
@@ -4298,6 +4302,9 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
             }
         };
         keys["Delete"] = keys["Ctrl-Delete"] = ()=>{
+            if (disable_input_ref.current) {
+                return;
+            }
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1);
                 on_delete();
@@ -4491,6 +4498,7 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
         });
     }, []);
     $1(()=>{
+        disable_input_ref.current = disable_input;
         cm_ref.current.options.disableInput = disable_input;
     }, [
         disable_input
@@ -5398,10 +5406,12 @@ const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { q
     }}\n                    class="foldcode"\n                    title="Show/hide code"\n                >\n                    <span></span>\n                </button>\n            </pluto-shoulder>\n            <pluto-trafficlight></pluto-trafficlight>\n            <button\n                onClick=${()=>{
         pluto_actions.add_remote_cell(cell_id, "before");
     }}\n                class="add_cell before"\n                title="Add cell"\n            >\n                <span></span>\n            </button>\n            <${CellOutput} ...${output} cell_id=${cell_id} />\n            ${show_input && re`<${CellInput}\n                local_code=${cell_input_local?.code ?? code}\n                remote_code=${code}\n                disable_input=${disable_input}\n                focus_after_creation=${focus_after_creation}\n                cm_forced_focus=${cm_forced_focus}\n                set_cm_forced_focus=${set_cm_forced_focus}\n                on_drag_drop_events=${handler}\n                on_submit=${()=>{
-        set_waiting_to_run(true);
-        pluto_actions.set_and_run_multiple([
-            cell_id
-        ]);
+        if (!disable_input) {
+            set_waiting_to_run(true);
+            pluto_actions.set_and_run_multiple([
+                cell_id
+            ]);
+        }
     }}\n                on_delete=${()=>{
         let cells_to_delete = selected ? selected_cells : [
             cell_id
@@ -5411,10 +5421,12 @@ const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { q
         pluto_actions.add_remote_cell(cell_id, "after");
     }}\n                on_fold=${(new_folded)=>pluto_actions.fold_remote_cell(cell_id, new_folded)
     }\n                on_change=${(new_code)=>{
-        if (code_folded && cm_forced_focus != null) {
-            pluto_actions.fold_remote_cell(cell_id, false);
+        if (!disable_input) {
+            if (code_folded && cm_forced_focus != null) {
+                pluto_actions.fold_remote_cell(cell_id, false);
+            }
+            on_change(new_code);
         }
-        on_change(new_code);
     }}\n                on_update_doc_query=${on_update_doc_query}\n                on_focus_neighbor=${on_focus_neighbor}\n                cell_id=${cell_id}\n                notebook_id=${notebook_id}\n            />`}\n            <${RunArea}\n                onClick=${()=>{
         if (running || queued) {
             pluto_actions.interrupt_remote(cell_id);
@@ -7061,6 +7073,16 @@ class Editor extends d4 {
                 alert(`Shortcuts 🎹\n\n    Shift+Enter:   run cell\n    ${ctrl_or_cmd_name}+Enter:   run cell and add cell below\n    Delete or Backspace:   delete empty cell\n\n    PageUp or fn+Up:   select cell above\n    PageDown or fn+Down:   select cell below\n\n    ${ctrl_or_cmd_name}+Q:   interrupt notebook\n    ${ctrl_or_cmd_name}+S:   submit all changes\n\n    ${ctrl_or_cmd_name}+C:   copy selected cells\n    ${ctrl_or_cmd_name}+X:   cut selected cells\n    ${ctrl_or_cmd_name}+V:   paste selected cells\n\n    The notebook file saves every time you run`);
                 e2.preventDefault();
             }
+            if (this.state.disable_ui && this.state.offer_binder) {
+                if (e2.key === "Enter" || e2.key.length === 1) {
+                    if (!document.body.classList.contains("wiggle_binder")) {
+                        document.body.classList.add("wiggle_binder");
+                        setTimeout(()=>{
+                            document.body.classList.remove("wiggle_binder");
+                        }, 1000);
+                    }
+                }
+            }
         });
         document.addEventListener("copy", (e2)=>{
             if (!in_textarea_or_input()) {
@@ -7156,7 +7178,7 @@ class Editor extends d4 {
             this.setState({
                 export_menu_open: !export_menu_open
             });
-        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${this.launch_params.notebookfile} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
+        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
             this.actions.set_and_run_all_changed_remote_cells();
         }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            is_initializing=${this.state.initializing}\n                            notebook=${this.state.notebook}\n                            selected_cells=${this.state.selected_cells}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
             this.setState({
