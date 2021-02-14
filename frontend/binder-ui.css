@@ -20,8 +20,9 @@
     white-space: nowrap;
 }
 
-body.code_differs button#launch_binder {
-    position: fixed;
+body.wiggle_binder button#launch_binder,
+body.wiggle_binder #binder_launch_help {
+    /* position: fixed; */
     animation: wiggle 0.3s ease-in-out 0s 1;
 }
 
@@ -50,9 +51,8 @@ body.code_differs button#launch_binder {
 
 #binder_launch_help {
     width: 100%;
+    display: block;
     text-align: center;
-    width: 153.2px;
-    height: 60px;
     z-index: 2000;
     box-shadow: none;
     cursor: pointer;
