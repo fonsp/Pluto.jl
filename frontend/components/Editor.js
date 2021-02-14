@@ -929,6 +929,18 @@ export class Editor extends Component {
                 )
                 e.preventDefault()
             }
+
+            if (this.state.disable_ui && this.state.offer_binder) {
+                // const code = e.key.charCodeAt(0)
+                if (e.key === "Enter" || e.key.length === 1) {
+                    if (!document.body.classList.contains("wiggle_binder")) {
+                        document.body.classList.add("wiggle_binder")
+                        setTimeout(() => {
+                            document.body.classList.remove("wiggle_binder")
+                        }, 1000)
+                    }
+                }
+            }
         })
 
         document.addEventListener("copy", (e) => {
