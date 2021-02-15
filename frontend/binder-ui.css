@@ -18,6 +18,7 @@
     letter-spacing: -0.2px;
     color: #0000009c;
     white-space: nowrap;
+    display: block;
 }
 
 body.wiggle_binder button#launch_binder,
@@ -120,8 +121,8 @@ body.wiggle_binder #binder_launch_help {
 
 #launch_binder button,
 .copy_div {
-    width: calc(100% - 8rem);
-    margin: 0px 4rem;
+    width: max(60%, 10rem);
+    margin: 0px auto;
     border: 3px solid #3f448c5e;
     border-radius: 8px;
     overflow: hidden;

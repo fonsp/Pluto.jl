@@ -43,7 +43,10 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
         ${popupOpen &&
         html` <div id="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            <p style="text-align: center;">Where would you like to run the notebook?</p>
+            <p style="text-align: center;">
+                ${`You can interact with sliders and buttons directly on our website! To be able to edit code and run cells, you need to run the notebook yourself. `}
+                <b>Where would you like to run the notebook?</b>
+            </p>
             <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
             <div style="padding: 0 2rem;">
                 <button onClick=${start_binder}>
