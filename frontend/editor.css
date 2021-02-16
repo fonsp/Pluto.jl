@@ -916,6 +916,10 @@ pluto-trafficlight::after {
     height: calc(100% + 10 * var(--patternHeight));
     position: absolute;
     opacity: 0;
+}
+
+/* This class will toggle animation. Other classes will make animation visible with opacity */
+pluto-cell.activate_animation pluto-trafficlight::after {
     animation: 10s linear 100ms infinite running scrollbackground;
 }
 

@@ -2,7 +2,7 @@ import { html, useState, useEffect, useMemo, useRef, useContext } from "../impor
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
+import { RunArea, useDebouncedTruth, useMillisSinceTruthy } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
@@ -65,6 +65,9 @@ export const Cell = ({
             set_waiting_to_run(false)
         }
     }, [queued, running, output?.last_run_timestamp])
+    // We activate animations instantly BUT deactivate them NSeconds later.
+    // We then toggle animation visibility using opacity. This saves a bunch of repaints.
+    const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
@@ -81,6 +84,7 @@ export const Cell = ({
             class=${cl({
                 queued: queued || waiting_to_run,
                 running: running,
+                activate_animation: activate_animation,
                 errored: errored,
                 selected: selected,
                 code_differs: class_code_differs,
