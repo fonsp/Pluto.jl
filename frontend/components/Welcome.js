@@ -3,7 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
-import { get_all_external_notebooks, get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
+import { delete_external_notebook, get_all_external_notebooks, get_external_notebook, Mediums, update_external_notebooks } from "../common/SaveMediums.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -217,7 +217,9 @@ export class Welcome extends Component {
             )
         })
 
-        this.on_open_path = async (save_medium, new_path, extras) => {
+        this.on_open_path = async (save_medium, new_path, extras, recursive=false) => {
+            console.log('On Open path...', save_medium);
+            
             const set_loading = () => document.body.classList.add("loading")
             if(save_medium === 'local') {
                 const processed = await process_path_or_url(new_path)
@@ -247,10 +249,17 @@ export class Welcome extends Component {
                         await update_external_notebooks(nb_path, medium)
                         window.location.href = link_open_path(nb_path)
                     })
-                }).catch(e => {
-                    // TODO: Implement an error catch for failure to load a save_medium notebook
+                }).catch(async e => {
                     document.body.classList.remove("loading")
                     console.log(e)
+                    // Try again but first make it writable
+                    const stream = await extras.createWritable()
+                    if(!recursive) {
+                        this.on_open_path(save_medium, new_path, extras, true);
+                    }
+                    else {
+                        alert('There was an error loading that local file. Try opening it again via the "Open Local File" button')
+                    }
                 })
             }
         }
@@ -317,6 +326,12 @@ export class Welcome extends Component {
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
+                const external_nb = Object.keys(this.state.external_notebooks).includes(nb.path)
+                const handleExternalClick = () => {
+                    delete_external_notebook(nb.path)
+                    remove_stored_recent_notebook(nb.path)
+                    this.on_open_path('BrowserLocalSaveMedium', null, this.state.external_notebooks[nb.path].args[1])
+                }
                 return html`<li
                     key=${nb.path}
                     class=${cl({
@@ -328,8 +343,8 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>
-                        ${Object.keys(this.state.external_notebooks).includes(nb.path) ? this.state.external_notebooks[nb.path].args[0] : shortest_path(nb.path, all_paths)}
+                    <a href=${running ? link_edit(nb.notebook_id) : (external_nb ? 'javascript:;' : link_open_path(nb.path))} title=${nb.path} onclick=${external_nb ? handleExternalClick : () => {}}>
+                        ${external_nb ? this.state.external_notebooks[nb.path].args[0] : shortest_path(nb.path, all_paths)}
                     </a>
                 </li>`
             })
@@ -364,6 +379,13 @@ export class Welcome extends Component {
                 ${recents}
             </ul>`
     }
+}
+
+const remove_stored_recent_notebook = (path) => {
+    const storedString = localStorage.getItem("recent notebooks")
+    let storedList = !!storedString ? JSON.parse(storedString) : []
+    storedList = storedList.filter(x => x !== path);
+    localStorage.setItem('recent notebooks', JSON.stringify(storedList));
 }
 
 const get_stored_recent_notebooks = () => {

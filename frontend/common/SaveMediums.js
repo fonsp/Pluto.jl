@@ -242,6 +242,19 @@ export const update_external_notebooks = (notebook_path, save_medium, old_path=n
     // localStorage.setItem('external notebooks', JSON.stringify(storedGists))
 }
 
+export const delete_external_notebook = (notebook_path) => {
+    return new Promise((resolve, reject) => {
+        request_idb().then(db => {
+            const store = db.transaction('notebooks', 'readwrite').objectStore('notebooks');
+
+            // Handle deletion of old entry
+            const delOldReq = store.delete(notebook_path);
+            delOldReq.onerror = reject;
+            delOldReq.onsuccess = resolve;
+        });
+    });
+}
+
 export const get_external_notebook = (notebook_path) => {
     return new Promise((resolve, reject) => {
         request_idb().then((db) => {
