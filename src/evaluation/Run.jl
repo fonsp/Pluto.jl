@@ -147,7 +147,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
-	save && save_notebook(notebook)
+	save && notebook.save_to_path && save_notebook(notebook)
 	
 	# _assume `prerender_text == false` if you want to skip some details_
 

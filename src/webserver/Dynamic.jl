@@ -274,7 +274,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged ∈ changes && CodeChanged ∉ changes
-            save_notebook(notebook)
+            notebook.save_to_path && save_notebook(notebook)
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
