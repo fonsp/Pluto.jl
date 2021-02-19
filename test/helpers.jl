@@ -44,7 +44,13 @@ true
 "
 function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
     expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+
+    original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
+    new_hash = Pluto.PlutoRunner.expr_hash(expr)
+    if original_hash != new_hash
+        error("\n== The expression explorer modified the expression. Don't do that! ==\n")
+    end
 
     # Anonymous function are given a random name, which looks like anon67387237861123
     # To make testing easier, we rename all such functions to anon
