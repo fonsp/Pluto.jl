@@ -666,10 +666,6 @@ function array_prefix(@nospecialize(x))::String
     lstrip(original, ':') * ": "
 end
 
-function set_prefix(@nospecialize(x::Set{<:Any}))::String
-    string(eltype(x))
-end
-
 function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
     a + let
         d = get(context, :extra_items, nothing)
@@ -695,7 +691,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     end
 
     Dict{Symbol,Any}(
-        :prefix => set_prefix(x),
+        :prefix => string(typeof(x)),
         :objectid => string(objectid(x), base=16),
         :type => :Set,
         :elements => elements
