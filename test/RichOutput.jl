@@ -77,6 +77,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             @test notebook.cells[17].output_repr isa Dict
             @test length(notebook.cells[17].output_repr[:elements]) == 2
+            @test notebook.cells[17].output_repr[:prefix] == "Set{Any}"
             @test notebook.cells[17].repr_mime isa MIME"application/vnd.pluto.tree+object"
             @test occursin("Set", notebook.cells[17].output_repr |> string)
 
