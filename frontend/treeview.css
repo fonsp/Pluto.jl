@@ -89,6 +89,14 @@ jltree jlarray::after {
     content: "]";
 }
 
+jltree jlarray.Set::before {
+    content: "([";
+}
+
+jltree jlarray.Set::after {
+    content: "])";
+}
+
 jltree jlarray.Tuple::before,
 jltree jldict::before,
 jltree jlstruct::before {

@@ -93,7 +93,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         case "Set":
         case "Tuple":
             inner = html`${body.prefix}<jlarray class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`))}</jlarray
+                    >${body.elements.map((r) => (r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`))}</jlarray
                 >`
             break
         case "Dict":
