@@ -106,7 +106,6 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "cell_execution_order" => missing_to_nothing(cell.cell_execution_order),
                 "referenced_cells" => missing_to_nothing(cell.referenced_cells),
                 "dependent_cells" => missing_to_nothing(cell.dependent_cells),
                 "precedence_heuristic" => missing_to_nothing(cell.precedence_heuristic),

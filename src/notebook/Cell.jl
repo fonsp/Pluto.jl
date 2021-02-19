@@ -29,7 +29,6 @@ Base.@kwdef mutable struct Cell
     function_wrapped::Bool=false
 
     # information to display cell dependencies
-    cell_execution_order:: Union{Missing, Int} = missing
     referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
     dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
     precedence_heuristic:: Union{Missing, Int} = missing

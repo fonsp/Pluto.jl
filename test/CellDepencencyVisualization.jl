@@ -42,7 +42,6 @@ using UUIDs
     # test if this information gets updated in the cell objects
     @test notebook.cell_execution_order isa Vector{<: UUID}
     @test findfirst(==(cell.cell_id), notebook.cell_execution_order) == 3
-    @test cell.cell_execution_order == 3
     @test cell.referenced_cells == references
     @test cell.dependent_cells == dependencies
     @test cell.precedence_heuristic == 4
@@ -50,7 +49,6 @@ using UUIDs
     # test if this also works for function definitions
     cell2 = notebook.cells_dict[notebook.cell_order[2]]
     @test findfirst(==(cell2.cell_id), notebook.cell_execution_order) == 4
-    @test cell2.cell_execution_order == 4
     references2 = Pluto.get_references(cell2, notebook)
     @test Pluto.get_cell_number.(references2[:f], Ref(notebook), Ref(ordered_cells)) == [5] # these cells depend on selected cell
     dependencies2 = Pluto.get_dependencies(cell2, notebook)
