@@ -283,9 +283,25 @@ function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Works
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
+function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
+    start = time()
+    while time() < start + timeout
+        if query()
+            return true
+        end
+        sleep(interval)
+    end
+    return false
+end
+
 "Force interrupt (SIGINT) a workspace, return whether successful"
 function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}; verbose=true)::Bool
     workspace = get_workspace(session_notebook)
+
+    if poll(() -> isready(workspace.dowork_token), 2.0, 5/100)
+        verbose && println("Cell finished, other cells cancelled!")
+        return true
+    end
 
     if Sys.iswindows()
         verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
@@ -310,15 +326,9 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
         verbose && @info "Sending interrupt to process $(workspace.pid)"
         Distributed.interrupt(workspace.pid)
 
-        delay = 5.0 # seconds
-        parts = 100
-
-        for _ in 1:parts
-            sleep(delay / parts)
-            if isready(workspace.dowork_token)
-                verbose && println("Cell interrupted!")
-                return true
-            end
+        if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)
+            verbose && println("Cell interrupted!")
+            return true
         end
 
         verbose && println("Still running... starting sequence")
@@ -326,7 +336,10 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
             for _ in 1:5
                 verbose && print(" 🔥 ")
                 Distributed.interrupt(workspace.pid)
-                sleep(0.2)
+                sleep(0.18)
+                if isready(workspace.dowork_token)
+                    break
+                end
             end
             sleep(1.5)
         end

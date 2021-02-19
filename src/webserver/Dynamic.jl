@@ -359,6 +359,7 @@ end
 
 responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     require_notebook(🙋)
+    🙋.notebook.wants_to_interrupt = true
     success = WorkspaceManager.interrupt_workspace((🙋.session, 🙋.notebook))
     # TODO: notify user whether interrupt was successful
 end
