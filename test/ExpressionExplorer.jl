@@ -183,6 +183,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f(x, args...; kwargs...) return [x, y, args..., kwargs...] end), [], [], [], [
             :f => ([:y], [], [], [])
         ])
+        @test testee(:(function f(x; y=x) y + x end), [], [], [], [
+            :f => ([], [], [:+], [])
+        ])
+        @test testee(:(function (A::MyType)(x; y=x) y + x end), [], [], [], [
+            :MyType => ([], [], [:+], [])
+        ])
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])

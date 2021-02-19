@@ -627,19 +627,25 @@ end
 Is also used for `struct` and `abstract`."
 function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
+        params_to_explore = ex.args[2:end]
+        # Using the keyword args syntax f(;y) the :parameters node is the first arg in the AST when it should
+        # be explored last. We change from (parameters, ...) to (..., parameters)
+        if length(params_to_explore) >= 2 && params_to_explore[1] isa Expr && params_to_explore[1].head == :parameters
+            params_to_explore = [params_to_explore[2:end]..., params_to_explore[1]]
+        end
+
         # Handle struct as callables, `(obj::MyType)(a, b) = ...`
         # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
         # function MyType(obj, a, b) ...; end
         funcroot = ex.args[1]
         if funcroot isa Expr && funcroot.head == :(::)
-            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., ex.args[2:end]...), scopestate)
+            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
         end
 
         # get the function name
         name, symstate = explore_funcdef!(funcroot, scopestate)
         # and explore the function arguments
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
-
+        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, params_to_explore, init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
