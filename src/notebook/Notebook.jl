@@ -32,11 +32,13 @@ mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}
+    
+    wants_to_interrupt::Bool
 end
 # We can keep 128 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
 # This does mean that the Notebook can't be used if nothing is clearing the update channel.
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = 
-    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing)
+    Notebook(cells, path, notebook_id, NotebookTopology(), Channel(1024), Token(), nothing, false)
 
 Notebook(cells::Array{Cell,1}, path::AbstractString=numbered_until_new(joinpath(new_notebooks_directory(), cutename()))) = Notebook(cells, path, uuid1())
 

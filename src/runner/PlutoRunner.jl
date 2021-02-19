@@ -190,7 +190,7 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
-    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+    result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
@@ -217,6 +217,12 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
             ans, runtime
         end
     end
+
+    if (result isa CapturedException) && (result.ex isa InterruptException)
+        throw(result.ex)
+    end
+    
+    cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
 

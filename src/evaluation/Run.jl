@@ -72,7 +72,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.persist_js_state = persist_js_state || cell ∉ cells
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 
-		if any_interrupted
+		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
 			run = run_single!((session, notebook), cell, new_topology[cell])
@@ -82,7 +82,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.running = false
 		putnotebookupdates!(session, notebook, clientupdate_cell_output(notebook, cell))
 	end
-
+	
+	notebook.wants_to_interrupt = false
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order

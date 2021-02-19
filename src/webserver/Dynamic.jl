@@ -143,7 +143,16 @@ responses[:move_notebook_file] = (session::ServerSession, body, notebook::Notebo
 end
 
 responses[:interrupt_all] = (session::ServerSession, body, notebook::Notebook; initiator::Union{Initiator,Missing}=missing) -> let
-    success = WorkspaceManager.interrupt_workspace((session, notebook))
+    session_notebook = (session, notebook)
+    workspace = WorkspaceManager.get_workspace(session_notebook)
+
+    already_interrupting = notebook.wants_to_interrupt
+    anything_running = !isready(workspace.dowork_token)
+    if !already_interrupting && anything_running
+        notebook.wants_to_interrupt = true
+        WorkspaceManager.interrupt_workspace(session_notebook)
+    end
+
     # TODO: notify user whether interrupt was successful (i.e. whether they are using a `ProcessWorkspace`)
 end
 
