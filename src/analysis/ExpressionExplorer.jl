@@ -706,23 +706,24 @@ end
 
 
 
-const can_macroexpand = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@bind", "PlutoRunner.@bind"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum"]))
+const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
-macro_kwargs_as_kw(ex::Expr) = Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
+macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
 
 """
 If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
 
 Macros can transform the expression into anything - the best way to treat them is to `macroexpand`. The problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
 """
-function maybe_macroexpand(ex::Expr; recursive=false)
+function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
     result = if ex.head === :macrocall
         funcname = ex.args[1] |> split_funcname
         funcname_joined = join_funcname_parts(funcname)
         
-        if funcname_joined ∈ can_macroexpand
+        if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             expanded = macroexpand(PlutoRunner, ex; recursive=false)
-            return Expr(:call, ex.args[1], expanded)
+            Expr(:call, ex.args[1], expanded)
 
         elseif length(ex.args) >= 3 && Meta.isexpr(ex.args[3], :(:=))
             ex = macro_kwargs_as_kw(ex)
@@ -736,7 +737,7 @@ function maybe_macroexpand(ex::Expr; recursive=false)
                 ein.args[1]  # scalar case `c := A[i,j]`
             end
             ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
-            ex = Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
+            Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
 
         elseif length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
@@ -750,7 +751,7 @@ function maybe_macroexpand(ex::Expr; recursive=false)
     end
 
     if recursive && (result isa Expr)
-        Expr(ex.head, maybe_macroexpand.(ex.args; recursive=recursive)...)
+        Expr(result.head, maybe_macroexpand.(result.args; recursive=recursive, expand_bind=expand_bind)...)
     else
         result
     end
