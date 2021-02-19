@@ -63,7 +63,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 
 	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-	send_notebook_changes_throttled = throttled(1.0/20, 1.0/20) do
+	send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	end
 	send_notebook_changes_throttled()
