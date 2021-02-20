@@ -25,7 +25,7 @@ function basic_notebook()
         """),
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
-    ])
+    ]) |> init_packages!
 end
 
 function shuffled_notebook()
@@ -38,7 +38,7 @@ function shuffled_notebook()
         Cell("t = 1"),
         Cell("w = v"),
         Cell("u = t"),
-    ])
+    ]) |> init_packages!
 end
 
 function shuffled_with_imports_notebook()
@@ -61,21 +61,26 @@ function shuffled_with_imports_notebook()
             x
             using REPL
         end"""),
-    ])
+    ]) |> init_packages!
+end
+
+function init_packages!(nb::Notebook)
+    Pluto.update_caches!(nb, nb.cells)
+    nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
+    Pluto.update_nbpkg(nb, nb.topology, nb.topology)
+    
+    nb
 end
 
 function bad_code_notebook()
-    n = Notebook([
+    Notebook([
         Cell("z = y"),
         Cell("y = z"),
         Cell(""";lka;fd;jasdf;;;\n\n\n\n\nasdfasdf
         
         [[["""),
         Cell("using Aasdfdsf"),
-    ])
-
-    Pkg.instantiate(n.nbpkg_ctx)
-    n
+    ]) |> init_packages!
 end
 
 function bonds_notebook()
@@ -91,21 +96,15 @@ function bonds_notebook()
         Cell("w = Wow(10)"),
         Cell("@bind z w"),
         Cell("@assert z == 10"),
-    ])
+    ]) |> init_packages!
 end
 
 
 function project_notebook()
-    n = Notebook([
+    Notebook([
         Cell("using Dates"),
-        Cell("using Plots"),
-    ])
-
-    n.nbpkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
-    Pkg.add(n.nbpkg_ctx, [Pkg.PackageSpec(name="Dates"), Pkg.PackageSpec(name="Plots")])
-    Pkg.instantiate(n.nbpkg_ctx)
-
-    n
+        Cell("using Example"),
+    ]) |> init_packages!
 end
 
 @testset "Notebook Files" begin

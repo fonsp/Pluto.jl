@@ -84,6 +84,9 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
+const _ptoml_cell_id = UUID(1)
+const _mtoml_cell_id = UUID(2)
+
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 """
@@ -124,26 +127,39 @@ function save_notebook(io, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
+    write_package = 
+        notebook.nbpkg_ctx !== nothing && 
+        isfile(notebook.nbpkg_ctx.env.project_file) && 
+        isfile(notebook.nbpkg_ctx.env.manifest_file)
+    
+    if write_package
+        ptoml_contents = read(notebook.nbpkg_ctx.env.project_file, String)
+        mtoml_contents = read(notebook.nbpkg_ctx.env.manifest_file, String)
+        if !isempty(ptoml_contents) && !isempty(mtoml_contents)
+            
+            println(io, _cell_id_delimiter, string(_ptoml_cell_id))
+            print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
+            write(io, ptoml_contents)
+            print(io, "\"\"\"")
+            print(io, _cell_suffix)
+            
+            println(io, _cell_id_delimiter, string(_mtoml_cell_id))
+            print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
+            write(io, mtoml_contents)
+            print(io, "\"\"\"")
+            print(io, _cell_suffix)
+        end
+    end
+    
+
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
         println(io, delim, string(c.cell_id))
     end
-
-    if notebook.nbpkg_ctx !== nothing && isfile(notebook.nbpkg_ctx.env.project_file) && isfile(notebook.nbpkg_ctx.env.manifest_file)
-        ptoml_contents = read(notebook.nbpkg_ctx.env.project_file, String)
-        mtoml_contents = read(notebook.nbpkg_ctx.env.manifest_file, String)
-        if !isempty(ptoml_contents) && !isempty(mtoml_contents)
-            println(io)
-            print(io, _cell_id_delimiter, "Package environment:\n")
-            print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
-            write(io, ptoml_contents)
-            println(io, "\"\"\"")
-            println(io)
-            print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
-            write(io, mtoml_contents)
-            println(io, "\"\"\"")
-        end
+    if write_package
+        println(io, _order_delimiter_folded, string(_ptoml_cell_id))
+        println(io, _order_delimiter_folded, string(_mtoml_cell_id))
     end
 
     notebook
@@ -200,25 +216,28 @@ function load_notebook_nobackup(io, path)::Notebook
             cell_id = let
                 UUID(cell_id_str[end - 35:end])
             end
-            next_cell = collected_cells[cell_id]
-            next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+            next_cell = get(collected_cells, cell_id, nothing)
+            if next_cell !== nothing
+                next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+            end
             push!(cell_order, cell_id)
         else
             break
         end
     end
 
-    readuntil(io, "Package environment:")
-    nbpkg_ctx = if eof(io)
-        nothing
-    else
-        readuntil(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"")
-        readline(io)
-        ptoml_contents = readuntil(io, "\"\"\""; keep=false)
-        
-        readuntil(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"")
-        readline(io)
-        mtoml_contents = readuntil(io, "\"\"\""; keep=false)
+    read_package = 
+        _ptoml_cell_id ∈ cell_order && 
+        _mtoml_cell_id ∈ cell_order && 
+        haskey(collected_cells, _ptoml_cell_id) && 
+        haskey(collected_cells, _mtoml_cell_id)
+
+    nbpkg_ctx = if read_package
+        ptoml_code = collected_cells[_ptoml_cell_id].code
+        mtoml_code = collected_cells[_mtoml_cell_id].code
+
+        ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
+        mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
 
         env_dir = mktempdir()
         write(joinpath(env_dir, "Project.toml"), ptoml_contents)
@@ -231,9 +250,11 @@ function load_notebook_nobackup(io, path)::Notebook
             CompositeException
             ErrorException
         end
+    else
+        nothing
     end
 
-    appeared_order = cell_order ∩ keys(collected_cells)
+    appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
     appeared_cells_dict = filter(collected_cells) do (k, v)
         k ∈ appeared_order
     end
