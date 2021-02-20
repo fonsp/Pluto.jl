@@ -1,4 +1,4 @@
-> _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://computationalthinking.mit.edu), Fall 2020.
+> _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://computationalthinking.mit.edu), Spring 2021.
 > <br>
 
 <p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
@@ -148,5 +148,6 @@ Development of Pluto.jl is partially sponsored by
 |----|----|
 | <a href="https://computationalthinking.mit.edu"><img title="Massachusetts Institute of Technology" src="https://user-images.githubusercontent.com/6933510/103308960-09412e00-4a14-11eb-8a3a-39201a9c186d.png" width=400 alt="MIT logo"></a> | The free online course _[Introduction to Computational Thinking](https://computationalthinking.mit.edu)_ at **MIT** uses Pluto notebooks to teach scientific computing in a new way. Homeworks react to the student in realtime, with _live answer checks and visualizations_ while you solve problems. |
 | <a href="http://quera-computing.com"><img title="QuEra Computing" src="https://user-images.githubusercontent.com/6933510/103309531-9e90f200-4a15-11eb-850f-99609e3b9bd8.png" width=400 alt="QuEra logo"></a> | **QuEra Computing** uses a Pluto notebook as an online dashboard to control their _quantum computer_! |
+| | |
 
 _Created by [**Fons van der Plas**](https://github.com/fonsp) and [**Mikołaj Bochenski**](https://github.com/malyvsen). Inspired by [Observable](https://observablehq.com/)._

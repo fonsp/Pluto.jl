@@ -41,7 +41,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`powershell.exe Start $url`)
+            Base.run(`powershell.exe Start "$url"`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
@@ -156,6 +156,11 @@ function run(session::ServerSession)
                             try
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
+                                
+                                let
+                                    lag = session.options.server.simulated_lag
+                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                end
 
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
@@ -193,9 +198,15 @@ function run(session::ServerSession)
                     end
                 end
             else
-                HTTP.setstatus(http, 403)
-                HTTP.startwrite(http)
-                HTTP.closewrite(http)
+                try
+                    HTTP.setstatus(http, 403)
+                    HTTP.startwrite(http)
+                    HTTP.closewrite(http)
+                catch e
+                    if !(e isa Base.IOError)
+                        rethrow(e)
+                    end
+                end
             end
         else
             request::HTTP.Request = http.message
@@ -294,8 +305,6 @@ function pretty_address(session::ServerSession, hostIP, port)
         session.options.server.root_url
     end
 
-    Sys.set_process_title("Pluto server - $root")
-
     url_params = Dict{String,String}()
 
     if session.options.security.require_secret_for_access
@@ -321,7 +330,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    notebook = if haskey(parentbody, "notebook_id")
+    notebook = if haskey(parentbody, "notebook_id") && parentbody["notebook_id"] !== nothing
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)

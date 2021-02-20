@@ -46,13 +46,13 @@ export const useDropHandler = () => {
         }
         return (ev) => {
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
-            if (ev.dataTransfer.types[0] === "text/pluto-cell") return
+            if (ev.dataTransfer.types[0] === "text/pluto-cell" || ev.dataTransfer.types[0] === "text/plain") return
             ev.stopPropagation()
             switch (ev.type) {
                 case "cmdrop":
                 case "drop":
                     ev.preventDefault() // don't file open
-                    const cell_element = ev.path.find((el) => el.tagName === "PLUTO-CELL")
+                    const cell_element = (ev.path || ev.composedPath()).find((el) => el.tagName === "PLUTO-CELL")
                     const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")

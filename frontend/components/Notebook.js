@@ -2,7 +2,6 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
-import { useDropHandler } from "./useDropHandler.js"
 
 const nbpkg_fingerprint = (nbpkg) =>
     nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
@@ -23,6 +22,10 @@ let CellMemo = ({
     nbpkg_local,
     nbpkg,
 }) => {
+    const selected_cells_diffable_primitive = (selected_cells || []).join("")
+    const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
+    const { queued, running, runtime, errored } = cell_result || {}
+    const { cell_id, code, code_folded } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -43,8 +46,18 @@ let CellMemo = ({
             />
         `
     }, [
-        cell_input,
-        cell_result,
+        cell_id,
+        code,
+        code_folded,
+        queued,
+        running,
+        runtime,
+        errored,
+        body,
+        last_run_timestamp,
+        mime,
+        persist_js_state,
+        rootassignee,
         selected,
         cell_input_local,
         notebook_id,
@@ -54,7 +67,7 @@ let CellMemo = ({
         disable_input,
         focus_after_creation,
         force_hide_input,
-        selected_cells,
+        selected_cells_diffable_primitive,
         nbpkg_local,
         ...nbpkg_fingerprint(nbpkg),
     ])
@@ -147,7 +160,7 @@ export const Notebook = ({
         </pluto-notebook>
     `
 }
-
+/* Disable this until we understand Notebook memoization better
 export const NotebookMemo = ({
     is_initializing,
     notebook,
@@ -188,3 +201,5 @@ export const NotebookMemo = ({
         nbpkg_local,
     ])
 }
+*/
+export const NotebookMemo = Notebook

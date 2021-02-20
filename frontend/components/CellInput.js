@@ -78,6 +78,7 @@ export const CellInput = ({
     let pluto_actions = useContext(PlutoContext)
 
     const cm_ref = useRef(null)
+    const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const change_handler_ref = useRef(null)
@@ -118,36 +119,31 @@ export const CellInput = ({
     }, [remote_code])
 
     useLayoutEffect(() => {
-        const cm = (cm_ref.current = CodeMirror(
-            (el) => {
-                dom_node_ref.current.appendChild(el)
-            },
-            {
-                value: "",
-                lineNumbers: true,
-                mode: "julia",
-                lineWrapping: true,
-                viewportMargin: Infinity,
-                placeholder: "Enter cell code...",
-                indentWithTabs: true,
-                indentUnit: 4,
-                hintOptions: {
-                    hint: juliahints,
-                    pluto_actions: pluto_actions,
-                    notebook_id: notebook_id,
-                    on_update_doc_query: on_update_doc_query,
-                    extraKeys: {
-                        ".": (cm, { pick }) => {
-                            pick()
-                            cm.replaceSelection(".")
-                            cm.showHint()
-                        },
-                        // "(": (cm, { pick }) => pick(),
+        const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
+            value: local_code,
+            lineNumbers: true,
+            mode: "julia",
+            lineWrapping: true,
+            viewportMargin: Infinity,
+            placeholder: "Enter cell code...",
+            indentWithTabs: true,
+            indentUnit: 4,
+            hintOptions: {
+                hint: juliahints,
+                pluto_actions: pluto_actions,
+                notebook_id: notebook_id,
+                on_update_doc_query: on_update_doc_query,
+                extraKeys: {
+                    ".": (cm, { pick }) => {
+                        pick()
+                        cm.replaceSelection(".")
+                        cm.showHint()
                     },
+                    // "(": (cm, { pick }) => pick(),
                 },
-                matchBrackets: true,
-            }
-        ))
+            },
+            matchBrackets: true,
+        }))
 
         const keys = {}
 
@@ -157,7 +153,7 @@ export const CellInput = ({
             await on_add_after()
 
             const new_value = cm.getValue()
-            if (new_value !== remote_code_ref.current.body) {
+            if (new_value !== remote_code_ref.current) {
                 on_submit()
             }
         }
@@ -389,21 +385,29 @@ export const CellInput = ({
         }
 
         cm.on("dragover", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("drop", (cm_, e) => {
-            on_drag_drop_events(e)
-            e.preventDefault()
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                e.preventDefault()
+                return true
+            }
         })
         cm.on("dragenter", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("dragleave", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
 
         cm.on("cursorActivity", () => {
@@ -539,6 +543,13 @@ export const CellInput = ({
             }, 100)
         })
 
+        cm.on("paste", (e) => {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                e.codemirrorIgnore = true
+            }
+        })
+
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()
@@ -579,6 +590,7 @@ export const CellInput = ({
     return html`
         <pluto-input ref=${dom_node_ref}>
             <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
 }

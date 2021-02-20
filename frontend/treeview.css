@@ -1,5 +1,8 @@
-/* @import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap"); */
+/* @import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/400-italic.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-space-mono@4.0.0/700.css"); */
 @import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
+@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400-italic.css");
 @import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/700.css");
 
 @import url("juliamono.css");
@@ -193,7 +196,7 @@ jltree svg {
 
 jlerror {
     font-size: 0.75rem;
-    font-family: "Space Mono", monospace;
+    font-family: "Roboto Mono", monospace;
 }
 
 jlerror > header {

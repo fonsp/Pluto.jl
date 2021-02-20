@@ -14,6 +14,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
 
+	# https://xkcd.com/2407/
 	function dfs(cell::Cell)
 		if cell in exits
 			return
@@ -88,6 +89,16 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 	end
 end
 
+function where_assigned(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
+	filter(notebook.cells) do cell
+		other = topology[cell]
+		!(
+			disjoint(to_compare, other.definitions) &&
+			disjoint(to_compare, other.funcdefs_without_signatures)
+		)
+	end
+end
+
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
 function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
 	any(notebook.cells) do cell
@@ -130,6 +141,16 @@ This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
 	isempty(topology[cell].definitions) && isempty(topology[cell].funcdefs_with_signatures) && 
-		length(topology[cell].references) <= 2 && 
-		topology[cell].references ⊆ md_and_friends
+		topology[cell].references ⊆ md_and_friends &&
+		no_loops(ExpressionExplorer.maybe_macroexpand(cell.parsedcode; recursive=true))
 end
+
+function no_loops(ex::Expr)
+	if ex.head ∈ [:while, :for, :comprehension, :generator, :try]
+		false
+	else
+		all(no_loops.(ex.args))
+	end
+end
+
+no_loops(x) = true

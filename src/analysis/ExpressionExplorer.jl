@@ -28,27 +28,6 @@ Base.@kwdef mutable struct SymbolsState
     funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
 end
 
-function Base.show(io::IO, s::SymbolsState)
-    print(io, "SymbolsState([")
-    join(io, s.references, ", ")
-    print(io, "], [")
-    join(io, s.assignments, ", ")
-    print(io, "], [")
-    join(io, s.funccalls, ", ")
-    print(io, "], [")
-    if isempty(s.funcdefs)
-        print(io, "]")
-    else
-        println(io)
-        for (k, v) in s.funcdefs
-            print(io, "    ", k, ": ", v)
-            println(io)
-        end
-        print(io, "]")
-    end
-    print(io, ")")
-end
-
 
 "ScopeState moves _up_ the ASTree: it carries scope information up towards the endpoints."
 mutable struct ScopeState
@@ -370,48 +349,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
         # Does not create sccope
-        
-        funcname = ex.args[1] |> split_funcname
-        # Macros can transform the expression into anything - the best way to treat them is to macroexpand
-        # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
-        if (length(funcname) == 1 || (length(funcname) >= 2 && (funcname[1] == :Base || funcname[1] == :PlutoRunner)))
-            if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
-                # we macroexpand these, and recurse
-                expanded = macroexpand(PlutoRunner, ex; recursive=false)
-                return explore!(Expr(:call, ex.args[1], expanded), scopestate)
-            elseif funcname[end] == Symbol("@enum")
-                # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
-                # https://github.com/fonsp/Pluto.jl/issues/177
-                # this would mean that you can only define one enum per notebook :(
-                syms = filter(x -> x isa Symbol, ex.args[2:end])
-                rest = setdiff(ex.args[2:end], syms)
-                
-                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(assignments=Set{Symbol}(syms), funccalls=Set{FunctionName}([[Symbol("@enum")]])))
-            end
-        end
+        new_ex = maybe_macroexpand(ex)
 
-        new_ex = if length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
-            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
-            Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
-        else
-            Expr(:call, ex.args...)
-        end
+        newnew_ex = Meta.isexpr(new_ex, :macrocall) ? Expr(:call, new_ex.args...) : new_ex
 
-	   if length(new_ex.args) >= 3 && Meta.isexpr(new_ex.args[3], :(:=))
-            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
-            ein = new_ex.args[3]
-            left = if Meta.isexpr(ein.args[1], :ref)
-                # assign to the symbol, and save LHS indices as fake RHS argument
-                push!(new_ex.args, Expr(:ref, :Float64, ein.args[1].args[2:end]...))
-                ein.args[1].args[1]
-            else
-                ein.args[1]  # scalar case `c := A[i,j]`
-            end
-            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
-            new_ex = Expr(:call, new_ex.args[1:2]..., ein_done, strip_indexing.(new_ex.args[4:end])...)
-        end
-
-        return explore!(new_ex, scopestate)
+        return explore!(newnew_ex, scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -537,7 +479,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcroot = ex.args[1]
         args_ex = if funcroot isa Symbol || (funcroot isa Expr && funcroot.head == :(::))
             [funcroot]
-        elseif funcroot.head == :tuple
+        elseif funcroot.head == :tuple || funcroot.head == :(...)
             funcroot.args
         else
             @error "Unknown lambda type"
@@ -762,6 +704,62 @@ function explore_funcdef!(::Any, ::ScopeState)::Tuple{FunctionName,SymbolsState}
     Symbol[], SymbolsState()
 end
 
+
+
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum"]))
+const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
+
+macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
+
+"""
+If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
+
+Macros can transform the expression into anything - the best way to treat them is to `macroexpand`. The problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
+"""
+function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
+    result = if ex.head === :macrocall
+        funcname = ex.args[1] |> split_funcname
+        funcname_joined = join_funcname_parts(funcname)
+        
+        if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
+            expanded = macroexpand(PlutoRunner, ex; recursive=false)
+            Expr(:call, ex.args[1], expanded)
+
+        elseif length(ex.args) >= 3 && Meta.isexpr(ex.args[3], :(:=))
+            ex = macro_kwargs_as_kw(ex)
+            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
+            ein = ex.args[3]
+            left = if Meta.isexpr(ein.args[1], :ref)
+                # assign to the symbol, and save LHS indices as fake RHS argument
+                ex = Expr(ex.head, ex.args..., Expr(:ref, :Float64, ein.args[1].args[2:end]...))
+                ein.args[1].args[1]
+            else
+                ein.args[1]  # scalar case `c := A[i,j]`
+            end
+            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
+            Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
+
+        elseif length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
+            macro_kwargs_as_kw(ex)
+            
+        else
+            ex
+        end
+    else
+        ex
+    end
+
+    if recursive && (result isa Expr)
+        Expr(result.head, maybe_macroexpand.(result.args; recursive=recursive, expand_bind=expand_bind)...)
+    else
+        result
+    end
+end
+
+maybe_macroexpand(ex::Any; kwargs...) = ex
+
+
 ###
 # CANONICALIZE FUNCTION DEFINITIONS
 ###
@@ -856,7 +854,7 @@ function canonalize(ex::Expr)
 		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
 	elseif ex.head == :call || ex.head == :tuple
 		skip_index = ex.head == :call ? 2 : 1
-		ex.args[1] # if ex.head == :call this is the function name, we dont want it
+		# ex.args[1], if ex.head == :call this is the function name, we dont want it
 
 		interesting = filter(ex.args[skip_index:end]) do arg
 			!(arg isa Expr && arg.head == :parameters)

@@ -11,12 +11,14 @@ export const offline_html = async ({ pluto_version, body, head }) => {
     }
 
     try {
+        const oldBody = body
         body = body.cloneNode(true)
-
-        for (let sizer of body.querySelectorAll(".CodeMirror-sizer")) {
-            sizer.style.minHeight = "23px"
-        }
-
+        const oldBodyCMs = oldBody.querySelectorAll("pluto-input .CodeMirror")
+        body.querySelectorAll("pluto-input .CodeMirror").forEach((cm, i) => {
+            const oldCM = oldBodyCMs[i].CodeMirror
+            oldCM.save()
+            cm.outerHTML = `<textarea class="init-cm">${oldCM.getTextArea().value}</textarea>`
+        })
         for (let iframe of body.querySelectorAll("iframe")) {
             if (iframe.dataset.datauri) {
                 iframe.src = iframe.dataset.datauri
@@ -52,6 +54,8 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                 <link rel="stylesheet" href="${CDNified(pluto_version, "treeview.css")}" type="text/css" />
                 <link rel="stylesheet" href="${CDNified(pluto_version, "hide-ui.css")}" type="text/css" />
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.css" type="text/css" />
+                <script src="https://cdn.jsdelivr.net/npm/codemirror@5.59.0/lib/codemirror.min.js" defer></script>
+                <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/julia/julia.min.js" defer></script>
 
                 ${head.querySelector("style#MJX-SVG-styles").outerHTML}
             </head>
@@ -59,6 +63,24 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                 ${body.querySelector("main").outerHTML}
                 ${body.querySelector("svg#MJX-SVG-global-cache").outerHTML}
             </body>
+            <script>
+                    const cmOptions = {
+                        lineNumbers: true,
+                        mode: "julia",
+                        lineWrapping: true,
+                        viewportMargin: Infinity,
+                        placeholder: "Enter cell code...",
+                        indentWithTabs: true,
+                        indentUnit: 4,
+                        cursorBlinkRate: -1,
+                        readOnly: false,
+                    }
+                    document.addEventListener("DOMContentLoaded", () => 
+                        document.querySelectorAll(".init-cm").forEach(textArea => {
+                            CodeMirror.fromTextArea(textArea, cmOptions)
+                        })
+                    )
+            </script>
             </html>
         `
     } catch (error) {

@@ -191,7 +191,7 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
-    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+    result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
@@ -218,6 +218,12 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
             ans, runtime
         end
     end
+
+    if (result isa CapturedException) && (result.ex isa InterruptException)
+        throw(result.ex)
+    end
+    
+    cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
 
@@ -333,6 +339,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
         # separate loop to avoid visiting the recently added method
         for method in Iterators.reverse(to_insert)
             setfield!(method, primary_world, one(typeof(alive_world_val))) # `1` will tell Julia to increment the world counter and set it as this function's world
+            setfield!(method, deleted_world, alive_world_val) # set the `deleted_world` property back to the 'alive' value (for Julia v1.6 and up)
             ccall(:jl_method_table_insert, Cvoid, (Any, Any, Ptr{Cvoid}), methods_table, method, C_NULL) # i dont like doing this either!
         end
     end

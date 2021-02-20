@@ -189,6 +189,15 @@ import Distributed
             Cell(""),
             Cell("asdf(21, 21)"),
             Cell("asdf(22)"),
+
+            Cell("@enum e1 e2 e3"),
+            Cell("@enum e4 e5=24"),
+            Cell("Base.@enum e6 e7=25 e8"),
+            Cell("Base.@enum e9 e10=26 e11"),
+            Cell("""@enum e12 begin
+                    e13=27
+                    e14
+                end"""),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -330,10 +339,29 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == false
 
+        update_run!(🍭, notebook, notebook.cells[23:27])
+        @test notebook.cells[23].errored == false
+        @test notebook.cells[24].errored == false
+        @test notebook.cells[25].errored == false
+        @test notebook.cells[26].errored == false
+        @test notebook.cells[27].errored == false
+        update_run!(🍭, notebook, notebook.cells[23:27])
+        @test notebook.cells[23].errored == false
+        @test notebook.cells[24].errored == false
+        @test notebook.cells[25].errored == false
+        @test notebook.cells[26].errored == false
+        @test notebook.cells[27].errored == false
+
+        setcode.(notebook.cells[23:27], [""])
+        update_run!(🍭, notebook, notebook.cells[23:27])
+
+        setcode(notebook.cells[23], "@assert !any(isdefined.([@__MODULE__], [Symbol(:e,i) for i in 1:14]))")
+        update_run!(🍭, notebook, notebook.cells[23])
+        @test notebook.cells[23].errored == false
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
-        # for lots of unsupported edge cases, see:
+        # for some unsupported edge cases, see:
         # https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
     end
 

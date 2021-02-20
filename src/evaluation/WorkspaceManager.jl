@@ -96,7 +96,6 @@ end
 function cd_workspace(workspace, path::AbstractString)
     eval_in_workspace(workspace, quote
         cd($(path |> dirname))
-        Sys.set_process_title("Pluto - " * $(path |> basename))
     end)
 end
 
@@ -234,10 +233,11 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
     
     # a try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
-    try
+    early_result = try
         # we use [pid] instead of pid to prevent fetching output
         Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info)))
         put!(workspace.dowork_token)
+        nothing
     catch exs
         # We don't use a `finally` because the token needs to be back asap
         put!(workspace.dowork_token)
@@ -255,7 +255,9 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
         end
     end
 
-    format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon)
+    early_result === nothing ?
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon) :
+        early_result
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
@@ -295,9 +297,25 @@ function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Works
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
+function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
+    start = time()
+    while time() < start + timeout
+        if query()
+            return true
+        end
+        sleep(interval)
+    end
+    return false
+end
+
 "Force interrupt (SIGINT) a workspace, return whether successful"
 function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}; verbose=true)::Bool
     workspace = get_workspace(session_notebook)
+
+    if poll(() -> isready(workspace.dowork_token), 2.0, 5/100)
+        verbose && println("Cell finished, other cells cancelled!")
+        return true
+    end
 
     if Sys.iswindows()
         verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
@@ -322,15 +340,9 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
         verbose && @info "Sending interrupt to process $(workspace.pid)"
         Distributed.interrupt(workspace.pid)
 
-        delay = 5.0 # seconds
-        parts = 100
-
-        for _ in 1:parts
-            sleep(delay / parts)
-            if isready(workspace.dowork_token)
-                verbose && println("Cell interrupted!")
-                return true
-            end
+        if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)
+            verbose && println("Cell interrupted!")
+            return true
         end
 
         verbose && println("Still running... starting sequence")
@@ -338,7 +350,10 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
             for _ in 1:5
                 verbose && print(" 🔥 ")
                 Distributed.interrupt(workspace.pid)
-                sleep(0.2)
+                sleep(0.18)
+                if isready(workspace.dowork_token)
+                    break
+                end
             end
             sleep(1.5)
         end

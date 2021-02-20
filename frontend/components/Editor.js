@@ -208,6 +208,7 @@ export class Editor extends Component {
             add_deserialized_cells: async (data, index) => {
                 let new_codes = deserialize_cells(data)
                 /** @type {Array<CellInputData>} */
+                /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
@@ -217,6 +218,10 @@ export class Editor extends Component {
                     index = this.state.notebook.cell_order.length
                 }
 
+                /** Update local_code. Local code doesn't force CM to update it's state
+                 * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
+                 * See ** 1 **
+                 */
                 await new Promise((resolve) =>
                     this.setState(
                         immer((state) => {
@@ -229,6 +234,10 @@ export class Editor extends Component {
                     )
                 )
 
+                /**
+                 * Create an empty cell in the julia-side.
+                 * Code will differ, until the user clicks 'run' on the new code
+                 */
                 await update_notebook((notebook) => {
                     for (const cell of new_cells) {
                         notebook.cell_inputs[cell.cell_id] = {
@@ -243,6 +252,15 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
+                /** ** 1 **
+                 * Notify codemirrors that the code is updated
+                 *
+                 *  */
+
+                for (const cell of new_cells) {
+                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
+                    cm.setValue(cell.code) // Update codemirror synchronously
+                }
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
@@ -464,30 +482,29 @@ export class Editor extends Component {
                 switch (update.type) {
                     case "notebook_diff":
                         if (message.patches.length !== 0) {
-                            this.setState((state) => {
-                                let new_notebook = applyPatches(state.notebook, message.patches)
+                            this.setState(
+                                immer((state) => {
+                                    let new_notebook = applyPatches(state.notebook, message.patches)
 
-                                if (DEBUG_DIFFING) {
-                                    console.group("Update!")
-                                    for (let patch of message.patches) {
-                                        console.group(`Patch :${patch.op}`)
-                                        console.log(patch.path)
-                                        console.log(patch.value)
+                                    if (DEBUG_DIFFING) {
+                                        console.group("Update!")
+                                        for (let patch of message.patches) {
+                                            console.group(`Patch :${patch.op}`)
+                                            console.log(patch.path)
+                                            console.log(patch.value)
+                                            console.groupEnd()
+                                        }
                                         console.groupEnd()
                                     }
-                                    console.groupEnd()
-                                }
 
-                                let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                if (cells_stuck_in_limbo.length !== 0) {
-                                    console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                    new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                }
-
-                                return {
-                                    notebook: new_notebook,
-                                }
-                            })
+                                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                                    if (cells_stuck_in_limbo.length !== 0) {
+                                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                                    }
+                                    state.notebook = new_notebook
+                                })
+                            )
                         }
                         break
                     case "log":
@@ -741,7 +758,8 @@ export class Editor extends Component {
         // })
 
         document.addEventListener("paste", async (e) => {
-            if (!in_textarea_or_input()) {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],
@@ -776,6 +794,7 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
+        window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {
