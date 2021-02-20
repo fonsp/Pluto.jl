@@ -1,6 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgTools
+import .PkgTools: getfirst
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for (c, _) in topology.nodes)...)
@@ -14,6 +15,32 @@ const tiers = [
 ]
 
 const pkg_token = Token()
+
+
+function write_semver_compat_entries!(ctx::Pkg.Types.Context)
+    for p in keys(ctx.env.project.deps)
+        if !haskey(ctx.env.project.compat, p)
+            entry = getfirst(e -> e.name == p, values(ctx.env.manifest))
+            if entry.version !== nothing
+                ctx.env.project.compat[p] = "^" * string(entry.version)
+            end
+        end
+    end
+    Pkg.Types.write_env(ctx.env)
+end
+
+
+function clear_semver_compat_entries!(ctx::Pkg.Types.Context)
+    for p in keys(ctx.env.project.compat)
+        entry = getfirst(e -> e.name == p, values(ctx.env.manifest))
+        if entry.version !== nothing
+            if ctx.env.project.compat[p] == "^" * string(entry.version)
+                delete!(ctx.env.project.compat, p)
+            end
+        end
+    end
+    Pkg.Types.write_env(ctx.env)
+end
 
 function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology)
     ctx = notebook.nbpkg_ctx
@@ -40,9 +67,11 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
             # Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules
 
-            # TODO: check if packages exist
             to_add = filter(PkgTools.package_exists, added)
             if !isempty(to_add)
+                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it
+                clear_semver_compat_entries!(ctx)
+
                 for tier in [
                     Pkg.PRESERVE_ALL,
                     Pkg.PRESERVE_DIRECT,
@@ -50,6 +79,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     Pkg.PRESERVE_NONE,
                 ]
                     used_tier = tier
+
                     try
                         Pkg.add(ctx, [
                             Pkg.PackageSpec(name=p)
@@ -64,17 +94,8 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                         end
                     end
                 end
-                
-                ## This code adds compat entries for packages
-                # TODO: disabled because sometimes we need to Pkg.PRESERVE_NONE sometimes (this is easier to fix than to explain)
 
-                # for p in to_add
-                # 	entry = first(e -> e.name == p, values(ctx.env.manifest))
-                # 	if entry.version !== nothing
-                # 		ctx.env.project.compat[p] = "^" * string(entry.version)
-                # 	end
-                # end
-                # Pkg.Types.write_env(ctx.env)
+                write_semver_compat_entries!(ctx)
             end
 
             (did_something=(!isempty(to_add) || !isempty(to_remove)),
