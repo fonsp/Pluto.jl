@@ -1153,6 +1153,11 @@ pluto-input > button.delete_cell > span::after {
 
 /* PKG UI */
 
+body.nbpkg_disabled pkg-status-mark,
+body.nbpkg_disabled pkg-popup {
+    display: none;
+}
+
 pkg-status-mark {
     width: 1em;
     margin: 0px 0.3em;

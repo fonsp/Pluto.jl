@@ -14,14 +14,13 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
 
     if (installed_version != null || _.isEqual(available_versions, ["stdlib"])) {
         status = "installed"
-        hint_raw =
-            installed_version == null
-                ? `${package_name} is part of Julia's pre-installed 'standard library'.`
-                : `${package_name} (v${installed_version}) is installed in the notebook.`
-        hint =
-            installed_version == null
-                ? phtml`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
-                : phtml`<header><b>${package_name}</b> <pkg-version>v${installed_version}</pkg-version></header> is installed in the notebook.`
+        if (installed_version == null || installed_version === "stdlib") {
+            hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
+            hint = phtml`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
+        } else {
+            hint_raw = `${package_name} (v${installed_version}) is installed in the notebook.`
+            hint = phtml`<header><b>${package_name}</b> <pkg-version>v${installed_version}</pkg-version></header> is installed in the notebook.`
+        }
     } else {
         if (_.isArray(available_versions)) {
             if (available_versions.length === 0) {

@@ -95,7 +95,7 @@ get_manifest_entry(ctx::Pkg.Types.Context, pkg_name::String) =
 
 function get_manifest_version(ctx, pkg_name)
     if pkg_name ∈ stdlibs
-        "sdtlib"
+        "stdlib"
     else
         entry = get_manifest_entry(ctx, pkg_name)
         entry.version

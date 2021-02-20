@@ -819,6 +819,7 @@ export class Editor extends Component {
             document.body.classList.add("disconnected")
         }
 
+        document.body.classList.toggle("nbpkg_disabled", this.state.notebook.nbpkg?.enabled === false)
         document.body.classList.toggle("nbpkg_restart_recommended", this.state.notebook.nbpkg?.restart_recommended_msg != null)
         document.body.classList.toggle("nbpkg_restart_required", this.state.notebook.nbpkg?.restart_required_msg != null)
 
