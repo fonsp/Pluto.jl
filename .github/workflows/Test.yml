@@ -26,16 +26,16 @@ jobs:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
                 julia-version: ["1.5", "^1.6.0-0"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
-                include:
-                    # macOS and windows - only the extremes, linux covers pretty much everything already i think
-                    # - julia-version: "1.0"
-                    # os: macOS-latest
-                    # - julia-version: "^1.6.0-0"
-                    # os: macOS-latest
-                    # - julia-version: "1.0"
-                    # os: windows-latest
-                    # - julia-version: "^1.6.0-0"
-                    # os: windows-latest
+                # include:
+                # macOS and windows - only the extremes, linux covers pretty much everything already i think
+                # - julia-version: "1.0"
+                # os: macOS-latest
+                # - julia-version: "^1.6.0-0"
+                # os: macOS-latest
+                # - julia-version: "1.0"
+                # os: windows-latest
+                # - julia-version: "^1.6.0-0"
+                # os: windows-latest
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
