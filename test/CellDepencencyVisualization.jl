@@ -44,7 +44,7 @@ using UUIDs
     @test findfirst(==(cell.cell_id), notebook.cell_execution_order) == 3
     @test cell.referenced_cells == references
     @test cell.dependent_cells == dependencies
-    @test cell.precedence_heuristic == 4
+    @test cell.precedence_heuristic == 7
 
     # test if this also works for function definitions
     cell2 = notebook.cells_dict[notebook.cell_order[2]]
@@ -56,5 +56,5 @@ using UUIDs
     @test Pluto.get_cell_number.(dependencies2[:+], Ref(notebook), Ref(ordered_cells)) == [] # + function is not defined / extended in the notebook
 
     using_cell = notebook.cells_dict[notebook.cell_order[7]]
-    @test using_cell.precedence_heuristic == 2
+    @test using_cell.precedence_heuristic == 5
 end
