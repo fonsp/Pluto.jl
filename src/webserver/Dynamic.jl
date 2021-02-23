@@ -1,4 +1,4 @@
-import UUIDs:uuid1
+import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
@@ -8,8 +8,8 @@ const responses = Dict{Symbol,Function}()
 Base.@kwdef struct ClientRequest
     session::ServerSession
     notebook::Union{Nothing,Notebook}
-    body::Any = nothing
-    initiator::Union{Initiator,Nothing} = nothing
+    body::Any=nothing
+    initiator::Union{Initiator,Nothing}=nothing
 end
 
 require_notebook(r::ClientRequest) = if r.notebook === nothing
@@ -106,11 +106,10 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                # WIP
-                # "referenced_cells" => missing_to_nothing(cell.referenced_cells),
-                # "dependent_cells" => missing_to_nothing(cell.dependent_cells),
-                "precedence_heuristic" => missing_to_nothing(cell.precedence_heuristic),
-                "runtime" => missing_to_nothing(cell.runtime),
+                "referenced_cells" => jsprepare_probably_missing(cell.referenced_cells),
+                "dependent_cells" => jsprepare_probably_missing(cell.dependent_cells),
+                "precedence_heuristic" => jsprepare_probably_missing(cell.precedence_heuristic),
+                "runtime" => jsprepare_probably_missing(cell.runtime),
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -124,11 +123,17 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-        "cell_execution_order" => missing_to_nothing(notebook.cell_execution_order),
+        "cell_execution_order" => jsprepare_probably_missing(notebook.cell_execution_order),
     )
 end
 
-missing_to_nothing(val) = ismissing(val) ? nothing : val
+function jsprepare_probably_missing(val)
+    ismissing(val) ? nothing : val
+end
+
+function jsprepare_probably_missing(val::Dict{Symbol, Vector{UUID}})
+    Dict{String, Vector{String}}(string(key) => map(string, array) for (key, array) in val)
+end
 
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
@@ -162,7 +167,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
 end
 
 "Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
-function deep_enough_copy(d::Dict{A,B}) where {A,B}
+function deep_enough_copy(d::Dict{A,B}) where {A, B}
     Dict{A,B}(
         k => deep_enough_copy(v)
         for (k, v) in d
@@ -187,7 +192,7 @@ const no_changes = Changed[]
 
 
 const effects_of_changed_state = Dict(
-    "path" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
 
@@ -200,9 +205,9 @@ const effects_of_changed_state = Dict(
         end
         return no_changes
     end,
-    "in_temp_dir" => function (; _...) no_changes end,
+    "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
-        Wildcard() => function (cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
@@ -215,13 +220,13 @@ const effects_of_changed_state = Dict(
             end
         end,
     ),
-    "cell_order" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.applypatch!(request.notebook, patch)
         [FileChanged]
     end,
     "bonds" => Dict(
-        Wildcard() => function (name; request::ClientRequest, patch::Firebasey.JSONPatch)
-    name = Symbol(name)
+        Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
+            name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
             set_bond_value_reactive(
                 session=request.session,
@@ -281,12 +286,12 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged ∈ changes && CodeChanged ∉ changes
-        save_notebook(notebook)
+            save_notebook(notebook)
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
     catch ex
-        @error "Update notebook failed"  🙋.body["updates"] exception = (ex, stacktrace(catch_backtrace()))
+        @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
             :update_went_well => :👎,
             :why_not => sprint(showerror, ex),
@@ -297,7 +302,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 end
 
 function trigger_resolver(anything, path, values=[])
-	(value = anything, matches = values, rest = path)
+	(value=anything, matches=values, rest=path)
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
@@ -305,8 +310,8 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	end
 	
 	segment = first(path)
-	rest = path[firstindex(path) + 1:end]
-    	for (key, resolver) in resolvers
+	rest = path[firstindex(path)+1:end]
+	for (key, resolver) in resolvers
 		if key isa Wildcard
 			continue
 		end
@@ -315,7 +320,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 		end
 	end
 	
-    	if haskey(resolvers, Wildcard())
+	if haskey(resolvers, Wildcard())
 		return trigger_resolver(resolvers[Wildcard()], rest, (values..., segment))
     else
         throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
@@ -495,7 +500,7 @@ end"""
     elseif is_extension_supported(extension)
         code = get_example_code(directory, filename)
 
-else
+    else
         code = missing
     end
 end
