@@ -95,8 +95,8 @@ const Main = ({ children }) => {
  *  running: boolean,
  *  errored: boolean,
  *  runtime: ?number,
- *  referenced_cells: ?Object.<string, [string]>,
- *  dependent_cells: ?Object.<string, [string]>,
+ *  referenced_cells: ?{ string: [string]},
+ *  dependent_cells: ?{ string: [string]},
  *  precedence_heuristic: ?number,
  *  output: {
  *      body: string,
