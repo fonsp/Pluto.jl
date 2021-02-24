@@ -125,8 +125,17 @@ end
 
 "Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(
+		session_notebook, 
+		cell.parsedcode, 
+		cell.cell_id, 
+		ends_with_semicolon(cell.code), 
+		cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
+	)
 	set_output!(cell, run)
+	if session_notebook isa Tuple && run.process_exited
+		session_notebook[2].process_status = "no process"
+	end
 	return run
 end
 
@@ -160,8 +169,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
 		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
-			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-				notebook,)
+			(
+				ServerSession(),
+				notebook,
+			),
+			force_offline=true,
 		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)

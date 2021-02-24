@@ -26,8 +26,7 @@ Base.@kwdef mutable struct Notebook
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
-    # i still don't really know what an AbstractString is but it makes this package look more professional
-    path::AbstractString
+    path::String
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
 
@@ -41,6 +40,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+
+    process_status::String = "no process"
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
     wants_to_interrupt::Bool=false

@@ -407,7 +407,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Missing}}}
     load_Tables_support_if_needed()
 
     extra_items = if showmore === nothing
@@ -421,8 +421,18 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
     ans = cell_results[id]
     errored = ans isa CapturedException
 
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
+    output_formatted = if (!ends_with_semicolon || errored)
+        format_output(ans; context=:extra_items=>extra_items)
+    else
+        ("", MIME"text/plain"())
+    end
+    return (
+        output_formatted = output_formatted, 
+        errored = errored, 
+        interrupted = false, 
+        process_exited = false, 
+        runtime = get(cell_runtimes, id, missing)
+    )
 end
 
 

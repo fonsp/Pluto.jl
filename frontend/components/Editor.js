@@ -108,10 +108,11 @@ const Main = ({ children }) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
  *  in_temp_dir: boolean,
- *  notebook_id: string,
+ *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
@@ -129,6 +130,7 @@ export class Editor extends Component {
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,
+                process_status: "starting",
                 cell_inputs: {},
                 cell_results: {},
                 cell_order: [],
@@ -778,6 +780,7 @@ export class Editor extends Component {
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
+        document.body.classList.toggle("process_dead", this.state.notebook.process_status === "no process")
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
         document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)

@@ -93,6 +93,7 @@ function notebook_to_js(notebook::Notebook)
         "path" => notebook.path,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
+        "process_status" => notebook.process_status,
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
@@ -192,6 +193,11 @@ const effects_of_changed_state = Dict(
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
         return no_changes
+    end,
+    "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+        newstatus = patch.value
+
+        @info "Process status set by client" newstatus
     end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
