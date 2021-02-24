@@ -208,6 +208,22 @@ function unmake_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},
     end
 end
 
+function distributed_exception_result(exs::CompositeException)
+    ex = exs.exceptions |> first
+
+    if ex isa Distributed.RemoteException &&
+        ex.pid == workspace.pid &&
+        ex.captured.ex isa InterruptException
+
+        (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, process_exited=false, runtime = missing)
+    elseif ex isa Distributed.ProcessExitedException
+        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=true, runtime = missing)
+    else
+        @error "Unkown error during eval_format_fetch_in_workspace" ex
+        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=false, runtime = missing)
+    end
+end
+
 
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
@@ -230,30 +246,9 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
         put!(workspace.dowork_token)
         nothing
     catch exs
-        # We don't use a `finally` because the token needs to be back asap
+        # We don't use a `finally` because the token needs to be back asap for the interrupting code to pick it up.
         put!(workspace.dowork_token)
-
-        @assert exs isa CompositeException
-
-        ex = exs.exceptions |> first
-
-        @info "Captured excpt" ex typeof(ex)
-
-        dump(ex)
-
-
-
-        if ex isa Distributed.RemoteException &&
-            ex.pid == workspace.pid &&
-            ex.captured.ex isa InterruptException
-
-            (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, process_exited=false, runtime = missing)
-        elseif ex isa Distributed.ProcessExitedException
-            (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=true, runtime = missing)
-        else
-            @error "Unkown error during eval_format_fetch_in_workspace" ex
-            (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=false, runtime = missing)
-        end
+        distributed_exception_result(exs)
     end
 
     early_result === nothing ?
@@ -274,7 +269,11 @@ function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,N
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
-        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+        try
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+        catch ex
+            distributed_exception_result(CompositeException([ex]))
+        end
     end
 end
 
