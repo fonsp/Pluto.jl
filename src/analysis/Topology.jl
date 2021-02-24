@@ -134,9 +134,9 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	elseif :LOAD_PATH ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/323
 		4
-    elseif any(expr -> revise_arg ∈ expr.args, cell.module_usings)
-        # Load Revise before other packages so that it can properly `revise` them.
-        5
+	elseif any(expr -> revise_arg ∈ expr.args, cell.module_usings)
+		# Load Revise before other packages so that it can properly `revise` them.
+		5
 	elseif !isempty(cell.module_usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
 		6
