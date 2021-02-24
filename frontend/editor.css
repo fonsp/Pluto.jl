@@ -383,10 +383,6 @@ body > header {
     font-size: 0.75rem;
 }
 
-body.loading > header {
-    background-color: hsla(290, 10%, 59%, 0.14);
-}
-
 body > header.show_export {
     position: sticky;
     top: 0;
@@ -629,14 +625,18 @@ body.nbpkg_restart_required > header {
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
-body.disconnected > header {
-    background-color: rgba(255, 169, 114, 0.56);
+
+body.loading > header {
+    background-color: hsla(290, 10%, 59%, 0.14);
 }
 body.nbpkg_restart_recommended > header {
     background-color: rgba(114, 192, 255, 0.56);
 }
 body.nbpkg_restart_required > header {
     background-color: rgba(170, 41, 32, 0.56);
+}
+body.disconnected > header {
+    background-color: rgba(255, 169, 114, 0.56);
 }
 
 nav:after {
@@ -645,16 +645,17 @@ nav:after {
     padding: 10px;
 }
 
-body.disconnected > header > nav#at_the_top:after {
-    content: "Reconnecting...";
+body.loading > header > nav#at_the_top:after {
+    content: "Loading...";
 }
-
-body.nbpkg_restart_recommended > header > nav:after {
+body.nbpkg_restart_recommended > header > nav#at_the_top:after {
     content: "Notebook restart recommended";
 }
-
-body.nbpkg_restart_required > header > nav:after {
+body.nbpkg_restart_required > header > nav#at_the_top:after {
     content: "Notebook restart required";
+}
+body.disconnected > header > nav#at_the_top:after {
+    content: "Reconnecting...";
 }
 
 /* PREAMBLE */
