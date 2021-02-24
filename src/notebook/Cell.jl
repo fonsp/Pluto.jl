@@ -29,8 +29,8 @@ Base.@kwdef mutable struct Cell
     function_wrapped::Bool=false
 
     # information to display cell dependencies
-    referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = Dict{Symbol, Vector{UUID}}()
-    dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = Dict{Symbol, Vector{UUID}}()
+    referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
+    dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
     precedence_heuristic:: Union{Missing, Int} = missing
 end
 
