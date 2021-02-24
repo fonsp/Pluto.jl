@@ -148,6 +148,8 @@ function set_output!(cell::Cell, run)
 	cell.errored = run.errored
 end
 
+will_run_code(notebook::Notebook) = notebook.process_status != "no process"
+
 ###
 # CONVENIENCE FUNCTIONS
 ###
@@ -185,10 +187,12 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	if run_async
-		@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-	else
-		run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+	if will_run_code(notebook)
+		if run_async
+			@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		else
+			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		end
 	end
 end
 

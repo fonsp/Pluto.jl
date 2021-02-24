@@ -41,7 +41,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-    process_status::String = "no process"
+    process_status::String = "starting"
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
     wants_to_interrupt::Bool=false

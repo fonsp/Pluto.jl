@@ -401,7 +401,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id]) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    // state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -850,15 +850,16 @@ export class Editor extends Component {
                             </button>
                         </preamble>
                         <${Notebook}
-                            is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
-                            selected_cells=${this.state.selected_cells}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
+                            selected_cells=${this.state.selected_cells}
+                            is_initializing=${this.state.initializing}
+                            is_process_ready=${this.state.notebook.process_status !== "no process"}
+                            disable_input=${!this.state.connected}
                         />
 
                         <${DropRuler} 

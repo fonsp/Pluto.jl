@@ -350,11 +350,11 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         🙋.notebook.cells_dict[uuid]
     end
 
-    for cell in cells
-        cell.queued = true
+    if will_run_code(🙋.notebook)
+        foreach(c -> c.queued = true, cells)
+        send_notebook_changes!(🙋)
     end
-    send_notebook_changes!(🙋)
-
+    
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
     update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
 end
