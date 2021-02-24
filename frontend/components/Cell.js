@@ -153,9 +153,7 @@ export const Cell = ({
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
-                        if (is_process_ready_ref.current) {
-                            set_waiting_to_run(true)
-                        }
+                        set_waiting_to_run(true)
                         let cell_to_run = selected ? selected_cells : [cell_id]
                         pluto_actions.set_and_run_multiple(cell_to_run)
                     }
