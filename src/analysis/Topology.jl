@@ -119,7 +119,6 @@ end
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
 function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	top = topology[cell]
-    revise_arg = (:(using Revise)).args[1]
 	if :Pkg ∈ top.definitions
 		1
 	elseif Symbol("Pkg.API.activate") ∈ top.references || 
@@ -134,7 +133,7 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	elseif :LOAD_PATH ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/323
 		4
-	elseif any(expr -> revise_arg ∈ expr.args, cell.module_usings)
+	elseif :Revise ∈ top.definitions
 		# Load Revise before other packages so that it can properly `revise` them.
 		5
 	elseif !isempty(cell.module_usings)
