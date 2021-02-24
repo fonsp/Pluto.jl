@@ -631,7 +631,11 @@ body.disconnected > header {
 nav:after {
     font-size: 1rem;
     font-weight: 500;
-    padding: 10px;
+    padding: 5px 10px;
+    margin: 5px;
+    background: white;
+    border-radius: 10px;
+    z-index: 1;
 }
 
 body.disconnected > header > nav#at_the_top:after {
