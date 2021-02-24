@@ -150,14 +150,73 @@ import Distributed
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
-            @test topo_order.runnable == notebook.cells[[1,2]]
+            @test indexin(topo_order.runnable, notebook.cells) == [1,2]
             @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
         end
         let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
-            @test topo_order.runnable == notebook.cells[[1,3,4,2]] # x first, y second and third, z last
+            @test indexin(topo_order.runnable, notebook.cells) == [1,3,4,2] # x first, y second and third, z last
             # this also tests whether multiple defs run in page order
             @test topo_order.errable == Dict()
         end
+    end
+
+    @testset "Pkg topology workarounds" begin
+        notebook = Notebook([
+            Cell("1 + 1"),
+            Cell("json([1,2])"),
+            Cell("using JSON"),
+            Cell("""Pkg.add("JSON")"""),
+            Cell("Pkg.activate(mktempdir())"),
+            Cell("import Pkg"),
+            Cell("1 + 1"),
+        ])
+        Pluto.update_caches!(notebook, notebook.cells)
+        notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 3, 1, 2, 7]
+        # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
+        # 1, 2, 7 remain, and should run in notebook order.
+
+        # if the cells were placed in reverse order...
+        reverse!(notebook.cell_order)
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 3, 7, 2, 1]
+        # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
+        # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
+
+        reverse!(notebook.cell_order)
+    end
+
+    @testset "Pkg topology workarounds -- hard" begin
+        notebook = Notebook([
+            Cell("json([1,2])"),
+            Cell("using JSON"),
+            Cell("Pkg.add(package_name)"),
+            Cell(""" package_name = "JSON" """),
+            Cell("Pkg.activate(envdir)"),
+            Cell("envdir = mktempdir()"),
+            Cell("import Pkg"),
+        ])
+
+        Pluto.update_caches!(notebook, notebook.cells)
+        notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+
+        comesbefore(A, first, second) = findfirst(isequal(first),A) < findfirst(isequal(second), A)
+
+        run_order = indexin(topo_order.runnable, notebook.cells)
+
+        # like in the previous test
+        @test comesbefore(run_order, 7, 5)
+        @test_broken comesbefore(run_order, 5, 3)
+        @test_broken comesbefore(run_order, 3, 2)
+        @test comesbefore(run_order, 2, 1)
+
+        # the variable dependencies
+        @test comesbefore(run_order, 6, 5)
+        @test comesbefore(run_order, 4, 3)
     end
 
     
