@@ -2,7 +2,8 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
+// import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection, resolvable_promise } from "../common/JSConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -125,7 +126,7 @@ export class Editor extends Component {
 
         this.state = {
             notebook: /** @type {NotebookData} */ ({
-                notebook_id: new URLSearchParams(window.location.search).get("id"),
+                notebook_id: new URLSearchParams(window.location.search).get("id") ?? "f7636209-a0e6-45a7-bdd5-f9038598a085",
                 path: default_path,
                 shortpath: "",
                 in_temp_dir: true,

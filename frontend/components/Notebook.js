@@ -104,7 +104,18 @@ export const Notebook = ({
     let pluto_actions = useContext(PlutoContext)
     useEffect(() => {
         if (notebook.cell_order.length === 0 && !is_initializing) {
-            pluto_actions.add_remote_cell_at(0)
+            pluto_actions.add_remote_cell_at(
+                0,
+                `// hello!
+var language = "JavaScript"
+
+return html\`
+<h1>Welcome to <em>\${language}</em>!</h1>
+<p>This version of Pluto runs all code in your browser, by wrapping it in a script block.</p>
+
+<h4>This is a first step towards the WASM backend!</h4>
+\``
+            )
         }
     }, [is_initializing, notebook.cell_order.length])
 
