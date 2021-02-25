@@ -443,7 +443,7 @@ const initial_notebook = ()=>{
         })
     ;
     const cells = [
-        Cell(`html"<h1>Welcome to <em>WebAssembly</em>!</h1>\n\n<p>This is a first demo of Pluto with a WASM backend!</p>"`, true),
+        Cell(`html"<h1>Welcome to <em>WebAssembly</em>!</h1>\n\n<p>This is a first demo of (non-reactive) Pluto with a WASM backend! The Julia code in this notebook is executed <em>entirely</em> inside your web browser.</p>"`, true),
         Cell(`\n# hello from WASM!\n\nsqrt.(1:10)`, false),
         Cell(`\nextrema(1:100)`, false),
         Cell(`\nsprint(dump, Meta.parse("x = y + 123")) |> Text`, false),
