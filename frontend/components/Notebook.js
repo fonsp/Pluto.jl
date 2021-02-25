@@ -106,18 +106,9 @@ export const Notebook = ({
         if (notebook.cell_order.length === 0 && !is_initializing) {
             pluto_actions.add_remote_cell_at(
                 0,
-                `// hello!
-var language = "JavaScript"
+                `# hello from WASM!
 
-const {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")
-confetti()
-
-return html\`
-<h1>Welcome to <em>\${language}</em>?</h1>
-<p>This version of Pluto runs all code in your browser, by wrapping it in a script block. You need to use <code>return</code> to show output.</p>
-
-<h4>This is a first step towards the WASM backend!</h4>
-\``
+sqrt.(1:10)`
             )
         }
     }, [is_initializing, notebook.cell_order.length])

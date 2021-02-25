@@ -1,4 +1,4 @@
-import { Promises } from "../common/SetupCellEnvironment.js"
+import { Promises } from "./SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
 import "./Polyfill.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
@@ -58,21 +58,29 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
     }
 
     if (message_type === "run_multiple_cells") {
+        //@ts-ignore
+        await window.jl_wasm.ready
+
         let [new_notebook, changes, inverseChanges] = produceWithPatches(backend_notebook, (notebook) => {
             const { cells } = body
             cells.forEach((cell_id) => {
                 const { code } = notebook.cell_inputs[cell_id]
 
+                const start_time = Date.now()
+
+                const result_ptr = window.jl_wasm.eval_jl(code)
+                const repred = window.jl_wasm.std.repr(result_ptr)
+
                 notebook.cell_results[cell_id] = {
                     queued: false,
                     running: false,
-                    runtime: null,
+                    runtime: 1e6 * (Date.now() - start_time),
                     errored: false,
                     output: {
-                        body: `<script type=module>${code}</script>`,
+                        body: repred,
                         persist_js_state: false,
                         last_run_timestamp: Date.now(),
-                        mime: "text/html",
+                        mime: "text/plain",
                         rootassignee: null,
                     },
                 }

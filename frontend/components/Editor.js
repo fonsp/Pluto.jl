@@ -3,7 +3,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 // import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
-import { create_pluto_connection, resolvable_promise } from "../common/JSConnection.js"
+import { create_pluto_connection, resolvable_promise } from "../common/WASMConnection.js"
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -139,6 +139,7 @@ export class Editor extends Component {
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             connected: false,
             initializing: true,
+            loading_wasm: true,
             moving_file: false,
             scroller: {
                 up: false,
@@ -764,6 +765,13 @@ export class Editor extends Component {
                 // and don't prevent the unload
             }
         })
+
+        //@ts-ignore
+        window.jl_wasm.ready.then(() => {
+            this.setState({
+                loading_wasm: false,
+            })
+        })
     }
 
     componentDidUpdate(old_props, old_state) {
@@ -781,7 +789,9 @@ export class Editor extends Component {
         document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
-        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
+        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file || this.state.loading_wasm)
+        document.body.classList.toggle("wasm", true)
+
         if (this.state.connected) {
             // @ts-ignore
             document.querySelector("meta[name=theme-color]").content = "#fff"

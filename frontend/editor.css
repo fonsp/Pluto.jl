@@ -641,6 +641,9 @@ nav:after {
 body.loading > header > nav:after {
     content: "Loading...";
 }
+body.loading.wasm > header > nav:after {
+    content: "Loading WASM...";
+}
 body.disconnected > header > nav:after {
     content: "Reconnecting...";
 }
