@@ -239,6 +239,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 // Insert returned element
                 if (result instanceof Element && result.nodeType === Node.ELEMENT_NODE) {
                     node.parentElement.insertBefore(result, node)
+                } else if (result != null) {
+                    node.parentElement.insertBefore(observablehq_for_cells.html`<code>${result}</code>`, node)
                 }
             } catch (err) {
                 console.error("Couldn't execute script:", node)
