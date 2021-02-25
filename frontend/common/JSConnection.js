@@ -27,8 +27,7 @@ let backend_notebook = null
 const handle_message = async (on_unrequested_update, message_type, body = {}, metadata = {}, no_broadcast = true) => {
     // if(metadata.notebook_id != null && )
 
-    console.log(message_type, body, metadata)
-    console.log(backend_notebook)
+    // console.log(message_type, body, metadata)
     if (message_type === "update_notebook") {
         let return_patches
 
@@ -46,7 +45,7 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
             return_patches = body.updates
         }
 
-        console.log(return_patches)
+        // console.log(return_patches)
 
         return {
             message: {
@@ -81,7 +80,6 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
         })
         backend_notebook = new_notebook
 
-        console.log(changes)
         on_unrequested_update({
             notebook_id: backend_notebook.notebook_id,
             type: "notebook_diff",
