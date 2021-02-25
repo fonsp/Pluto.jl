@@ -432,19 +432,53 @@ if (Blob.prototype.arrayBuffer == null) {
         return new Response(this).arrayBuffer();
     };
 }
-const initial_notebook = ()=>({
+const uuidv4 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c2)=>(c2 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c2 / 4).toString(16)
+    )
+;
+const initial_notebook = ()=>{
+    const Cell = (code, code_folded)=>({
+            cell_id: uuidv4(),
+            code: code.trim(),
+            code_folded
+        })
+    ;
+    const cells = [
+        Cell(`// hello!\nvar language = "JavaScript"\n\nreturn html\`\n<h1>Welcome to <em>\${language}</em>?</h1>\n<p>This version of Pluto runs all code in your browser, by wrapping it in a script block. You need to use <code>return</code> to show output.</p>\n\n<h4>This is a first step towards the WASM backend!</h4>\n\``, true),
+        Cell(`\nreturn 1 + 1`, false),
+        Cell(`\nreturn html\`<b>Wow!</b>\``, false),
+        Cell(`\n    \nconst {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")\nconfetti()`, false), 
+    ];
+    return {
         notebook_id: "f7636209-a0e6-45a7-bdd5-f9038598a085",
         path: "hello.js",
         shortpath: "hello",
         in_temp_dir: true,
-        cell_inputs: {
-        },
+        cell_inputs: Object.fromEntries(cells.map((c2)=>[
+                c2.cell_id,
+                c2
+            ]
+        )),
         cell_results: {
         },
-        cell_order: []
+        cell_order: cells.map((c2)=>c2.cell_id
+        )
+    };
+};
+let backend_notebook = null;
+const cell_result_data = (body = "")=>({
+        queued: false,
+        running: false,
+        runtime: null,
+        errored: false,
+        output: {
+            body: body,
+            persist_js_state: false,
+            last_run_timestamp: Date.now(),
+            mime: "text/html",
+            rootassignee: null
+        }
     })
 ;
-let backend_notebook = null;
 function n1(n2) {
     for(var t1 = arguments.length, r1 = Array(t1 > 1 ? t1 - 1 : 0), e1 = 1; e1 < t1; e1++)r1[e1 - 1] = arguments[e1];
     if ("production" !== process.env.NODE_ENV) {
@@ -1339,6 +1373,16 @@ const handle_message = async (on_unrequested_update, message_type, body = {
                     value: backend_notebook
                 }, 
             ];
+            on_unrequested_update({
+                notebook_id: backend_notebook.notebook_id,
+                type: "notebook_diff",
+                message: {
+                    patches: return_patches
+                }
+            });
+            handle_message(on_unrequested_update, "run_multiple_cells", {
+                cells: backend_notebook.cell_order
+            });
         } else {
             backend_notebook = applyPatches(backend_notebook, body.updates);
             return_patches = body.updates;
@@ -1353,34 +1397,25 @@ const handle_message = async (on_unrequested_update, message_type, body = {
         };
     }
     if (message_type === "run_multiple_cells") {
-        let [new_notebook, changes, inverseChanges] = fn(backend_notebook, (notebook)=>{
-            const { cells  } = body;
-            cells.forEach((cell_id)=>{
+        const { cells  } = body;
+        update_notebook1(on_unrequested_update, (notebook)=>{
+            for (const cell_id of cells){
                 const { code  } = notebook.cell_inputs[cell_id];
-                notebook.cell_results[cell_id] = {
-                    queued: false,
-                    running: false,
-                    runtime: null,
-                    errored: false,
-                    output: {
-                        body: `<script type=module>${code}</script>`,
-                        persist_js_state: false,
-                        last_run_timestamp: Date.now(),
-                        mime: "text/html",
-                        rootassignee: null
-                    }
-                };
-            });
-        });
-        backend_notebook = new_notebook;
-        on_unrequested_update({
-            notebook_id: backend_notebook.notebook_id,
-            type: "notebook_diff",
-            message: {
-                patches: changes
+                notebook.cell_results[cell_id] = cell_result_data(`<script id="something">${code}</script>`);
             }
         });
     }
+};
+const update_notebook1 = async (on_unrequested_update, mutator_fn)=>{
+    let [new_notebook, changes, inverseChanges] = fn(backend_notebook, mutator_fn);
+    backend_notebook = new_notebook;
+    await on_unrequested_update({
+        notebook_id: backend_notebook.notebook_id,
+        type: "notebook_diff",
+        message: {
+            patches: changes
+        }
+    });
 };
 const get_unique_short_id = ()=>crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
 ;
@@ -5566,7 +5601,7 @@ const Notebook = ({ is_initializing , notebook , selected_cells , cell_inputs_lo
     let pluto_actions = Q1(PlutoContext);
     $1(()=>{
         if (notebook.cell_order.length === 0 && !is_initializing) {
-            pluto_actions.add_remote_cell_at(0, `// hello!\nvar language = "JavaScript"\n\nconst {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")\nconfetti()\n\nreturn html\`\n<h1>Welcome to <em>\${language}</em>?</h1>\n<p>This version of Pluto runs all code in your browser, by wrapping it in a script block. You need to use <code>return</code> to show output.</p>\n\n<h4>This is a first step towards the WASM backend!</h4>\n\``);
+            pluto_actions.add_remote_cell_at(0, "");
         }
     }, [
         is_initializing,
@@ -6231,7 +6266,7 @@ const handle_log = ({ level , msg , file , line , kwargs  }, filename)=>{
 };
 const default_path = "...";
 let pending_local_updates = 0;
-const uuidv4 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c8)=>(c8 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c8 / 4).toString(16)
+const uuidv41 = ()=>"10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c8)=>(c8 ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c8 / 4).toString(16)
     )
 ;
 function serialize_cells(cells) {
@@ -6326,7 +6361,7 @@ class Editor extends d4 {
             add_deserialized_cells: async (data, index)=>{
                 let new_codes = deserialize_cells(data);
                 let new_cells = new_codes.map((code)=>({
-                        cell_id: uuidv4(),
+                        cell_id: uuidv41(),
                         code: code,
                         code_folded: false
                     })
@@ -6341,7 +6376,7 @@ class Editor extends d4 {
                         state.last_created_cell = new_cells[0]?.cell_id;
                     }), resolve)
                 );
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     for (const cell of new_cells){
                         notebook.cell_inputs[cell.cell_id] = {
                             ...cell,
@@ -6388,7 +6423,7 @@ class Editor extends d4 {
                 );
                 const cells_to_add = parts.map((code)=>{
                     return {
-                        cell_id: uuidv4(),
+                        cell_id: uuidv41(),
                         code: code,
                         code_folded: false
                     };
@@ -6398,7 +6433,7 @@ class Editor extends d4 {
                         state.cell_inputs_local[cell1.cell_id] = cell1;
                     }
                 }));
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     delete notebook.cell_inputs[cell_id];
                     for (let cell1 of cells_to_add){
                         notebook.cell_inputs[cell1.cell_id] = cell1;
@@ -6426,7 +6461,7 @@ class Editor extends d4 {
                 }, false);
             },
             move_remote_cells: (cell_ids, new_index)=>{
-                update_notebook((notebook)=>{
+                update_notebook2((notebook)=>{
                     let before = notebook.cell_order.slice(0, new_index).filter((x3)=>!cell_ids.includes(x3)
                     );
                     let after = notebook.cell_order.slice(new_index, Infinity).filter((x3)=>!cell_ids.includes(x3)
@@ -6439,11 +6474,11 @@ class Editor extends d4 {
                 });
             },
             add_remote_cell_at: async (index, code = "")=>{
-                let id = uuidv4();
+                let id = uuidv41();
                 this.setState({
                     last_created_cell: id
                 });
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
@@ -6485,7 +6520,7 @@ class Editor extends d4 {
                                 };
                             })
                         });
-                        await update_notebook((notebook)=>{
+                        await update_notebook2((notebook)=>{
                             for (let cell_id of cell_ids){
                                 delete notebook.cell_inputs[cell_id];
                             }
@@ -6506,7 +6541,7 @@ class Editor extends d4 {
                         last_created_cell: cell_id
                     });
                 }
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     notebook.cell_inputs[cell_id].code_folded = newFolded;
                 });
             },
@@ -6519,7 +6554,7 @@ class Editor extends d4 {
             set_and_run_multiple: async (cell_ids)=>{
                 if (cell_ids.length > 0) {
                     this.counter_statistics.numEvals++;
-                    await update_notebook((notebook)=>{
+                    await update_notebook2((notebook)=>{
                         for (let cell_id of cell_ids){
                             if (this.state.cell_inputs_local[cell_id]) {
                                 notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code;
@@ -6543,7 +6578,7 @@ class Editor extends d4 {
             },
             set_bond: async (symbol, value, is_first_value)=>{
                 this.counter_statistics.numBondSets++;
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     notebook.bonds[symbol] = {
                         value: value
                     };
@@ -6661,7 +6696,7 @@ class Editor extends d4 {
             ) && !this.state.update_is_ongoing
         ;
         console.log("asdf");
-        let update_notebook = async (mutate_fn)=>{
+        let update_notebook2 = async (mutate_fn)=>{
             let [new_notebook, changes, inverseChanges] = fn(this.state.notebook, (notebook)=>{
                 mutate_fn(notebook);
             });
@@ -6719,7 +6754,7 @@ class Editor extends d4 {
                 });
             }
         };
-        this.update_notebook = update_notebook;
+        this.update_notebook = update_notebook2;
         this.submit_file_change = async (new_path, reset_cm_value)=>{
             const old_path = this.state.notebook.path;
             if (old_path === new_path) {
@@ -6734,7 +6769,7 @@ class Editor extends d4 {
                 moving_file: true
             });
             try {
-                await update_notebook((notebook)=>{
+                await update_notebook2((notebook)=>{
                     notebook.in_temp_dir = false;
                     notebook.path = new_path;
                 });
