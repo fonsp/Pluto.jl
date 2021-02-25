@@ -460,8 +460,17 @@ export class Editor extends Component {
                         if (message.patches.length !== 0) {
                             this.setState(
                                 immer((state) => {
-                                    let new_notebook = applyPatches(state.notebook, message.patches)
-
+                                    let new_notebook
+                                    try {
+                                        new_notebook = applyPatches(state.notebook, message.patches)
+                                    } catch (e) {
+                                        alert(
+                                            "An error occured, please refresh your browser! If it presists please open an issue @ https://github.com/fonsp/Pluto.jl/issues"
+                                        )
+                                        console.error(e, "while applying", JSON.stringify(message.patches, null, 1))
+                                        // TODO: Request the whole state again
+                                        return
+                                    }
                                     if (DEBUG_DIFFING) {
                                         console.group("Update!")
                                         for (let patch of message.patches) {

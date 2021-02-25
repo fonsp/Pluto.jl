@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.20
+# v0.12.21
 
 using Markdown
 using InteractiveUtils
@@ -39,6 +39,30 @@ dict_2 = Dict{String,Any}(
 		"d" => 99,
 		"🏝" => "👍",
 	),
+);
+
+# ╔═╡ 472f38db-eeb7-4c48-8968-92e4e628d7b7
+dict_11 = Dict{String,Any}(
+	"a" => 1,
+	"b" => Dict(
+		"c" => [3,4],
+		"d" => 99,
+		"missing" => nothing,
+		"Cell-7" => nothing,
+	),
+	"e" => "hello!"
+);
+
+# ╔═╡ 15666df9-fb89-447e-a58f-471788853182
+dict_12 = Dict{String,Any}(
+	"a" => 1,
+	"b" => Dict(
+		"c" => [3,4],
+		"d" => 99,
+		"missing" => Dict{String, Any}("a" => ["ARRAY OF A"]),
+		"Cell-7" => Dict("a" => Dict{String, Vector{Any}}("a" => ["ARRAY OF A"])),
+	),
+	"e" => "hello!"
 );
 
 # ╔═╡ 9d2c07d9-16a9-4b9f-a375-2adb6e5b907a
@@ -224,22 +248,10 @@ end
 
 # ╔═╡ 5e360fcd-9943-4a17-9672-f1fded2f7e3a
 function diff(old::T, new::T) where T
-	try
-		if ismissing(old) || ismissing(new)
-			JSONPatch[ReplacePatch([], new)]
-		elseif old == new
-			NoChanges
-		else
-			JSONPatch[ReplacePatch([], new)]
-		end
-	catch
-		# if anything goes wrong, do the Update
-		# required for compatibility with Julia <= 1.4
-		if VERSION > v"1.4"
-			rethrow()
-		else
-			JSONPatch[ReplacePatch([], new)]
-		end
+	if old == new
+		NoChanges
+	else
+		JSONPatch[ReplacePatch([], new)]
 	end
 end
 
@@ -297,19 +309,22 @@ function diff(o1, o2)
 end
 
 # ╔═╡ b8c58aa4-c24d-48a3-b2a8-7c01d50a3349
-function diff(o1::Union{Nothing, Missing}, o2)
+function diff(o1::Nothing, o2)
 	JSONPatch[AddPatch([], o2)]
 end
 
 # ╔═╡ 5ab390f9-3b0c-4978-9e21-2aaa61db2ce4
-function diff(o1, o2::Union{Nothing, Missing})
+function diff(o1, o2::Nothing)
 	JSONPatch[RemovePatch([])]
 end
 
 # ╔═╡ 09f53db0-21ae-490b-86b5-414eba403d57
-function diff(o1::Union{Nothing, Missing}, o2::Union{Nothing, Missing})
+function diff(o1::Nothing, o2::Nothing)
 	NoChanges
 end
+
+# ╔═╡ 7a6ced08-e782-441b-9407-270f697c9605
+diff(dict_11, dict_12)
 
 # ╔═╡ 7ca087b8-73ac-49ea-9c5a-2971f0da491f
 example_patches = diff(dict_1, dict_2)
@@ -1039,6 +1054,9 @@ end
 # ╟─49fc1f97-3b8f-4297-94e5-2e24c001d35c
 # ╠═d8e73b90-24c5-4e50-830b-b1dbe6224c8e
 # ╠═19646596-b35b-44fa-bfcf-891f9ffb748c
+# ╠═472f38db-eeb7-4c48-8968-92e4e628d7b7
+# ╠═15666df9-fb89-447e-a58f-471788853182
+# ╠═7a6ced08-e782-441b-9407-270f697c9605
 # ╠═7ca087b8-73ac-49ea-9c5a-2971f0da491f
 # ╟─9d2c07d9-16a9-4b9f-a375-2adb6e5b907a
 # ╠═e65d483a-4c13-49ba-bff1-1d54de78f534

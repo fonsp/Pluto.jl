@@ -86,6 +86,8 @@ Firebasey.use_triple_equals_for_arrays[] = true
 # - cell_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
+# - cell_result > * > referenced_cells > * > 
+# - cell_result > * > dependent_cells > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -106,8 +108,8 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "referenced_cells" => jsprepare_probably_missing(cell.referenced_cells),
-                "dependent_cells" => jsprepare_probably_missing(cell.dependent_cells),
+                "referenced_cells" => jsprepare_probably_missing(cell.referenced_cells, Dict()),
+                "dependent_cells" => jsprepare_probably_missing(cell.dependent_cells, Dict()),
                 "precedence_heuristic" => jsprepare_probably_missing(cell.precedence_heuristic),
                 "runtime" => jsprepare_probably_missing(cell.runtime),
                 "output" => Dict(                
@@ -127,8 +129,8 @@ function notebook_to_js(notebook::Notebook)
     )
 end
 
-function jsprepare_probably_missing(val)
-    ismissing(val) ? nothing : val
+function jsprepare_probably_missing(val, default=nothing)
+    ismissing(val) ? default : val
 end
 
 function jsprepare_probably_missing(val::Dict{Symbol, Vector{UUID}})
@@ -139,7 +141,7 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-
+const i = Ref(0)
 """
 Update the local state of all clients connected to this notebook.
 """
@@ -156,7 +158,9 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
             is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
             if !isempty(patches) || is_response
+                i[] += 1
                 response = Dict(
+                    :id => i[],
                     :patches => patches_as_dicts,
                     :response => is_response ? commentary : nothing
                 )
