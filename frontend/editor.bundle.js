@@ -5651,7 +5651,7 @@ const Notebook = ({ is_initializing , notebook , selected_cells , cell_inputs_lo
     let pluto_actions = Q1(PlutoContext);
     $1(()=>{
         if (notebook.cell_order.length === 0 && !is_initializing) {
-            pluto_actions.add_remote_cell_at(0, `# hello from WASM!\n\nsqrt.(1:10)`);
+            pluto_actions.add_remote_cell_at(0, "");
         }
     }, [
         is_initializing,
