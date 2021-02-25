@@ -22,7 +22,7 @@ const initial_notebook = () => {
         Cell(
             `html"<h1>Welcome to <em>WebAssembly</em>!</h1>
 
-<p>This is a first demo of (non-reactive) Pluto with a WASM backend! The Julia code in this notebook is executed <em>entirely</em> inside your web browser.</p>"`,
+<p>This is a first demo of (non-reactive) Pluto with a WASM backend! The Julia code in this notebook was executed <em>entirely</em> inside your web browser.</p>"`,
             true
         ),
         Cell(
