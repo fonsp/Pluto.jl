@@ -42,6 +42,36 @@ extrema(1:100)`,
 sprint(dump, Meta.parse("x = y + 123")) |> Text`,
             false
         ),
+        Cell(
+            `
+plot(x, y) = """
+<script src="https://cdn.plot.ly/plotly-1.58.0.min.js"></script>
+
+<script>
+    const container = html\`<div style="width: 100%;"></div>\`
+
+    Plotly.newPlot( container, [{
+        x: $(JSON.json(x)),
+        y: $(JSON.json(y)),
+    }], {
+        margin: { t: 0 } 
+    })
+
+    return container
+</script>
+""" |> HTML
+`,
+            false
+        ),
+        Cell(
+            `
+let
+    t = 1:100
+    plot(t, sqrt.(t))
+end
+`,
+            false
+        ),
     ]
 
     return {
@@ -140,8 +170,12 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
 
                 const start_time = Date.now()
 
+                let ran_code = false
+
                 try {
                     const result_ptr = window.jl_wasm.eval_jl(code)
+
+                    ran_code = true
 
                     const html_showable = window.jl_wasm.std.html_showable(result_ptr)
 
@@ -161,7 +195,7 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
                         },
                     }
                 } catch (e) {
-                    console.error("Failed to run code", e)
+                    console.error(ran_code ? "Failed to show object" : "Failed to run code", e)
                     notebook.cell_results[cell_id] = {
                         queued: false,
                         running: false,
