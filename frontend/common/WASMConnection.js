@@ -11,18 +11,66 @@ const uuidv4 = () =>
     //@ts-ignore
     "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16))
 
-const initial_notebook = () => ({
-    notebook_id: "f7636209-a0e6-45a7-bdd5-f9038598a085",
-    path: "hello.js",
-    shortpath: "hello",
-    in_temp_dir: true,
-    cell_inputs: {},
-    cell_results: {},
-    cell_order: [],
-})
+const initial_notebook = () => {
+    const Cell = (code, code_folded) => ({
+        cell_id: uuidv4(),
+        code: code.trim(),
+        code_folded,
+    })
+
+    const cells = [
+        Cell(
+            `html"<h1>Welcome to <em>WebAssembly</em>!</h1>
+
+<p>This is a first demo of Pluto with a WASM backend!</p>"`,
+            true
+        ),
+        Cell(
+            `
+# hello from WASM!
+
+sqrt.(1:10)`,
+            false
+        ),
+        Cell(
+            `
+extrema(1:100)`,
+            false
+        ),
+        Cell(
+            `
+sprint(dump, Meta.parse("x = y + 123")) |> Text`,
+            false
+        ),
+    ]
+
+    return {
+        notebook_id: "f7636209-a0e6-45a7-bdd5-f9038598a085",
+        path: "hello.js",
+        shortpath: "hello",
+        in_temp_dir: true,
+        cell_inputs: Object.fromEntries(cells.map((c) => [c.cell_id, c])),
+        cell_results: {},
+        cell_order: cells.map((c) => c.cell_id),
+    }
+}
 // let last_known_state = initial_notebook()
 // const first_id = uuidv4()
 let backend_notebook = null
+
+const cell_result_data = () => ({
+    queued: false,
+    running: false,
+    runtime: null,
+    errored: false,
+    output: {
+        body: "",
+        persist_js_state: false,
+        last_run_timestamp: Date.now(),
+        mime: "text/plain",
+        rootassignee: null,
+    },
+})
 
 const handle_message = async (on_unrequested_update, message_type, body = {}, metadata = {}, no_broadcast = true) => {
     // if(metadata.notebook_id != null && )
@@ -32,6 +80,7 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
         let return_patches
 
         if (backend_notebook == null) {
+            // this means that the frontend is connecting for the first time, we send it our backend notebook
             backend_notebook = initial_notebook()
             return_patches = [
                 {
@@ -40,12 +89,21 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
                     value: backend_notebook,
                 },
             ]
+
+            on_unrequested_update({
+                notebook_id: backend_notebook.notebook_id,
+                type: "notebook_diff",
+                message: {
+                    patches: return_patches,
+                },
+            })
+
+            // run all cells
+            handle_message(on_unrequested_update, "run_multiple_cells", { cells: backend_notebook.cell_order })
         } else {
             backend_notebook = applyPatches(backend_notebook, body.updates)
             return_patches = body.updates
         }
-
-        // console.log(return_patches)
 
         return {
             message: {
@@ -61,43 +119,84 @@ const handle_message = async (on_unrequested_update, message_type, body = {}, me
         //@ts-ignore
         await window.jl_wasm.ready
 
-        let [new_notebook, changes, inverseChanges] = produceWithPatches(backend_notebook, (notebook) => {
-            const { cells } = body
-            cells.forEach((cell_id) => {
+        const { cells } = body
+
+        update_notebook(on_unrequested_update, (notebook) => {
+            for (const cell_id of cells) {
+                notebook.cell_results[cell_id] = {
+                    ...(notebook.cell_results[cell_id] ?? cell_result_data()),
+                    queued: true,
+                }
+            }
+        })
+
+        await new Promise((r) => setTimeout(r, 10))
+
+        for (const cell_id of cells) {
+            update_notebook(on_unrequested_update, (notebook) => {
+                // run cell
+
                 const { code } = notebook.cell_inputs[cell_id]
 
                 const start_time = Date.now()
 
-                const result_ptr = window.jl_wasm.eval_jl(code)
-                const repred = window.jl_wasm.std.repr(result_ptr)
+                try {
+                    const result_ptr = window.jl_wasm.eval_jl(code)
 
-                notebook.cell_results[cell_id] = {
-                    queued: false,
-                    running: false,
-                    runtime: 1e6 * (Date.now() - start_time),
-                    errored: false,
-                    output: {
-                        body: repred,
-                        persist_js_state: false,
-                        last_run_timestamp: Date.now(),
-                        mime: "text/plain",
-                        rootassignee: null,
-                    },
+                    const html_showable = window.jl_wasm.std.html_showable(result_ptr)
+
+                    const repred = html_showable ? window.jl_wasm.std.repr_html(result_ptr) : window.jl_wasm.std.repr(result_ptr)
+
+                    notebook.cell_results[cell_id] = {
+                        queued: false,
+                        running: false,
+                        runtime: 1e6 * (Date.now() - start_time),
+                        errored: false,
+                        output: {
+                            body: repred,
+                            persist_js_state: false,
+                            last_run_timestamp: Date.now(),
+                            mime: html_showable ? "text/html" : "text/plain",
+                            rootassignee: null,
+                        },
+                    }
+                } catch (e) {
+                    console.error("Failed to run code", e)
+                    notebook.cell_results[cell_id] = {
+                        queued: false,
+                        running: false,
+                        runtime: 1e6 * (Date.now() - start_time),
+                        errored: true,
+                        output: {
+                            body: "Error! There might be more info in the JS console",
+                            persist_js_state: false,
+                            last_run_timestamp: Date.now(),
+                            mime: "text/plain",
+                            rootassignee: null,
+                        },
+                    }
                 }
             })
-        })
-        backend_notebook = new_notebook
 
-        on_unrequested_update({
-            notebook_id: backend_notebook.notebook_id,
-            type: "notebook_diff",
-            message: {
-                patches: changes,
-            },
-        })
+            await new Promise((r) => setTimeout(r, 10))
+        }
     }
 
     // await new Promise(() => {})
+}
+
+const update_notebook = async (on_unrequested_update, mutator_fn) => {
+    let [new_notebook, changes, inverseChanges] = produceWithPatches(backend_notebook, mutator_fn)
+
+    backend_notebook = new_notebook
+
+    await on_unrequested_update({
+        notebook_id: backend_notebook.notebook_id,
+        type: "notebook_diff",
+        message: {
+            patches: changes,
+        },
+    })
 }
 
 /**

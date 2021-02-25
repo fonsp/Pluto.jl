@@ -6,7 +6,11 @@ const wasm_backend_ready = new Promise((r) => {
 })
 
 const init_std = () => {
-    std["repr"] = register_jl_function(`x->(buf = IOBuffer(); show(buf, MIME"text/plain"(), x); String(take!(buf)))`)
+    std["repr"] = register_jl_function(`x->sprint(show, MIME"text/plain"(), x)`)
+    std["repr_html"] = register_jl_function(`x->sprint(show, MIME"text/html"(), x)`)
+    std["html_showable"] = register_jl_function(`x->showable(MIME"text/html"(), x)`, {
+        output: "bool",
+    })
 }
 
 var Module = {
@@ -63,6 +67,10 @@ window.onerror = function (event) {
 Module["locateFile"] = function (file, prefix) {
     // var root = "https://fonsp-julia-wasm-build.netlify.app/"
     var root = "https://keno.github.io/julia-wasm-build/"
+
+    if (window.location.host === "localhost:3366") {
+        root = "http://localhost:3377/"
+    }
     return new URL(file, root).href
 }
 
@@ -90,17 +98,22 @@ const eval_jl = (input) => {
     return new Proxy({ ptr: result }, Module.JlProxy)
 }
 
-const register_jl_function = (code) => {
-    code_str_ptr = Module._malloc(code.length + 1)
+const register_jl_function = (code, options = {}) => {
+    const { output = "string" } = options
+
+    let code_str_ptr = Module._malloc(code.length + 1)
     Module.stringToUTF8(code, code_str_ptr, code.length + 1)
-    function_handle = Module._jl_eval_string(code_str_ptr)
+    let function_handle = Module._jl_eval_string(code_str_ptr)
 
     return (arg) => {
-        arg_handle = Module.JlProxy.getPtr(arg)
+        let arg_handle = Module.JlProxy.getPtr(arg)
 
-        str = Module._jl_call1(function_handle, arg_handle)
-        output = UTF8ToString(Module._jl_string_ptr(str), 4096)
-        return output
+        let result_handle = Module._jl_call1(function_handle, arg_handle)
+        return output === "string"
+            ? UTF8ToString(Module._jl_string_ptr(result_handle), 4096)
+            : output === "bool"
+            ? !!Module._jl_unbox_bool(result_handle)
+            : undefined
     }
 }
 
