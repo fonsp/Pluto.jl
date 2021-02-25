@@ -448,7 +448,8 @@ const initial_notebook = ()=>{
         Cell(`\nextrema(1:100)`, false),
         Cell(`\nsprint(dump, Meta.parse("x = y + 123")) |> Text`, false),
         Cell(`\nplot(x, y) = """\n<script src="https://cdn.plot.ly/plotly-1.58.0.min.js"></script>\n\n<script>\n    const container = html\`<div style="width: 100%;"></div>\`\n\n    Plotly.newPlot( container, [{\n        x: $(JSON.json(x)),\n        y: $(JSON.json(y)),\n    }], {\n        margin: { t: 0 } \n    })\n\n    return container\n</script>\n""" |> HTML\n`, false),
-        Cell(`\nlet\n    t = 1:100\n    plot(t, sqrt.(t))\nend\n`, false), 
+        Cell(`\nlet\n    t = 1:100\n    plot(t, sqrt.(t))\nend\n`, false),
+        Cell(`\nhtml"""\n<script>\nconst {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")\nconfetti()\n</script>\n"""\n`, false), 
     ];
     return {
         notebook_id: "f7636209-a0e6-45a7-bdd5-f9038598a085",

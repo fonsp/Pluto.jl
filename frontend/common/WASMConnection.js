@@ -72,6 +72,17 @@ end
 `,
             false
         ),
+        Cell(
+            `
+html"""
+<script>
+const {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")
+confetti()
+</script>
+"""
+`,
+            false
+        ),
     ]
 
     return {
