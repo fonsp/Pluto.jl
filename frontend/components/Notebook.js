@@ -109,7 +109,7 @@ export const Notebook = ({
                 `// hello!
 var language = "JavaScript"
 
-const {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti")
+const {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti@1")
 confetti()
 
 return html\`
