@@ -110,7 +110,7 @@ export const Notebook = ({
 var language = "JavaScript"
 
 return html\`
-<h1>Welcome to <em>\${language}</em>!</h1>
+<h1>Welcome to <em>\${language}</em>?</h1>
 <p>This version of Pluto runs all code in your browser, by wrapping it in a script block. You need to use <code>return</code> to show output.</p>
 
 <h4>This is a first step towards the WASM backend!</h4>
