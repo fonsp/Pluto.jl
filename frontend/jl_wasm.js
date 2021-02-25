@@ -67,6 +67,7 @@ window.onerror = function (event) {
 Module["locateFile"] = function (file, prefix) {
     // var root = "https://fonsp-julia-wasm-build.netlify.app/"
     var root = "https://keno.github.io/julia-wasm-build/"
+    // var root = "https://mkhj.fra1.cdn.digitaloceanspaces.com/julia-wasm-v2/"
 
     if (window.location.host === "localhost:3366") {
         root = "http://localhost:3377/"
