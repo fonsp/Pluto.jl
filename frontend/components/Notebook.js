@@ -109,6 +109,9 @@ export const Notebook = ({
                 `// hello!
 var language = "JavaScript"
 
+const {default: confetti} = await import("https://cdn.skypack.dev/canvas-confetti")
+confetti()
+
 return html\`
 <h1>Welcome to <em>\${language}</em>?</h1>
 <p>This version of Pluto runs all code in your browser, by wrapping it in a script block. You need to use <code>return</code> to show output.</p>
