@@ -22,7 +22,7 @@ catch
     try
         Pkg.resolve(pkg_ctx)
     catch e
-        @error "Failed to resolve notebook boot environment" exception=(e, catch_backtrace())
+        @error "Failed to resolve notebook boot environment" exception = (e, catch_backtrace())
     end
 end
 try
@@ -37,7 +37,7 @@ try
         Pkg.instantiate(pkg_ctx)
     end
 catch e
-    @error "Failed to instantiate notebook boot environment" exception=(e, catch_backtrace())
+    @error "Failed to instantiate notebook boot environment" exception = (e, catch_backtrace())
 end
 
 
