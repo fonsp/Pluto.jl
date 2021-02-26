@@ -1,6 +1,7 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import JSON
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -46,6 +47,16 @@ function notebook_response(notebook; home_url="./", as_redirect=true)
     else
         HTTP.Response(200, string(notebook.notebook_id))
     end
+end
+
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json")
+    response
+end
+
+function with_cors!(response::HTTP.Response)
+    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    response
 end
 
 """
@@ -201,6 +212,24 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)
+
+    function serve_notebook_value(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(split(query["outputs"], ","))
+
+        # id = UUID(query["id"])
+        notebook = session.notebooks[first(keys(session.notebooks))]
+        topology = notebook.topology
+
+        inputs = JSON.parse(query["inputs"])
+        outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+
+        HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+    end
+    HTTP.@register(router, "GET", "/notebookfile/value", serve_notebook_value)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 

@@ -29,16 +29,21 @@ end
 function get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Set{Symbol})
     assigned = where_assigned(notebook, topology, outputs)
     root_symbols = (x->topology[x].definitions).(upstream_roots(notebook, topology, assigned))
-    to_set = length(root_symbols) > 0 ? reduce(∪, root_symbols) : Set{Symbol}()
+    # to_set = length(root_symbols) > 0 ? reduce(∪, root_symbols) : Set{Symbol}()
     provided_set = keys(inputs)
+    to_set = provided_set
 
     new_values = values(inputs)
     output_cell = where_assigned(notebook, topology, outputs)[1]
 
+    # @info (x->topology[x].definitions).(where_assigned(notebook, notebook.topology, Set{Symbol}(filter(x->(x ∉ provided_set), to_set))))
+
     to_reeval = [
         # Re-evaluate all cells that reference the modified input parameters
-        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
+        # TODO: Change this to a recursive where_referenced down to outputs. Needs to be smarter
+        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...
         # Re-evaluate all input cells that were not provided as parameters
+        # TODO: Uncomment and figure something out to prevent whole notebook from running
         where_assigned(notebook, notebook.topology, Set{Symbol}(filter(x->(x ∉ provided_set), to_set)))...
     ]
 

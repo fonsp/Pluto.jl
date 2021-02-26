@@ -40,11 +40,11 @@ include("./evaluation/Run.jl")
 
 include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
+include("./webserver/REST.jl")
 include("./webserver/Static.jl")
 include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
-include("./webserver/REST.jl")
 
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 @info """\n
