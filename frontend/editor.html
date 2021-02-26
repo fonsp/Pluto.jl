@@ -17,7 +17,6 @@
     <meta name="description" content="Pluto.jl notebooks" />
 
     <script src="common/RegisterSW.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.min.js" defer></script>
@@ -39,7 +38,11 @@
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback and statistics. We DO NOT use Google Analytics, and NO DATA is sent except for data entered in the feedback form and anonymous statistics. See /statistics-info for more details. -->
     <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-app.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-firestore.js" defer></script>
-
+    <script type="module">
+        import {React} from "./imports/Preact.js"
+        window.React = React
+    </script>
+    <script src="imports/react-grid-layout.js" defer></script>
     <script src="editor.js" type="module" defer></script>
     <script src="warn_old_browsers.js"></script>
 

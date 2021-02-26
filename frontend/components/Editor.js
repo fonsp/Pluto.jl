@@ -6,7 +6,7 @@ import { create_pluto_connection, resolvable_promise } from "../common/PlutoConn
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { NotebookMemo as Notebook } from "./Notebook.js"
+import { NotebookMemo as Notebook } from "./GridNotebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
