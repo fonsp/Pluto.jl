@@ -6,7 +6,7 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         Cell(""),
         Cell("md\"a\""),
         Cell("html\"a\""),
-        Cell("md\"a \$b\$\""),
+        Cell("md\"a ``b``\""),
         Cell("""
         let
             x = md"a"
