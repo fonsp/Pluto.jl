@@ -43,6 +43,7 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+    wants_to_interrupt::Bool=false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
