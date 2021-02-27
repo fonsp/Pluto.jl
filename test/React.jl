@@ -1003,10 +1003,12 @@ import Distributed
         end
 
         bad = @elapsed benchmark(2)
-        good = @elapsed benchmark(2)
+        good = 0.01 * @elapsed for i in 1:100
+            benchmark(2)
+        end
 
         update_run!(🍭, notebook, notebook.cells)
-        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
+        @test 0.1 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
         old = notebook.cells[4].output_repr
         setcode(notebook.cells[4], "4.0")
