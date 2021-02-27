@@ -319,6 +319,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(import Pluto.ExpressionExplorer.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
+        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
