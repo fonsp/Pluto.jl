@@ -730,7 +730,8 @@ export class Editor extends Component {
         // })
 
         document.addEventListener("paste", async (e) => {
-            if (!in_textarea_or_input()) {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],

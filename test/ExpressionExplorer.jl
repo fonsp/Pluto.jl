@@ -337,14 +337,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(import Pluto.ExpressionExplorer.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
+        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
         @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
         @test testee(:(@f(x, y = z)), [:x, :z], [], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
-        @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
-        @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
+        # @test_nowarn testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
+        # @enum is tested in test/React.jl instead
         @test testee(:(@gensym a b c), [], [:a, :b, :c], [Symbol("@gensym")], [])
         @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [[:Base, Symbol("@gensym")]], [])
         @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [:A], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [

@@ -14,6 +14,7 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	exits = Cell[]
 	errable = Dict{Cell,ReactivityError}()
 
+	# https://xkcd.com/2407/
 	function dfs(cell::Cell)
 		if cell in exits
 			return
@@ -88,6 +89,16 @@ function where_assigned(notebook::Notebook, topology::NotebookTopology, myself::
 	end
 end
 
+function where_assigned(notebook::Notebook, topology::NotebookTopology, to_compare::Set{Symbol})::Array{Cell,1}
+	filter(notebook.cells) do cell
+		other = topology[cell]
+		!(
+			disjoint(to_compare, other.definitions) &&
+			disjoint(to_compare, other.funcdefs_without_signatures)
+		)
+	end
+end
+
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
 function is_referenced_anywhere(notebook::Notebook, topology::NotebookTopology, sym::Symbol)::Bool
 	any(notebook.cells) do cell
@@ -106,19 +117,31 @@ end
 """Assigns a number to a cell - cells with a lower number might run first. 
 
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
-function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Number
-	if :LOAD_PATH ∈ topology[cell].references
-		# https://github.com/fonsp/Pluto.jl/issues/323
+function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
+	top = topology[cell]
+	if :Pkg ∈ top.definitions
 		1
+	elseif Symbol("Pkg.API.activate") ∈ top.references || 
+		Symbol("Pkg.activate") ∈ top.references ||
+		Symbol("@pkg_str") ∈ top.references
+		2
+	elseif Symbol("Pkg.API.add") ∈ top.references ||
+		Symbol("Pkg.add") ∈ top.references ||
+		Symbol("Pkg.API.develop") ∈ top.references ||
+		Symbol("Pkg.develop") ∈ top.references
+		3
+	elseif :LOAD_PATH ∈ top.references
+		# https://github.com/fonsp/Pluto.jl/issues/323
+		4
 	elseif !isempty(cell.module_usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
-		2
-	elseif :include ∈ topology[cell].references
+		5
+	elseif :include ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
-		3
+		6
 	else
-		4
+		7
 	end
 end
 
@@ -130,6 +153,16 @@ This is used to run these cells first."""
 function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 	# https://github.com/fonsp/Pluto.jl/issues/209
 	isempty(topology[cell].definitions) && isempty(topology[cell].funcdefs_with_signatures) && 
-		length(topology[cell].references) <= 2 && 
-		topology[cell].references ⊆ md_and_friends
+		topology[cell].references ⊆ md_and_friends &&
+		no_loops(ExpressionExplorer.maybe_macroexpand(cell.parsedcode; recursive=true))
 end
+
+function no_loops(ex::Expr)
+	if ex.head ∈ [:while, :for, :comprehension, :generator, :try]
+		false
+	else
+		all(no_loops.(ex.args))
+	end
+end
+
+no_loops(x) = true
