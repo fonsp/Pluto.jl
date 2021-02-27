@@ -1,0 +1,7 @@
+.layout {
+    width: 100%;
+    padding: 1rem;
+}
+.layout pluto-cell {
+    max-height: 97%;
+}

@@ -6,7 +6,7 @@ import { create_pluto_connection, resolvable_promise } from "../common/PlutoConn
 import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { NotebookMemo as Notebook } from "./Notebook.js"
+import { NotebookMemo as Notebook } from "./GridNotebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
 import { SelectionArea } from "./SelectionArea.js"
@@ -119,7 +119,7 @@ const Main = ({ children }) => {
  * }}
  */
 
-export class Editor extends Component {
+export class Dashboard extends Component {
     constructor() {
         super()
 
@@ -769,10 +769,6 @@ export class Editor extends Component {
         window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
-        if (old_state?.notebook?.path !== this.state.notebook.path) {
-            update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
-        }
-
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
@@ -818,34 +814,11 @@ export class Editor extends Component {
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                             </a>
-                            <${FilePicker}
-                                client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
-                                on_submit=${this.submit_file_change}
-                                suggest_new_file=${{
-                                    base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: this.state.notebook.shortpath,
-                                }}
-                                placeholder="Save notebook..."
-                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
-                            />
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
                         </nav>
                     </header>
-                    <${Main}>
-                        <preamble>
-                            <button
-                                onClick=${() => {
-                                    this.actions.set_and_run_all_changed_remote_cells()
-                                }}
-                                class="runallchanged"
-                                title="Save and run all changed cells"
-                            >
-                                <span></span>
-                            </button>
-                        </preamble>
                         <${Notebook}
                             is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
@@ -857,67 +830,6 @@ export class Editor extends Component {
                             disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
                         />
-
-                        <${DropRuler} 
-                            actions=${this.actions}
-                            selected_cells=${this.state.selected_cells} 
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }} 
-                            serialize_selected=${this.serialize_selected}
-                        />
-
-                        <${SelectionArea}
-                            actions=${this.actions}
-                            cell_order=${this.state.notebook.cell_order}
-                            selected_cell_ids=${this.state.selected_cell_ids}
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }}
-                            on_selection=${(selected_cell_ids) => {
-                                // @ts-ignore
-                                if (
-                                    selected_cell_ids.length !== this.state.selected_cells ||
-                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                ) {
-                                    this.setState({
-                                        selected_cells: selected_cell_ids,
-                                    })
-                                }
-                            }}
-                        />
-                    </${Main}>
-                    <${LiveDocs}
-                        desired_doc_query=${this.state.desired_doc_query}
-                        on_update_doc_query=${this.actions.set_doc_query}
-                        notebook=${this.state.notebook}
-                    />
-                    <${UndoDelete}
-                        recently_deleted=${this.state.recently_deleted}
-                        on_click=${() => {
-                            this.update_notebook((notebook) => {
-                                for (let { index, cell } of this.state.recently_deleted) {
-                                    notebook.cell_inputs[cell.cell_id] = cell
-                                    notebook.cell_order = [...notebook.cell_order.slice(0, index), cell.cell_id, ...notebook.cell_order.slice(index, Infinity)]
-                                }
-                            }).then(() => {
-                                this.actions.set_and_run_multiple(this.state.recently_deleted.map(({ cell }) => cell.cell_id))
-                            })
-                        }}
-                    />
-                    <${SlideControls} />
-                    <footer>
-                        <div id="info">
-                            <form id="feedback" action="#" method="post">
-                                <a href="statistics-info">Statistics</a>
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
-                                <span style="flex: 1"></span>
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                                <button>Send</button>
-                            </form>
-                        </div>
-                    </footer>
                 </${PlutoBondsContext.Provider}>
             </${PlutoContext.Provider}>
         `
@@ -925,16 +837,3 @@ export class Editor extends Component {
 }
 
 /* LOCALSTORAGE NOTEBOOKS LIST */
-
-// TODO This is now stored locally, lets store it somewhere central 😈
-export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    const storedString = localStorage.getItem("recent notebooks")
-    const storedList = storedString != null ? JSON.parse(storedString) : []
-    const oldpaths = storedList
-    const newpaths = [recent_path].concat(
-        oldpaths.filter((path) => {
-            return path !== recent_path && path !== also_delete
-        })
-    )
-    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
-}

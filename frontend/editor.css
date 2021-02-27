@@ -746,9 +746,6 @@ pluto-cell.selected > pluto-output {
     opacity: 0.7;
 }
 
-main {
-    cursor: vertical-text;
-}
 pluto-cell {
     cursor: auto;
 }
