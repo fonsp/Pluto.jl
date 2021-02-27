@@ -730,7 +730,8 @@ export class Editor extends Component {
         // })
 
         document.addEventListener("paste", async (e) => {
-            if (!in_textarea_or_input()) {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],
@@ -765,6 +766,7 @@ export class Editor extends Component {
     }
 
     componentDidUpdate(old_props, old_state) {
+        window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
         if (old_state?.notebook?.path !== this.state.notebook.path) {

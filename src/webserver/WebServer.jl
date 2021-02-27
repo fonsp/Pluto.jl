@@ -156,8 +156,11 @@ function run(session::ServerSession)
                             try
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
-
-                                sleep(session.options.server.simulated_lag)
+                                
+                                let
+                                    lag = session.options.server.simulated_lag
+                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                end
 
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
@@ -327,7 +330,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    notebook = if haskey(parentbody, "notebook_id")
+    notebook = if haskey(parentbody, "notebook_id") && parentbody["notebook_id"] !== nothing
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)

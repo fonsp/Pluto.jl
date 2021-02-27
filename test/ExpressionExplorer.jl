@@ -1,5 +1,22 @@
 using Test
 
+
+#= 
+`@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
+Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
+
+# When working on ExpressionExplorer:
+
+- Go to runtests.jl and move `include("ExpressionExplorer.jl")` to the second line, so that they run instantly (after loading the helper functions). Be careful not to commit this change.
+- If you are fixing a `@test_broken`:
+  - uncomment that line if needed
+  - change `@test_broken` to `@test`
+  - remove `verbose=false` at the end of the line
+- If you are fixing something else:
+  - you can add lots of tests! They run super fast, don't worry about duplicates too much
+
+-fons =#
+
 @testset "Explore Expressions" begin
     @testset "Basics" begin
         @test testee(:(a), [:a], [], [], [])
@@ -163,6 +180,9 @@ using Test
         @test testee(:(function f(x) a end; function f(x, y) b end), [], [], [], [
             :f => ([:a, :b], [], [], [])
         ])
+        @test testee(:(function f(x, args...; kwargs...) return [x, y, args..., kwargs...] end), [], [], [], [
+            :f => ([:y], [], [], [])
+        ])
         @test testee(:(f(x, y=a + 1) = x * y * z), [], [], [], [
             :f => ([:z, :a], [], [:*, :+], [])
         ])
@@ -196,7 +216,17 @@ using Test
         @test testee(:((((a, b), c), (d, e)) -> a * b * c * d * e * f), [], [], [], [
             :anon => ([:f], [], [:*], [])
         ])
+        @test testee(:((a...) -> f(a...)), [], [], [], [
+            :anon => ([], [], [:f], [])
+        ])
+        @test testee(:(f = (args...) -> [args..., y]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
+        @test testee(:(f = (x, args...; kwargs...) -> [x, y, args..., kwargs...]), [], [:f], [], [
+            :anon => ([:y], [], [], [])
+        ])
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
+        @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
@@ -247,6 +277,10 @@ using Test
         @test testee(:(f(a::A, ::B, c::C...) = a + c), [], [], [], [
             :f => ([:A, :B, :C], [], [:+], [])
         ])
+
+        @test_broken testee(:((obj::MyType)(x,y) = x + z), [:z], [:MyType], [:+], [], verbose=false)
+        @test_broken testee(:((obj::MyType)() = 1), [], [:MyType], [], [], verbose=false)
+        @test_broken testee(:((obj::MyType)(x, args...; kwargs...) = [x, y, args..., kwargs...]), [:y], [:MyType], [], [], verbose=false)
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
@@ -285,14 +319,15 @@ using Test
         @test testee(:(import Pluto.ExpressionExplorer.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
+        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
         @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
         @test testee(:(@f(x, y = z)), [:x, :z], [], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
-        @test testee(:(@enum a b c), [], [:a, :b, :c], [Symbol("@enum")], [])
-        @test testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
+        # @test_nowarn testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
+        # @enum is tested in test/React.jl instead
         @test testee(:(@gensym a b c), [], [:a, :b, :c], [Symbol("@gensym")], [])
         @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [[:Base, Symbol("@gensym")]], [])
         @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [:A], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
@@ -333,6 +368,8 @@ using Test
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
         @test testee(:("a $(b = c)"), [:c], [:b], [], [])
+        # @test_broken testee(:(`a $b`), [:b], [], [], [])
+        # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
         @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)

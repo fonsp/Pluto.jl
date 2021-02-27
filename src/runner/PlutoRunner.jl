@@ -15,7 +15,6 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import Tables
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
@@ -191,7 +190,7 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
-    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+    result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
@@ -218,6 +217,12 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
             ans, runtime
         end
     end
+
+    if (result isa CapturedException) && (result.ex isa InterruptException)
+        throw(result.ex)
+    end
+    
+    cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
 
@@ -403,6 +408,8 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+    load_Tables_support_if_needed()
+
     extra_items = if showmore === nothing
         tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
     else
@@ -616,7 +623,7 @@ end
 # we write our own function instead of extending Base.showable with our new MIME because:
 # we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
 # but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
-# Baee.showable(m::MIME, x::Plots.Plot)
+# Base.showable(m::MIME, x::Plots.Plot)
 # because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
 pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m, x)
 
@@ -635,11 +642,6 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
-
-
-pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
-pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
-pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
 
 
 # in the next functions you see a `context` argument
@@ -800,78 +802,108 @@ trynameof(x::Any) = Symbol()
 # TABLE VIEWER
 ##
 
-function maptruncated(f::Function, xs, filler, limit; truncate=true)
-    if truncate
-        result = Any[
-            # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-            f(xs[i]) for i in 1:limit
-        ]
-        push!(result, filler)
-        result
-    else
-        Any[f(x) for x in xs]
-    end
-end
+const tables_pkgid = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables")
 
-function table_data(x::Any, io::IOContext)
-    rows = Tables.rows(x)
+# We have a super cool viewer for objects that are a Tables.jl table. To avoid version conflicts, we only load this code after the user (indirectly) loaded the package Tables.jl.
+# This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
+const _load_tables_code = quote
 
-    my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+    const Tables = Base.loaded_modules[tables_pkgid]
 
-    # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
-
-    my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
-    # my_column_limit = table_column_display_limit
-
-    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-    truncate_rows = my_row_limit + 5 < length(rows)
-    truncate_columns = if isempty(rows)
-        false
-    else
-        my_column_limit + 5 < length(first(rows))
-    end
-
-    row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-        format_output_default(el, io)
-    end
-
-    # ugliest code in Pluto:
-
-    # not a map(row) because it needs to be a Vector
-    # not enumerate(rows) because of some silliness
-    # not rows[i] because `getindex` is not guaranteed to exist
-    L = truncate_rows ? my_row_limit : length(rows)
-    row_data = Array{Any,1}(undef, L)
-    for (i, row) in zip(1:L,rows)
-        row_data[i] = (i, row_data_for(row))
-    end
-
-    if truncate_rows
-        push!(row_data, "more")
-        if applicable(lastindex, rows)
-            push!(row_data, (length(rows), row_data_for(last(rows))))
+    function maptruncated(f::Function, xs, filler, limit; truncate=true)
+        if truncate
+            result = Any[
+                # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+                f(xs[i]) for i in 1:limit
+            ]
+            push!(result, filler)
+            result
+        else
+            Any[f(x) for x in xs]
         end
     end
 
-    # TODO: render entire schema by default?
+    function table_data(x::Any, io::IOContext)
+        rows = Tables.rows(x)
 
-    schema = Tables.schema(rows)
-    schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
-        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
-        :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
-    )
+        my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
 
-    Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
-        :schema => schema_data,
-        :rows => row_data,
-    )
+        # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+        my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+        # my_column_limit = table_column_display_limit
+
+        # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+        truncate_rows = my_row_limit + 5 < length(rows)
+        truncate_columns = if isempty(rows)
+            false
+        else
+            my_column_limit + 5 < length(first(rows))
+        end
+
+        row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+            format_output_default(el, io)
+        end
+
+        # ugliest code in Pluto:
+
+        # not a map(row) because it needs to be a Vector
+        # not enumerate(rows) because of some silliness
+        # not rows[i] because `getindex` is not guaranteed to exist
+        L = truncate_rows ? my_row_limit : length(rows)
+        row_data = Array{Any,1}(undef, L)
+        for (i, row) in zip(1:L,rows)
+            row_data[i] = (i, row_data_for(row))
+        end
+
+        if truncate_rows
+            push!(row_data, "more")
+            if applicable(lastindex, rows)
+                push!(row_data, (length(rows), row_data_for(last(rows))))
+            end
+        end
+        
+        # TODO: render entire schema by default?
+
+        schema = Tables.schema(rows)
+        schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
+            :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+            :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+        )
+
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :schema => schema_data,
+            :rows => row_data,
+        )
+    end
+
+
+    pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
+    pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
+    pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+
 end
 
+const _Tables_support_loaded = Ref(false)
 
+function load_Tables_support_if_needed()
+    if !_Tables_support_loaded[] && haskey(Base.loaded_modules, tables_pkgid)
+        load_Tables_support()
+    end
+end
+        
 
-
-
+function load_Tables_support()
+    _Tables_support_loaded[] = true
+    try
+        eval(_load_tables_code)
+        true
+    catch e
+        @error "Failed to load display support for Tables.jl" exception=(e, catch_backtrace())
+        false
+    end
+end
 
 
 
@@ -957,7 +989,7 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
     (final, loc, found)
 end
 
-is_dot_completion(::Union{ModuleCompletion, PropertyCompletion, FieldCompletion}) = true
+is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
 is_dot_completion(::Completion)                                                   = false
 
 """
