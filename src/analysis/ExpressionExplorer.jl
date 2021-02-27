@@ -627,8 +627,16 @@ end
 Is also used for `struct` and `abstract`."
 function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
+        # Handle struct as callables, `(obj::MyType)(a, b) = ...`
+        # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
+        # function MyType(obj, a, b) ...; end
+        funcroot = ex.args[1]
+        if funcroot isa Expr && funcroot.head == :(::)
+            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., ex.args[2:end]...), scopestate)
+        end
+
         # get the function name
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
+        name, symstate = explore_funcdef!(funcroot, scopestate)
         # and explore the function arguments
         return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
 
