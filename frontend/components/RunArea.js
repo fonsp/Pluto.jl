@@ -1,11 +1,12 @@
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { html, useEffect, useMemo, useState } from "../imports/Preact.js"
 
-export const RunArea = ({ runtime, onClick }) => {
+export const RunArea = ({ runtime, onClick, running }) => {
+    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     return html`
         <pluto-runarea>
             <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
-            <span class="runtime">${prettytime(runtime)}</span>
+            <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>
         </pluto-runarea>
     `
 }
