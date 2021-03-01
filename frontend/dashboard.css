@@ -5,3 +5,20 @@
 .layout pluto-cell {
     max-height: 97%;
 }
+.borderThis {
+    border: 3px solid transparent;
+    border-left: 3px solid lightgrey;
+    border-radius: 4px;
+    overflow: hidden;
+    height: 100%;
+    width: 100%;
+}
+.borderThis:hover {
+    border: 3px solid lightgrey;
+}
+
+.layout .react-grid-item > .react-resizable-handle.react-resizable-handle-se {
+    bottom: 8px;
+    right: 8px;
+    cursor: se-resize;
+}

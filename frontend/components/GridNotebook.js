@@ -146,13 +146,13 @@ function CustomGrid({
     disable_input,
     is_first_load,
 }) {
-    const COLS = 12
+    const COLS = 4
     const [layout, setLayout] = useState(() =>
         new Array(notebook.cell_order.length).fill(0).map((x, idx) => {
             return {
                 x: 0,
                 y: idx,
-                w: 6,
+                w: 1,
                 h: 2,
                 i: idx.toString(),
             }
@@ -168,7 +168,7 @@ function CustomGrid({
                     onLayoutChange=${console.log}>
                         ${notebook.cell_order.map((cell_id, idx) => {
                             return html`<div key=${idx}>
-                                <div data-grid=${{ ...layout[idx] }} style="border: 1px solid tomato;padding:1rem;overflow: hidden; height: 100%; width: 100%">
+                                <div data-grid=${{ ...layout[idx] }} class="borderThis">
                                     <${CellMemo}
                                         key=${cell_id}
                                         cell_input=${notebook.cell_inputs[cell_id]}
