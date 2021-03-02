@@ -457,18 +457,22 @@ export class Editor extends Component {
                             console.log("Trying to reset state after failure")
                             this.setState(
                                 immer((state) => {
-                                    state.notebook = applyPatches(
-                                        {
-                                            notebook_id: new URLSearchParams(window.location.search).get("id"),
-                                            path: default_path,
-                                            shortpath: "",
-                                            in_temp_dir: true,
-                                            cell_inputs: {},
-                                            cell_results: {},
-                                            cell_order: [],
-                                        },
-                                        message.patches
-                                    )
+                                    try {
+                                        state.notebook = applyPatches(
+                                            {
+                                                notebook_id: new URLSearchParams(window.location.search).get("id"),
+                                                path: default_path,
+                                                shortpath: "",
+                                                in_temp_dir: true,
+                                                cell_inputs: {},
+                                                cell_results: {},
+                                                cell_order: [],
+                                            },
+                                            message.patches
+                                        )
+                                    } catch (exception) {
+                                        alert("Cannot recover from broken state. Please open an issue!")
+                                    }
                                 })
                             )
                         } else if (message.patches.length !== 0) {
@@ -476,6 +480,8 @@ export class Editor extends Component {
                                 immer((state) => {
                                     let new_notebook
                                     try {
+                                        // To test this, uncomment the line below:
+                                        // if (Math.random() < 0.25) throw new Error("VERY BAD ERROR - will this recover??")
                                         new_notebook = applyPatches(state.notebook, message.patches)
                                     } catch (exception) {
                                         console.error(
@@ -493,6 +499,7 @@ export class Editor extends Component {
                                             },
                                             false
                                         )
+                                        return
                                     }
 
                                     if (DEBUG_DIFFING) {
