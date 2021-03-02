@@ -453,10 +453,47 @@ export class Editor extends Component {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        if (message.patches.length !== 0) {
+                        if (message?.response?.from_reset) {
+                            console.log("Trying to reset state after failure")
                             this.setState(
                                 immer((state) => {
-                                    let new_notebook = applyPatches(state.notebook, message.patches)
+                                    state.notebook = applyPatches(
+                                        {
+                                            notebook_id: new URLSearchParams(window.location.search).get("id"),
+                                            path: default_path,
+                                            shortpath: "",
+                                            in_temp_dir: true,
+                                            cell_inputs: {},
+                                            cell_results: {},
+                                            cell_order: [],
+                                        },
+                                        message.patches
+                                    )
+                                })
+                            )
+                        } else if (message.patches.length !== 0) {
+                            this.setState(
+                                immer((state) => {
+                                    let new_notebook
+                                    try {
+                                        new_notebook = applyPatches(state.notebook, message.patches)
+                                    } catch (exception) {
+                                        console.error(
+                                            `Failed to apply patches.
+                                        This is most likely an error - please report it!:
+                                        `,
+                                            exception
+                                        )
+                                        console.log("Trying to recover: Refetching notebook...")
+                                        this.client.send(
+                                            "reset_notebook",
+                                            {},
+                                            {
+                                                notebook_id: this.state.notebook.notebook_id,
+                                            },
+                                            false
+                                        )
+                                    }
 
                                     if (DEBUG_DIFFING) {
                                         console.group("Update!")
