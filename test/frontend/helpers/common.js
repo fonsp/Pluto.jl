@@ -65,7 +65,8 @@ const dismissVersionDialogs = (page) => {
 
 const failOnError = (page) => {
     page.on("console", async (msg) => {
-        if (msg.type() === "Error" && msg.text().includes("PlutoError")) {
+        if (msg.type() === "error" && msg.text().includes("PlutoError")) {
+            console.error(`Bad PlutoError - Failing\n${msg.text()}`)
             throw new Error("PlutoError encountered. Let's fix this!")
         }
     })
