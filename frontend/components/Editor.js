@@ -485,7 +485,7 @@ export class Editor extends Component {
                                         new_notebook = applyPatches(state.notebook, message.patches)
                                     } catch (exception) {
                                         console.error(
-                                            `Failed to apply patches.
+                                            `PlutoError: StateOutOfSync: Failed to apply patches.
                                         This is most likely an error - please report it!:
                                         `,
                                             exception

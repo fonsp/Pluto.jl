@@ -47,20 +47,34 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
 
 export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(selector)])
 
-export const dismissBeforeUnloadDialogs = (page) => {
+const dismissBeforeUnloadDialogs = (page) => {
     page.on("dialog", async (dialog) => {
         if (dialog.type() === "beforeunload") {
             await dialog.accept()
         }
     })
 }
-export const dismissVersionDialogs = (page) => {
+const dismissVersionDialogs = (page) => {
     page.on("dialog", async (dialog) => {
         if (dialog.message().includes("A new version of Pluto.jl is available! 🎉")) {
             console.info("Ignoring version warning for now (but do remember to update Project.toml!).")
             await dialog.accept()
         }
     })
+}
+
+const failOnError = (page) => {
+    page.on("console", async (msg) => {
+        if (msg.type() === "Error" && msg.text().includes("PlutoError")) {
+            throw new Error("PlutoError encountered. Let's fix this!")
+        }
+    })
+}
+
+export const setupPage = (page) => {
+    failOnError(page)
+    dismissBeforeUnloadDialogs(page)
+    dismissVersionDialogs(page)
 }
 
 export const lastElement = (arr) => arr[arr.length - 1]

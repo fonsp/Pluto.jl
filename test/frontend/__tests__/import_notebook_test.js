@@ -1,10 +1,9 @@
-import { lastElement, dismissBeforeUnloadDialogs, saveScreenshot, getTestScreenshotPath, dismissVersionDialogs } from "../helpers/common"
+import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
 import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
 
 describe("PlutoImportNotebook", () => {
     beforeAll(async () => {
-        dismissBeforeUnloadDialogs(page)
-        dismissVersionDialogs(page)
+        setupPage(page)
         await prewarmPluto(page)
     })
 

@@ -6,6 +6,7 @@ import {
     getTestScreenshotPath,
     waitForContentToBecome,
     dismissVersionDialogs,
+    setupPage,
 } from "../helpers/common"
 import {
     createNewNotebook,
@@ -34,8 +35,7 @@ const manuallyEnterCells = async (page, cells) => {
 
 describe("PlutoNewNotebook", () => {
     beforeAll(async () => {
-        dismissBeforeUnloadDialogs(page)
-        dismissVersionDialogs(page)
+        setupPage(page)
         await prewarmPluto(page)
     })
 
