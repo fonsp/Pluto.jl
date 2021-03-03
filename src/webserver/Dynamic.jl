@@ -1,4 +1,4 @@
-import UUIDs:uuid1
+import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
@@ -8,8 +8,8 @@ const responses = Dict{Symbol,Function}()
 Base.@kwdef struct ClientRequest
     session::ServerSession
     notebook::Union{Nothing,Notebook}
-    body::Any = nothing
-    initiator::Union{Initiator,Nothing} = nothing
+    body::Any=nothing
+    initiator::Union{Initiator,Nothing}=nothing
 end
 
 require_notebook(r::ClientRequest) = if r.notebook === nothing
@@ -120,7 +120,7 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-)
+    )
 end
 
 """
@@ -155,7 +155,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, re
 end
 
 "Like `deepcopy`, but anything onther than `Dict` gets a shallow (reference) copy."
-function deep_enough_copy(d::Dict{A,B}) where {A,B}
+function deep_enough_copy(d::Dict{A,B}) where {A, B}
     Dict{A,B}(
         k => deep_enough_copy(v)
         for (k, v) in d
@@ -180,7 +180,7 @@ const no_changes = Changed[]
 
 
 const effects_of_changed_state = Dict(
-    "path" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    "path" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         newpath = tamepath(patch.value)
         # SessionActions.move(request.session, request.notebook, newpath)
 
@@ -193,9 +193,9 @@ const effects_of_changed_state = Dict(
         end
         return no_changes
     end,
-    "in_temp_dir" => function (; _...) no_changes end,
+    "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
-        Wildcard() => function (cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(cell_id, rest...; request::ClientRequest, patch::Firebasey.JSONPatch)
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
@@ -208,12 +208,12 @@ const effects_of_changed_state = Dict(
             end
         end,
     ),
-    "cell_order" => function (; request::ClientRequest, patch::Firebasey.ReplacePatch)
+    "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.applypatch!(request.notebook, patch)
         [FileChanged]
     end,
     "bonds" => Dict(
-        Wildcard() => function (name; request::ClientRequest, patch::Firebasey.JSONPatch)
+        Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
             set_bond_value_reactive(
@@ -253,7 +253,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         changes = Set{Changed}()
 
         for patch in patches
-                (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
+            (mutator, matches, rest) = trigger_resolver(effects_of_changed_state, patch.path)
             
             current_changes = if isempty(rest) && applicable(mutator, matches...)
                 mutator(matches...; request=🙋, patch=patch)
@@ -279,7 +279,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
     catch ex
-        @error "Update notebook failed"  🙋.body["updates"] exception = (ex, stacktrace(catch_backtrace()))
+        @error "Update notebook failed"  🙋.body["updates"] exception=(ex, stacktrace(catch_backtrace()))
         response = Dict(
             :update_went_well => :👎,
             :why_not => sprint(showerror, ex),
@@ -290,7 +290,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 end
 
 function trigger_resolver(anything, path, values=[])
-	(value = anything, matches = values, rest = path)
+	(value=anything, matches=values, rest=path)
 end
 function trigger_resolver(resolvers::Dict, path, values=[])
 	if isempty(path)
@@ -298,7 +298,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
 	end
 	
 	segment = first(path)
-	rest = path[firstindex(path) + 1:end]
+	rest = path[firstindex(path)+1:end]
 	for (key, resolver) in resolvers
 		if key isa Wildcard
 			continue
@@ -313,7 +313,7 @@ function trigger_resolver(resolvers::Dict, path, values=[])
     else
         throw(BoundsError("failed to match path $(path), possible keys $(keys(resolver))"))
 	end
-        end
+end
 
 
 
