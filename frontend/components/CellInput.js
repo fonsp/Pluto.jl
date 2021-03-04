@@ -443,7 +443,8 @@ export const CellInput = ({
         })
 
         cm.on("paste", (e) => {
-            const topaste = e.clipboardData.getData("text/plain")
+            const topaste = e?.clipboardData?.getData("text/plain")
+            if (!topaste || !topaste?.match) return
             if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 e.codemirrorIgnore = true
             }
