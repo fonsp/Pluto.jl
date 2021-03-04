@@ -449,8 +449,6 @@ export const CellInput = ({
                 e.stopImmediatePropagation()
                 e.stopPropagation()
                 e.preventDefault()
-                cm.codemirrorIgnore = true
-                e.codemirrorIgnore
             }
         })
 
