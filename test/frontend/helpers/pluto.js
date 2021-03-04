@@ -25,11 +25,11 @@ export const createNewNotebook = async (page) => {
 export const importNotebook = async (notebookName) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
-    const artefactsPath = getTemporaryNotebookPath()
-    fs.copyFileSync(notebookPath, artefactsPath)
+    const artifactsPath = getTemporaryNotebookPath()
+    fs.copyFileSync(notebookPath, artifactsPath)
 
     const openFileInputSelector = "pluto-filepicker textarea"
-    await page.type(openFileInputSelector, artefactsPath)
+    await page.type(openFileInputSelector, artifactsPath)
     const openFileButton = "pluto-filepicker button"
     return clickAndWaitForNavigation(page, openFileButton)
 }
