@@ -601,10 +601,16 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
 
     if mime isa MIME"text/plain" && use_tree_viewer_for_struct(x)
         tree_data(x, io), MIME"application/vnd.pluto.tree+object"()
-    elseif mime isa MIME"application/vnd.pluto.tree+object"
-        tree_data(x, IOContext(io, :compact => true)), mime
-    elseif mime isa MIME"application/vnd.pluto.table+object"
-        table_data(x, IOContext(io, :compact => true)), mime
+    elseif mime isa MIME"application/vnd.pluto.tree+object" || mime isa MIME"application/vnd.pluto.table+object"
+        try
+            f = mime isa MIME"application/vnd.pluto.tree+object" ? tree_data : table_data
+            f(x, IOContext(io, :compact => true)), mime
+        catch e
+            @warn "Failed to show value with Pluto viewer" exception=(e, catch_backtrace())
+            mime = MIME"text/plain"()
+            show(io, mime, x)
+            nothing, mime
+        end
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
