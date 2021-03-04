@@ -921,9 +921,13 @@ pluto-trafficlight::after {
     opacity: 0;
 }
 
-/* This class will toggle animation. Other classes will make animation visible with opacity */
+/*
+ * This class will toggle animation.
+ * Other classes will make animation visible with opacity (which is CHEAP?)
+ * 
+ */
 pluto-cell.activate_animation pluto-trafficlight::after {
-    animation: 10s linear 100ms infinite running scrollbackground;
+    animation: 10s linear 0s infinite running scrollbackground;
 }
 
 /* in ascending order of severity: */
@@ -968,14 +972,22 @@ pluto-cell.errored > pluto-trafficlight {
 pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
-    opacity: 0.97;
+    /* [1]
+    Queued, Running, Errored are really fast changing props.
+    We make sure to on-off the gradients with opacity and not toggle the animation
+    (Which is running all this time)
+    Make sure the browser won't skip creating a stacking context
+    https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+    https://www.w3.org/TR/css-color-3/#transparency
+    */
+    opacity: 0.99;
     background-size: 4px var(--patternHeight);
 }
 
 pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
-    opacity: 0.97;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight);
 }
 
@@ -988,14 +1000,14 @@ pluto-cell.queued.errored > pluto-trafficlight::after {
         hsla(0, 70%, 80%, 0.05) 16px
     );
     background-clip: content-box;
-    opacity: 0.97;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
 pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
-    opacity: 0.97;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
