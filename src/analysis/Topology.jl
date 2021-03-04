@@ -148,7 +148,7 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	end
 end
 
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex]
 
 """Does the cell only contain md"..." and html"..."?
 
