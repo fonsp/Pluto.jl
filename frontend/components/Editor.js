@@ -480,13 +480,30 @@ export class Editor extends Component {
                                 immer((state) => {
                                     let new_notebook
                                     try {
-                                        // To test this, uncomment the line below:
-                                        // if (Math.random() < 0.25) throw new Error("VERY BAD ERROR - will this recover??")
+                                        // To test this, uncomment the lines below:
+                                        // if (Math.random() < 0.25)
+                                        //    throw new Error(`Error: [Immer] minified error nr: 15 '${message?.patches?.[0]?.path?.join("/")}'    .`)
                                         new_notebook = applyPatches(state.notebook, message.patches)
+                                        console.log(message.patches)
                                     } catch (exception) {
+                                        const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                        const path_value = _.get(this.state.notebook, failing_path, "Not Found")
+                                        console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                        alert(`PlutoState failed to sync with the browser!
+Please report this: https://github.com/fonsp/Pluto.jl/issues
+adding the info you can find in the JS Console (F12)`)
                                         console.error(
-                                            `PlutoError: StateOutOfSync: Failed to apply patches.
-                                        This is most likely an error - please report it!:
+                                            `
+                                            ########################-Please send these lines-########################
+                                            PlutoError: StateOutOfSync: Failed to apply patches.
+                                            failing path: ${failing_path}
+                                            notebook previous value: ${path_value}
+                                            patch: ${JSON.stringify(
+                                                message?.patches?.find(({ path }) => path.join("") === failing_path),
+                                                null,
+                                                1
+                                            )}
+                                            #######################**************************########################
                                         `,
                                             exception
                                         )

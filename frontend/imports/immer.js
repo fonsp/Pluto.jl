@@ -11,3 +11,4 @@ enablePatches()
 // The solution is to tell immer not to create immutable objects
 
 setAutoFreeze(false)
+window.applyPatches = applyPatches
