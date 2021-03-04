@@ -337,7 +337,36 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(import Pluto.ExpressionExplorer.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
-        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
+        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], []; verbose=false)
+    end
+    @testset "Foreign macros" begin
+        # parameterizedfunctions
+        @test testee(quote
+        f = @ode_def LotkaVolterra begin
+            dx = a*x - b*x*y
+            dy = -c*y + d*x*y
+          end a b c d
+        end, [], [:f, :LotkaVolterra], [Symbol("@ode_def")], [])
+        @test testee(quote
+        f = @ode_def begin
+            dx = a*x - b*x*y
+            dy = -c*y + d*x*y
+          end a b c d
+        end, [], [:f], [Symbol("@ode_def")], [])
+        # flux
+        @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], []) 
+        # jump
+    #     @test testee(:(@variable(m, x)), [:m], [:x], [Symbol("@variable")], [])
+    #     @test testee(:(@variable(m, 1<=x)), [:m], [:x], [Symbol("@variable")], [])
+    #     @test testee(:(@variable(m, 1<=x<=2)), [:m], [:x], [Symbol("@variable")], [])
+    #     @test testee(:(@variable(m, r <= x[i=keys(asdf)] <= ub[i])), [:m, :r, :asdf, :ub], [:x], [:keys, Symbol("@variable")], [])
+    #     @test testee(:(@variable(m, x, lower_bound=0)), [:m], [:x], [Symbol("@variable")], [])
+    #     @test testee(:(@variable(m, base_name="x", lower_bound=0)), [:m], [], [Symbol("@variable")], [])
+    #     @test testee(:(@variables(m, begin
+    #     x
+    #     y[i=1:2] >= i, (start = i, base_name = "Y_$i")
+    #     z, Bin
+    # end)), [:m, :Bin], [:x, :y, :z], [Symbol("@variables")], [])
     end
     @testset "Macros" begin
         @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])

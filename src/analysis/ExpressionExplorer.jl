@@ -746,11 +746,32 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
             end
             ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
             Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
+            
+        elseif length(ex.args) >= 3 && funcname_joined === Symbol("@ode_def")
+            if ex.args[3] isa Symbol
+                :($(ex.args[3]) = @ode_def 123)
+            else
+                :(@ode_def)
+            end
+        elseif length(ex.args) >= 3 && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
+            Expr(:macrocall, ex.args[1:2]..., :($(ex.args[3]) = 123), ex.args[4:end]...)
+        # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
+        #     if Meta.isexpr(ex.args[4], :comparison)
+        #         parts = ex.args[4].args[1:2:end]
+        #         if length(parts) == 2
+        #         foldl(parts) do (e,next)
+        #             :($(e) = $(next))
+        #         end
+        #     elseif Meta.isexpr(ex.args[4], :block)
 
+        #     end
+
+
+        #     Expr(:macrocall, ex.args[1:3]..., )
+            # add more macros here
         elseif length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             macro_kwargs_as_kw(ex)
-            
         else
             ex
         end
