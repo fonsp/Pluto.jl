@@ -375,17 +375,17 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
         # @test_nowarn testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
         # @enum is tested in test/React.jl instead
-        @test testee(:(@gensym a b c), [], [:a, :b, :c], [Symbol("@gensym")], [])
-        @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [[:Base, Symbol("@gensym")]], [])
+        @test testee(:(@gensym a b c), [], [:a, :b, :c], [:gensym, Symbol("@gensym")], [])
+        @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [:gensym, [:Base, Symbol("@gensym")]], [])
         @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [:A], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
             :A => ([:Int, :two], [], [], [])
         ])
-        @test testee(quote "asdf" f(x) = x end, [], [], [], [:f => ([], [], [], [])])
+        @test testee(quote "asdf" f(x) = x end, [], [], [Symbol("@doc")], [:f => ([], [], [], [])])
 
-        @test testee(:(@bind a b), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
-        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [])
-        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner], [:a], [:get, :applicable, :Bond, [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
-        @test testee(:(let @bind a b end), [:b], [:a], [:get, :applicable, :Bond, Symbol("@bind")], [])
+        @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@bind")], [])
+        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], [:PlutoRunner, Symbol("@bind")]], [])
+        @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
+        @test testee(:(let @bind a b end), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@bind")], [])
 
         @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
 
@@ -393,12 +393,13 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [:x, :k, :z], [:a], [[Symbol("@tullio")], [:f], [:*], [:+]], [])
         @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [:x, :y, :k, :Pack, :Float64], [:a], [[:Pack, Symbol("@asdf")], [:/], [:log]], [])
 
-        @test testee(:(md"hey $(@bind a b) $(a)"), [:b], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a], [:a], [:get, :applicable, :Bond, Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(`hey $(a = 1) $(b)`), [:b], [], [:cmd_gen, Symbol("@cmd")], [])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [:b, :PlutoRunner, :Base, :Core], [:a], [:getindex, [:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@md_str"), Symbol("@bind")], [])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a, :PlutoRunner, :Base, :Core], [:a], [:getindex, [:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@md_str"), Symbol("@bind")], [])
         @test testee(:(html"a $(b = c)"), [], [], [Symbol("@html_str")], [])
-        @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [Symbol("@md_str")], [])
-        @test testee(:(md"\* $r"), [:r], [], [Symbol("@md_str")], [])
-        @test testee(:(md"a \$(b = c)"), [], [], [Symbol("@md_str")], [])
+        @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [:getindex, Symbol("@md_str")], [])
+        @test testee(:(md"\* $r"), [:r], [], [:getindex, Symbol("@md_str")], [])
+        @test testee(:(md"a \$(b = c)"), [], [], [:getindex, Symbol("@md_str")], [])
         @test testee(:(macro a() end), [], [], [], [
             Symbol("@a") => ([], [], [], [])
         ])

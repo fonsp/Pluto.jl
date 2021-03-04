@@ -188,6 +188,9 @@ end
 function split_funcname(funcname_ex::QuoteNode)::FunctionName
     split_funcname(funcname_ex.value)
 end
+function split_funcname(funcname_ex::GlobalRef)::FunctionName
+    split_funcname(funcname_ex.name)
+end
 
 function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
@@ -714,7 +717,7 @@ end
 
 
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
