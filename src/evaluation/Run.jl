@@ -153,7 +153,9 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	save && save_notebook(notebook)
 
 	try
-		pkg_result = update_nbpkg(notebook, old, new)
+		pkg_result = withtoken(notebook.executetoken) do
+			update_nbpkg(notebook, old, new)
+		end
 
 		if pkg_result.did_something
 			@info "PlutoPkg: success!" pkg_result
