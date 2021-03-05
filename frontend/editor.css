@@ -734,6 +734,17 @@ pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
+/* POPPING OUT */
+
+pluto-cell.popped_out {
+    z-index: 10;
+    position: fixed;
+    bottom: 17px;
+    left: 25px;
+    width: 30vw;
+    max-width: 700px;
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
@@ -872,6 +883,9 @@ pluto-shoulder > button {
     margin-right: 5px;
     padding: 0px 1px;
 }
+pluto-cell.popped_out pluto-shoulder > button {
+    position: absolute;
+}
 
 pluto-cell:focus-within > pluto-shoulder > button {
     /* we use padding instead of 4px extra margin to move the eye to the left so that the hitbox becomes grows - you want to be able to double click the button */
@@ -882,11 +896,18 @@ pluto-cell:focus-within > pluto-shoulder > button {
     margin-top: 3px;
 } */
 
-pluto-shoulder > button > span::after {
+button.foldcode > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-outline.svg);
 }
+button.popout > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/open-outline.svg);
+    transform: scaleX(-1);
+}
+pluto-cell.popped_out button.popout > span::after {
+    transform: scale(1, -1);
+}
 
-pluto-cell.code_folded > pluto-shoulder > button > span::after {
+pluto-cell.code_folded button.foldcode > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-off-outline.svg);
 }
 
