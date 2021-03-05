@@ -728,6 +728,22 @@ const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "Pluto
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
 
+function symbolics_mockexpand(s::Any)
+    # goofy implementation of the syntax described in https://symbolics.juliasymbolics.org/dev/manual/variables/
+    if Meta.isexpr(s, :ref, 2)
+        :($(s.args[1]) = $(s.args[2]))
+    elseif Meta.isexpr(s, :call, 2)
+        second = s.args[2] === Symbol("..") ? 123 : s.args[2]
+        :($(symbolics_mockexpand(s.args[1])); $(second) = 123)
+    elseif s isa Symbol
+        :($(s) = 123)
+    else
+        nothing
+    end
+end
+
+is_symbolics_arg(s) = symbolics_mockexpand(s) !== nothing
+
 """
 If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
 
@@ -737,15 +753,17 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
     result = if ex.head === :macrocall
         funcname = ex.args[1] |> split_funcname
         funcname_joined = join_funcname_parts(funcname)
+
+        args = ex.args[3:end]
         
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             expanded = macroexpand(PlutoRunner, ex; recursive=false)
             Expr(:call, ex.args[1], expanded)
 
-        elseif length(ex.args) >= 3 && Meta.isexpr(ex.args[3], :(:=))
+        elseif !isempty(args) && Meta.isexpr(args[1], :(:=))
             ex = macro_kwargs_as_kw(ex)
             # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
-            ein = ex.args[3]
+            ein = args[1]
             left = if Meta.isexpr(ein.args[1], :ref)
                 # assign to the symbol, and save LHS indices as fake RHS argument
                 ex = Expr(ex.head, ex.args..., Expr(:ref, :Float64, ein.args[1].args[2:end]...))
@@ -756,14 +774,16 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
             ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
             Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
             
-        elseif length(ex.args) >= 3 && funcname_joined === Symbol("@ode_def")
-            if ex.args[3] isa Symbol
-                :($(ex.args[3]) = @ode_def 123)
+        elseif !isempty(args) && funcname_joined === Symbol("@ode_def")
+            if args[1] isa Symbol
+                :($(args[1]) = @ode_def 123)
             else
                 :(@ode_def)
             end
-        elseif length(ex.args) >= 3 && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
-            Expr(:macrocall, ex.args[1:2]..., :($(ex.args[3]) = 123), ex.args[4:end]...)
+        elseif !isempty(args) && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
+            Expr(:macrocall, ex.args[1:2]..., :($(args[1]) = 123), ex.args[4:end]...)
+        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, args)
+            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(args)...)
         # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
         #     if Meta.isexpr(ex.args[4], :comparison)
         #         parts = ex.args[4].args[1:2:end]
@@ -778,7 +798,7 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
 
         #     Expr(:macrocall, ex.args[1:3]..., )
             # add more macros here
-        elseif length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+        elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             macro_kwargs_as_kw(ex)
         else

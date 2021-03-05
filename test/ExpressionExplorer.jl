@@ -30,6 +30,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
     end
     @testset "Bad code" begin
         # @test_nowarn testee(:(begin end = 2), [:+], [], [:+], [], verbose=false)
+        @test testee(:(123 = x), [:x], [], [], [])
         @test_nowarn testee(:((a = b, c, d = 123,)), [:b], [], [], [], verbose=false)
         @test_nowarn testee(:((a = b, c[r] = 2, d = 123,)), [:b], [], [], [], verbose=false)
 
@@ -360,7 +361,16 @@ Some of these @test_broken lines are commented out to prevent printing to the te
           end a b c d
         end, [], [:f], [Symbol("@ode_def")], [])
         # flux
-        @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], []) 
+        @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], [])
+        # symbolics
+        @test testee(:(@variables a b c), [], [:a, :b, :c], [Symbol("@variables")], [])
+        @test testee(:(@variables a b[1:2] c(t) d(..)), [], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
+        @test testee(:(@variables a b[1:x] c[1:10](t) d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
+        @test_nowarn testee(:(@variables(m, begin
+            x
+            y[i=1:2] >= i, (start = i, base_name = "Y_$i")
+            z, Bin
+        end)), [:m, :Bin], [:x, :y, :z], [Symbol("@variables")], [], verbose=false)
         # jump
     #     @test testee(:(@variable(m, x)), [:m], [:x], [Symbol("@variable")], [])
     #     @test testee(:(@variable(m, 1<=x)), [:m], [:x], [Symbol("@variable")], [])

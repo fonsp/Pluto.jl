@@ -90,6 +90,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
             })}
@@ -122,8 +123,7 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} cell_id=${cell_id} />
-            ${show_input &&
-            html`<${CellInput}
+            <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 disable_input=${disable_input}
@@ -155,7 +155,7 @@ export const Cell = ({
                 nbpkg=${nbpkg}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-            />`}
+            />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {

@@ -820,7 +820,7 @@ pluto-input .CodeMirror-empty {
     color: rgba(0, 0, 0, 0.15);
 }
 
-pluto-cell.code_folded > pluto-input {
+pluto-cell.code_folded:not(.show_input) > pluto-input {
     display: none;
 }
 
