@@ -520,6 +520,7 @@ function format_output(val::CapturedException; context=nothing)
             :call => pretty_stackcall(s, s.linfo),
             :inlined => s.inlined,
             :file => basename(String(s.file)),
+            :path => String(s.file),
             :line => s.line,
         )
     end
