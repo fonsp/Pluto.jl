@@ -60,7 +60,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     if ctx === nothing && use_plutopkg_new
         # start using PlutoPkg!!
 
-        ctx = notebook.nbpkg_ctx = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+        ctx = notebook.nbpkg_ctx = PkgTools.create_empty_ctx()
         👺 = true
     end
     if ctx !== nothing && !use_plutopkg_new

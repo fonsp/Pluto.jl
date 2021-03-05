@@ -57,7 +57,37 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
 end
 
 function new(session::ServerSession; run_async=true)
-    nb = emptynotebook()
+    nb = if session.options.init_with_file_viewer
+        
+        file_viewer_code = """html\"\"\"
+
+        <script>
+
+        const nbfile_url = window.location.href.replace("edit", "notebookfile")
+
+
+        const pre = html`<pre style="font-size: .6rem;">Loading...</pre>`
+
+        const handle = setInterval(async () => {
+
+        pre.innerText = await (await fetch(nbfile_url)).text()
+        }, 500)
+
+        invalidation.then(() => {
+        clearInterval(handle)
+        })
+
+        return pre
+
+        </script>
+
+        \"\"\"
+        """
+        Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)], args...)
+
+    else
+        emptynotebook()
+    end
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     session.notebooks[nb.notebook_id] = nb
 

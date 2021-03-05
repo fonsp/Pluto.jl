@@ -1,6 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
+import .PkgTools
 import Pkg
 
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
@@ -43,7 +44,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgTools.create_empty_ctx()
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
 
@@ -127,28 +128,31 @@ function save_notebook(io, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
-    write_package = 
+    using_plutopkg = 
         notebook.nbpkg_ctx !== nothing && 
         isfile(notebook.nbpkg_ctx.env.project_file) && 
         isfile(notebook.nbpkg_ctx.env.manifest_file)
     
-    if write_package
+    write_package = if using_plutopkg
         ptoml_contents = read(notebook.nbpkg_ctx.env.project_file, String)
         mtoml_contents = read(notebook.nbpkg_ctx.env.manifest_file, String)
-        if !isempty(ptoml_contents) && !isempty(mtoml_contents)
-            
-            println(io, _cell_id_delimiter, string(_ptoml_cell_id))
-            print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
-            write(io, ptoml_contents)
-            print(io, "\"\"\"")
-            print(io, _cell_suffix)
-            
-            println(io, _cell_id_delimiter, string(_mtoml_cell_id))
-            print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
-            write(io, mtoml_contents)
-            print(io, "\"\"\"")
-            print(io, _cell_suffix)
-        end
+        !isempty(ptoml_contents) && !isempty(mtoml_contents)
+    else
+        false
+    end
+
+    if write_package
+        println(io, _cell_id_delimiter, string(_ptoml_cell_id))
+        print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
+        write(io, ptoml_contents)
+        print(io, "\"\"\"")
+        print(io, _cell_suffix)
+        
+        println(io, _cell_id_delimiter, string(_mtoml_cell_id))
+        print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
+        write(io, mtoml_contents)
+        print(io, "\"\"\"")
+        print(io, _cell_suffix)
     end
     
 
@@ -251,7 +255,7 @@ function load_notebook_nobackup(io, path)::Notebook
             ErrorException
         end
     else
-        nothing
+        PkgTools.create_empty_ctx()
     end
 
     appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
