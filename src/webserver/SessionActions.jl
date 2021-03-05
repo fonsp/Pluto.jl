@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_dotjl, numbered_until_new, readwrite, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_dotjl, numbered_until_new, readwrite, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -57,7 +57,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
 end
 
 function new(session::ServerSession; run_async=true)
-    nb = if session.options.init_with_file_viewer
+    nb = if session.options.server.init_with_file_viewer
         
         file_viewer_code = """html\"\"\"
 
@@ -83,7 +83,7 @@ function new(session::ServerSession; run_async=true)
 
         \"\"\"
         """
-        Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)], args...)
+        Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)])
 
     else
         emptynotebook()
