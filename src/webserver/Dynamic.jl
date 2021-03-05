@@ -141,7 +141,6 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
-const i = Ref(0)
 """
 Update the local state of all clients connected to this notebook.
 """
@@ -158,9 +157,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, re
             is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
 
             if !isempty(patches) || is_response
-                i[] += 1
                 response = Dict(
-                    :id => i[],
                     :patches => patches_as_dicts,
                     :response => is_response ? commentary : nothing
                 )
