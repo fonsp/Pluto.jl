@@ -188,6 +188,9 @@ end
 function split_funcname(funcname_ex::QuoteNode)::FunctionName
     split_funcname(funcname_ex.value)
 end
+function split_funcname(funcname_ex::GlobalRef)::FunctionName
+    split_funcname(funcname_ex.name)
+end
 
 function split_funcname(funcname_ex::Symbol)::FunctionName
     Symbol[funcname_ex |> without_dotprefix |> without_dotsuffix]
@@ -627,11 +630,25 @@ end
 Is also used for `struct` and `abstract`."
 function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
-        # get the function name
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
-        # and explore the function arguments
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
+        params_to_explore = ex.args[2:end]
+        # Using the keyword args syntax f(;y) the :parameters node is the first arg in the AST when it should
+        # be explored last. We change from (parameters, ...) to (..., parameters)
+        if length(params_to_explore) >= 2 && params_to_explore[1] isa Expr && params_to_explore[1].head == :parameters
+            params_to_explore = [params_to_explore[2:end]..., params_to_explore[1]]
+        end
 
+        # Handle struct as callables, `(obj::MyType)(a, b) = ...`
+        # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
+        # function MyType(obj, a, b) ...; end
+        funcroot = ex.args[1]
+        if funcroot isa Expr && funcroot.head == :(::)
+            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+        end
+
+        # get the function name
+        name, symstate = explore_funcdef!(funcroot, scopestate)
+        # and explore the function arguments
+        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, params_to_explore, init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
@@ -706,7 +723,7 @@ end
 
 
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
@@ -738,11 +755,32 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
             end
             ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
             Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
+            
+        elseif length(ex.args) >= 3 && funcname_joined === Symbol("@ode_def")
+            if ex.args[3] isa Symbol
+                :($(ex.args[3]) = @ode_def 123)
+            else
+                :(@ode_def)
+            end
+        elseif length(ex.args) >= 3 && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
+            Expr(:macrocall, ex.args[1:2]..., :($(ex.args[3]) = 123), ex.args[4:end]...)
+        # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
+        #     if Meta.isexpr(ex.args[4], :comparison)
+        #         parts = ex.args[4].args[1:2:end]
+        #         if length(parts) == 2
+        #         foldl(parts) do (e,next)
+        #             :($(e) = $(next))
+        #         end
+        #     elseif Meta.isexpr(ex.args[4], :block)
 
+        #     end
+
+
+        #     Expr(:macrocall, ex.args[1:3]..., )
+            # add more macros here
         elseif length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
             # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
             macro_kwargs_as_kw(ex)
-            
         else
             ex
         end

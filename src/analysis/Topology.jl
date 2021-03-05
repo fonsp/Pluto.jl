@@ -133,19 +133,22 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	elseif :LOAD_PATH ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/323
 		4
+	elseif :Revise ∈ top.definitions
+		# Load Revise before other packages so that it can properly `revise` them.
+		5
 	elseif !isempty(cell.module_usings_imports.usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
-		5
+		6
 	elseif :include ∈ top.references
 		# https://github.com/fonsp/Pluto.jl/issues/193
 		# because we don't (yet) know which cells depend on it
-		6
-	else
 		7
+	else
+		8
 	end
 end
 
-const md_and_friends = [Symbol("@md_str"), Symbol("@html_str")]
+const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex]
 
 """Does the cell only contain md"..." and html"..."?
 

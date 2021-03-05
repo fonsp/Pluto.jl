@@ -4,12 +4,12 @@
   "description": "",
   "dependencies": {},
   "devDependencies": {
-    "@babel/core": "^7.11.6",
-    "@babel/preset-env": "^7.11.5",
-    "babel-jest": "^26.3.0",
-    "jest": "^26.4.2",
+    "@babel/core": "^7.13.8",
+    "@babel/preset-env": "^7.13.9",
+    "babel-jest": "^26.6.3",
+    "jest": "^26.6.3",
     "jest-puppeteer": "^4.4.0",
-    "puppeteer": "^5.2.1"
+    "puppeteer": "^5.5.0"
   },
   "scripts": {
     "test": "jest --verbose --runInBand"
