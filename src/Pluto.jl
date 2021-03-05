@@ -17,6 +17,7 @@ const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Pr
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
+include("./notebook/PathHelpers.jl")
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
@@ -24,7 +25,6 @@ include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
 include("./analysis/ReactiveNode.jl")
 
-include("./notebook/PathHelpers.jl")
 include("./notebook/Cell.jl")
 include("./notebook/Notebook.jl")
 include("./webserver/Session.jl")
