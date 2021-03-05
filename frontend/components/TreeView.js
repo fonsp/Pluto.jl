@@ -30,6 +30,8 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             break
         case "text/plain":
             return html`<pre>${body}</pre>`
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }
