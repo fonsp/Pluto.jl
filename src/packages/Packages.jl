@@ -56,14 +56,16 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
     👺 = false
 
+    use_plutopkg_old = ctx !== nothing
     use_plutopkg_new = use_plutopkg(new)
-    if ctx === nothing && use_plutopkg_new
-        # start using PlutoPkg!!
+    
+    if !use_plutopkg_old && use_plutopkg_new
+        # start using PlutoPkg!! HELLO reproducibility!
 
-        ctx = notebook.nbpkg_ctx = PkgTools.create_empty_ctx()
         👺 = true
+        ctx = notebook.nbpkg_ctx = PkgTools.create_empty_ctx()
     end
-    if ctx !== nothing && !use_plutopkg_new
+    if use_plutopkg_new && !use_plutopkg_new
         # stop using PlutoPkg 💔😟😢
 
         👺 = !(keys(ctx.env.project.deps) ⊆ PkgTools.stdlibs)
@@ -72,12 +74,13 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     
 
     if ctx !== nothing
-
+        # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
         removed = setdiff(keys(ctx.env.project.deps), new_packages)
         added = setdiff(new_packages, keys(ctx.env.project.deps))
         
+        # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
         
         withtoken(pkg_token) do
@@ -102,11 +105,11 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
             
             # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
-            # Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules
+            # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
             to_add = filter(PkgTools.package_exists, added)
             if !isempty(to_add)
-                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it
+                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                 clear_semver_compat_entries!(ctx)
 
                 for tier in [
@@ -135,7 +138,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 write_semver_compat_entries!(ctx)
             end
 
-            (
+            return (
                 did_something=👺 || (
                     !isempty(to_add) || !isempty(to_remove)
                 ),
@@ -151,7 +154,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             )
         end
     else
-        (
+        return (
             did_something=👺 || false,
             used_tier=Pkg.PRESERVE_ALL,
             # changed_versions=Dict{String,Pair}(),

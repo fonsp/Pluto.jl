@@ -6,7 +6,7 @@ import Pkg
 import Pkg.Types: VersionRange
 
 function getfirst(f::Function, xs)
-	for x in xs
+	for x ∈ xs
 		if f(x)
 			return x
 		end
@@ -28,14 +28,12 @@ const registries = map(registry_paths) do r
 	r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
 end
 
-const stdlibs = readdir(Pkg.Types.stdlib_dir())
+const stdlibs = readdir(Pkg.Types.stdlib_dir())::Vector{String}
 
 is_stdlib(name::String) = name ∈ stdlibs
 is_stdlib(pkg::Pkg.Types.PackageEntry) = pkg.version === nothing && (pkg.name ∈ stdlibs)
 
-except_stdlibs(manifest::Dict{Base.UUID,Pkg.Types.PackageEntry}) = filter(!is_stdlib ∘ last, manifest)
-
-# TODO: should this be the notebook context?
+# TODO: should this be the notebook context? it only matters for which registry is used
 const global_ctx = Pkg.Types.Context()
 
 ###
@@ -43,6 +41,7 @@ const global_ctx = Pkg.Types.Context()
 ###
 
 function registered_package_completions(partial_name::AbstractString)
+	# compat
 	@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
 		Pkg.REPLMode.complete_remote_package(partial_name)
 	else
@@ -73,6 +72,7 @@ function registries_path(registries::Vector, package_name::AbstractString)::Unio
 end
 
 function package_versions_from_path(registry_entry_fullpath::AbstractString; ctx=global_ctx)::Vector{VersionNumber}
+	# compat
     (@static if hasmethod(Pkg.Operations.load_versions, (String,))
         Pkg.Operations.load_versions(registry_entry_fullpath)
     else
