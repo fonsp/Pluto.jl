@@ -417,9 +417,10 @@ export class Editor extends Component {
                 this.counter_statistics.numBondSets++
 
                 // Wrap the bond value in an object so immer assumes it is changed
-                await update_notebook((notebook) => {
-                    notebook.bonds[symbol] = { value: value }
-                })
+                if (is_first_value === false)
+                    await update_notebook((notebook) => {
+                        notebook.bonds[symbol] = { value: value }
+                    })
             },
             reshow_cell: (cell_id, objectid, dim) => {
                 this.client.send(
@@ -791,7 +792,6 @@ adding the info you can find in the JS Console (F12)`)
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            console.log("paste", topaste)
             if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
