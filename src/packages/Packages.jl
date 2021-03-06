@@ -85,14 +85,18 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 haskey(ctx.env.project.deps, p)
             end
             if !isempty(to_remove)
-                # Don't recommend when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
+                # See later comment
                 mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
                 old_manifest_keys = mkeys()
+
                 Pkg.rm(ctx, [
                     Pkg.PackageSpec(name=p)
                     for p in to_remove
                 ])
+
+                # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
                 new_manifest_keys = mkeys()
+                
                 # TODO: we might want to upgrade other packages now that constraints have loosened???
             end
 
