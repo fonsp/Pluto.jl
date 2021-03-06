@@ -51,7 +51,7 @@ describe("Paste Functionality", () => {
         await saveScreenshot(page, getTestScreenshotPath())
     })
 
-    it("Toplevel paste code", async () => {
+    it("should *not* create new cell when you paste code into cell", async () => {
         const cells = ["a = 1", "b = 2", "c = 3", "a + b + c"]
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
@@ -82,7 +82,7 @@ describe("Paste Functionality", () => {
         expect(await countCells()).toBe(5)
     })
 
-    it("Paste cell into page", async () => {
+    it("should create new cell when you paste cell into page", async () => {
         const cells = ["a = 1", "b = 2", "c = 3", "a + b + c"]
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
@@ -124,7 +124,7 @@ describe("Paste Functionality", () => {
         expect(await countCells()).toBe(6)
     })
 
-    it("Paste cell into cell", async () => {
+    it("should create new cell when you paste cell into cell", async () => {
         const cells = ["a = 1", "b = 2", "c = 3", "a + b + c"]
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
