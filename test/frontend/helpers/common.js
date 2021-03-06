@@ -3,6 +3,30 @@ import path from "path"
 export const getTextContent = (selector) => {
     return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
 }
+export const countCells = async () =>
+    await page.evaluate(() => {
+        const a = Array.from(document.querySelectorAll("pluto-cell"))
+        return a?.length
+    })
+
+export const paste = async (page, code, selector = "body") => {
+    const ret = await page.evaluate(
+        (code, selector) => {
+            var clipboardEvent = new Event("paste", {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+            })
+            clipboardEvent["clipboardData"] = {
+                getData: () => code,
+            }
+            document.querySelector(selector).dispatchEvent(clipboardEvent)
+        },
+        code,
+        selector
+    )
+    return ret
+}
 
 export const waitForContent = async (page, selector) => {
     await page.waitForSelector(selector, { visible: true })
@@ -82,12 +106,12 @@ export const lastElement = (arr) => arr[arr.length - 1]
 
 const getFixturesDir = () => path.join(__dirname, "..", "fixtures")
 
-const getArtefactsDir = () => path.join(__dirname, "..", "artefacts")
+const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
 export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
-export const getTemporaryNotebookPath = () => path.join(getArtefactsDir(), "temporary_notebook_" + Date.now() + ".jl")
+export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".jl")
 
-export const getTestScreenshotPath = () => path.join(getArtefactsDir(), "test_screenshot_" + Date.now() + ".png")
+export const getTestScreenshotPath = () => path.join(getArtifactsDir(), "test_screenshot_" + Date.now() + ".png")
 
 export const saveScreenshot = (page, path) => page.screenshot({ path: path })

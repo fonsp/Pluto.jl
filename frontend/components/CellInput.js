@@ -442,11 +442,15 @@ export const CellInput = ({
             }, 100)
         })
 
-        cm.on("paste", (e) => {
+        cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
             if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                pluto_actions.add_deserialized_cells(topaste, -1)
+                e.stopImmediatePropagation()
+                e.preventDefault()
                 e.codemirrorIgnore = true
             }
+            e.stopPropagation()
         })
 
         if (focus_after_creation) {
