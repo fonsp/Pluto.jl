@@ -30,6 +30,11 @@ end
 
 const stdlibs = readdir(Pkg.Types.stdlib_dir())
 
+is_stdlib(name::String) = name ∈ stdlibs
+is_stdlib(pkg::Pkg.Types.PackageEntry) = pkg.version === nothing && (pkg.name ∈ stdlibs)
+
+except_stdlibs(manifest::Dict{Base.UUID,Pkg.Types.PackageEntry}) = filter(!is_stdlib ∘ last, manifest)
+
 # TODO: should this be the notebook context?
 const global_ctx = Pkg.Types.Context()
 

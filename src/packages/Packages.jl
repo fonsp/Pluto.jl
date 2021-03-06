@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgTools
-import .PkgTools: getfirst
+import .PkgTools: getfirst, is_stdlib
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for (c, _) in topology.nodes)...)
@@ -85,12 +85,17 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 haskey(ctx.env.project.deps, p)
             end
             if !isempty(to_remove)
+                # Don't recommend when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
+                mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
+                old_manifest_keys = mkeys()
                 Pkg.rm(ctx, [
                     Pkg.PackageSpec(name=p)
                     for p in to_remove
                 ])
+                new_manifest_keys = mkeys()
                 # TODO: we might want to upgrade other packages now that constraints have loosened???
             end
+
             
             # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
             # Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules
@@ -126,17 +131,28 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 write_semver_compat_entries!(ctx)
             end
 
-            (did_something=👺 || (!isempty(to_add) || !isempty(to_remove)),
+            (
+                did_something=👺 || (
+                    !isempty(to_add) || !isempty(to_remove)
+                ),
                 used_tier=used_tier,
                 # changed_versions=Dict{String,Pair}(),
-                restart_recommended=👺 || (!isempty(to_remove) || used_tier != Pkg.PRESERVE_ALL),
-                restart_required=👺 || (used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]),)
+                restart_recommended=👺 || (
+                    (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
+                    used_tier != Pkg.PRESERVE_ALL
+                ),
+                restart_required=👺 || (
+                    used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
+                ),
+            )
         end
     else
-        (did_something=👺 || false,
+        (
+            did_something=👺 || false,
             used_tier=Pkg.PRESERVE_ALL,
             # changed_versions=Dict{String,Pair}(),
             restart_recommended=👺 || false,
-            restart_required=👺 || false,)
+            restart_required=👺 || false,
+        )
     end
 end
