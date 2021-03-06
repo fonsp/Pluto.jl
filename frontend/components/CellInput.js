@@ -447,9 +447,10 @@ export const CellInput = ({
             if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 pluto_actions.add_deserialized_cells(topaste, -1)
                 e.stopImmediatePropagation()
-                e.stopPropagation()
                 e.preventDefault()
+                e.codemirrorIgnore = true
             }
+            e.stopPropagation()
         })
 
         if (focus_after_creation) {

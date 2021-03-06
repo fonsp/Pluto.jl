@@ -3,6 +3,30 @@ import path from "path"
 export const getTextContent = (selector) => {
     return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
 }
+export const countCells = async () =>
+    await page.evaluate(() => {
+        const a = Array.from(document.querySelectorAll("pluto-cell"))
+        return a?.length
+    })
+
+export const paste = async (page, code, selector = "body") => {
+    const ret = await page.evaluate(
+        (code, selector) => {
+            var clipboardEvent = new Event("paste", {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+            })
+            clipboardEvent["clipboardData"] = {
+                getData: () => code,
+            }
+            document.querySelector(selector).dispatchEvent(clipboardEvent)
+        },
+        code,
+        selector
+    )
+    return ret
+}
 
 export const waitForContent = async (page, selector) => {
     await page.waitForSelector(selector, { visible: true })

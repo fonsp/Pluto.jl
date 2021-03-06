@@ -4,6 +4,7 @@ import { clickAndWaitForNavigation, getFixtureNotebookPath, getTemporaryNotebook
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
 export const prewarmPluto = async (page) => {
+    await browser.defaultBrowserContext().overridePermissions(getPlutoUrl(), ["clipboard-read", "clipboard-write"])
     await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
     await createNewNotebook(page)
     const cellInputSelector = "pluto-input .CodeMirror textarea"
