@@ -27,7 +27,8 @@ describe("Bonds should run once", () => {
         expect(lastCellOutput).toBe("1")
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+
+        await page.waitForTimeout(1000)
 
         lastCellOutput = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "1")
         expect(lastCellOutput).toBe("1")
