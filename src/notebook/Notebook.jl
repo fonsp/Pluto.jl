@@ -13,7 +13,7 @@ function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
     get!(ReactiveNode, topology.nodes, cell)
 end
 
-struct BondValue
+mutable struct BondValue
     value::Any
     # This is only so the client can send this, the updater will always put this to `false`
     is_first_value::Bool
@@ -31,21 +31,21 @@ Base.@kwdef mutable struct Notebook
     # i still don't really know what an AbstractString is but it makes this package look more professional
     path::AbstractString
     notebook_id::UUID
-    topology::NotebookTopology=NotebookTopology()
+    topology::NotebookTopology = NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
     # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-    pendingupdates::Channel=Channel(1024)
+    pendingupdates::Channel = Channel(1024)
 
-    executetoken::Token=Token()
+    executetoken::Token = Token()
 
     # per notebook compiler options
     # nothing means to use global session compiler options
-    compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+    compiler_options::Union{Nothing,Configuration.CompilerOptions} = nothing
 
-    bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
-    wants_to_interrupt::Bool=false
+    bonds::Dict{Symbol,BondValue} = Dict{Symbol,BondValue}()
+    wants_to_interrupt::Bool = false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -71,7 +71,7 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     else
         getfield(notebook, property)
     end
-end
+    end
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
@@ -120,7 +120,7 @@ function save_notebook(io, notebook::Notebook)
         print(io, c.code)
         print(io, _cell_suffix)
     end
-
+    
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
@@ -194,7 +194,7 @@ function load_notebook_nobackup(path::String)::Notebook
     local loaded
     open(path, "r") do io
         loaded = load_notebook_nobackup(io, path)
-    end
+end
     loaded
 end
 
