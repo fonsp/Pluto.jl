@@ -1,5 +1,13 @@
 import fs from "fs"
-import { clickAndWaitForNavigation, getFixtureNotebookPath, getTemporaryNotebookPath, waitForContent, waitForContentToChange, getTextContent } from "./common"
+import {
+    clickAndWaitForNavigation,
+    getFixtureNotebookPath,
+    getTemporaryNotebookPath,
+    waitForContent,
+    waitForContentToChange,
+    getTextContent,
+    lastElement,
+} from "./common"
 
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
@@ -69,4 +77,18 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
     await page.waitForTimeout(500)
     // Wait for CodeMirror to process the input and display the text
     return waitForContentToChange(page, `${plutoInputSelector} .CodeMirror-line`, currentLineText)
+}
+
+export const manuallyEnterCells = async (page, cells) => {
+    const plutoCellIds = []
+    for (const cell of cells) {
+        const plutoCellId = lastElement(await getCellIds(page))
+        plutoCellIds.push(plutoCellId)
+        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
+        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
+
+        await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
+        await page.waitForFunction((nCells) => document.querySelectorAll("pluto-cell").length === nCells, {}, plutoCellIds.length + 1)
+    }
+    return plutoCellIds
 }
