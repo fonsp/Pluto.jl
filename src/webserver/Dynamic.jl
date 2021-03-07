@@ -118,7 +118,11 @@ function notebook_to_js(notebook::Notebook)
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict("value" => bondvalue.value)
+            String(key) => Dict(
+                "value" => bondvalue.value, 
+                # SHOULD always be false, but still putting it in here for completeness
+                "is_first_value" => bondvalue.is_first_value
+            )
         for (key, bondvalue) in notebook.bonds),
     )
 end
@@ -216,11 +220,16 @@ const effects_of_changed_state = Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
+
+            # Get (and quickly reset) the `is_first_value` flag
+            is_first_value = request.notebook.bonds[name].is_first_value
+            request.notebook.bonds[name].is_first_value = false
+
             set_bond_value_reactive(
                 session=request.session,
                 notebook=request.notebook,
                 name=name,
-                is_first_value=patch isa Firebasey.AddPatch,
+                is_first_value=is_first_value,
                 run_async=true,
             )
             # [BondChanged]
@@ -400,7 +409,7 @@ end
 # HANDLE NEW BOND VALUES
 ###
 
-function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)
+function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)    
     bound_sym = name
     new_value = notebook.bonds[name].value
 

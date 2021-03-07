@@ -15,9 +15,11 @@ end
 
 struct BondValue
     value::Any
+    # This is only so the client can send this, the updater will always put this to `false`
+    is_first_value::Bool
 end
 function Base.convert(::Type{BondValue}, dict::Dict)
-    BondValue(dict["value"])
+    BondValue(dict["value"], get(dict, "is_first_value", false))
 end
 
 "Like a [`Diary`](@ref) but more serious. 📓"

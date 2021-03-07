@@ -157,6 +157,7 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
+            // @ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val, callback) => {
@@ -238,6 +239,7 @@ export class Editor extends Component {
                  *  */
 
                 for (const cell of new_cells) {
+                    // @ts-ignore
                     const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
                     cm.setValue(cell.code) // Update codemirror synchronously
                 }
@@ -416,11 +418,11 @@ export class Editor extends Component {
 
                 this.counter_statistics.numBondSets++
 
-                // Wrap the bond value in an object so immer assumes it is changed
-                if (is_first_value === false)
-                    await update_notebook((notebook) => {
-                        notebook.bonds[symbol] = { value: value }
-                    })
+                await update_notebook((notebook) => {
+                    // Wrap the bond value in an object so immer assumes it is changed
+                    let new_bond = { value: value, is_first_value: is_first_value }
+                    notebook.bonds[symbol] = new_bond
+                })
             },
             reshow_cell: (cell_id, objectid, dim) => {
                 this.client.send(
@@ -827,6 +829,7 @@ adding the info you can find in the JS Console (F12)`)
     }
 
     componentDidUpdate(old_props, old_state) {
+        // @ts-ignore
         window.editor_state = this.state
         document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
