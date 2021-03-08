@@ -172,9 +172,11 @@ A placeholder path. The path elements that it replaced will be given to the func
 """
 struct Wildcard end
 
-@enum Changed begin
-    CodeChanged
-    FileChanged
+abstract type Changed end
+struct CodeChanged <: Changed end
+struct FileChanged <: Changed end
+struct BondChanged <: Changed
+    bond_name::Symbol
 end
 
 # to support push!(x, y...) # with y = []
@@ -203,18 +205,19 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
-                [CodeChanged, FileChanged]
+                [CodeChanged(), FileChanged()]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
                 request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
-                [CodeChanged, FileChanged]
+                update_caches!(request.notebook, [request.notebook.cells_dict[UUID(cell_id)]])
+                [CodeChanged(), FileChanged()]
             else
-                [FileChanged]
+                [FileChanged()]
             end
         end,
     ),
     "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.applypatch!(request.notebook, patch)
-        [FileChanged]
+        [FileChanged()]
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
@@ -222,18 +225,9 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
 
             # Get (and quickly reset) the `is_first_value` flag
-            is_first_value = request.notebook.bonds[name].is_first_value
-            request.notebook.bonds[name].is_first_value = false
-
-            set_bond_value_reactive(
-                session=request.session,
-                notebook=request.notebook,
-                name=name,
-                is_first_value=is_first_value,
-                run_async=true,
-            )
-            # [BondChanged]
-            return no_changes
+            # is_first_value = request.notebook.bonds[name].is_first_value
+            # request.notebook.bonds[name].is_first_value = false
+            [BondChanged(name)]
         end,
     )
 )
@@ -282,8 +276,18 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
-        if FileChanged ∈ changes && CodeChanged ∉ changes
+        if FileChanged() ∈ changes && CodeChanged() ∉ changes
             save_notebook(notebook)
+        end
+
+        let bond_changes = filter(x -> x isa BondChanged, changes)
+            bound_sym_names = Symbol[x.bond_name for x in bond_changes]
+            set_bond_values_reactive(
+                session=🙋.session,
+                notebook=🙋.notebook,
+                bound_sym_names=bound_sym_names,
+                run_async=true,
+            )
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
@@ -408,39 +412,51 @@ end
 ###
 # HANDLE NEW BOND VALUES
 ###
+function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, kwargs...)
+    # filter out the bonds that don't need to be set
+    to_set = filter(bound_sym_names) do bound_sym
+        new_value = notebook.bonds[bound_sym].value
+        is_first_value = notebook.bonds[bound_sym].is_first_value
 
-function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)    
-    bound_sym = name
-    new_value = notebook.bonds[name].value
+        variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+        if !variable_exists
+            # a bond was set while the cell is in limbo state
+            # we don't need to do anything
+            return false
+        end
 
-    variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
-    if !variable_exists
-        # a bond was set while the cell is in limbo state
-        # we don't need to do anything
+        # TODO: Not checking for any dependents now
+        # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
+
+        # fix for https://github.com/fonsp/Pluto.jl/issues/275
+        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+        # Check if the variable does not already have that value.
+        # because if the initial value is already set, then we don't want to run dependent cells again.
+        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
+            return false
+        end
+        return true
+    end
+
+    if isempty(to_set)
         return
     end
 
-    # TODO: Not checking for any dependents now
-    # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
-
-    # fix for https://github.com/fonsp/Pluto.jl/issues/275
-    # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-    # Check if the variable does not already have that value.
-    # because if the initial value is already set, then we don't want to run dependent cells again.
-    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-        return
-    end
-        
+    new_values = [notebook.bonds[bound_sym].value for bound_sym in to_set]
+    
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., bound_sym]) # also delete the bound symbol
+        to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-        WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+        for (bound_sym, new_value) in zip(to_set, new_values)
+            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+        end
     end
-    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
     update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
 end
+
 
 responses[:write_file] = function (🙋::ClientRequest)
     path = 🙋.notebook.path

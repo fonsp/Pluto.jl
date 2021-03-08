@@ -605,6 +605,30 @@ adding the info you can find in the JS Console (F12)`)
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
+        let current_combined_updates = []
+        let current_combined_updates_timer = 0
+        /**
+         * Sends state updates to the server,
+         * combining state changes during the same "tick" and sending them all at once.
+         * @param {{ updates: Patch[] }} props
+         */
+        let send_updates = ({ updates }) => {
+            current_combined_updates = [...current_combined_updates, ...updates]
+            clearTimeout(current_combined_updates_timer)
+            current_combined_updates_timer = setTimeout(() => {
+                this.client
+                    .send("update_notebook", { updates: current_combined_updates }, { notebook_id: this.state.notebook.notebook_id }, false)
+                    .then((response) => {
+                        if (response.message.response.update_went_well === "👎") {
+                            // We only throw an error for functions that are waiting for this
+                            // Notebook state will already have the changes reversed
+                            throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                        }
+                    })
+                current_combined_updates = []
+            }, 0)
+        }
+
         console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
@@ -646,13 +670,7 @@ adding the info you can find in the JS Console (F12)`)
             this.setState({ update_is_ongoing: pending_local_updates > 0 })
             try {
                 await Promise.all([
-                    this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                        if (response.message.response.update_went_well === "👎") {
-                            // We only throw an error for functions that are waiting for this
-                            // Notebook state will already have the changes reversed
-                            throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
-                        }
-                    }),
+                    send_updates({ updates: changes }),
                     new Promise((resolve) => {
                         this.setState(
                             {

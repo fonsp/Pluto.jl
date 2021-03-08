@@ -43,7 +43,7 @@ numberoftimes = Ref(0)
         await page.waitForTimeout(750)
 
         let lastCellOutput = await waitForContentToBecome(page, `pluto-cell:nth-child(5) pluto-output`, "3")
-        expect(lastCellOutput).toBe("3")
+        expect(lastCellOutput).toBe("2")
         await page.waitForTimeout(1000)
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
@@ -53,6 +53,6 @@ numberoftimes = Ref(0)
         lastCellOutput = await page.evaluate(() => {
             return document.querySelector("pluto-cell:nth-child(5) pluto-output").textContent
         })
-        expect(lastCellOutput).toBe("3")
+        expect(lastCellOutput).toBe("2")
     })
 })
