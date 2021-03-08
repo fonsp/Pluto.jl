@@ -26,6 +26,9 @@ describe("Bonds should run once", () => {
 # ╔═╡ 1a96fda9-73fa-4bd0-b80a-4db3593fd7d8
 @bind y html"<input type=range>"
 
+# ╔═╡ 1a96fda9-73fa-4bd0-b80a-4db3593fd7d8
+@bind z html"<input type=range>"
+
 # ╔═╡ 15f65099-1deb-4c73-b1cd-1bae1eec12e9
 numberoftimes = Ref(0)
 `
@@ -35,7 +38,7 @@ numberoftimes = Ref(0)
         await page.click(`.runallchanged`)
         await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
 
-        await paste(page, `let x; y; numberoftimes[] += 1 end`)
+        await paste(page, `let x; y; z; numberoftimes[] += 1 end`)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
         await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })

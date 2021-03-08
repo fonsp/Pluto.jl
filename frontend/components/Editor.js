@@ -416,9 +416,10 @@ export class Editor extends Component {
 
                 this.counter_statistics.numBondSets++
 
-                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
-                    notebook.bonds[symbol] = { value: value }
+                    // Wrap the bond value in an object so immer assumes it is changed
+                    let new_bond = { value: value, is_first_value: is_first_value }
+                    notebook.bonds[symbol] = new_bond
                 })
             },
             reshow_cell: (cell_id, objectid, dim) => {

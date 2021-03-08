@@ -223,10 +223,6 @@ const effects_of_changed_state = Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
-
-            # Get (and quickly reset) the `is_first_value` flag
-            # is_first_value = request.notebook.bonds[name].is_first_value
-            # request.notebook.bonds[name].is_first_value = false
             [BondChanged(name)]
         end,
     )
