@@ -46,7 +46,7 @@ numberoftimes = Ref(0)
         const expectation = "1"
         // let lastCellOutput = await waitForContentToBecome(page, `pluto-cell:nth-child(5) pluto-output`, expectation)
         let lastCellOutput = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-child(5) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-child(6) pluto-output").textContent
         })
         expect(lastCellOutput).toBe(expectation)
         await page.waitForTimeout(1000)
@@ -56,7 +56,7 @@ numberoftimes = Ref(0)
         await page.waitForTimeout(1000)
 
         lastCellOutput = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-child(5) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-child(6) pluto-output").textContent
         })
         expect(lastCellOutput).toBe(expectation)
     })
