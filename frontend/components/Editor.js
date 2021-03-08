@@ -409,7 +409,8 @@ export class Editor extends Component {
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
             },
-            set_bond: async (symbol, value, is_first_value) => {
+            /** @param {{ name: string, value: any, is_first_value: boolean }} bond */
+            set_bond: async ({ name, value, is_first_value }) => {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
@@ -419,7 +420,7 @@ export class Editor extends Component {
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
                     let new_bond = { value: value, is_first_value: is_first_value }
-                    notebook.bonds[symbol] = new_bond
+                    notebook.bonds[name] = new_bond
                 })
             },
             reshow_cell: (cell_id, objectid, dim) => {
@@ -601,7 +602,9 @@ adding the info you can find in the JS Console (F12)`)
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
         this.notebook_is_idle = () =>
-            !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
+            !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) &&
+            !this.state.update_is_ongoing &&
+            document.querySelector(".pluto-cell-javascript-initializing") == null
 
         console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -619,6 +622,7 @@ adding the info you can find in the JS Console (F12)`)
             // to send when the notebook is idle. This delays the updating of the bond for performance,
             // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
             // this will no longer be necessary
+            console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
             if (!this.notebook_is_idle()) {
                 let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
                 this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
@@ -854,6 +858,7 @@ adding the info you can find in the JS Console (F12)`)
         }
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+            console.log(`bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done)
             let bonds_patches = this.bonds_changes_to_apply_when_done
             this.bonds_changes_to_apply_when_done = []
             this.update_notebook((notebook) => {

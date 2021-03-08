@@ -283,13 +283,14 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
     let invalidate_scripts = useRef(() => {})
 
-    let container = useRef()
+    let container = useRef(/** @type {HTMLElement} */ (null))
 
     useLayoutEffect(() => {
         set_bound_elements_to_their_value(container.current, pluto_bonds)
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
+        console.log("Cell ", body, "starting up")
         // Invalidate current scripts and create a new invalidation token immediately
         let invalidation = new Promise((resolve) => {
             invalidate_scripts.current = () => {
@@ -301,6 +302,8 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         container.current.innerHTML = body
 
         run(async () => {
+            console.log("Cell ", body, "starting up2")
+            container.current.classList.add("pluto-cell-javascript-initializing")
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: Array.from(container.current.querySelectorAll("script")),
@@ -310,8 +313,8 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
-                    pluto_actions.set_bond(name, value, is_first_value)
+                let remove_bonds_listener = add_bonds_listener(container.current, (bond) => {
+                    pluto_actions.set_bond(bond)
                 })
                 invalidation.then(remove_bonds_listener)
             }
@@ -331,7 +334,10 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                     highlight_julia(code_element)
                 }
             } catch (err) {}
+            container.current.classList.remove("pluto-cell-javascript-initializing")
         })
+
+        console.log("Cell ", body, "Going down")
 
         return () => {
             invalidate_scripts.current?.()

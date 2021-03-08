@@ -247,6 +247,8 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             ...metadata,
         }
 
+        console.log(`message:`, message)
+
         var p = resolvable_promise()
 
         sent_requests[request_id] = (response_message) => {
