@@ -1,5 +1,5 @@
 import { saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, prewarmPluto, manuallyEnterCells, waitForCellOutputToChange } from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, waitForPlutoToCalmDown } from "../helpers/pluto"
 
 describe("Bonds should run once", () => {
     beforeAll(async () => {
@@ -28,7 +28,7 @@ numberoftimes = Ref(0)
         `
         )
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body.update_is_ongoing, pluto-cell.running, pluto-cell.queued`, { hidden: true })
+        await waitForPlutoToCalmDown(page)
 
         await paste(
             page,
@@ -44,8 +44,7 @@ numberoftimes = Ref(0)
 `
         )
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body.update_is_ongoing, pluto-cell.running, pluto-cell.queued`, { hidden: true })
-
+        await waitForPlutoToCalmDown(page)
         let output_after_running_bonds = await page.evaluate(() => {
             return document.querySelector("pluto-cell:nth-of-type(2) pluto-output").textContent
         })
