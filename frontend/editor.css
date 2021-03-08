@@ -807,10 +807,6 @@ pluto-cell.code_folded:not(.show_input) > pluto-input {
     display: none;
 }
 
-pluto-cell.code_differs > pluto-input {
-    display: unset;
-}
-
 pluto-cell.code_differs > pluto-input > .CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;

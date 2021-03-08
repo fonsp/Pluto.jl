@@ -44,6 +44,7 @@ export const CellInput = ({
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
+    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -484,6 +485,13 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
+
+    // fix a visual glitch where the input is only 5px high after unfolding the cell
+    useEffect(() => {
+        if (show_input) {
+            cm_ref.current.refresh()
+        }
+    }, [show_input])
 
     // TODO effect hook for disable_input?
 
