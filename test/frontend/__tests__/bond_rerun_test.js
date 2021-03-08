@@ -17,7 +17,6 @@ describe("Bonds should run once", () => {
     })
 
     it("should not rerun bond values when refreshing page", async () => {
-        const cells = [`@bind x html"<input type=range>"`, `@bind y html"<input type=range>"`, "numberoftimes = Ref(0)"]
         await paste(
             page,
             `
@@ -41,8 +40,8 @@ numberoftimes = Ref(0)
         await page.click(`.runallchanged`)
         await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
         await page.waitForTimeout(750)
-
-        let lastCellOutput = await waitForContentToBecome(page, `pluto-cell:nth-child(5) pluto-output`, "3")
+        const expectation = "2"
+        let lastCellOutput = await waitForContentToBecome(page, `pluto-cell:nth-child(5) pluto-output`, expectation)
         expect(lastCellOutput).toBe("2")
         await page.waitForTimeout(1000)
         // Let's refresh and see
@@ -53,6 +52,6 @@ numberoftimes = Ref(0)
         lastCellOutput = await page.evaluate(() => {
             return document.querySelector("pluto-cell:nth-child(5) pluto-output").textContent
         })
-        expect(lastCellOutput).toBe("2")
+        expect(lastCellOutput).toBe(expectation)
     })
 })
