@@ -43,9 +43,9 @@ numberoftimes = Ref(0)
         await page.click(`.runallchanged`)
         await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
         await page.waitForTimeout(750)
-        const expectation = "2"
+        const expectation = "1"
         let lastCellOutput = await waitForContentToBecome(page, `pluto-cell:nth-child(5) pluto-output`, expectation)
-        expect(lastCellOutput).toBe("2")
+        expect(lastCellOutput).toBe(expectation)
         await page.waitForTimeout(1000)
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
