@@ -178,6 +178,10 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
     })
 }
 
+let next_tick_promise = () => {
+    return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
 /**
  * @typedef PlutoConnection
  * @type {{
@@ -232,7 +236,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
      * @param {boolean} no_broadcast if false, the message will be emitteed to on_update
      * @returns {(undefined|Promise<Object>)}
      */
-    const send = (message_type, body = {}, metadata = {}, no_broadcast = true) => {
+    const send = async (message_type, body = {}, metadata = {}, no_broadcast = true) => {
         const request_id = get_unique_short_id()
 
         const message = {
@@ -253,9 +257,49 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
 
         ws_connection.send(message)
-        return p.current
+        return await p.current
     }
-    client.send = send
+
+    let current_combined_updates_promise = null
+    let current_combined_updates = []
+    let current_combined_notebook_id = null
+    /**
+     * batching_send sits in front of the real send, and understands the update_notebook messages.
+     * Whenever those are send, it will wait for a "tick" (basically the end of the code running now)
+     * and then send all updates from this tick at once. I need to put it here so other code,
+     * like running cells, will also wait for the updates to complete.
+     * I SHALL MAKE IT MORE COMPLEX! (https://www.youtube.com/watch?v=aO3JgPUJ6iQ&t=195s)
+     * @type {typeof send}
+     */
+    let batching_send = async (message_type, body, metadata, no_broadcast) => {
+        if (message_type === "update_notebook") {
+            if (current_combined_notebook_id != null && current_combined_notebook_id != metadata.notebook_id) {
+                // prettier-ignore
+                throw new Error("Switched notebook inbetween same-tick updates??? WHAT?!?!")
+            }
+            current_combined_updates = [...current_combined_updates, ...body.updates]
+            current_combined_notebook_id = metadata.notebook_id
+
+            if (current_combined_updates_promise == null) {
+                current_combined_updates_promise = next_tick_promise().then(async () => {
+                    let sending_current_combined_updates = current_combined_updates
+                    current_combined_updates_promise = null
+                    current_combined_updates = []
+                    current_combined_notebook_id = null
+                    return await send(message_type, { updates: sending_current_combined_updates }, metadata, no_broadcast)
+                })
+            }
+
+            return await current_combined_updates_promise
+        }
+
+        if (current_combined_updates_promise) {
+            await current_combined_updates_promise
+        }
+
+        return await send(message_type, body, metadata, no_broadcast)
+    }
+    client.send = batching_send
 
     const connect = async () => {
         let update_url_with_binder_token = async () => {
