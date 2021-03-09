@@ -36,6 +36,9 @@ Base.@kwdef mutable struct Cell
 
     # note that this field might be moved somewhere else later. If you are interested in visualizing the cell dependencies, take a look at the cell_dependencies field in the frontend instead.
     cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
+
+    has_execution_barrier::Bool=false
+    is_deactivated::Bool=false
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
