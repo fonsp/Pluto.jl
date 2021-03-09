@@ -67,6 +67,10 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
 	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
+	# activate all cells before checking which cells are affected by execution barrier
+	for cell in to_run_raw
+		cell.is_deactivated = false
+	end
 	# identify cells affected by active execution barrier and its references
 	for cell in to_run_raw
 		if cell.barrier_is_active
