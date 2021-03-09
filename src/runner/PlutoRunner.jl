@@ -177,7 +177,7 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
         end
     catch ex
         bt = stacktrace(catch_backtrace())
-        (CapturedException(ex, bt), missing)
+        (CapturedException(ex, bt), nothing)
     end
 end
 
@@ -396,7 +396,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID,Any}()
-const cell_runtimes = Dict{UUID,Union{Missing,UInt64}}()
+const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -407,7 +407,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Nothing}}}
     load_Tables_support_if_needed()
 
     extra_items = if showmore === nothing
@@ -422,7 +422,7 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
     errored = ans isa CapturedException
 
     output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
+    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, nothing))
 end
 
 
