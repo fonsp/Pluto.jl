@@ -20,6 +20,22 @@ macro asynclog(expr)
 	end
 end
 
+"""
+Recursively deactivates all cells referenced by the current cell.
+"""
+function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
+	cell.is_deactivated = true
+	references = cell.referenced_cells
+	isempty(references) && return
+
+	referenced_cells = vcat(values(references)...) |> unique
+	for cell_uuid ∈ referenced_cells
+		c = cells_dict[cell_uuid]
+		_deactivate_referenced_cells!(c, cells_dict)
+	end
+end
+
+
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
@@ -47,15 +63,29 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
+	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
+	# identify cells affected by active execution barrier and its references
+	for cell in to_run_raw
+		if cell.barrier_is_active
+			_deactivate_referenced_cells!(cell, notebook.cells_dict)
+		end
 
+	end
+
+	to_run = Cell[]
 	# change the bar on the sides of cells to "queued"
 	# local listeners = ClientSession[]
-	for cell in to_run
-		cell.queued = true
-		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
+	for cell in to_run_raw
+		if !cell.is_deactivated
+			cell.queued = true
+			# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
+			push!(to_run, cell)
+		end
 	end
+
+
+
 	for (cell, error) in new_order.errable
 		cell.running = false
 		cell.queued = false
