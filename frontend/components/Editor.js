@@ -491,7 +491,6 @@ export class Editor extends Component {
                                         // if (Math.random() < 0.25)
                                         //    throw new Error(`Error: [Immer] minified error nr: 15 '${message?.patches?.[0]?.path?.join("/")}'    .`)
                                         new_notebook = applyPatches(state.notebook, message.patches)
-                                        console.log(message.patches)
                                     } catch (exception) {
                                         const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
                                         const path_value = _.get(this.state.notebook, failing_path, "Not Found")
@@ -799,6 +798,7 @@ adding the info you can find in the JS Console (F12)`)
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
+            console.log("paste", topaste)
             if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
