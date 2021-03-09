@@ -114,6 +114,7 @@ function notebook_to_js(notebook::Notebook)
                 "runtime" => jsprepare_probably_missing(cell.runtime),
                 "has_execution_barrier" => cell.has_execution_barrier,
                 "barrier_is_active" => cell.barrier_is_active,
+                "is_deactivated" => cell.is_deactivated,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,

@@ -100,6 +100,7 @@ const Main = ({ children }) => {
  *  precedence_heuristic: ?number,
  *  has_execution_barrier: boolean,
  *  barrier_is_active: boolean,
+ *  is_deactivated: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
