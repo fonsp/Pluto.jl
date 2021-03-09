@@ -32,6 +32,11 @@ Base.@kwdef mutable struct Cell
     referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
     dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
     precedence_heuristic:: Union{Missing, Int} = missing
+
+    # execution barrier
+    has_execution_barrier::Bool=false
+    barrier_is_active::Bool=false
+
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)

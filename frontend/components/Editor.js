@@ -98,6 +98,8 @@ const Main = ({ children }) => {
  *  referenced_cells: ?{ string: [string]},
  *  dependent_cells: ?{ string: [string]},
  *  precedence_heuristic: ?number,
+ *  has_execution_barrier: boolean,
+ *  barrier_is_active: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,

@@ -112,6 +112,8 @@ function notebook_to_js(notebook::Notebook)
                 "dependent_cells" => jsprepare_probably_missing(cell.dependent_cells, Dict()),
                 "precedence_heuristic" => jsprepare_probably_missing(cell.precedence_heuristic),
                 "runtime" => jsprepare_probably_missing(cell.runtime),
+                "has_execution_barrier" => cell.has_execution_barrier,
+                "barrier_is_active" => cell.barrier_is_active,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
