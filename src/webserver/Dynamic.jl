@@ -135,6 +135,14 @@ function notebook_to_js(notebook::Notebook)
     )
 end
 
+function jsprepare_probably_missing(val, default=nothing)
+    ismissing(val) ? default : val
+end
+
+function jsprepare_probably_missing(val::Dict{Symbol, Vector{UUID}})
+    Dict{String, Vector{String}}(string(key) => map(string, array) for (key, array) in val)
+end
+
 """
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """

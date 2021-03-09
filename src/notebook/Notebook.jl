@@ -28,23 +28,23 @@ Base.@kwdef mutable struct Notebook
     
     path::String
     notebook_id::UUID
-    topology::NotebookTopology=NotebookTopology()
+    topology::NotebookTopology = NotebookTopology()
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
     # This does mean that the Notebook can't be used if nothing is clearing the update channel.
-    pendingupdates::Channel=Channel(1024)
+    pendingupdates::Channel = Channel(1024)
 
-    executetoken::Token=Token()
+    executetoken::Token = Token()
 
     # per notebook compiler options
     # nothing means to use global session compiler options
-    compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-
+    compiler_options::Union{Nothing,Configuration.CompilerOptions} = nothing
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
     cell_execution_order::Union{Nothing,Vector{Cell}}=nothing
     wants_to_interrupt::Bool=false
+
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -70,7 +70,7 @@ function Base.getproperty(notebook::Notebook, property::Symbol)
     else
         getfield(notebook, property)
     end
-end
+    end
 
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
@@ -79,6 +79,7 @@ const _cell_id_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
+const _execution_barrier = "# ═execution_barrier"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
@@ -113,10 +114,13 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
+        if c.has_execution_barrier
+            println(io, _execution_barrier)
+        end
         print(io, c.code)
         print(io, _cell_suffix)
     end
-
+    
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
@@ -125,13 +129,26 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
+"""
+Calculates the topological order of cells in a notebook.
+"""
+function get_ordered_cells(notebook::Notebook, topology::NotebookTopology)::Vector{Cell}
+    notebook_topo_order = topological_order(notebook, topology, notebook.cells)
+    return get_ordered_cells(notebook_topo_order)
+end
+get_ordered_cells(notebook::Notebook) = get_ordered_cells(notebook, notebook.topology)
+
+# notebook_topo_order:: TopologicalOrder, but this would create an issue with the file include order, 
+# therefore avoiding this type constraint here.
+get_ordered_cells(notebook_topo_order) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
+
 function open_safe_write(fn::Function, path, mode)
     file_content = sprint(fn)
     open(path, mode) do io
         print(io, file_content)
     end
 end
-    
+
 function save_notebook(notebook::Notebook, path::String)
     open_safe_write(path, "w") do io
         save_notebook(io, notebook)
@@ -166,12 +183,27 @@ function load_notebook_nobackup(io, path)::Notebook
         else
             cell_id = UUID(cell_id_str)
             code_raw = String(readuntil(io, _cell_id_delimiter))
+
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
+
+            has_execution_barrier = false
+            if startswith(code_normalised, _execution_barrier)
+                has_execution_barrier = true
+                # remove execution barrier identifier from code
+                code_normalised = replace(code_normalised, _execution_barrier *"\n" => "")
+            end
+
             # remove the cell appendix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
+            read_cell.has_execution_barrier = has_execution_barrier
+
+            # barriers are active per default - maybe make it configurable later?
+            read_cell.barrier_is_active = has_execution_barrier
+            read_cell.is_deactivated = has_execution_barrier
+
             collected_cells[cell_id] = read_cell
         end
     end
@@ -197,7 +229,7 @@ function load_notebook_nobackup(path::String)::Notebook
     local loaded
     open(path, "r") do io
         loaded = load_notebook_nobackup(io, path)
-    end
+end
     loaded
 end
 
