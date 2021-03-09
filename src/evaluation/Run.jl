@@ -4,6 +4,23 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 
 Base.push!(x::Set{Cell}) = x
 
+"""
+Recursively deactivates all cells referenced by the current cell.
+"""
+function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
+	cell.is_deactivated = true
+	cell.running = false
+	cell.queued = false
+	references = cell.downstream_cells_map
+	isempty(references) && return
+
+	referenced_cells = vcat(values(references)...) |> unique
+	for cell_uuid ∈ referenced_cells
+		c = cells_dict[cell_uuid]
+		_deactivate_referenced_cells!(c, cells_dict)
+	end
+end
+
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
