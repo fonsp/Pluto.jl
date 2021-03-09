@@ -85,7 +85,6 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	delete!.([notebook.bonds], to_delete_vars)
 
 	local any_interrupted = false
-
 	for (i, cell) in enumerate(to_run)
 		
 		cell.queued = false
