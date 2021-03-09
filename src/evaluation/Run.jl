@@ -27,7 +27,7 @@ function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell}
 	cell.is_deactivated = true
 	cell.running = false
 	cell.queued = false
-	references = cell.referenced_cells
+	references = cell.downstream_cells_map
 	isempty(references) && return
 
 	referenced_cells = vcat(values(references)...) |> unique
