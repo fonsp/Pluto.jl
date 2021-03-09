@@ -189,7 +189,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 
-	set_dependencies!(notebook, new)
+	update_dependency_cache!(notebook)
 
 	save && save_notebook(notebook)
 	

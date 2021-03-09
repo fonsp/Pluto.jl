@@ -40,11 +40,11 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions} = nothing
+    bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
-    bonds::Dict{Symbol,BondValue} = Dict{Symbol,BondValue}()
+    cell_execution_order::Union{Nothing,Vector{Cell}}=nothing
+    wants_to_interrupt::Bool=false
 
-    cell_execution_order::Union{Missing,Vector{UUID}} = missing
-    wants_to_interrupt::Bool = false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -105,11 +105,11 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    if ismissing(notebook.cell_execution_order)
-        cells_ordered = get_ordered_cells(notebook)
+    cells_ordered = if notebook.cell_execution_order === nothing
+        collect(topological_order(notebook))
     else
-        # take already calculated cell order to avoid recalculating it for performance reasons
-        cells_ordered = [notebook.cells_dict[uuid] for uuid ∈ notebook.cell_execution_order]
+        # take already calculated cell order to avoid recalculating it
+        notebook.cell_execution_order
     end
     
     for c in cells_ordered
@@ -248,7 +248,7 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     # Analyze cells so that the initial save is in topological order
     update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
-    set_dependencies!(loaded, loaded.topology)
+    update_dependency_cache!(loaded)
 
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.

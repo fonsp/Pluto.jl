@@ -14,7 +14,7 @@ Base.@kwdef mutable struct Cell
     output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
     errored::Bool=false
-    runtime::Union{Missing,UInt64}=missing
+    runtime::Union{Nothing,UInt64}=nothing
     queued::Bool=false
     running::Bool=false
 
@@ -29,9 +29,9 @@ Base.@kwdef mutable struct Cell
     function_wrapped::Bool=false
 
     # information to display cell dependencies
-    referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
-    dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
-    precedence_heuristic:: Union{Missing, Int} = missing
+    downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
+    upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
+    precedence_heuristic::Real=99
 
     # execution barrier
     "user defined execution barrier"
@@ -41,11 +41,12 @@ Base.@kwdef mutable struct Cell
     "is this cell deactivated, either by having itself an activated execution barrier or upstream?"
     is_deactivated::Bool=false
 
-
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
 Cell(code) = Cell(uuid1(), code)
+
+cell_id(cell::Cell) = cell.cell_id
 
 function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
