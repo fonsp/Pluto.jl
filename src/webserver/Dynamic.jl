@@ -86,8 +86,8 @@ Firebasey.use_triple_equals_for_arrays[] = true
 # - cell_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
-# - cell_result > * > referenced_cells > * > 
-# - cell_result > * > dependent_cells > * > 
+# - cell_result > * > downstream_cells_map > * > 
+# - cell_result > * > upstream_cells_map > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -108,10 +108,16 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "referenced_cells" => jsprepare_probably_missing(cell.referenced_cells, Dict()),
-                "dependent_cells" => jsprepare_probably_missing(cell.dependent_cells, Dict()),
-                "precedence_heuristic" => jsprepare_probably_missing(cell.precedence_heuristic),
-                "runtime" => jsprepare_probably_missing(cell.runtime),
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.precedence_heuristic,
+                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -125,16 +131,8 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-        "cell_execution_order" => jsprepare_probably_missing(notebook.cell_execution_order),
+        "cell_execution_order" => cell_id.(notebook.cell_execution_order),
     )
-end
-
-function jsprepare_probably_missing(val, default=nothing)
-    ismissing(val) ? default : val
-end
-
-function jsprepare_probably_missing(val::Dict{Symbol, Vector{UUID}})
-    Dict{String, Vector{String}}(string(key) => map(string, array) for (key, array) in val)
 end
 
 """

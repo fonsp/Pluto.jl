@@ -43,7 +43,7 @@ Base.@kwdef mutable struct Notebook
 
     bonds::Dict{Symbol,BondValue} = Dict{Symbol,BondValue}()
 
-    cell_execution_order::Union{Missing,Vector{UUID}} = missing
+    cell_execution_order::Union{Nothing,Vector{Cell}}=nothing
     wants_to_interrupt::Bool = false
 end
 
@@ -104,11 +104,11 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    if ismissing(notebook.cell_execution_order)
-        cells_ordered = get_ordered_cells(notebook)
+    cells_ordered = if notebook.cell_execution_order === nothing
+        collect(topological_order(notebook))
     else
-        # take already calculated cell order to avoid recalculating it for performance reasons
-        cells_ordered = [notebook.cells_dict[uuid] for uuid ∈ notebook.cell_execution_order]
+        # take already calculated cell order to avoid recalculating it
+        notebook.cell_execution_order
     end
     
     for c in cells_ordered
@@ -124,19 +124,6 @@ function save_notebook(io, notebook::Notebook)
     end
     notebook
 end
-
-"""
-Calculates the topological order of cells in a notebook.
-"""
-function get_ordered_cells(notebook::Notebook, topology::NotebookTopology)::Vector{Cell}
-    notebook_topo_order = topological_order(notebook, topology, notebook.cells)
-    return get_ordered_cells(notebook_topo_order)
-end
-get_ordered_cells(notebook::Notebook) = get_ordered_cells(notebook, notebook.topology)
-
-# notebook_topo_order:: TopologicalOrder, but this would create an issue with the file include order, 
-# therefore avoiding this type constraint here.
-get_ordered_cells(notebook_topo_order) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
 function open_safe_write(fn::Function, path, mode)
     file_content = sprint(fn)
@@ -229,7 +216,7 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     # Analyze cells so that the initial save is in topological order
     update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
-    set_dependencies!(loaded, loaded.topology)
+    update_dependency_cache!(loaded)
 
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.

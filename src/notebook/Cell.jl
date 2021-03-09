@@ -29,13 +29,15 @@ Base.@kwdef mutable struct Cell
     function_wrapped::Bool=false
 
     # information to display cell dependencies
-    referenced_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
-    dependent_cells:: Union{Missing, Dict{Symbol, Vector{UUID}}} = missing
-    precedence_heuristic:: Union{Missing, Int} = missing
+    downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
+    upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
+    precedence_heuristic::Real=99
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
 Cell(code) = Cell(uuid1(), code)
+
+cell_id(cell::Cell) = cell.cell_id
 
 function Base.convert(::Type{Cell}, cell::Dict)
 	Cell(
