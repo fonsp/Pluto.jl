@@ -138,8 +138,15 @@ get_ordered_cells(notebook::Notebook) = get_ordered_cells(notebook, notebook.top
 # therefore avoiding this type constraint here.
 get_ordered_cells(notebook_topo_order) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
+function open_safe_write(fn::Function, path, mode)
+    file_content = sprint(fn)
+    open(path, mode) do io
+        print(io, file_content)
+    end
+end
+    
 function save_notebook(notebook::Notebook, path::String)
-    open(path, "w") do io
+    open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end
 end
