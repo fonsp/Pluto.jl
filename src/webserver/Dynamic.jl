@@ -117,7 +117,7 @@ function notebook_to_js(notebook::Notebook)
                     for (s, r) in cell.upstream_cells_map
                 ),
                 "precedence_heuristic" => cell.precedence_heuristic,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "runtime" => cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
