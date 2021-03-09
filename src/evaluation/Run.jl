@@ -25,6 +25,8 @@ Recursively deactivates all cells referenced by the current cell.
 """
 function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
 	cell.is_deactivated = true
+	cell.running = false
+	cell.queued = false
 	references = cell.referenced_cells
 	isempty(references) && return
 
