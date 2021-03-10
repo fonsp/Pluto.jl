@@ -393,13 +393,13 @@ without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, not
 responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
     require_notebook(🙋)
     
-    if 🙋.notebook.process_status != "waiting to restart"
-        🙋.notebook.process_status = "waiting to restart"
+    if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
+        🙋.notebook.process_status = ProcessStatus.waiting_to_restart
         send_notebook_changes!(🙋 |> without_initiator)
 
         SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
-        
-        🙋.notebook.process_status = "starting"
+
+        🙋.notebook.process_status = ProcessStatus.starting
         send_notebook_changes!(🙋 |> without_initiator)
 
         update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
@@ -478,7 +478,7 @@ responses[:write_file] = function (🙋::ClientRequest)
         false
     end
 
-    code = get_template_code(basename(save_path), reldir, 🙋.body["file"])
+    code = template_code(basename(save_path), reldir, 🙋.body["file"])
 
     msg = UpdateMessage(:write_file_reply, 
         Dict(
@@ -491,7 +491,7 @@ end
 
 # helpers
 
-get_template_code = (filename, directory, iofilecontents) -> begin
+function template_code(filename, directory, iofilecontents)
     path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
     extension = split(filename, ".")[end]
     varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")

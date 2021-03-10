@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -35,7 +35,7 @@ const SN = Tuple{ServerSession,Notebook}
 
 """Create a workspace for the notebook, optionally in the main process."""
 function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Workspace
-    force_offline || (notebook.process_status = "starting")
+    force_offline || (notebook.process_status = ProcessStatus.starting)
 
     use_distributed = if force_offline
         false
@@ -65,7 +65,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     @async start_relaying_logs((session, notebook), log_channel)
     cd_workspace(workspace, notebook.path)
 
-    force_offline || (notebook.process_status = "ready")
+    force_offline || (notebook.process_status = ProcessStatus.ready)
 
     return workspace
 end

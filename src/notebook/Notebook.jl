@@ -20,6 +20,13 @@ function Base.convert(::Type{BondValue}, dict::Dict)
     BondValue(dict["value"])
 end
 
+const ProcessStatus = (
+    ready="ready",
+    starting="starting",
+    no_process="no_process",
+    waiting_to_restart="waiting_to_restart",
+)
+
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
@@ -41,7 +48,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
-    process_status::String = "starting"
+    process_status::String=ProcessStatus.starting
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
     wants_to_interrupt::Bool=false

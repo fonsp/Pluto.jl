@@ -78,11 +78,18 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const ProcessStatus = {
+    ready: "ready",
+    starting: "starting",
+    no_process: "no_process",
+    waiting_to_restart: "waiting_to_restart",
+}
+
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing),
-    loading: state.initializing || state.moving_file || state.notebook.process_status === "starting",
-    process_restarting: state.notebook.process_status === "waiting to restart",
-    process_dead: state.notebook.process_status === "no process" || state.notebook.process_status === "waiting to restart",
+    loading: state.initializing || state.moving_file || state.notebook.process_status === ProcessStatus.starting,
+    process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
 })
 
 const first_true_key = (obj) => {
@@ -960,7 +967,9 @@ adding the info you can find in the JS Console (F12)`)
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
-                            is_process_ready=${this.state.notebook.process_status !== "no process"}
+                            is_process_ready=${
+                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+                            }
                             disable_input=${!this.state.connected}
                         />
 

@@ -134,7 +134,7 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 	)
 	set_output!(cell, run)
 	if session_notebook isa Tuple && run.process_exited
-		session_notebook[2].process_status = "no process"
+		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
@@ -148,7 +148,7 @@ function set_output!(cell::Cell, run)
 	cell.errored = run.errored
 end
 
-will_run_code(notebook::Notebook) = notebook.process_status != "no process" && notebook.process_status != "waiting to restart"
+will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
 ###
 # CONVENIENCE FUNCTIONS
