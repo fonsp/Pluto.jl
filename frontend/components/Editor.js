@@ -79,9 +79,8 @@ const Main = ({ children }) => {
 }
 
 const statusmap = (state) => ({
+    disconnected: !(state.connected || state.initializing),
     loading: state.initializing || state.moving_file,
-    disconnected: !state.connected,
-    process_dead: state.notebook.process_status === "no process",
 })
 
 const first_true_key = (obj) => {
