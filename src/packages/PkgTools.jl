@@ -30,7 +30,7 @@ end
 
 const stdlibs = readdir(Pkg.Types.stdlib_dir())::Vector{String}
 
-is_stdlib(name::String) = name ∈ stdlibs
+is_stdlib(package_name::AbstractString) = package_name ∈ stdlibs
 is_stdlib(pkg::Pkg.Types.PackageEntry) = pkg.version === nothing && (pkg.name ∈ stdlibs)
 
 # TODO: should this be the notebook context? it only matters for which registry is used
@@ -80,7 +80,7 @@ function package_versions_from_path(registry_entry_fullpath::AbstractString; ctx
     end) |> keys |> collect |> sort!
 end
 
-function package_versions(package_name::String)::Vector
+function package_versions(package_name::AbstractString)::Vector
     if package_name ∈ stdlibs
         ["stdlib"]
     else
@@ -93,18 +93,18 @@ function package_versions(package_name::String)::Vector
     end
 end
 
-package_exists(package_name::String) =
+package_exists(package_name::AbstractString) =
     package_name ∈ stdlibs || 
     registries_path(registries, package_name) !== nothing
 
-get_manifest_entry(ctx::Pkg.Types.Context, pkg_name::String) = 
-    getfirst(e -> e.name == pkg_name, values(ctx.env.manifest))
+get_manifest_entry(ctx::Pkg.Types.Context, package_name::AbstractString) = 
+    getfirst(e -> e.name == package_name, values(ctx.env.manifest))
 
-function get_manifest_version(ctx, pkg_name)
-    if pkg_name ∈ stdlibs
+function get_manifest_version(ctx, package_name)
+    if package_name ∈ stdlibs
         "stdlib"
     else
-        entry = get_manifest_entry(ctx, pkg_name)
+        entry = get_manifest_entry(ctx, package_name)
         entry.version
     end
 end
