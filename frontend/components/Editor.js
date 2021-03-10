@@ -469,7 +469,6 @@ export class Editor extends Component {
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
-                console.info("Applying patches", { patches })
                 if (patches.length !== 0) {
                     this.setState(
                         immer((state) => {
@@ -619,7 +618,6 @@ adding the info you can find in the JS Console (F12)`)
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
-        console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
             // if (this.state.initializing) {
