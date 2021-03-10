@@ -60,13 +60,13 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     use_plutopkg_new = use_plutopkg(new)
     
     if !use_plutopkg_old && use_plutopkg_new
-        # start using PlutoPkg!! HELLO reproducibility!
+        @info "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
         ctx = notebook.nbpkg_ctx = PkgTools.create_empty_ctx()
     end
-    if use_plutopkg_new && !use_plutopkg_new
-        # stop using PlutoPkg 💔😟😢
+    if use_plutopkg_old && !use_plutopkg_new
+        @info "Stopped using PlutoPkg 💔😟😢"
 
         👺 = !(keys(ctx.env.project.deps) ⊆ PkgTools.stdlibs)
         ctx = notebook.nbpkg_ctx = nothing
