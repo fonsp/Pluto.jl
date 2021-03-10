@@ -15,7 +15,6 @@ end
 
 # ╔═╡ 9b62f2c6-8037-486f-b8ec-a95b577b8d74
 # Code targeted for potential inclusion in the Pluto.jl package:
-# Macro could also be named md2, or something else...
 begin
 	import Pkg
 	Pkg.add(PackageSpec(url="https://github.com/MichaelHatherly/CommonMark.jl",
@@ -45,13 +44,13 @@ end
 html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corner of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
-md"I feel like our cat needs a friend. Let's call them $(friend)."
+cm"I feel like our cat needs a friend. Let's call them $(friend)."
 
 # ╔═╡ a1a20314-9543-11ea-17de-0b658da18992
 if !@isdefined friend
 	cm"Uh oh, what is this? I forgot to add a cell defining our friend. Can you do it for me?"
 else
-	md"**Well done!** $cat and $friend are both happy with your performance."
+	cm"**Well done!** $cat and $friend are both happy with your performance."
 end
 
 # ╔═╡ f112b662-9543-11ea-3dcb-2906a99b2188
@@ -94,7 +93,7 @@ scary_dog = "Piesio"
 
 # ╔═╡ bdd5d268-9550-11ea-1046-31efedc36872
 if @isdefined scary_dog
-	md" $scary_dog is terrorizing the neighborhood! We must do something about it!"
+	cm" $scary_dog is terrorizing the neighborhood! We must do something about it!"
 else
 	cm"You saved the neighborhood! Referencing `scary_dog` leads to an `UndefVarError`, as if it never even existed."
 end
@@ -103,7 +102,7 @@ end
 HTML("""<p>To delete a cell like the one defining $scary_dog, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> on the right of its code.</p>""")
 
 # ╔═╡ fb4e471c-9551-11ea-1ab5-41bbd5de76b8
-md"""
+cm"""
 Speaking of saving, this notebook is autosaved whenever you change something. The default location for new notebooks is $(joinpath(first(DEPOT_PATH), "pluto_notebooks")), you can find it using your file explorer. To change the name or the directory of a notebook, scroll to the top - you enter the notebook's path next to the Pluto logo.
 """
 
@@ -118,7 +117,7 @@ cm"Remember learning HTML in junior high? Now you can use it for something! Plut
 @bind power_level html"<input type='range'>"
 
 # ╔═╡ 0b094cea-9556-11ea-268e-0d270fd04d56
-md"The power level is $power_level, but we should do more than just say it - let's equip our cats with $power_level emoji!"
+cm"The power level is $power_level, but we should do more than just say it - let's equip our cats with $power_level emoji!"
 
 # ╔═╡ 1908f9f2-9557-11ea-2abd-dd52f8d776f4
 power_emoji = "⚡"
@@ -155,10 +154,10 @@ confusing_function(text::String, array::Array) = repeat(text, length(array))
 consumption = confusing_function("🥫", neighbors)
 
 # ╔═╡ e11e1660-9549-11ea-22f6-8bb53dc045fe
-md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
+cm"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
 
 # ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
-md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
+cm"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
 
 # ╔═╡ 1deaaf36-9554-11ea-3dae-85851f73dbc6
 cm"**Have fun using Pluto!**
