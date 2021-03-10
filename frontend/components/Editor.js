@@ -917,7 +917,20 @@ adding the info you can find in the JS Console (F12)`)
                                     : statusval === "loading"
                                     ? "Loading..."
                                     : statusval === "process_dead"
-                                    ? "Process exited"
+                                    ? html`${"Process exited — "}
+                                          <a
+                                              href="#"
+                                              onClick=${() => {
+                                                  this.client.send(
+                                                      "restart_process",
+                                                      {},
+                                                      {
+                                                          notebook_id: notebook.notebook_id,
+                                                      }
+                                                  )
+                                              }}
+                                              >restart</a
+                                          >`
                                     : null
                             }</div>
                         </nav>
