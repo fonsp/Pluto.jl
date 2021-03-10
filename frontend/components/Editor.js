@@ -893,6 +893,7 @@ adding the info you can find in the JS Console (F12)`)
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                             </a>
+                            <div class="flex_grow_1"></div>
                             <${FilePicker}
                                 client=${this.client}
                                 value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -904,6 +905,7 @@ adding the info you can find in the JS Console (F12)`)
                                 placeholder="Save notebook..."
                                 button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
                             />
+                            <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>

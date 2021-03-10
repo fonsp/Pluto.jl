@@ -488,8 +488,15 @@ nav#at_the_top > * {
     margin: 10px 0px;
 }
 
+nav#at_the_top > .flex_grow_1 {
+    flex-grow: 1;
+}
+nav#at_the_top > .flex_grow_2 {
+    flex-grow: 2;
+}
+
 nav#at_the_top > a {
-    margin-right: 5rem;
+    /* margin-right: 5rem; */
 }
 
 nav#at_the_top img {
@@ -508,7 +515,7 @@ nav#at_the_top img#logo-small {
     display: none;
 }
 
-@media screen and (max-width: 680px) {
+@media (max-width: 800px) {
     nav#at_the_top img#logo-small {
         display: unset;
     }
@@ -516,12 +523,12 @@ nav#at_the_top img#logo-small {
         display: none;
     }
     nav#at_the_top > a {
-        margin-right: 1rem;
+        /* margin-right: 1rem; */
     }
 }
 
 nav#at_the_top > pluto-filepicker {
-    width: 0px;
+    width: 210px;
     flex-grow: 1;
 
     display: flex;
