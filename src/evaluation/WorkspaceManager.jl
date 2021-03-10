@@ -165,7 +165,7 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Nothing}}}
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -192,10 +192,10 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
             @assert ex.pid == workspace.pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = nothing)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = nothing)
         end
     end
 

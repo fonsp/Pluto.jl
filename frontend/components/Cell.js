@@ -130,6 +130,7 @@ export const Cell = ({
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                show_input=${show_input}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
                     set_waiting_to_run(true)
