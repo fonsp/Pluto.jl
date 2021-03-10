@@ -3,6 +3,5 @@ module.exports = {
         headless: process.env.HEADLESS !== "false",
         args: ["--no-sandbox", "--disable-setuid-sandbox"],
         devtools: false,
-        dumpio: true,
     },
 }

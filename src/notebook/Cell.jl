@@ -32,15 +32,6 @@ Base.@kwdef mutable struct Cell
     downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     precedence_heuristic::Real=99
-
-    # execution barrier
-    "user defined execution barrier"
-    has_execution_barrier::Bool=false
-    "is this barrier active? requires `has_execution_barrier=true`"
-    barrier_is_active::Bool=false
-    "is this cell deactivated, either by having itself an activated execution barrier or upstream?"
-    is_deactivated::Bool=false
-
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
