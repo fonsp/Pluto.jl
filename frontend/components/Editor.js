@@ -905,13 +905,7 @@ adding the info you can find in the JS Console (F12)`)
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
-                            ${
-                                statusval == null
-                                    ? null
-                                    : html`<div id="process_status">
-                                          ${statusval === "disconnected" ? "Reconnecting..." : statusval === "loading" ? "Loading..." : null}
-                                      </div>`
-                            }
+                            <div id="process_status">${statusval === "disconnected" ? "Reconnecting..." : statusval === "loading" ? "Loading..." : null}</div>
                         </nav>
                     </header>
                     <${Main}>

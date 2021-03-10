@@ -638,6 +638,10 @@ body.disconnected > header {
     z-index: 1;
 }
 
+#process_status:empty {
+    display: none;
+}
+
 /* PREAMBLE */
 
 main > preamble {
