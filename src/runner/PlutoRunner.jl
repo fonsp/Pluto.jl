@@ -20,6 +20,8 @@ import Base: show, istextmime
 import UUIDs: UUID
 import Logging
 
+import Requires: @require
+
 export @bind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
@@ -1144,8 +1146,15 @@ end"""
 
 
 
+###
+# Self-updating bonds
+###
+module SelfUpdatingBonds
+    # import Observable
 
+    # const self_updating_bonds_channel = Channel{Any}(10)
 
+end
 
 
 
@@ -1158,7 +1167,6 @@ end"""
 ###
 # LOGGING
 ###
-
 const log_channel = Channel{Any}(10)
 const old_logger = Ref{Any}(nothing)
 
@@ -1191,12 +1199,52 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
     end
 end
 
+
+Base.@kwdef mutable struct WorkspaceInfo
+    notebook_id::Union{String,Nothing} = nothing
+end
+const workspace_info = WorkspaceInfo()
+
+const webio_channel = Channel{Any}(10)
+function dispatch(body)
+    throw("WebIO not enabled")
+end
+function get_file_from_path(path)
+    nothing
+end
+
 # we put this in __init__ to fix a world age problem
 function __init__()
     if Distributed.myid() != 1
         old_logger[] = Logging.global_logger()
         Logging.global_logger(PlutoLogger(nothing))
     end
+
+    @require AssetRegistry="bf4720bc-e11a-5d0c-854e-bdca1663c893" begin
+        import .AssetRegistry
+
+        if workspace_info.notebook_id === nothing
+            throw(error("WHY"))
+        end
+        AssetRegistry.baseurl[] = "/webio-cell/$(workspace_info.notebook_id)"
+        function get_file_from_path(path)
+            get(AssetRegistry.registry, path, nothing)
+        end
+    end
+
+    @require WebIO="0f1e0344-ec1d-5b48-a673-e5cf874b6c29" begin
+        import Sockets
+        import .WebIO
+                
+        struct WebIOConnection <: WebIO.AbstractConnection end
+        Sockets.send(::WebIOConnection, data) = put!(webio_channel, data)
+        Base.isopen(::WebIOConnection) = Base.isopen(webio_channel)
+        
+        function dispatch(body)
+            WebIO.dispatch(WebIOConnection(), body)
+        end
+    end
+
 end
 
 end

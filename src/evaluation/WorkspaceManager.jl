@@ -53,6 +53,15 @@ function make_workspace((session, notebook)::SN)::Workspace
         pid
     end
 
+    local thing = string(notebook.notebook_id)
+    @info "thing" thing
+    Distributed.remotecall_eval(Main, [pid], :(Main.PlutoRunner.workspace_info.notebook_id = $(thing)))
+
+        
+    webio_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.webio_channel)), $pid)
+    end)
+
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
@@ -60,6 +69,7 @@ function make_workspace((session, notebook)::SN)::Workspace
     workspace = Workspace(pid, log_channel, module_name, Token())
 
     @async start_relaying_logs((session, notebook), log_channel)
+    @async start_relaying_webio((session, notebook), webio_channel)
     cd_workspace(workspace, notebook.path)
 
     return workspace
@@ -78,6 +88,21 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
         end
     end
 end
+
+function start_relaying_webio((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+    while true
+        try
+            next_log = take!(log_channel)
+            putnotebookupdates!(session, notebook, UpdateMessage(:webio, next_log, notebook))
+        catch e
+            if !isopen(log_channel)
+                break
+            end
+            @error "Failed to relay webio" exception=(e, catch_backtrace())
+        end
+    end
+end
+
 
 "Call `cd(\$path)` inside the workspace. This is done when creating a workspace, and whenever the notebook changes path."
 function cd_workspace(workspace, path::AbstractString)

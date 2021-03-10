@@ -464,6 +464,13 @@ responses[:write_file] = function (🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
+responses[:webio] = function (🙋::ClientRequest)
+    WorkspaceManager.eval_in_workspace((🙋.session, 🙋.notebook), quote    
+        Main.PlutoRunner.dispatch($(🙋.body))
+    end)
+end
+
+
 # helpers
 
 get_template_code = (filename, directory, iofilecontents) -> begin

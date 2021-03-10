@@ -140,6 +140,27 @@ function http_router_for(session::ServerSession)
         end
     end
 
+    HTTP.@register(router, "GET", "/webio-cell/*", request -> begin
+        _webiocellstr, notebook_id, path_parts... = HTTP.URIs.splitpath(request.target)
+        path = "/"* join(path_parts, "/")
+        notebook = session.notebooks[UUID(notebook_id)]
+        file_path = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
+            Main.PlutoRunner.get_file_from_path($(path))
+        end)
+        if file_path !== nothing && isfile(file_path)
+            return HTTP.Response(
+                200,
+                [
+                    "Access-Control-Allow-Origin" => "*",
+                    "Content-Type" => mime_fromfilename(file_path),
+                ],
+                body = read(file_path)
+            )
+        else
+            return HTTP.Response(404)
+        end
+    end)
+
     serve_newfile = with_authentication(;
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links

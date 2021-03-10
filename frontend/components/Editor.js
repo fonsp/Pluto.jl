@@ -447,11 +447,28 @@ export class Editor extends Component {
             },
         }
 
+        // @ts-ignore
+        let WebIO = window._webio_webio.default
+
+        const webIO = new WebIO()
+        // @ts-ignore
+        window.WebIO = webIO
+        // We allow a way to escape normal WebSocket setup in case the calling code
+        // wants to do it themselves.
+        // This is used when setting up IFrames where we just manually set the send
+        // callback after loading the WebIO JavaScript.
+        webIO.setSendCallback((msg) => {
+            this.client.send("webio", msg, { notebook_id: this.state.notebook.notebook_id }, false)
+        })
+
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
+                    case "webio":
+                        webIO.dispatch(message)
+                        break
                     case "notebook_diff":
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
