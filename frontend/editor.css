@@ -628,7 +628,7 @@ body.disconnected > header {
     -webkit-backdrop-filter: blur(10px);
 }
 
-nav:after {
+#process_status {
     font-size: 1rem;
     font-weight: 500;
     padding: 5px 10px;
@@ -636,13 +636,6 @@ nav:after {
     background: white;
     border-radius: 10px;
     z-index: 1;
-}
-
-body.loading > header > nav:after {
-    content: "Loading...";
-}
-body.disconnected > header > nav:after {
-    content: "Reconnecting...";
 }
 
 /* PREAMBLE */

@@ -78,6 +78,19 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const statusmap = (state) => ({
+    loading: state.initializing || state.moving_file,
+    disconnected: !state.connected,
+})
+
+const first_true_key = (obj) => {
+    for (let [k, v] of Object.entries(obj)) {
+        if (v) {
+            return k
+        }
+    }
+}
+
 /**
  * @typedef CellInputData
  * @type {{
@@ -828,29 +841,25 @@ adding the info you can find in the JS Console (F12)`)
 
     componentDidUpdate(old_props, old_state) {
         window.editor_state = this.state
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
+        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
+
+        const status = statusmap(this.state)
+        Object.entries(status).forEach((e) => {
+            document.body.classList.toggle(...e)
+        })
 
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
+
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
-        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
-        if (this.state.connected) {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#fff"
-            document.body.classList.remove("disconnected")
-        } else {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            document.body.classList.add("disconnected")
-        }
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
@@ -862,7 +871,10 @@ adding the info you can find in the JS Console (F12)`)
     }
 
     render() {
-        let { export_menu_open } = this.state
+        let { export_menu_open, notebook } = this.state
+
+        const status = statusmap(this.state)
+        const statusval = first_true_key(status)
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -881,18 +893,25 @@ adding the info you can find in the JS Console (F12)`)
                             </a>
                             <${FilePicker}
                                 client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                value=${notebook.in_temp_dir ? "" : notebook.path}
                                 on_submit=${this.submit_file_change}
                                 suggest_new_file=${{
                                     base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: this.state.notebook.shortpath,
+                                    name: notebook.shortpath,
                                 }}
                                 placeholder="Save notebook..."
-                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                                button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
                             />
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
+                            ${
+                                statusval == null
+                                    ? null
+                                    : html`<div id="process_status">
+                                          ${statusval === "disconnected" ? "Reconnecting..." : statusval === "loading" ? "Loading..." : null}
+                                      </div>`
+                            }
                         </nav>
                     </header>
                     <${Main}>
