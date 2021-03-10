@@ -2,6 +2,7 @@ import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
 import JSON
+import MsgPack
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -49,8 +50,21 @@ function notebook_response(notebook; home_url="./", as_redirect=true)
     end
 end
 
+function get_header(request::HTTP.Request, key::AbstractString)
+    val = request.headers[findfirst(x -> (lowercase(x.first) == lowercase(key)), request.headers)]
+    if !isnothing(val)
+        return val.second
+    end
+
+    nothing
+end
+
 function with_json!(response::HTTP.Response)
     push!(response.headers, "Content-Type" => "application/json")
+    response
+end
+function with_msgpack!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/x-msgpack")
     response
 end
 
@@ -220,16 +234,21 @@ function http_router_for(session::ServerSession)
         parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
-        # id = UUID(query["id"])
-        notebook = session.notebooks[first(keys(session.notebooks))]
+        id = get(query, "id", nothing)
+        notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
         topology = notebook.topology
 
         inputs = JSON.parse(query["inputs"])
         outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
 
-        HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+        accept_type = get_header(request, "Accept")
+        if accept_type == "application/json"
+            return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+        else 
+            return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
+        end
     end
-    HTTP.@register(router, "GET", "/notebookfile/value", serve_notebook_value)
+    HTTP.@register(router, "GET", "/notebookfile/eval", serve_notebook_value)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
