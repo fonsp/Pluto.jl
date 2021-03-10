@@ -17,22 +17,10 @@ end
 # Code targeted for potential inclusion in the Pluto.jl package:
 # Macro could also be named md2, or something else...
 begin
-	import Pkg; Pkg.add("CommonMark")
+	import Pkg
+	Pkg.add(PackageSpec(url="https://github.com/MichaelHatherly/CommonMark.jl",
+	rev="mh/interp"))
 	using CommonMark
-	
-	parser = Parser()
-	enable!(parser, MathRule())
-	enable!(parser, TableRule())
-
-	macro cm_str(str)
-		return cm_md(str)
-	end
-	
-	function cm_md(str_ex)
-		md = parser(IOBuffer(str_ex))
-		esc(md)
-	end
-
 end
 
 # ╔═╡ b129ba7c-953a-11ea-3379-17adae34924c
@@ -45,9 +33,6 @@ In this introduction, we will go through the basics of using Pluto. To make it i
 # ╔═╡ 4d88b926-9543-11ea-293a-1379b1b5ae64
 cm"## Cats
 Let's say you're like my grandma, and you have a lot of cats. Our story will be about them."
-
-# ╔═╡ 3e8e381e-953f-11ea-3d3e-71d0fea52560
-cat = "Ks*;lj"
 
 # ╔═╡ aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 if cat == "Ks*;lj"
@@ -87,9 +72,6 @@ cm"But what does `confusing_function` do? If you ever need help, click on 📚 *
 
 If you don't see it, then your screen is too small! Maybe you need to zoom out?"
 
-# ╔═╡ e11e1660-9549-11ea-22f6-8bb53dc045fe
-md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
-
 # ╔═╡ 745a4584-954a-11ea-028e-59011f268ec6
 cans_in_stock = "🥫🥫🥫🥫"
 
@@ -102,9 +84,6 @@ end
 
 # ╔═╡ eac62fea-954e-11ea-2768-39ce6f4059ab
 # cans_in_stock = "🥫🥫🥫🥫🥫"
-
-# ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
-md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
 
 # ╔═╡ 6c8e2108-9550-11ea-014d-235770ed4771
 cm"## Saving cats and notebooks
@@ -175,16 +154,21 @@ confusing_function(text::String, array::Array) = repeat(text, length(array))
 # ╔═╡ a4a60262-9547-11ea-3a81-5bf7f9ee5d16
 consumption = confusing_function("🥫", neighbors)
 
+# ╔═╡ e11e1660-9549-11ea-22f6-8bb53dc045fe
+md"Now we know to prepare $(length(consumption)) cans. Let's stock up!"
+
+# ╔═╡ f27f90c2-954f-11ea-3f93-17acb2ce4280
+md"We have $(length(cans_in_stock)) cans of cat food, and our cats need $(length(consumption)). Try adding another cat to the neighborhood to see what changes!"
+
 # ╔═╡ 1deaaf36-9554-11ea-3dae-85851f73dbc6
 cm"**Have fun using Pluto!**
 
 _~ Fons van der Plas & Nicholas Bochenski_"
 
 # ╔═╡ Cell order:
-# ╟─9b62f2c6-8037-486f-b8ec-a95b577b8d74
+# ╠═9b62f2c6-8037-486f-b8ec-a95b577b8d74
 # ╟─b129ba7c-953a-11ea-3379-17adae34924c
 # ╟─4d88b926-9543-11ea-293a-1379b1b5ae64
-# ╠═3e8e381e-953f-11ea-3d3e-71d0fea52560
 # ╟─aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 # ╟─611c28fa-9542-11ea-1751-fbdedcfb7690
 # ╠═6f7eecec-9543-11ea-1284-dd52fce3ecca
