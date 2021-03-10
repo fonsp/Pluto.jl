@@ -269,7 +269,7 @@ function run(session::ServerSession)
         end
         empty!(session.connected_clients)
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(wait(ws))
+            @async WorkspaceManager.unmake_workspace(fetch(ws))
         end
     end
 

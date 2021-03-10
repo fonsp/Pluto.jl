@@ -29,8 +29,9 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "text/plain":
-        default:
             return html`<pre>${body}</pre>`
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }

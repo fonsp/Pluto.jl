@@ -2,42 +2,42 @@ import { html, useState, useEffect, useMemo, useRef, useContext } from "../impor
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
+import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 /**
  * @param {{
- *  cell_input: import("./Editor.js").CellInputData,
  *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
  *  cell_input_local: import("./Editor.js").CellInputData,
  *  selected: boolean,
- *  focus_after_creation: boolean,
- *  force_hide_input: boolean,
  *  selected_cells: Array<string>,
+ *  force_hide_input: boolean,
+ *  focus_after_creation: boolean,
  *  [key: string]: any,
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded },
     cell_result: { queued, running, runtime, errored, output },
+    cell_input: { cell_id, code, code_folded },
     cell_input_local,
-    selected,
-    on_change,
-    on_update_doc_query,
-    on_focus_neighbor,
-    disable_input,
-    focus_after_creation,
-    force_hide_input,
-    selected_cells,
     notebook_id,
+    on_update_doc_query,
+    on_change,
+    on_focus_neighbor,
+    selected,
+    selected_cells,
+    force_hide_input,
+    focus_after_creation,
+    is_process_ready,
+    disable_input,
 }) => {
     let pluto_actions = useContext(PlutoContext)
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
-    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -61,10 +61,11 @@ export const Cell = ({
     // When you click to run a cell, we use `waiting_to_run` to immediately set the cell's traffic light to 'queued', while waiting for the backend to catch up.
     const [waiting_to_run, set_waiting_to_run] = useState(false)
     useEffect(() => {
-        if (waiting_to_run) {
-            set_waiting_to_run(false)
-        }
+        set_waiting_to_run(false)
     }, [queued, running, output?.last_run_timestamp])
+    // We activate animations instantly BUT deactivate them NSeconds later.
+    // We then toggle animation visibility using opacity. This saves a bunch of repaints.
+    const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
@@ -79,12 +80,14 @@ export const Cell = ({
             onDragEnter=${handler}
             onDragLeave=${handler}
             class=${cl({
-                queued: queued || waiting_to_run,
+                queued: queued || (waiting_to_run && is_process_ready),
                 running: running,
+                activate_animation: activate_animation,
                 errored: errored,
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
             })}
@@ -117,14 +120,14 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} cell_id=${cell_id} />
-            ${show_input &&
-            html`<${CellInput}
+            <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                show_input=${show_input}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
                     if (!disable_input) {
@@ -152,17 +155,19 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-            />`}
+            />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
+                        set_waiting_to_run(true)
                         let cell_to_run = selected ? selected_cells : [cell_id]
                         pluto_actions.set_and_run_multiple(cell_to_run)
                     }
                 }}
-                runtime=${localTimeRunning || runtime}
+                runtime=${runtime}
+                running=${running}
             />
             <button
                 onClick=${() => {
