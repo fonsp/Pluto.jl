@@ -82,8 +82,8 @@ export const CellInput = ({
     const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const change_handler_ref = useRef(null)
-    change_handler_ref.current = on_change
+    const on_change_ref = useRef(null)
+    on_change_ref.current = on_change
 
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
@@ -463,7 +463,7 @@ export const CellInput = ({
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
-            change_handler_ref.current(new_value)
+            on_change_ref.current(new_value)
 
             // cm.replaceRange()
             cm.getAllMarks().forEach((m) => {

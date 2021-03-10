@@ -100,7 +100,7 @@ function new(session::ServerSession; run_async=true)
     nb
 end
 
-function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false)
+function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)
@@ -109,6 +109,7 @@ function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=fa
             @async close(client.stream)
         end
     end
-    success = WorkspaceManager.unmake_workspace((session, notebook))
+    WorkspaceManager.unmake_workspace((session, notebook); async=async)
 end
+
 end

@@ -7,18 +7,19 @@ const nbpkg_fingerprint = (nbpkg) =>
     nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
 
 let CellMemo = ({
-    cell_input,
     cell_result,
-    selected,
+    cell_input,
     cell_input_local,
     notebook_id,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
-    disable_input,
+    selected,
+    selected_cells,
     focus_after_creation,
     force_hide_input,
-    selected_cells,
+    is_process_ready,
+    disable_input,
     nbpkg_local,
     nbpkg,
 }) => {
@@ -29,26 +30,25 @@ let CellMemo = ({
     return useMemo(() => {
         return html`
             <${Cell}
-                on_change=${(val) => on_cell_input(cell_input.cell_id, val)}
-                cell_input=${cell_input}
                 cell_result=${cell_result}
-                selected=${selected}
+                cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
                 on_update_doc_query=${on_update_doc_query}
+                on_change=${(val) => on_cell_input(cell_input.cell_id, val)}
                 on_focus_neighbor=${on_focus_neighbor}
-                disable_input=${disable_input}
-                focus_after_creation=${focus_after_creation}
-                force_hide_input=${force_hide_input}
+                selected=${selected}
                 selected_cells=${selected_cells}
+                force_hide_input=${force_hide_input}
+                focus_after_creation=${focus_after_creation}
+                is_process_ready=${is_process_ready}
+                disable_input=${disable_input}
                 nbpkg_local=${nbpkg_local}
                 nbpkg=${nbpkg}
             />
         `
     }, [
         cell_id,
-        code,
-        code_folded,
         queued,
         running,
         runtime,
@@ -58,16 +58,19 @@ let CellMemo = ({
         mime,
         persist_js_state,
         rootassignee,
-        selected,
+        code,
+        code_folded,
         cell_input_local,
         notebook_id,
         on_update_doc_query,
         on_cell_input,
         on_focus_neighbor,
-        disable_input,
-        focus_after_creation,
-        force_hide_input,
+        selected,
         selected_cells_diffable_primitive,
+        force_hide_input,
+        focus_after_creation,
+        is_process_ready,
+        disable_input,
         nbpkg_local,
         ...nbpkg_fingerprint(nbpkg),
     ])
@@ -85,28 +88,29 @@ const render_cell_inputs_minimum = 5
 
 /**
  * @param {{
- *  is_initializing: boolean
  *  notebook: import("./Editor.js").NotebookData,
- *  selected_cells: Array<string>,
  *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
- *  last_created_cell: string,
  *  on_update_doc_query: any,
  *  on_cell_input: any,
  *  on_focus_neighbor: any,
+ *  last_created_cell: string,
+ *  selected_cells: Array<string>,
+ *  is_initializing: boolean,
+ *  is_process_ready: boolean,
  *  disable_input: any,
- *  focus_after_creation: any,
  *  nbpkg_local: Object,
  * }} props
  * */
 export const Notebook = ({
-    is_initializing,
     notebook,
-    selected_cells,
     cell_inputs_local,
-    last_created_cell,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
+    last_created_cell,
+    selected_cells,
+    is_initializing,
+    is_process_ready,
     disable_input,
     nbpkg_local,
 }) => {
@@ -134,7 +138,6 @@ export const Notebook = ({
             ${notebook.cell_order.map(
                 (cell_id, i) => html`<${CellMemo}
                     key=${cell_id}
-                    cell_input=${notebook.cell_inputs[cell_id]}
                     cell_result=${notebook.cell_results[cell_id] ?? {
                         cell_id: cell_id,
                         queued: true,
@@ -143,16 +146,18 @@ export const Notebook = ({
                         runtime: null,
                         output: null,
                     }}
-                    selected=${selected_cells.includes(cell_id)}
+                    cell_input=${notebook.cell_inputs[cell_id]}
                     cell_input_local=${cell_inputs_local[cell_id]}
                     notebook_id=${notebook.notebook_id}
                     on_update_doc_query=${on_update_doc_query}
                     on_cell_input=${on_cell_input}
                     on_focus_neighbor=${on_focus_neighbor}
-                    disable_input=${disable_input}
+                    selected=${selected_cells.includes(cell_id)}
+                    selected_cells=${selected_cells}
                     focus_after_creation=${last_created_cell === cell_id}
                     force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
-                    selected_cells=${selected_cells}
+                    is_process_ready=${is_process_ready}
+                    disable_input=${disable_input}
                     nbpkg_local=${nbpkg_local}
                     nbpkg=${notebook.nbpkg}
                 />`

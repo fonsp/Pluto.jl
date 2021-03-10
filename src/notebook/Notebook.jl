@@ -22,14 +22,20 @@ function Base.convert(::Type{BondValue}, dict::Dict)
     BondValue(dict["value"])
 end
 
+const ProcessStatus = (
+    ready="ready",
+    starting="starting",
+    no_process="no_process",
+    waiting_to_restart="waiting_to_restart",
+)
+
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
-    # i still don't really know what an AbstractString is but it makes this package look more professional
-    path::AbstractString
+    path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
 
@@ -47,6 +53,8 @@ Base.@kwdef mutable struct Notebook
     nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgTools.create_empty_ctx()
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
+
+    process_status::String=ProcessStatus.starting
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
     wants_to_interrupt::Bool=false
