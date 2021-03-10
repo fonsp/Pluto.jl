@@ -1,6 +1,9 @@
 module REST
 import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, where_assigned, where_referenced, update_save_run!
 import UUIDs: UUID
+import HTTP
+import JSON
+import MsgPack
 
 function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
     filter(notebook.cells) do cell
@@ -28,8 +31,6 @@ end
 
 function get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Set{Symbol})
     assigned = where_assigned(notebook, topology, outputs)
-    root_symbols = (x->topology[x].definitions).(upstream_roots(notebook, topology, assigned))
-    to_set = length(root_symbols) > 0 ? reduce(∪, root_symbols) : Set{Symbol}()
     provided_set = keys(inputs)
 
     new_values = values(inputs)
@@ -49,11 +50,35 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
             WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
         end
     end
+    function custom_deletion_hook2((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
+        to_delete_vars = Set([to_delete_vars...])
+        WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+    end
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=false, save=false)
+    out = Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in outputs)
+    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); deletion_hook=custom_deletion_hook2)
 
-    Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in outputs)
+    out
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
+
+function evaluate(output::Symbol, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing, with_json=false; kwargs...)
+    query = ["outputs" => string(output), "inputs" => JSON.json(kwargs)]
+    if !isnothing(session_id)
+        push!(query, "id" => session_id)
+    end
+    request_uri = merge(HTTP.URI("http://$(host)/notebookfile/eval"); query=query)
+
+    response = HTTP.get(request_uri, [
+        "Accept" => with_json ? "application/json" : "application/x-msgpack"
+    ])
+    
+    if with_json
+        return JSON.parse(String(response.body))[string(output)]
+    else
+        return MsgPack.unpack(response.body)[string(output)]
+    end
+end
 end

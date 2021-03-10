@@ -1,6 +1,8 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import JSON
+import MsgPack
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -39,10 +41,37 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-function notebook_redirect_response(notebook; home_url="./")
-    response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
-    return response
+function notebook_response(notebook; home_url="./", as_redirect=true)
+    if as_redirect
+        response = HTTP.Response(302, "")
+        push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+        return response
+    else
+        HTTP.Response(200, string(notebook.notebook_id))
+    end
+end
+
+function get_header(request::HTTP.Request, key::AbstractString)
+    val = request.headers[findfirst(x -> (lowercase(x.first) == lowercase(key)), request.headers)]
+    if !isnothing(val)
+        return val.second
+    end
+
+    nothing
+end
+
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json")
+    response
+end
+function with_msgpack!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/x-msgpack")
+    response
+end
+
+function with_cors!(response::HTTP.Response)
+    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    response
 end
 
 """
@@ -188,6 +217,30 @@ function http_router_for(session::ServerSession)
         try_launch_notebook_response(SessionActions.open, sample_path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", as_sample=true)
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
+    HTTP.@register(router, "POST", "/sample/*", serve_sample)
+
+    function serve_notebook_value(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(split(query["outputs"], ","))
+
+        id = get(query, "id", nothing)
+        notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        topology = notebook.topology
+
+        inputs = JSON.parse(query["inputs"])
+        outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+
+        accept_type = get_header(request, "Accept")
+        if accept_type == "application/json"
+            return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+        else 
+            return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
+        end
+    end
+    HTTP.@register(router, "GET", "/notebookfile/eval", serve_notebook_value)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
