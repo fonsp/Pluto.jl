@@ -80,8 +80,9 @@ const Main = ({ children }) => {
 
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing),
-    loading: state.initializing || state.moving_file,
-    process_dead: state.notebook.process_status === "no process",
+    loading: state.initializing || state.moving_file || state.notebook.process_status === "starting",
+    process_restarting: state.notebook.process_status === "waiting to restart",
+    process_dead: state.notebook.process_status === "no process" || state.notebook.process_status === "waiting to restart",
 })
 
 const first_true_key = (obj) => {
@@ -472,6 +473,7 @@ export class Editor extends Component {
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
+                console.log(patches)
                 if (patches.length !== 0) {
                     this.setState(
                         immer((state) => {
@@ -916,6 +918,8 @@ adding the info you can find in the JS Console (F12)`)
                                     ? "Reconnecting..."
                                     : statusval === "loading"
                                     ? "Loading..."
+                                    : statusval === "process_restarting"
+                                    ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}
                                           <a

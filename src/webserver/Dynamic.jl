@@ -388,6 +388,24 @@ responses[:shutdown_notebook] = function response_shutdown_notebook(🙋::Client
     SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=🙋.body["keep_in_session"])
 end
 
+without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
+
+responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
+    require_notebook(🙋)
+    
+    if 🙋.notebook.process_status != "waiting to restart"
+        🙋.notebook.process_status = "waiting to restart"
+        send_notebook_changes!(🙋 |> without_initiator)
+
+        SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
+        
+        🙋.notebook.process_status = "starting"
+        send_notebook_changes!(🙋 |> without_initiator)
+
+        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
+    end
+end
+
 
 responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     require_notebook(🙋)
@@ -398,7 +416,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
-    send_notebook_changes!(ClientRequest(session=🙋.session, notebook=🙋.notebook))
+    send_notebook_changes!(🙋 |> without_initiator)
 end
 
 

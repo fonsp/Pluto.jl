@@ -148,7 +148,7 @@ function set_output!(cell::Cell, run)
 	cell.errored = run.errored
 end
 
-will_run_code(notebook::Notebook) = notebook.process_status != "no process"
+will_run_code(notebook::Notebook) = notebook.process_status != "no process" && notebook.process_status != "waiting to restart"
 
 ###
 # CONVENIENCE FUNCTIONS

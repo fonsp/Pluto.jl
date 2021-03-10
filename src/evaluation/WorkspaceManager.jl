@@ -140,15 +140,18 @@ end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
 "Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::Union{SN,Workspace})
+function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
     workspace = get_workspace(session_notebook)
 
     if workspace.pid != Distributed.myid()
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
-        interrupt_workspace(workspace; verbose=false)
-        if workspace.pid != Distributed.myid()
-            Distributed.rmprocs(workspace.pid)
+        t = @async begin
+            interrupt_workspace(workspace; verbose=false)
+            if workspace.pid != Distributed.myid()
+                Distributed.rmprocs(workspace.pid)
+            end
         end
+        async || wait(t)
     end
 end
 

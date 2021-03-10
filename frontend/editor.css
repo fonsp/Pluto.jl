@@ -462,9 +462,6 @@ aside#export button.toggle_export {
     margin-left: auto;
     height: 60px;
 }
-body.loading button.toggle_export {
-    display: none;
-}
 
 nav#at_the_top h1 {
     color: black;
@@ -641,7 +638,7 @@ body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
 }
 
-#process_status {
+nav#at_the_top > #process_status {
     font-size: 1rem;
     font-weight: 500;
     padding: 5px 10px;
@@ -649,9 +646,10 @@ body.disconnected > header {
     background: white;
     border-radius: 10px;
     z-index: 1;
+    margin-left: 1em;
 }
 
-#process_status:empty {
+nav#at_the_top > #process_status:empty {
     display: none;
 }
 
