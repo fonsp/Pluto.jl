@@ -46,7 +46,9 @@ end
 function use_plutopkg(topology::NotebookTopology)
     !any(values(topology.nodes)) do node
         Symbol("Pkg.activate") ∈ node.references ||
-        Symbol("Pkg.API.activate") ∈ node.references
+        Symbol("Pkg.API.activate") ∈ node.references ||
+        Symbol("Pkg.add") ∈ node.references ||
+        Symbol("Pkg.API.add") ∈ node.references
     end
 end
 
