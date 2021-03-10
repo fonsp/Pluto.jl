@@ -79,8 +79,8 @@ const Main = ({ children }) => {
 }
 
 const statusmap = (state) => ({
+    disconnected: !(state.connected || state.initializing),
     loading: state.initializing || state.moving_file,
-    disconnected: !state.connected,
 })
 
 const first_true_key = (obj) => {
