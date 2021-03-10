@@ -1,10 +1,12 @@
-import { html, useEffect, useState } from "../imports/Preact.js"
+import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { html, useEffect, useMemo, useState } from "../imports/Preact.js"
 
-export const RunArea = ({ runtime, onClick }) => {
+export const RunArea = ({ runtime, onClick, running }) => {
+    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     return html`
         <pluto-runarea>
             <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
-            <span class="runtime">${prettytime(runtime)}</span>
+            <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>
         </pluto-runarea>
     `
 }
@@ -47,4 +49,20 @@ export const useMillisSinceTruthy = (truthy) => {
         }
     }, [truthy])
     return truthy ? now - startRunning : undefined
+}
+
+const NSeconds = 5
+export const useDebouncedTruth = (truthy) => {
+    const [mytruth, setMyTruth] = useState(truthy)
+    const setMyTruthAfterNSeconds = useMemo(() => _.debounce(setMyTruth, NSeconds * 1000), [setMyTruth])
+    useEffect(() => {
+        if (truthy) {
+            setMyTruth(true)
+            setMyTruthAfterNSeconds.cancel()
+        } else {
+            setMyTruthAfterNSeconds(false)
+        }
+        return () => {}
+    }, [truthy])
+    return mytruth
 }

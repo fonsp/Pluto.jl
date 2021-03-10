@@ -23,7 +23,7 @@ const StackFrameFilename = ({ frame, cell_id }) => {
         </a>`
         return html`<em>${a}</em>`
     } else {
-        return html`<em>${frame.file}:${frame.line}</em>`
+        return html`<em title=${frame.path}>${frame.file}:${frame.line}</em>`
     }
 }
 

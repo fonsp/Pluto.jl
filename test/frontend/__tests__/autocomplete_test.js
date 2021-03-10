@@ -1,9 +1,9 @@
-import { lastElement, dismissBeforeUnloadDialogs, saveScreenshot, getTestScreenshotPath } from "../helpers/common"
+import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
 import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
 
 describe("PlutoAutocomplete", () => {
     beforeAll(async () => {
-        dismissBeforeUnloadDialogs(page)
+        setupPage(page)
         await prewarmPluto(page)
     })
 
@@ -23,12 +23,12 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitFor(500)
+        await page.waitForTimeout(500)
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "my_su")
-        await page.waitFor(500)
+        await page.waitForTimeout(500)
 
         // Trigger autocomplete suggestions
         await page.keyboard.press("Tab")
@@ -48,7 +48,7 @@ describe("PlutoAutocomplete", () => {
         // Add a new cell
         let lastPlutoCellId = lastElement(importedCellIds)
         await page.click(`pluto-cell[id="${lastPlutoCellId}"] .add_cell.after`)
-        await page.waitFor(500)
+        await page.waitForTimeout(500)
 
         // Type the partial input
         lastPlutoCellId = lastElement(await getCellIds(page))
@@ -56,7 +56,7 @@ describe("PlutoAutocomplete", () => {
 
         // Trigger autocomplete
         await page.keyboard.press("Tab")
-        await page.waitFor(5000)
+        await page.waitForTimeout(5000)
 
         // Get suggestions
         const autocompletedInput = await page.evaluate(

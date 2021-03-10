@@ -35,11 +35,11 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         @test notebook.cells[1].rootassignee == :x
-        @test notebook.cells[1].runtime !== missing
+        @test notebook.cells[1].runtime !== nothing
         setcode(notebook.cells[1], "x = 12")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
-        @test notebook.cells[2].runtime !== missing
+        @test notebook.cells[2].runtime !== nothing
 
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[3].errored == false
@@ -168,20 +168,21 @@ import Distributed
             Cell("""Pkg.add("JSON")"""),
             Cell("Pkg.activate(mktempdir())"),
             Cell("import Pkg"),
+            Cell("using Revise"),
             Cell("1 + 1"),
         ])
         Pluto.update_caches!(notebook, notebook.cells)
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
-        @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 3, 1, 2, 7]
+        @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 7, 3, 1, 2, 8]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order.
 
         # if the cells were placed in reverse order...
         reverse!(notebook.cell_order)
         topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
-        @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 3, 7, 2, 1]
+        @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 7, 3, 8, 2, 1]
         # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
         # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
 
@@ -197,6 +198,7 @@ import Distributed
             Cell("Pkg.activate(envdir)"),
             Cell("envdir = mktempdir()"),
             Cell("import Pkg"),
+            Cell("using JSON3, Revise"),
         ])
 
         Pluto.update_caches!(notebook, notebook.cells)
@@ -213,6 +215,8 @@ import Distributed
         @test_broken comesbefore(run_order, 5, 3)
         @test_broken comesbefore(run_order, 3, 2)
         @test comesbefore(run_order, 2, 1)
+        @test comesbefore(run_order, 8, 2)
+        @test comesbefore(run_order, 8, 1)
 
         # the variable dependencies
         @test comesbefore(run_order, 6, 5)
@@ -999,10 +1003,12 @@ import Distributed
         end
 
         bad = @elapsed benchmark(2)
-        good = @elapsed benchmark(2)
+        good = 0.01 * @elapsed for i in 1:100
+            benchmark(2)
+        end
 
         update_run!(🍭, notebook, notebook.cells)
-        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
+        @test 0.1 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
         old = notebook.cells[4].output_repr
         setcode(notebook.cells[4], "4.0")
@@ -1143,4 +1149,3 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 end
-
