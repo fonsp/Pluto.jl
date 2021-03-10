@@ -922,6 +922,20 @@ adding the info you can find in the JS Console (F12)`)
         const status = statusmap(this.state)
         const statusval = first_true_key(status)
 
+        const restart_button = (text) => html`<a
+            href="#"
+            onClick=${() => {
+                this.client.send(
+                    "restart_process",
+                    {},
+                    {
+                        notebook_id: notebook.notebook_id,
+                    }
+                )
+            }}
+            >${text}</a
+        >`
+
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
@@ -959,26 +973,13 @@ adding the info you can find in the JS Console (F12)`)
                                     : statusval === "loading"
                                     ? "Loading..."
                                     : statusval === "nbpkg_restart_required"
-                                    ? "Notebook restart required"
+                                    ? html`${restart_button("Restart notebook")}${" (required)"}`
                                     : statusval === "nbpkg_restart_recommended"
-                                    ? "Notebook restart recommended"
+                                    ? html`${restart_button("Restart notebook")}${" (recommended)"}`
                                     : statusval === "process_restarting"
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
-                                    ? html`${"Process exited — "}
-                                          <a
-                                              href="#"
-                                              onClick=${() => {
-                                                  this.client.send(
-                                                      "restart_process",
-                                                      {},
-                                                      {
-                                                          notebook_id: notebook.notebook_id,
-                                                      }
-                                                  )
-                                              }}
-                                              >restart</a
-                                          >`
+                                    ? html`${"Process exited — "}${restart_button("restart")}`
                                     : null
                             }</div>
                         </nav>

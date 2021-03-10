@@ -101,6 +101,9 @@ function new(session::ServerSession; run_async=true)
 end
 
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
+    notebook.nbpkg_restart_recommended_msg = nothing
+    notebook.nbpkg_restart_required_msg = nothing
+
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)

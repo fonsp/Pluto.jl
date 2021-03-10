@@ -406,6 +406,7 @@ without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, not
 
 responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
     require_notebook(🙋)
+
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart

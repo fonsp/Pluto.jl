@@ -68,7 +68,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     if use_plutopkg_old && !use_plutopkg_new
         @info "Stopped using PlutoPkg 💔😟😢"
 
-        👺 = !(keys(ctx.env.project.deps) ⊆ PkgTools.stdlibs)
+        no_packages_loaded_yet = (
+            notebook.nbpkg_restart_required_msg === nothing &&
+            notebook.nbpkg_restart_recommended_msg === nothing &&
+            keys(ctx.env.project.deps) ⊆ PkgTools.stdlibs
+        )
+        👺 = !no_packages_loaded_yet
         ctx = notebook.nbpkg_ctx = nothing
     end
     
