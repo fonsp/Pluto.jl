@@ -81,6 +81,21 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const statusmap = (state) => ({
+    disconnected: !(state.connected || state.initializing || state.static_preview),
+    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    static_preview: state.static_preview,
+    binder: state.offer_binder || state.binder_phase != null,
+})
+
+const first_true_key = (obj) => {
+    for (let [k, v] of Object.entries(obj)) {
+        if (v) {
+            return k
+        }
+    }
+}
+
 /**
  * @typedef CellInputData
  * @type {{
@@ -487,10 +502,70 @@ export class Editor extends Component {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        if (message.patches.length !== 0) {
+                        if (message?.response?.from_reset) {
+                            console.log("Trying to reset state after failure")
                             this.setState(
                                 immer((state) => {
-                                    let new_notebook = applyPatches(state.notebook, message.patches)
+                                    try {
+                                        state.notebook = applyPatches(
+                                            {
+                                                notebook_id: new URLSearchParams(window.location.search).get("id"),
+                                                path: default_path,
+                                                shortpath: "",
+                                                in_temp_dir: true,
+                                                cell_inputs: {},
+                                                cell_results: {},
+                                                cell_order: [],
+                                            },
+                                            message.patches
+                                        )
+                                    } catch (exception) {
+                                        alert("Cannot recover from broken state. Please open an issue!")
+                                    }
+                                })
+                            )
+                        } else if (message.patches.length !== 0) {
+                            this.setState(
+                                immer((state) => {
+                                    let new_notebook
+                                    try {
+                                        // To test this, uncomment the lines below:
+                                        // if (Math.random() < 0.25)
+                                        //    throw new Error(`Error: [Immer] minified error nr: 15 '${message?.patches?.[0]?.path?.join("/")}'    .`)
+                                        new_notebook = applyPatches(state.notebook, message.patches)
+                                    } catch (exception) {
+                                        const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                        const path_value = _.get(this.state.notebook, failing_path, "Not Found")
+                                        console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                        alert(`PlutoState failed to sync with the browser!
+Please report this: https://github.com/fonsp/Pluto.jl/issues
+adding the info you can find in the JS Console (F12)`)
+                                        console.error(
+                                            `
+                                            ########################-Please send these lines-########################
+                                            PlutoError: StateOutOfSync: Failed to apply patches.
+                                            failing path: ${failing_path}
+                                            notebook previous value: ${path_value}
+                                            patch: ${JSON.stringify(
+                                                message?.patches?.find(({ path }) => path.join("") === failing_path),
+                                                null,
+                                                1
+                                            )}
+                                            #######################**************************########################
+                                        `,
+                                            exception
+                                        )
+                                        console.log("Trying to recover: Refetching notebook...")
+                                        this.client.send(
+                                            "reset_notebook",
+                                            {},
+                                            {
+                                                notebook_id: this.state.notebook.notebook_id,
+                                            },
+                                            false
+                                        )
+                                        return
+                                    }
 
                                     if (DEBUG_DIFFING) {
                                         console.group("Update!")
@@ -870,6 +945,7 @@ export class Editor extends Component {
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
+            console.log("paste", topaste)
             if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
@@ -911,37 +987,25 @@ export class Editor extends Component {
 
     componentDidUpdate(old_props, old_state) {
         window.editor_state = this.state
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
+        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
+
+        const status = statusmap(this.state)
+        Object.entries(status).forEach((e) => {
+            document.body.classList.toggle(...e)
+        })
 
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
+        document.body.classList.toggle("code_differs", any_code_differs)
 
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
-        document.body.classList.toggle("binder", this.state.offer_binder || this.state.binder_phase != null)
-        document.body.classList.toggle("static_preview", this.state.static_preview)
-        document.body.classList.toggle("code_differs", any_code_differs)
-        document.body.classList.toggle(
-            "loading",
-            (BinderPhase.wait_for_user < this.state.binder_phase && this.state.binder_phase < BinderPhase.ready) ||
-                this.state.initializing ||
-                this.state.moving_file
-        )
-        if (this.state.connected || this.state.initializing || this.state.static_preview) {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#fff"
-            document.body.classList.remove("disconnected")
-        } else {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            document.body.classList.add("disconnected")
-        }
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
@@ -962,7 +1026,10 @@ export class Editor extends Component {
     }
 
     render() {
-        let { export_menu_open } = this.state
+        let { export_menu_open, notebook } = this.state
+
+        const status = statusmap(this.state)
+        const statusval = first_true_key(status)
 
         const notebook_export_url =
             this.state.binder_session_url == null
@@ -1001,23 +1068,28 @@ export class Editor extends Component {
                                     ? html`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
-                                          value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                          value=${notebook.in_temp_dir ? "" : notebook.path}
                                           on_submit=${this.submit_file_change}
                                           suggest_new_file=${{
                                               base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                              name: this.state.notebook.shortpath,
+                                              name: notebook.shortpath,
                                           }}
                                           placeholder="Save notebook..."
-                                          button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
                                       />`
                             }
-                            
-                            
                             <button class="toggle_export" title="Export..." onClick=${() => {
                                 this.setState({ export_menu_open: !export_menu_open })
-                            }}>
-                                <span></span>
-                            </button>
+                            }}><span></span></button>
+                            <div id="process_status">${
+                                status.binder && status.loading
+                                    ? "Loading binder..."
+                                    : statusval === "disconnected"
+                                    ? "Reconnecting..."
+                                    : statusval === "loading"
+                                    ? "Loading..."
+                                    : null
+                            }</div>
                         </nav>
                     </header>
                     ${
