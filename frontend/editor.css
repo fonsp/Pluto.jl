@@ -616,19 +616,21 @@ li.dir.CodeMirror-hint:before {
     }
 }
 
-body.loading > header {
-    background-color: hsla(290, 10%, 59%, 0.14);
-}
-
 body.disconnected > header {
-    background-color: rgba(255, 169, 114, 0.56);
     position: sticky;
     top: 0;
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
 
-nav:after {
+body.loading > header {
+    background-color: hsla(290, 10%, 59%, 0.14);
+}
+body.disconnected > header {
+    background-color: rgba(255, 169, 114, 0.56);
+}
+
+#process_status {
     font-size: 1rem;
     font-weight: 500;
     padding: 5px 10px;
@@ -638,14 +640,8 @@ nav:after {
     z-index: 1;
 }
 
-body.loading > header > nav:after {
-    content: "Loading...";
-}
-body.loading.wasm > header > nav:after {
-    content: "Loading WASM...";
-}
-body.disconnected > header > nav:after {
-    content: "Reconnecting...";
+#process_status:empty {
+    display: none;
 }
 
 /* PREAMBLE */
@@ -806,12 +802,8 @@ pluto-input .CodeMirror-empty {
     color: rgba(0, 0, 0, 0.15);
 }
 
-pluto-cell.code_folded > pluto-input {
+pluto-cell.code_folded:not(.show_input) > pluto-input {
     display: none;
-}
-
-pluto-cell.code_differs > pluto-input {
-    display: unset;
 }
 
 pluto-cell.code_differs > pluto-input > .CodeMirror {
@@ -916,11 +908,21 @@ pluto-trafficlight {
 pluto-trafficlight::after {
     content: "";
     /* Calc needs units everywhere to work */
-    top: calc(0px - 2 * var(--patternHeight));
+    top: calc(0px - 10 * var(--patternHeight));
     left: 0;
     width: 100%;
-    height: calc(100% + 2 * var(--patternHeight));
+    height: calc(100% + 10 * var(--patternHeight));
     position: absolute;
+    opacity: 0;
+}
+
+/*
+ * This class will toggle animation.
+ * Other classes will make animation visible with opacity (which is CHEAP?)
+ * 
+ */
+pluto-cell.activate_animation pluto-trafficlight::after {
+    animation: 10s linear 0s infinite running scrollbackground;
 }
 
 /* in ascending order of severity: */
@@ -965,14 +967,22 @@ pluto-cell.errored > pluto-trafficlight {
 pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
-    animation: 1s linear 0s infinite running scrollbackground;
+    /* [1]
+    Queued, Running, Errored are really fast changing props.
+    We make sure to on-off the gradients with opacity and not toggle the animation
+    (Which is running all this time)
+    Make sure the browser won't skip creating a stacking context
+    https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context
+    https://www.w3.org/TR/css-color-3/#transparency
+    */
+    opacity: 0.99;
     background-size: 4px var(--patternHeight);
 }
 
 pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
-    animation: 1s linear 0s infinite running scrollbackground;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight);
 }
 
@@ -985,14 +995,14 @@ pluto-cell.queued.errored > pluto-trafficlight::after {
         hsla(0, 70%, 80%, 0.05) 16px
     );
     background-clip: content-box;
-    animation: 1s linear 0s infinite running scrollbackground;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
 pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
-    animation: 1s linear 0s infinite running scrollbackground;
+    opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
@@ -1030,10 +1040,10 @@ pluto-cell.drop_target.drop_invalid pluto-input::after {
 /* Define --patternHeight for this keyframes animation to work! */
 @keyframes scrollbackground {
     0% {
-        transform: translateY(0px);
+        transform: translate(0px, 0px);
     }
     100% {
-        transform: translateY(calc(var(--patternHeight)));
+        transform: translate(0, calc(10 * var(--patternHeight)));
     }
 }
 

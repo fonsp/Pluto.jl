@@ -106,7 +106,7 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "runtime" => cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -335,6 +335,11 @@ end
 
 responses[:ping] = function response_ping(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:pong, Dict(), nothing, nothing, 🙋.initiator))
+end
+
+responses[:reset_shared_state] = function response_reset_shared_state(🙋::ClientRequest)
+    delete!(current_state_for_clients, 🙋.initiator.client)
+    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)

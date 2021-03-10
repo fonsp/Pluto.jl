@@ -53,9 +53,11 @@ mutable struct Promise{T}
 end
 
 "
-    Promise(f::Function)
+    Promise{T}(f::Function)
 
-Run `f` asynchronously, and return a `Promise` to its result. Call `wait` on the returned `Promise` to await the result.
+Run `f` asynchronously, and return a `Promise` to its result of type `T`. Call `fetch` on the returned `Promise` to await the result.
+
+It's just like a `Task`, except the result is a type parameter.
 
 # Example
 
@@ -65,7 +67,7 @@ julia> p = Promise() do
     1 + 2
 end;
 
-julia> wait(p)
+julia> fetch(p)
 3
 ```
 
@@ -79,7 +81,7 @@ function Promise{T}(f::Function) where T
 end
 Promise(f::Function) = Promise{Any}(f)
 
-function Base.wait(p::Promise{T})::T where T
+function Base.fetch(p::Promise{T})::T where T
 	wait(p.task)
 	something(p.value)
 end
