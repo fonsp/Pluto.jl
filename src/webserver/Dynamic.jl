@@ -107,7 +107,7 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "runtime" => cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -132,11 +132,11 @@ const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
 """
 Update the local state of all clients connected to this notebook.
 """
-function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
+function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing, reset=false)
     notebook_dict = notebook_to_js(🙋.notebook)
     for (_, client) in 🙋.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
-            current_dict = get(current_state_for_clients, client, :empty)
+            current_dict = reset ? :empty : get(current_state_for_clients, client, :empty)
             patches = Firebasey.diff(current_dict, notebook_dict)
             patches_as_dicts::Array{Dict} = patches
             current_state_for_clients[client] = deep_enough_copy(notebook_dict)
@@ -341,6 +341,10 @@ end
 
 responses[:ping] = function response_ping(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:pong, Dict(), nothing, nothing, 🙋.initiator))
+end
+
+responses[:reset_notebook] = function response_reset(🙋::ClientRequest)
+    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true), reset=true)
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)

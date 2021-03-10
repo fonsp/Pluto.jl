@@ -7,6 +7,7 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         Cell("md\"a\""),
         Cell("html\"a\""),
         Cell("md\"a \$b\$\""),
+        Cell("md\"a ``b``\""),
         Cell("""
         let
             x = md"a"
@@ -39,8 +40,8 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         @test is_just_text(new, notebook.cells[4])
         @test is_just_text(new, notebook.cells[5])
         @test is_just_text(new, notebook.cells[6])
+        @test is_just_text(new, notebook.cells[7])
 
-        @test !is_just_text(new, notebook.cells[7])
         @test !is_just_text(new, notebook.cells[8])
         @test !is_just_text(new, notebook.cells[9])
         @test !is_just_text(new, notebook.cells[10])
@@ -50,5 +51,6 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         @test !is_just_text(new, notebook.cells[14])
         @test !is_just_text(new, notebook.cells[15])
         @test !is_just_text(new, notebook.cells[16])
+        @test !is_just_text(new, notebook.cells[17])
     end
 end

@@ -1,5 +1,7 @@
 module Configuration
 
+import ..Pluto: tamepath
+
 function notebook_path_suggestion()
     preferred_dir = startswith(Sys.BINDIR, pwd()) ? homedir() : pwd()
     return joinpath(preferred_dir, "") # so that it ends with / or \
@@ -172,5 +174,64 @@ function from_flat_kwargs(; kwargs...)::Options
         compiler=CompilerOptions(; compiler_options...),
     )
 end
+
+
+function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::CompilerOptions
+    if notebook.compiler_options === nothing
+        return options
+    end
+
+    kwargs = Dict{Symbol,Any}()
+    for each in fieldnames(CompilerOptions)
+        # 1. not specified by notebook options
+        # 2. notebook specified project options
+        # 3. general notebook specified options
+        if getfield(notebook.compiler_options, each) === nothing
+            kwargs[each] = getfield(options, each)
+        elseif each === :project
+            # some specified processing for notebook project
+            # paths
+            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
+        else
+            kwargs[each] = getfield(notebook.compiler_options, each)
+        end
+    end
+    return CompilerOptions(;kwargs...)
+end
+
+function _resolve_notebook_project_path(notebook_path::String, path::String)::String
+    # 1. notebook project specified as abspath, return
+    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
+    # 3. notebook project specified as relative path, always assume it's relative to
+    #    the notebook.
+    if isabspath(path)
+        return tamepath(path)
+    elseif startswith(path, "@")
+        return Base.load_path_expand(path)
+    else
+        return tamepath(joinpath(dirname(notebook_path), path))
+    end
+end
+
+function _convert_to_flags(options::CompilerOptions)::Vector{String}
+    option_list = String[]
+
+    for name in fieldnames(CompilerOptions)
+        flagname = if name == :startup_file
+            "--startup-file"
+        elseif name == :history_file
+            "--history-file"
+        else
+            string("--", name)
+        end
+        value = getfield(options, name)
+        if value !== nothing
+            push!(option_list, string(flagname, "=", value))
+        end
+    end
+
+    return option_list
+end
+
 
 end

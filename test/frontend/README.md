@@ -23,3 +23,9 @@ Add `HEADLESS=false` when running the test command.
 Add `-- -t=name of the suite` to the end of the test command.
 
 `PLUTO_PORT=1235 npm run test -- -t=PlutoAutocomplete`
+
+## To make a test fail on a case that does not crash Pluto
+
+Use `console.error("PlutoError ...")`. This suite will fail if a console
+command has PlutoError in the text. Do that when a bad situation is handled
+but the underlying cause exists.
