@@ -6,7 +6,6 @@ version = "0.15.1"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
-CommonMacro = "b6f56e51-512f-4970-bf40-959278bba4cc"
 CommonMark = "a80b9123-70ca-4bc0-993e-6e3bcb318db6"
 Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
