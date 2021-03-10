@@ -44,6 +44,7 @@ export const CellInput = ({
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
+    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -114,7 +115,7 @@ export const CellInput = ({
             await on_add_after()
 
             const new_value = cm.getValue()
-            if (new_value !== remote_code_ref.current.body) {
+            if (new_value !== remote_code_ref.current) {
                 on_submit()
             }
         }
@@ -353,21 +354,29 @@ export const CellInput = ({
         }
 
         cm.on("dragover", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("drop", (cm_, e) => {
-            on_drag_drop_events(e)
-            e.preventDefault()
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                e.preventDefault()
+                return true
+            }
         })
         cm.on("dragenter", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
         cm.on("dragleave", (cm_, e) => {
-            on_drag_drop_events(e)
-            return true
+            if (e.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(e)
+                return true
+            }
         })
 
         cm.on("cursorActivity", () => {
@@ -434,6 +443,17 @@ export const CellInput = ({
             }, 100)
         })
 
+        cm.on("paste", (cm, e) => {
+            const topaste = e.clipboardData.getData("text/plain")
+            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                pluto_actions.add_deserialized_cells(topaste, -1)
+                e.stopImmediatePropagation()
+                e.preventDefault()
+                e.codemirrorIgnore = true
+            }
+            e.stopPropagation()
+        })
+
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()
@@ -465,6 +485,13 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
+
+    // fix a visual glitch where the input is only 5px high after unfolding the cell
+    useEffect(() => {
+        if (show_input) {
+            cm_ref.current.refresh()
+        }
+    }, [show_input])
 
     // TODO effect hook for disable_input?
 

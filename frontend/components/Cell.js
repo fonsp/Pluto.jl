@@ -2,8 +2,8 @@ import { html, useState, useEffect, useMemo, useRef, useContext } from "../impor
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea, useMillisSinceTruthy } from "./RunArea.js"
 import { Logs } from "./Logs.js"
+import { RunArea, useDebouncedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
@@ -38,7 +38,6 @@ export const Cell = ({
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
-    const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     useEffect(() => {
         const focusListener = (e) => {
             if (e.detail.cell_id === cell_id) {
@@ -66,6 +65,9 @@ export const Cell = ({
             set_waiting_to_run(false)
         }
     }, [queued, running, output?.last_run_timestamp])
+    // We activate animations instantly BUT deactivate them NSeconds later.
+    // We then toggle animation visibility using opacity. This saves a bunch of repaints.
+    const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
@@ -82,10 +84,12 @@ export const Cell = ({
             class=${cl({
                 queued: queued || waiting_to_run,
                 running: running,
+                activate_animation: activate_animation,
                 errored: errored,
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
             })}
@@ -118,14 +122,14 @@ export const Cell = ({
                 <span></span>
             </button>
             <${CellOutput} ...${output} cell_id=${cell_id} />
-            ${show_input &&
-            html`<${CellInput}
+            <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
                 set_cm_forced_focus=${set_cm_forced_focus}
+                show_input=${show_input}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
                     set_waiting_to_run(true)
@@ -149,7 +153,7 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-            />`}
+            />
             <${Logs} logs=${Object.values(logs)} />
             <${RunArea}
                 onClick=${() => {
@@ -160,7 +164,8 @@ export const Cell = ({
                         pluto_actions.set_and_run_multiple(cell_to_run)
                     }
                 }}
-                runtime=${localTimeRunning || runtime}
+                runtime=${runtime}
+                running=${running}
             />
             <button
                 onClick=${() => {

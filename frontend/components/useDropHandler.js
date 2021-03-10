@@ -46,7 +46,14 @@ export const useDropHandler = () => {
         }
         return (ev) => {
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
-            if (ev.dataTransfer.types[0] === "text/pluto-cell") return
+            // if (ev.dataTransfer.types.includes("text/pluto-cell") || ev.dataTransfer.types[0] === "text/plain") return
+            // if (ev.dataTransfer.types.length === 0) return
+
+            // Instead of skipping on `text/pluto-cell` and `text/plain`, lets skip on everything but `Files` (that's the above three lines)
+            // https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/types#return_value mentions
+            // "If any files are included in the drag operation, then one of the types will be the string `Files`"
+            if (!ev.dataTransfer.types.includes("Files")) return
+
             ev.stopPropagation()
             switch (ev.type) {
                 case "cmdrop":
@@ -57,7 +64,7 @@ export const useDropHandler = () => {
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")
                     set_drag_active(false)
-                    if (!ev.dataTransfer.files.length) {
+                    if (ev.dataTransfer.files.length === 0) {
                         return
                     }
                     uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code) => {

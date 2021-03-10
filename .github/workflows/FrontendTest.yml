@@ -78,5 +78,5 @@ jobs:
             - uses: actions/upload-artifact@v2
               if: failure()
               with:
-                  name: test-screenshot-artefacts
-                  path: ${{ github.workspace }}/test/frontend/artefacts/*.png
+                  name: test-screenshot-artifacts
+                  path: ${{ github.workspace }}/test/frontend/artifacts/*.png

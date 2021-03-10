@@ -43,6 +43,7 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+    wants_to_interrupt::Bool=false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -126,8 +127,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
+function open_safe_write(fn::Function, path, mode)
+    file_content = sprint(fn)
+    open(path, mode) do io
+        print(io, file_content)
+    end
+end
+    
 function save_notebook(notebook::Notebook, path::String)
-    open(path, "w") do io
+    open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end
 end

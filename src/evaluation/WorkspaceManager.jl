@@ -2,7 +2,7 @@ module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
-import ..Configuration: CompilerOptions
+import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Distributed
@@ -32,6 +32,7 @@ const process_preamble = [
 const moduleworkspace_count = Ref(0)
 const workspaces = Dict{UUID,Promise{Workspace}}()
 
+const SN = Tuple{ServerSession,Notebook}
 
 """Create a workspace for the notebook, optionally in a separate process.
 
@@ -39,7 +40,7 @@ const workspaces = Dict{UUID,Promise{Workspace}}()
 Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
 only partially: you can't stop cells on Windows.
 """
-function make_workspace((session, notebook)::Tuple{ServerSession,Notebook})::Workspace
+function make_workspace((session, notebook)::SN)::Workspace
     pid = if session.options.evaluation.workspace_use_distributed
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
@@ -65,7 +66,7 @@ function make_workspace((session, notebook)::Tuple{ServerSession,Notebook})::Wor
     return workspace
 end
 
-function start_relaying_logs((session, notebook)::Tuple{ServerSession,Notebook}, log_channel::Distributed.RemoteChannel)
+function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
     while true
         try
             next_log::Dict{String,Any} = take!(log_channel)
@@ -113,63 +114,6 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
-function _merge_notebook_compiler_options(notebook::Notebook, options::CompilerOptions)
-    if notebook.compiler_options === nothing
-        return options
-    end
-
-    kwargs = Dict{Symbol,Any}()
-    for each in fieldnames(CompilerOptions)
-        # 1. not specified by notebook options
-        # 2. notebook specified project options
-        # 3. general notebook specified options
-        if getfield(notebook.compiler_options, each) === nothing
-            kwargs[each] = getfield(options, each)
-        elseif each === :project
-            # some specified processing for notebook project
-            # paths
-            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
-        else
-            kwargs[each] = getfield(notebook.compiler_options, each)
-        end
-    end
-    return CompilerOptions(;kwargs...)
-end
-
-function _resolve_notebook_project_path(notebook_path::String, path::String)
-    # 1. notebook project specified as abspath, return
-    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
-    # 3. notebook project specified as relative path, always assume it's relative to
-    #    the notebook.
-    if isabspath(path)
-        return tamepath(path)
-    elseif startswith(path, "@")
-        return Base.load_path_expand(path)
-    else
-        return tamepath(joinpath(dirname(notebook_path), path))
-    end
-end
-
-function _convert_to_flags(options::CompilerOptions)
-    option_list = []
-
-    for name in fieldnames(CompilerOptions)
-        flagname = if name == :startup_file
-            "--startup-file"
-        elseif name == :history_file
-            "--history-file"
-        else
-            string("--", name)
-        end
-        value = getfield(options, name)
-        if value !== nothing
-            push!(option_list, string(flagname, "=", value))
-        end
-    end
-
-    return option_list
-end
-
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
@@ -192,21 +136,21 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
 end
 
 "Return the `Workspace` of `notebook`; will be created if none exists yet."
-function get_workspace(session_notebook::Tuple{ServerSession,Notebook})::Workspace
+function get_workspace(session_notebook::SN)::Workspace
     session, notebook = session_notebook
     promise = get!(workspaces, notebook.notebook_id) do
         Promise{Workspace}(() -> make_workspace(session_notebook))
     end
-    wait(promise)
+    fetch(promise)
 end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
 "Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace})
+function unmake_workspace(session_notebook::Union{SN,Workspace})
     workspace = get_workspace(session_notebook)
 
     if workspace.pid != Distributed.myid()
-        filter!(p -> wait(p.second).pid != workspace.pid, workspaces)
+        filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
         interrupt_workspace(workspace; verbose=false)
         if workspace.pid != Distributed.myid()
             Distributed.rmprocs(workspace.pid)
@@ -218,7 +162,7 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Nothing}}}
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -230,10 +174,11 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
     
     # a try block (on this process) to catch an InterruptException
     take!(workspace.dowork_token)
-    try
+    early_result = try
         # we use [pid] instead of pid to prevent fetching output
         Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info)))
         put!(workspace.dowork_token)
+        nothing
     catch exs
         # We don't use a `finally` because the token needs to be back asap
         put!(workspace.dowork_token)
@@ -244,25 +189,27 @@ function eval_format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSess
             @assert ex.pid == workspace.pid
             @assert ex.captured.ex isa InterruptException
 
-            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = nothing)
         catch assertionerr
             showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = missing)
+            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = nothing)
         end
     end
 
-    format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon)
+    early_result === nothing ?
+        format_fetch_in_workspace(workspace, cell_id, ends_with_semicolon) :
+        early_result
 end
 
 "Evaluate expression inside the workspace - output is not fetched, errors are rethrown. For internal use."
-function eval_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr)
+function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
     
     Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)
+function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
@@ -272,14 +219,14 @@ function format_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,N
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."
-function eval_fetch_in_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, expr)
+function eval_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
     
     Distributed.remotecall_eval(Main, workspace.pid, :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
+function delete_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
     workspace = get_workspace(session_notebook)
 
     old_workspace_name = workspace.module_name
@@ -291,9 +238,25 @@ function delete_vars(session_notebook::Union{Tuple{ServerSession,Notebook},Works
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
+function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
+    start = time()
+    while time() < start + timeout
+        if query()
+            return true
+        end
+        sleep(interval)
+    end
+    return false
+end
+
 "Force interrupt (SIGINT) a workspace, return whether successful"
-function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Notebook},Workspace}; verbose=true)::Bool
+function interrupt_workspace(session_notebook::Union{SN,Workspace}; verbose=true)::Bool
     workspace = get_workspace(session_notebook)
+
+    if poll(() -> isready(workspace.dowork_token), 2.0, 5/100)
+        verbose && println("Cell finished, other cells cancelled!")
+        return true
+    end
 
     if Sys.iswindows()
         verbose && @warn "Unfortunately, stopping cells is currently not supported on Windows :(
@@ -318,15 +281,9 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
         verbose && @info "Sending interrupt to process $(workspace.pid)"
         Distributed.interrupt(workspace.pid)
 
-        delay = 5.0 # seconds
-        parts = 100
-
-        for _ in 1:parts
-            sleep(delay / parts)
-            if isready(workspace.dowork_token)
-                verbose && println("Cell interrupted!")
-                return true
-            end
+        if poll(() -> isready(workspace.dowork_token), 5.0, 5/100)
+            verbose && println("Cell interrupted!")
+            return true
         end
 
         verbose && println("Still running... starting sequence")
@@ -334,7 +291,10 @@ function interrupt_workspace(session_notebook::Union{Tuple{ServerSession,Noteboo
             for _ in 1:5
                 verbose && print(" 🔥 ")
                 Distributed.interrupt(workspace.pid)
-                sleep(0.2)
+                sleep(0.18)
+                if isready(workspace.dowork_token)
+                    break
+                end
             end
             sleep(1.5)
         end

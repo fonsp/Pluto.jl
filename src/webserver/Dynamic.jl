@@ -106,7 +106,7 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "runtime" => cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -341,6 +341,11 @@ responses[:ping] = function response_ping(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:pong, Dict(), nothing, nothing, 🙋.initiator))
 end
 
+responses[:reset_shared_state] = function response_reset_shared_state(🙋::ClientRequest)
+    delete!(current_state_for_clients, 🙋.initiator.client)
+    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -363,7 +368,16 @@ end
 
 responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     require_notebook(🙋)
-    success = WorkspaceManager.interrupt_workspace((🙋.session, 🙋.notebook))
+
+    session_notebook = (🙋.session, 🙋.notebook)
+    workspace = WorkspaceManager.get_workspace(session_notebook)
+
+    already_interrupting = 🙋.notebook.wants_to_interrupt
+    anything_running = !isready(workspace.dowork_token)
+    if !already_interrupting && anything_running
+        🙋.notebook.wants_to_interrupt = true
+        WorkspaceManager.interrupt_workspace(session_notebook)
+    end
     # TODO: notify user whether interrupt was successful
 end
 

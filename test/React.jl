@@ -35,11 +35,11 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         @test notebook.cells[1].rootassignee == :x
-        @test notebook.cells[1].runtime !== missing
+        @test notebook.cells[1].runtime !== nothing
         setcode(notebook.cells[1], "x = 12")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
-        @test notebook.cells[2].runtime !== missing
+        @test notebook.cells[2].runtime !== nothing
 
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[3].errored == false
@@ -150,14 +150,77 @@ import Distributed
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
-            @test topo_order.runnable == notebook.cells[[1,2]]
+            @test indexin(topo_order.runnable, notebook.cells) == [1,2]
             @test topo_order.errable |> keys == notebook.cells[[3,4]] |> Set
         end
         let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]], allow_multiple_defs=true)
-            @test topo_order.runnable == notebook.cells[[1,3,4,2]] # x first, y second and third, z last
+            @test indexin(topo_order.runnable, notebook.cells) == [1,3,4,2] # x first, y second and third, z last
             # this also tests whether multiple defs run in page order
             @test topo_order.errable == Dict()
         end
+    end
+
+    @testset "Pkg topology workarounds" begin
+        notebook = Notebook([
+            Cell("1 + 1"),
+            Cell("json([1,2])"),
+            Cell("using JSON"),
+            Cell("""Pkg.add("JSON")"""),
+            Cell("Pkg.activate(mktempdir())"),
+            Cell("import Pkg"),
+            Cell("using Revise"),
+            Cell("1 + 1"),
+        ])
+        Pluto.update_caches!(notebook, notebook.cells)
+        notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        @test indexin(topo_order.runnable, notebook.cells) == [6, 5, 4, 7, 3, 1, 2, 8]
+        # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
+        # 1, 2, 7 remain, and should run in notebook order.
+
+        # if the cells were placed in reverse order...
+        reverse!(notebook.cell_order)
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        @test indexin(topo_order.runnable, reverse(notebook.cells)) == [6, 5, 4, 7, 3, 8, 2, 1]
+        # 6, 5, 4, 3 should run first (this is implemented using `cell_precedence_heuristic`), in that order
+        # 1, 2, 7 remain, and should run in notebook order, which is 7, 2, 1.
+
+        reverse!(notebook.cell_order)
+    end
+
+    @testset "Pkg topology workarounds -- hard" begin
+        notebook = Notebook([
+            Cell("json([1,2])"),
+            Cell("using JSON"),
+            Cell("Pkg.add(package_name)"),
+            Cell(""" package_name = "JSON" """),
+            Cell("Pkg.activate(envdir)"),
+            Cell("envdir = mktempdir()"),
+            Cell("import Pkg"),
+            Cell("using JSON3, Revise"),
+        ])
+
+        Pluto.update_caches!(notebook, notebook.cells)
+        notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+
+        comesbefore(A, first, second) = findfirst(isequal(first),A) < findfirst(isequal(second), A)
+
+        run_order = indexin(topo_order.runnable, notebook.cells)
+
+        # like in the previous test
+        @test comesbefore(run_order, 7, 5)
+        @test_broken comesbefore(run_order, 5, 3)
+        @test_broken comesbefore(run_order, 3, 2)
+        @test comesbefore(run_order, 2, 1)
+        @test comesbefore(run_order, 8, 2)
+        @test comesbefore(run_order, 8, 1)
+
+        # the variable dependencies
+        @test comesbefore(run_order, 6, 5)
+        @test comesbefore(run_order, 4, 3)
     end
 
     
@@ -189,6 +252,15 @@ import Distributed
             Cell(""),
             Cell("asdf(21, 21)"),
             Cell("asdf(22)"),
+
+            Cell("@enum e1 e2 e3"),
+            Cell("@enum e4 e5=24"),
+            Cell("Base.@enum e6 e7=25 e8"),
+            Cell("Base.@enum e9 e10=26 e11"),
+            Cell("""@enum e12 begin
+                    e13=27
+                    e14
+                end"""),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -330,10 +402,29 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == false
 
+        update_run!(🍭, notebook, notebook.cells[23:27])
+        @test notebook.cells[23].errored == false
+        @test notebook.cells[24].errored == false
+        @test notebook.cells[25].errored == false
+        @test notebook.cells[26].errored == false
+        @test notebook.cells[27].errored == false
+        update_run!(🍭, notebook, notebook.cells[23:27])
+        @test notebook.cells[23].errored == false
+        @test notebook.cells[24].errored == false
+        @test notebook.cells[25].errored == false
+        @test notebook.cells[26].errored == false
+        @test notebook.cells[27].errored == false
+
+        setcode.(notebook.cells[23:27], [""])
+        update_run!(🍭, notebook, notebook.cells[23:27])
+
+        setcode(notebook.cells[23], "@assert !any(isdefined.([@__MODULE__], [Symbol(:e,i) for i in 1:14]))")
+        update_run!(🍭, notebook, notebook.cells[23])
+        @test notebook.cells[23].errored == false
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
-        # for lots of unsupported edge cases, see:
+        # for some unsupported edge cases, see:
         # https://github.com/fonsp/Pluto.jl/issues/177#issuecomment-645039993
     end
 
@@ -912,10 +1003,12 @@ import Distributed
         end
 
         bad = @elapsed benchmark(2)
-        good = @elapsed benchmark(2)
+        good = 0.01 * @elapsed for i in 1:100
+            benchmark(2)
+        end
 
         update_run!(🍭, notebook, notebook.cells)
-        @test 0.2 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
+        @test 0.1 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
         old = notebook.cells[4].output_repr
         setcode(notebook.cells[4], "4.0")
@@ -1056,4 +1149,3 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 end
-
