@@ -126,8 +126,17 @@ end
 
 "Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
+	run = WorkspaceManager.eval_format_fetch_in_workspace(
+		session_notebook, 
+		cell.parsedcode, 
+		cell.cell_id, 
+		ends_with_semicolon(cell.code), 
+		cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
+	)
 	set_output!(cell, run)
+	if session_notebook isa Tuple && run.process_exited
+		session_notebook[2].process_status = ProcessStatus.no_process
+	end
 	return run
 end
 
@@ -139,6 +148,8 @@ function set_output!(cell::Cell, run)
 	cell.repr_mime = run.output_formatted[2]
 	cell.errored = run.errored
 end
+
+will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
 ###
 # CONVENIENCE FUNCTIONS
@@ -161,8 +172,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
 		original_pwd = pwd()
 		offline_workspace = WorkspaceManager.make_workspace(
-			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-				notebook,)
+			(
+				ServerSession(),
+				notebook,
+			),
+			force_offline=true,
 		)
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
@@ -174,10 +188,12 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	if run_async
-		@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-	else
-		run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+	if will_run_code(notebook)
+		if run_async
+			@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		else
+			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		end
 	end
 end
 

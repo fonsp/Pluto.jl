@@ -78,9 +78,18 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const ProcessStatus = {
+    ready: "ready",
+    starting: "starting",
+    no_process: "no_process",
+    waiting_to_restart: "waiting_to_restart",
+}
+
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing),
-    loading: state.initializing || state.moving_file,
+    loading: state.initializing || state.moving_file || state.notebook.process_status === ProcessStatus.starting,
+    process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
 })
 
 const first_true_key = (obj) => {
@@ -133,10 +142,11 @@ const first_true_key = (obj) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
  *  in_temp_dir: boolean,
- *  notebook_id: string,
+ *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
@@ -153,6 +163,7 @@ const initial_notebook = () => ({
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
+    process_status: "starting",
     cell_inputs: {},
     cell_results: {},
     cell_order: [],
@@ -431,7 +442,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id]) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    // state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -481,7 +492,7 @@ export class Editor extends Component {
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
-                console.info("Applying patches", { patches })
+                console.log(patches)
                 if (patches.length !== 0) {
                     this.setState(
                         immer((state) => {
@@ -631,7 +642,6 @@ adding the info you can find in the JS Console (F12)`)
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
-        console.log("asdf")
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = async (mutate_fn) => {
             // if (this.state.initializing) {
@@ -873,7 +883,6 @@ adding the info you can find in the JS Console (F12)`)
                 this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         )
         document.body.classList.toggle("code_differs", any_code_differs)
-
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
 
@@ -907,6 +916,7 @@ adding the info you can find in the JS Console (F12)`)
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                             </a>
+                            <div class="flex_grow_1"></div>
                             <${FilePicker}
                                 client=${this.client}
                                 value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -918,10 +928,34 @@ adding the info you can find in the JS Console (F12)`)
                                 placeholder="Save notebook..."
                                 button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
                             />
+                            <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
-                            <div id="process_status">${statusval === "disconnected" ? "Reconnecting..." : statusval === "loading" ? "Loading..." : null}</div>
+                            <div id="process_status">${
+                                statusval === "disconnected"
+                                    ? "Reconnecting..."
+                                    : statusval === "loading"
+                                    ? "Loading..."
+                                    : statusval === "process_restarting"
+                                    ? "Process exited — restarting..."
+                                    : statusval === "process_dead"
+                                    ? html`${"Process exited — "}
+                                          <a
+                                              href="#"
+                                              onClick=${() => {
+                                                  this.client.send(
+                                                      "restart_process",
+                                                      {},
+                                                      {
+                                                          notebook_id: notebook.notebook_id,
+                                                      }
+                                                  )
+                                              }}
+                                              >restart</a
+                                          >`
+                                    : null
+                            }</div>
                         </nav>
                     </header>
                     <${Main}>
@@ -937,15 +971,18 @@ adding the info you can find in the JS Console (F12)`)
                             </button>
                         </preamble>
                         <${Notebook}
-                            is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
-                            selected_cells=${this.state.selected_cells}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
+                            selected_cells=${this.state.selected_cells}
+                            is_initializing=${this.state.initializing}
+                            is_process_ready=${
+                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+                            }
+                            disable_input=${!this.state.connected}
                         />
 
                         <${DropRuler} 
