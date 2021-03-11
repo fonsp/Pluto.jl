@@ -1,4 +1,4 @@
-module CompatibilityWithOtherPackages
+module IntegrationsWithOtherPackages
 
 import ..workspace_info
 
@@ -17,21 +17,21 @@ function on_message(module_name, body)
 end
 
 
-module AssetRegistryCompatibility
+module AssetRegistryIntegrations
     import ..Requires
     import ..workspace_info
 
-    function get_file_from_path(path)
+    function get_filepath_from_urlpath(path)
         nothing
     end
 
     function __init__()
         Requires.@require AssetRegistry="bf4720bc-e11a-5d0c-854e-bdca1663c893" begin
             if workspace_info.notebook_id === nothing
-                throw(error("Couldn't load AssetRegistry compatibility, notebook_id not set inside PlutoRunner"))
+                throw(error("Couldn't load AssetRegistry integrations, notebook_id not set inside PlutoRunner"))
             end
-            AssetRegistry.baseurl[] = "./compatibility/asset-registry/$(workspace_info.notebook_id)"
-            function get_file_from_path(path)
+            AssetRegistry.baseurl[] = "./integrations/AssetRegistry/$(workspace_info.notebook_id)"
+            function get_filepath_from_urlpath(path)
                 local full_path = AssetRegistry.baseurl[] * "/" * path
                 get(AssetRegistry.registry, full_path, nothing)
             end
@@ -40,7 +40,7 @@ module AssetRegistryCompatibility
 end
 
 
-module WebIOCompatibility
+module WebIOIntegrations
     import ..Requires
     import ..on_message
     import ..message_channel

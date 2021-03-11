@@ -556,7 +556,7 @@ patch: ${JSON.stringify(
         window.WebIO = webIO
         webIO.setSendCallback((message) => {
             this.client.send(
-                "compatibility",
+                "integrations",
                 {
                     module_name: "WebIO",
                     body: message,
@@ -571,7 +571,7 @@ patch: ${JSON.stringify(
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
-                    case "compatibility":
+                    case "integrations":
                         if (message.module_name === "WebIO") {
                             webIO.dispatch(message.body)
                         } else {

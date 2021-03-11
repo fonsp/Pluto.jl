@@ -1199,7 +1199,7 @@ Base.@kwdef mutable struct WorkspaceInfo
 end
 const workspace_info = WorkspaceInfo()
 
-include("./CompatibilityWithOtherPackages.jl")
+include("./IntegrationsWithOtherPackages.jl")
 
 # we put this in __init__ to fix a world age problem
 function __init__()

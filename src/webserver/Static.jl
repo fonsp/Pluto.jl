@@ -140,7 +140,9 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    HTTP.@register(router, "GET", "/compatibility/asset-registry/*", request -> begin
+    # TODO Make this more generic, just like the dynamic version now is.
+    # .... `AssetRegistry` in the path should be `*`, and a small (dict based?) interface between here and PlutoRunner should do.
+    HTTP.@register(router, "GET", "/integrations/AssetRegistry/*", request -> begin
         # _1, _2, notebook_id, rest... = HTTP.URIs.splitpath(request.target)
         notebook_id = HTTP.URIs.splitpath(request.target)[3]
         rest = HTTP.URIs.splitpath(request.target)[4:end]
@@ -148,8 +150,13 @@ function http_router_for(session::ServerSession)
         path = join(rest, "/")
 
         notebook = session.notebooks[UUID(notebook_id)]
+        dict_request = Dict(
+            "target" => request.target,
+            "body" => request.body,
+            "method" => "GET"
+        )
         file_path = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
-            Main.PlutoRunner.CompatibilityWithOtherPackages.AssetRegistryCompatibility.get_file_from_path($(path))
+            Main.PlutoRunner.IntegrationsWithOtherPackages.AssetRegistryIntegrations.get_filepath_from_urlpath($(path))
         end)
 
         if file_path !== nothing && isfile(file_path)
