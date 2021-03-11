@@ -526,22 +526,21 @@ export class Editor extends Component {
                                 const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
                                 const path_value = _.get(this.state.notebook, failing_path, "Not Found")
                                 console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
-                                alert(`PlutoState failed to sync with the browser!
-Please report this: https://github.com/fonsp/Pluto.jl/issues
-adding the info you can find in the JS Console (F12)`)
+                                // The alert below is not catastrophic: the editor will try to recover.
+                                // Deactivating to be user-friendly!
+                                // alert(`Ooopsiee.`)
                                 console.error(
-                                    `
-                                            ########################-Please send these lines-########################
-                                            PlutoError: StateOutOfSync: Failed to apply patches.
-                                            failing path: ${failing_path}
-                                            notebook previous value: ${path_value}
-                                            patch: ${JSON.stringify(
-                                                patches?.find(({ path }) => path.join("") === failing_path),
-                                                null,
-                                                1
-                                            )}
-                                            #######################**************************########################
-                                        `,
+                                    `#######################**************************########################
+PlutoError: StateOutOfSync: Failed to apply patches.
+Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
+failing path: ${failing_path}
+notebook previous value: ${path_value}
+patch: ${JSON.stringify(
+                                        patches?.find(({ path }) => path.join("") === failing_path),
+                                        null,
+                                        1
+                                    )}
+#######################**************************########################`,
                                     exception
                                 )
                                 console.log("Trying to recover: Refetching notebook...")
@@ -592,7 +591,7 @@ adding the info you can find in the JS Console (F12)`)
                             try {
                                 apply_notebook_patches(message.patches, initial_notebook())
                             } catch (exception) {
-                                alert("Cannot recover from broken state. Please open an issue!")
+                                alert("Oopsie!! please refresh your browser and everything will be alright!")
                             }
                         } else if (message.patches.length !== 0) {
                             apply_notebook_patches(message.patches)
