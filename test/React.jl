@@ -35,11 +35,11 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
         @test notebook.cells[1].rootassignee == :x
-        @test notebook.cells[1].runtime !== missing
+        @test notebook.cells[1].runtime !== nothing
         setcode(notebook.cells[1], "x = 12")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
-        @test notebook.cells[2].runtime !== missing
+        @test notebook.cells[2].runtime !== nothing
 
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[3].errored == false
