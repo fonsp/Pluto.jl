@@ -53,6 +53,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgTools.create_empty_ctx()
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
+    nbpkg_terminal_output::String=""
 
     process_status::String=ProcessStatus.starting
 

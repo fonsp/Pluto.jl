@@ -52,8 +52,7 @@ function use_plutopkg(topology::NotebookTopology)
     end
 end
 
-
-function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology)
+function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=identity)
     ctx = notebook.nbpkg_ctx
 
     👺 = false
@@ -115,7 +114,14 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
             to_add = filter(PkgTools.package_exists, added)
+            @show to_add
             if !isempty(to_add)
+                iolistener = IOListener(callback=on_terminal_output)
+                startlistening(iolistener)
+
+                old_io = ctx.io
+                ctx.io = IOContext(iolistener.buffer, :color => true)
+
                 # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                 clear_semver_compat_entries!(ctx)
 
@@ -142,7 +148,15 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     end
                 end
 
+                @info "Resolving"
+                Pkg.resolve(ctx)
+                @info "Instantiating"
+                Pkg.instantiate(ctx)
+
                 write_semver_compat_entries!(ctx)
+
+                ctx.io = old_io
+                stoplistening(iolistener)
             end
 
             return (
@@ -169,4 +183,34 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             restart_required=👺 || false,
         )
     end
+end
+
+
+
+"A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
+Base.@kwdef struct IOListener
+    callback::Function
+    buffer::IOBuffer=IOBuffer()
+    interval::Real=1.0/10
+    running::Ref{Bool}=Ref(false)
+    last_size::Ref{Int}=Ref(-1)
+end
+function trigger(listener::IOListener)
+    new_size = listener.buffer.size
+    if new_size > listener.last_size[]
+        listener.last_size[] = new_size
+        new_contents = String(listener.buffer.data[1:new_size])
+        listener.callback(new_contents)
+    end
+end
+function startlistening(listener::IOListener)
+    listener.running[] = true
+    @async while listener.running[]
+        trigger(listener)
+        sleep(listener.interval)
+    end
+end
+function stoplistening(listener::IOListener)
+    listener.running[] = false
+    trigger(listener)
 end

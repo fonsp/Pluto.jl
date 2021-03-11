@@ -133,6 +133,7 @@ function notebook_to_js(notebook::Notebook)
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : Dict{String,String}(
                     x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
                 ),
+                "terminal_output" => notebook.nbpkg_terminal_output,
             )
         end,
     )
