@@ -86,7 +86,7 @@ function package_versions(package_name::AbstractString)::Vector
     else
         p = registries_path(registries, package_name)
         if p === nothing
-            []
+            VersionNumber[]
         else
             package_versions_from_path(p)
         end
