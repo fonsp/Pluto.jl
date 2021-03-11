@@ -142,6 +142,8 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     end
                 end
 
+                Pkg.instantiate(ctx)
+
                 write_semver_compat_entries!(ctx)
             end
 

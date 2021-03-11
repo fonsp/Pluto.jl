@@ -72,6 +72,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
             Distributed.remotecall_eval(Main, [pid], quote
                 empty!(LOAD_PATH)
                 push!(LOAD_PATH, "@")
+                push!(LOAD_PATH, "@stdlib")
                 Base.ACTIVE_PROJECT[] = $(dirname(notebook.nbpkg_ctx.env.project_file))
             end)
         end
