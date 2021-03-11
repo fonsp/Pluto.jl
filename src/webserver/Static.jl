@@ -140,13 +140,15 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    HTTP.@register(router, "GET", "/webio-cell/*", request -> begin
-        _webiocellstr, notebook_id, path_parts... = HTTP.URIs.splitpath(request.target)
-        path = "/"* join(path_parts, "/")
+    HTTP.@register(router, "GET", "/compatibility/asset-registry/*", request -> begin
+        _1, _2, notebook_id, rest... = HTTP.URIs.splitpath(request.target)
+        path = join(rest, "/")
+
         notebook = session.notebooks[UUID(notebook_id)]
         file_path = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
-            Main.PlutoRunner.get_file_from_path($(path))
+            Main.PlutoRunner.CompatibilityWithOtherPackages.AssetRegistryCompatibility.get_file_from_path($(path))
         end)
+
         if file_path !== nothing && isfile(file_path)
             return HTTP.Response(
                 200,

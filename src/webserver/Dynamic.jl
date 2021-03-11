@@ -464,9 +464,9 @@ responses[:write_file] = function (🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
-responses[:webio] = function (🙋::ClientRequest)
-    WorkspaceManager.eval_in_workspace((🙋.session, 🙋.notebook), quote    
-        Main.PlutoRunner.dispatch($(🙋.body))
+responses[:compatibility] = function (🙋::ClientRequest)
+    WorkspaceManager.eval_in_workspace((🙋.session, 🙋.notebook), quote
+        Main.PlutoRunner.CompatibilityWithOtherPackages.dispatch_message($(🙋.body))
     end)
 end
 
