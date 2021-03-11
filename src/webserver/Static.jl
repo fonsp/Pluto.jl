@@ -242,6 +242,27 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebookfile/eval", serve_notebook_value)
 
+    function serve_notebook_static_fn(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(split(query["outputs"], ","))
+
+        id = get(query, "id", nothing)
+        notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        topology = notebook.topology
+
+        input_symbols = Symbol.(split(query["inputs"], ","))
+        @info input_symbols
+        out_fn = REST.get_notebook_static_function(session, notebook, topology, input_symbols, out_symbols)
+
+        res = HTTP.Response(200, string(out_fn))
+        push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
+        res
+    end
+    HTTP.@register(router, "GET", "/notebookfile/static", serve_notebook_static_fn)
+
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links

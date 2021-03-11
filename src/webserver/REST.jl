@@ -1,5 +1,5 @@
 module REST
-import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, where_assigned, where_referenced, update_save_run!
+import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, where_assigned, where_referenced, update_save_run!, topological_order
 import UUIDs: UUID
 import HTTP
 import JSON
@@ -9,6 +9,23 @@ function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Ce
     filter(notebook.cells) do cell
         any(x ∈ topology[node].references for x ∈ topology[cell].definitions)
     end
+end
+
+function recursive_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
+    parents = Set{Cell}([node])
+    
+    for parent_cell ∈ direct_parents(notebook, topology, node)
+        parents = parents ∪ recursive_parents(notebook, topology, parent_cell)
+    end
+
+    parents
+end
+function recursive_parents(notebook::Notebook, topology::NotebookTopology, nodes::Vector{Cell})
+    if length(nodes) == 0
+        return []
+    end
+
+    reduce(∪, (x -> recursive_parents(notebook, topology, x)).(nodes))
 end
 
 function upstream_roots(notebook::Notebook, topology::NotebookTopology, from::Cell)
@@ -63,6 +80,44 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
+function get_notebook_static_function(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Vector{Symbol}, outputs::Vector{Symbol})
+    output_cells = where_assigned(notebook, topology, Set(outputs))
+    output_cell = output_cells[1]
+    
+    input_cells = (input -> where_assigned(notebook, topology, Set([input]))[1]).(inputs)
+
+    to_set = upstream_roots(notebook, topology, output_cell)
+
+    function_name = Symbol("eval_" * string(outputs[1]))
+    function_params = (x -> Expr(:kw, :($x), WorkspaceManager.eval_fetch_in_workspace((session, notebook), x))).(inputs)
+
+    necessary_cells = recursive_parents(notebook, topology, output_cell)
+    @info necessary_cells
+
+    cell_ordering = topological_order(notebook, topology, [necessary_cells..., output_cell])
+    # cell_ordering = topological_order(notebook, topology, [output_cell])
+
+    cell_expressions = (cell -> Meta.parse(cell.code)).(filter(cell_ordering.runnable) do cell
+        (cell ∈ necessary_cells && cell ∉ input_cells) || cell ∈ output_cells
+    end)
+
+    :(
+        function $function_name($(function_params...))
+            $(cell_expressions...)
+        end
+    )
+end
+
+
+function static_function(output::Symbol, inputs::Vector{Symbol}, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing)
+    @warn "Ensure you trust this host, as the function returned could be malicious"
+
+    query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
+    request_uri = merge(HTTP.URI("http://$(host)/notebookfile/static"); query=query)
+    response = HTTP.get(request_uri)
+
+    Meta.parse(String(response.body))
+end
 
 function evaluate(output::Symbol, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing, with_json=false; kwargs...)
     query = ["outputs" => string(output), "inputs" => JSON.json(kwargs)]
