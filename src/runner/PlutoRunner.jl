@@ -1148,9 +1148,7 @@ const fake_bind = """macro bind(def, element)
     end
 end"""
 
-
-
-
+const bond_triggers_channel = Channel{Any}(10)
 
 
 

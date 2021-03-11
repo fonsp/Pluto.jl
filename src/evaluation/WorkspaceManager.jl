@@ -1,5 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
+import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
@@ -64,6 +65,10 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.IntegrationsWithOtherPackages.message_channel)), $pid)
     end)
 
+    bond_triggers_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.bond_triggers_channel)), $pid)
+    end)
+
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
@@ -72,6 +77,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
 
     @async start_relaying_logs((session, notebook), log_channel)
     @async start_relaying_integrations((session, notebook), integrations_channel)
+    @async start_relaying_bond_triggers((session, notebook), bond_triggers_channel)
     cd_workspace(workspace, notebook.path)
 
     force_offline || (notebook.process_status = ProcessStatus.ready)
@@ -103,6 +109,26 @@ function start_relaying_integrations((session, notebook)::SN, channel::Distribut
                 break
             end
             @error "Failed to relay integrations message" exception=(e, catch_backtrace())
+        end
+    end
+end
+
+function start_relaying_bond_triggers((session, notebook)::SN, channel::Distributed.RemoteChannel)
+    while true
+        try
+            next_message = take!(channel)
+
+            name = Symbol(next_message["name"])
+            value = next_message["value"]
+
+            notebook.bonds[name] = Pluto.BondValue(value)
+
+            Pluto.set_bond_value_reactive(; session=session, notebook=notebook, name=name, run_async=false)
+        catch e
+            if !isopen(channel)
+                break
+            end
+            @error "Failed to relay bond trigger" exception=(e, catch_backtrace())
         end
     end
 end
