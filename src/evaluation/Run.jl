@@ -163,7 +163,33 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
 
-	try
+	# _assume `prerender_text == false` if you want to skip some details_
+
+	to_run_online = if !prerender_text
+		cells
+	else
+		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
+		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
+		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
+		original_pwd = pwd()
+		offline_workspace = WorkspaceManager.make_workspace(
+			(
+				ServerSession(),
+				notebook,
+			),
+			force_offline=true,
+		)
+
+		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+		for cell in to_run_offline
+			run_single!(offline_workspace, cell, new[cell])
+		end
+		
+		cd(original_pwd)
+		setdiff(cells, to_run_offline)
+	end
+
+	pkg_task = @async try
 		pkg_result = withtoken(notebook.executetoken) do
 			iocallback = s -> let
 				notebook.nbpkg_terminal_output = s
@@ -195,38 +221,16 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 		# TODO: send to user
 	end
-	
-	# _assume `prerender_text == false` if you want to skip some details_
-
-	to_run_online = if !prerender_text
-		cells
-	else
-		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
-		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
-		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
-		original_pwd = pwd()
-		offline_workspace = WorkspaceManager.make_workspace(
-			(
-				ServerSession(),
-				notebook,
-			),
-			force_offline=true,
-		)
-
-		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
-		for cell in to_run_offline
-			run_single!(offline_workspace, cell, new[cell])
-		end
-		
-		cd(original_pwd)
-		setdiff(cells, to_run_offline)
-	end
 
 	if will_run_code(notebook)
-		if run_async
-			@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		else
+		run_task = @async begin
+			wait(pkg_task)
 			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		end
+		if run_async
+			run_task
+		else
+			fetch(run_task)
 		end
 	end
 end
