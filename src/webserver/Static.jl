@@ -141,7 +141,10 @@ function http_router_for(session::ServerSession)
     end
 
     HTTP.@register(router, "GET", "/compatibility/asset-registry/*", request -> begin
-        _1, _2, notebook_id, rest... = HTTP.URIs.splitpath(request.target)
+        # _1, _2, notebook_id, rest... = HTTP.URIs.splitpath(request.target)
+        notebook_id = HTTP.URIs.splitpath(request.target)[3]
+        rest = HTTP.URIs.splitpath(request.target)[4:end]
+
         path = join(rest, "/")
 
         notebook = session.notebooks[UUID(notebook_id)]
