@@ -20,14 +20,20 @@ function Base.convert(::Type{BondValue}, dict::Dict)
     BondValue(dict["value"])
 end
 
+const ProcessStatus = (
+    ready="ready",
+    starting="starting",
+    no_process="no_process",
+    waiting_to_restart="waiting_to_restart",
+)
+
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
-    # i still don't really know what an AbstractString is but it makes this package look more professional
-    path::AbstractString
+    path::String
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
 
@@ -41,6 +47,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+
+    process_status::String=ProcessStatus.starting
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
     wants_to_interrupt::Bool=false
@@ -127,8 +135,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
+function open_safe_write(fn::Function, path, mode)
+    file_content = sprint(fn)
+    open(path, mode) do io
+        print(io, file_content)
+    end
+end
+    
 function save_notebook(notebook::Notebook, path::String)
-    open(path, "w") do io
+    open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end
 end

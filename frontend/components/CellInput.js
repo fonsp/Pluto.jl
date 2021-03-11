@@ -44,6 +44,7 @@ export const CellInput = ({
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
+    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -60,8 +61,8 @@ export const CellInput = ({
     const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const change_handler_ref = useRef(null)
-    change_handler_ref.current = on_change
+    const on_change_ref = useRef(null)
+    on_change_ref.current = on_change
 
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
@@ -429,7 +430,7 @@ export const CellInput = ({
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
-            change_handler_ref.current(new_value)
+            on_change_ref.current(new_value)
         })
 
         cm.on("blur", () => {
@@ -484,6 +485,13 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
+
+    // fix a visual glitch where the input is only 5px high after unfolding the cell
+    useEffect(() => {
+        if (show_input) {
+            cm_ref.current.refresh()
+        }
+    }, [show_input])
 
     // TODO effect hook for disable_input?
 

@@ -1,6 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
-import ..Pluto: Configuration, Notebook, Cell, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -33,14 +33,17 @@ const workspaces = Dict{UUID,Promise{Workspace}}()
 
 const SN = Tuple{ServerSession,Notebook}
 
-"""Create a workspace for the notebook, optionally in a separate process.
+"""Create a workspace for the notebook, optionally in the main process."""
+function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Workspace
+    force_offline || (notebook.process_status = ProcessStatus.starting)
 
-`new_process`: Should future workspaces be created on a separate process (`true`) or on the same one (`false`)?
-Only workspaces on a separate process can be stopped during execution. Windows currently supports `true`
-only partially: you can't stop cells on Windows.
-"""
-function make_workspace((session, notebook)::SN)::Workspace
-    pid = if session.options.evaluation.workspace_use_distributed
+    use_distributed = if force_offline
+        false
+    else
+        session.options.evaluation.workspace_use_distributed
+    end
+
+    pid = if use_distributed
         create_workspaceprocess(;compiler_options=_merge_notebook_compiler_options(notebook, session.options.compiler))
     else
         pid = Distributed.myid()
@@ -70,6 +73,8 @@ function make_workspace((session, notebook)::SN)::Workspace
     @async start_relaying_logs((session, notebook), log_channel)
     @async start_relaying_compatibility((session, notebook), compatibility_channel)
     cd_workspace(workspace, notebook.path)
+
+    force_offline || (notebook.process_status = ProcessStatus.ready)
 
     return workspace
 end
@@ -159,15 +164,34 @@ end
 get_workspace(workspace::Workspace)::Workspace = workspace
 
 "Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
-function unmake_workspace(session_notebook::Union{SN,Workspace})
+function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
     workspace = get_workspace(session_notebook)
 
     if workspace.pid != Distributed.myid()
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
-        interrupt_workspace(workspace; verbose=false)
-        if workspace.pid != Distributed.myid()
-            Distributed.rmprocs(workspace.pid)
+        t = @async begin
+            interrupt_workspace(workspace; verbose=false)
+            if workspace.pid != Distributed.myid()
+                Distributed.rmprocs(workspace.pid)
+            end
         end
+        async || wait(t)
+    end
+end
+
+function distributed_exception_result(exs::CompositeException)
+    ex = exs.exceptions |> first
+
+    if ex isa Distributed.RemoteException &&
+        ex.pid == workspace.pid &&
+        ex.captured.ex isa InterruptException
+
+        (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, process_exited=false, runtime = nothing)
+    elseif ex isa Distributed.ProcessExitedException
+        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=true, runtime = nothing)
+    else
+        @error "Unkown error during eval_format_fetch_in_workspace" ex
+        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=false, runtime = nothing)
     end
 end
 
@@ -175,7 +199,7 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -193,20 +217,9 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
         put!(workspace.dowork_token)
         nothing
     catch exs
-        # We don't use a `finally` because the token needs to be back asap
+        # We don't use a `finally` because the token needs to be back asap for the interrupting code to pick it up.
         put!(workspace.dowork_token)
-        try
-            @assert exs isa CompositeException
-            ex = exs.exceptions |> first
-            @assert ex isa Distributed.RemoteException
-            @assert ex.pid == workspace.pid
-            @assert ex.captured.ex isa InterruptException
-
-            return (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, runtime = missing)
-        catch assertionerr
-            showerror(stderr, exs)
-            return (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, runtime = missing)
-        end
+        distributed_exception_result(exs)
     end
 
     early_result === nothing ?
@@ -222,12 +235,16 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)
+function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
-        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+        try
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+        catch ex
+            distributed_exception_result(CompositeException([ex]))
+        end
     end
 end
 
