@@ -50,9 +50,10 @@ const TerminalViewAnsiUp = ({ value }) => {
 
     useEffect(() => {
         node_ref.current.innerHTML = AnsiUp.ansi_to_html(value)
+        node_ref.current.parentElement.scrollTop = 1e5
     }, [value])
 
-    return html`<pre><code ref=${node_ref} class="pluto_term"></code></pre>`
+    return html`<pkg-terminal><pre ref=${node_ref} class="pkg-terminal"></pre></pkg-terminal>`
 }
 
-export const TerminalView = TerminalViewAnsiUp
+export const PkgTerminalView = TerminalViewAnsiUp

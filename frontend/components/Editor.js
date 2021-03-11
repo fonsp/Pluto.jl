@@ -21,7 +21,7 @@ import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { TerminalView } from "./TerminalView.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1012,7 +1012,7 @@ adding the info you can find in the JS Console (F12)`)
                             disable_input=${!this.state.connected}
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
-                        <${TerminalView} value=${this.state.notebook.nbpkg?.terminal_output} />
+                        <${PkgTerminalView} value=${this.state.notebook.nbpkg?.terminal_output} />
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells} 

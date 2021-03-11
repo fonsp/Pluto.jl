@@ -1292,6 +1292,22 @@ pkg-popup .help {
     background: white;
 }
 
+pkg-terminal {
+    display: block;
+    width: 20rem;
+    height: 10rem;
+    overflow-y: auto;
+    cursor: text;
+}
+
+pkg-terminal pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+
+    font-size: 0.6rem;
+    font-family: "Space Mono", monospace;
+}
+
 /* RUNAREA */
 
 pluto-runarea {
