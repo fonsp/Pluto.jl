@@ -148,15 +148,20 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     end
                 end
 
-                @info "Resolving"
-                Pkg.resolve(ctx)
+                # @info "Resolving"
+                # Pkg.resolve(ctx)
                 @info "Instantiating"
                 Pkg.instantiate(ctx)
 
                 write_semver_compat_entries!(ctx)
 
+                # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+
                 ctx.io = old_io
                 stoplistening(iolistener)
+
+                @info "PlutoPkg done"
             end
 
             return (
@@ -191,7 +196,7 @@ end
 Base.@kwdef struct IOListener
     callback::Function
     buffer::IOBuffer=IOBuffer()
-    interval::Real=1.0/10
+    interval::Real=1.0/60
     running::Ref{Bool}=Ref(false)
     last_size::Ref{Int}=Ref(-1)
 end
