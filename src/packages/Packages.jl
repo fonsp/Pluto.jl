@@ -115,58 +115,64 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
             to_add = filter(PkgTools.package_exists, added)
             @show to_add
+
+            iolistener = IOListener(callback=on_terminal_output)
             if !isempty(to_add)
-                iolistener = IOListener(callback=on_terminal_output)
                 startlistening(iolistener)
 
-                old_io = ctx.io
-                ctx.io = IOContext(iolistener.buffer, :color => true)
+                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                    clear_semver_compat_entries!(ctx)
 
-                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                clear_semver_compat_entries!(ctx)
+                    for tier in [
+                        Pkg.PRESERVE_ALL,
+                        Pkg.PRESERVE_DIRECT,
+                        Pkg.PRESERVE_SEMVER,
+                        Pkg.PRESERVE_NONE,
+                    ]
+                        used_tier = tier
 
-                for tier in [
-                    Pkg.PRESERVE_ALL,
-                    Pkg.PRESERVE_DIRECT,
-                    Pkg.PRESERVE_SEMVER,
-                    Pkg.PRESERVE_NONE,
-                ]
-                    used_tier = tier
-
-                    try
-                        Pkg.add(ctx, [
-                            Pkg.PackageSpec(name=p)
-                            for p in to_add
-                        ]; preserve=used_tier)
-                        
-                        break
-                    catch e
-                        if used_tier == Pkg.PRESERVE_NONE
-                            # give up
-                            rethrow(e)
+                        try
+                            Pkg.add(ctx, [
+                                Pkg.PackageSpec(name=p)
+                                for p in to_add
+                            ]; preserve=used_tier)
+                            
+                            break
+                        catch e
+                            if used_tier == Pkg.PRESERVE_NONE
+                                # give up
+                                rethrow(e)
+                            end
                         end
                     end
+
+                    write_semver_compat_entries!(ctx)
+
+                    # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                    println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                 end
-
-                # @info "Resolving"
-                # Pkg.resolve(ctx)
-                @info "Instantiating"
-                Pkg.instantiate(ctx)
-
-                write_semver_compat_entries!(ctx)
-
-                # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
-
-                ctx.io = old_io
-                stoplistening(iolistener)
 
                 @info "PlutoPkg done"
             end
 
+            should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+            if should_instantiate
+                startlistening(iolistener)
+                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    # @info "Resolving"
+                    # Pkg.resolve(ctx)
+                    @info "Instantiating"
+                    Pkg.instantiate(ctx)
+                end
+                notebook.nbpkg_ctx_instantiated = true
+            end
+
+            stoplistening(iolistener)
+
             return (
                 did_something=👺 || (
-                    !isempty(to_add) || !isempty(to_remove)
+                    should_instantiate
                 ),
                 used_tier=used_tier,
                 # changed_versions=Dict{String,Pair}(),
@@ -209,13 +215,25 @@ function trigger(listener::IOListener)
     end
 end
 function startlistening(listener::IOListener)
-    listener.running[] = true
-    @async while listener.running[]
-        trigger(listener)
-        sleep(listener.interval)
+    if !listener.running[]
+        listener.running[] = true
+        @async while listener.running[]
+            trigger(listener)
+            sleep(listener.interval)
+        end
     end
 end
 function stoplistening(listener::IOListener)
-    listener.running[] = false
-    trigger(listener)
+    if listener.running[]
+        listener.running[] = false
+        trigger(listener)
+    end
+end
+
+function withio(f::Function, ctx::Pkg.Types.Context, io::IO)
+    old_io = ctx.io
+    ctx.io = io
+    result = f()
+    ctx.io = old_io
+    result
 end
