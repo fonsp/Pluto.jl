@@ -115,6 +115,8 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
             to_add = filter(PkgTools.package_exists, added)
+            @show to_add
+
             if !isempty(to_add)
                 # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                 clear_semver_compat_entries!(ctx)
@@ -142,14 +144,23 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     end
                 end
 
-                Pkg.instantiate(ctx)
-
                 write_semver_compat_entries!(ctx)
+
+                @info "PlutoPkg done"
+            end
+
+            should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+            if should_instantiate
+                # @info "Resolving"
+                # Pkg.resolve(ctx)
+                @info "Instantiating"
+                Pkg.instantiate(ctx)
+                notebook.nbpkg_ctx_instantiated = true
             end
 
             return (
                 did_something=👺 || (
-                    !isempty(to_add) || !isempty(to_remove)
+                    should_instantiate
                 ),
                 used_tier=used_tier,
                 # changed_versions=Dict{String,Pair}(),

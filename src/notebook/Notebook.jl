@@ -51,6 +51,7 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
     nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgTools.create_empty_ctx()
+    nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
 
