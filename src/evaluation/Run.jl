@@ -15,8 +15,7 @@ function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell}
 	isempty(references) && return
 
 	referenced_cells = vcat(values(references)...) |> unique
-	for cell_uuid ∈ referenced_cells
-		c = cells_dict[cell_uuid]
+	for c ∈ referenced_cells
 		_deactivate_referenced_cells!(c, cells_dict)
 	end
 end
