@@ -20,7 +20,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded },
+    cell_input: { cell_id, code, code_folded, has_execution_barrier },
     cell_result: { queued, running, runtime, errored, output },
     cell_input_local,
     selected,
@@ -70,6 +70,7 @@ export const Cell = ({
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
+    const class_barrier = has_execution_barrier
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
@@ -88,6 +89,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
+                has_execution_barrier: class_barrier,
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
@@ -110,6 +112,19 @@ export const Cell = ({
                     <span></span>
                 </button>
             </pluto-shoulder>
+            <pluto-barrier>
+                <button
+                onClick=${() => {
+                    pluto_actions.update_notebook((notebook) => {
+                        notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier;
+                    })
+                }}
+                    class="activatecode"
+                    title="Barrier"
+                >
+                    <span></span>
+                </button>
+            </pluto-barrier>
             <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
