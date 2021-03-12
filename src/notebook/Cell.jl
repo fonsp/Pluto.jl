@@ -31,7 +31,7 @@ Base.@kwdef mutable struct Cell
     # information to display cell dependencies
     downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
-    precedence_heuristic::Real=99
+    precedence_heuristic::Int=99
 
     # execution barrier
     "user defined execution barrier"
