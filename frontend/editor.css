@@ -894,6 +894,38 @@ pluto-cell.code_folded > pluto-shoulder > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-off-outline.svg);
 }
 
+/* EXECUTION BARRIER 👍🛑*/
+
+pluto-barrier {
+    position: absolute;
+    /* top: 0px; */
+    /* bottom: 0px; */
+    left: -2000px;
+    width: 2000px;
+    cursor: move;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    align-items: flex-start;
+}
+
+pluto-barrier > button {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 0px;
+    margin-top: 4px;
+    margin-right: 30px;
+    padding: 0px 1px;
+}
+
+pluto-barrier > button > span::after {
+    content: "🛑";
+}
+
+pluto-cell.has_execution_barrier > pluto-barrier > button > span::after {
+    content: "👍";
+}
+
 /* TRAFFIC LIGHT */
 
 pluto-trafficlight {

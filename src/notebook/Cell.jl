@@ -54,6 +54,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
         code_folded=cell["code_folded"],
+        has_execution_barrier=cell["has_execution_barrier"],
     )
 end
 function Base.convert(::Type{UUID}, string::String)
