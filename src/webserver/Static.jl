@@ -140,36 +140,43 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    # TODO Make this more generic, just like the dynamic version now is.
-    # .... `AssetRegistry` in the path should be `*`, and a small (dict based?) interface between here and PlutoRunner should do.
-    HTTP.@register(router, "GET", "/integrations/AssetRegistry/*", request -> begin
-        # _1, _2, notebook_id, rest... = HTTP.URIs.splitpath(request.target)
-        notebook_id = HTTP.URIs.splitpath(request.target)[3]
+    
+    HTTP.@register(router, "GET", "/integrations/*/*", request -> begin
+        _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
         rest = HTTP.URIs.splitpath(request.target)[4:end]
 
         path = join(rest, "/")
 
+        if !haskey(session.notebooks, UUID(notebook_id))
+            @warn "Integrations called with unknown notebook" module_name notebook_id
+            return HTTP.Response(404)
+        end
+
         notebook = session.notebooks[UUID(notebook_id)]
-        dict_request = Dict(
-            "target" => request.target,
-            "body" => request.body,
-            "method" => "GET"
+        sharable_request = Dict(
+            :module_name => module_name,
+            :method => request.method,
+            :target => path,
+            :body => request.body,
         )
-        file_path = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
-            Main.PlutoRunner.IntegrationsWithOtherPackages.AssetRegistryIntegrations.get_filepath_from_urlpath($(path))
+        
+        response = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
+            Main.PlutoRunner.IntegrationsWithOtherPackages.handle_request($(sharable_request))
         end)
 
-        if file_path !== nothing && isfile(file_path)
-            return HTTP.Response(
-                200,
-                [
-                    "Access-Control-Allow-Origin" => "*",
-                    "Content-Type" => mime_fromfilename(file_path),
-                ],
-                body = read(file_path)
+        if response isa Dict{Symbol, <:Any}
+            response_with_defaults = merge(Dict(
+              :status => 200,
+              :headers => [],
+              :body => UInt8[],  
+            ), response)
+            HTTP.Response(
+                response_with_defaults[:status],
+                response_with_defaults[:headers],
+                body=response_with_defaults[:body]
             )
         else
-            return HTTP.Response(404)
+            HTTP.Response(500)
         end
     end)
 

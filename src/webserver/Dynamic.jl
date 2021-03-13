@@ -490,8 +490,17 @@ responses[:write_file] = function (🙋::ClientRequest)
 end
 
 responses[:integrations] = function (🙋::ClientRequest)
+    @assert (haskey(🙋.body, "module_name")) "Integrations message needs a `module_name` property"
+    @assert (haskey(🙋.body, "body")) "Integrations message needs a `body` property"
+    
+    # What? You think I like long variable names? You're right
+    # Distributed.PlutoRunnerDistributedTypes.IntegrationsTypes.WebsocketMessage
+    message = Dict(
+        :module_name => 🙋.body["module_name"],
+        :body => 🙋.body["body"],
+    )
     WorkspaceManager.eval_in_workspace((🙋.session, 🙋.notebook), quote
-        Main.PlutoRunner.IntegrationsWithOtherPackages.dispatch_message($(🙋.body))
+        Main.PlutoRunner.IntegrationsWithOtherPackages.dispatch_message($(message))
     end)
 end
 

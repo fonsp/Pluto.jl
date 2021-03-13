@@ -550,7 +550,7 @@ patch: ${JSON.stringify(
             })
 
         // @ts-ignore
-        let WebIO = window._webio_webio.default
+        let WebIO = window.webio.default
         const webIO = new WebIO()
         // @ts-ignore
         window.WebIO = webIO
