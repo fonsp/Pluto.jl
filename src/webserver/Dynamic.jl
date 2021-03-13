@@ -117,11 +117,7 @@ function notebook_to_js(notebook::Notebook)
                     for (s, r) in cell.upstream_cells_map
                 ),
                 "precedence_heuristic" => cell.precedence_heuristic,
-            )
-        for (id, cell) in notebook.cells_dict),
-        "cell_results" => Dict{UUID,Dict{String,Any}}(
-            id => Dict{String,Any}(
-                "cell_id" => cell.cell_id,
+                "is_deactivated" => cell.is_deactivated,
                 "output" => Dict(                
                     "body" => cell.output.body,
                     "mime" => cell.output.mime,

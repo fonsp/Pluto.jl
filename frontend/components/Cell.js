@@ -21,7 +21,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, has_execution_barrier },
-    cell_result: { queued, running, runtime, errored, output },
+    cell_result: { queued, running, runtime, errored, output, is_deactivated },
     cell_input_local,
     notebook_id,
     on_update_doc_query,
@@ -70,6 +70,7 @@ export const Cell = ({
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
     const class_barrier = has_execution_barrier
+    const class_is_deactivated = is_deactivated
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
@@ -89,6 +90,7 @@ export const Cell = ({
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
                 has_execution_barrier: class_barrier,
+                is_deactivated: class_is_deactivated,
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
