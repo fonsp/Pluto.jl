@@ -694,6 +694,10 @@ pluto-output {
     background-color: white;
 }
 
+pluto-cell.is_deactivated > pluto-output {
+    background-color: rgba(139, 139, 139, 0.25);
+}
+
 .scroll_y {
     overflow-y: auto;
     max-height: 80vh;
@@ -810,6 +814,10 @@ pluto-cell.code_folded:not(.show_input) > pluto-input {
 pluto-cell.code_differs > pluto-input > .CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
+}
+
+pluto-cell.is_deactivated > pluto-input .CodeMirror {
+    background-color: rgba(139, 139, 139, 0.1);
 }
 
 /* UI */
