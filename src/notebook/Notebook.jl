@@ -170,6 +170,9 @@ function load_notebook_nobackup(io, path)::Notebook
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
+            read_cell.has_execution_barrier = has_execution_barrier
+            read_cell.is_deactivated = has_execution_barrier
+
             collected_cells[cell_id] = read_cell
         end
     end

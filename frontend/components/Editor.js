@@ -117,7 +117,12 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime?: number,
+ *  runtime: ?number,
+ *  downstream_cells_map: { string: [string]},
+ *  upstream_cells_map: { string: [string]},
+ *  precedence_heuristic: ?number,
+ *  has_execution_barrier: boolean,
+ *  is_deactivated: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
