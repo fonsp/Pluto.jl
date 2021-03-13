@@ -911,11 +911,11 @@ pluto-barrier > button {
 }
 
 pluto-barrier > button > span::after {
-    content: "🛑";
+    content: "👍";
 }
 
 pluto-cell.has_execution_barrier > pluto-barrier > button > span::after {
-    content: "👍";
+    content: "🛑";
 }
 
 /* TRAFFIC LIGHT */

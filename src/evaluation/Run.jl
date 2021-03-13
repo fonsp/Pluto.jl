@@ -24,6 +24,7 @@ end
 Recursively deactivates all cells referenced by the current cell.
 """
 function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
+	cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
 	cell.is_deactivated = true
 	cell.running = false
 	cell.queued = false
@@ -72,7 +73,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	# identify cells affected by active execution barrier and its references
 	for cell in to_run_raw
-		if cell.barrier_is_active
+		if cell.has_execution_barrier
 			_deactivate_referenced_cells!(cell, notebook.cells_dict)
 		end
 

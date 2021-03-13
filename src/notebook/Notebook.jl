@@ -199,9 +199,6 @@ function load_notebook_nobackup(io, path)::Notebook
 
             read_cell = Cell(cell_id, code)
             read_cell.has_execution_barrier = has_execution_barrier
-
-            # barriers are active per default - maybe make it configurable later?
-            read_cell.barrier_is_active = has_execution_barrier
             read_cell.is_deactivated = has_execution_barrier
 
             collected_cells[cell_id] = read_cell

@@ -100,7 +100,6 @@ const Main = ({ children }) => {
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: ?number,
  *  has_execution_barrier: boolean,
- *  barrier_is_active: boolean,
  *  is_deactivated: boolean,
  *  output: {
  *      body: string,
