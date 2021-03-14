@@ -549,6 +549,13 @@ patch: ${JSON.stringify(
                 }
             })
 
+        // If you are a happy notebook maker/developer,
+        // and you see these __pluto_integrations_handlers__ and you're like WOW!
+        // Let me write an integration with other code!! Please don't. Sure, try it out as you wish,
+        // but I will 100% change this name and structure, so please come to the Zulip chat and connect with us.
+        // @ts-ignore
+        window.__pluto_integrations_handlers__ = {}
+
         // @ts-ignore
         let WebIO = window.webio.default
         const webIO = new WebIO()
@@ -566,16 +573,23 @@ patch: ${JSON.stringify(
             )
         })
 
+        // @ts-ignore
+        window.__pluto_integrations_handlers__["WebIO"] = (message) => {
+            webIO.dispatch(message.body)
+        }
+
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
                     case "integrations":
-                        if (message.module_name === "WebIO") {
-                            webIO.dispatch(message.body)
+                        // @ts-ignore
+                        let handler = window.__pluto_integrations_handlers__[message.module_name]
+                        if (handler != null) {
+                            handler(message)
                         } else {
-                            console.warn(`Unknown custom message "${message.module_name}"`)
+                            console.warn(`Unknown integrations message "${message.module_name}"`)
                         }
                         break
                     case "notebook_diff":

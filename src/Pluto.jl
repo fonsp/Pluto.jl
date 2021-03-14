@@ -12,7 +12,6 @@ module Pluto
 project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto))), xs...))
 
 import Pkg
-import Distributed
 
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)

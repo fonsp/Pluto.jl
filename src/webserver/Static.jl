@@ -140,44 +140,6 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    request -> begin
-        _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
-        rest = HTTP.URIs.splitpath(request.target)[4:end]
-
-        if !haskey(session.notebooks, UUID(notebook_id))
-            @warn "Integrations called with unknown notebook" module_name notebook_id
-            return HTTP.Response(404)
-        end
-
-        notebook = session.notebooks[UUID(notebook_id)]
-        sharable_request = Dict(
-            :module_name => module_name,
-            :method => request.method,
-            :target => request.target,
-            :headers => request.headers,
-            :body => request.body,
-        )
-        
-        response = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
-            Main.PlutoRunner.IntegrationsWithOtherPackages.handle_request($(sharable_request))
-        end)
-
-        if response isa Dict{Symbol, <:Any}
-            response_with_defaults = merge(Dict(
-              :status => 200,
-              :headers => [],
-              :body => UInt8[],  
-            ), response)
-            HTTP.Response(
-                response_with_defaults[:status],
-                response_with_defaults[:headers],
-                body=response_with_defaults[:body]
-            )
-        else
-            HTTP.Response(500)
-        end
-    end
-
     function handle_integrations_request(request::HTTP.Request)
         try
             _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
@@ -203,9 +165,9 @@ function http_router_for(session::ServerSession)
 
             if response isa Dict{Symbol, <:Any}
                 response_with_defaults = merge(Dict(
-                :status => 200,
-                :headers => [],
-                :body => UInt8[],  
+                    :status => 200,
+                    :headers => [],
+                    :body => UInt8[],  
                 ), response)
                 HTTP.Response(
                     response_with_defaults[:status],
