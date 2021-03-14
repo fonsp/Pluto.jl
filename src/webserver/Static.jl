@@ -140,12 +140,9 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    
-    HTTP.@register(router, "GET", "/integrations/*/*", request -> begin
+    request -> begin
         _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
         rest = HTTP.URIs.splitpath(request.target)[4:end]
-
-        path = join(rest, "/")
 
         if !haskey(session.notebooks, UUID(notebook_id))
             @warn "Integrations called with unknown notebook" module_name notebook_id
@@ -156,7 +153,8 @@ function http_router_for(session::ServerSession)
         sharable_request = Dict(
             :module_name => module_name,
             :method => request.method,
-            :target => path,
+            :target => request.target,
+            :headers => request.headers,
             :body => request.body,
         )
         
@@ -178,7 +176,51 @@ function http_router_for(session::ServerSession)
         else
             HTTP.Response(500)
         end
-    end)
+    end
+
+    function handle_integrations_request(request::HTTP.Request)
+        try
+            _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
+            rest = HTTP.URIs.splitpath(request.target)[4:end]
+
+            if !haskey(session.notebooks, UUID(notebook_id))
+                @warn "Integrations called with unknown notebook" module_name notebook_id
+                return HTTP.Response(404)
+            end
+
+            notebook = session.notebooks[UUID(notebook_id)]
+            sharable_request = Dict(
+                :module_name => module_name,
+                :method => request.method,
+                :target => request.target,
+                :headers => request.headers,
+                :body => request.body,
+            )
+        
+            response = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
+                Main.PlutoRunner.IntegrationsWithOtherPackages.handle_request($(sharable_request))
+            end)
+
+            if response isa Dict{Symbol, <:Any}
+                response_with_defaults = merge(Dict(
+                :status => 200,
+                :headers => [],
+                :body => UInt8[],  
+                ), response)
+                HTTP.Response(
+                    response_with_defaults[:status],
+                    response_with_defaults[:headers],
+                    body=response_with_defaults[:body]
+                )
+            else
+                HTTP.Response(500)
+            end
+        catch e
+            HTTP.Response(500)
+        end
+    end
+    HTTP.@register(router, "GET", "/integrations/*/*", (request) -> handle_integrations_request(request))
+    HTTP.@register(router, "POST", "/integrations/*/*", (request) -> handle_integrations_request(request))
 
     serve_newfile = with_authentication(;
         required=security.require_secret_for_access || 

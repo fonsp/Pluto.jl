@@ -31,10 +31,16 @@ function on_request(module_name, request)
     throw(error("No http request handler defined for '$(module_name)'"))
 end
 
+export get_base_url
+function get_base_url(module_name::Union{AbstractString, Symbol})
+    "./integrations/$(string(module_name))/$(workspace_info.notebook_id)"
+end
+
 module AssetRegistryIntegrations
     import ..Requires
     import ..mime_fromfilename
     import ..workspace_info
+    import ..get_base_url
     import ..on_request
 
     function __init__()
@@ -43,10 +49,11 @@ module AssetRegistryIntegrations
                 throw(error("Couldn't load AssetRegistry integrations, notebook_id not set inside PlutoRunner"))
             end
 
-            AssetRegistry.baseurl[] = "./integrations/AssetRegistry/$(workspace_info.notebook_id)"
+            AssetRegistry.baseurl[] = get_base_url(:AssetRegistry)
 
             function on_request(::Val{:AssetRegistry}, request)
-                local full_path = AssetRegistry.baseurl[] * "/" * request[:target]
+                # local full_path = AssetRegistry.baseurl[] * "/" * request[:target]
+                local full_path = "." * request[:target]
                 if haskey(AssetRegistry.registry, full_path)
                     local file_path = AssetRegistry.registry[full_path]
                     if isfile(file_path)
