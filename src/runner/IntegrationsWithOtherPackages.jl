@@ -34,7 +34,7 @@ I force returning nothing, because returning might give you the idea that
 the result is sent back to the client, which (right now) it isn't.
 If you want to send something back to the client, use `IntegrationsWithOtherPackages.message_channel`
 
-    function on_message(::Val{:MyModule}, body)::Nothing
+    function on_websocket_message(::Val{:MyModule}, body)::Nothing
         # ...
     end
 """
@@ -72,7 +72,7 @@ end
 
 "Still a bit unsure about this, but it will for now give you the (relative) path for your module requests"
 function get_base_url(module_name::Union{AbstractString, Symbol})
-    "./integrations/$(string(module_name))/$(workspace_info.notebook_id)"
+    "/integrations/$(string(module_name))/$(workspace_info.notebook_id)"
 end
 
 module AssetRegistryIntegrations
@@ -92,7 +92,7 @@ module AssetRegistryIntegrations
 
             function on_request(::Val{:AssetRegistry}, request)
                 # local full_path = AssetRegistry.baseurl[] * "/" * request[:target]
-                local full_path = "." * request[:target]
+                local full_path = request[:target]
                 if haskey(AssetRegistry.registry, full_path)
                     local file_path = AssetRegistry.registry[full_path]
                     if isfile(file_path)
@@ -115,7 +115,7 @@ end
 
 module WebIOIntegrations
     import ..Requires
-    import ..on_message
+    import ..on_websocket_message
     import ..message_channel
 
     function __init__()
@@ -134,6 +134,7 @@ module WebIOIntegrations
             
             function on_websocket_message(::Val{:WebIO}, body)
                 WebIO.dispatch(WebIOConnection(), body)
+                nothing
             end
         end
     end
