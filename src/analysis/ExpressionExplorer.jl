@@ -593,19 +593,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return explore!(Expr(:call, ex.args[1], ex.args[2].args...), scopestate)
     elseif ex.head == :using || ex.head == :import
-        if scopestate.inglobalscope
-            imports = if ex.args[1].head == :(:)
-                ex.args[1].args[2:end]
-            else
-            ex.args
-            end
-
-            packagenames = map(e -> e.args[end], imports)
-
-            return SymbolsState(assignments=Set{Symbol}(packagenames))
+        imports = if ex.args[1].head == :(:)
+            ex.args[1].args[2:end]
         else
-            return SymbolsState()
+            ex.args
         end
+
+        packagenames = map(e -> e.args[end], imports)
+
+        return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
         # We ignore contents
 
