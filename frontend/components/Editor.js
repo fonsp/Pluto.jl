@@ -555,6 +555,18 @@ patch: ${JSON.stringify(
         // but I will 100% change this name and structure, so please come to the Zulip chat and connect with us.
         // @ts-ignore
         window.__pluto_integrations_handlers__ = {}
+        // @ts-ignore
+        window.__pluto_integrations_send__ = (module, message) => {
+            this.client.send(
+                "integrations",
+                {
+                    module_name: module,
+                    body: message,
+                },
+                { notebook_id: this.state.notebook.notebook_id },
+                false
+            )
+        }
 
         // @ts-ignore
         let WebIO = window.webio.default
@@ -562,15 +574,8 @@ patch: ${JSON.stringify(
         // @ts-ignore
         window.WebIO = webIO
         webIO.setSendCallback((message) => {
-            this.client.send(
-                "integrations",
-                {
-                    module_name: "WebIO",
-                    body: message,
-                },
-                { notebook_id: this.state.notebook.notebook_id },
-                false
-            )
+            // @ts-ignore
+            window.__pluto_integrations_send__("WebIO", message)
         })
 
         // @ts-ignore
