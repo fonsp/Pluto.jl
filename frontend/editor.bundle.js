@@ -1290,6 +1290,7 @@ var on = function() {
     }, e2;
 }(), un = new on, an = un.produce, fn = un.produceWithPatches.bind(un), cn = un.setAutoFreeze.bind(un), vn = un.applyPatches.bind(un);
 const immer = an;
+const applyPatches = vn;
 F1();
 cn(false);
 if (Blob.prototype.text == null) {
@@ -4088,14 +4089,14 @@ const all_equal = (x3)=>x3.every((y3)=>y3 === x3[0]
 ;
 let PlutoContext = U1();
 let PlutoBondsContext = U1(null);
-const CellInput = ({ local_code , remote_code , disable_input , focus_after_creation , cm_forced_focus , set_cm_forced_focus , on_submit , on_delete , on_add_after , on_change , on_update_doc_query , on_focus_neighbor , on_drag_drop_events , cell_id , notebook_id ,  })=>{
+const CellInput = ({ local_code , remote_code , disable_input , focus_after_creation , cm_forced_focus , set_cm_forced_focus , show_input , on_submit , on_delete , on_add_after , on_change , on_update_doc_query , on_focus_neighbor , on_drag_drop_events , cell_id , notebook_id ,  })=>{
     let pluto_actions = Q1(PlutoContext);
     const cm_ref = z2(null);
     const text_area_ref = z2(null);
     const dom_node_ref = z2(null);
     const remote_code_ref = z2(null);
-    const change_handler_ref = z2(null);
-    change_handler_ref.current = on_change;
+    const on_change_ref = z2(null);
+    on_change_ref.current = on_change;
     const disable_input_ref = z2(disable_input);
     const time_last_being_force_focussed_ref = z2(0);
     const time_last_genuine_backspace = z2(0);
@@ -4474,7 +4475,7 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"));
             }
-            change_handler_ref.current(new_value);
+            on_change_ref.current(new_value);
         });
         cm.on("blur", ()=>{
             setTimeout(()=>{
@@ -4484,11 +4485,15 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
                 }
             }, 100);
         });
-        cm.on("paste", (e2)=>{
+        cm.on("paste", (cm1, e2)=>{
             const topaste = e2.clipboardData.getData("text/plain");
             if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                pluto_actions.add_deserialized_cells(topaste, -1);
+                e2.stopImmediatePropagation();
+                e2.preventDefault();
                 e2.codemirrorIgnore = true;
             }
+            e2.stopPropagation();
         });
         if (focus_after_creation) {
             cm.focus();
@@ -4518,6 +4523,13 @@ const CellInput = ({ local_code , remote_code , disable_input , focus_after_crea
         }
     }, [
         cm_forced_focus
+    ]);
+    $1(()=>{
+        if (show_input) {
+            cm_ref.current.refresh();
+        }
+    }, [
+        show_input
     ]);
     return re`\n        <pluto-input ref=${dom_node_ref}>\n            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>\n            <textarea ref=${text_area_ref}></textarea>\n        </pluto-input>\n    `;
 };
@@ -4635,8 +4647,9 @@ const module_expanded_selection = ({ tokens_before_cursor , tokens_after_cursor 
     }
     return found.reverse().join("").replace(/\.$/, "");
 };
-const RunArea = ({ runtime , onClick  })=>{
-    return re`\n        <pluto-runarea>\n            <button onClick=${onClick} class="runcell" title="Run"><span></span></button>\n            <span class="runtime">${prettytime(runtime)}</span>\n        </pluto-runarea>\n    `;
+const RunArea = ({ runtime , onClick , running  })=>{
+    const localTimeRunning = 1000000 * useMillisSinceTruthy(running);
+    return re`\n        <pluto-runarea>\n            <button onClick=${onClick} class="runcell" title="Run"><span></span></button>\n            <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>\n        </pluto-runarea>\n    `;
 };
 const prettytime = (time_ns)=>{
     if (time_ns == null) {
@@ -4676,6 +4689,26 @@ const useMillisSinceTruthy = (truthy)=>{
         truthy
     ]);
     return truthy ? now - startRunning : undefined;
+};
+const useDebouncedTruth = (truthy)=>{
+    const [mytruth, setMyTruth] = q1(truthy);
+    const setMyTruthAfterNSeconds = J1(()=>_.debounce(setMyTruth, 5 * 1000)
+    , [
+        setMyTruth
+    ]);
+    $1(()=>{
+        if (truthy) {
+            setMyTruth(true);
+            setMyTruthAfterNSeconds.cancel();
+        } else {
+            setMyTruthAfterNSeconds(false);
+        }
+        return ()=>{
+        };
+    }, [
+        truthy
+    ]);
+    return mytruth;
 };
 const prepareFile = (file)=>new Promise((resolve, reject)=>{
         const { name , type  } = file;
@@ -4724,7 +4757,7 @@ const useDropHandler = ()=>{
             return "";
         };
         return (ev)=>{
-            if (ev.dataTransfer.types[0] === "text/pluto-cell" || ev.dataTransfer.types[0] === "text/plain") return;
+            if (!ev.dataTransfer.types.includes("Files")) return;
             ev.stopPropagation();
             switch(ev.type){
                 case "cmdrop":
@@ -4736,7 +4769,7 @@ const useDropHandler = ()=>{
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue();
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded");
                     set_drag_active(false);
-                    if (!ev.dataTransfer.files.length) {
+                    if (ev.dataTransfer.files.length === 0) {
                         return;
                     }
                     uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code)=>{
@@ -5047,7 +5080,7 @@ const StackFrameFilename = ({ frame , cell_id  })=>{
         }}\n        >\n            ${frame_cell_id == cell_id ? "Local" : "Other"}: ${frame.line}\n        </a>`;
         return re`<em>${a8}</em>`;
     } else {
-        return re`<em>${frame.file}:${frame.line}</em>`;
+        return re`<em title=${frame.path}>${frame.file}:${frame.line}</em>`;
     }
 };
 const Funccall = ({ frame  })=>{
@@ -5181,16 +5214,28 @@ let execute_dynamic_function = async ({ environment , code  })=>{
     const result = await Function(...arg_names, wrapped_code).bind(this_value)(...arg_values);
     return result;
 };
+const is_displayable = (result)=>result instanceof Element && result.nodeType === Node.ELEMENT_NODE
+;
 const execute_scripttags = async ({ root_node , script_nodes , previous_results_map , invalidation  })=>{
     let results_map = new Map();
     for (let node of script_nodes){
         if (node.src != null && node.src !== "") {
-            var script_el = Array.from(document.head.querySelectorAll("script")).find((s11)=>s11.src === node.src
+        } else {
+            let script_id = node.id;
+            let old_result = script_id ? previous_results_map.get(script_id) : null;
+            if (is_displayable(old_result)) {
+                node.parentElement.insertBefore(old_result, node);
+            }
+        }
+    }
+    for (let node1 of script_nodes){
+        if (node1.src != null && node1.src !== "") {
+            var script_el = Array.from(document.head.querySelectorAll("script")).find((s11)=>s11.src === node1.src
             );
             if (script_el == null) {
                 script_el = document.createElement("script");
-                script_el.src = node.src;
-                script_el.type = node.type === "module" ? "module" : "text/javascript";
+                script_el.src = node1.src;
+                script_el.type = node1.type === "module" ? "module" : "text/javascript";
                 script_el.pluto_is_loading_me = true;
             }
             const need_to_await = script_el.pluto_is_loading_me != null;
@@ -5204,24 +5249,33 @@ const execute_scripttags = async ({ root_node , script_nodes , previous_results_
             }
         } else {
             try {
-                let script_id = node.id;
+                let script_id = node1.id;
+                let old_result = script_id ? previous_results_map.get(script_id) : null;
+                if (is_displayable(old_result)) {
+                    node1.parentElement.insertBefore(old_result, node1);
+                }
                 let result = await execute_dynamic_function({
                     environment: {
-                        this: script_id ? previous_results_map.get(script_id) : window,
-                        currentScript: node,
+                        this: script_id ? old_result : window,
+                        currentScript: node1,
                         invalidation: invalidation,
                         ...observablehq_for_cells
                     },
-                    code: node.innerText
+                    code: node1.innerText
                 });
                 if (script_id != null) {
                     results_map.set(script_id, result);
                 }
-                if (result instanceof Element && result.nodeType === Node.ELEMENT_NODE) {
-                    node.parentElement.insertBefore(result, node);
+                if (result !== old_result) {
+                    if (is_displayable(old_result)) {
+                        old_result.remove();
+                    }
+                    if (is_displayable(result)) {
+                        node1.parentElement.insertBefore(result, node1);
+                    }
                 }
             } catch (err) {
-                console.error("Couldn't execute script:", node);
+                console.error("Couldn't execute script:", node1);
                 console.error(err);
             }
         }
@@ -5320,16 +5374,16 @@ const SimpleOutputBody = ({ mime , body , cell_id , persist_js_state  })=>{
             return re` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`;
             break;
         case "text/plain":
-        default:
             return re`<pre>${body}</pre>`;
+        default:
+            return re`<pre title="Something went wrong displaying this object">🛑</pre>`;
             break;
     }
 };
-const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { queued , running , runtime , errored , output  } , cell_input_local , selected , on_change , on_update_doc_query , on_focus_neighbor , disable_input , focus_after_creation , force_hide_input , selected_cells , notebook_id ,  })=>{
+const Cell = ({ cell_result: { queued , running , runtime , errored , output  } , cell_input: { cell_id , code , code_folded  } , cell_input_local , notebook_id , on_update_doc_query , on_change , on_focus_neighbor , selected , selected_cells , force_hide_input , focus_after_creation , is_process_ready , disable_input ,  })=>{
     let pluto_actions = Q1(PlutoContext);
     const [cm_forced_focus, set_cm_forced_focus] = q1(null);
     const { saving_file , drag_active , handler  } = useDropHandler();
-    const localTimeRunning = 1000000 * useMillisSinceTruthy(running);
     $1(()=>{
         const focusListener = (e2)=>{
             if (e2.detail.cell_id === cell_id) {
@@ -5374,24 +5428,25 @@ const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { q
     }, []);
     const [waiting_to_run, set_waiting_to_run] = q1(false);
     $1(()=>{
-        if (waiting_to_run) {
-            set_waiting_to_run(false);
-        }
+        set_waiting_to_run(false);
     }, [
         queued,
         running,
         output?.last_run_timestamp
     ]);
+    const activate_animation = useDebouncedTruth(running || queued || waiting_to_run);
     const class_code_differs = code !== (cell_input_local?.code ?? code);
     const class_code_folded = code_folded && cm_forced_focus == null;
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded);
     return re`\n        <pluto-cell\n            onDragOver=${handler}\n            onDrop=${handler}\n            onDragEnter=${handler}\n            onDragLeave=${handler}\n            class=${cl({
-        queued: queued || waiting_to_run,
+        queued: queued || waiting_to_run && is_process_ready,
         running: running,
+        activate_animation: activate_animation,
         errored: errored,
         selected: selected,
         code_differs: class_code_differs,
         code_folded: class_code_folded,
+        show_input: show_input,
         drop_target: drag_active,
         saving_file: saving_file
     })}\n            id=${cell_id}\n        >\n            <pluto-shoulder draggable="true" title="Drag to move cell">\n                <button\n                    onClick=${()=>{
@@ -5405,7 +5460,7 @@ const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { q
         });
     }}\n                    class="foldcode"\n                    title="Show/hide code"\n                >\n                    <span></span>\n                </button>\n            </pluto-shoulder>\n            <pluto-trafficlight></pluto-trafficlight>\n            <button\n                onClick=${()=>{
         pluto_actions.add_remote_cell(cell_id, "before");
-    }}\n                class="add_cell before"\n                title="Add cell"\n            >\n                <span></span>\n            </button>\n            <${CellOutput} ...${output} cell_id=${cell_id} />\n            ${show_input && re`<${CellInput}\n                local_code=${cell_input_local?.code ?? code}\n                remote_code=${code}\n                disable_input=${disable_input}\n                focus_after_creation=${focus_after_creation}\n                cm_forced_focus=${cm_forced_focus}\n                set_cm_forced_focus=${set_cm_forced_focus}\n                on_drag_drop_events=${handler}\n                on_submit=${()=>{
+    }}\n                class="add_cell before"\n                title="Add cell"\n            >\n                <span></span>\n            </button>\n            <${CellOutput} ...${output} cell_id=${cell_id} />\n            <${CellInput}\n                local_code=${cell_input_local?.code ?? code}\n                remote_code=${code}\n                disable_input=${disable_input}\n                focus_after_creation=${focus_after_creation}\n                cm_forced_focus=${cm_forced_focus}\n                set_cm_forced_focus=${set_cm_forced_focus}\n                show_input=${show_input}\n                on_drag_drop_events=${handler}\n                on_submit=${()=>{
         if (!disable_input) {
             set_waiting_to_run(true);
             pluto_actions.set_and_run_multiple([
@@ -5427,20 +5482,21 @@ const Cell = ({ cell_input: { cell_id , code , code_folded  } , cell_result: { q
             }
             on_change(new_code);
         }
-    }}\n                on_update_doc_query=${on_update_doc_query}\n                on_focus_neighbor=${on_focus_neighbor}\n                cell_id=${cell_id}\n                notebook_id=${notebook_id}\n            />`}\n            <${RunArea}\n                onClick=${()=>{
+    }}\n                on_update_doc_query=${on_update_doc_query}\n                on_focus_neighbor=${on_focus_neighbor}\n                cell_id=${cell_id}\n                notebook_id=${notebook_id}\n            />\n            <${RunArea}\n                onClick=${()=>{
         if (running || queued) {
             pluto_actions.interrupt_remote(cell_id);
         } else {
+            set_waiting_to_run(true);
             let cell_to_run = selected ? selected_cells : [
                 cell_id
             ];
             pluto_actions.set_and_run_multiple(cell_to_run);
         }
-    }}\n                runtime=${localTimeRunning || runtime}\n            />\n            <button\n                onClick=${()=>{
+    }}\n                runtime=${runtime}\n                running=${running}\n            />\n            <button\n                onClick=${()=>{
         pluto_actions.add_remote_cell(cell_id, "after");
     }}\n                class="add_cell after"\n                title="Add cell"\n            >\n                <span></span>\n            </button>\n        </pluto-cell>\n    `;
 };
-let CellMemo = ({ cell_input , cell_result , selected , cell_input_local , notebook_id , on_update_doc_query , on_cell_input , on_focus_neighbor , disable_input , focus_after_creation , force_hide_input , selected_cells ,  })=>{
+let CellMemo = ({ cell_result , cell_input , cell_input_local , notebook_id , on_update_doc_query , on_cell_input , on_focus_neighbor , selected , selected_cells , focus_after_creation , force_hide_input , is_process_ready , disable_input ,  })=>{
     const selected_cells_diffable_primitive = (selected_cells || []).join("");
     const { body , last_run_timestamp , mime , persist_js_state , rootassignee  } = cell_result?.output || {
     };
@@ -5449,12 +5505,10 @@ let CellMemo = ({ cell_input , cell_result , selected , cell_input_local , noteb
     const { cell_id , code , code_folded  } = cell_input || {
     };
     return J1(()=>{
-        return re`\n            <${Cell}\n                on_change=${(val)=>on_cell_input(cell_input.cell_id, val)
-        }\n                cell_input=${cell_input}\n                cell_result=${cell_result}\n                selected=${selected}\n                cell_input_local=${cell_input_local}\n                notebook_id=${notebook_id}\n                on_update_doc_query=${on_update_doc_query}\n                on_focus_neighbor=${on_focus_neighbor}\n                disable_input=${disable_input}\n                focus_after_creation=${focus_after_creation}\n                force_hide_input=${force_hide_input}\n                selected_cells=${selected_cells}\n            />\n        `;
+        return re`\n            <${Cell}\n                cell_result=${cell_result}\n                cell_input=${cell_input}\n                cell_input_local=${cell_input_local}\n                notebook_id=${notebook_id}\n                on_update_doc_query=${on_update_doc_query}\n                on_change=${(val)=>on_cell_input(cell_input.cell_id, val)
+        }\n                on_focus_neighbor=${on_focus_neighbor}\n                selected=${selected}\n                selected_cells=${selected_cells}\n                force_hide_input=${force_hide_input}\n                focus_after_creation=${focus_after_creation}\n                is_process_ready=${is_process_ready}\n                disable_input=${disable_input}\n            />\n        `;
     }, [
         cell_id,
-        code,
-        code_folded,
         queued,
         running,
         runtime,
@@ -5464,21 +5518,24 @@ let CellMemo = ({ cell_input , cell_result , selected , cell_input_local , noteb
         mime,
         persist_js_state,
         rootassignee,
-        selected,
+        code,
+        code_folded,
         cell_input_local,
         notebook_id,
         on_update_doc_query,
         on_cell_input,
         on_focus_neighbor,
-        disable_input,
-        focus_after_creation,
+        selected,
+        selected_cells_diffable_primitive,
         force_hide_input,
-        selected_cells_diffable_primitive, 
+        focus_after_creation,
+        is_process_ready,
+        disable_input, 
     ]);
 };
 const render_cell_inputs_delay = (num_cells)=>num_cells > 20 ? 500 : 100
 ;
-const Notebook = ({ is_initializing , notebook , selected_cells , cell_inputs_local , last_created_cell , on_update_doc_query , on_cell_input , on_focus_neighbor , disable_input ,  })=>{
+const Notebook = ({ notebook , cell_inputs_local , on_update_doc_query , on_cell_input , on_focus_neighbor , last_created_cell , selected_cells , is_initializing , is_process_ready , disable_input ,  })=>{
     let pluto_actions = Q1(PlutoContext);
     $1(()=>{
         if (notebook.cell_order.length === 0 && !is_initializing) {
@@ -5499,14 +5556,14 @@ const Notebook = ({ is_initializing , notebook , selected_cells , cell_inputs_lo
         is_first_load,
         notebook.cell_order.length
     ]);
-    return re`\n        <pluto-notebook id=${notebook.notebook_id}>\n            ${notebook.cell_order.map((cell_id, i9)=>re`<${CellMemo}\n                    key=${cell_id}\n                    cell_input=${notebook.cell_inputs[cell_id]}\n                    cell_result=${notebook.cell_results[cell_id] ?? {
+    return re`\n        <pluto-notebook id=${notebook.notebook_id}>\n            ${notebook.cell_order.map((cell_id, i9)=>re`<${CellMemo}\n                    key=${cell_id}\n                    cell_result=${notebook.cell_results[cell_id] ?? {
             cell_id: cell_id,
             queued: false,
             running: false,
             errored: false,
             runtime: null,
             output: null
-        }}\n                    selected=${selected_cells.includes(cell_id)}\n                    cell_input_local=${cell_inputs_local[cell_id]}\n                    notebook_id=${notebook.notebook_id}\n                    on_update_doc_query=${on_update_doc_query}\n                    on_cell_input=${on_cell_input}\n                    on_focus_neighbor=${on_focus_neighbor}\n                    disable_input=${disable_input}\n                    focus_after_creation=${last_created_cell === cell_id}\n                    force_hide_input=${is_first_load && i9 > 5}\n                    selected_cells=${selected_cells}\n                />`
+        }}\n                    cell_input=${notebook.cell_inputs[cell_id]}\n                    cell_input_local=${cell_inputs_local[cell_id]}\n                    notebook_id=${notebook.notebook_id}\n                    on_update_doc_query=${on_update_doc_query}\n                    on_cell_input=${on_cell_input}\n                    on_focus_neighbor=${on_focus_neighbor}\n                    selected=${selected_cells.includes(cell_id)}\n                    selected_cells=${selected_cells}\n                    focus_after_creation=${last_created_cell === cell_id}\n                    force_hide_input=${is_first_load && i9 > 5}\n                    is_process_ready=${is_process_ready}\n                    disable_input=${disable_input}\n                />`
     )}\n        </pluto-notebook>\n    `;
 };
 const NotebookMemo = Notebook;
@@ -6352,8 +6409,45 @@ const Main = ({ children  })=>{
     });
     return re`<main>${children}</main>`;
 };
+const ProcessStatus = {
+    ready: "ready",
+    starting: "starting",
+    no_process: "no_process",
+    waiting_to_restart: "waiting_to_restart"
+};
+const statusmap = (state)=>({
+        disconnected: !(state.connected || state.initializing || state.static_preview),
+        loading: BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready || state.initializing || state.moving_file,
+        process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
+        process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
+        static_preview: state.static_preview,
+        binder: state.offer_binder || state.binder_phase != null
+    })
+;
+const first_true_key = (obj)=>{
+    for (let [k3, v5] of Object.entries(obj)){
+        if (v5) {
+            return k3;
+        }
+    }
+};
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href");
 const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href");
+const initial_notebook = ()=>({
+        notebook_id: new URLSearchParams(window.location.search).get("id"),
+        path: default_path,
+        shortpath: "",
+        in_temp_dir: true,
+        process_status: "starting",
+        cell_inputs: {
+        },
+        cell_results: {
+        },
+        cell_order: [],
+        bonds: {
+        }
+    })
+;
 const __default = window._;
 const _6 = __default;
 class Editor extends d4 {
@@ -6370,17 +6464,7 @@ class Editor extends d4 {
         this.launch_params = launch_params;
         console.log(this.launch_params);
         this.state = {
-            notebook: {
-                notebook_id: url_params.get("id"),
-                path: default_path,
-                shortpath: "",
-                in_temp_dir: true,
-                cell_inputs: {
-                },
-                cell_results: {
-                },
-                cell_order: []
-            },
+            notebook: initial_notebook(),
             cell_inputs_local: {
             },
             desired_doc_query: null,
@@ -6641,7 +6725,6 @@ class Editor extends d4 {
                     this.setState(immer((state)=>{
                         for (let cell_id of cell_ids){
                             if (state.notebook.cell_results[cell_id]) {
-                                state.notebook.cell_results[cell_id].queued = true;
                             } else {
                             }
                         }
@@ -6684,9 +6767,26 @@ class Editor extends d4 {
             }
         };
         const apply_notebook_patches = (patches, old_state = undefined)=>new Promise((resolve)=>{
+                console.log(patches);
                 if (patches.length !== 0) {
                     this.setState(an((state)=>{
-                        let new_notebook = vn(old_state ?? state.notebook, patches);
+                        let new_notebook;
+                        try {
+                            new_notebook = applyPatches(old_state ?? state.notebook, patches);
+                        } catch (exception) {
+                            const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".");
+                            const path_value = __default.get(this.state.notebook, failing_path, "Not Found");
+                            console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path);
+                            alert(`PlutoState failed to sync with the browser!\nPlease report this: https://github.com/fonsp/Pluto.jl/issues\nadding the info you can find in the JS Console (F12)`);
+                            console.error(`\n                                            ########################-Please send these lines-########################\n                                            PlutoError: StateOutOfSync: Failed to apply patches.\n                                            failing path: ${failing_path}\n                                            notebook previous value: ${path_value}\n                                            patch: ${JSON.stringify(patches?.find(({ path  })=>path.join("") === failing_path
+                            ), null, 1)}\n                                            #######################**************************########################\n                                        `, exception);
+                            console.log("Trying to recover: Refetching notebook...");
+                            this.client.send("reset_shared_state", {
+                            }, {
+                                notebook_id: this.state.notebook.notebook_id
+                            }, false);
+                            return;
+                        }
                         if (false) {
                             console.group("Update!");
                             for (let patch of patches){
@@ -6716,7 +6816,16 @@ class Editor extends d4 {
                 const message = update.message;
                 switch(update.type){
                     case "notebook_diff":
-                        apply_notebook_patches(message.patches);
+                        if (message?.response?.from_reset) {
+                            console.log("Trying to reset state after failure");
+                            try {
+                                apply_notebook_patches(message.patches, initial_notebook());
+                            } catch (exception) {
+                                alert("Cannot recover from broken state. Please open an issue!");
+                            }
+                        } else if (message.patches.length !== 0) {
+                            apply_notebook_patches(message.patches);
+                        }
                         break;
                     case "log":
                         handle_log(message, this.state.notebook.path);
@@ -6976,7 +7085,7 @@ class Editor extends d4 {
             for (let change of changes){
                 if (change.path.some((x3)=>typeof x3 === "number"
                 )) {
-                    throw new Error("This sounds like it is editting an array!!!");
+                    throw new Error("This sounds like it is editing an array...");
                 }
             }
             pending_local_updates++;
@@ -7096,6 +7205,7 @@ class Editor extends d4 {
         });
         document.addEventListener("paste", async (e2)=>{
             const topaste = e2.clipboardData.getData("text/plain");
+            console.log("paste", topaste);
             if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 this.setState({
                     selected_cells: []
@@ -7131,24 +7241,18 @@ class Editor extends d4 {
     }
     componentDidUpdate(old_props, old_state) {
         window.editor_state = this.state;
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡";
+        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl";
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path);
         }
+        const status = statusmap(this.state);
+        Object.entries(status).forEach((e2)=>{
+            document.body.classList.toggle(...e2);
+        });
         const any_code_differs = this.state.notebook.cell_order.some((cell_id)=>this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
         );
-        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0);
-        document.body.classList.toggle("binder", this.state.offer_binder || this.state.binder_phase != null);
-        document.body.classList.toggle("static_preview", this.state.static_preview);
         document.body.classList.toggle("code_differs", any_code_differs);
-        document.body.classList.toggle("loading", BinderPhase.wait_for_user < this.state.binder_phase && this.state.binder_phase < BinderPhase.ready || this.state.initializing || this.state.moving_file);
-        if (this.state.connected || this.state.initializing || this.state.static_preview) {
-            document.querySelector("meta[name=theme-color]").content = "#fff";
-            document.body.classList.remove("disconnected");
-        } else {
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91";
-            document.body.classList.add("disconnected");
-        }
+        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0);
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done;
             this.bonds_changes_to_apply_when_done = [];
@@ -7166,21 +7270,28 @@ class Editor extends d4 {
         }
     }
     render() {
-        let { export_menu_open  } = this.state;
+        let { export_menu_open , notebook  } = this.state;
+        const status = statusmap(this.state);
+        const statusval = first_true_key(status);
         const notebook_export_url = this.state.binder_session_url == null ? `./notebookfile?id=${this.state.notebook.notebook_id}` : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`;
         return re`\n            <${PlutoContext.Provider} value=${this.actions}>\n                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>\n                    <${Scroller} active=${this.state.scroller} />\n                    <header className=${export_menu_open ? "show_export" : ""}>\n                        <${ExportBanner}\n                            pluto_version=${this.client?.version_info?.pluto}\n                            notebook=${this.state.notebook}\n                            notebook_export_url=${notebook_export_url}\n                            open=${export_menu_open}\n                            onClose=${()=>this.setState({
                 export_menu_open: false
             })
-        }\n                        />\n                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>\n                        <div id="binder_spinners">\n                    <binder-spinner id="ring_1"></binder-spinner>\n                    <binder-spinner id="ring_2"></binder-spinner>\n                    <binder-spinner id="ring_3"></binder-spinner>\n                    </div>\n\n                        <nav id="at_the_top">\n                            <a href=${this.state.static_preview || this.state.binder_phase != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"}>\n                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>\n                            </a>\n                            ${this.state.binder_phase === BinderPhase.ready ? re`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>` : re`<${FilePicker}\n                                          client=${this.client}\n                                          value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}\n                                          on_submit=${this.submit_file_change}\n                                          suggest_new_file=${{
+        }\n                        />\n                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>\n                        <div id="binder_spinners">\n                    <binder-spinner id="ring_1"></binder-spinner>\n                    <binder-spinner id="ring_2"></binder-spinner>\n                    <binder-spinner id="ring_3"></binder-spinner>\n                    </div>\n\n                        <nav id="at_the_top">\n                            <a href=${this.state.static_preview || this.state.binder_phase != null ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}` : "./"}>\n                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>\n                            </a>\n                            <div class="flex_grow_1"></div>\n                            ${this.state.binder_phase === BinderPhase.ready ? re`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>` : re`<${FilePicker}\n                                          client=${this.client}\n                                          value=${notebook.in_temp_dir ? "" : notebook.path}\n                                          on_submit=${this.submit_file_change}\n                                          suggest_new_file=${{
             base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-            name: this.state.notebook.shortpath
-        }}\n                                          placeholder="Save notebook..."\n                                          button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}\n                                      />`}\n                            \n                            \n                            <button class="toggle_export" title="Export..." onClick=${()=>{
+            name: notebook.shortpath
+        }}\n                                          placeholder="Save notebook..."\n                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}\n                                      />`}\n                            <div class="flex_grow_2"></div>\n                            <button class="toggle_export" title="Export..." onClick=${()=>{
             this.setState({
                 export_menu_open: !export_menu_open
             });
-        }}>\n                                <span></span>\n                            </button>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
+        }}><span></span></button>\n                            <div id="process_status">${status.binder && status.loading ? "Loading binder..." : statusval === "disconnected" ? "Reconnecting..." : statusval === "loading" ? "Loading..." : statusval === "process_restarting" ? "Process exited — restarting..." : statusval === "process_dead" ? re`${"Process exited — "}\n                                          <a\n                                              href="#"\n                                              onClick=${()=>{
+            this.client.send("restart_process", {
+            }, {
+                notebook_id: notebook.notebook_id
+            });
+        }}\n                                              >restart</a\n                                          >` : null}</div>\n                        </nav>\n                    </header>\n                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href} />\n                    <${FetchProgress} progress=${this.state.statefile_download_progress} />\n                    <${Main}>\n                        <preamble>\n                            <button\n                                onClick=${()=>{
             this.actions.set_and_run_all_changed_remote_cells();
-        }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            is_initializing=${this.state.initializing}\n                            notebook=${this.state.notebook}\n                            selected_cells=${this.state.selected_cells}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
+        }}\n                                class="runallchanged"\n                                title="Save and run all changed cells"\n                            >\n                                <span></span>\n                            </button>\n                        </preamble>\n                        <${NotebookMemo}\n                            notebook=${this.state.notebook}\n                            cell_inputs_local=${this.state.cell_inputs_local}\n                            on_update_doc_query=${this.actions.set_doc_query}\n                            on_cell_input=${this.actions.set_local_cell}\n                            on_focus_neighbor=${this.actions.focus_on_neighbor}\n                            disable_input=${this.state.disable_ui || !this.state.connected}\n                            last_created_cell=${this.state.last_created_cell}\n                            selected_cells=${this.state.selected_cells}\n                            is_initializing=${this.state.initializing}\n                            is_process_ready=${this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready}\n                            disable_input=${!this.state.connected}\n                        />\n                        <${DropRuler} \n                            actions=${this.actions}\n                            selected_cells=${this.state.selected_cells} \n                            set_scroller=${(enabled)=>{
             this.setState({
                 scroller: enabled
             });
@@ -7195,13 +7306,13 @@ class Editor extends d4 {
                 });
             }
         }}\n                            />`}\n                    </${Main}>\n                    <${LiveDocs}\n                        desired_doc_query=${this.state.desired_doc_query}\n                        on_update_doc_query=${this.actions.set_doc_query}\n                        notebook=${this.state.notebook}\n                    />\n                    <${UndoDelete}\n                        recently_deleted=${this.state.recently_deleted}\n                        on_click=${()=>{
-            this.update_notebook((notebook)=>{
+            this.update_notebook((notebook1)=>{
                 for (let { index , cell  } of this.state.recently_deleted){
-                    notebook.cell_inputs[cell.cell_id] = cell;
-                    notebook.cell_order = [
-                        ...notebook.cell_order.slice(0, index),
+                    notebook1.cell_inputs[cell.cell_id] = cell;
+                    notebook1.cell_order = [
+                        ...notebook1.cell_order.slice(0, index),
                         cell.cell_id,
-                        ...notebook.cell_order.slice(index, Infinity)
+                        ...notebook1.cell_order.slice(index, Infinity)
                     ];
                 }
             }).then(()=>{
