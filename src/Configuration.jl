@@ -79,7 +79,7 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = string(roughly_the_number_of_physical_cpu_cores())
+        threads::Union{Nothing,String} = get(ENV, "JULIA_NUM_THREADS", string(roughly_the_number_of_physical_cpu_cores()))
     end
 end
 
