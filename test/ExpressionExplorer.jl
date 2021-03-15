@@ -208,6 +208,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Base.show() = 0), [:Base], [], [], [
             [:Base, :show] => ([], [], [], [])
         ])
+        @test testee(:((x;p) -> f(x+p)), [], [], [], [
+            :anon => ([], [], [:f, :+], [])
+        ])
+        @test testee(:(begin x; p end -> f(x+p)), [], [], [], [
+            :anon => ([], [], [:f, :+], [])
+        ])
         @test testee(:(minimum(x) do (a, b); a + b end), [:x], [], [:minimum], [
             :anon => ([], [], [:+], [])
         ])

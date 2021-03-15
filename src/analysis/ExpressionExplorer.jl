@@ -482,7 +482,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcroot = ex.args[1]
         args_ex = if funcroot isa Symbol || (funcroot isa Expr && funcroot.head == :(::))
             [funcroot]
-        elseif funcroot.head == :tuple || funcroot.head == :(...)
+        elseif funcroot.head == :tuple || funcroot.head == :(...) || funcroot.head == :block
             funcroot.args
         else
             @error "Unknown lambda type"
