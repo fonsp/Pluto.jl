@@ -490,7 +490,7 @@ responses[:write_file] = function (🙋::ClientRequest)
 end
 
 # Third party messages, passing on to handlers inside the PlutoRunner process
-responses[:integrations] = function (🙋::ClientRequest)
+responses[:integrations] = function response_integrations(🙋::ClientRequest)
     @assert (haskey(🙋.body, "module_name")) "Integrations message needs a `module_name` property"
     @assert (haskey(🙋.body, "body")) "Integrations message needs a `body` property"
     
