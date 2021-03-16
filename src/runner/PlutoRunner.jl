@@ -693,12 +693,13 @@ end
 function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
     my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
 
-    elements = []
+    L = min(my_limit+1, length(x))
+    elements = Vector{Any}(undef, L)
     for (index, value) in enumerate(x)
         if index <= my_limit
-            push!(elements, (index, format_output_default(value, context)))
+            elements[index] = (index, format_output_default(value, context))
         else
-            push!(elements, "more")
+            elements[index] = "more"
             break
         end
     end
