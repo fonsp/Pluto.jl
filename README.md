@@ -1,6 +1,13 @@
-> _Interested in learning Julia, Pluto and applied maths?_ Join the **open MIT course** taught by **Alan Edelman**, **David P. Sanders**, Grant Sanderson (**3blue1brown**) & James Schloss (**LeiosOS**) (_and a bit of me_): [Introduction to Computational Thinking](https://computationalthinking.mit.edu), Spring 2021.
-> <br>
 
+
+<blockquote>
+<a href="https://plutojl.org/plutocon2021"><img align="right" src=https://user-images.githubusercontent.com/6933510/111311607-b49a7000-865e-11eb-9c67-dd411b832096.png height="130px"></a>
+  <h2><a href="https://plutojl.org/plutocon2021">PlutoCon 2021</a> — April 8th-9th</h2>
+  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers. <em>You can give a talk!</em></p>
+</blockquote>
+
+<br>
+<br>
 <p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
@@ -101,6 +108,15 @@ julia> Pluto.run()
 Pluto will open in your browser, and you can get started!
 
 Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
+<br>
+<br>
+<br>
+<blockquote>
+<img align="right" src=https://upload.wikimedia.org/wikipedia/commons/0/0c/MIT_logo.svg height="60px">
+<p><em>Interested in learning Julia, Pluto and applied mathematics?</em> Join the <strong>open MIT course</strong> taught by <strong>Alan Edelman</strong>, <strong>David P. Sanders</strong> &amp; Grant Sanderson (<strong>3blue1brown</strong>) (<em>and a bit of me</em>): <a href="https://computationalthinking.mit.edu" rel="nofollow">Introduction to Computational Thinking</a>, Spring 2021.
+<br></p>
+</blockquote>
+<br>
 
 ### To developers
 
