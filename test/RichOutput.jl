@@ -119,7 +119,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
 
+        
         @testset "Special arrays" begin
+            🍭.options.evaluation.workspace_use_distributed = true
 
             notebook = Notebook([
                 Cell("using OffsetArrays"),
@@ -139,10 +141,13 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             end
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
+            🍭.options.evaluation.workspace_use_distributed = false
         end
     end
 
+    
     @testset "Table viewer" begin
+        🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
                 Cell("using DataFrames, Tables"),
                 Cell("DataFrame()"),
@@ -198,8 +203,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         # TODO: test lazy loading more rows/cols
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
     end
-    
+
     begin
         escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \x10 \$"
         notebook = Notebook([

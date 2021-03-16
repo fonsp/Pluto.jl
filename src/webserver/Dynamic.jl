@@ -93,6 +93,7 @@ function notebook_to_js(notebook::Notebook)
         "path" => notebook.path,
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
+        "process_status" => notebook.process_status,
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
@@ -106,7 +107,7 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "runtime" => ismissing(cell.runtime) ? nothing : cell.runtime,
+                "runtime" => cell.runtime,
                 "output" => Dict(                
                     "last_run_timestamp" => cell.last_run_timestamp,
                     "persist_js_state" => cell.persist_js_state,
@@ -192,6 +193,11 @@ const effects_of_changed_state = Dict(
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
         return no_changes
+    end,
+    "process_status" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
+        newstatus = patch.value
+
+        @info "Process status set by client" newstatus
     end,
     "in_temp_dir" => function(; _...) no_changes end,
     "cell_inputs" => Dict(
@@ -337,6 +343,11 @@ responses[:ping] = function response_ping(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:pong, Dict(), nothing, nothing, 🙋.initiator))
 end
 
+responses[:reset_shared_state] = function response_reset_shared_state(🙋::ClientRequest)
+    delete!(current_state_for_clients, 🙋.initiator.client)
+    send_notebook_changes!(🙋; commentary=Dict(:from_reset =>  true))
+end
+
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
@@ -344,11 +355,11 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
         🙋.notebook.cells_dict[uuid]
     end
 
-    for cell in cells
-        cell.queued = true
+    if will_run_code(🙋.notebook)
+        foreach(c -> c.queued = true, cells)
+        send_notebook_changes!(🙋)
     end
-    send_notebook_changes!(🙋)
-
+    
     # save=true fixes the issue where "Submit all changes" or `Ctrl+S` has no effect.
     update_save_run!(🙋.session, 🙋.notebook, cells; run_async=true, save=true)
 end
@@ -359,13 +370,40 @@ end
 
 responses[:interrupt_all] = function response_interrupt_all(🙋::ClientRequest)
     require_notebook(🙋)
-    success = WorkspaceManager.interrupt_workspace((🙋.session, 🙋.notebook))
+
+    session_notebook = (🙋.session, 🙋.notebook)
+    workspace = WorkspaceManager.get_workspace(session_notebook)
+
+    already_interrupting = 🙋.notebook.wants_to_interrupt
+    anything_running = !isready(workspace.dowork_token)
+    if !already_interrupting && anything_running
+        🙋.notebook.wants_to_interrupt = true
+        WorkspaceManager.interrupt_workspace(session_notebook)
+    end
     # TODO: notify user whether interrupt was successful
 end
 
 responses[:shutdown_notebook] = function response_shutdown_notebook(🙋::ClientRequest)
     require_notebook(🙋)
     SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=🙋.body["keep_in_session"])
+end
+
+without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
+
+responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
+    require_notebook(🙋)
+    
+    if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
+        🙋.notebook.process_status = ProcessStatus.waiting_to_restart
+        send_notebook_changes!(🙋 |> without_initiator)
+
+        SessionActions.shutdown(🙋.session, 🙋.notebook; keep_in_session=true, async=true)
+
+        🙋.notebook.process_status = ProcessStatus.starting
+        send_notebook_changes!(🙋 |> without_initiator)
+
+        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
+    end
 end
 
 
@@ -378,7 +416,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
     set_output!(cell, run)
     # send to all clients, why not
-    send_notebook_changes!(ClientRequest(session=🙋.session, notebook=🙋.notebook))
+    send_notebook_changes!(🙋 |> without_initiator)
 end
 
 
@@ -440,7 +478,7 @@ responses[:write_file] = function (🙋::ClientRequest)
         false
     end
 
-    code = get_template_code(basename(save_path), reldir, 🙋.body["file"])
+    code = template_code(basename(save_path), reldir, 🙋.body["file"])
 
     msg = UpdateMessage(:write_file_reply, 
         Dict(
@@ -453,7 +491,7 @@ end
 
 # helpers
 
-get_template_code = (filename, directory, iofilecontents) -> begin
+function template_code(filename, directory, iofilecontents)
     path = """joinpath(split(@__FILE__, '#')[1] * ".assets", "$(filename)")"""
     extension = split(filename, ".")[end]
     varname = replace(basename(path), r"[\"\-,\.#@!\%\s+\;()\$&*\[\]\{\}'^]" => "")

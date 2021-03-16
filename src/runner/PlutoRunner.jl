@@ -15,8 +15,7 @@ using Markdown
 import Markdown: html, htmlinline, LaTeX, withtag, htmlesc
 import Distributed
 import Base64
-import Tables
-import FuzzyCompletions: Completion, ModuleCompletion, completions, completion_text, score
+import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID
 import Logging
@@ -44,7 +43,7 @@ current_module = Main
 
 function set_current_module(newname)
     # Revise.jl support
-    if isdefined(current_module, :Revise) && 
+    if isdefined(current_module, :Revise) &&
         isdefined(current_module.Revise, :revise) && current_module.Revise.revise isa Function &&
         isdefined(current_module.Revise, :revision_queue) && current_module.Revise.revision_queue isa AbstractSet
 
@@ -52,7 +51,7 @@ function set_current_module(newname)
             current_module.Revise.revise()
         end
     end
-    
+
     global default_iocontext = IOContext(default_iocontext, :module => current_module)
     global current_module = getfield(Main, newname)
 end
@@ -96,7 +95,7 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
     proof = ReturnProof()
 
     @gensym result
-    e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block, 
+    e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block,
         Expr(:(=), result, timed_expr(expr, proof)),
         Expr(:tuple,
             result,
@@ -142,7 +141,7 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     @gensym result
     @gensym elapsed_ns
     # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
-    Expr(:block, 
+    Expr(:block,
         :(local $elapsed_ns = time_ns()),
         linenumbernode,
         :(local $result = $root),
@@ -178,7 +177,7 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
         end
     catch ex
         bt = stacktrace(catch_backtrace())
-        (CapturedException(ex, bt), missing)
+        (CapturedException(ex, bt), nothing)
     end
 end
 
@@ -191,7 +190,7 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
-    cell_results[cell_id], cell_runtimes[cell_id] = if function_wrapped_info === nothing
+    result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
@@ -218,6 +217,12 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
             ans, runtime
         end
     end
+
+    if (result isa CapturedException) && (result.ex isa InterruptException)
+        throw(result.ex)
+    end
+    
+    cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
 
@@ -234,7 +239,7 @@ end
 
 
 """
-Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined. 
+Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined.
 
 Notebook code does run in `Main` - it runs in workspace modules. Every time that you run cells, a new module is created, called `Main.workspace123` with `123` an increasing number.
 
@@ -321,7 +326,7 @@ function delete_toplevel_methods(f::Function, cell_id::UUID)::Bool
     # if `f` is an extension to an external function, and we defined a method that overrides a method, for example,
     # we define `Base.isodd(n::Integer) = rand(Bool)`, which overrides the existing method `Base.isodd(n::Integer)`
     # calling `Base.delete_method` on this method won't bring back the old method, because our new method still exists in the method table, and it has a world age which is newer than the original. (our method has a deleted_world value set, which disables it)
-    # 
+    #
     # To solve this, we iterate again, and _re-enable any methods that were hidden in this way_, by adding them again to the method table with an even newer`primary_world`.
     if !isempty(deleted_sigs)
         to_insert = Method[]
@@ -391,7 +396,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID,Any}()
-const cell_runtimes = Dict{UUID,Union{Missing,UInt64}}()
+const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -402,7 +407,9 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :runtime),Tuple{MimedOutput,Bool,Bool,Union{UInt64,Missing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
+    load_Tables_support_if_needed()
+
     extra_items = if showmore === nothing
         tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
     else
@@ -414,8 +421,18 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
     ans = cell_results[id]
     errored = ans isa CapturedException
 
-    output_formatted = (!ends_with_semicolon || errored) ? format_output(ans; context=:extra_items=>extra_items) : ("", MIME"text/plain"())
-    (output_formatted = output_formatted, errored = errored, interrupted = false, runtime = get(cell_runtimes, id, missing))
+    output_formatted = if (!ends_with_semicolon || errored)
+        format_output(ans; context=:extra_items=>extra_items)
+    else
+        ("", MIME"text/plain"())
+    end
+    return (
+        output_formatted = output_formatted, 
+        errored = errored, 
+        interrupted = false, 
+        process_exited = false, 
+        runtime = get(cell_runtimes, id, nothing)
+    )
 end
 
 
@@ -457,7 +474,7 @@ const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(),
 # in descending order of coolness
 # text/plain always matches - almost always
 """
-The MIMEs that Pluto supports, in order of how much I like them. 
+The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
@@ -513,6 +530,7 @@ function format_output(val::CapturedException; context=nothing)
             :call => pretty_stackcall(s, s.linfo),
             :inlined => s.inlined,
             :file => basename(String(s.file)),
+            :path => String(s.file),
             :line => s.line,
         )
     end
@@ -557,11 +575,11 @@ const struct_showmethod = which(show, (IO, 🥔))
 const struct_showmethod_mime = which(show, (IO, MIME"text/plain", 🥔))
 
 function use_tree_viewer_for_struct(@nospecialize(x::T))::Bool where T
-    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer. 
+    # types that have no specialized show methods (their fallback is text/plain) are displayed using Pluto's interactive tree viewer.
     # this is how we check whether this display method is appropriate:
     isstruct = try
         T isa DataType &&
-        # there are two ways to override the plaintext show method: 
+        # there are two ways to override the plaintext show method:
         which(show, (IO, MIME"text/plain", T)) === struct_showmethod_mime &&
         which(show, (IO, T)) === struct_showmethod
     catch
@@ -616,7 +634,7 @@ end
 # we write our own function instead of extending Base.showable with our new MIME because:
 # we need the method Base.showable(::MIME"asdfasdf", ::Any) = Tables.rowaccess(x)
 # but overload ::MIME{"asdf"}, ::Any will cause ambiguity errors in other packages that write a method like:
-# Baee.showable(m::MIME, x::Plots.Plot)
+# Base.showable(m::MIME, x::Plots.Plot)
 # because MIME is less specific than MIME"asdff", but Plots.PLot is more specific than Any.
 pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m, x)
 
@@ -636,11 +654,6 @@ pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Pair) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractRange) = false
 
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Any) = false
-
-
-pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
-pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
-pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
 
 
 # in the next functions you see a `context` argument
@@ -745,7 +758,7 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
         end
         row_index += 1
     end
-    
+
     Dict{Symbol,Any}(
         :prefix => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
@@ -783,7 +796,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
     t = typeof(x)
     nf = nfields(x)
     nb = sizeof(x)
-    
+
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -792,7 +805,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
     else
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
                                 Pair{Symbol,Any}(:typeinfo, Any))
-        
+
         elements = Any[
             let
                 f = fieldname(t, i)
@@ -805,7 +818,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
             end
             for i in 1:nf
         ]
-    
+
         Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
             :objectid => string(objectid(x), base=16),
@@ -823,78 +836,108 @@ trynameof(x::Any) = Symbol()
 # TABLE VIEWER
 ##
 
-function maptruncated(f::Function, xs, filler, limit; truncate=true)
-    if truncate
-        result = Any[
-            # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-            f(xs[i]) for i in 1:limit
-        ]
-        push!(result, filler)
-        result
-    else
-        Any[f(x) for x in xs]
-    end
-end
+const tables_pkgid = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables")
 
-function table_data(x::Any, io::IOContext)
-    rows = Tables.rows(x)
+# We have a super cool viewer for objects that are a Tables.jl table. To avoid version conflicts, we only load this code after the user (indirectly) loaded the package Tables.jl.
+# This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
+const _load_tables_code = quote
 
-    my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+    const Tables = Base.loaded_modules[tables_pkgid]
 
-    # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
-
-    my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
-    # my_column_limit = table_column_display_limit
-
-    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-    truncate_rows = my_row_limit + 5 < length(rows)
-    truncate_columns = if isempty(rows)
-        false
-    else
-        my_column_limit + 5 < length(first(rows))
-    end
-
-    row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-        format_output_default(el, io)
-    end
-
-    # ugliest code in Pluto:
-
-    # not a map(row) because it needs to be a Vector
-    # not enumerate(rows) because of some silliness
-    # not rows[i] because `getindex` is not guaranteed to exist
-    L = truncate_rows ? my_row_limit : length(rows)
-    row_data = Array{Any,1}(undef, L)
-    for (i, row) in zip(1:L,rows)
-        row_data[i] = (i, row_data_for(row))
-    end
-
-    if truncate_rows
-        push!(row_data, "more")
-        if applicable(lastindex, rows)
-            push!(row_data, (length(rows), row_data_for(last(rows))))
+    function maptruncated(f::Function, xs, filler, limit; truncate=true)
+        if truncate
+            result = Any[
+                # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+                f(xs[i]) for i in 1:limit
+            ]
+            push!(result, filler)
+            result
+        else
+            Any[f(x) for x in xs]
         end
     end
-    
-    # TODO: render entire schema by default?
 
-    schema = Tables.schema(rows)
-    schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
-        :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
-        :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
-    )
+    function table_data(x::Any, io::IOContext)
+        rows = Tables.rows(x)
 
-    Dict{Symbol,Any}(
-        :objectid => string(objectid(x), base=16),
-        :schema => schema_data,
-        :rows => row_data,
-    )
+        my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+
+        # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+        my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+        # my_column_limit = table_column_display_limit
+
+        # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+        truncate_rows = my_row_limit + 5 < length(rows)
+        truncate_columns = if isempty(rows)
+            false
+        else
+            my_column_limit + 5 < length(first(rows))
+        end
+
+        row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+            format_output_default(el, io)
+        end
+
+        # ugliest code in Pluto:
+
+        # not a map(row) because it needs to be a Vector
+        # not enumerate(rows) because of some silliness
+        # not rows[i] because `getindex` is not guaranteed to exist
+        L = truncate_rows ? my_row_limit : length(rows)
+        row_data = Array{Any,1}(undef, L)
+        for (i, row) in zip(1:L,rows)
+            row_data[i] = (i, row_data_for(row))
+        end
+
+        if truncate_rows
+            push!(row_data, "more")
+            if applicable(lastindex, rows)
+                push!(row_data, (length(rows), row_data_for(last(rows))))
+            end
+        end
+        
+        # TODO: render entire schema by default?
+
+        schema = Tables.schema(rows)
+        schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
+            :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+            :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+        )
+
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :schema => schema_data,
+            :rows => row_data,
+        )
+    end
+
+
+    pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
+    pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
+    pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+
 end
 
+const _Tables_support_loaded = Ref(false)
 
+function load_Tables_support_if_needed()
+    if !_Tables_support_loaded[] && haskey(Base.loaded_modules, tables_pkgid)
+        load_Tables_support()
+    end
+end
+        
 
-
-
+function load_Tables_support()
+    _Tables_support_loaded[] = true
+    try
+        eval(_load_tables_code)
+        true
+    catch e
+        @error "Failed to load display support for Tables.jl" exception=(e, catch_backtrace())
+        false
+    end
+end
 
 
 
@@ -954,6 +997,7 @@ end
 function completion_fetcher(query, pos, workspace::Module=current_module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
+        filter!(is_dot_completion, results)
         # we are autocompleting a module, and we want to see its fields alphabetically
         sort!(results; by=(r -> completion_text(r)))
     else
@@ -978,6 +1022,9 @@ function completion_fetcher(query, pos, workspace::Module=current_module)
     final = smooshed_together[p]
     (final, loc, found)
 end
+
+is_dot_completion(::Union{ModuleCompletion,PropertyCompletion,FieldCompletion}) = true
+is_dot_completion(::Completion)                                                   = false
 
 """
     is_pure_expression(expression::ReturnValue{Meta.parse})
@@ -1078,7 +1125,7 @@ end
 
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
-    withtag(io, :bond, :def => bond.defines) do 
+    withtag(io, :bond, :def => bond.defines) do
         show(io, MIME"text/html"(), bond.element)
     end
 end
