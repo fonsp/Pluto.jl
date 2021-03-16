@@ -17,7 +17,11 @@ function handle_websocket_message(message)
     try
         result = on_websocket_message(Val(Symbol(message[:module_name])), message[:body])
         if result !== nothing
-            @warn "Integrations `on_websocket_message($(Symbol(message[:module_name])))` returned a value, but is expected to return `nothing`"
+            @warn """
+            Integrations `on_websocket_message(:$(message[:module_name]), ...)` returned a value, but is expected to return `nothing`.
+
+            If you want to send something back to the client, use `IntegrationsWithOtherPackages.message_channel`.
+            """
         end
     catch ex
         bt = stacktrace(catch_backtrace())
@@ -25,14 +29,27 @@ function handle_websocket_message(message)
     end
     nothing
 end
-const message_channel = Channel{Any}(10)
 
 """
-Do not call yourself! Or do, but don't say I didn't warn you.
+A [`Channel`](@ref) to send messages on demand to JS running in cell outputs. The message should be structured like the example below, and you can use any `MsgPack.jl`-encodable object in the body (including a `Vector{UInt8}` if that's your thing 👀).
+
+# Example
+```julia
+put!(message_channel, Dict(
+    :module_name => "WebIO",
+    :body => mydata,
+))
+```
+"""
+const message_channel = Channel{Dict{Symbol,Any}}(10)
+
+"""
 Integrations should implement this to capture incoming websocket messages.
-I force returning nothing, because returning might give you the idea that
+We force returning nothing, because returning might give you the idea that
 the result is sent back to the client, which (right now) it isn't.
-If you want to send something back to the client, use `IntegrationsWithOtherPackages.message_channel`
+If you want to send something back to the client, use [`IntegrationsWithOtherPackages.message_channel`](@ref).
+
+Do not call this function directly from notebook/package code!
 
     function on_websocket_message(::Val{:MyModule}, body)::Nothing
         # ...
@@ -42,10 +59,9 @@ function on_websocket_message(module_name, body)::Nothing
     error("No websocket message handler defined for '$(module_name)'")
 end
 
-export handle_request
-function handle_request(request)
+function handle_http_request(request)
     try
-        on_request(Val(Symbol(request[:module_name])), request)
+        on_http_request(Val(Symbol(request[:module_name])), request)
     catch ex
         bt = stacktrace(catch_backtrace())
         @error "Dispatching integrations HTTP request failed:" request=request exception=(ex, bt)
@@ -53,12 +69,13 @@ function handle_request(request)
 end
 
 """
-Do not call yourself! Or do, but don't say I didn't warn you.
 Integrations should implement this to capture incoming http requests.
 Expects to result in a Dict with at least `:status => Int`, but could include more,
-as seen in the following example
+as seen in the following example.
 
-    function on_request(::Val{:MyModule}, request)
+Do not call this function directly from notebook/package code!
+
+    function on_http_request(::Val{:MyModule}, request)::Dict{Symbol,<:Any}
         Dict(
             :status => 200,
             :headers => ["Content-Type" => "text/html"],
@@ -66,7 +83,7 @@ as seen in the following example
         )
     end
 """
-function on_request(module_name, request)::Dict{Symbol,<:Any}
+function on_http_request(module_name, request)::Dict{Symbol,<:Any}
     error("No http request handler defined for '$(module_name)'")
 end
 
@@ -80,17 +97,17 @@ module AssetRegistryIntegrations
     import ..mime_fromfilename
     import ..workspace_info
     import ..get_base_url
-    import ..on_request
+    import ..on_http_request
 
     function __init__()
         Requires.@require AssetRegistry="bf4720bc-e11a-5d0c-854e-bdca1663c893" begin
             if workspace_info.notebook_id === nothing
-                throw(error("Couldn't load AssetRegistry integrations, notebook_id not set inside PlutoRunner"))
+                error("Couldn't load AssetRegistry integrations, notebook_id not set inside PlutoRunner")
             end
 
             AssetRegistry.baseurl[] = get_base_url(:AssetRegistry)
 
-            function on_request(::Val{:AssetRegistry}, request)
+            function on_http_request(::Val{:AssetRegistry}, request)
                 # local full_path = AssetRegistry.baseurl[] * "/" * request[:target]
                 local full_path = request[:target]
                 if haskey(AssetRegistry.registry, full_path)

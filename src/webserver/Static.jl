@@ -160,7 +160,7 @@ function http_router_for(session::ServerSession)
             )
         
             response = WorkspaceManager.eval_fetch_in_workspace((session, notebook), quote
-                Main.PlutoRunner.IntegrationsWithOtherPackages.handle_request($(sharable_request))
+                Main.PlutoRunner.IntegrationsWithOtherPackages.handle_http_request($(sharable_request))
             end)
 
             if response isa Dict{Symbol, <:Any}
@@ -175,10 +175,12 @@ function http_router_for(session::ServerSession)
                     body=response_with_defaults[:body]
                 )
             else
-                HTTP.Response(500)
+                @error "Integration handle error: `handle_http_request` did not return a `Dict{Symbol, Any}`."
+                HTTP.Response(500, "Integration handle error: `handle_http_request` did not return a `Dict{Symbol, Any}`.")
             end
         catch e
-            HTTP.Response(500)
+            @error "Integration handle error" exception=(e,catch_backtrace())
+            HTTP.Response(500, sprint(showerror, e, stacktrace(catch_backtrace())))
         end
     end
     HTTP.@register(router, "GET", "/integrations/*/*", (request) -> handle_integrations_request(request))
