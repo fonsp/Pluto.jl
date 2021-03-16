@@ -39,7 +39,7 @@ If you want to send something back to the client, use `IntegrationsWithOtherPack
     end
 """
 function on_websocket_message(module_name, body)::Nothing
-    throw(error("No websocket message handler defined for '$(module_name)'"))
+    error("No websocket message handler defined for '$(module_name)'")
 end
 
 export handle_request
@@ -67,7 +67,7 @@ as seen in the following example
     end
 """
 function on_request(module_name, request)::Dict{Symbol,<:Any}
-    throw(error("No http request handler defined for '$(module_name)'"))
+    error("No http request handler defined for '$(module_name)'")
 end
 
 "Still a bit unsure about this, but it will for now give you the (relative) path for your module requests"
