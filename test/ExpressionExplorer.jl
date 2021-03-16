@@ -345,6 +345,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
         @test testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
+        @test testee(:(while false; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
+        @test testee(:(try; using Pluto.wow, Dates; catch; end), [], [:wow, :Dates], [], [])
         @test testee(:(module A; import B end), [], [:A], [], [])
     end
     @testset "Foreign macros" begin
