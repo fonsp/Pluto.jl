@@ -4,22 +4,6 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
-"Like @async except it prints errors to the terminal. 👶"
-macro asynclog(expr)
-	quote
-		@async begin
-			# because this is being run asynchronously, we need to catch exceptions manually
-			try
-				$(esc(expr))
-			catch ex
-				bt = stacktrace(catch_backtrace())
-				showerror(stderr, ex, bt)
-				rethrow(ex)
-			end
-		end
-	end
-end
-
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
