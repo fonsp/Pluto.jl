@@ -15,8 +15,13 @@ Base.wait(token::Token) = Base.put!(token.c, Base.take!(token.c))
 
 function withtoken(f::Function, token::Token)
     take!(token)
-    result = f()
-    put!(token)
+    result = try
+        f()
+    catch e
+        rethrow(e)
+    finally
+        put!(token)
+    end
     result
 end
 
