@@ -140,3 +140,43 @@ function evaluate(output::Symbol, host::AbstractString="localhost:1234", session
     end
 end
 end
+
+
+struct PlutoNotebook
+    host::AbstractString
+    session_id::Union{AbstractString, Nothing}
+end
+PlutoNotebook(host::AbstractString="localhost:1234") = PlutoNotebook(host, nothing)
+
+struct PlutoNotebookWithArgs
+    notebook::PlutoNotebook
+    kwargs::Dict{Symbol, Any}
+end
+
+# Looks like notebook_instance(a=3, b=4)
+function (nb::PlutoNotebook)(; kwargs...)
+    PlutoNotebookWithArgs(nb, Dict{Symbol, Any}(kwargs))
+end
+# Looks like notebook_instance(a=3, b=4).c ⟹ 5
+function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
+    REST.evaluate(symbol, Base.getfield(with_args, :notebook).host, Base.getfield(with_args, :notebook).session_id; Base.getfield(with_args, :kwargs)...)
+end
+# Looks like notebook_instance(a=3, b=4)[:c, :m] ⟹ 5
+function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
+    outputs = []
+
+    # TODO: Refactor to make 1 request with multiple output symbols
+    for symbol ∈ symbols
+        push!(outputs, REST.evaluate(symbol, Base.getfield(with_args, :notebook).host, Base.getfield(with_args, :notebook).session_id; Base.getfield(with_args, :kwargs)...))
+    end
+
+    # https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple
+    return (; zip(symbols, outputs)...)
+end
+
+macro resolve(with_args, output::Symbol)
+
+    :(
+        REST.static_function($:($(esc(output))), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).host, Base.getfield($(esc(with_args)), :notebook).session_id)
+    )
+end
