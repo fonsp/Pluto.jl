@@ -146,7 +146,6 @@ import Distributed
             Cell("y = x + 2"),
             Cell("y = x + 3"),
         ])
-        Pluto.update_caches!(notebook, notebook.cells)
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         let topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells[[1]])
@@ -171,7 +170,6 @@ import Distributed
             Cell("using Revise"),
             Cell("1 + 1"),
         ])
-        Pluto.update_caches!(notebook, notebook.cells)
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
@@ -201,7 +199,6 @@ import Distributed
             Cell("using JSON3, Revise"),
         ])
 
-        Pluto.update_caches!(notebook, notebook.cells)
         notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
 
         topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)

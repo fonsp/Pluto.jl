@@ -5,22 +5,24 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	for cell::Cell in removed_cells
-		cell.code = ""
-		cell.parsedcode = parse_custom(notebook, cell)
-		cell.module_usings = Set{Expr}()
-		cell.rootassignee = nothing
-	end
-	cells::Vector{Cell} = [cells..., removed_cells...]
-	new_topology = NotebookTopology(merge(
-		new_topology.nodes,
-		Dict(cell => ReactiveNode() for cell in removed_cells),
-	))
+	cells = Cell[cells..., removed_cells...]
+
+	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
+	new_topology = NotebookTopology(
+		nodes=merge(
+			new_topology.nodes,
+			Dict(cell => ReactiveNode() for cell in removed_cells),
+		),
+		codes=merge(
+			new_topology.codes,
+			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
+		)
+	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
 	old_order = topological_order(notebook, old_topology, cells)
@@ -31,14 +33,12 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
+	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 
 	# change the bar on the sides of cells to "queued"
-	# local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
@@ -62,7 +62,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
+	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings, setdiff(notebook.cells, to_run))...)
 
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
@@ -79,7 +79,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell, new_topology[cell])
+			run = run_single!((session, notebook), cell, new_topology.nodes[cell], new_topology.codes[cell])
 			any_interrupted |= run.interrupted
 		end
 		
@@ -97,38 +97,39 @@ const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		topology[cell].definitions
+		topology.nodes[cell].definitions
 	end
 end
 
 function defined_functions(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
+		((cell.cell_id, namesig.name) for namesig in topology.nodes[cell].funcdefs_with_signatures)
 	end
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
-		cell.parsedcode, 
+		expr_cache.parsedcode, 
 		cell.cell_id, 
 		ends_with_semicolon(cell.code), 
-		cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
+		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
 	)
-	set_output!(cell, run)
+	set_output!(cell, run, expr_cache)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
 
-function set_output!(cell::Cell, run)
+function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache)
 	cell.last_run_timestamp = time()
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
+	cell.rootassignee = ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
 	cell.errored = run.errored
 end
 
@@ -140,7 +141,6 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
-	update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
@@ -164,7 +164,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
-			run_single!(offline_workspace, cell, new[cell])
+			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
 		end
 		
 		cd(original_pwd)
