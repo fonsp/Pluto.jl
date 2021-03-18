@@ -208,9 +208,6 @@ const effects_of_changed_state = Dict(
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                # AAA 
-                # TODO: this should invalidate the topology.codes[cell]
-                # right now this is not a problem because we always re-parse cells that rerun OOPS
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]
@@ -272,11 +269,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
             push!(changes, current_changes...)
         end
-
-        # if CodeChanged ∈ changes
-        #     old = notebook.topology
-        #     new = notebook.topology = updated_topology(old, notebook, cells)
-        # end
 
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.

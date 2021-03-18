@@ -96,8 +96,6 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
 end
 
 function setcode(cell, newcode)
-    # AAA
-    # cell.parsedcode = nothing
     cell.code = newcode
 end
 
