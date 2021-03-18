@@ -995,6 +995,9 @@ function compute_usings_imports!(out::UsingsImports, ex::Any)
 	out
 end
 
+"""
+Given `:(using Plots, Something.Else, .LocalModule)`, return `Set([:Plots, :Something])`.
+"""
 function external_package_names(ex::Expr)::Set{Symbol}
 	@assert ex.head == :import || ex.head == :using
 	if Meta.isexpr(ex.args[1], :(:))

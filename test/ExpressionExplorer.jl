@@ -1,6 +1,5 @@
 using Test
 
-
 #= 
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
 Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
@@ -476,5 +475,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(result) == Set{Symbol}([
             :A, :B, :H, :J, :K
         ])
+
+        @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
+        @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
     end
 end
