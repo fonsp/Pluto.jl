@@ -64,8 +64,6 @@ function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end
 
-cells(topology::NotebookTopology) = topology.cells_ordered
-
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
 function where_referenced(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].funcdefs_without_signatures)
@@ -73,7 +71,7 @@ function where_referenced(topology::NotebookTopology, myself::Cell)::Vector{Cell
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
 function where_referenced(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
-	return filter(cells(topology)) do cell
+	return filter(topology.cells_ordered) do cell
 		!disjoint(to_compare, topology.nodes[cell].references)
 	end
 end
@@ -81,7 +79,7 @@ end
 "Return the cells that also assign to any variable or method defined by the given cell. If more than one cell is returned (besides the given cell), then all of them should throw a `MultipleDefinitionsError`. Non-recursive: only direct dependencies are found."
 function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 	self = topology.nodes[myself]
-	return filter(cells(topology)) do cell
+	return filter(topology.cells_ordered) do cell
 		other = topology.nodes[cell]
 		!(
 			disjoint(self.definitions,                 other.definitions) &&
@@ -95,7 +93,7 @@ function where_assigned(topology::NotebookTopology, myself::Cell)::Vector{Cell}
 end
 
 function where_assigned(topology::NotebookTopology, to_compare::Set{Symbol})::Vector{Cell}
-	filter(cells(topology)) do cell
+	filter(topology.cells_ordered) do cell
 		other = topology.nodes[cell]
 		!(
 			disjoint(to_compare, other.definitions) &&
@@ -106,14 +104,14 @@ end
 
 "Return whether any cell references the given symbol. Used for the @bind mechanism."
 function is_referenced_anywhere(topology::NotebookTopology, sym::Symbol)::Bool
-	any(cells(topology)) do cell
+	any(topology.cells_ordered) do cell
 		sym ∈ topology.nodes[cell].references
 	end
 end
 
 "Return whether any cell defines the given symbol. Used for the @bind mechanism."
 function is_assigned_anywhere(topology::NotebookTopology, sym::Symbol)::Bool
-	any(cells(topology)) do cell
+	any(topology.cells_ordered) do cell
 		sym ∈ topology.nodes[cell].definitions
 	end
 end
