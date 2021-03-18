@@ -4,6 +4,9 @@ import { html as phtml } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 const html = observablehq_for_myself.html
 
+export const nbpkg_fingerprint = (nbpkg) =>
+    nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+
 export const package_status = ({ nbpkg, package_name, available_versions }) => {
     console.log(available_versions)
 

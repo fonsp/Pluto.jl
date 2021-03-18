@@ -4,7 +4,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { PkgStatusMark } from "./PkgStatusMark.js"
+import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -90,6 +90,7 @@ export const CellInput = ({
 
     const pkg_bubbles = useRef(new Map())
 
+    const nbpkg_ref = useRef(nbpkg)
     useEffect(() => {
         pkg_bubbles.current.forEach((b) => {
             b.on_nbpkg_local(nbpkg_local)
@@ -98,12 +99,13 @@ export const CellInput = ({
 
     useEffect(
         () => {
+            nbpkg_ref.current = nbpkg
             pkg_bubbles.current.forEach((b) => {
                 b.on_nbpkg(nbpkg)
             })
             console.log("effect!")
         },
-        nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+        nbpkg_fingerprint(nbpkg)
     )
 
     useEffect(() => {
@@ -516,7 +518,7 @@ export const CellInput = ({
                                             notebook_id: notebook_id,
                                         })
                                         b.on_nbpkg_local(nbpkg_local)
-                                        b.on_nbpkg(nbpkg)
+                                        b.on_nbpkg(nbpkg_ref.current)
                                         return b
                                     })
 

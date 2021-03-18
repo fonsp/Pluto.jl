@@ -65,11 +65,9 @@ function shuffled_with_imports_notebook()
 end
 
 function init_packages!(nb::Notebook)
-    Pluto.update_caches!(nb, nb.cells)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
     Pluto.update_nbpkg(nb, nb.topology, nb.topology)
-    
-    nb
+    return nb
 end
 
 function bad_code_notebook()

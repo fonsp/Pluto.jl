@@ -4,7 +4,7 @@ import .PkgTools
 import .PkgTools: getfirst, is_stdlib
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for (c, _) in topology.nodes)...)
+    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
 end
 
 const tiers = [

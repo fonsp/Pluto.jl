@@ -2,9 +2,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
-
-const nbpkg_fingerprint = (nbpkg) =>
-    nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
 let CellMemo = ({
     cell_result,

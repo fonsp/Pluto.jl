@@ -1,6 +1,5 @@
 using Test
 
-
 #= 
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
 Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
@@ -208,6 +207,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(Base.show() = 0), [:Base], [], [], [
             [:Base, :show] => ([], [], [], [])
         ])
+        @test testee(:((x;p) -> f(x+p)), [], [], [], [
+            :anon => ([], [], [:f, :+], [])
+        ])
+        @test testee(:(begin x; p end -> f(x+p)), [], [], [], [
+            :anon => ([], [], [:f, :+], [])
+        ])
         @test testee(:(minimum(x) do (a, b); a + b end), [:x], [], [:minimum], [
             :anon => ([], [], [:+], [])
         ])
@@ -344,7 +349,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(import Pluto.ExpressionExplorer.wow, Plutowie), [], [:wow, :Plutowie], [], [])
         @test testee(:(import .Pluto: wow), [], [:wow], [], [])
         @test testee(:(import ..Pluto: wow), [], [:wow], [], [])
-        @test_broken testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], []; verbose=false)
+        @test testee(:(let; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
+        @test testee(:(while false; import Pluto.wow, Dates; end), [], [:wow, :Dates], [], [])
+        @test testee(:(try; using Pluto.wow, Dates; catch; end), [], [:wow, :Dates], [], [])
+        @test testee(:(module A; import B end), [], [:A], [], [])
     end
     @testset "Foreign macros" begin
         # parameterizedfunctions
@@ -453,7 +461,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
                 using Nonono
             end
         end
-        result = compute_usings_imports(expr)
+        result = ExpressionExplorer.compute_usings_imports(expr)
         @test result.usings == Set{Expr}([
             :(using A),
             :(using .C: r),
@@ -467,5 +475,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test ExpressionExplorer.external_package_names(result) == Set{Symbol}([
             :A, :B, :H, :J, :K
         ])
+
+        @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
+        @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
     end
 end
