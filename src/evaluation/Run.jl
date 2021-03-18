@@ -10,7 +10,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells = Cell[cells..., removed_cells...]
+	cells = union(cells, removed_cells)
 
 	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
 	new_topology = NotebookTopology(
