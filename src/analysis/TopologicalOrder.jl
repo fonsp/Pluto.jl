@@ -8,8 +8,6 @@ struct TopologicalOrder
 	errable::Dict{Cell,ReactivityError}
 end
 
-topological_order(::Notebook, topology::NotebookTopology, roots::Vector{Cell}; allow_multiple_defs=false) = topological_order(topology, roots; allow_multiple_defs=allow_multiple_defs)
-
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
 function topological_order(topology::NotebookTopology, roots::Vector{Cell}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
@@ -58,6 +56,9 @@ function topological_order(topology::NotebookTopology, roots::Vector{Cell}; allo
 	ordered = reverse(exits)
 	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
 end
+
+@deprecate topological_order(::Notebook, topology::NotebookTopology, roots::Vector{Cell}; allow_multiple_defs=false) = topological_order(topology, roots; allow_multiple_defs=allow_multiple_defs)
+
 
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
