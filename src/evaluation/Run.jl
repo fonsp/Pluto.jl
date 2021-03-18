@@ -6,177 +6,184 @@ Base.push!(x::Set{Cell}) = x
 
 "Like @async except it prints errors to the terminal. 👶"
 macro asynclog(expr)
-	quote
-		@async begin
-			# because this is being run asynchronously, we need to catch exceptions manually
-			try
-				$(esc(expr))
-			catch ex
-				bt = stacktrace(catch_backtrace())
-				showerror(stderr, ex, bt)
-				rethrow(ex)
-			end
-		end
-	end
+    quote
+        @async begin
+            # because this is being run asynchronously, we need to catch exceptions manually
+            try
+                $(esc(expr))
+            catch ex
+                bt = stacktrace(catch_backtrace())
+                showerror(stderr, ex, bt)
+                rethrow(ex)
+            end
+        end
+    end
 end
 
 """
 Recursively deactivates all cells referenced by the current cell.
 """
 function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
-	cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
-	cell.is_deactivated = true
-	cell.running = false
-	cell.queued = false
-	references = cell.downstream_cells_map
-	isempty(references) && return
+    cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
+    cell.is_deactivated = true
+    cell.running = false
+    cell.queued = false
+    references = cell.downstream_cells_map
+    isempty(references) && return
 
-	referenced_cells = vcat(values(references)...) |> unique
-	for c ∈ referenced_cells
-		_deactivate_referenced_cells!(c, cells_dict)
-	end
+    referenced_cells = vcat(values(references)...) |> unique
+    for c ∈ referenced_cells
+        _deactivate_referenced_cells!(c, cells_dict)
+    end
+end
+
+"""
+Deactivation of cells for execution barriers.
+"""
+function cell_deactivation(cells_in:: Vector{Cell}, notebook:: Notebook)
+    # activate all cells before checking which cells are affected by execution barrier
+    for cell in cells_in
+        cell.is_deactivated = false
+    end
+    # identify cells affected by active execution barrier and its references
+    for cell in cells_in
+        if cell.has_execution_barrier
+            _deactivate_referenced_cells!(cell, notebook.cells_dict)
+        end
+    end
+    cells_to_run = Cell[]
+    for cell in cells_in
+        if !cell.is_deactivated
+            push!(cells_to_run, cell)
+        end
+    end
+    return cells_to_run
 end
 
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
-	# make sure that we're the only `run_reactive!` being executed - like a semaphor
-	take!(notebook.executetoken)
+    # make sure that we're the only `run_reactive!` being executed - like a semaphor
+    take!(notebook.executetoken)
 
-	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	for cell::Cell in removed_cells
-		cell.code = ""
-		cell.parsedcode = parse_custom(notebook, cell)
-		cell.module_usings = Set{Expr}()
-		cell.rootassignee = nothing
-	end
-	cells::Vector{Cell} = [cells..., removed_cells...]
-	new_topology = NotebookTopology(merge(
-		new_topology.nodes,
-		Dict(cell => ReactiveNode() for cell in removed_cells),
-	))
+    removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
+    for cell::Cell in removed_cells
+        cell.code = ""
+        cell.parsedcode = parse_custom(notebook, cell)
+        cell.module_usings = Set{Expr}()
+        cell.rootassignee = nothing
+    end
+    cells::Vector{Cell} = [cells..., removed_cells...]
+    new_topology = NotebookTopology(merge(
+        new_topology.nodes,
+        Dict(cell => ReactiveNode() for cell in removed_cells),
+    ))
 
-	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+    # save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
+    old_order = topological_order(notebook, old_topology, cells)
 
-	old_runnable = old_order.runnable
-	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+    old_runnable = old_order.runnable
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
-	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
+    # get the new topological order
+    new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
+    to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
-	# activate all cells before checking which cells are affected by execution barrier
-	for cell in to_run_raw
-		cell.is_deactivated = false
-	end
-	# identify cells affected by active execution barrier and its references
-	for cell in to_run_raw
-		if cell.has_execution_barrier
-			_deactivate_referenced_cells!(cell, notebook.cells_dict)
-		end
+    to_run = cell_deactivation(to_run_raw, notebook)
 
-	end
+    # change the bar on the sides of cells to "queued"
+    # local listeners = ClientSession[]
+    for cell in to_run
+        cell.queued = true
+        # listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
+    end
 
-	to_run = Cell[]
-	# change the bar on the sides of cells to "queued"
-	# local listeners = ClientSession[]
-	for cell in to_run_raw
-		if !cell.is_deactivated
-			cell.queued = true
-			# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
-			push!(to_run, cell)
-		end
-	end
+    for (cell, error) in new_order.errable
+        cell.running = false
+        cell.queued = false
+        relay_reactivity_error!(cell, error)
+    end
 
+    # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
+    send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
+        send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+    end
+    send_notebook_changes_throttled()
 
+    # delete new variables that will be defined by a cell
+    new_runnable = new_order.runnable
+    to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
+    to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
 
-	for (cell, error) in new_order.errable
-		cell.running = false
-		cell.queued = false
-		relay_reactivity_error!(cell, error)
-	end
+    # delete new variables in case a cell errors (then the later cells show an UndefVarError)
+    new_errable = keys(new_order.errable)
+    to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
+    to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-	send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-	end
-	send_notebook_changes_throttled()
+    to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
-	# delete new variables that will be defined by a cell
-	new_runnable = new_order.runnable
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
+    deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
-	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-	new_errable = keys(new_order.errable)
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
+    delete!.([notebook.bonds], to_delete_vars)
 
-	to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
+    local any_interrupted = false
+    # ordered_cells = get_ordered_cells(new_order)
+    # set_dependencies!(notebook, ordered_cells)
 
-	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+    for (i, cell) in enumerate(to_run)
+        
+        cell.queued = false
+        cell.running = true
+        cell.persist_js_state = persist_js_state || cell ∉ cells
+        send_notebook_changes_throttled()
 
-	delete!.([notebook.bonds], to_delete_vars)
-
-	local any_interrupted = false
-	# ordered_cells = get_ordered_cells(new_order)
-	# set_dependencies!(notebook, ordered_cells)
-
-	for (i, cell) in enumerate(to_run)
-		
-		cell.queued = false
-		cell.running = true
-		cell.persist_js_state = persist_js_state || cell ∉ cells
-		send_notebook_changes_throttled()
-
-		if any_interrupted || notebook.wants_to_interrupt
-			relay_reactivity_error!(cell, InterruptException())
-		else
-			run = run_single!((session, notebook), cell, new_topology[cell])
-			# set_dependencies!(cell, notebook, ordered_cells)
-			any_interrupted |= run.interrupted
-		end
-		
-		cell.running = false
-	end
-	
-	notebook.wants_to_interrupt = false
-	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-	# allow other `run_reactive!` calls to be executed
-	put!(notebook.executetoken)
-	return new_order
+        if any_interrupted || notebook.wants_to_interrupt
+            relay_reactivity_error!(cell, InterruptException())
+        else
+            run = run_single!((session, notebook), cell, new_topology[cell])
+            # set_dependencies!(cell, notebook, ordered_cells)
+            any_interrupted |= run.interrupted
+        end
+        
+        cell.running = false
+    end
+    
+    notebook.wants_to_interrupt = false
+    send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+    # allow other `run_reactive!` calls to be executed
+    put!(notebook.executetoken)
+    return new_order
 end
 
 const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
-	lazymap(cells) do cell
-		topology[cell].definitions
-	end
+    lazymap(cells) do cell
+        topology[cell].definitions
+    end
 end
 
 function defined_functions(topology::NotebookTopology, cells)
-	lazymap(cells) do cell
-		((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
-	end
+    lazymap(cells) do cell
+        ((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
+    end
 end
 
 "Run a single cell non-reactively, set its output, return run information."
 function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode)
-	run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
-	set_output!(cell, run)
-	return run
+    run = WorkspaceManager.eval_format_fetch_in_workspace(session_notebook, cell.parsedcode, cell.cell_id, ends_with_semicolon(cell.code), cell.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing)
+    set_output!(cell, run)
+    return run
 end
 
 function set_output!(cell::Cell, run)
-	cell.last_run_timestamp = time()
-	cell.runtime = run.runtime
+    cell.last_run_timestamp = time()
+    cell.runtime = run.runtime
 
-	cell.output_repr = run.output_formatted[1]
-	cell.repr_mime = run.output_formatted[2]
-	cell.errored = run.errored
+    cell.output_repr = run.output_formatted[1]
+    cell.repr_mime = run.output_formatted[2]
+    cell.errored = run.errored
 end
 
 ###
@@ -185,42 +192,42 @@ end
 
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
-	update_caches!(notebook, cells)
-	old = notebook.topology
-	new = notebook.topology = updated_topology(old, notebook, cells)
+    update_caches!(notebook, cells)
+    old = notebook.topology
+    new = notebook.topology = updated_topology(old, notebook, cells)
 
-	update_dependency_cache!(notebook)
+    update_dependency_cache!(notebook)
 
-	save && save_notebook(notebook)
-	
-	# _assume `prerender_text == false` if you want to skip some details_
+    save && save_notebook(notebook)
+    
+    # _assume `prerender_text == false` if you want to skip some details_
 
-	to_run_online = if !prerender_text
-		cells
-	else
-		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
-		# this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
-		# "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
-		original_pwd = pwd()
-		offline_workspace = WorkspaceManager.make_workspace(
-			(ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
-				notebook,)
-		)
+    to_run_online = if !prerender_text
+        cells
+    else
+        # this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else
+        # this makes the notebook load a lot faster - the front-end does not have to wait for each output, and perform costly reflows whenever one updates
+        # "A Workspace on the main process, used to prerender markdown before starting a notebook process for speedy UI."
+        original_pwd = pwd()
+        offline_workspace = WorkspaceManager.make_workspace(
+            (ServerSession(options=Configuration.Options(evaluation=Configuration.EvaluationOptions(workspace_use_distributed=false))),
+                notebook,)
+        )
 
-		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
-		for cell in to_run_offline
-			run_single!(offline_workspace, cell, new[cell])
-		end
-		
-		cd(original_pwd)
-		setdiff(cells, to_run_offline)
-	end
+        to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
+        for cell in to_run_offline
+            run_single!(offline_workspace, cell, new[cell])
+        end
+        
+        cd(original_pwd)
+        setdiff(cells, to_run_offline)
+    end
 
-	if run_async
-		@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-	else
-		run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-	end
+    if run_async
+        @asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+    else
+        run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+    end
 end
 
 # Only used in tests!
@@ -235,14 +242,14 @@ It is _leading_ (`f` is invoked immediately) and _not trailing_ (calls during a 
 
 An optional third argument sets an initial cooldown period, default is `0`. With a non-zero value, the throttle is no longer _leading_."
 function throttled(f::Function, max_delay::Real, initial_offset::Real=0)
-	local last_run_at = time() - max_delay + initial_offset
-	# return f
-	() -> begin
-		now = time()
-		if now - last_run_at >= max_delay
-			f()
-			last_run_at = now
-		end
-		nothing
-	end
+    local last_run_at = time() - max_delay + initial_offset
+    # return f
+    () -> begin
+        now = time()
+        if now - last_run_at >= max_delay
+            f()
+            last_run_at = now
+        end
+        nothing
+    end
 end
