@@ -2,7 +2,7 @@
 "A container for the result of parsing the cell code, with some extra metadata."
 Base.@kwdef struct ExprAnalysisCache
     code::String=""
-    parsedcode::Expr=Expr(:block)
+    parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
     module_usings::Set{Expr}=Set{Expr}()
     function_wrapped::Bool=false
 end
@@ -44,4 +44,5 @@ function Base.merge(a1::DefaultDict{K,V}, a2::AbstractDict) where {K,V}
     DefaultDict{K,V}(a1.default, merge(a1.container, a2))
 end
 Base.setindex!(aid::DefaultDict, args...) = Base.setindex!(aid.container, args...)
+Base.delete!(aid::DefaultDict, args...) = Base.delete!(aid.container, args...)
 Base.keys(aid::DefaultDict) = Base.keys(aid.container)
