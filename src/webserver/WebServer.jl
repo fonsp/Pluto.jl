@@ -96,10 +96,11 @@ end
 # Deprecation errors
 
 function run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...)
-    @error "Deprecated in favor of:
+    @error """run(host, port) is deprecated in favor of:
     
-        run(;host=$host, port=$port)
-    "
+        run(;host="$host", port=$port)  
+    
+    """
 end
 
 function run(port::Integer; kwargs...)
