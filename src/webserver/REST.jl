@@ -174,9 +174,10 @@ function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
     return (; zip(symbols, outputs)...)
 end
 
-macro resolve(with_args, output::Symbol)
+macro resolve(with_args, output)
+    println(eval(with_args))
 
     :(
-        REST.static_function($:($(esc(output))), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).host, Base.getfield($(esc(with_args)), :notebook).session_id)
+        REST.static_function($(esc(output)), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).host, Base.getfield($(esc(with_args)), :notebook).session_id)
     )
 end

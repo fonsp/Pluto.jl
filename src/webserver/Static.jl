@@ -235,7 +235,16 @@ function http_router_for(session::ServerSession)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
         id = get(query, "id", nothing)
-        notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        file = get(query, "file", nothing)
+        notebook = nothing
+        if !isnothing(file)
+            notebook_id = findfirst(session.notebooks) do nb
+                basename(nb.path) == file
+            end
+            notebook = session.notebooks[notebook_id]
+        else
+            notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        end
         topology = notebook.topology
 
         inputs = JSON.parse(query["inputs"])
@@ -258,7 +267,16 @@ function http_router_for(session::ServerSession)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
         id = get(query, "id", nothing)
-        notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        file = get(query, "file", nothing)
+        notebook = nothing
+        if !isnothing(file)
+            notebook_id = findfirst(session.notebooks) do nb
+                basename(nb.path) == file
+            end
+            notebook = session.notebooks[notebook_id]
+        else
+            notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
+        end
         topology = notebook.topology
 
         input_symbols = Symbol.(split(query["inputs"], ","))
