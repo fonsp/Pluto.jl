@@ -1,5 +1,4 @@
 using Test
-import Pluto.ExpressionExplorer: external_package_names
 
 #= 
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
@@ -448,8 +447,37 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
     end
 
-    @testset "Detecting usings and imports" begin
-        @test external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
-        @test external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
+    @testset "Extracting `using` and `import`" begin
+        expr = quote
+            using A
+            import B
+            if x
+                using .C: r
+                import ..D.E: f, g
+            else
+                import H.I, J, K.L
+            end
+            
+            quote
+                using Nonono
+            end
+        end
+        result = ExpressionExplorer.compute_usings_imports(expr)
+        @test result.usings == Set{Expr}([
+            :(using A),
+            :(using .C: r),
+        ])
+        @test result.imports == Set{Expr}([
+            :(import B),
+            :(import ..D.E: f, g),
+            :(import H.I, J, K.L),
+        ])
+
+        @test ExpressionExplorer.external_package_names(result) == Set{Symbol}([
+            :A, :B, :H, :J, :K
+        ])
+
+        @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
+        @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
     end
 end
