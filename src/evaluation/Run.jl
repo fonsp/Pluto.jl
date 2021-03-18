@@ -40,7 +40,7 @@ end
 """
 Deactivation of cells for execution barriers.
 """
-function cell_deactivation(cells_in:: Vector{Cell}, notebook:: Notebook)
+function cell_deactivation!(cells_in:: Vector{Cell}, notebook:: Notebook)
     # activate all cells before checking which cells are affected by execution barrier
     for cell in cells_in
         cell.is_deactivated = false
@@ -90,7 +90,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
     new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
     to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
-    to_run = cell_deactivation(to_run_raw, notebook)
+    to_run = cell_deactivation!(to_run_raw, notebook)
 
     # change the bar on the sides of cells to "queued"
     # local listeners = ClientSession[]

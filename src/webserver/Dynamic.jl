@@ -368,8 +368,8 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     cells = map(uuids) do uuid
         🙋.notebook.cells_dict[uuid]
     end
-
-    for cell in cells
+    active_cells = cell_deactivation!(cells, 🙋.notebook)
+    for cell in active_cells
         cell.queued = true
     end
     send_notebook_changes!(🙋)
