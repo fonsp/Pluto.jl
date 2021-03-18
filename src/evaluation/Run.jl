@@ -5,24 +5,23 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells::Vector{Cell} = [cells..., removed_cells...]
+	cells = Cell[cells..., removed_cells...]
 
-	# by setting the reactive node and expression caches of deletes cells to "empty", we are essentially replacing their code with the empty string.
+	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
 	new_topology = NotebookTopology(
 		nodes=merge(
 			new_topology.nodes,
-			Dict{Cell,ReactiveNode}(cell => ReactiveNode() for cell in removed_cells),
+			Dict(cell => ReactiveNode() for cell in removed_cells),
 		),
 		codes=merge(
 			new_topology.codes,
-			Dict{Cell,ExprAnalysisCache}(cell => ExprAnalysisCache() for cell in removed_cells)
+			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
 		)
-		# codes=new_topology.codes,
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
@@ -34,14 +33,12 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
+	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 
 	# change the bar on the sides of cells to "queued"
-	# local listeners = ClientSession[]
 	for cell in to_run
 		cell.queued = true
-		# listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
