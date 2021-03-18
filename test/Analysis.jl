@@ -29,7 +29,7 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         
     ])
 
-    update_caches!(notebook, notebook.cells)
+    # update_caches!(notebook, notebook.cells)
     old = notebook.topology
     new = notebook.topology = updated_topology(old, notebook, notebook.cells)
 

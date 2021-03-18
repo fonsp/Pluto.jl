@@ -113,7 +113,8 @@ function notebook_to_js(notebook::Notebook)
                     "persist_js_state" => cell.persist_js_state,
                     "mime" => cell.repr_mime,
                     "body" => cell.output_repr,
-                    "rootassignee" => cell.rootassignee,
+                    # TODO: on the backend side, we should also store rootassignee as part of the output, not the input
+                    "rootassignee" => haskey(notebook.topology.codes, cell) ? notebook.topology.codes[cell].rootassignee : nothing,
                 ),
             )
         for (id, cell) in notebook.cells_dict),
@@ -207,8 +208,9 @@ const effects_of_changed_state = Dict(
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
-                request.notebook.cells_dict[UUID(cell_id)].function_wrapped = false
+                # AAA
+                # request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
+                # request.notebook.cells_dict[UUID(cell_id)].function_wrapped = false
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]

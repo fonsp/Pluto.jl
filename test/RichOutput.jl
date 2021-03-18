@@ -244,19 +244,19 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             @test notebook.cells[4].errored == false
             @test notebook.cells[4].output_repr == "4"
-            @test notebook.cells[4].rootassignee == :c
+            @test notebook.topology.codes[notebook.cells[4]].rootassignee == :c
 
             @test notebook.cells[5].errored == false
             @test notebook.cells[5].output_repr == ""
-            @test notebook.cells[5].rootassignee === nothing
+            @test notebook.topology.codes[notebook.cells[5]].rootassignee === nothing
 
             @test notebook.cells[6].errored == false
             @test notebook.cells[6].output_repr == "6"
-            @test notebook.cells[6].rootassignee === nothing
+            @test notebook.topology.codes[notebook.cells[6]].rootassignee === nothing
 
             @test notebook.cells[7].errored == false
             @test notebook.cells[7].output_repr == ""
-            @test notebook.cells[7].rootassignee === nothing
+            @test notebook.topology.codes[notebook.cells[7]].rootassignee === nothing
 
             @test notebook.cells[8].errored == false
             @test notebook.cells[8].output_repr == ""

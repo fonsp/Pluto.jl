@@ -23,10 +23,10 @@ Base.@kwdef mutable struct Cell
     "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
     persist_js_state::Bool=false
     
-    parsedcode::Union{Nothing,Expr}=nothing
-    module_usings::Set{Expr}=Set{Expr}()
-    rootassignee::Union{Nothing,Symbol}=nothing
-    function_wrapped::Bool=false
+    # parsedcode::Union{Nothing,Expr}=nothing
+    # module_usings::Set{Expr}=Set{Expr}()
+    # rootassignee::Union{Nothing,Symbol}=nothing
+    # function_wrapped::Bool=false
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
