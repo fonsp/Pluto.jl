@@ -8,120 +8,135 @@ Base.push!(x::Set{Cell}) = x
 Recursively deactivates all cells referenced by the current cell.
 """
 function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
-	cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
-	cell.is_deactivated = true
-	cell.running = false
-	cell.queued = false
-	references = cell.downstream_cells_map
-	isempty(references) && return
+    cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
+    cell.is_deactivated = true
+    cell.running = false
+    cell.queued = false
+    references = cell.downstream_cells_map
+    isempty(references) && return
 
-	referenced_cells = vcat(values(references)...) |> unique
-	for c ∈ referenced_cells
-		_deactivate_referenced_cells!(c, cells_dict)
-	end
+    referenced_cells = vcat(values(references)...) |> unique
+    for c ∈ referenced_cells
+        _deactivate_referenced_cells!(c, cells_dict)
+    end
+end
+
+"""
+Deactivation of cells for execution barriers.
+"""
+function cell_deactivation(cells_in:: Vector{Cell}, notebook:: Notebook)
+    # activate all cells before checking which cells are affected by execution barrier
+    for cell in cells_in
+        cell.is_deactivated = false
+    end
+    # identify cells affected by active execution barrier and its references
+    for cell in cells_in
+        if cell.has_execution_barrier
+            _deactivate_referenced_cells!(cell, notebook.cells_dict)
+        end
+    end
+    cells_to_run = Cell[]
+    for cell in cells_in
+        if !cell.is_deactivated
+            push!(cells_to_run, cell)
+        end
+    end
+    return cells_to_run
 end
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
-	# make sure that we're the only `run_reactive!` being executed - like a semaphor
-	take!(notebook.executetoken)
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Array{Cell,1}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+    # make sure that we're the only `run_reactive!` being executed - like a semaphor
+    take!(notebook.executetoken)
 
-	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells = Cell[cells..., removed_cells...]
+    removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
+    for cell::Cell in removed_cells
+        cell.code = ""
+        cell.parsedcode = parse_custom(notebook, cell)
+        cell.module_usings = Set{Expr}()
+        cell.rootassignee = nothing
+    end
+    cells::Vector{Cell} = [cells..., removed_cells...]
+    new_topology = NotebookTopology(merge(
+        new_topology.nodes,
+        Dict(cell => ReactiveNode() for cell in removed_cells),
+    ))
 
-	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
-	new_topology = NotebookTopology(
-		nodes=merge(
-			new_topology.nodes,
-			Dict(cell => ReactiveNode() for cell in removed_cells),
-		),
-		codes=merge(
-			new_topology.codes,
-			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
-		)
-	)
+    # save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
+    old_order = topological_order(notebook, old_topology, cells)
 
-	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+    old_runnable = old_order.runnable
+    to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
+    to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
-	old_runnable = old_order.runnable
-	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
-	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
+    # get the new topological order
+    new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
+    to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Array{Cell,1} # TODO: think if old error cell order matters
 
-	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+    to_run = cell_deactivation(to_run_raw, notebook)
 
-	# activate all cells before checking which cells are affected by execution barrier
-	for cell in to_run_raw
-		cell.is_deactivated = false
-	end
-	# identify cells affected by active execution barrier and its references
-	for cell in to_run_raw
-		if cell.has_execution_barrier
-			_deactivate_referenced_cells!(cell, notebook.cells_dict)
-		end
+    # change the bar on the sides of cells to "queued"
+    # local listeners = ClientSession[]
+    for cell in to_run
+        cell.queued = true
+        # listeners = putnotebookupdates!(session, notebook, clientupdate_cell_queued(notebook, cell); flush=false)	
+    end
 
-	end
+    for (cell, error) in new_order.errable
+        cell.running = false
+        cell.queued = false
+        relay_reactivity_error!(cell, error)
+    end
 
-	# change the bar on the sides of cells to "queued"
-	for cell in to_run
-		cell.queued = true
-	end
-	for (cell, error) in new_order.errable
-		cell.running = false
-		cell.queued = false
-		relay_reactivity_error!(cell, error)
-	end
+    # Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
+    send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
+        send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+    end
+    send_notebook_changes_throttled()
 
-	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-	send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-	end
-	send_notebook_changes_throttled()
+    # delete new variables that will be defined by a cell
+    new_runnable = new_order.runnable
+    to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
+    to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
 
-	# delete new variables that will be defined by a cell
-	new_runnable = new_order.runnable
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
+    # delete new variables in case a cell errors (then the later cells show an UndefVarError)
+    new_errable = keys(new_order.errable)
+    to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
+    to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-	new_errable = keys(new_order.errable)
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
+    to_reimport = union(Set{Expr}(), map(c -> c.module_usings, setdiff(notebook.cells, to_run))...)
 
-	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+    deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
-	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+    delete!.([notebook.bonds], to_delete_vars)
 
-	delete!.([notebook.bonds], to_delete_vars)
+    local any_interrupted = false
+    # ordered_cells = get_ordered_cells(new_order)
+    # set_dependencies!(notebook, ordered_cells)
 
-	local any_interrupted = false
-	for (i, cell) in enumerate(to_run)
-		
-		cell.queued = false
-		cell.running = true
-		send_notebook_changes_throttled()
-		
-		if any_interrupted || notebook.wants_to_interrupt
-			relay_reactivity_error!(cell, InterruptException())
-		else
-			run = run_single!(
-				(session, notebook), cell, 
-				new_topology.nodes[cell], new_topology.codes[cell]; 
-				persist_js_state=(persist_js_state || cell ∉ cells)
-			)
-			any_interrupted |= run.interrupted
-		end
-		
-		cell.running = false
-	end
-	
-	notebook.wants_to_interrupt = false
-	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-	# allow other `run_reactive!` calls to be executed
-	put!(notebook.executetoken)
-	return new_order
+    for (i, cell) in enumerate(to_run)
+        
+        cell.queued = false
+        cell.running = true
+        cell.persist_js_state = persist_js_state || cell ∉ cells
+        send_notebook_changes_throttled()
+
+        if any_interrupted || notebook.wants_to_interrupt
+            relay_reactivity_error!(cell, InterruptException())
+        else
+            run = run_single!((session, notebook), cell, new_topology[cell])
+            # set_dependencies!(cell, notebook, ordered_cells)
+            any_interrupted |= run.interrupted
+        end
+        
+        cell.running = false
+    end
+    
+    notebook.wants_to_interrupt = false
+    send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+    # allow other `run_reactive!` calls to be executed
+    put!(notebook.executetoken)
+    return new_order
 end
 
 const lazymap = Base.Generator
