@@ -461,7 +461,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
                 using Nonono
             end
         end
-        result = compute_usings_imports(expr)
+        result = ExpressionExplorer.compute_usings_imports(expr)
         @test result.usings == Set{Expr}([
             :(using A),
             :(using .C: r),
