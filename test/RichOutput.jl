@@ -36,7 +36,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                         a = A(16, 0)
                         a.y = [1, (2, A(3, (r=4, t=(5 => Dict(6 => Ref(a))))))]
                         a
-                    end""")
+                    end"""),
+                    Cell("Set([17:20,\"Wonderful\"])"),
+                    Cell("Set(0 : 0.1 : 20)"),
                 ])
             fakeclient.connected_notebook = notebook
 
@@ -73,6 +75,17 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test notebook.cells[16].repr_mime isa MIME"application/vnd.pluto.tree+object"
             @test notebook.cells[16].output_repr isa Dict
             @test occursin("circular", notebook.cells[16].output_repr |> string)
+
+            @test notebook.cells[17].output_repr isa Dict
+            @test length(notebook.cells[17].output_repr[:elements]) == 2
+            @test notebook.cells[17].output_repr[:prefix] == "Set{Any}"
+            @test notebook.cells[17].repr_mime isa MIME"application/vnd.pluto.tree+object"
+            @test occursin("Set", notebook.cells[17].output_repr |> string)
+
+            @test notebook.cells[18].output_repr isa Dict
+            @test length(notebook.cells[18].output_repr[:elements]) < 200
+            @test notebook.cells[18].output_repr[:prefix] == "Set{Float64}"
+            @test notebook.cells[18].repr_mime isa MIME"application/vnd.pluto.tree+object"
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end

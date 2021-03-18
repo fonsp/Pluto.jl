@@ -2,17 +2,6 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-"The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
-end
-
-# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
-# with the performance benefit of only generating ReactiveNode() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
-    get!(ReactiveNode, topology.nodes, cell)
-end
-
 struct BondValue
     value::Any
 end
@@ -92,7 +81,7 @@ emptynotebook(args...) = Notebook([Cell()], args...)
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
 
-In the produced file, cells are not saved in the notebook order. If `notebook.topolgy` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
+In the produced file, cells are not saved in the notebook order. If `notebook.topology` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
 
 Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
@@ -224,7 +213,6 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
-    update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
