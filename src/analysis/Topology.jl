@@ -4,7 +4,6 @@ Base.@kwdef struct ExprAnalysisCache
     code::String=""
     parsedcode::Expr=Expr(:block)
     module_usings::Set{Expr}=Set{Expr}()
-    rootassignee::Union{Nothing,Symbol}=nothing
     function_wrapped::Bool=false
 end
 
@@ -14,7 +13,6 @@ ExprAnalysisCache(notebook, cell::Cell) = let
         code=cell.code,
         parsedcode=parsedcode,
         module_usings=ExpressionExplorer.compute_usings(parsedcode),
-        rootassignee=ends_with_semicolon(cell.code) ? nothing : ExpressionExplorer.get_rootassignee(parsedcode),
         function_wrapped=ExpressionExplorer.can_be_function_wrapped(parsedcode),
     )
 end

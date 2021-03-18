@@ -34,7 +34,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[1:2])
         @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
-        @test notebook.topology.codes[notebook.cells[1]].rootassignee == :x
+        @test notebook.cells[1].rootassignee == :x
         @test notebook.cells[1].runtime !== nothing
         setcode(notebook.cells[1], "x = 12")
         update_run!(🍭, notebook, notebook.cells[1])
@@ -43,12 +43,12 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[3].errored == false
-        @test notebook.topology.codes[notebook.cells[3]].rootassignee === nothing
+        @test notebook.cells[3].rootassignee === nothing
     
         update_run!(🍭, notebook, notebook.cells[4])
         @test notebook.cells[4].output_repr == "16"
         @test notebook.cells[4].errored == false
-        @test notebook.topology.codes[notebook.cells[4]].rootassignee === nothing
+        @test notebook.cells[4].rootassignee === nothing
 
         setcode(notebook.cells[1], "x = 912")
         update_run!(🍭, notebook, notebook.cells[1])

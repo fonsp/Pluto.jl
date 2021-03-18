@@ -119,19 +119,20 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
 	)
-	set_output!(cell, run)
+	set_output!(cell, run, expr_cache)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
 
-function set_output!(cell::Cell, run)
+function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache)
 	cell.last_run_timestamp = time()
 	cell.runtime = run.runtime
 
 	cell.output_repr = run.output_formatted[1]
 	cell.repr_mime = run.output_formatted[2]
+	cell.rootassignee = ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
 	cell.errored = run.errored
 end
 

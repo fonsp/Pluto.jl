@@ -13,6 +13,7 @@ Base.@kwdef mutable struct Cell
     
     output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
+    rootassignee::Union{Symbol,Nothing}=nothing
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
     queued::Bool=false
