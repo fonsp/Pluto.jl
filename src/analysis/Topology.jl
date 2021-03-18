@@ -1,6 +1,4 @@
 
-# using DataStructures: DefaultDict
-
 
 Base.@kwdef struct ExprAnalysisCache
     parsedcode::Expr=Expr(:block)
@@ -25,7 +23,6 @@ struct DefaultDict{K,V} <: AbstractDict{K,V}
     container::Dict{K,V}
 end
 
-# DefaultDict{K,V}(default::Union{Function,DataType}, args) where {K,V} = DefaultDict{K,V}(default, Dict{K,V}(args))
 DefaultDict{K,V}(default::Union{Function,DataType}) where {K,V} = DefaultDict{K,V}(default, Dict{K,V}())
 
 function Base.getindex(aid::DefaultDict{K,V}, key::K)::V where {K,V}
@@ -45,15 +42,8 @@ Base.length(aid::DefaultDict) = Base.length(aid.container)
 Base.iterate(aid::DefaultDict, args...) = Base.iterate(aid.container, args...)
 
 
-
 "The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
 Base.@kwdef struct NotebookTopology
     nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
     codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
 end
-
-# # `topology.nodes[cell]` is a shorthand for `get!(ReactiveNode, topology, cell`
-# # with the performance benefit of only generating ReactiveNode() when needed
-# function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
-#     get!(ReactiveNode, topology.nodes, cell)
-# end

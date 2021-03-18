@@ -213,7 +213,6 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
-    # update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.

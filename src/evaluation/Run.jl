@@ -10,12 +10,6 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	# for cell::Cell in removed_cells
-	# 	# cell.code = ""
-	# 	# cell.parsedcode = parse_custom(notebook, cell)
-	# 	# cell.module_usings = Set{Expr}()
-	# 	# cell.rootassignee = nothing
-	# end
 	cells::Vector{Cell} = [cells..., removed_cells...]
 
 	# by setting the reactive node and expression caches of deletes cells to "empty", we are essentially replacing their code with the empty string.
@@ -149,7 +143,6 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
-	# update_caches!(notebook, cells)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
