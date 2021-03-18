@@ -1,9 +1,10 @@
+import .ExpressionExplorer: UsingsImports
 
 "A container for the result of parsing the cell code, with some extra metadata."
 Base.@kwdef struct ExprAnalysisCache
     code::String=""
     parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
-    module_usings::Set{Expr}=Set{Expr}()
+	module_usings_imports::UsingsImports = UsingsImports()
     function_wrapped::Bool=false
 end
 
@@ -12,7 +13,7 @@ ExprAnalysisCache(notebook, cell::Cell) = let
     ExprAnalysisCache(
         code=cell.code,
         parsedcode=parsedcode,
-        module_usings=ExpressionExplorer.compute_usings(parsedcode),
+        module_usings_imports=ExpressionExplorer.compute_usings_imports(parsedcode),
         function_wrapped=ExpressionExplorer.can_be_function_wrapped(parsedcode),
     )
 end
@@ -46,3 +47,5 @@ end
 Base.setindex!(aid::DefaultDict, args...) = Base.setindex!(aid.container, args...)
 Base.delete!(aid::DefaultDict, args...) = Base.delete!(aid.container, args...)
 Base.keys(aid::DefaultDict) = Base.keys(aid.container)
+Base.values(aid::DefaultDict) = Base.values(aid.container)
+Base.iterate(aid::DefaultDict, args...) = Base.iterate(aid.container, args...)

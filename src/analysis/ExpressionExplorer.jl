@@ -1,5 +1,5 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FunctionName, join_funcname_parts
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings_imports, SymbolsState, FunctionName, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -973,19 +973,54 @@ function try_compute_symbolreferences(ex::Any)::SymbolsState
 	end
 end
 
-# TODO: this can be done during the `explore` recursion
-"Get the set of `using Module` expressions that are contained in this expression."
-function compute_usings(ex::Any)::Set{Expr}
+Base.@kwdef struct UsingsImports
+    usings::Set{Expr}=Set{Expr}()
+    imports::Set{Expr}=Set{Expr}()
+end
+
+# Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
+"Preallocated version of [`compute_usings_imports`](@ref)."
+function compute_usings_imports!(out::UsingsImports, ex::Any)
     if isa(ex, Expr)
         if ex.head == :using
-        Set{Expr}([ex])
-        else
-            union!(Set{Expr}(), compute_usings.(ex.args)...)
+			push!(out.usings, ex)
+		elseif ex.head == :import
+			push!(out.imports, ex)
+        elseif ex.head != :quote
+			for a in ex.args
+				compute_usings_imports!(out, a)
+			end
         end
-    else
-        Set{Expr}()
     end
+	out
 end
+
+"""
+Given `:(using Plots, Something.Else, .LocalModule)`, return `Set([:Plots, :Something])`.
+"""
+function external_package_names(ex::Expr)::Set{Symbol}
+	@assert ex.head == :import || ex.head == :using
+	if Meta.isexpr(ex.args[1], :(:))
+		external_package_names(Expr(ex.head, ex.args[1].args[1]))
+	else
+		out = Set{Symbol}()
+		for a in ex.args
+			if Meta.isexpr(a, :(.))
+				if a.args[1] != :(.)
+					push!(out, a.args[1])
+				end
+			end
+		end
+		out
+	end
+end
+
+function external_package_names(x::UsingsImports)::Set{Symbol}
+    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+end
+
+"Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."
+compute_usings_imports(ex) = compute_usings_imports!(UsingsImports(), ex)
 
 "Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
 function is_toplevel_expr(ex::Expr)::Bool

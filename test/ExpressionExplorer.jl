@@ -1,5 +1,5 @@
 using Test
-
+import Pluto.ExpressionExplorer: external_package_names
 
 #= 
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
@@ -446,5 +446,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
         @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
+    end
+
+    @testset "Detecting usings and imports" begin
+        @test external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
+        @test external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
     end
 end

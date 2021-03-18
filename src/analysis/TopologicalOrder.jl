@@ -136,7 +136,7 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	elseif :Revise ∈ top.definitions
 		# Load Revise before other packages so that it can properly `revise` them.
 		5
-	elseif !isempty(topology.codes[cell].module_usings)
+	elseif !isempty(topology.codes[cell].module_usings_imports.usings)
 		# always do `using X` before other cells, because we don't (yet) know which cells depend on it (we only know it with `import X` and `import X: y, z`)
 		6
 	elseif :include ∈ top.references
