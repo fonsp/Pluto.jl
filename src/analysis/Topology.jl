@@ -1,6 +1,7 @@
 
 
 Base.@kwdef struct ExprAnalysisCache
+    code::String=""
     parsedcode::Expr=Expr(:block)
     module_usings::Set{Expr}=Set{Expr}()
     rootassignee::Union{Nothing,Symbol}=nothing
@@ -10,6 +11,7 @@ end
 ExprAnalysisCache(notebook, cell::Cell) = let
     parsedcode=parse_custom(notebook, cell)
     ExprAnalysisCache(
+        code=cell.code,
         parsedcode=parsedcode,
         module_usings=ExpressionExplorer.compute_usings(parsedcode),
         rootassignee=ends_with_semicolon(cell.code) ? nothing : ExpressionExplorer.get_rootassignee(parsedcode),
@@ -36,6 +38,7 @@ function Base.merge(a1::DefaultDict{K,V}, a2::AbstractDict{K,V}) where {K,V}
     DefaultDict{K,V}(a1.default, merge(a1.container, a2))
 end
 
+Base.setindex!(aid::DefaultDict, args...) = Base.setindex!(aid.container, args...)
 Base.keys(aid::DefaultDict) = Base.keys(aid.container)
 Base.values(aid::DefaultDict) = Base.values(aid.container)
 Base.length(aid::DefaultDict) = Base.length(aid.container)
