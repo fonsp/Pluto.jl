@@ -2,17 +2,6 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-"The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
-end
-
-# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
-# with the performance benefit of only generating ReactiveNode() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
-    get!(ReactiveNode, topology.nodes, cell)
-end
-
 struct BondValue
     value::Any
 end

@@ -208,6 +208,7 @@ const effects_of_changed_state = Dict(
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
                 request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
+                request.notebook.cells_dict[UUID(cell_id)].function_wrapped = false
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]

@@ -17,11 +17,11 @@ end
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
 function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
 
-	updated_nodes = Dict{Cell,ReactiveNode}(cell => (
+	updated_nodes = DefaultDict{Cell,ReactiveNode}(ReactiveNode, Dict{Cell,ReactiveNode}(cell => (
 			cell.parsedcode |> 
 			ExpressionExplorer.try_compute_symbolreferences |> 
 			ReactiveNode
-		) for cell in cells)
+		) for cell in cells))
 	
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 

@@ -79,7 +79,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell, new_topology[cell])
+			run = run_single!((session, notebook), cell, new_topology.nodes[cell])
 			any_interrupted |= run.interrupted
 		end
 		
@@ -97,13 +97,13 @@ const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		topology[cell].definitions
+		topology.nodes[cell].definitions
 	end
 end
 
 function defined_functions(topology::NotebookTopology, cells)
 	lazymap(cells) do cell
-		((cell.cell_id, namesig.name) for namesig in topology[cell].funcdefs_with_signatures)
+		((cell.cell_id, namesig.name) for namesig in topology.nodes[cell].funcdefs_with_signatures)
 	end
 end
 
