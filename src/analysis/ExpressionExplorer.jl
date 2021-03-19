@@ -175,8 +175,8 @@ function get_assignees(ex::Expr)::FunctionName
     end
 end
 
-# e.g. x = 123
-get_assignees(ex::Symbol) = Symbol[ex]
+# e.g. x = 123, but ignore _ = 456
+get_assignees(ex::Symbol) = ex === :_ ? Symbol[] : Symbol[ex]
 
 # When you assign to a datatype like Int, String, or anything bad like that
 # e.g. 1 = 2
