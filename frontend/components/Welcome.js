@@ -3,6 +3,7 @@ import { html, Component } from "../imports/Preact.js"
 import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
+import { PasteHandler } from "./PasteHandler.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -301,6 +302,8 @@ export class Welcome extends Component {
         }
 
         return html`<p>New session:</p>
+            NOOOOO
+            <span><${PasteHandler} />NOOO</span/>
             <ul id="new">
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>

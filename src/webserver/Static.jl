@@ -238,6 +238,22 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebookexport", serve_notebookexport)
     
+    serve_notebookupload = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            save_path = SessionActions.save_upload(request.body)
+
+            response = HTTP.Response(200, save_path)
+            push!(response.headers, "Content-Type" => "text/plain; charset=utf-8")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
+    
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         
