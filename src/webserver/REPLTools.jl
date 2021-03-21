@@ -64,7 +64,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
 
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-    results_text, loc, found = if isready(workspace.dowork_token)
+    results_text, loc, found = if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
         # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
         # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
         Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher($query, $pos)))
@@ -97,7 +97,7 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
     else
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-        if isready(workspace.dowork_token)
+        if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher($query)))
         else
             (nothing, :⌛)

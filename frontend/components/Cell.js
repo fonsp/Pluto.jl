@@ -9,29 +9,30 @@ import { PlutoContext } from "../common/PlutoContext.js"
 
 /**
  * @param {{
- *  cell_input: import("./Editor.js").CellInputData,
  *  cell_result: import("./Editor.js").CellResultData,
+ *  cell_input: import("./Editor.js").CellInputData,
  *  cell_input_local: import("./Editor.js").CellInputData,
  *  selected: boolean,
- *  focus_after_creation: boolean,
- *  force_hide_input: boolean,
  *  selected_cells: Array<string>,
+ *  force_hide_input: boolean,
+ *  focus_after_creation: boolean,
  *  [key: string]: any,
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded },
     cell_result: { queued, running, runtime, errored, output },
+    cell_input: { cell_id, code, code_folded },
     cell_input_local,
-    selected,
-    on_change,
-    on_update_doc_query,
-    on_focus_neighbor,
-    disable_input,
-    focus_after_creation,
-    force_hide_input,
-    selected_cells,
     notebook_id,
+    on_update_doc_query,
+    on_change,
+    on_focus_neighbor,
+    selected,
+    selected_cells,
+    force_hide_input,
+    focus_after_creation,
+    is_process_ready,
+    disable_input,
 }) => {
     let pluto_actions = useContext(PlutoContext)
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
@@ -60,9 +61,7 @@ export const Cell = ({
     // When you click to run a cell, we use `waiting_to_run` to immediately set the cell's traffic light to 'queued', while waiting for the backend to catch up.
     const [waiting_to_run, set_waiting_to_run] = useState(false)
     useEffect(() => {
-        if (waiting_to_run) {
-            set_waiting_to_run(false)
-        }
+        set_waiting_to_run(false)
     }, [queued, running, output?.last_run_timestamp])
     // We activate animations instantly BUT deactivate them NSeconds later.
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
@@ -81,7 +80,7 @@ export const Cell = ({
             onDragEnter=${handler}
             onDragLeave=${handler}
             class=${cl({
-                queued: queued || waiting_to_run,
+                queued: queued || (waiting_to_run && is_process_ready),
                 running: running,
                 activate_animation: activate_animation,
                 errored: errored,
@@ -158,6 +157,7 @@ export const Cell = ({
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
+                        set_waiting_to_run(true)
                         let cell_to_run = selected ? selected_cells : [cell_id]
                         pluto_actions.set_and_run_multiple(cell_to_run)
                     }

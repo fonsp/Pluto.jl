@@ -462,9 +462,6 @@ aside#export button.toggle_export {
     margin-left: auto;
     height: 60px;
 }
-body.loading button.toggle_export {
-    display: none;
-}
 
 nav#at_the_top h1 {
     color: black;
@@ -488,8 +485,15 @@ nav#at_the_top > * {
     margin: 10px 0px;
 }
 
+nav#at_the_top > .flex_grow_1 {
+    flex-grow: 1;
+}
+nav#at_the_top > .flex_grow_2 {
+    flex-grow: 2;
+}
+
 nav#at_the_top > a {
-    margin-right: 5rem;
+    /* margin-right: 5rem; */
 }
 
 nav#at_the_top img {
@@ -508,7 +512,7 @@ nav#at_the_top img#logo-small {
     display: none;
 }
 
-@media screen and (max-width: 680px) {
+@media (max-width: 800px) {
     nav#at_the_top img#logo-small {
         display: unset;
     }
@@ -516,12 +520,12 @@ nav#at_the_top img#logo-small {
         display: none;
     }
     nav#at_the_top > a {
-        margin-right: 1rem;
+        /* margin-right: 1rem; */
     }
 }
 
 nav#at_the_top > pluto-filepicker {
-    width: 0px;
+    width: 210px;
     flex-grow: 1;
 
     display: flex;
@@ -616,6 +620,7 @@ li.dir.CodeMirror-hint:before {
     }
 }
 
+body.process_dead > header,
 body.disconnected > header {
     position: sticky;
     top: 0;
@@ -623,6 +628,9 @@ body.disconnected > header {
     -webkit-backdrop-filter: blur(10px);
 }
 
+body.process_dead > header {
+    background-color: rgb(230 88 46 / 38%);
+}
 body.loading > header {
     background-color: hsla(290, 10%, 59%, 0.14);
 }
@@ -630,7 +638,7 @@ body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
 }
 
-#process_status {
+nav#at_the_top > #process_status {
     font-size: 1rem;
     font-weight: 500;
     padding: 5px 10px;
@@ -638,9 +646,10 @@ body.disconnected > header {
     background: white;
     border-radius: 10px;
     z-index: 1;
+    margin-left: 1em;
 }
 
-#process_status:empty {
+nav#at_the_top > #process_status:empty {
     display: none;
 }
 
