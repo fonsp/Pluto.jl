@@ -333,6 +333,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+        pop!(symstate.references, :_, :nosuch)  # Never record _ as a reference
 
         return symstate
     elseif ex.head in modifiers
