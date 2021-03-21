@@ -302,8 +302,7 @@ export class Welcome extends Component {
         }
 
         return html`<p>New session:</p>
-            NOOOOO
-            <span><${PasteHandler} />NOOO</span/>
+            <${PasteHandler} />
             <ul id="new">
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>

@@ -22,18 +22,14 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-<<<<<<< HEAD
 import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
-=======
-import { PasteConsumer } from "./PasteHandler.js"
->>>>>>> The wrong code
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let pending_local_updates = 0
+let pending_local_updates = 0q
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>
@@ -1163,7 +1159,6 @@ patch: ${JSON.stringify(
                         }}
                     />
                     <${SlideControls} />
-                    <${PasteConsumer} />
                     <footer>
                         <div id="info">
                             <form id="feedback" action="#" method="post">
