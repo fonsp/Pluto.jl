@@ -218,7 +218,6 @@ const effects_of_changed_state = Dict(
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]
@@ -280,12 +279,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
             push!(changes, current_changes...)
         end
-
-        # if CodeChanged ∈ changes
-        #     update_caches!(notebook, cells)
-        #     old = notebook.topology
-        #     new = notebook.topology = updated_topology(old, notebook, cells)
-        # end
 
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
@@ -425,7 +418,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         🙋.notebook.cells_dict[cell_id]
     end
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
-    set_output!(cell, run)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell))
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end

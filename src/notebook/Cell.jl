@@ -13,6 +13,7 @@ Base.@kwdef mutable struct Cell
     
     output_repr::Union{Nothing,String,Vector{UInt8},Dict}=nothing
     repr_mime::MIME=MIME("text/plain")
+    rootassignee::Union{Symbol,Nothing}=nothing
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
     queued::Bool=false
@@ -22,16 +23,13 @@ Base.@kwdef mutable struct Cell
     last_run_timestamp::Float64=0
     "Whether `this` inside `<script id=something>` should refer to the previously returned object in HTML output. This is used for fancy animations. true iff a cell runs as a reactive consequence."
     persist_js_state::Bool=false
-    
-    parsedcode::Union{Nothing,Expr}=nothing
-    module_usings::Set{Expr}=Set{Expr}()
-    rootassignee::Union{Nothing,Symbol}=nothing
-    function_wrapped::Bool=false
 
     # information to display cell dependencies
+    # Open: move to another place?
     downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     precedence_heuristic::Real=99
+
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
