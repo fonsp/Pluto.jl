@@ -14,6 +14,18 @@ const detectNotebook = (text) => {
     return text.slice(from, to)
 }
 
+const readMovedText = (movedDataTransferItem) =>
+    new Promise((resolve, reject) => {
+        try {
+            movedDataTransferItem.getAsString((text) => {
+                console.log(text)
+                resolve(text)
+            })
+        } catch (ex) {
+            reject(ex)
+        }
+    })
+
 const readFile = (file) =>
     new Promise((resolve, reject) => {
         const { name, type } = file
@@ -43,8 +55,9 @@ const processFile = async (ev) => {
         }
         case "drop": {
             ev.preventDefault()
-            const file = ev.dataTransfer.types.includes("Files") ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file) : ev.clipboardData.items[0]
-            console.log(ev.dataTransfer.items[0])
+            const file = ev.dataTransfer.types.includes("Files")
+                ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file)
+                : await readMovedText(ev.dataTransfer.items[0])
             notebook = detectNotebook(file)
             break
         }
