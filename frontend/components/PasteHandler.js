@@ -28,13 +28,23 @@ const readFile = (file) =>
 
 const processFile = async (ev) => {
     let notebook
+    console.log(ev)
     switch (ev.type) {
         case "paste":
             notebook = detectNotebook(ev.clipboardData.getData("text/plain"))
             break
+        case "dragstart": {
+            ev.dataTransfer.dropEffect = "move"
+            return
+        }
+        case "dragover": {
+            ev.preventDefault()
+            return
+        }
         case "drop": {
-            if (!ev.dataTransfer.types.includes("Files")) return
-            const file = await readFile(ev.dataTransfer.files[0]).then(({ file }) => file)
+            ev.preventDefault()
+            const file = ev.dataTransfer.types.includes("Files") ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file) : ev.clipboardData.items[0]
+            console.log(ev.dataTransfer.items[0])
             notebook = detectNotebook(file)
             break
         }
@@ -54,13 +64,16 @@ const processFile = async (ev) => {
 }
 
 export const PasteHandler = () => {
-    console.log("pasting...")
     useEffect(() => {
         document.addEventListener("paste", processFile)
         document.addEventListener("drop", processFile)
+        document.addEventListener("dragstart", processFile)
+        document.addEventListener("dragover", processFile)
         return () => {
             document.removeEventListener("paste", processFile)
             document.removeEventListener("drop", processFile)
+            document.removeEventListener("dragstart", processFile)
+            document.removeEventListener("dragover", processFile)
         }
     })
 
