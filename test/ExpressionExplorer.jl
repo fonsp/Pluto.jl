@@ -87,7 +87,7 @@ using Test
         @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
         @test testee(:((a = b,)), [:b], [], [], [])
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
-        @test testee(:(a, _, c = 1, 2), [], [:a, :c], [], [])
+        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
         @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])

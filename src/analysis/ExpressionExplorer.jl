@@ -176,12 +176,14 @@ function get_assignees(ex::Expr)::FunctionName
 end
 
 # e.g. x = 123, but ignore _ = 456
-get_assignees(ex::Symbol) = ex === :_ ? Symbol[] : Symbol[ex]
+get_assignees(ex::Symbol) = all_underscores(ex) ? Symbol[] : Symbol[ex]
 
 # When you assign to a datatype like Int, String, or anything bad like that
 # e.g. 1 = 2
 # This is parsable code, so we have to treat it
 get_assignees(::Any) = Symbol[]
+
+all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
@@ -333,7 +335,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
-        pop!(symstate.references, :_, :nosuch)  # Never record _ as a reference
+        filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
         return symstate
     elseif ex.head in modifiers
