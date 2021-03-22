@@ -81,6 +81,7 @@ using Test
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
         @test testee(:(_ = a + 1), [:a], [], [:+], [])
+        @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
     @testset "Tuples" begin
         @test testee(:((a, b,)), [:a,:b], [], [], [])
