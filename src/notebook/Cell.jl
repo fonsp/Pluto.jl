@@ -28,7 +28,7 @@ Base.@kwdef mutable struct Cell
     # Open: move to another place?
     downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
     upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
-    precedence_heuristic::Real=99
+    precedence_heuristic::Int=99
 
 end
 
