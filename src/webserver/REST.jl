@@ -51,9 +51,14 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
     provided_set = keys(inputs)
 
     new_values = values(inputs)
-    output_cell = where_assigned(notebook, topology, outputs)[1]
+    output_cell = where_assigned(notebook, topology, outputs)
 
-    to_reeval = [
+    if length(output_cell) != length(outputs)
+        throw(ErrorException("A requested output does not exist"))
+    end
+    output_cell = output_cell[1]
+
+    to_reeval = Cell[
         # Re-evaluate all cells that reference the modified input parameters
         where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
         # Re-evaluate all input cells that were not provided as parameters
@@ -61,14 +66,14 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
     ]
 
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
+        to_delete_vars = Set{Symbol}([to_delete_vars..., to_set...]) # also delete the bound symbols
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
         for (sym, new_value) in zip(to_set, new_values)
             WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
         end
     end
     function custom_deletion_hook2((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars...])
+        to_delete_vars = Set{Symbol}([to_delete_vars...])
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
     end
 
@@ -120,7 +125,7 @@ function static_function(output::Symbol, inputs::Vector{Symbol}, host::AbstractS
 end
 
 function evaluate(output::Symbol, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing, with_json=false; kwargs...)
-    query = ["outputs" => string(output), "inputs" => JSON.json(kwargs)]
+    query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
     if !isnothing(session_id)
         push!(query, "id" => session_id)
     end
@@ -128,7 +133,11 @@ function evaluate(output::Symbol, host::AbstractString="localhost:1234", session
 
     response = HTTP.get(request_uri, [
         "Accept" => with_json ? "application/json" : "application/x-msgpack"
-    ])
+    ]; status_exception=false)
+
+    if response.status >= 300
+        throw(ErrorException(String(response.body)))
+    end
     
     if with_json
         return JSON.parse(String(response.body))[string(output)]
