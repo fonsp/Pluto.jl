@@ -234,6 +234,7 @@ function http_router_for(session::ServerSession)
         parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
+        # Get notebook from request parameters
         id = get(query, "id", nothing)
         file = get(query, "file", nothing)
         notebook = nothing
@@ -247,14 +248,28 @@ function http_router_for(session::ServerSession)
         end
         topology = notebook.topology
 
-        inputs = JSON.parse(query["inputs"])
-        outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+        inputs = MsgPack.unpack(query["inputs"])
+        @info inputs
+
+        outputs = nothing
+        try
+            outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+        catch e
+            showerror(stdout, e) # TODO: This line is for debug. Remove later
+            return HTTP.Response(400, e.msg)
+        end
 
         accept_type = get_header(request, "Accept")
-        if accept_type == "application/json"
-            return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
-        else 
-            return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
+        try
+            if accept_type == "application/json"
+                return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+            else 
+                return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
+            end
+        catch e
+            # Likely an error serializing the object
+            showerror(stderr, e)
+            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
         end
     end
     HTTP.@register(router, "GET", "/notebookfile/eval", serve_notebook_value)
