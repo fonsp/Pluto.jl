@@ -33,7 +33,7 @@ get_cell_number(cell::Cell, ordered_cells::Vector{Cell}) = findfirst(isequal(cel
     fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
 
-    ordered_cells = Pluto.topological_order(notebook) |> collect
+    ordered_cells = Pluto.get_ordered_cells(notebook)
     cell = notebook.cells[5] # example cell
     @test get_cell_number(cell, ordered_cells) == 3
 
