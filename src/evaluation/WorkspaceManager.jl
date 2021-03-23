@@ -107,6 +107,7 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
     Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
     
+    @show new_workspace_name
     new_workspace_name
 end
 
@@ -246,11 +247,44 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
     end
 end
 
+function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name)
+    workspace = get_workspace(session_notebook)
+
+    expr = quote
+        @info ccall(:jl_module_usings, Any, (Any,), $(module_name))
+        PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
+    end
+    @info "eval_fetch $(macrocall) in $(module_name)"
+    try
+      result = Distributed.remotecall_eval(Main, workspace.pid, expr)
+      return result
+    catch e
+      @error e
+    end
+end
+
 "Evaluate expression inside the workspace - output is returned. For internal use."
 function eval_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
     
     Distributed.remotecall_eval(Main, workspace.pid, :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
+end
+
+function bump_modulename(session_notebook)
+    workspace = get_workspace(session_notebook)
+
+    old_workspace_name = workspace.module_name
+    new_workspace_name = create_emptyworkspacemodule(workspace.pid)
+
+    workspace.module_name = new_workspace_name
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
+    old_workspace_name
+end
+    
+function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
+    workspace = get_workspace(session_notebook)
+    new_workspace_name = workspace.module_name
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end
 
 "Fake deleting variables by moving to a new module without re-importing them."

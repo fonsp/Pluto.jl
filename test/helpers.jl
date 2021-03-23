@@ -21,7 +21,9 @@ function Base.show(io::IO, s::SymbolsState)
         end
         print(io, "]")
     end
-    print(io, ")")
+    print(io, "], [")
+    print(io, s.has_macrocalls)
+    print(io, "])")
 end
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
@@ -43,8 +45,8 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
-    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = false; verbose::Bool=true)
+    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls)
 
     original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
@@ -81,7 +83,7 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     return expected == result
 end
 
-function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = false)
     new_expected_funccalls = map(expected_funccalls) do k
         new_k = k isa Symbol ? [k] : k
         return new_k
@@ -93,7 +95,7 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
         return FunctionNameSignaturePair(new_k, "hello") => new_v
     end |> Dict
 
-    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
+    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, expected_macrocalls)
 end
 
 function setcode(cell, newcode)

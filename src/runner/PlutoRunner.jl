@@ -26,6 +26,7 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
+ExpandedCallCells = Dict{UUID,Expr}()
 
 
 
@@ -60,6 +61,56 @@ function set_current_module(newname)
 
     global default_iocontext = IOContext(default_iocontext, :module => current_module)
     global current_module = getfield(Main, newname)
+end
+
+function visit_expr(macroexpand_cb, ex::Expr)
+  if Meta.isexpr(ex, :macrocall)
+    macroexpand_cb(ex)
+  else
+    Expr(ex.head, map(x -> visit_expr(macroexpand_cb, x), ex.args)...)
+  end
+end
+
+function visit_expr(_, other)
+  other
+end
+
+function sanitize_expr(symbol::Symbol)
+  symbol
+end
+
+function sanitize_expr(ref::GlobalRef)
+  Expr(:(.), Symbol(ref.mod), QuoteNode(ref.name))
+end
+
+function sanitize_expr(expr::Expr)
+  Expr(expr.head, sanitize_expr.(expr.args)...)
+end
+
+# a function as part of an Expr is most likely a closure
+# returned from a macro
+function sanitize_expr(func::Function)
+  mt = typeof(func).name.mt
+  GlobalRef(mt.module, mt.name) |> sanitize_expr
+end
+
+function sanitize_expr(other)
+  @show typeof(other)
+  other
+end
+
+function try_macroexpand(mod, cell_uuid, expr)
+  try
+    macroexpand_cb(macrocall) = Core.eval(mod, :(@macroexpand($macrocall)))
+    expanded_expr = visit_expr(macroexpand_cb, expr)
+    ExpandedCallCells[cell_uuid] = expanded_expr
+
+    return sanitize_expr(expanded_expr)
+  catch e
+    @error e
+  end
+
+  nothing
 end
 
 

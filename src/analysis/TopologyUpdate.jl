@@ -2,8 +2,19 @@ import .ExpressionExplorer
 import .ExpressionExplorer: join_funcname_parts, FunctionNameSignaturePair
 import REPL: ends_with_semicolon
 
+function maybe_macroexpand(macroexpand_cb, cell::Cell, expr::Expr, symbol_state)
+	if !symbol_state.has_macrocalls
+		symbol_state
+	else
+		# Expand macro calls and re-compute symbol references
+		macroexpand_cb(cell, expr) |> ExpressionExplorer.try_compute_symbolreferences
+	end
+end
+
+identity_y(x, y) = begin x; y end
+
 "Return a copy of `old_topology`, but with recomputed results from `cells` taken into account."
-function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
+function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells; macroexpand_cb=identity_y)
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	for cell in cells
@@ -19,6 +30,7 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	updated_nodes = Dict{Cell,ReactiveNode}(cell => (
 			new_codes[cell].parsedcode |> 
 			ExpressionExplorer.try_compute_symbolreferences |> 
+			symstate -> maybe_macroexpand(macroexpand_cb, cell, new_codes[cell].parsedcode, symstate) |>
 			ReactiveNode
 		) for cell in cells)
 

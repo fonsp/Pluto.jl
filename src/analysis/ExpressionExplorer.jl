@@ -26,6 +26,7 @@ Base.@kwdef mutable struct SymbolsState
     assignments::Set{Symbol} = Set{Symbol}()
     funccalls::Set{FunctionName} = Set{FunctionName}()
     funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
+    has_macrocalls::Bool = false
 end
 
 
@@ -59,7 +60,7 @@ function union!(a::Dict{FunctionNameSignaturePair,SymbolsState}, bs::Dict{Functi
 end
 
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs)
+    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs, a.has_macrocalls || b.has_macrocalls)
 end
 
 function union!(a::SymbolsState, bs::SymbolsState...)
@@ -67,6 +68,7 @@ function union!(a::SymbolsState, bs::SymbolsState...)
     union!(a.assignments, (b.assignments for b in bs)...)
     union!(a.funccalls, (b.funccalls for b in bs)...)
     union!(a.funcdefs, (b.funcdefs for b in bs)...)
+    a.has_macrocalls = |(a.has_macrocalls, (b.has_macrocalls for b in bs)...)
     return a
 end
 
@@ -87,7 +89,7 @@ function union!(a::ScopeState, bs::ScopeState...)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    a.references == b.references && a.assignments == b.assignments && a.funccalls == b.funccalls && a.funcdefs == b.funcdefs 
+    a.references == b.references && a.assignments == b.assignments && a.funccalls == b.funccalls && a.funcdefs == b.funcdefs && a.has_macrocalls == b.has_macrocalls
 end
 
 Base.push!(x::Set) = x
@@ -355,11 +357,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
         # Does not create sccope
-        new_ex = maybe_macroexpand(ex)
+        # new_ex = maybe_macroexpand(ex)
+        # newnew_ex = Meta.isexpr(new_ex, :macrocall) ? Expr(:call, new_ex.args...) : new_ex
+        # symstate = explore!(newnew_ex, scopestate)
+        # push!(symstate.macrocalls, MacroCall(macro_name, ex))
 
-        newnew_ex = Meta.isexpr(new_ex, :macrocall) ? Expr(:call, new_ex.args...) : new_ex
-
-        return explore!(newnew_ex, scopestate)
+        # Early stopping, this expression will have to be re-explored once
+        # the macro is expanded in the notebook process.
+        return SymbolsState(has_macrocalls=true)
     elseif ex.head == :call
         # Does not create scope
 
@@ -722,7 +727,7 @@ end
 
 
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@cmd"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
