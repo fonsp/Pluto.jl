@@ -97,12 +97,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
+        @test testee(:(_ = a + 1), [:a], [], [:+], [])
+        @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
     @testset "Tuples" begin
         @test testee(:((a, b,)), [:a,:b], [], [], [])
         @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
         @test testee(:((a = b,)), [:b], [], [], [])
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
+        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
         @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])
