@@ -57,6 +57,8 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
 end
 
+topological_order(notebook:: Notebook) = topological_order(notebook, notebook.topology, notebook.cells)
+
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end

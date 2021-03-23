@@ -43,7 +43,5 @@ function update_dependency_cache!(notebook::Notebook)
     end
 end
 
-topological_order(notebook:: Notebook) = topological_order(notebook, notebook.topology, notebook.cells)
-
 get_ordered_cells(notebook_topo_order:: TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 get_ordered_cells(notebook:: Notebook) = get_ordered_cells(topological_order(notebook))
