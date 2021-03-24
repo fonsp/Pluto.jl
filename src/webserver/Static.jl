@@ -219,7 +219,33 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)
 
-    function serve_notebook_value(request::HTTP.Request)
+    function get_notebook_from_request(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        splitpath = HTTP.URIs.splitpath(request.target)
+
+        sess_id = get(query, "session", splitpath[2])
+        file = get(query, "file", splitpath[2])
+        notebook = nothing
+        if !isnothing(file)
+            notebook_id = findfirst(session.notebooks) do nb
+                basename(nb.path) == file
+            end
+
+            if !isnothing(notebook_id)
+                notebook = session.notebooks[notebook_id]
+            end
+        else
+            uid = UUID(sess_id)
+            if uid ∈ keys(session.notebooks)
+                notebook = session.notebooks[uid]
+            end
+        end
+
+        notebook
+    end
+
+    function serve_notebook_eval(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
 
@@ -227,22 +253,10 @@ function http_router_for(session::ServerSession)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
         # Get notebook from request parameters
-        id = get(query, "id", nothing)
-        file = get(query, "file", nothing)
-        notebook = nothing
-        if !isnothing(file)
-            notebook_id = findfirst(session.notebooks) do nb
-                basename(nb.path) == file
-            end
-            notebook = session.notebooks[notebook_id]
-        else
-            notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
-        end
+        notebook = get_notebook_from_request(request)
         topology = notebook.topology
 
         inputs = MsgPack.unpack(query["inputs"])
-        @info inputs
-
         outputs = nothing
         try
             outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
@@ -264,7 +278,7 @@ function http_router_for(session::ServerSession)
             return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
         end
     end
-    HTTP.@register(router, "GET", "/notebookfile/eval", serve_notebook_value)
+    HTTP.@register(router, "GET", "/notebook/*/eval", serve_notebook_eval)
 
     function serve_notebook_static_fn(request::HTTP.Request)
         uri = HTTP.URI(request.target)
@@ -273,17 +287,7 @@ function http_router_for(session::ServerSession)
         parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
-        id = get(query, "id", nothing)
-        file = get(query, "file", nothing)
-        notebook = nothing
-        if !isnothing(file)
-            notebook_id = findfirst(session.notebooks) do nb
-                basename(nb.path) == file
-            end
-            notebook = session.notebooks[notebook_id]
-        else
-            notebook = session.notebooks[isnothing(id) ? first(keys(session.notebooks)) : UUID(id)]
-        end
+        notebook = get_notebook_from_request(request)
         topology = notebook.topology
 
         input_symbols = Symbol.(split(query["inputs"], ","))
@@ -294,7 +298,7 @@ function http_router_for(session::ServerSession)
         push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
         res
     end
-    HTTP.@register(router, "GET", "/notebookfile/static", serve_notebook_static_fn)
+    HTTP.@register(router, "GET", "/notebook/*/static", serve_notebook_static_fn)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
