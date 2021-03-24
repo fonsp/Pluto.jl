@@ -55,10 +55,9 @@ const processFile = async (ev) => {
         }
         case "drop": {
             ev.preventDefault()
-            const file = ev.dataTransfer.types.includes("Files")
+            notebook = ev.dataTransfer.types.includes("Files")
                 ? await readFile(ev.dataTransfer.files[0]).then(({ file }) => file)
-                : await readMovedText(ev.dataTransfer.items[0])
-            notebook = detectNotebook(file)
+                : detectNotebook(await readMovedText(ev.dataTransfer.items[0]))
             break
         }
     }
