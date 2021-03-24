@@ -117,22 +117,19 @@ function get_notebook_static_function(session::ServerSession, notebook::Notebook
 end
 
 
-function static_function(output::Symbol, inputs::Vector{Symbol}, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing)
+function static_function(output::Symbol, inputs::Vector{Symbol}, filename::AbstractString, host::AbstractString="localhost:1234")
     @warn "Ensure you trust this host, as the function returned could be malicious"
 
     query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
-    request_uri = merge(HTTP.URI("http://$(host)/notebookfile/static"); query=query)
+    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/static"); query=query)
     response = HTTP.get(request_uri)
 
     Meta.parse(String(response.body))
 end
 
-function evaluate(output::Symbol, host::AbstractString="localhost:1234", session_id::Union{AbstractString, Nothing}=nothing, with_json=false; kwargs...)
+function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234", with_json=false; kwargs...)
     query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
-    if !isnothing(session_id)
-        push!(query, "id" => session_id)
-    end
-    request_uri = merge(HTTP.URI("http://$(host)/notebookfile/eval"); query=query)
+    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/eval"); query=query)
 
     response = HTTP.get(request_uri, [
         "Accept" => with_json ? "application/json" : "application/x-msgpack"
@@ -153,9 +150,10 @@ end
 
 struct PlutoNotebook
     host::AbstractString
-    session_id::Union{AbstractString, Nothing}
+    filename::AbstractString
+
+    PlutoNotebook(filename::AbstractString, host::AbstractString="localhost:1234") = new(host, filename)
 end
-PlutoNotebook(host::AbstractString="localhost:1234") = PlutoNotebook(host, nothing)
 
 struct PlutoNotebookWithArgs
     notebook::PlutoNotebook
@@ -168,7 +166,7 @@ function (nb::PlutoNotebook)(; kwargs...)
 end
 # Looks like notebook_instance(a=3, b=4).c ⟹ 5
 function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
-    REST.evaluate(symbol, Base.getfield(with_args, :notebook).host, Base.getfield(with_args, :notebook).session_id; Base.getfield(with_args, :kwargs)...)
+    REST.evaluate(symbol, Base.getfield(with_args, :notebook).filename, Base.getfield(with_args, :notebook).host; Base.getfield(with_args, :kwargs)...)
 end
 # Looks like notebook_instance(a=3, b=4)[:c, :m] ⟹ 5
 function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
@@ -176,7 +174,7 @@ function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
 
     # TODO: Refactor to make 1 request with multiple output symbols
     for symbol ∈ symbols
-        push!(outputs, REST.evaluate(symbol, Base.getfield(with_args, :notebook).host, Base.getfield(with_args, :notebook).session_id; Base.getfield(with_args, :kwargs)...))
+        push!(outputs, REST.evaluate(symbol, Base.getfield(with_args, :notebook).filename, Base.getfield(with_args, :notebook).host; Base.getfield(with_args, :kwargs)...))
     end
 
     # https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple
@@ -184,9 +182,7 @@ function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
 end
 
 macro resolve(with_args, output)
-    println(eval(with_args))
-
     :(
-        REST.static_function($(esc(output)), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).host, Base.getfield($(esc(with_args)), :notebook).session_id)
+        eval(REST.static_function($(esc(output)), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).filename, Base.getfield($(esc(with_args)), :notebook).host))
     )
 end
