@@ -182,7 +182,7 @@ export class Editor extends Component {
             //@ts-ignore
             binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
             //@ts-ignore
-            bind_server_url: url_params.get("bind_server_url") ?? window.pluto_bind_server_url,
+            slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
         }
 
         this.state = {
@@ -657,29 +657,29 @@ patch: ${JSON.stringify(
             }).then(on_establish_connection)
 
         let real_actions, fake_actions
-        const use_bind_server = launch_params.bind_server_url != null
-        if (use_bind_server) {
-            const notebookfile_hash = use_bind_server
+        const use_slider_server = launch_params.slider_server_url != null
+        if (use_slider_server) {
+            const notebookfile_hash = use_slider_server
                 ? fetch(launch_params.notebookfile)
                       .then((r) => r.arrayBuffer())
                       .then(hash_arraybuffer)
                 : null
-            use_bind_server && notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
+            use_slider_server && notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
-            const bond_connections = use_bind_server
+            const bond_connections = use_slider_server
                 ? notebookfile_hash
-                      .then((hash) => fetch(trailingslash(launch_params.bind_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+                      .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
                       .then((r) => r.arrayBuffer())
                       .then((b) => unpack(new Uint8Array(b)))
                 : null
-            use_bind_server && bond_connections.then((x) => console.log("Bond connections:", x))
+            use_slider_server && bond_connections.then((x) => console.log("Bond connections:", x))
 
             const mybonds = {}
             const bonds_to_set = {
                 current: new Set(),
             }
             const request_bond_response = debounced_promises(async () => {
-                const base = trailingslash(launch_params.bind_server_url)
+                const base = trailingslash(launch_params.slider_server_url)
                 const hash = await notebookfile_hash
                 const graph = await bond_connections
 
@@ -728,7 +728,7 @@ patch: ${JSON.stringify(
 
             real_actions = this.actions
             fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
-            if (launch_params.bind_server_url != null) {
+            if (launch_params.slider_server_url != null) {
                 fake_actions = {
                     ...fake_actions,
                     set_bond: async (symbol, value, is_first_value) => {
@@ -750,7 +750,7 @@ patch: ${JSON.stringify(
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-            if (use_bind_server) {
+            if (use_slider_server) {
                 this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
             }
         }
