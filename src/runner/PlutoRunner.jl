@@ -79,6 +79,10 @@ function sanitize_expr(symbol::Symbol)
   symbol
 end
 
+function sanitize_expr(dt::Union{DataType, Enum}) 
+  Symbol(dt) # quick workaround
+end
+
 function sanitize_expr(ref::GlobalRef)
   Expr(:(.), Symbol(ref.mod), QuoteNode(ref.name))
 end

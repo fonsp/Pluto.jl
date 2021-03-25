@@ -1,6 +1,5 @@
 import .ExpressionExplorer
 import .ExpressionExplorer: join_funcname_parts, FunctionNameSignaturePair
-import REPL: ends_with_semicolon
 
 function maybe_macroexpand(macroexpand_cb, cell::Cell, expr::Expr, symbol_state)
 	if !symbol_state.has_macrocalls
