@@ -1,12 +1,7 @@
 using Test
 using Pluto
-using Pluto: Configuration, update_run!, WorkspaceManager, ServerSession, ClientSession, Cell, Notebook, cell_id
-using UUIDs
+using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
-"""
-Gets the cell number in execution order (as saved in the notebook.jl file)
-"""
-get_cell_number(cell::Cell, ordered_cells::Vector{Cell}) = findfirst(isequal(cell), ordered_cells)
 
 @testset "CellDepencencyVisualization" begin
     🍭 = ServerSession()
@@ -18,7 +13,7 @@ get_cell_number(cell::Cell, ordered_cells::Vector{Cell}) = findfirst(isequal(cel
     notebook = Notebook([
                 Cell("x = 1"), # prerequisite of test cell
                 Cell("f(x) = x + y"), # depends on test cell
-                Cell("f(4)"),
+                Cell("f(3)"),
 
                 Cell("""begin
                     g(a) = x
@@ -27,37 +22,33 @@ get_cell_number(cell::Cell, ordered_cells::Vector{Cell}) = findfirst(isequal(cel
                 Cell("y = x"), # test cell below
                 Cell("g(6) + g(6,6)"),
                 Cell("using Dates"),
-                Cell("import Distributed"),
-                Cell("Distributed.myid()"),
             ])
     fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
+    state = Pluto.notebook_to_js(notebook)
 
-    ordered_cells = Pluto.get_ordered_cells(notebook)
-    cell = notebook.cells[5] # example cell
-    @test get_cell_number(cell, ordered_cells) == 3
+    id(i) = notebook.cells[i].cell_id
 
-    references = Pluto.downstream_cells_map(cell, notebook)
-    @test get_cell_number.(references[:y], [ordered_cells]) == [4, 6] # these cells depend on selected cell
-    dependencies = Pluto.upstream_cells_map(cell, notebook)
-    @test get_cell_number.(dependencies[:x], [ordered_cells]) == [2] # selected cell depends on this cell
+    order_of(i) = findfirst(isequal(id(i)), state["cell_execution_order"])
+    @test order_of(7) < order_of(1) < order_of(5) < order_of(2) < order_of(3)
 
-    # test if this information gets updated in the cell objects
-    @test notebook.cell_execution_order !== nothing
-    @test findfirst(isequal(cell.cell_id) ∘ cell_id, notebook.cell_execution_order) == 3
-    @test cell.downstream_cells_map == references
-    @test cell.upstream_cells_map == dependencies
-    @test cell.precedence_heuristic == 8
+
+    deps = state["cell_dependencies"]
+    
+    @test deps[id(5)]["downstream_cells_map"] |> keys == Set(["y"])
+    @test deps[id(5)]["downstream_cells_map"]["y"] == [id(2), id(4)]
+    
+    @test deps[id(5)]["upstream_cells_map"] |> keys == Set(["x"])
+    @test deps[id(5)]["upstream_cells_map"]["x"] == [id(1)]
 
     # test if this also works for function definitions
-    cell2 = notebook.cells[2]
-    @test findfirst(isequal(cell2.cell_id) ∘ cell_id, notebook.cell_execution_order) == 4
-    references2 = Pluto.downstream_cells_map(cell2, notebook)
-    @test get_cell_number.(references2[:f], [ordered_cells]) == [5] # these cells depend on selected cell
-    dependencies2 = Pluto.upstream_cells_map(cell2, notebook)
-    @test get_cell_number.(dependencies2[:y], [ordered_cells]) == [3] # selected cell depends on this cell
-    @test get_cell_number.(dependencies2[:+], [ordered_cells]) == [] # + function is not defined / extended in the notebook
+    @test deps[id(2)]["downstream_cells_map"] |> keys == Set(["f"])
+    @test deps[id(2)]["downstream_cells_map"]["f"] == [id(3)]
+    
+    @test deps[id(2)]["upstream_cells_map"] |> keys == Set(["y", "+"])
+    @test deps[id(2)]["upstream_cells_map"]["y"] == [id(5)]
+    @test deps[id(2)]["upstream_cells_map"]["+"] == [] # + function is not defined / extended in the notebook
 
-    using_cell = notebook.cells[7]
-    @test using_cell.precedence_heuristic == 6
+
+    @test deps[id(1)]["precedence_heuristic"] > deps[id(7)]["precedence_heuristic"]
 end
