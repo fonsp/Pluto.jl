@@ -1,6 +1,6 @@
 import REPL: ends_with_semicolon
 import .Configuration
-import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
+import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 
 Base.push!(x::Set{Cell}) = x
 
@@ -62,7 +62,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings, setdiff(notebook.cells, to_run))...)
+	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
 
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
@@ -144,7 +144,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
 	save && save_notebook(notebook)
-	
+
 	# _assume `prerender_text == false` if you want to skip some details_
 
 	to_run_online = if !prerender_text
@@ -172,15 +172,17 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	if will_run_code(notebook)
-		if run_async
-			@asynclog run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		else
+		run_task = @async begin
 			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
+		end
+		if run_async
+			run_task
+		else
+			fetch(run_task)
 		end
 	end
 end
 
-# Only used in tests!
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 

@@ -305,6 +305,7 @@ export class Editor extends Component {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
+                
                 await this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
