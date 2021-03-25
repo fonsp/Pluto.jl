@@ -100,7 +100,6 @@ function get_notebook_static_function(session::ServerSession, notebook::Notebook
     function_params = (x -> Expr(:kw, :($x), WorkspaceManager.eval_fetch_in_workspace((session, notebook), x))).(inputs)
 
     necessary_cells = recursive_parents(notebook, topology, output_cell)
-    @info necessary_cells
 
     cell_ordering = topological_order(notebook, topology, [necessary_cells..., output_cell])
     # cell_ordering = topological_order(notebook, topology, [output_cell])
@@ -145,6 +144,29 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
         return MsgPack.unpack(response.body)[string(output)]
     end
 end
+
+function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234", with_json=false)
+    query = [
+        "function" => string(fn_name),
+        "args" => String(MsgPack.pack([args...])),
+        "kwargs" => String(MsgPack.pack(kwargs))
+    ]
+    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/call"); query=query)
+
+    response = HTTP.get(request_uri, [
+        "Accept" => with_json ? "application/json" : "application/x-msgpack"
+    ]; status_exception=false)
+
+    if response.status >= 300
+        throw(ErrorException(String(response.body)))
+    end
+    
+    if with_json
+        return JSON.parse(String(response.body))
+    else
+        return MsgPack.unpack(response.body)
+    end
+end
 end
 
 
@@ -153,6 +175,17 @@ struct PlutoNotebook
     filename::AbstractString
 
     PlutoNotebook(filename::AbstractString, host::AbstractString="localhost:1234") = new(host, filename)
+end
+function Base.getproperty(notebook::PlutoNotebook, symbol::Symbol)
+    Base.getproperty(notebook(), symbol)
+end
+
+struct PlutoCallable
+    notebook::PlutoNotebook
+    name::Symbol
+end
+function (callable::PlutoCallable)(args...; kwargs...)
+    REST.call(callable.name, args, kwargs, Base.getfield(callable.notebook, :filename), Base.getfield(callable.notebook, :host))
 end
 
 struct PlutoNotebookWithArgs
@@ -166,7 +199,14 @@ function (nb::PlutoNotebook)(; kwargs...)
 end
 # Looks like notebook_instance(a=3, b=4).c ⟹ 5
 function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
-    REST.evaluate(symbol, Base.getfield(with_args, :notebook).filename, Base.getfield(with_args, :notebook).host; Base.getfield(with_args, :kwargs)...)
+    try
+        return REST.evaluate(symbol, Base.getfield(Base.getfield(with_args, :notebook), :filename), Base.getfield(Base.getfield(with_args, :notebook), :host); Base.getfield(with_args, :kwargs)...)
+    catch e
+        if contains(e.msg, "function") # See if the function error was thrown, and return a PlutoCallable struct
+            return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
+        end
+        throw(e)
+    end
 end
 # Looks like notebook_instance(a=3, b=4)[:c, :m] ⟹ 5
 function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
@@ -174,15 +214,15 @@ function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
 
     # TODO: Refactor to make 1 request with multiple output symbols
     for symbol ∈ symbols
-        push!(outputs, REST.evaluate(symbol, Base.getfield(with_args, :notebook).filename, Base.getfield(with_args, :notebook).host; Base.getfield(with_args, :kwargs)...))
+        push!(outputs, REST.evaluate(symbol, Base.getfield(Base.getfield(with_args, :notebook), :filename), Base.getfield(Base.getfield(with_args, :notebook), :host); Base.getfield(with_args, :kwargs)...))
     end
 
     # https://docs.julialang.org/en/v1/base/base/#Core.NamedTuple
     return (; zip(symbols, outputs)...)
 end
 
-macro resolve(with_args, output)
+macro resolve(notebook, inputs, output)
     :(
-        eval(REST.static_function($(esc(output)), collect(keys(Base.getfield($(esc(with_args)), :kwargs))), Base.getfield($(esc(with_args)), :notebook).filename, Base.getfield($(esc(with_args)), :notebook).host))
+        eval(REST.static_function($(esc(output)), [$(esc(inputs))...], Base.getfield($(esc(notebook)), :filename), Base.getfield($(esc(notebook)), :host)))
     )
 end

@@ -3,6 +3,7 @@ import Markdown: htmlesc
 import UUIDs: UUID
 import JSON
 import MsgPack
+import Distributed: RemoteException
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -227,6 +228,9 @@ function http_router_for(session::ServerSession)
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
     HTTP.@register(router, "POST", "/sample/*", serve_sample)
 
+
+
+
     function get_notebook_from_request(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
@@ -252,6 +256,20 @@ function http_router_for(session::ServerSession)
 
         notebook
     end
+    function rest_response(request::HTTP.Request, body)
+        accept_type = get_header(request, "Accept")
+        try
+            if accept_type == "application/json"
+                return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
+            else 
+                return HTTP.Response(200, MsgPack.pack(body)) |> with_msgpack! |> with_cors!
+            end
+        catch e
+            # Likely an error serializing the object
+            showerror(stderr, e)
+            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
+        end
+    end
 
     function serve_notebook_eval(request::HTTP.Request)
         uri = HTTP.URI(request.target)
@@ -269,8 +287,12 @@ function http_router_for(session::ServerSession)
         try
             outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
         catch e
-            showerror(stdout, e) # TODO: This line is for debug. Remove later
-            return HTTP.Response(400, e.msg)
+            if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
+                return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
+            else
+                showerror(stdout, e) # TODO: This line is for debug. Remove later
+                return HTTP.Response(400, e.msg)
+            end
         end
 
         accept_type = get_header(request, "Accept")
@@ -288,6 +310,29 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebook/*/eval", serve_notebook_eval)
 
+    function serve_notebook_call(request::HTTP.Request)
+        # Get notebook from request parameters
+        notebook = get_notebook_from_request(request)
+        topology = notebook.topology
+
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        if "function" ∉ keys(query)
+            return HTTP.Response(400, "Function name is required")
+        end
+
+        fn_name = Symbol(query["function"])
+        args = "args" ∈ keys(query) ? MsgPack.unpack(query["args"]) : []
+        kwargs = "kwargs" ∈ keys(query) ? MsgPack.unpack(query["args"]) : Dict()
+
+        fn_symbol = :($(fn_name)($(args...)))
+        fn_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+
+        rest_response(request, fn_result)
+    end
+    HTTP.@register(router, "GET", "/notebook/*/call", serve_notebook_call)
+
     function serve_notebook_static_fn(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
@@ -299,7 +344,6 @@ function http_router_for(session::ServerSession)
         topology = notebook.topology
 
         input_symbols = Symbol.(split(query["inputs"], ","))
-        @info input_symbols
         out_fn = REST.get_notebook_static_function(session, notebook, topology, input_symbols, out_symbols)
 
         res = HTTP.Response(200, string(out_fn))
