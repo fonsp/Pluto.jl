@@ -6,6 +6,7 @@ Base.@kwdef struct ExprAnalysisCache
     parsedcode::Expr=Expr(:toplevel, LineNumberNode(1), Expr(:block))
 	module_usings_imports::UsingsImports = UsingsImports()
     function_wrapped::Bool=false
+    cached_on_notebook_process::Bool=false
 end
 
 ExprAnalysisCache(notebook, cell::Cell) = let
