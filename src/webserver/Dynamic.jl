@@ -103,6 +103,20 @@ function notebook_to_js(notebook::Notebook)
                 "code_folded" => cell.code_folded,
             )
         for (id, cell) in notebook.cells_dict),
+        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.precedence_heuristic,
+            )
+        for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
@@ -116,15 +130,6 @@ function notebook_to_js(notebook::Notebook)
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
-                "downstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.downstream_cells_map
-                ),
-                "upstream_cells_map" => Dict{String,Vector{UUID}}(
-                    String(s) => cell_id.(r)
-                    for (s, r) in cell.upstream_cells_map
-                ),
-                "precedence_heuristic" => cell.precedence_heuristic,
                 "runtime" => cell.runtime,
             )
         for (id, cell) in notebook.cells_dict),
