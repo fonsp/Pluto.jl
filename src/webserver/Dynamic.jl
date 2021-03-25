@@ -106,6 +106,13 @@ function notebook_to_js(notebook::Notebook)
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
+                "output" => Dict(                
+                    "body" => cell.output.body,
+                    "mime" => cell.output.mime,
+                    "rootassignee" => cell.output.rootassignee,
+                    "last_run_timestamp" => cell.output.last_run_timestamp,
+                    "persist_js_state" => cell.output.persist_js_state,
+                ),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -119,13 +126,6 @@ function notebook_to_js(notebook::Notebook)
                 ),
                 "precedence_heuristic" => cell.precedence_heuristic,
                 "runtime" => cell.runtime,
-                "output" => Dict(                
-                    "last_run_timestamp" => cell.last_run_timestamp,
-                    "persist_js_state" => cell.persist_js_state,
-                    "mime" => cell.repr_mime,
-                    "body" => cell.output_repr,
-                    "rootassignee" => cell.rootassignee,
-                ),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,

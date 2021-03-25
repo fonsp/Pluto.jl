@@ -186,6 +186,8 @@ export class Editor extends Component {
             update_is_ongoing: false,
         }
 
+        this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
+
         // statistics that are accumulated over time
         this.counter_statistics = create_counter_statistics()
 
@@ -237,16 +239,13 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await new Promise((resolve) =>
-                    this.setState(
-                        immer((state) => {
-                            for (let cell of new_cells) {
-                                state.cell_inputs_local[cell.cell_id] = cell
-                            }
-                            state.last_created_cell = new_cells[0]?.cell_id
-                        }),
-                        resolve
-                    )
+                await this.setStatePromise(
+                    immer((state) => {
+                        for (let cell of new_cells) {
+                            state.cell_inputs_local[cell.cell_id] = cell
+                        }
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
                 )
 
                 /**
@@ -280,18 +279,16 @@ export class Editor extends Component {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-                await new Promise((resolve) => {
-                    this.setState(
-                        immer((state) => {
-                            state.cell_inputs_local[cell_id] = {
-                                ...cell,
-                                ...state.cell_inputs_local[cell_id],
-                                code: new_code,
-                            }
-                        }),
-                        resolve
-                    )
-                })
+
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.cell_inputs_local[cell_id] = {
+                            ...cell,
+                            ...state.cell_inputs_local[cell_id],
+                            code: new_code,
+                        }
+                    })
+                )
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -682,13 +679,8 @@ patch: ${JSON.stringify(
                                 throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
                             }
                         }),
-                        new Promise((resolve) => {
-                            this.setState(
-                                {
-                                    notebook: new_notebook,
-                                },
-                                resolve
-                            )
+                        this.setStatePromise({
+                            notebook: new_notebook,
                         }),
                     ])
                 } finally {

@@ -11,7 +11,7 @@ urls = [
 success = all(urls) do url
     @show url
     nb = Pluto.SessionActions.open_url(s, url; run_async=false)
-    @show [c.output_repr for c in nb.cells]
+    @show [c.output.body for c in nb.cells]
     nb_success = !any(c.errored for c in nb.cells)
     @info "Done" url nb_success
     nb_success

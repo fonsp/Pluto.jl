@@ -56,6 +56,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.css" type="text/css" />
                 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.59.0/lib/codemirror.min.js" defer></script>
                 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/julia/julia.min.js" defer></script>
+                <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/mode/loadmode.min.js" defer></script>
 
                 ${head.querySelector("style#MJX-SVG-styles").outerHTML}
             </head>
@@ -75,7 +76,7 @@ export const offline_html = async ({ pluto_version, body, head }) => {
                         cursorBlinkRate: -1,
                         readOnly: false,
                     }
-                    document.addEventListener("DOMContentLoaded", () => 
+                    document.addEventListener("DOMContentLoaded", () =>
                         document.querySelectorAll(".init-cm").forEach(textArea => {
                             CodeMirror.fromTextArea(textArea, cmOptions)
                         })
