@@ -84,10 +84,11 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 # the only possible Arrays are:
 # - cell_order
+# - cell_execution_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
-# - cell_result > * > downstream_cells_map > * > 
-# - cell_result > * > upstream_cells_map > * > 
+# - cell_dependencies > * > downstream_cells_map > * > 
+# - cell_dependencies > * > upstream_cells_map > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
