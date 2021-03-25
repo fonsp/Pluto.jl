@@ -116,7 +116,7 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime: ?number,
+ *  runtime?: number,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
