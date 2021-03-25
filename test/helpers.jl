@@ -1,4 +1,5 @@
 import Pluto
+import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 using Test
 
