@@ -40,9 +40,14 @@ end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
 function relay_reactivity_error!(cell::Cell, error::Exception)
-	cell.last_run_timestamp = time()
-	cell.persist_js_state = false
-	cell.errored = true
+	body, mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.output = CellOutput(
+		body=body,
+		mime=mime,
+		rootassignee=nothing,
+		last_run_timestamp=time(),
+		persist_js_state=false,
+	)
 	cell.runtime = nothing
-	cell.output_repr, cell.repr_mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.errored = true
 end

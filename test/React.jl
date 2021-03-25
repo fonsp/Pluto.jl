@@ -33,51 +33,51 @@ import Distributed
         @test !haskey(WorkspaceManager.workspaces, notebook.notebook_id)
 
         update_run!(🍭, notebook, notebook.cells[1:2])
-        @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
-        @test notebook.cells[1].rootassignee == :x
+        @test notebook.cells[1].output.body == notebook.cells[2].output.body
+        @test notebook.cells[1].output.rootassignee == :x
         @test notebook.cells[1].runtime !== nothing
         setcode(notebook.cells[1], "x = 12")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
+        @test notebook.cells[1].output.body == notebook.cells[2].output.body
         @test notebook.cells[2].runtime !== nothing
 
         update_run!(🍭, notebook, notebook.cells[3])
         @test notebook.cells[3].errored == false
-        @test notebook.cells[3].rootassignee === nothing
+        @test notebook.cells[3].output.rootassignee === nothing
     
         update_run!(🍭, notebook, notebook.cells[4])
-        @test notebook.cells[4].output_repr == "16"
+        @test notebook.cells[4].output.body == "16"
         @test notebook.cells[4].errored == false
-        @test notebook.cells[4].rootassignee === nothing
+        @test notebook.cells[4].output.rootassignee === nothing
 
         setcode(notebook.cells[1], "x = 912")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[4].output_repr == "916"
+        @test notebook.cells[4].output.body == "916"
 
         setcode(notebook.cells[3], "f(x) = x")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[4].output_repr == "4"
+        @test notebook.cells[4].output.body == "4"
 
         setcode(notebook.cells[1], "x = 1")
         setcode(notebook.cells[2], "y = 2")
         update_run!(🍭, notebook, notebook.cells[1:2])
         update_run!(🍭, notebook, notebook.cells[5:6])
         @test notebook.cells[5].errored == false
-        @test notebook.cells[6].output_repr == "3"
+        @test notebook.cells[6].output.body == "3"
 
         setcode(notebook.cells[2], "y = 1")
         update_run!(🍭, notebook, notebook.cells[2])
-        @test notebook.cells[6].output_repr == "2"
+        @test notebook.cells[6].output.body == "2"
 
         setcode(notebook.cells[1], "x = 2")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[6].output_repr == "3"
+        @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
         @test if parallel
-            notebook.cells[8].output_repr != string(Distributed.myid())
+            notebook.cells[8].output.body != string(Distributed.myid())
         else
-            notebook.cells[8].output_repr == string(Distributed.myid())
+            notebook.cells[8].output.body == string(Distributed.myid())
         end
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
@@ -264,8 +264,8 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1:4])
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
-        @test notebook.cells[3].output_repr == "1"
-        @test notebook.cells[4].output_repr == "2"
+        @test notebook.cells[3].output.body == "1"
+        @test notebook.cells[4].output.body == "2"
 
         setcode(notebook.cells[1], "a(x,x) = 999")
         update_run!(🍭, notebook, notebook.cells[1])
@@ -278,15 +278,15 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
-        @test notebook.cells[3].output_repr == "1"
-        @test notebook.cells[4].output_repr == "2"
+        @test notebook.cells[3].output.body == "1"
+        @test notebook.cells[4].output.body == "2"
 
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
         @test notebook.cells[3].errored == true
-        @test notebook.cells[4].output_repr == "2"
+        @test notebook.cells[4].output.body == "2"
 
         update_run!(🍭, notebook, notebook.cells[5:8])
         @test notebook.cells[5].errored == true
@@ -299,37 +299,37 @@ import Distributed
         @test notebook.cells[5].errored == false
         @test notebook.cells[6].errored == false
         @test notebook.cells[7].errored == true
-        @test notebook.cells[8].output_repr == "6"
+        @test notebook.cells[8].output.body == "6"
 
         setcode(notebook.cells[5], "b = 5")
         setcode(notebook.cells[6], "")
         update_run!(🍭, notebook, notebook.cells[5:6])
         @test notebook.cells[5].errored == false
         @test notebook.cells[6].errored == false
-        @test notebook.cells[7].output_repr == "12"
+        @test notebook.cells[7].output.body == "12"
         @test notebook.cells[8].errored == true
 
         update_run!(🍭, notebook, notebook.cells[11:13])
-        @test notebook.cells[12].output_repr == "missing"
+        @test notebook.cells[12].output.body == "missing"
 
         update_run!(🍭, notebook, notebook.cells[9:10])
         @test notebook.cells[9].errored == false
         @test notebook.cells[10].errored == false
-        @test notebook.cells[11].output_repr == "9"
-        @test notebook.cells[12].output_repr == "10"
-        @test_broken notebook.cells[13].output_repr == "10"
+        @test notebook.cells[11].output.body == "9"
+        @test notebook.cells[12].output.body == "10"
+        @test_broken notebook.cells[13].output.body == "10"
         update_run!(🍭, notebook, notebook.cells[13])
-        @test notebook.cells[13].output_repr == "10"
+        @test notebook.cells[13].output.body == "10"
 
         setcode(notebook.cells[9], "")
         update_run!(🍭, notebook, notebook.cells[9])
         @test notebook.cells[11].errored == true
-        @test notebook.cells[12].output_repr == "10"
+        @test notebook.cells[12].output.body == "10"
 
         setcode(notebook.cells[10], "")
         update_run!(🍭, notebook, notebook.cells[10])
         @test notebook.cells[11].errored == true
-        @test notebook.cells[12].output_repr == "missing"
+        @test notebook.cells[12].output.body == "missing"
 
         # Cell("d(x::Integer) = 14"),
         # Cell("d(x::String) = 15"),
@@ -447,9 +447,9 @@ import Distributed
 
         setcode(notebook.cells[1], "xxx = 1")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == "1"
-        @test notebook.cells[2].output_repr == "1"
-        @test notebook.cells[3].output_repr == "1"
+        @test notebook.cells[1].output.body == "1"
+        @test notebook.cells[2].output.body == "1"
+        @test notebook.cells[3].output.body == "1"
 
         setcode(notebook.cells[1], "xxx = zzz")
         update_run!(🍭, notebook, notebook.cells[1])
@@ -468,9 +468,9 @@ import Distributed
 
         setcode(notebook.cells[3], "zzz = 3")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[1].output_repr == "3"
-        @test notebook.cells[2].output_repr == "3"
-        @test notebook.cells[3].output_repr == "3"
+        @test notebook.cells[1].output.body == "3"
+        @test notebook.cells[2].output.body == "3"
+        @test notebook.cells[3].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[4:5])
         @test occursinerror("Cyclic reference", notebook.cells[4])
@@ -493,7 +493,7 @@ import Distributed
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
-        @test notebook.cells[1].output_repr == notebook.cells[2].output_repr
+        @test notebook.cells[1].output.body == notebook.cells[2].output.body
         
         setcode(notebook.cells[1], "")
         update_run!(🍭, notebook, notebook.cells[1])
@@ -535,7 +535,7 @@ import Distributed
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[1].output_repr == "f" || startswith(notebook.cells[1].output_repr, "f (generic function with ")
+        @test notebook.cells[1].output.body == "f" || startswith(notebook.cells[1].output.body, "f (generic function with ")
         @test notebook.cells[1].errored == false
 
         update_run!(🍭, notebook, notebook.cells[2:3])
@@ -545,11 +545,11 @@ import Distributed
         @test notebook.cells[3].errored == false
 
         update_run!(🍭, notebook, notebook.cells[4])
-        @test notebook.cells[4].output_repr == "2"
+        @test notebook.cells[4].output.body == "2"
 
         setcode(notebook.cells[2], "k = 2")
         update_run!(🍭, notebook, notebook.cells[2])
-        @test notebook.cells[4].output_repr == "4"
+        @test notebook.cells[4].output.body == "4"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -634,11 +634,11 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[1])
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].output_repr == "4"
+        @test notebook.cells[3].output.body == "4"
 
         setcode(notebook.cells[1], "y = 2")
         update_run!(🍭, notebook, notebook.cells[1])
-        @test notebook.cells[3].output_repr == "5"
+        @test notebook.cells[3].output.body == "5"
         @test notebook.cells[2].errored == false
 
         setcode(notebook.cells[1], "y")
@@ -649,7 +649,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[5])
-        @test notebook.cells[5].output_repr == "11"
+        @test notebook.cells[5].output.body == "11"
 
         setcode(notebook.cells[4], "g(a) = a+a")
         update_run!(🍭, notebook, notebook.cells[4])
@@ -658,7 +658,7 @@ import Distributed
 
         setcode(notebook.cells[5], "g(5)")
         update_run!(🍭, notebook, notebook.cells[5])
-        @test notebook.cells[5].output_repr == "10"
+        @test notebook.cells[5].output.body == "10"
 
         update_run!(🍭, notebook, notebook.cells[6])
         update_run!(🍭, notebook, notebook.cells[7])
@@ -675,7 +675,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells[9:10])
         @test notebook.cells[9].errored == false
-        @test notebook.cells[10].output_repr == "true"
+        @test notebook.cells[10].output.body == "true"
 
         setcode(notebook.cells[9], "p = p")
         update_run!(🍭, notebook, notebook.cells[9])
@@ -684,12 +684,12 @@ import Distributed
         setcode(notebook.cells[9], "p = 9")
         update_run!(🍭, notebook, notebook.cells[9])
         @test notebook.cells[9].errored == false
-        @test notebook.cells[10].output_repr == "false"
+        @test notebook.cells[10].output.body == "false"
         
         setcode(notebook.cells[9], "p(x) = 9")
         update_run!(🍭, notebook, notebook.cells[9])
         @test notebook.cells[9].errored == false
-        @test notebook.cells[10].output_repr == "true"
+        @test notebook.cells[10].output.body == "true"
     end
 
     @testset "Extending imported functions" begin
@@ -698,13 +698,13 @@ import Distributed
         @test_broken notebook.cells[12].errored == false # multiple definitions for `Something` should be okay? == false
         @test notebook.cells[13].errored == false
         @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
-        @test notebook.cells[15].output_repr == "15"
+        @test notebook.cells[15].output.body == "15"
 
         
         @test_nowarn update_run!(🍭, notebook, notebook.cells[13:15])
         @test notebook.cells[13].errored == false
         @test notebook.cells[14].errored == true # the definition for a was created before `a` was used, so it hides the `a` from `Something`
-        @test notebook.cells[15].output_repr == "15"
+        @test notebook.cells[15].output.body == "15"
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[16:20])
         @test notebook.cells[16].errored == false
@@ -717,55 +717,55 @@ import Distributed
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == false
         @test notebook.cells[23].errored == false
-        @test notebook.cells[23].output_repr == "\"🐟\""
-        @test notebook.cells[24].output_repr == "24"
+        @test notebook.cells[23].output.body == "\"🐟\""
+        @test notebook.cells[24].output.body == "24"
 
         setcode(notebook.cells[22], "import .Wow: c")
         @test_nowarn update_run!(🍭, notebook, notebook.cells[22])
         @test notebook.cells[22].errored == false
-        @test notebook.cells[23].output_repr == "\"🐟\""
+        @test notebook.cells[23].output.body == "\"🐟\""
         @test notebook.cells[23].errored == false
         @test notebook.cells[24].errored == true # the extension should no longer exist
 
         # https://github.com/fonsp/Pluto.jl/issues/59
         original_repr = Pluto.PlutoRunner.format_output(Ref((25, :fish)))[1]
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr isa Dict
+        @test notebook.cells[25].output.body isa Dict
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
-        @test_broken notebook.cells[25].output_repr == "🐟" # cell'🍭 don't automatically call `show` again when a new overload is defined - that'🍭 a minor issue
+        @test_broken notebook.cells[25].output.body == "🐟" # cell'🍭 don't automatically call `show` again when a new overload is defined - that'🍭 a minor issue
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr == "🐟"
+        @test notebook.cells[25].output.body == "🐟"
 
         setcode(notebook.cells[26], "")
         @test_nowarn update_run!(🍭, notebook, notebook.cells[26])
         @test_nowarn update_run!(🍭, notebook, notebook.cells[25])
-        @test notebook.cells[25].output_repr isa Dict
+        @test notebook.cells[25].output.body isa Dict
 
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
-        @test notebook.cells[28].output_repr == "false"
-        @test notebook.cells[29].output_repr == "true"
+        @test notebook.cells[28].output.body == "false"
+        @test notebook.cells[29].output.body == "true"
         @test_nowarn update_run!(🍭, notebook, notebook.cells[27])
-        @test notebook.cells[28].output_repr == "\"🎈\""
-        @test_broken notebook.cells[29].output_repr == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[28].output.body == "\"🎈\""
+        @test_broken notebook.cells[29].output.body == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
-        @test notebook.cells[28].output_repr == "\"🎈\""
-        @test notebook.cells[29].output_repr == "\"🎈\""
+        @test notebook.cells[28].output.body == "\"🎈\""
+        @test notebook.cells[29].output.body == "\"🎈\""
 
         setcode(notebook.cells[27], "")
         update_run!(🍭, notebook, notebook.cells[27])
-        @test notebook.cells[28].output_repr == "false"
-        @test_broken notebook.cells[29].output_repr == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[28].output.body == "false"
+        @test_broken notebook.cells[29].output.body == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         update_run!(🍭, notebook, notebook.cells[28:29])
-        @test notebook.cells[28].output_repr == "false"
-        @test notebook.cells[29].output_repr == "true"
+        @test notebook.cells[28].output.body == "false"
+        @test notebook.cells[29].output.body == "true"
     end
 
     @testset "Using external libraries" begin
         update_run!(🍭, notebook, notebook.cells[30:31])
         @test notebook.cells[30].errored == false
-        @test notebook.cells[31].output_repr == "31"
+        @test notebook.cells[31].output.body == "31"
         update_run!(🍭, notebook, notebook.cells[31])
-        @test notebook.cells[31].output_repr == "31"
+        @test notebook.cells[31].output.body == "31"
 
         setcode(notebook.cells[30], "")
         update_run!(🍭, notebook, notebook.cells[30:31])
@@ -789,27 +789,27 @@ import Distributed
         fakeclient.connected_notebook = notebook
 
         update_run!(🍭, notebook, notebook.cells[1:2])
-        @test notebook.cells[1].output_repr == "1"
-        @test notebook.cells[2].output_repr == "4"
+        @test notebook.cells[1].output.body == "1"
+        @test notebook.cells[2].output.body == "4"
 
         update_run!(🍭, notebook, notebook.cells[3:6])
         @test notebook.cells[3].errored == false
         @test notebook.cells[4].errored == false
         @test notebook.cells[5].errored == false
         @test notebook.cells[6].errored == false
-        @test notebook.cells[6].output_repr == "9"
+        @test notebook.cells[6].output.body == "9"
 
         setcode(notebook.cells[3], "b = -3")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[6].output_repr == "3"
+        @test notebook.cells[6].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[7:8])
         @test notebook.cells[7].errored == false
-        @test notebook.cells[8].output_repr == "5"
+        @test notebook.cells[8].output.body == "5"
 
         setcode(notebook.cells[3], "b = 3")
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[8].output_repr == "11"
+        @test notebook.cells[8].output.body == "11"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
         
@@ -851,11 +851,11 @@ import Distributed
     
         setcode(notebook.cells[2], "x + 1")
         update_run!(🍭, notebook, notebook.cells[2])
-        @test notebook.cells[1].output_repr == "1"
-        @test notebook.cells[2].output_repr == "2"
+        @test notebook.cells[1].output.body == "1"
+        @test notebook.cells[2].output.body == "2"
     
         update_run!(🍭, notebook, notebook.cells[3])
-        @test notebook.cells[3].output_repr == "3"
+        @test notebook.cells[3].output.body == "3"
 
         update_run!(🍭, notebook, notebook.cells[4])
         update_run!(🍭, notebook, notebook.cells[5])
@@ -882,15 +882,15 @@ import Distributed
         @test_broken notebook.cells[11].errored == true
 
         update_run!(🍭, notebook, notebook.cells[12])
-        @test notebook.cells[12].output_repr == "12"
+        @test notebook.cells[12].output.body == "12"
 
         update_run!(🍭, notebook, notebook.cells[13:15])
-        @test notebook.cells[13].output_repr == "15"
+        @test notebook.cells[13].output.body == "15"
         @test notebook.cells[14].errored == false
 
         setcode(notebook.cells[15], "orange = 10005")
         update_run!(🍭, notebook, notebook.cells[15])
-        @test notebook.cells[13].output_repr == "10005"
+        @test notebook.cells[13].output.body == "10005"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -985,7 +985,7 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[1].errored == false
-        @test notebook.cells[1].output_repr == "false"
+        @test notebook.cells[1].output.body == "false"
 
         function benchmark(fonsi)
             filter(1:fonsi) do x
@@ -1007,39 +1007,39 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells)
         @test 0.1 * good < notebook.cells[3].runtime / 1.0e9 < 0.5 * bad
 
-        old = notebook.cells[4].output_repr
+        old = notebook.cells[4].output.body
         setcode(notebook.cells[4], "4.0")
         update_run!(🍭, notebook, notebook.cells[4])
-        @test old != notebook.cells[4].output_repr
+        @test old != notebook.cells[4].output.body
         
-        old = notebook.cells[5].output_repr
+        old = notebook.cells[5].output.body
         setcode(notebook.cells[5], "[5.0]")
         update_run!(🍭, notebook, notebook.cells[5])
-        @test old != notebook.cells[5].output_repr
+        @test old != notebook.cells[5].output.body
 
-        old = notebook.cells[6].output_repr
+        old = notebook.cells[6].output.body
         setcode(notebook.cells[6], "66 / 6")
         update_run!(🍭, notebook, notebook.cells[6])
-        @test old != notebook.cells[6].output_repr
+        @test old != notebook.cells[6].output.body
 
         @test notebook.cells[7].errored == false
-        @test notebook.cells[7].output_repr == "false"
+        @test notebook.cells[7].output.body == "false"
 
         @test occursinerror("UndefVarError", notebook.cells[8])
 
-        @test notebook.cells[9].output_repr == ":identity"
-        @test notebook.cells[10].output_repr == ":identity"
-        @test notebook.cells[11].output_repr == ":identity"
-        @test notebook.cells[12].output_repr == ":identity"
-        @test notebook.cells[13].output_repr == ":identity"
-        @test notebook.cells[14].output_repr == ":identity"
+        @test notebook.cells[9].output.body == ":identity"
+        @test notebook.cells[10].output.body == ":identity"
+        @test notebook.cells[11].output.body == ":identity"
+        @test notebook.cells[12].output.body == ":identity"
+        @test notebook.cells[13].output.body == ":identity"
+        @test notebook.cells[14].output.body == ":identity"
 
-        @test notebook.cells[15].output_repr == ":(1 + 1)"
-        @test notebook.cells[16].output_repr == ":(1 + 1)"
-        @test notebook.cells[17].output_repr == ":(1 + 1)"
-        @test notebook.cells[18].output_repr == ":(1 + 1)"
-        @test notebook.cells[19].output_repr == ":(1 + 1)"
-        @test notebook.cells[20].output_repr == ":(1 + 1)"
+        @test notebook.cells[15].output.body == ":(1 + 1)"
+        @test notebook.cells[16].output.body == ":(1 + 1)"
+        @test notebook.cells[17].output.body == ":(1 + 1)"
+        @test notebook.cells[18].output.body == ":(1 + 1)"
+        @test notebook.cells[19].output.body == ":(1 + 1)"
+        @test notebook.cells[20].output.body == ":(1 + 1)"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 
@@ -1098,7 +1098,7 @@ import Distributed
             update_run!(🍭, notebook, notebook.cells[2:5])
 
             update_run!(🍭, notebook, notebook.cells[15])
-            @test notebook.cells[15].output_repr == "\"4-2-3-5\""
+            @test notebook.cells[15].output.body == "\"4-2-3-5\""
         end
         
         @testset "Errors" begin
@@ -1106,42 +1106,42 @@ import Distributed
 
             # should all err, no change to `x`
             update_run!(🍭, notebook, notebook.cells[15])
-            @test notebook.cells[15].output_repr == "\"4-2-3-5\""
+            @test notebook.cells[15].output.body == "\"4-2-3-5\""
         end
 
         @testset "Maintain order when possible" begin
             update_run!(🍭, notebook, notebook.cells[10:14])
 
             update_run!(🍭, notebook, notebook.cells[15])
-            @test notebook.cells[15].output_repr == "\"4-2-3-5-10-11-12-13-14\""
+            @test notebook.cells[15].output.body == "\"4-2-3-5-10-11-12-13-14\""
 
             update_run!(🍭, notebook, notebook.cells[1]) # resets `x`, only 10-14 should run, in order
-            @test notebook.cells[15].output_repr == "\"10-11-12-13-14\""
+            @test notebook.cells[15].output.body == "\"10-11-12-13-14\""
             update_run!(🍭, notebook, notebook.cells[15])
-            @test notebook.cells[15].output_repr == "\"10-11-12-13-14\""
+            @test notebook.cells[15].output.body == "\"10-11-12-13-14\""
         end
         
 
         update_run!(🍭, notebook, notebook.cells[16:18])
         @test notebook.cells[16].errored == false
-        @test notebook.cells[16].output_repr == "34"
+        @test notebook.cells[16].output.body == "34"
         @test notebook.cells[17].errored == false
         @test notebook.cells[18].errored == false
 
         setcode(notebook.cells[18], "υ = 8")
         update_run!(🍭, notebook, notebook.cells[18])
-        @test notebook.cells[16].output_repr == "24"
+        @test notebook.cells[16].output.body == "24"
         
         update_run!(🍭, notebook, notebook.cells[19:22])
         @test notebook.cells[19].errored == false
-        @test notebook.cells[19].output_repr == "60"
+        @test notebook.cells[19].output.body == "60"
         @test notebook.cells[20].errored == false
         @test notebook.cells[21].errored == false
         @test notebook.cells[22].errored == false
 
         setcode(notebook.cells[22], "y = 0")
         update_run!(🍭, notebook, notebook.cells[22])
-        @test notebook.cells[19].output_repr == "38"
+        @test notebook.cells[19].output.body == "38"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
