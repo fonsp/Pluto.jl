@@ -470,7 +470,6 @@ export class Editor extends Component {
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
-                console.log(patches)
                 if (patches.length !== 0) {
                     this.setState(
                         immer((state) => {
