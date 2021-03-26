@@ -4,22 +4,6 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname
 
 Base.push!(x::Set{Cell}) = x
 
-"Like @async except it prints errors to the terminal. 👶"
-macro asynclog(expr)
-    quote
-        @async begin
-            # because this is being run asynchronously, we need to catch exceptions manually
-            try
-                $(esc(expr))
-            catch ex
-                bt = stacktrace(catch_backtrace())
-                showerror(stderr, ex, bt)
-                rethrow(ex)
-            end
-        end
-    end
-end
-
 """
 Recursively deactivates all cells referenced by the current cell.
 """
