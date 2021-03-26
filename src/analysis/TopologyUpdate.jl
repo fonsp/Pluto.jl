@@ -30,5 +30,5 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		delete!(new_codes, removed_cell)
 	end
 
-	NotebookTopology(nodes=new_nodes, codes=new_codes)
+	NotebookTopology(nodes=new_nodes, codes=new_codes, cells_ordered=notebook.cells)
 end

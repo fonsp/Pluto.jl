@@ -21,18 +21,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		codes=merge(
 			new_topology.codes,
 			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
-		)
+		),
+		cells_ordered=notebook.cells,
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+	old_order = topological_order(old_topology, cells)
 
 	old_runnable = old_order.runnable
 	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
 	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
+	new_order = topological_order(new_topology, union(cells, keys(old_order.errable)))
 	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 

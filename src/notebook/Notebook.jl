@@ -106,7 +106,7 @@ function save_notebook(io, notebook::Notebook)
 
     # the next call took 2ms for a small-medium sized notebook: (so not too bad)
     # 15 ms for a massive notebook - 120 cells, 800 lines
-    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
+    notebook_topo_order = topological_order(notebook.topology, notebook.cells)
 
     cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
