@@ -195,7 +195,7 @@ update_run!(args...) = update_save_run!(args...; save=false)
 
 
 """
-    throttle(f, timeout; leading=true, trailing=false)
+		throttle(f, timeout; leading=true, trailing=false)
 
 Return a function that when invoked, will only be triggered at most once
 during `timeout` seconds.
@@ -205,43 +205,61 @@ execution on the leading edge, pass `leading=false`. To enable execution on
 the trailing edge, pass `trailing=true`.
 Copied from FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
+Also added thread safety:
+That means that the function is called every ` t = timeout + (call duration) s` and that a function
+run "sequentially".
 """
 function throttle(f, timeout; leading=true, trailing=false)
-  cooldown = true
-  later = nothing
-  result = nothing
-
-  function flush(args...; kwargs...)
+	tlock = ReentrantLock()
+	cooldown = true
 	later = nothing
-	f(args...; kwargs...)
-  end
+	result = nothing
 
-  function throttled(args...; kwargs...)
-    yield()
+	function flush(args...; kwargs...)
+		lock(tlock)
+		try
+			later = nothing
+			f(args...; kwargs...)
+		finally
+			unlock(tlock)
+		end
+	end
 
-    if cooldown
-      if leading
-        result = f(args...; kwargs...)
-      else
-        later = () -> f(args...; kwargs...)
-      end
+	function throttled(args...; kwargs...)
+		yield()
 
-      cooldown = false
-      @async try
-        while (sleep(timeout); later != nothing)
-          later()
-          later = nothing
-        end
-      finally
-        cooldown = true
-      end
-    elseif trailing
-      later = () -> (result = f(args...; kwargs...))
-    end
+		if cooldown
+			if leading
+				lock(tlock)
+				try
+					result = f(args...; kwargs...)
+				finally
+					unlock(tlock)
+				end
+			else
+				later = () -> f(args...; kwargs...)
+			end
 
-    return result
-  end
+			cooldown = false
+			@async try
+				while (sleep(timeout); later != nothing)
+			lock(tlock)
+			try
+				later()
+				later = nothing
+			finally
+				unlock(tlock)
+			end
+		end
+		finally
+			cooldown = true
+		end
+		elseif trailing
+			later = () -> (result = f(args...; kwargs...))
+		end
 
-  return throttled, flush
+		return result
+	end
+
+	return throttled, flush
 end
-
