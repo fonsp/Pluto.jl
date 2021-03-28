@@ -1,6 +1,9 @@
 import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
+import JSON
+import MsgPack
+import Distributed: RemoteException
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -39,10 +42,37 @@ function error_response(status_code::Integer, title, advice, body="")
     response
 end
 
-function notebook_redirect_response(notebook; home_url="./")
-    response = HTTP.Response(302, "")
-    push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
-    return response
+function notebook_response(notebook; home_url="./", as_redirect=true)
+    if as_redirect
+        response = HTTP.Response(302, "")
+        push!(response.headers, "Location" => home_url * "edit?id=" * string(notebook.notebook_id))
+        return response
+    else
+        HTTP.Response(200, string(notebook.notebook_id))
+    end
+end
+
+function get_header(request::HTTP.Request, key::AbstractString)
+    val = request.headers[findfirst(x -> (lowercase(x.first) == lowercase(key)), request.headers)]
+    if !isnothing(val)
+        return val.second
+    end
+
+    nothing
+end
+
+function with_json!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/json")
+    response
+end
+function with_msgpack!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/x-msgpack")
+    response
+end
+
+function with_cors!(response::HTTP.Response)
+    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+    response
 end
 
 """
@@ -96,6 +126,10 @@ function http_router_for(session::ServerSession)
             if !required || is_authenticated(session, request)
                 response = f(request)
                 add_set_secret_cookie!(response)
+                if !required
+                    filter!(p -> p[1] != "Access-Control-Allow-Origin", response.headers)
+                    push!(response.headers, "Access-Control-Allow-Origin" => "*")
+                end
                 response
             else
                 error_response(403, "Not yet authenticated", "<b>Open the link that was printed in the terminal where you launched Pluto.</b> It includes a <em>secret</em>, which is needed to access this server.<br><br>If you are running the server yourself and want to change this configuration, have a look at the keyword arguments to <em>Pluto.run</em>. <br><br>Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a> if you did not expect it!")
@@ -126,15 +160,15 @@ function http_router_for(session::ServerSession)
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(404,"") : HTTP.Response(200, session.binder_token))
+    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
-    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", action_kwargs...)
+    function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", as_redirect=true, action_kwargs...)
         try
             nb = action(session, path_or_url; action_kwargs...)
-            notebook_redirect_response(nb; home_url=home_url)
+            notebook_response(nb; home_url=home_url, as_redirect=as_redirect)
         catch e
             if e isa SessionActions.NotebookIsRunningException
-                notebook_redirect_response(e.notebook; home_url=home_url)
+                notebook_response(e.notebook; home_url=home_url, as_redirect=as_redirect)
             else
                 error_response(500, title, advice, sprint(showerror, e, stacktrace(catch_backtrace())))
             end
@@ -145,9 +179,10 @@ function http_router_for(session::ServerSession)
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
-        notebook_redirect_response(SessionActions.new(session))
+        notebook_response(SessionActions.new(session); as_redirect=(request.method == "GET"))
     end
     HTTP.@register(router, "GET", "/new", serve_newfile)
+    HTTP.@register(router, "POST", "/new", serve_newfile)
 
     serve_openfile = with_authentication(;
         required=security.require_secret_for_access || 
@@ -160,13 +195,13 @@ function http_router_for(session::ServerSession)
             if haskey(query, "path")
                 path = tamepath(query["path"])
                 if isfile(path)
-                    return try_launch_notebook_response(SessionActions.open, path; as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                    return try_launch_notebook_response(SessionActions.open, path, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The file <code>$(htmlesc(path))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
                 else
                     return error_response(404, "Can't find a file here", "Please check whether <code>$(htmlesc(path))</code> exists.")
                 end
             elseif haskey(query, "url")
                 url = query["url"]
-                return try_launch_notebook_response(SessionActions.open_url, url; as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
+                return try_launch_notebook_response(SessionActions.open_url, url, as_redirect=(request.method == "GET"), as_sample=as_sample, title="Failed to load notebook", advice="The notebook from <code>$(htmlesc(url))</code> could not be loaded. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
             else
                 error("Empty request")
             end
@@ -176,6 +211,7 @@ function http_router_for(session::ServerSession)
     end
 
     HTTP.@register(router, "GET", "/open", serve_openfile)
+    HTTP.@register(router, "POST", "/open", serve_openfile)
     
     serve_sample = with_authentication(;
         required=security.require_secret_for_access || 
@@ -185,9 +221,137 @@ function http_router_for(session::ServerSession)
         sample_filename = split(HTTP.unescapeuri(uri.path), "sample/")[2]
         sample_path = project_relative_path("sample", sample_filename)
         
-        try_launch_notebook_response(SessionActions.open, sample_path, home_url="../", title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", as_sample=true)
+        path = numbered_until_new(joinpath(new_notebooks_directory(), sample_path_without_dotjl))
+        readwrite(project_relative_path("sample", sample_path), path)
+        
+        try_launch_notebook_response(SessionActions.open, path; as_redirect=(request.method == "GET"), home_url="../", as_sample=true, title="Failed to load sample", advice="Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!")
     end
     HTTP.@register(router, "GET", "/sample/*", serve_sample)
+    HTTP.@register(router, "POST", "/sample/*", serve_sample)
+
+
+
+
+    function get_notebook_from_request(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        splitpath = HTTP.URIs.splitpath(request.target)
+
+        sess_id = get(query, "session", splitpath[2])
+        file = get(query, "file", splitpath[2])
+        notebook = nothing
+        if !isnothing(file)
+            notebook_id = findfirst(session.notebooks) do nb
+                basename(nb.path) == file
+            end
+
+            if !isnothing(notebook_id)
+                notebook = session.notebooks[notebook_id]
+            end
+        else
+            uid = UUID(sess_id)
+            if uid ∈ keys(session.notebooks)
+                notebook = session.notebooks[uid]
+            end
+        end
+
+        notebook
+    end
+    function rest_response(request::HTTP.Request, body)
+        accept_type = get_header(request, "Accept")
+        try
+            if accept_type == "application/json"
+                return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
+            else 
+                return HTTP.Response(200, MsgPack.pack(body)) |> with_msgpack! |> with_cors!
+            end
+        catch e
+            # Likely an error serializing the object
+            showerror(stderr, e)
+            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
+        end
+    end
+
+    function serve_notebook_eval(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(split(query["outputs"], ","))
+
+        # Get notebook from request parameters
+        notebook = get_notebook_from_request(request)
+        topology = notebook.topology
+
+        inputs = MsgPack.unpack(query["inputs"])
+        outputs = nothing
+        try
+            outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+        catch e
+            if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
+                return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
+            else
+                showerror(stdout, e) # TODO: This line is for debug. Remove later
+                return HTTP.Response(400, e.msg)
+            end
+        end
+
+        accept_type = get_header(request, "Accept")
+        try
+            if accept_type == "application/json"
+                return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
+            else 
+                return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
+            end
+        catch e
+            # Likely an error serializing the object
+            showerror(stderr, e)
+            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
+        end
+    end
+    HTTP.@register(router, "GET", "/notebook/*/eval", serve_notebook_eval)
+
+    function serve_notebook_call(request::HTTP.Request)
+        # Get notebook from request parameters
+        notebook = get_notebook_from_request(request)
+        topology = notebook.topology
+
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        if "function" ∉ keys(query)
+            return HTTP.Response(400, "Function name is required")
+        end
+
+        fn_name = Symbol(query["function"])
+        args = "args" ∈ keys(query) ? MsgPack.unpack(query["args"]) : []
+        kwargs = "kwargs" ∈ keys(query) ? MsgPack.unpack(query["args"]) : Dict()
+
+        fn_symbol = :($(fn_name)($(args...)))
+        fn_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+
+        rest_response(request, fn_result)
+    end
+    HTTP.@register(router, "GET", "/notebook/*/call", serve_notebook_call)
+
+    function serve_notebook_static_fn(request::HTTP.Request)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+
+        parts = HTTP.URIs.splitpath(uri.path)
+        out_symbols = Symbol.(split(query["outputs"], ","))
+
+        notebook = get_notebook_from_request(request)
+        topology = notebook.topology
+
+        input_symbols = Symbol.(split(query["inputs"], ","))
+        out_fn = REST.get_notebook_static_function(session, notebook, topology, input_symbols, out_symbols)
+
+        res = HTTP.Response(200, string(out_fn))
+        push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
+        res
+    end
+    HTTP.@register(router, "GET", "/notebook/*/static", serve_notebook_static_fn)
 
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 

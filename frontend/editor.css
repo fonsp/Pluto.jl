@@ -58,13 +58,13 @@ main {
 /* min-width: 731px+ */
 
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-right: 500px;
         align-self: flex-end;
     }
@@ -477,6 +477,7 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
+    z-index: 10;
 }
 
 nav#at_the_top > * {
@@ -599,7 +600,7 @@ li.dir.CodeMirror-hint:before {
     color: black;
 }
 
-@media screen and (any-pointer: fine) {
+@media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .CodeMirror {
         border: 2px solid transparent;
         border-right: none;
@@ -638,6 +639,16 @@ body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
 }
 
+nav:after {
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 5px 10px;
+    margin: 5px;
+    background: white;
+    border-radius: 10px;
+    z-index: 1;
+}
+
 nav#at_the_top > #process_status {
     font-size: 1rem;
     font-weight: 500;
@@ -651,6 +662,133 @@ nav#at_the_top > #process_status {
 
 nav#at_the_top > #process_status:empty {
     display: none;
+}
+body.binder.loading > header > nav:after {
+    content: "Loading binder...";
+}
+
+loading-bar {
+    height: 6px;
+    width: 10vw;
+    background-color: #b1c9dd;
+    position: fixed;
+    top: 0px;
+    display: block;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+    opacity: 0;
+    pointer-events: none;
+}
+
+#binder_spinners {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    overflow: hidden;
+
+    opacity: 0;
+    transition: opacity 1s ease-in-out;
+    pointer-events: none;
+}
+
+body.binder.loading #binder_spinners {
+    opacity: 0.25;
+}
+body.binder.loading loading-bar {
+    opacity: 1;
+}
+
+binder-spinner#ring_1 {
+    border-top-color: #f5a252;
+    width: 300px;
+    height: 300px;
+    margin-left: calc(-0.5 * 300px);
+    margin-top: calc(-0.5 * 300px);
+    animation-duration: 2s;
+}
+binder-spinner#ring_2 {
+    border-top-color: #579aca;
+    width: 380px;
+    height: 380px;
+    margin-left: calc(-0.5 * 380px);
+    margin-top: calc(-0.5 * 380px);
+    animation-duration: 3s;
+}
+binder-spinner#ring_3 {
+    border-top-color: #e56581;
+    width: 460px;
+    height: 460px;
+    margin-left: calc(-0.5 * 460px);
+    margin-top: calc(-0.5 * 460px);
+    animation-duration: 4s;
+}
+binder-spinner {
+    top: 117px;
+    left: 80vw;
+    position: absolute;
+    border: 25px solid transparent;
+    display: block;
+    border-radius: 100%;
+    animation: spin 4s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+button#launch_binder {
+    /* position: absolute; */
+    position: fixed;
+
+    top: 10px;
+    right: 30px;
+    /* width: 153.2px; */
+    /* height: 60px; */
+    padding: 7px 20px;
+    background: #fffdf7;
+    border: 3px solid #3f448c5e;
+    border-radius: 30px;
+    z-index: 20;
+    box-shadow: 0px 0px 20px 0px #ffffff;
+    cursor: pointer;
+    font-size: 14px;
+    font-style: italic;
+    font-family: "Roboto Mono";
+    letter-spacing: -0.2px;
+    color: #0000009c;
+    white-space: nowrap;
+}
+body.wiggle_binder button#launch_binder {
+    position: fixed;
+    animation: wiggle 0.3s ease-in-out 0s 1;
+}
+
+@keyframes wiggle {
+    0% {
+        transform: rotate(0deg);
+    }
+    30% {
+        transform: rotate(10deg);
+    }
+    70% {
+        transform: rotate(-10deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
+}
+
+button#launch_binder img {
+    margin: -8px;
+    margin-left: 0px;
+    font-style: normal;
+    color: black;
+    font-weight: 900;
 }
 
 /* PREAMBLE */
@@ -935,19 +1073,19 @@ pluto-cell.activate_animation pluto-trafficlight::after {
 }
 
 /* in ascending order of severity: */
-
-pluto-cell.code_folded > pluto-trafficlight {
+/* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
+body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
     background: none;
 }
 
 @media screen and (any-pointer: fine) {
-    pluto-cell:hover > pluto-trafficlight {
+    body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
         transition: background 0.05s ease-in;
     }
 }
 
-pluto-cell:focus-within > pluto-trafficlight {
+body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
@@ -955,25 +1093,25 @@ pluto-cell:focus-within > pluto-trafficlight {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
-pluto-cell.selected > pluto-trafficlight {
+body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
     background-clip: content-box;
 }
 
-pluto-cell.code_differs > pluto-trafficlight {
+body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
     background-clip: content-box;
 }
 
-pluto-cell.errored > pluto-trafficlight {
+body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
     background-clip: content-box;
 }
 
-pluto-cell.queued > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
     /* [1]
@@ -988,14 +1126,14 @@ pluto-cell.queued > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.running > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
     opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.queued.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         hsla(0, 70%, 80%, 0.7),
@@ -1008,7 +1146,7 @@ pluto-cell.queued.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.running.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
     opacity: 0.99; /* [1] */
@@ -1256,7 +1394,7 @@ dropruler {
     z-index: 5;
 }
 
-@media screen and (min-width: 500px) {
+@media (min-width: 500px) {
     #helpbox-wrapper {
         display: block;
     }

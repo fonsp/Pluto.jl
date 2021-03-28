@@ -238,6 +238,9 @@ export const CellInput = ({
         keys["Alt-Down"] = () => alt_move(+1)
 
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
+            if (disable_input_ref.current) {
+                return
+            }
             const BACKSPACE_CELL_DELETE_COOLDOWN = 300
             const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
 
@@ -261,6 +264,9 @@ export const CellInput = ({
             }
         }
         keys["Delete"] = keys["Ctrl-Delete"] = () => {
+            if (disable_input_ref.current) {
+                return
+            }
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
@@ -472,6 +478,7 @@ export const CellInput = ({
     // }, [remote_code.timestamp])
 
     useEffect(() => {
+        disable_input_ref.current = disable_input
         cm_ref.current.options.disableInput = disable_input
     }, [disable_input])
 
