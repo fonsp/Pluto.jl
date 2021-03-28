@@ -84,7 +84,12 @@ function sanitize_expr(dt::Union{DataType, Enum})
 end
 
 function sanitize_expr(ref::GlobalRef)
-  Expr(:(.), Symbol(ref.mod), QuoteNode(ref.name))
+  mod_name =  Symbol(ref.mod)
+  if startswith(string(mod_name), "workspace")
+    QuoteNode(ref.name)
+  else
+    Expr(:(.), mod_name, QuoteNode(ref.name))
+  end
 end
 
 function sanitize_expr(expr::Expr)
@@ -256,7 +261,7 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     result, runtime = if function_wrapped_info === nothing
-        expr = if is_cached_on_notebook # Macro should be expanded once
+        expr = if false && is_cached_on_notebook # Macro should be expanded once
             get(ExpandedCallCells, cell_id, expr)
         else
             expr
