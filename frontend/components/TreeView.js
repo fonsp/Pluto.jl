@@ -29,8 +29,9 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "text/plain":
-        default:
             return html`<pre>${body}</pre>`
+        default:
+            return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
     }
 }
@@ -90,9 +91,10 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         case "circular":
             return html`<em>circular reference</em>`
         case "Array":
+        case "Set":
         case "Tuple":
             inner = html`${body.prefix}<jlarray class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`))}</jlarray
+                    >${body.elements.map((r) => (r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`))}</jlarray
                 >`
             break
         case "Dict":

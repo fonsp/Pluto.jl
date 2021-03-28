@@ -2,17 +2,6 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-"The (information needed to create the) dependency graph of a notebook. Cells are linked by the names of globals that they define and reference. 🕸"
-Base.@kwdef struct NotebookTopology
-    nodes::Dict{Cell,ReactiveNode} = Dict{Cell,ReactiveNode}()
-end
-
-# `topology[cell]` is a shorthand for `get(topology, cell, ReactiveNode())`
-# with the performance benefit of only generating ReactiveNode() when needed
-function Base.getindex(topology::NotebookTopology, cell::Cell)::ReactiveNode
-    get!(ReactiveNode, topology.nodes, cell)
-end
-
 struct BondValue
     value::Any
 end
@@ -20,14 +9,20 @@ function Base.convert(::Type{BondValue}, dict::Dict)
     BondValue(dict["value"])
 end
 
+const ProcessStatus = (
+    ready="ready",
+    starting="starting",
+    no_process="no_process",
+    waiting_to_restart="waiting_to_restart",
+)
+
 "Like a [`Diary`](@ref) but more serious. 📓"
 Base.@kwdef mutable struct Notebook
     "Cells are ordered in a `Notebook`, and this order can be changed by the user. Cells will always have a constant UUID."
     cells_dict::Dict{UUID,Cell}
     cell_order::Array{UUID,1}
     
-    # i still don't really know what an AbstractString is but it makes this package look more professional
-    path::AbstractString
+    path::String
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
 
@@ -42,7 +37,10 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
+    process_status::String=ProcessStatus.starting
+
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+    wants_to_interrupt::Bool=false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -83,7 +81,7 @@ emptynotebook(args...) = Notebook([Cell()], args...)
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
 
-In the produced file, cells are not saved in the notebook order. If `notebook.topolgy` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
+In the produced file, cells are not saved in the notebook order. If `notebook.topology` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
 
 Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """
@@ -126,8 +124,15 @@ function save_notebook(io, notebook::Notebook)
     notebook
 end
 
+function open_safe_write(fn::Function, path, mode)
+    file_content = sprint(fn)
+    open(path, mode) do io
+        print(io, file_content)
+    end
+end
+    
 function save_notebook(notebook::Notebook, path::String)
-    open(path, "w") do io
+    open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end
 end
@@ -208,7 +213,6 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
-    update_caches!(loaded, loaded.cells)
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
