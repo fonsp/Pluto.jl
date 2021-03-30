@@ -73,13 +73,16 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.queued = false
 		cell.running = true
-		cell.persist_js_state = persist_js_state || cell ∉ cells
 		send_notebook_changes_throttled()
-
+		
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell, new_topology.nodes[cell], new_topology.codes[cell])
+			run = run_single!(
+				(session, notebook), cell, 
+				new_topology.nodes[cell], new_topology.codes[cell]; 
+				persist_js_state=(persist_js_state || cell ∉ cells)
+			)
 			any_interrupted |= run.interrupted
 		end
 		
@@ -108,7 +111,7 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -116,20 +119,22 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
 	)
-	set_output!(cell, run, expr_cache)
+	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
 
-function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache)
-	cell.last_run_timestamp = time()
+function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
+	cell.output = CellOutput(
+		body=run.output_formatted[1],
+		mime=run.output_formatted[2],
+		rootassignee=ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode),
+		last_run_timestamp=time(),
+		persist_js_state=persist_js_state,
+	)
 	cell.runtime = run.runtime
-
-	cell.output_repr = run.output_formatted[1]
-	cell.repr_mime = run.output_formatted[2]
-	cell.rootassignee = ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
 	cell.errored = run.errored
 end
 
