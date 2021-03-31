@@ -3,7 +3,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { create_pluto_connection, resolvable_promise, ws_address_from_base } from "../common/PlutoConnection.js"
-import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
+import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
@@ -212,9 +212,6 @@ export class Editor extends Component {
         }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
-
-        // statistics that are accumulated over time
-        this.counter_statistics = create_counter_statistics()
 
         // these are things that can be done to the local notebook
         this.actions = {
@@ -443,7 +440,6 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
-                    this.counter_statistics.numEvals++
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -472,8 +468,6 @@ export class Editor extends Component {
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
 
-                this.counter_statistics.numBondSets++
-
                 // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
                     notebook.bonds[symbol] = { value: value }
@@ -492,7 +486,6 @@ export class Editor extends Component {
                 )
             },
             write_file: (cell_id, { file, name, type }) => {
-                this.counter_statistics.numFileDrops++
                 return this.client.send(
                     "write_file",
                     { file, name, type, path: this.state.notebook.path },
@@ -517,7 +510,6 @@ export class Editor extends Component {
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
-                console.log(patches)
                 if (patches.length !== 0) {
                     this.setState(
                         immer((state) => {
@@ -631,18 +623,7 @@ patch: ${JSON.stringify(
             // TODO Do this from julia itself
             await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
-            setTimeout(() => {
-                init_feedback()
-                finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
-
-                setInterval(() => {
-                    finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
-                        store_statistics_sample(statistics)
-                        send_statistics_if_enabled(statistics)
-                    })
-                    this.counter_statistics = create_counter_statistics()
-                }, 10 * 60 * 1000) // 10 minutes - statistics interval
-            }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+            setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -1217,10 +1198,9 @@ patch: ${JSON.stringify(
                     <footer>
                         <div id="info">
                             <form id="feedback" action="#" method="post">
-                                <a href="statistics-info">Statistics</a>
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                                 <span style="flex: 1"></span>
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
                             </form>
