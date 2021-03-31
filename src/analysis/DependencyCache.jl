@@ -30,9 +30,10 @@ end
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, notebook::Notebook)
-    cell.downstream_cells_map = downstream_cells_map(cell, notebook)
-    cell.upstream_cells_map = upstream_cells_map(cell, notebook)
-    cell.precedence_heuristic = cell_precedence_heuristic(notebook.topology, cell)
+    cell.cell_dependencies = CellDependencies(
+        downstream_cells_map(cell, notebook), 
+        upstream_cells_map(cell, notebook), 
+        cell_precedence_heuristic(notebook.topology, cell))
 end
 
 "Fills dependency information on notebook and cell level."

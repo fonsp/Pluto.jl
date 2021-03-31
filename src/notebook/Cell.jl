@@ -13,6 +13,15 @@ Base.@kwdef struct CellOutput
     persist_js_state::Bool=false
 end
 
+"""
+information to display cell dependencies
+"""
+struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a circular dependency of the structs
+    downstream_cells_map::Dict{Symbol,Vector{T}}
+    upstream_cells_map::Dict{Symbol,Vector{T}}
+    precedence_heuristic::Int
+end
+
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
 Base.@kwdef mutable struct Cell
     "Because Cells can be reordered, they get a UUID. The JavaScript frontend indexes cells using the UUID."
@@ -28,11 +37,7 @@ Base.@kwdef mutable struct Cell
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 
-    # information to display cell dependencies
-    # Open: move to another place?
-    downstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
-    upstream_cells_map::Dict{Symbol,Vector{Cell}}=Dict{Symbol,Vector{Cell}}()
-    precedence_heuristic::Int=99
+    cell_dependencies::CellDependencies=CellDependencies(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)

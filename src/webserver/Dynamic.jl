@@ -109,13 +109,13 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "downstream_cells_map" => Dict{String,Vector{UUID}}(
                     String(s) => cell_id.(r)
-                    for (s, r) in cell.downstream_cells_map
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
                 ),
                 "upstream_cells_map" => Dict{String,Vector{UUID}}(
                     String(s) => cell_id.(r)
-                    for (s, r) in cell.upstream_cells_map
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
                 ),
-                "precedence_heuristic" => cell.precedence_heuristic,
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
