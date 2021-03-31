@@ -3,7 +3,7 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
-import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
+import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
@@ -78,6 +78,28 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const ProcessStatus = {
+    ready: "ready",
+    starting: "starting",
+    no_process: "no_process",
+    waiting_to_restart: "waiting_to_restart",
+}
+
+const statusmap = (state) => ({
+    disconnected: !(state.connected || state.initializing),
+    loading: state.initializing || state.moving_file || state.notebook.process_status === ProcessStatus.starting,
+    process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
+})
+
+const first_true_key = (obj) => {
+    for (let [k, v] of Object.entries(obj)) {
+        if (v) {
+            return k
+        }
+    }
+}
+
 /**
  * @typedef CellInputData
  * @type {{
@@ -108,10 +130,11 @@ const Main = ({ children }) => {
 /**
  * @typedef NotebookData
  * @type {{
+ *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
  *  in_temp_dir: boolean,
- *  notebook_id: string,
+ *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData }
  *  cell_order: Array<string>,
@@ -119,20 +142,28 @@ const Main = ({ children }) => {
  * }}
  */
 
+/**
+ *
+ * @returns {NotebookData}
+ */
+const initial_notebook = () => ({
+    notebook_id: new URLSearchParams(window.location.search).get("id"),
+    path: default_path,
+    shortpath: "",
+    in_temp_dir: true,
+    process_status: "starting",
+    cell_inputs: {},
+    cell_results: {},
+    cell_order: [],
+    bonds: {},
+})
+
 export class Editor extends Component {
     constructor() {
         super()
 
         this.state = {
-            notebook: /** @type {NotebookData} */ ({
-                notebook_id: new URLSearchParams(window.location.search).get("id"),
-                path: default_path,
-                shortpath: "",
-                in_temp_dir: true,
-                cell_inputs: {},
-                cell_results: {},
-                cell_order: [],
-            }),
+            notebook: /** @type {NotebookData} */ initial_notebook(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
@@ -151,8 +182,7 @@ export class Editor extends Component {
             update_is_ongoing: false,
         }
 
-        // statistics that are accumulated over time
-        this.counter_statistics = create_counter_statistics()
+        this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // these are things that can be done to the local notebook
         this.actions = {
@@ -202,16 +232,13 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await new Promise((resolve) =>
-                    this.setState(
-                        immer((state) => {
-                            for (let cell of new_cells) {
-                                state.cell_inputs_local[cell.cell_id] = cell
-                            }
-                            state.last_created_cell = new_cells[0]?.cell_id
-                        }),
-                        resolve
-                    )
+                await this.setStatePromise(
+                    immer((state) => {
+                        for (let cell of new_cells) {
+                            state.cell_inputs_local[cell.cell_id] = cell
+                        }
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
                 )
 
                 /**
@@ -245,18 +272,16 @@ export class Editor extends Component {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-                await new Promise((resolve) => {
-                    this.setState(
-                        immer((state) => {
-                            state.cell_inputs_local[cell_id] = {
-                                ...cell,
-                                ...state.cell_inputs_local[cell_id],
-                                code: new_code,
-                            }
-                        }),
-                        resolve
-                    )
-                })
+
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.cell_inputs_local[cell_id] = {
+                            ...cell,
+                            ...state.cell_inputs_local[cell_id],
+                            code: new_code,
+                        }
+                    })
+                )
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -385,7 +410,6 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
-                    this.counter_statistics.numEvals++
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -399,7 +423,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id]) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    // state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -415,8 +439,7 @@ export class Editor extends Component {
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
 
-                this.counter_statistics.numBondSets++
-
+                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
                     let new_bond = { value: value, is_first_value: is_first_value }
@@ -436,7 +459,6 @@ export class Editor extends Component {
                 )
             },
             write_file: (cell_id, { file, name, type }) => {
-                this.counter_statistics.numFileDrops++
                 return this.client.send(
                     "write_file",
                     { file, name, type, path: this.state.notebook.path },
@@ -449,6 +471,76 @@ export class Editor extends Component {
             },
         }
 
+        const apply_notebook_patches = (patches, old_state = undefined) =>
+            new Promise((resolve) => {
+                if (patches.length !== 0) {
+                    this.setState(
+                        immer((state) => {
+                            let new_notebook
+                            try {
+                                // To test this, uncomment the lines below:
+                                // if (Math.random() < 0.25) {
+                                //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
+                                // }
+                                new_notebook = applyPatches(old_state ?? state.notebook, patches)
+                            } catch (exception) {
+                                const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                const path_value = _.get(this.state.notebook, failing_path, "Not Found")
+                                console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                // The alert below is not catastrophic: the editor will try to recover.
+                                // Deactivating to be user-friendly!
+                                // alert(`Ooopsiee.`)
+                                console.error(
+                                    `#######################**************************########################
+PlutoError: StateOutOfSync: Failed to apply patches.
+Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
+failing path: ${failing_path}
+notebook previous value: ${path_value}
+patch: ${JSON.stringify(
+                                        patches?.find(({ path }) => path.join("") === failing_path),
+                                        null,
+                                        1
+                                    )}
+#######################**************************########################`,
+                                    exception
+                                )
+                                console.log("Trying to recover: Refetching notebook...")
+                                this.client.send(
+                                    "reset_shared_state",
+                                    {},
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    },
+                                    false
+                                )
+                                return
+                            }
+
+                            if (DEBUG_DIFFING) {
+                                console.group("Update!")
+                                for (let patch of patches) {
+                                    console.group(`Patch :${patch.op}`)
+                                    console.log(patch.path)
+                                    console.log(patch.value)
+                                    console.groupEnd()
+                                }
+                                console.groupEnd()
+                            }
+
+                            let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                            if (cells_stuck_in_limbo.length !== 0) {
+                                console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                            }
+                            state.notebook = new_notebook
+                        }),
+                        resolve
+                    )
+                } else {
+                    resolve()
+                }
+            })
+
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
@@ -457,88 +549,13 @@ export class Editor extends Component {
                     case "notebook_diff":
                         if (message?.response?.from_reset) {
                             console.log("Trying to reset state after failure")
-                            this.setState(
-                                immer((state) => {
-                                    try {
-                                        state.notebook = applyPatches(
-                                            {
-                                                notebook_id: new URLSearchParams(window.location.search).get("id"),
-                                                path: default_path,
-                                                shortpath: "",
-                                                in_temp_dir: true,
-                                                cell_inputs: {},
-                                                cell_results: {},
-                                                cell_order: [],
-                                            },
-                                            message.patches
-                                        )
-                                    } catch (exception) {
-                                        alert("Cannot recover from broken state. Please open an issue!")
-                                    }
-                                })
-                            )
+                            try {
+                                apply_notebook_patches(message.patches, initial_notebook())
+                            } catch (exception) {
+                                alert("Oopsie!! please refresh your browser and everything will be alright!")
+                            }
                         } else if (message.patches.length !== 0) {
-                            this.setState(
-                                immer((state) => {
-                                    let new_notebook
-                                    try {
-                                        // To test this, uncomment the lines below:
-                                        // if (Math.random() < 0.25)
-                                        //    throw new Error(`Error: [Immer] minified error nr: 15 '${message?.patches?.[0]?.path?.join("/")}'    .`)
-                                        new_notebook = applyPatches(state.notebook, message.patches)
-                                    } catch (exception) {
-                                        const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
-                                        const path_value = _.get(this.state.notebook, failing_path, "Not Found")
-                                        console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
-                                        alert(`PlutoState failed to sync with the browser!
-Please report this: https://github.com/fonsp/Pluto.jl/issues
-adding the info you can find in the JS Console (F12)`)
-                                        console.error(
-                                            `
-                                            ########################-Please send these lines-########################
-                                            PlutoError: StateOutOfSync: Failed to apply patches.
-                                            failing path: ${failing_path}
-                                            notebook previous value: ${path_value}
-                                            patch: ${JSON.stringify(
-                                                message?.patches?.find(({ path }) => path.join("") === failing_path),
-                                                null,
-                                                1
-                                            )}
-                                            #######################**************************########################
-                                        `,
-                                            exception
-                                        )
-                                        console.log("Trying to recover: Refetching notebook...")
-                                        this.client.send(
-                                            "reset_notebook",
-                                            {},
-                                            {
-                                                notebook_id: this.state.notebook.notebook_id,
-                                            },
-                                            false
-                                        )
-                                        return
-                                    }
-
-                                    if (DEBUG_DIFFING) {
-                                        console.group("Update!")
-                                        for (let patch of message.patches) {
-                                            console.group(`Patch :${patch.op}`)
-                                            console.log(patch.path)
-                                            console.log(patch.value)
-                                            console.groupEnd()
-                                        }
-                                        console.groupEnd()
-                                    }
-
-                                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                    if (cells_stuck_in_limbo.length !== 0) {
-                                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                    }
-                                    state.notebook = new_notebook
-                                })
-                            )
+                            apply_notebook_patches(message.patches)
                         }
                         break
                     case "log":
@@ -569,18 +586,7 @@ adding the info you can find in the JS Console (F12)`)
             // TODO Do this from julia itself
             await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
-            setTimeout(() => {
-                init_feedback()
-                finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
-
-                setInterval(() => {
-                    finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
-                        store_statistics_sample(statistics)
-                        send_statistics_if_enabled(statistics)
-                    })
-                    this.counter_statistics = create_counter_statistics()
-                }, 10 * 60 * 1000) // 10 minutes - statistics interval
-            }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+            setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -606,68 +612,66 @@ adding the info you can find in the JS Console (F12)`)
             !this.state.update_is_ongoing &&
             document.querySelector(".pluto-cell-javascript-initializing") == null
 
-        console.log("asdf")
+        let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
-        let update_notebook = async (mutate_fn) => {
-            // if (this.state.initializing) {
-            //     console.error("Update notebook done during initializing, strange")
-            //     return
-            // }
-
-            let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
-                mutate_fn(notebook)
-            })
-
-            // If "notebook is not idle" I seperate and store the bonds updates,
-            // to send when the notebook is idle. This delays the updating of the bond for performance,
-            // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
-            // this will no longer be necessary
-            console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
-            if (!this.notebook_is_idle()) {
-                let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
-                changes = changes.filter((x) => x.path[0] !== "bonds")
-            }
-
-            if (DEBUG_DIFFING) {
-                try {
-                    let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                    console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-                } catch (error) {}
-            }
-            if (changes.length === 0) {
-                return
-            }
-
-            for (let change of changes) {
-                if (change.path.some((x) => typeof x === "number")) {
-                    throw new Error("This sounds like it is editting an array!!!")
+        let update_notebook = (mutate_fn) => {
+            last_update_notebook_task = last_update_notebook_task.then(async () => {
+                // if (this.state.initializing) {
+                //     console.error("Update notebook done during initializing, strange")
+                //     return
+                // }
+    
+                let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
+                    mutate_fn(notebook)
+                })
+    
+                // If "notebook is not idle" I seperate and store the bonds updates,
+                // to send when the notebook is idle. This delays the updating of the bond for performance,
+                // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
+                // this will no longer be necessary
+                console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
+                if (!this.notebook_is_idle()) {
+                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                    this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                    changes = changes.filter((x) => x.path[0] !== "bonds")
                 }
-            }
-            pending_local_updates++
-            this.setState({ update_is_ongoing: pending_local_updates > 0 })
-            try {
-                await Promise.all([
-                    this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                        if (response.message.response.update_went_well === "👎") {
-                            // We only throw an error for functions that are waiting for this
-                            // Notebook state will already have the changes reversed
-                            throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
-                        }
-                    }),
-                    new Promise((resolve) => {
-                        this.setState(
-                            {
-                                notebook: new_notebook,
-                            },
-                            resolve
-                        )
-                    }),
-                ])
-            } finally {
-                pending_local_updates--
+    
+                if (DEBUG_DIFFING) {
+                    try {
+                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                        console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+                    } catch (error) {}
+                }
+                if (changes.length === 0) {
+                    return
+                }
+    
+                for (let change of changes) {
+                    if (change.path.some((x) => typeof x === "number")) {
+                        throw new Error("This sounds like it is editing an array...")
+                    }
+                }
+                pending_local_updates++
                 this.setState({ update_is_ongoing: pending_local_updates > 0 })
-            }
+                try {
+                    await Promise.all([
+                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
+                            if (response.message.response.update_went_well === "👎") {
+                                // We only throw an error for functions that are waiting for this
+                                // Notebook state will already have the changes reversed
+                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                            }
+                        }),
+                        this.setStatePromise({
+                            notebook: new_notebook,
+                        }),
+                    ])
+                } finally {
+                    pending_local_updates--
+                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                }
+            }).catch(console.error)
+            return last_update_notebook_task
         }
         this.update_notebook = update_notebook
 
@@ -833,11 +837,16 @@ adding the info you can find in the JS Console (F12)`)
 
     componentDidUpdate(old_props, old_state) {
         window.editor_state = this.state
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
+        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
+
+        const status = statusmap(this.state)
+        Object.entries(status).forEach((e) => {
+            document.body.classList.toggle(...e)
+        })
 
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
@@ -846,16 +855,6 @@ adding the info you can find in the JS Console (F12)`)
         document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
-        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
-        if (this.state.connected) {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#fff"
-            document.body.classList.remove("disconnected")
-        } else {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            document.body.classList.add("disconnected")
-        }
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             console.log(`bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done)
@@ -868,7 +867,10 @@ adding the info you can find in the JS Console (F12)`)
     }
 
     render() {
-        let { export_menu_open } = this.state
+        let { export_menu_open, notebook } = this.state
+
+        const status = statusmap(this.state)
+        const statusval = first_true_key(status)
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -885,20 +887,46 @@ adding the info you can find in the JS Console (F12)`)
                             <a href="./">
                                 <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
                             </a>
+                            <div class="flex_grow_1"></div>
                             <${FilePicker}
                                 client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
+                                value=${notebook.in_temp_dir ? "" : notebook.path}
                                 on_submit=${this.submit_file_change}
                                 suggest_new_file=${{
                                     base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: this.state.notebook.shortpath,
+                                    name: notebook.shortpath,
                                 }}
                                 placeholder="Save notebook..."
-                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
+                                button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
                             />
+                            <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
                                 <span></span>
                             </button>
+                            <div id="process_status">${
+                                statusval === "disconnected"
+                                    ? "Reconnecting..."
+                                    : statusval === "loading"
+                                    ? "Loading..."
+                                    : statusval === "process_restarting"
+                                    ? "Process exited — restarting..."
+                                    : statusval === "process_dead"
+                                    ? html`${"Process exited — "}
+                                          <a
+                                              href="#"
+                                              onClick=${() => {
+                                                  this.client.send(
+                                                      "restart_process",
+                                                      {},
+                                                      {
+                                                          notebook_id: notebook.notebook_id,
+                                                      }
+                                                  )
+                                              }}
+                                              >restart</a
+                                          >`
+                                    : null
+                            }</div>
                         </nav>
                     </header>
                     <${Main}>
@@ -914,15 +942,18 @@ adding the info you can find in the JS Console (F12)`)
                             </button>
                         </preamble>
                         <${Notebook}
-                            is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
-                            selected_cells=${this.state.selected_cells}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected}
                             last_created_cell=${this.state.last_created_cell}
+                            selected_cells=${this.state.selected_cells}
+                            is_initializing=${this.state.initializing}
+                            is_process_ready=${
+                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+                            }
+                            disable_input=${!this.state.connected}
                         />
 
                         <${DropRuler} 
@@ -976,10 +1007,9 @@ adding the info you can find in the JS Console (F12)`)
                     <footer>
                         <div id="info">
                             <form id="feedback" action="#" method="post">
-                                <a href="statistics-info">Statistics</a>
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                                 <span style="flex: 1"></span>
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
                             </form>

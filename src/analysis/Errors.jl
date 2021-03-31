@@ -8,8 +8,8 @@ struct CyclicReferenceError <: ReactivityError
 end
 
 function CyclicReferenceError(topology::NotebookTopology, cycle::Cell...)
-	referenced_during_cycle = union((topology[c].references for c in cycle)...)
-	assigned_during_cycle = union((topology[c].definitions ∪ topology[c].funcdefs_without_signatures for c in cycle)...)
+	referenced_during_cycle = union((topology.nodes[c].references for c in cycle)...)
+	assigned_during_cycle = union((topology.nodes[c].definitions ∪ topology.nodes[c].funcdefs_without_signatures for c in cycle)...)
 	
 	CyclicReferenceError(referenced_during_cycle ∩ assigned_during_cycle)
 end
@@ -20,7 +20,7 @@ end
 
 function MultipleDefinitionsError(topology::NotebookTopology, cell::Cell, all_definers)
 	competitors = setdiff(all_definers, [cell])
-	defs(c) = topology[c].funcdefs_without_signatures ∪ topology[c].definitions
+	defs(c) = topology.nodes[c].funcdefs_without_signatures ∪ topology.nodes[c].definitions
 	MultipleDefinitionsError(
 		union((defs(cell) ∩ defs(c) for c in competitors)...)
 	)
@@ -40,9 +40,14 @@ end
 
 "Send `error` to the frontend without backtrace. Runtime errors are handled by `WorkspaceManager.eval_format_fetch_in_workspace` - this function is for Reactivity errors."
 function relay_reactivity_error!(cell::Cell, error::Exception)
-	cell.last_run_timestamp = time()
-	cell.persist_js_state = false
+	body, mime = PlutoRunner.format_output(CapturedException(error, []))
+	cell.output = CellOutput(
+		body=body,
+		mime=mime,
+		rootassignee=nothing,
+		last_run_timestamp=time(),
+		persist_js_state=false,
+	)
+	cell.runtime = nothing
 	cell.errored = true
-	cell.runtime = missing
-	cell.output_repr, cell.repr_mime = PlutoRunner.format_output(CapturedException(error, []))
 end

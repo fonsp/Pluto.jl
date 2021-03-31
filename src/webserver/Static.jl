@@ -19,7 +19,8 @@ function asset_response(path)
     try
         @assert isfile(path)
         response = HTTP.Response(200, read(path, String))
-        push!(response.headers, "Content-Type" => string(mime_fromfilename(path)))
+        m = mime_fromfilename(path)
+        push!(response.headers, "Content-Type" => Base.istextmime(m) ? "$(m); charset=UTF-8" : string(m))
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
@@ -125,7 +126,7 @@ function http_router_for(session::ServerSession)
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
     HTTP.@register(router, "GET", "/ping", r -> HTTP.Response(200, "OK!"))
-    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(404,"") : HTTP.Response(200, session.binder_token))
+    HTTP.@register(router, "GET", "/possible_binder_token_please", r -> session.binder_token === nothing ? HTTP.Response(200,"") : HTTP.Response(200, session.binder_token))
     
     function try_launch_notebook_response(action::Function, path_or_url::AbstractString; title="", advice="", home_url="./", action_kwargs...)
         try
