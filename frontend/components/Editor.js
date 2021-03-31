@@ -804,6 +804,7 @@ patch: ${JSON.stringify(
                         ])
                     } finally {
                         pending_local_updates--
+                        this.setState({ update_is_ongoing: pending_local_updates > 0 })
                     }
                 })
                 .catch(console.error)

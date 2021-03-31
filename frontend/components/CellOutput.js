@@ -353,11 +353,17 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
         // @ts-ignore
-        window.CodeMirror.requireMode(language, function() {
-            window.CodeMirror.runMode(code_element.innerText, language, code_element)
-            code_element.classList.add("cm-s-default")
-        }, {path: function(language) {
-            return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
-        }})
+        window.CodeMirror.requireMode(
+            language,
+            function () {
+                window.CodeMirror.runMode(code_element.innerText, language, code_element)
+                code_element.classList.add("cm-s-default")
+            },
+            {
+                path: function (language) {
+                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
+                },
+            }
+        )
     }
 }
