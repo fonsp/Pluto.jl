@@ -418,6 +418,7 @@ end
 # HANDLE NEW BOND VALUES
 ###
 
+
 function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value::Bool=false, kwargs...)
 
     # filter out the bonds that don't need to be set
