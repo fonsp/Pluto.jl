@@ -221,6 +221,21 @@ import Distributed
     end
 
     
+    @testset "Mixed usings and reactivity" begin
+        notebook = Notebook([
+            Cell("a; using Dates"),
+            Cell("isleapyear(2)"),
+            Cell("a = 3; using LinearAlgebra"),
+        ])
+
+        notebook.topology = Pluto.updated_topology(notebook.topology, notebook, notebook.cells)
+        topo_order = Pluto.topological_order(notebook, notebook.topology, notebook.cells)
+        run_order = indexin(topo_order.runnable, notebook.cells)
+
+        @test run_order == [3, 1, 2]
+    end
+
+    
     @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),
