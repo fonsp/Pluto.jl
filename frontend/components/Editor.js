@@ -21,7 +21,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { request_binder, BinderPhase } from "../common/Binder.js"
+import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 
@@ -311,6 +311,7 @@ export class Editor extends Component {
                  *  */
 
                 for (const cell of new_cells) {
+                    //@ts-ignore
                     const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
                     cm.setValue(cell.code) // Update codemirror synchronously
                 }
@@ -520,6 +521,7 @@ export class Editor extends Component {
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            //@ts-ignore
             this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
         }
         this.on_disable_ui()
@@ -678,83 +680,6 @@ patch: ${JSON.stringify(
             fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`)
         } else {
             this.connect()
-        }
-
-        this.start_binder = async () => {
-            try {
-                fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.binder_phase = BinderPhase.requesting
-                        state.loading = true
-                        state.disable_ui = false
-                    })
-                )
-                const { binder_session_url, binder_session_token } = await request_binder(
-                    this.launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
-                )
-
-                console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
-
-                const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
-                window.shutdown_binder = this.shutdown_binder = () => {
-                    fetch(shutdown_url, { method: "POST" })
-                }
-
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.binder_phase = BinderPhase.created
-                        state.binder_session_url = binder_session_url
-                        state.binder_session_token = binder_session_token
-                    })
-                )
-                // fetch once to say hello
-                const with_token = (u) => {
-                    const new_url = new URL(u)
-                    new_url.searchParams.set("token", binder_session_token)
-                    return String(new_url)
-                }
-                await fetch(with_token(binder_session_url))
-
-                let open_response = null
-
-                const open_path = new URL("open", binder_session_url)
-                open_path.searchParams.set("path", this.launch_params.notebookfile)
-
-                console.log("open_path: ", String(open_path))
-                open_response = await fetch(with_token(String(open_path)), {
-                    method: "POST",
-                })
-
-                if (!open_response.ok) {
-                    const open_url = new URL("open", binder_session_url)
-                    open_url.searchParams.set("url", new URL(this.launch_params.notebookfile, window.location.href).href)
-
-                    console.log("open_url: ", String(open_url))
-                    open_response = await fetch(with_token(String(open_url)), {
-                        method: "POST",
-                    })
-                }
-
-                const new_notebook_id = await open_response.text()
-                console.info("notebook_id:", new_notebook_id)
-                console.log(this.state)
-
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.notebook.notebook_id = new_notebook_id
-                        state.binder_phase = BinderPhase.notebook_running
-                    })
-                )
-                console.log("Connecting ws")
-
-                this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
-            } catch (err) {
-                console.error("Failed to initialize binder!", err)
-                alert(
-                    "Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later."
-                )
-            }
         }
 
         // Not completely happy with this yet, but it will do for now - DRAL
@@ -995,10 +920,11 @@ patch: ${JSON.stringify(
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
-                if (this.shutdown_binder != null) {
+                //@ts-ignore
+                if (window.shutdown_binder != null) {
                     // hmmmm that would also shut down the binder if you refreshed, or if you navigate to the binder session main menu by clicking the pluto logo.
                     // Let's keep it disabled for now and let the timeout take care of shutting down the binder
-                    // this.shutdown_binder()
+                    // window.shutdown_binder()
                 }
                 // and don't prevent the unload
             }
@@ -1006,6 +932,7 @@ patch: ${JSON.stringify(
     }
 
     componentDidUpdate(old_props, old_state) {
+        //@ts-ignore
         window.editor_state = this.state
 
         document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
@@ -1130,7 +1057,8 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
-                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: this.launch_params })} notebookfile=${
             this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />

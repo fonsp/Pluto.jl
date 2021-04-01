@@ -1,3 +1,6 @@
+import immer from "../imports/immer.js"
+import { ws_address_from_base } from "./PlutoConnection.js"
+
 export const BinderPhase = {
     wait_for_user: 0,
     requesting: 0.4,
@@ -74,3 +77,74 @@ export const request_binder = (build_url) =>
             reject("Failed to open event source the mybinder.org. This probably means that the URL is invalid.")
         }
     })
+
+export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
+    try {
+        fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
+        await setStatePromise(
+            immer((state) => {
+                state.binder_phase = BinderPhase.requesting
+                state.loading = true
+                state.disable_ui = false
+            })
+        )
+        const { binder_session_url, binder_session_token } = await request_binder(launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/"))
+        const with_token = (u) => {
+            const new_url = new URL(u)
+            new_url.searchParams.set("token", binder_session_token)
+            return String(new_url)
+        }
+        console.log("Binder URL:", with_token(binder_session_url))
+
+        const shutdown_url = with_token(new URL("../api/shutdown", binder_session_url))
+        //@ts-ignore
+        window.shutdown_binder = this.shutdown_binder = () => {
+            fetch(shutdown_url, { method: "POST" })
+        }
+
+        await setStatePromise(
+            immer((state) => {
+                state.binder_phase = BinderPhase.created
+                state.binder_session_url = binder_session_url
+                state.binder_session_token = binder_session_token
+            })
+        )
+
+        // fetch index to say hello
+        await fetch(with_token(binder_session_url))
+
+        let open_response
+
+        for (const [p1, p2] of [
+            ["path", launch_params.notebookfile],
+            ["url", new URL(launch_params.notebookfile, window.location.href).href],
+        ]) {
+            const open_url = new URL("open", binder_session_url)
+            open_url.searchParams.set(p1, p2)
+
+            console.log(`open ${p1}:`, String(open_url))
+            open_response = await fetch(with_token(open_url), {
+                method: "POST",
+            })
+            if (open_response.ok) {
+                break
+            }
+        }
+
+        const new_notebook_id = await open_response.text()
+        console.info("notebook_id:", new_notebook_id)
+
+        await setStatePromise(
+            immer((state) => {
+                state.notebook.notebook_id = new_notebook_id
+                state.binder_phase = BinderPhase.notebook_running
+            })
+        )
+        console.log("Connecting ws")
+
+        connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+    } catch (err) {
+        console.error("Failed to initialize binder!", err)
+        alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.")
+    }
+}
