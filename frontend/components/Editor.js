@@ -2,7 +2,7 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, resolvable_promise, ws_address_from_base } from "../common/PlutoConnection.js"
+import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -19,12 +19,12 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
-import { pack, unpack } from "../common/MsgPack.js"
+import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { start_binder, BinderPhase, trailingslash } from "../common/Binder.js"
-import { hash_arraybuffer, hash_str, debounced_promises, base64_arraybuffer } from "../common/PlutoHash.js"
+import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
+import { slider_server_actions } from "../common/SliderServerClient.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -654,96 +654,14 @@ patch: ${JSON.stringify(
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        let real_actions, fake_actions
         const use_slider_server = this.launch_params.slider_server_url != null
-        if (use_slider_server) {
-            const notebookfile_hash = use_slider_server
-                ? fetch(this.launch_params.notebookfile)
-                      .then((r) => r.arrayBuffer())
-                      .then(hash_arraybuffer)
-                : null
-            use_slider_server && notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
-
-            const bond_connections = use_slider_server
-                ? notebookfile_hash
-                      .then((hash) => fetch(trailingslash(this.launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
-                      .then((r) => r.arrayBuffer())
-                      .then((b) => unpack(new Uint8Array(b)))
-                : null
-            use_slider_server && bond_connections.then((x) => console.log("Bond connections:", x))
-
-            const mybonds = {}
-            const bonds_to_set = {
-                current: new Set(),
-            }
-            const request_bond_response = debounced_promises(async () => {
-                const base = trailingslash(this.launch_params.slider_server_url)
-                const hash = await notebookfile_hash
-                const graph = await bond_connections
-
-                console.groupCollapsed("Requesting bonds", bonds_to_set.current)
-                if (bonds_to_set.current.size > 0) {
-                    const to_send = new Set(bonds_to_set.current)
-                    bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
-                    bonds_to_set.current = new Set()
-
-                    const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
-
-                    const packed = pack(mybonds_filtered)
-
-                    const url = base + "staterequest/" + encodeURIComponent(hash) + "/"
-
-                    try {
-                        const use_get = url.length + (packed.length * 4) / 3 + 20 < 8000
-
-                        const response = use_get
-                            ? await fetch(url + encodeURIComponent(await base64_arraybuffer(packed)), {
-                                  method: "GET",
-                              })
-                            : await fetch(url, {
-                                  method: "POST",
-                                  body: packed,
-                              })
-
-                        const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
-
-                        await apply_notebook_patches(
-                            patches,
-                            immer((state) => {
-                                ids_of_cells_that_ran.forEach((id) => {
-                                    state.cell_results[id] = this.original_state.cell_results[id]
-                                })
-                            })(this.state.notebook)
-                        )
-                        console.log("done!")
-                    } catch (e) {
-                        console.error(e)
-                    }
-                }
-
-                console.groupEnd()
-            })
-
-            real_actions = this.actions
-            fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
-            if (this.launch_params.slider_server_url != null) {
-                fake_actions = {
-                    ...fake_actions,
-                    set_bond: async (symbol, value, is_first_value) => {
-                        this.setState(
-                            immer((state) => {
-                                state.notebook.bonds[symbol] = { value: value }
-                            })
-                        )
-                        if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                            mybonds[symbol] = { value: value }
-                            bonds_to_set.current.add(symbol)
-                            await request_bond_response()
-                        }
-                    },
-                }
-            }
-        }
+        const { real_actions, fake_actions } = slider_server_actions({
+            setStatePromise: this.setStatePromise,
+            actions: this.actions,
+            launch_params: this.launch_params,
+            original_state: this.original_state,
+            patcher: (patches, fn) => apply_notebook_patches(patches, immer(fn)(this.state.notebook)),
+        })
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
