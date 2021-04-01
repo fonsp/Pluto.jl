@@ -1,6 +1,6 @@
 // mostly based on https://developers.google.com/web/fundamentals/primers/service-workers
 
-var CACHE_NAME = "pluto-cache-v1"
+var CACHE_NAME = "pluto-cache-v2"
 
 self.addEventListener("install", function (event) {
     console.log("Hello from service worker 👋")
@@ -20,36 +20,44 @@ function shouldCache(request) {
 }
 
 self.addEventListener("fetch", function (event) {
-    if (navigator.userAgent.includes("Firefox")) {
-        return
-    }
+    // if (navigator.userAgent.includes("Firefox")) {
+    //     return
+    // }
     if (!shouldCache(event.request)) {
         // console.log("skipping cache")
         return
     }
     event.respondWith(
-        caches.match(event.request).then(function (response) {
-            // Cache hit - return response
-            if (response) {
-                return response
-            }
-
-            return fetch(event.request).then(function (response) {
-                // Check if we received a valid response
-                if (!response || response.status !== 200 || response.type !== "basic") {
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.match(event.request).then(function (response) {
+                // Cache hit - return response
+                if (response) {
+                    // console.warn("CACHE HIT", event.request)
                     return response
                 }
 
-                // Clone the response. A response is a stream
-                // and because we want the browser to consume the response
-                // as well as the cache consuming the response, we need
-                // to clone it so we have two streams.
-                var responseToCache = response.clone()
-                caches.open(CACHE_NAME).then(function (cache) {
-                    cache.put(event.request, responseToCache)
-                })
+                // console.warn("Cache miss", event.request.url)
 
-                return response
+                return fetch(event.request).then(function (response) {
+                    // Check if we received a valid response
+                    if (!response || response.status !== 200) {
+                        return response
+                    }
+
+                    // console.warn("FETCHED")
+
+                    // Clone the response. A response is a stream
+                    // and because we want the browser to consume the response
+                    // as well as the cache consuming the response, we need
+                    // to clone it so we have two streams.
+                    var responseToCache = response.clone()
+
+                    // cache.add()
+
+                    cache.put(event.request, responseToCache)
+
+                    return response
+                })
             })
         })
     )
