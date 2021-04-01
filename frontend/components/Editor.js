@@ -655,8 +655,8 @@ patch: ${JSON.stringify(
             }).then(on_establish_connection)
 
         const use_slider_server = this.launch_params.slider_server_url != null
-        const real_actions = this.actions
-        const fake_actions = use_slider_server
+        this.real_actions = this.actions
+        this.fake_actions = use_slider_server
             ? slider_server_actions({
                   setStatePromise: this.setStatePromise,
                   actions: this.actions,
@@ -672,9 +672,6 @@ patch: ${JSON.stringify(
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-            if (use_slider_server) {
-                this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
-            }
         }
         this.on_disable_ui()
 
@@ -987,6 +984,8 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+        //@ts-ignore
+        this.actions = this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
     }
 
     render() {
