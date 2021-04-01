@@ -24,6 +24,7 @@ import { useDropHandler } from "./useDropHandler.js"
 import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
 import { hash_arraybuffer, hash_str, debounced_promises, base64_arraybuffer } from "../common/PlutoHash.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
+import { BinderButton } from "./BinderButton.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -172,7 +173,7 @@ export class Editor extends Component {
         super()
 
         const url_params = new URLSearchParams(window.location.search)
-        const launch_params = {
+        this.launch_params = {
             //@ts-ignore
             statefile: url_params.get("statefile") ?? window.pluto_statefile,
             //@ts-ignore
@@ -191,10 +192,10 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
 
-            disable_ui: launch_params.disable_ui,
-            static_preview: launch_params.statefile != null,
+            disable_ui: this.launch_params.disable_ui,
+            static_preview: this.launch_params.statefile != null,
             statefile_download_progress: null,
-            offer_binder: launch_params.notebookfile != null,
+            offer_binder: this.launch_params.notebookfile != null,
             binder_phase: null,
             binder_session_url: null,
             binder_session_token: null,
@@ -741,7 +742,7 @@ patch: ${JSON.stringify(
         this.original_state = null
         if (this.state.static_preview) {
             ;(async () => {
-                const r = await fetch(launch_params.statefile)
+                const r = await fetch(this.launch_params.statefile)
                 const data = await read_Uint8Array_with_progress(r, (progress) => {
                     this.setState({
                         statefile_download_progress: progress,
@@ -771,7 +772,7 @@ patch: ${JSON.stringify(
                     })
                 )
                 const { binder_session_url, binder_session_token } = await request_binder(
-                    launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
+                    this.launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
                 )
 
                 console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
@@ -799,7 +800,7 @@ patch: ${JSON.stringify(
                 let open_response = null
 
                 const open_path = new URL("open", binder_session_url)
-                open_path.searchParams.set("path", launch_params.notebookfile)
+                open_path.searchParams.set("path", this.launch_params.notebookfile)
 
                 console.log("open_path: ", String(open_path))
                 open_response = await fetch(with_token(String(open_path)), {
@@ -808,7 +809,7 @@ patch: ${JSON.stringify(
 
                 if (!open_response.ok) {
                     const open_url = new URL("open", binder_session_url)
-                    open_url.searchParams.set("url", new URL(launch_params.notebookfile, window.location.href).href)
+                    open_url.searchParams.set("url", new URL(this.launch_params.notebookfile, window.location.href).href)
 
                     console.log("open_url: ", String(open_url))
                     open_response = await fetch(with_token(String(open_url)), {
@@ -1210,14 +1211,9 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
-                    ${
-                        this.state.binder_phase === BinderPhase.wait_for_user
-                            ? html`<button id="launch_binder" onClick=${this.start_binder}>
-                                  <span>Run with </span
-                                  ><img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
-                              </button>`
-                            : null
-                    }
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${
+            this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
+        } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <preamble>
