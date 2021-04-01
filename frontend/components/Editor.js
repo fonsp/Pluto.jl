@@ -659,8 +659,9 @@ patch: ${JSON.stringify(
             setStatePromise: this.setStatePromise,
             actions: this.actions,
             launch_params: this.launch_params,
-            original_state: this.original_state,
-            patcher: (patches, fn) => apply_notebook_patches(patches, immer(fn)(this.state.notebook)),
+            get_original_state: () => this.original_state,
+            get_current_state: () => this.state.notebook,
+            apply_notebook_patches,
         })
 
         this.on_disable_ui = () => {

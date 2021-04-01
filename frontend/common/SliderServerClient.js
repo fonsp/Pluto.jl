@@ -3,7 +3,7 @@ import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./Plut
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 
-export const slider_server_actions = ({ setStatePromise, launch_params, actions, original_state, patcher }) => {
+export const slider_server_actions = ({ setStatePromise, launch_params, actions, patcher, get_original_state, get_current_state, apply_notebook_patches }) => {
     const notebookfile_hash = fetch(launch_params.notebookfile)
         .then((r) => r.arrayBuffer())
         .then(hash_arraybuffer)
@@ -52,11 +52,15 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
 
                 const { patches, ids_of_cells_that_ran } = unpack(new Uint8Array(await response.arrayBuffer()))
 
-                await patcher(patches, (state) => {
-                    ids_of_cells_that_ran.forEach((id) => {
-                        state.cell_results[id] = original_state.cell_results[id]
+                await apply_notebook_patches(
+                    patches,
+                    immer((state) => {
+                        const original = get_original_state()
+                        ids_of_cells_that_ran.forEach((id) => {
+                            state.cell_results[id] = original.cell_results[id]
+                        })
                     })
-                })
+                )(get_current_state())
                 console.log("done!")
             } catch (e) {
                 console.error(e)
