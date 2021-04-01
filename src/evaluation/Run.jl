@@ -1,4 +1,4 @@
-import REPL: ends_with_semicolon
+import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 
@@ -48,7 +48,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
 	# flush_send_notebook_changes_throttled, 
-	send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0/20; leading=false, trailing=true) do
+	send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	end
 	send_notebook_changes_throttled()
@@ -195,55 +195,50 @@ update_run!(args...) = update_save_run!(args...; save=false)
 
 
 """
-		throttled(f, timeout; leading=true, trailing=false)
+	throttled(f::Function, timeout::Real)
 
 Return a function that when invoked, will only be triggered at most once
 during `timeout` seconds.
-Normally, the throttled function will run as much as it can, without ever
-going more than once per `wait` duration; but if you'd like to disable the
-execution on the leading edge, pass `leading=false`. To enable execution on
-the trailing edge, pass `trailing=true`.
-Copied from FluxML
+The throttled function will run as much as it can, without ever
+going more than once per `wait` duration.
+Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
-Also added thread safety:
-That means that the function is called every ` t = timeout + (call duration) s` and that a function
-run "sequentially".
 """
-function throttled(f, timeout; leading=false, trailing=true)
+function throttled(f::Function, timeout::Real)
 	tlock = ReentrantLock()
-	iscoolnow = true
-	later = false
+	iscoolnow = false
+	run_later = false
 
 	function flush()
-		lock(tlock)
-		try
-			later = false
+		lock(tlock) do
+			run_later = false
 			f()
-		finally
-			unlock(tlock)
 		end
 	end
 
-	function throttled_f()
-		yield()
-		if iscoolnow
-			if leading
+	function schedule()
+		@async begin
+			sleep(timeout)
+			if run_later
 				flush()
-			else
-				later = true
 			end
+			iscoolnow = true
+		end
+	end
+	schedule()
+
+	function throttled_f()
+		if iscoolnow
 			iscoolnow = false
-			@async try
-				while (sleep(timeout); later)
-					flush()
-				end
-			finally
-				iscoolnow = true
-			end
-		elseif trailing
-			later = true
+			flush()
+			schedule()
+		else
+			run_later = true
 		end
 	end
 
 	return throttled_f, flush
 end
+
+
+
