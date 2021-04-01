@@ -654,26 +654,20 @@ patch: ${JSON.stringify(
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
 
-        const use_slider_server = this.launch_params.slider_server_url != null
         this.real_actions = this.actions
-        this.fake_actions = use_slider_server
-            ? slider_server_actions({
-                  setStatePromise: this.setStatePromise,
-                  actions: this.actions,
-                  launch_params: this.launch_params,
-                  get_original_state: () => this.original_state,
-                  get_current_state: () => this.state.notebook,
-                  apply_notebook_patches,
-              })
-            : nothing_actions({
-                  actions: this.actions,
-              })
-
-        this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-        }
-        this.on_disable_ui()
+        this.fake_actions =
+            this.launch_params.slider_server_url != null
+                ? slider_server_actions({
+                      setStatePromise: this.setStatePromise,
+                      actions: this.actions,
+                      launch_params: this.launch_params,
+                      apply_notebook_patches,
+                      get_original_state: () => this.original_state,
+                      get_current_state: () => this.state.notebook,
+                  })
+                : nothing_actions({
+                      actions: this.actions,
+                  })
 
         this.original_state = null
         if (this.state.static_preview) {
@@ -886,22 +880,22 @@ patch: ${JSON.stringify(
             }
         })
 
-        // Disabled because we don't want to accidentally delete cells
-        // or we can enable it with a prompt
-        // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
-        // document.addEventListener("cut", (e) => {
-        //     if (!in_textarea_or_input()) {
-        //         const serialized = this.serialize_selected()
-        //         if (serialized) {
-        //             navigator.clipboard
-        //                 .writeText(serialized)
-        //                 .then(() => this.delete_selected("Cut"))
-        //                 .catch((err) => {
-        //                     alert(`Error cutting cells: ${e}`)
-        //                 })
-        //         }
-        //     }
-        // })
+        document.addEventListener("cut", (e) => {
+            // Disabled because we don't want to accidentally delete cells
+            // or we can enable it with a prompt
+            // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
+            // if (!in_textarea_or_input()) {
+            //     const serialized = this.serialize_selected()
+            //     if (serialized) {
+            //         navigator.clipboard
+            //             .writeText(serialized)
+            //             .then(() => this.delete_selected("Cut"))
+            //             .catch((err) => {
+            //                 alert(`Error cutting cells: ${e}`)
+            //             })
+            //     }
+            // }
+        })
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
@@ -981,9 +975,9 @@ patch: ${JSON.stringify(
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
-        if (old_state.disable_ui !== this.state.disable_ui) {
-            this.on_disable_ui()
-        }
+        document.body.classList.toggle("disable_ui", this.state.disable_ui)
+        document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+
         //@ts-ignore
         this.actions = this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
     }
