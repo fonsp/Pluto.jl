@@ -149,6 +149,9 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
+
+	update_dependency_cache!(notebook)
+
 	save && save_notebook(notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_

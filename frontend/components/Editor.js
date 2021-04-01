@@ -128,6 +128,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef CellDependencyData
+ * @type {{
+ *  cell_id: string,
+ *  downstream_cells_map: { [symbol: string]: Array<string>},
+ *  upstream_cells_map: { [symbol: string]: Array<string>},
+ *  precedence_heuristic: number,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -136,8 +146,10 @@ const first_true_key = (obj) => {
  *  in_temp_dir: boolean,
  *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
- *  cell_results: { [uuid: string]: CellResultData }
+ *  cell_results: { [uuid: string]: CellResultData },
+ *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
+ *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
  */
@@ -154,7 +166,9 @@ const initial_notebook = () => ({
     process_status: "starting",
     cell_inputs: {},
     cell_results: {},
+    cell_dependencies: {},
     cell_order: [],
+    cell_execution_order: [],
     bonds: {},
 })
 
