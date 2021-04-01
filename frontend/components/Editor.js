@@ -514,17 +514,6 @@ export class Editor extends Component {
             },
         }
 
-        const real_actions = this.actions
-        const fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
-
-        this.on_disable_ui = () => {
-            document.body.classList.toggle("disable_ui", this.state.disable_ui)
-            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-            //@ts-ignore
-            this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
-        }
-        this.on_disable_ui()
-
         const apply_notebook_patches = (patches, old_state = undefined) =>
             new Promise((resolve) => {
                 if (patches.length !== 0) {
@@ -661,6 +650,17 @@ patch: ${JSON.stringify(
                 on_reconnect: on_reconnect,
                 connect_metadata: { notebook_id: this.state.notebook.notebook_id },
             }).then(on_establish_connection)
+
+        const real_actions = this.actions
+        const fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
+
+        this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            //@ts-ignore
+            this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
+        }
+        this.on_disable_ui()
 
         if (this.state.static_preview) {
             ;(async () => {
