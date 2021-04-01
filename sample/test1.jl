@@ -388,7 +388,7 @@ begin
 	struct B end
 	
 	function Base.show(io::IO, ::MIME"image/svg+xml", x::A)
-		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg")))
+		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/main/frontend/img/logo.svg")))
 	end
 	function Base.show(io::IO, ::MIME"image/jpg", x::B)
 		write(io, read(download("https://fonsp.com/img/doggoSmall.jpg?raw=true")))
@@ -574,7 +574,7 @@ ask("visual", md"Assignment to `低调又牛逼的类型系统` must be visible"
 
  $(ask("visual", md"Bigger and centered LaTeX math"))
 
-$$\frac{\pi^2}{2}$$
+``\frac{\pi^2}{2}``
 
  $(ask("visual broken", md"Heading & text in Arabic displayed right-to-left"))
 
@@ -588,7 +588,7 @@ $$\frac{\pi^2}{2}$$
 
  $(ask("visual broken", md"Identical symbols:"))
 
-$$\pi = π$$
+``\pi = π``
 
  $(ask("visual", md"Image **should not** fill page when widescreen, image **should** fill page when narrow screen"))
 

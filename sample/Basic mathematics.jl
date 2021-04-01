@@ -165,7 +165,7 @@ r = 6
 # ╔═╡ d9c31dfa-d470-11ea-23b2-838975b71f7c
 md"""## Writing your own math functions
 
-The area of a pizza is $$A = \pi r^2$$.  Lets try calculating the area of a pizza that has a radius of $r inches (**r = $6**).  Type **pi** to get the value of $$\pi$$ and **r^2** to get the radius squared.
+The area of a pizza is ``A = \pi r^2``.  Lets try calculating the area of a pizza that has a radius of $r inches (**r = $6**).  Type **pi** to get the value of ``\pi`` and **r^2** to get the radius squared.
 """
 
 # ╔═╡ 50f0f6d6-d471-11ea-304e-8f72e7ef9d7e
@@ -251,7 +251,7 @@ hint(md"A new cut will create the maximum number of _new slices_ if it intersect
 
 # ╔═╡ 8cada086-daa5-11ea-220c-0f660938b604
 if cuts5 == 5 + 4 + 3 + 2 + 1 + 1
-	hint(md"To get the maximum number of pieces with 5 cuts it will be $$5 + 4 + 3 + 2 + 1$$, plus 1 extra for the original pizza with 0 cuts. To find the formula of a sequence of numbers group them like so: $$5 + (4 + 1) + (3 + 2) = 3 * 5$$.")
+	hint(md"To get the maximum number of pieces with 5 cuts it will be ``5 + 4 + 3 + 2 + 1``, plus 1 extra for the original pizza with 0 cuts. To find the formula of a sequence of numbers group them like so: ``5 + (4 + 1) + (3 + 2) = 3 * 5``.")
 else
 	md""
 end

@@ -1,4 +1,5 @@
 import Pluto
+import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 using Test
 
@@ -44,7 +45,13 @@ true
 "
 function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
     expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+
+    original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
+    new_hash = Pluto.PlutoRunner.expr_hash(expr)
+    if original_hash != new_hash
+        error("\n== The expression explorer modified the expression. Don't do that! ==\n")
+    end
 
     # Anonymous function are given a random name, which looks like anon67387237861123
     # To make testing easier, we rename all such functions to anon
@@ -90,12 +97,11 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
 end
 
 function setcode(cell, newcode)
-    cell.parsedcode = nothing
     cell.code = newcode
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
-    haystack.errored && occursin(needle, haystack.output_repr[:msg])
+    haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."

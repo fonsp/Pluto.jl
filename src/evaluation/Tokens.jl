@@ -15,8 +15,13 @@ Base.wait(token::Token) = Base.put!(token.c, Base.take!(token.c))
 
 function withtoken(f::Function, token::Token)
     take!(token)
-    result = f()
-    put!(token)
+    result = try
+        f()
+    catch e
+        rethrow(e)
+    finally
+        put!(token)
+    end
     result
 end
 
@@ -53,9 +58,11 @@ mutable struct Promise{T}
 end
 
 "
-    Promise(f::Function)
+    Promise{T}(f::Function)
 
-Run `f` asynchronously, and return a `Promise` to its result. Call `wait` on the returned `Promise` to await the result.
+Run `f` asynchronously, and return a `Promise` to its result of type `T`. Call `fetch` on the returned `Promise` to await the result.
+
+It's just like a `Task`, except the result is a type parameter.
 
 # Example
 
@@ -65,7 +72,7 @@ julia> p = Promise() do
     1 + 2
 end;
 
-julia> wait(p)
+julia> fetch(p)
 3
 ```
 
@@ -79,7 +86,26 @@ function Promise{T}(f::Function) where T
 end
 Promise(f::Function) = Promise{Any}(f)
 
-function Base.wait(p::Promise{T})::T where T
+function Base.fetch(p::Promise{T})::T where T
 	wait(p.task)
 	something(p.value)
+end
+
+
+
+
+"Like @async except it prints errors to the terminal. 👶"
+macro asynclog(expr)
+	quote
+		@async begin
+			# because this is being run asynchronously, we need to catch exceptions manually
+			try
+				$(esc(expr))
+			catch ex
+				bt = stacktrace(catch_backtrace())
+				showerror(stderr, ex, bt)
+				rethrow(ex)
+			end
+		end
+	end
 end

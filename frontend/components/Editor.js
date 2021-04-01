@@ -2,8 +2,8 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
-import { create_counter_statistics, send_statistics_if_enabled, store_statistics_sample, finalize_statistics, init_feedback } from "../common/Feedback.js"
+import { create_pluto_connection, resolvable_promise, ws_address_from_base } from "../common/PlutoConnection.js"
+import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
@@ -19,7 +19,11 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
+import { start_binder, BinderPhase } from "../common/Binder.js"
+import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
+import { BinderButton } from "./BinderButton.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -78,6 +82,30 @@ const Main = ({ children }) => {
     return html`<main>${children}</main>`
 }
 
+const ProcessStatus = {
+    ready: "ready",
+    starting: "starting",
+    no_process: "no_process",
+    waiting_to_restart: "waiting_to_restart",
+}
+
+const statusmap = (state) => ({
+    disconnected: !(state.connected || state.initializing || state.static_preview),
+    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
+    process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    static_preview: state.static_preview,
+    binder: state.offer_binder || state.binder_phase != null,
+})
+
+const first_true_key = (obj) => {
+    for (let [k, v] of Object.entries(obj)) {
+        if (v) {
+            return k
+        }
+    }
+}
+
 /**
  * @typedef CellInputData
  * @type {{
@@ -106,38 +134,85 @@ const Main = ({ children }) => {
  */
 
 /**
+ * @typedef CellDependencyData
+ * @type {{
+ *  cell_id: string,
+ *  downstream_cells_map: { [symbol: string]: Array<string>},
+ *  upstream_cells_map: { [symbol: string]: Array<string>},
+ *  precedence_heuristic: number,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
+ *  notebook_id: string,
  *  path: string,
  *  shortpath: string,
  *  in_temp_dir: boolean,
- *  notebook_id: string,
+ *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
- *  cell_results: { [uuid: string]: CellResultData }
+ *  cell_results: { [uuid: string]: CellResultData },
+ *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
+ *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
  */
+
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
+const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
+
+/**
+ *
+ * @returns {NotebookData}
+ */
+const initial_notebook = () => ({
+    notebook_id: new URLSearchParams(window.location.search).get("id"),
+    path: default_path,
+    shortpath: "",
+    in_temp_dir: true,
+    process_status: "starting",
+    cell_inputs: {},
+    cell_results: {},
+    cell_dependencies: {},
+    cell_order: [],
+    cell_execution_order: [],
+    bonds: {},
+})
 
 export class Editor extends Component {
     constructor() {
         super()
 
+        const url_params = new URLSearchParams(window.location.search)
+        this.launch_params = {
+            //@ts-ignore
+            statefile: url_params.get("statefile") ?? window.pluto_statefile,
+            //@ts-ignore
+            notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+            //@ts-ignore
+            disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+            //@ts-ignore
+            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
+        }
+
         this.state = {
-            notebook: /** @type {NotebookData} */ ({
-                notebook_id: new URLSearchParams(window.location.search).get("id"),
-                path: default_path,
-                shortpath: "",
-                in_temp_dir: true,
-                cell_inputs: {},
-                cell_results: {},
-                cell_order: [],
-            }),
+            notebook: /** @type {NotebookData} */ initial_notebook(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+
+            disable_ui: this.launch_params.disable_ui,
+            static_preview: this.launch_params.statefile != null,
+            statefile_download_progress: null,
+            offer_binder: this.launch_params.notebookfile != null && this.launch_params.binder_url != null,
+            binder_phase: null,
+            binder_session_url: null,
+            binder_session_token: null,
             connected: false,
             initializing: true,
+
             moving_file: false,
             scroller: {
                 up: false,
@@ -151,12 +226,12 @@ export class Editor extends Component {
             update_is_ongoing: false,
         }
 
-        // statistics that are accumulated over time
-        this.counter_statistics = create_counter_statistics()
+        this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
+            //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
             set_local_cell: (cell_id, new_val, callback) => {
@@ -202,16 +277,13 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await new Promise((resolve) =>
-                    this.setState(
-                        immer((state) => {
-                            for (let cell of new_cells) {
-                                state.cell_inputs_local[cell.cell_id] = cell
-                            }
-                            state.last_created_cell = new_cells[0]?.cell_id
-                        }),
-                        resolve
-                    )
+                await this.setStatePromise(
+                    immer((state) => {
+                        for (let cell of new_cells) {
+                            state.cell_inputs_local[cell.cell_id] = cell
+                        }
+                        state.last_created_cell = new_cells[0]?.cell_id
+                    })
                 )
 
                 /**
@@ -238,6 +310,7 @@ export class Editor extends Component {
                  *  */
 
                 for (const cell of new_cells) {
+                    //@ts-ignore
                     const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
                     cm.setValue(cell.code) // Update codemirror synchronously
                 }
@@ -245,18 +318,16 @@ export class Editor extends Component {
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
                 const new_code = `${block_start}\n\t${cell.code.replace(/\n/g, "\n\t")}\n${block_end}`
-                await new Promise((resolve) => {
-                    this.setState(
-                        immer((state) => {
-                            state.cell_inputs_local[cell_id] = {
-                                ...cell,
-                                ...state.cell_inputs_local[cell_id],
-                                code: new_code,
-                            }
-                        }),
-                        resolve
-                    )
-                })
+
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.cell_inputs_local[cell_id] = {
+                            ...cell,
+                            ...state.cell_inputs_local[cell_id],
+                            code: new_code,
+                        }
+                    })
+                )
                 await this.actions.set_and_run_multiple([cell_id])
             },
             split_remote_cell: async (cell_id, boundaries, submit = false) => {
@@ -385,7 +456,6 @@ export class Editor extends Component {
             set_and_run_multiple: async (cell_ids) => {
                 // TODO: this function is called with an empty list sometimes, where?
                 if (cell_ids.length > 0) {
-                    this.counter_statistics.numEvals++
                     await update_notebook((notebook) => {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
@@ -399,7 +469,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id]) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    // state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -413,8 +483,6 @@ export class Editor extends Component {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
-
-                this.counter_statistics.numBondSets++
 
                 // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
@@ -434,7 +502,6 @@ export class Editor extends Component {
                 )
             },
             write_file: (cell_id, { file, name, type }) => {
-                this.counter_statistics.numFileDrops++
                 return this.client.send(
                     "write_file",
                     { file, name, type, path: this.state.notebook.path },
@@ -447,36 +514,102 @@ export class Editor extends Component {
             },
         }
 
+        const real_actions = this.actions
+        const fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
+
+        this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            //@ts-ignore
+            this.actions = this.state.disable_ui ? fake_actions : real_actions //heyo
+        }
+        this.on_disable_ui()
+
+        const apply_notebook_patches = (patches, old_state = undefined) =>
+            new Promise((resolve) => {
+                if (patches.length !== 0) {
+                    this.setState(
+                        immer((state) => {
+                            let new_notebook
+                            try {
+                                // To test this, uncomment the lines below:
+                                // if (Math.random() < 0.25) {
+                                //     throw new Error(`Error: [Immer] minified error nr: 15 '${patches?.[0]?.path?.join("/")}'    .`)
+                                // }
+                                new_notebook = applyPatches(old_state ?? state.notebook, patches)
+                            } catch (exception) {
+                                const failing_path = String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, ".")
+                                const path_value = _.get(this.state.notebook, failing_path, "Not Found")
+                                console.log(String(exception).match(".*'(.*)'.*")[1].replace(/\//gi, "."), failing_path, typeof failing_path)
+                                // The alert below is not catastrophic: the editor will try to recover.
+                                // Deactivating to be user-friendly!
+                                // alert(`Ooopsiee.`)
+                                console.error(
+                                    `#######################**************************########################
+PlutoError: StateOutOfSync: Failed to apply patches.
+Please report this: https://github.com/fonsp/Pluto.jl/issues adding the info below:
+failing path: ${failing_path}
+notebook previous value: ${path_value}
+patch: ${JSON.stringify(
+                                        patches?.find(({ path }) => path.join("") === failing_path),
+                                        null,
+                                        1
+                                    )}
+#######################**************************########################`,
+                                    exception
+                                )
+                                console.log("Trying to recover: Refetching notebook...")
+                                this.client.send(
+                                    "reset_shared_state",
+                                    {},
+                                    {
+                                        notebook_id: this.state.notebook.notebook_id,
+                                    },
+                                    false
+                                )
+                                return
+                            }
+
+                            if (DEBUG_DIFFING) {
+                                console.group("Update!")
+                                for (let patch of patches) {
+                                    console.group(`Patch :${patch.op}`)
+                                    console.log(patch.path)
+                                    console.log(patch.value)
+                                    console.groupEnd()
+                                }
+                                console.groupEnd()
+                            }
+
+                            let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
+                            if (cells_stuck_in_limbo.length !== 0) {
+                                console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
+                                new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
+                            }
+                            state.notebook = new_notebook
+                        }),
+                        resolve
+                    )
+                } else {
+                    resolve()
+                }
+            })
+
         // these are update message that are _not_ a response to a `send(*, *, {create_promise: true})`
         const on_update = (update, by_me) => {
             if (this.state.notebook.notebook_id === update.notebook_id) {
                 const message = update.message
                 switch (update.type) {
                     case "notebook_diff":
-                        if (message.patches.length !== 0) {
-                            this.setState(
-                                immer((state) => {
-                                    let new_notebook = applyPatches(state.notebook, message.patches)
-
-                                    if (DEBUG_DIFFING) {
-                                        console.group("Update!")
-                                        for (let patch of message.patches) {
-                                            console.group(`Patch :${patch.op}`)
-                                            console.log(patch.path)
-                                            console.log(patch.value)
-                                            console.groupEnd()
-                                        }
-                                        console.groupEnd()
-                                    }
-
-                                    let cells_stuck_in_limbo = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] == null)
-                                    if (cells_stuck_in_limbo.length !== 0) {
-                                        console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
-                                        new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
-                                    }
-                                    state.notebook = new_notebook
-                                })
-                            )
+                        if (message?.response?.from_reset) {
+                            console.log("Trying to reset state after failure")
+                            try {
+                                apply_notebook_patches(message.patches, initial_notebook())
+                            } catch (exception) {
+                                alert("Oopsie!! please refresh your browser and everything will be alright!")
+                            }
+                        } else if (message.patches.length !== 0) {
+                            apply_notebook_patches(message.patches)
                         }
                         break
                     case "log":
@@ -501,24 +634,13 @@ export class Editor extends Component {
 
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
 
-            this.setState({ initializing: false })
+            this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
             await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
-            setTimeout(() => {
-                init_feedback()
-                finalize_statistics(this.state, this.client, this.counter_statistics).then(store_statistics_sample)
-
-                setInterval(() => {
-                    finalize_statistics(this.state, this.client, this.counter_statistics).then((statistics) => {
-                        store_statistics_sample(statistics)
-                        send_statistics_if_enabled(statistics)
-                    })
-                    this.counter_statistics = create_counter_statistics()
-                }, 10 * 60 * 1000) // 10 minutes - statistics interval
-            }, 5 * 1000) // 5 seconds - load feedback a little later for snappier UI
+            setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -530,79 +652,103 @@ export class Editor extends Component {
         }
 
         this.client = {}
-        create_pluto_connection({
-            on_unrequested_update: on_update,
-            on_connection_status: on_connection_status,
-            on_reconnect: on_reconnect,
-            connect_metadata: { notebook_id: this.state.notebook.notebook_id },
-        }).then(on_establish_connection)
+
+        this.connect = (ws_address = undefined) =>
+            create_pluto_connection({
+                ws_address: ws_address,
+                on_unrequested_update: on_update,
+                on_connection_status: on_connection_status,
+                on_reconnect: on_reconnect,
+                connect_metadata: { notebook_id: this.state.notebook.notebook_id },
+            }).then(on_establish_connection)
+
+        if (this.state.static_preview) {
+            ;(async () => {
+                const r = await fetch(this.launch_params.statefile)
+                const data = await read_Uint8Array_with_progress(r, (progress) => {
+                    this.setState({
+                        statefile_download_progress: progress,
+                    })
+                })
+                this.setState({
+                    notebook: unpack(data),
+                    initializing: false,
+                    binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+                })
+            })()
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`).catch(() => {})
+        } else {
+            this.connect()
+        }
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
         this.notebook_is_idle = () =>
             !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
 
-        console.log("asdf")
+        let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
-        let update_notebook = async (mutate_fn) => {
-            // if (this.state.initializing) {
-            //     console.error("Update notebook done during initializing, strange")
-            //     return
-            // }
+        let update_notebook = (mutate_fn) => {
+            last_update_notebook_task = last_update_notebook_task
+                .then(async () => {
+                    // if (this.state.initializing) {
+                    //     console.error("Update notebook done during initializing, strange")
+                    //     return
+                    // }
 
-            let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
-                mutate_fn(notebook)
-            })
+                    let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
+                        mutate_fn(notebook)
+                    })
 
-            // If "notebook is not idle" I seperate and store the bonds updates,
-            // to send when the notebook is idle. This delays the updating of the bond for performance,
-            // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
-            // this will no longer be necessary
-            if (!this.notebook_is_idle()) {
-                let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
-                changes = changes.filter((x) => x.path[0] !== "bonds")
-            }
+                    // If "notebook is not idle" I seperate and store the bonds updates,
+                    // to send when the notebook is idle. This delays the updating of the bond for performance,
+                    // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
+                    // this will no longer be necessary
+                    if (!this.notebook_is_idle()) {
+                        let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                        this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                        changes = changes.filter((x) => x.path[0] !== "bonds")
+                    }
 
-            if (DEBUG_DIFFING) {
-                try {
-                    let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                    console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-                } catch (error) {}
-            }
-            if (changes.length === 0) {
-                return
-            }
+                    if (DEBUG_DIFFING) {
+                        try {
+                            let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                            console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+                        } catch (error) {}
+                    }
+                    if (changes.length === 0) {
+                        return
+                    }
 
-            for (let change of changes) {
-                if (change.path.some((x) => typeof x === "number")) {
-                    throw new Error("This sounds like it is editting an array!!!")
-                }
-            }
-            pending_local_updates++
-            this.setState({ update_is_ongoing: pending_local_updates > 0 })
-            try {
-                await Promise.all([
-                    this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
-                        if (response.message.response.update_went_well === "👎") {
-                            // We only throw an error for functions that are waiting for this
-                            // Notebook state will already have the changes reversed
-                            throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                    for (let change of changes) {
+                        if (change.path.some((x) => typeof x === "number")) {
+                            throw new Error("This sounds like it is editing an array...")
                         }
-                    }),
-                    new Promise((resolve) => {
-                        this.setState(
-                            {
+                    }
+                    pending_local_updates++
+                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                    try {
+                        await Promise.all([
+                            this.client
+                                .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
+                                .then((response) => {
+                                    if (response.message.response.update_went_well === "👎") {
+                                        // We only throw an error for functions that are waiting for this
+                                        // Notebook state will already have the changes reversed
+                                        throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                                    }
+                                }),
+                            this.setStatePromise({
                                 notebook: new_notebook,
-                            },
-                            resolve
-                        )
-                    }),
-                ])
-            } finally {
-                pending_local_updates--
-                this.setState({ update_is_ongoing: pending_local_updates > 0 })
-            }
+                            }),
+                        ])
+                    } finally {
+                        pending_local_updates--
+                        this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                    }
+                })
+                .catch(console.error)
+            return last_update_notebook_task
         }
         this.update_notebook = update_notebook
 
@@ -699,6 +845,18 @@ export class Editor extends Component {
                 )
                 e.preventDefault()
             }
+
+            if (this.state.disable_ui && this.state.offer_binder) {
+                // const code = e.key.charCodeAt(0)
+                if (e.key === "Enter" || e.key.length === 1) {
+                    if (!document.body.classList.contains("wiggle_binder")) {
+                        document.body.classList.add("wiggle_binder")
+                        setTimeout(() => {
+                            document.body.classList.remove("wiggle_binder")
+                        }, 1000)
+                    }
+                }
+            }
         })
 
         document.addEventListener("copy", (e) => {
@@ -731,6 +889,7 @@ export class Editor extends Component {
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
+            console.log("paste", topaste)
             if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
@@ -760,18 +919,30 @@ export class Editor extends Component {
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
+                //@ts-ignore
+                if (window.shutdown_binder != null) {
+                    // hmmmm that would also shut down the binder if you refreshed, or if you navigate to the binder session main menu by clicking the pluto logo.
+                    // Let's keep it disabled for now and let the timeout take care of shutting down the binder
+                    // window.shutdown_binder()
+                }
                 // and don't prevent the unload
             }
         })
     }
 
     componentDidUpdate(old_props, old_state) {
+        //@ts-ignore
         window.editor_state = this.state
-        document.title = "🎈 " + this.state.notebook.shortpath + " ⚡ Pluto.jl ⚡"
 
+        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
+
+        const status = statusmap(this.state)
+        Object.entries(status).forEach((e) => {
+            document.body.classList.toggle(...e)
+        })
 
         const any_code_differs = this.state.notebook.cell_order.some(
             (cell_id) =>
@@ -780,16 +951,6 @@ export class Editor extends Component {
         document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
-        document.body.classList.toggle("loading", this.state.initializing || this.state.moving_file)
-        if (this.state.connected) {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#fff"
-            document.body.classList.remove("disconnected")
-        } else {
-            // @ts-ignore
-            document.querySelector("meta[name=theme-color]").content = "#DEAF91"
-            document.body.classList.add("disconnected")
-        }
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
@@ -798,10 +959,27 @@ export class Editor extends Component {
                 applyPatches(notebook, bonds_patches)
             })
         }
+
+        if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
+            const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
+            console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
+        }
+
+        if (old_state.disable_ui !== this.state.disable_ui) {
+            this.on_disable_ui()
+        }
     }
 
     render() {
-        let { export_menu_open } = this.state
+        let { export_menu_open, notebook } = this.state
+
+        const status = statusmap(this.state)
+        const statusval = first_true_key(status)
+
+        const notebook_export_url =
+            this.state.binder_session_url == null
+                ? `./notebookfile?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -811,29 +989,81 @@ export class Editor extends Component {
                         <${ExportBanner}
                             pluto_version=${this.client?.version_info?.pluto}
                             notebook=${this.state.notebook}
+                            notebook_export_url=${notebook_export_url}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
+                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
+                        ${
+                            status.binder
+                                ? html`<div id="binder_spinners">
+                                      <binder-spinner id="ring_1"></binder-spinner>
+                                      <binder-spinner id="ring_2"></binder-spinner>
+                                      <binder-spinner id="ring_3"></binder-spinner>
+                                  </div>`
+                                : null
+                        }
                         <nav id="at_the_top">
-                            <a href="./">
-                                <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
+                            <a href=${
+                                this.state.static_preview || this.state.binder_phase != null
+                                    ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
+                                    : "./"
+                            }>
+                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
-                            <${FilePicker}
-                                client=${this.client}
-                                value=${this.state.notebook.in_temp_dir ? "" : this.state.notebook.path}
-                                on_submit=${this.submit_file_change}
-                                suggest_new_file=${{
-                                    base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: this.state.notebook.shortpath,
-                                }}
-                                placeholder="Save notebook..."
-                                button_label=${this.state.notebook.in_temp_dir ? "Choose" : "Move"}
-                            />
-                            <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
-                                <span></span>
-                            </button>
+                            <div class="flex_grow_1"></div>
+                            ${
+                                this.state.binder_phase === BinderPhase.ready
+                                    ? html`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    : html`<${FilePicker}
+                                          client=${this.client}
+                                          value=${notebook.in_temp_dir ? "" : notebook.path}
+                                          on_submit=${this.submit_file_change}
+                                          suggest_new_file=${{
+                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              name: notebook.shortpath,
+                                          }}
+                                          placeholder="Save notebook..."
+                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
+                                      />`
+                            }
+                            <div class="flex_grow_2"></div>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
+                            <div id="process_status">${
+                                status.binder && status.loading
+                                    ? "Loading binder..."
+                                    : statusval === "disconnected"
+                                    ? "Reconnecting..."
+                                    : statusval === "loading"
+                                    ? "Loading..."
+                                    : statusval === "process_restarting"
+                                    ? "Process exited — restarting..."
+                                    : statusval === "process_dead"
+                                    ? html`${"Process exited — "}
+                                          <a
+                                              href="#"
+                                              onClick=${() => {
+                                                  this.client.send(
+                                                      "restart_process",
+                                                      {},
+                                                      {
+                                                          notebook_id: notebook.notebook_id,
+                                                      }
+                                                  )
+                                              }}
+                                              >restart</a
+                                          >`
+                                    : null
+                            }</div>
                         </nav>
                     </header>
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: this.launch_params })} notebookfile=${
+            this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
+        } />
+                    <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <preamble>
                             <button
@@ -847,45 +1077,50 @@ export class Editor extends Component {
                             </button>
                         </preamble>
                         <${Notebook}
-                            is_initializing=${this.state.initializing}
                             notebook=${this.state.notebook}
-                            selected_cells=${this.state.selected_cells}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
-                            disable_input=${!this.state.connected}
+                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
+                            selected_cells=${this.state.selected_cells}
+                            is_initializing=${this.state.initializing}
+                            is_process_ready=${
+                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
+                            }
+                            disable_input=${!this.state.connected}
                         />
-
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells} 
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
-                            }} 
+                            }}
                             serialize_selected=${this.serialize_selected}
                         />
-
-                        <${SelectionArea}
-                            actions=${this.actions}
-                            cell_order=${this.state.notebook.cell_order}
-                            selected_cell_ids=${this.state.selected_cell_ids}
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }}
-                            on_selection=${(selected_cell_ids) => {
-                                // @ts-ignore
-                                if (
-                                    selected_cell_ids.length !== this.state.selected_cells ||
-                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                ) {
-                                    this.setState({
-                                        selected_cells: selected_cell_ids,
-                                    })
-                                }
-                            }}
-                        />
+                        ${
+                            this.state.disable_ui ||
+                            html`<${SelectionArea}
+                                actions=${this.actions}
+                                cell_order=${this.state.notebook.cell_order}
+                                selected_cell_ids=${this.state.selected_cell_ids}
+                                set_scroller=${(enabled) => {
+                                    this.setState({ scroller: enabled })
+                                }}
+                                on_selection=${(selected_cell_ids) => {
+                                    // @ts-ignore
+                                    if (
+                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                    ) {
+                                        this.setState({
+                                            selected_cells: selected_cell_ids,
+                                        })
+                                    }
+                                }}
+                            />`
+                        }
                     </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}
@@ -909,10 +1144,9 @@ export class Editor extends Component {
                     <footer>
                         <div id="info">
                             <form id="feedback" action="#" method="post">
-                                <a href="statistics-info">Statistics</a>
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki">FAQ</a>
+                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
                                 <span style="flex: 1"></span>
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl">Pluto.jl</a> better?</label>
+                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
                                 <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
                                 <button>Send</button>
                             </form>

@@ -6,6 +6,6 @@ build
 Manifest.toml
 
 test/frontend/node_modules
-test/frontend/artefacts/*
-!test/frontend/artefacts/.gitkeep
+test/frontend/artifacts/*
+!test/frontend/artifacts/.gitkeep
 .DS_Store

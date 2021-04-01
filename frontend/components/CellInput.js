@@ -44,6 +44,7 @@ export const CellInput = ({
     focus_after_creation,
     cm_forced_focus,
     set_cm_forced_focus,
+    show_input,
     on_submit,
     on_delete,
     on_add_after,
@@ -60,8 +61,9 @@ export const CellInput = ({
     const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
-    const change_handler_ref = useRef(null)
-    change_handler_ref.current = on_change
+    const on_change_ref = useRef(null)
+    on_change_ref.current = on_change
+    const disable_input_ref = useRef(disable_input)
 
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
@@ -237,6 +239,9 @@ export const CellInput = ({
         keys["Alt-Down"] = () => alt_move(+1)
 
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
+            if (disable_input_ref.current) {
+                return
+            }
             const BACKSPACE_CELL_DELETE_COOLDOWN = 300
             const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
 
@@ -260,6 +265,9 @@ export const CellInput = ({
             }
         }
         keys["Delete"] = keys["Ctrl-Delete"] = () => {
+            if (disable_input_ref.current) {
+                return
+            }
             if (cm.lineCount() === 1 && cm.getValue() === "") {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
@@ -429,7 +437,7 @@ export const CellInput = ({
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
-            change_handler_ref.current(new_value)
+            on_change_ref.current(new_value)
         })
 
         cm.on("blur", () => {
@@ -442,11 +450,15 @@ export const CellInput = ({
             }, 100)
         })
 
-        cm.on("paste", (e) => {
+        cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
             if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                pluto_actions.add_deserialized_cells(topaste, -1)
+                e.stopImmediatePropagation()
+                e.preventDefault()
                 e.codemirrorIgnore = true
             }
+            e.stopPropagation()
         })
 
         if (focus_after_creation) {
@@ -467,6 +479,7 @@ export const CellInput = ({
     // }, [remote_code.timestamp])
 
     useEffect(() => {
+        disable_input_ref.current = disable_input
         cm_ref.current.options.disableInput = disable_input
     }, [disable_input])
 
@@ -480,6 +493,13 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus])
+
+    // fix a visual glitch where the input is only 5px high after unfolding the cell
+    useEffect(() => {
+        if (show_input) {
+            cm_ref.current.refresh()
+        }
+    }, [show_input])
 
     // TODO effect hook for disable_input?
 
