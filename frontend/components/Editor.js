@@ -24,7 +24,7 @@ import { useDropHandler } from "./useDropHandler.js"
 import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
-import { slider_server_actions } from "../common/SliderServerClient.js"
+import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -655,14 +655,19 @@ patch: ${JSON.stringify(
             }).then(on_establish_connection)
 
         const use_slider_server = this.launch_params.slider_server_url != null
-        const { real_actions, fake_actions } = slider_server_actions({
-            setStatePromise: this.setStatePromise,
-            actions: this.actions,
-            launch_params: this.launch_params,
-            get_original_state: () => this.original_state,
-            get_current_state: () => this.state.notebook,
-            apply_notebook_patches,
-        })
+        const real_actions = this.actions
+        const fake_actions = use_slider_server
+            ? slider_server_actions({
+                  setStatePromise: this.setStatePromise,
+                  actions: this.actions,
+                  launch_params: this.launch_params,
+                  get_original_state: () => this.original_state,
+                  get_current_state: () => this.state.notebook,
+                  apply_notebook_patches,
+              })
+            : nothing_actions({
+                  actions: this.actions,
+              })
 
         this.on_disable_ui = () => {
             document.body.classList.toggle("disable_ui", this.state.disable_ui)

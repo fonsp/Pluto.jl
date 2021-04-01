@@ -3,7 +3,9 @@ import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./Plut
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
 
-export const slider_server_actions = ({ setStatePromise, launch_params, actions, patcher, get_original_state, get_current_state, apply_notebook_patches }) => {
+export const nothing_actions = ({ actions }) => Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
+
+export const slider_server_actions = ({ setStatePromise, launch_params, actions, get_original_state, get_current_state, apply_notebook_patches }) => {
     const notebookfile_hash = fetch(launch_params.notebookfile)
         .then((r) => r.arrayBuffer())
         .then(hash_arraybuffer)
@@ -70,24 +72,19 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         console.groupEnd()
     })
 
-    let real_actions = actions
-    let fake_actions = Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
-    if (launch_params.slider_server_url != null) {
-        fake_actions = {
-            ...fake_actions,
-            set_bond: async (symbol, value, is_first_value) => {
-                setStatePromise(
-                    immer((state) => {
-                        state.notebook.bonds[symbol] = { value: value }
-                    })
-                )
-                if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                    mybonds[symbol] = { value: value }
-                    bonds_to_set.current.add(symbol)
-                    await request_bond_response()
-                }
-            },
-        }
+    return {
+        ...nothing_actions({ actions }),
+        set_bond: async (symbol, value, is_first_value) => {
+            setStatePromise(
+                immer((state) => {
+                    state.notebook.bonds[symbol] = { value: value }
+                })
+            )
+            if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
+                mybonds[symbol] = { value: value }
+                bonds_to_set.current.add(symbol)
+                await request_bond_response()
+            }
+        },
     }
-    return { real_actions, fake_actions }
 }
