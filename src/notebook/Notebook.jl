@@ -27,6 +27,7 @@ Base.@kwdef mutable struct Notebook
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
+    _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
@@ -47,6 +48,7 @@ Base.@kwdef mutable struct Notebook
     process_status::String=ProcessStatus.starting
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
     wants_to_interrupt::Bool=false
 end
 
@@ -110,16 +112,8 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    # TODO: this can be optimised by caching the topological order:
-    # maintain cache with ordered UUIDs
-    # whenever a run_reactive! is done, move the found cells **down** until they are in one group, and order them topologically within that group. Errable cells go to the bottom.
-
-    # the next call took 2ms for a small-medium sized notebook: (so not too bad)
-    # 15 ms for a massive notebook - 120 cells, 800 lines
-    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
-
-    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
-
+    cells_ordered = collect(topological_order(notebook))
+    
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
         print(io, c.code)
@@ -293,6 +287,8 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
+    update_dependency_cache!(loaded)
+
     save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if run_notebook_on_load

@@ -58,13 +58,13 @@ main {
 /* min-width: 731px+ */
 
 @media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-left: 0px;
         align-self: flex-start;
     }
 }
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
-    main {
+    body:not(.disable_ui) main {
         margin-right: 500px;
         align-self: flex-end;
     }
@@ -462,6 +462,9 @@ aside#export button.toggle_export {
     margin-left: auto;
     height: 60px;
 }
+body.static_preview button.toggle_export {
+    display: none;
+}
 
 nav#at_the_top h1 {
     color: black;
@@ -477,6 +480,7 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
+    z-index: 10;
 }
 
 nav#at_the_top > * {
@@ -599,7 +603,7 @@ li.dir.CodeMirror-hint:before {
     color: black;
 }
 
-@media screen and (any-pointer: fine) {
+@media (any-pointer: fine) {
     nav#at_the_top > pluto-filepicker .CodeMirror {
         border: 2px solid transparent;
         border-right: none;
@@ -620,8 +624,20 @@ li.dir.CodeMirror-hint:before {
     }
 }
 
+body.binder > header > nav#at_the_top > pluto-filepicker > * {
+    display: none;
+}
+body.binder > header > nav#at_the_top > pluto-filepicker > a {
+    display: block;
+    font-size: 16px;
+    font-family: JuliaMono, monospace;
+    opacity: 0.8;
+    text-decoration: none;
+}
+
 body.nbpkg_restart_recommended > header,
 body.nbpkg_restart_required > header,
+body.binder.loading > header,
 body.process_dead > header,
 body.disconnected > header {
     position: sticky;
@@ -640,10 +656,13 @@ body.process_dead > header {
     background-color: rgb(230 88 46 / 38%);
 }
 body.loading > header {
-    background-color: hsla(290, 10%, 59%, 0.14);
+    background-color: hsla(290, 10%, 80%, 0.5);
 }
 body.disconnected > header {
     background-color: rgba(255, 169, 114, 0.56);
+}
+body.binder.loading > header {
+    background-color: hsl(51deg 64% 90% / 50%);
 }
 
 nav#at_the_top > #process_status {
@@ -659,6 +678,25 @@ nav#at_the_top > #process_status {
 
 nav#at_the_top > #process_status:empty {
     display: none;
+}
+
+loading-bar {
+    height: 6px;
+    width: 10vw;
+    background-color: #b1c9dd;
+    position: fixed;
+    top: 0px;
+    display: block;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.binder.loading #binder_spinners {
+    opacity: 0.25;
+}
+body.binder.loading loading-bar {
+    opacity: 1;
 }
 
 /* PREAMBLE */
@@ -943,19 +981,19 @@ pluto-cell.activate_animation pluto-trafficlight::after {
 }
 
 /* in ascending order of severity: */
-
-pluto-cell.code_folded > pluto-trafficlight {
+/* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
+body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
     background: none;
 }
 
 @media screen and (any-pointer: fine) {
-    pluto-cell:hover > pluto-trafficlight {
+    body:not(.disable_ui) pluto-cell:hover > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
         transition: background 0.05s ease-in;
     }
 }
 
-pluto-cell:focus-within > pluto-trafficlight {
+body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
@@ -963,25 +1001,25 @@ pluto-cell:focus-within > pluto-trafficlight {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
-pluto-cell.selected > pluto-trafficlight {
+body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
     background-clip: content-box;
 }
 
-pluto-cell.code_differs > pluto-trafficlight {
+body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
     background-clip: content-box;
 }
 
-pluto-cell.errored > pluto-trafficlight {
+body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
     background-clip: content-box;
 }
 
-pluto-cell.queued > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
     background-clip: content-box;
     /* [1]
@@ -996,14 +1034,14 @@ pluto-cell.queued > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.running > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.2) 8px, rgba(0, 0, 0, 0.2) 16px);
     background-clip: content-box;
     opacity: 0.99; /* [1] */
     background-size: 4px var(--patternHeight);
 }
 
-pluto-cell.queued.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.queued.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(
         -45deg,
         hsla(0, 70%, 80%, 0.7),
@@ -1016,7 +1054,7 @@ pluto-cell.queued.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.running.errored > pluto-trafficlight::after {
+body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, hsla(0, 100%, 80%, 1), hsla(0, 100%, 80%, 1) 8px, hsla(0, 70%, 80%, 0.7) 8px, hsla(0, 70%, 80%, 0.7) 16px);
     background-clip: content-box;
     opacity: 0.99; /* [1] */
@@ -1387,7 +1425,7 @@ dropruler {
     z-index: 5;
 }
 
-@media screen and (min-width: 500px) {
+@media (min-width: 500px) {
     #helpbox-wrapper {
         display: block;
     }

@@ -1,5 +1,6 @@
 include("./helpers.jl")
 include("./Notebook.jl")
+include("./DependencyCache.jl")
 include("./WorkspaceManager.jl")
 include("./RichOutput.jl")
 include("./React.jl")
@@ -9,6 +10,7 @@ include("./MethodSignatures.jl")
 include("./Configuration.jl")
 include("./Analysis.jl")
 include("./Firebasey.jl")
+include("./Throttled.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook

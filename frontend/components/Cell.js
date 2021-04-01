@@ -132,8 +132,10 @@ export const Cell = ({
                 show_input=${show_input}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
-                    set_waiting_to_run(true)
-                    pluto_actions.set_and_run_multiple([cell_id])
+                    if (!disable_input) {
+                        set_waiting_to_run(true)
+                        pluto_actions.set_and_run_multiple([cell_id])
+                    }
                 }}
                 on_delete=${() => {
                     let cells_to_delete = selected ? selected_cells : [cell_id]
@@ -144,10 +146,12 @@ export const Cell = ({
                 }}
                 on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
                 on_change=${(new_code) => {
-                    if (code_folded && cm_forced_focus != null) {
-                        pluto_actions.fold_remote_cell(cell_id, false)
+                    if (!disable_input) {
+                        if (code_folded && cm_forced_focus != null) {
+                            pluto_actions.fold_remote_cell(cell_id, false)
+                        }
+                        on_change(new_code)
                     }
-                    on_change(new_code)
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}

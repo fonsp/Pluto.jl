@@ -1,4 +1,4 @@
-import REPL: ends_with_semicolon
+import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 
@@ -47,7 +47,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 
 	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-	send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
+	# flush_send_notebook_changes_throttled, 
+	send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	end
 	send_notebook_changes_throttled()
@@ -90,7 +91,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	
 	notebook.wants_to_interrupt = false
-	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+	flush_notebook_changes()
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
@@ -148,6 +149,9 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
+
+	update_dependency_cache!(notebook)
+
 	save && save_notebook(notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
@@ -223,20 +227,51 @@ update_run!(args...) = update_save_run!(args...; save=false)
 
 
 
-"Create a throttled function, which calls the given function `f` at most once per given interval `max_delay`.
+"""
+	throttled(f::Function, timeout::Real)
 
-It is _leading_ (`f` is invoked immediately) and _not trailing_ (calls during a cooldown period are ignored).
+Return a function that when invoked, will only be triggered at most once
+during `timeout` seconds.
+The throttled function will run as much as it can, without ever
+going more than once per `wait` duration.
+Inspired by FluxML
+See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
+"""
+function throttled(f::Function, timeout::Real)
+	tlock = ReentrantLock()
+	iscoolnow = false
+	run_later = false
 
-An optional third argument sets an initial cooldown period, default is `0`. With a non-zero value, the throttle is no longer _leading_."
-function throttled(f::Function, max_delay::Real, initial_offset::Real=0)
-	local last_run_at = time() - max_delay + initial_offset
-	# return f
-	() -> begin
-		now = time()
-		if now - last_run_at >= max_delay
+	function flush()
+		lock(tlock) do
+			run_later = false
 			f()
-			last_run_at = now
 		end
-		nothing
 	end
+
+	function schedule()
+		@async begin
+			sleep(timeout)
+			if run_later
+				flush()
+			end
+			iscoolnow = true
+		end
+	end
+	schedule()
+
+	function throttled_f()
+		if iscoolnow
+			iscoolnow = false
+			flush()
+			schedule()
+		else
+			run_later = true
+		end
+	end
+
+	return throttled_f, flush
 end
+
+
+
