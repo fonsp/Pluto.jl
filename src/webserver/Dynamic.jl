@@ -146,6 +146,7 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+
 """
 Update the local state of all clients connected to this notebook.
 """

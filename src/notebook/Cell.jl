@@ -13,9 +13,6 @@ Base.@kwdef struct CellOutput
     persist_js_state::Bool=false
 end
 
-"""
-information to display cell dependencies
-"""
 struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a circular dependency of the structs
     downstream_cells_map::Dict{Symbol,Vector{T}}
     upstream_cells_map::Dict{Symbol,Vector{T}}

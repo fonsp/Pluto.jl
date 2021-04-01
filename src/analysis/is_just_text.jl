@@ -1,4 +1,3 @@
-
 const md_and_friends = [Symbol("@md_str"), Symbol("@html_str"), :getindex]
 
 """Does the cell only contain md"..." and html"..."?
