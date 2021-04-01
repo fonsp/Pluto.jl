@@ -59,6 +59,10 @@ end
 
 topological_order(notebook:: Notebook) = topological_order(notebook, notebook.topology, notebook.cells)
 
+
+Base.collect(notebook_topo_order:: TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
+
+
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
 end

@@ -103,7 +103,7 @@ function save_notebook(io, notebook::Notebook)
     println(io)
 
     cells_ordered = if notebook.cell_execution_order === nothing
-        get_ordered_cells(notebook)
+        collect(topological_order(notebook))
     else
         # take already calculated cell order to avoid recalculating it
         notebook.cell_execution_order

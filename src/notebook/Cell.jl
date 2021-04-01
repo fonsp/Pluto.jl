@@ -37,7 +37,7 @@ Base.@kwdef mutable struct Cell
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 
-    cell_dependencies::CellDependencies=CellDependencies(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
+    cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
