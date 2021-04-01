@@ -11,10 +11,16 @@ function is_just_text(topology::NotebookTopology, cell::Cell)::Bool
 end
 
 function no_loops(ex::Expr)
-	if ex.head ∈ [:while, :for, :comprehension, :generator, :try]
+	if ex.head  === :while ||
+		ex.head === :for ||
+		ex.head === :comprehension ||
+		ex.head === :generator ||
+		ex.head === :try ||
+		ex.head === :quote ||
+		ex.head === :module
 		false
 	else
-		all(no_loops.(ex.args))
+		all(no_loops, ex.args)
 	end
 end
 

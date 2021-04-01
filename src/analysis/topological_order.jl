@@ -1,4 +1,3 @@
-
 "Return a `TopologicalOrder` that lists the cells to be evaluated in a single reactive run, in topological order. Includes the given roots."
 function topological_order(notebook::Notebook, topology::NotebookTopology, roots::Array{Cell,1}; allow_multiple_defs=false)::TopologicalOrder
 	entries = Cell[]
@@ -45,20 +44,8 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
 	ordered = reverse(exits)
-	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
+	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
 end
-
-function topological_order(notebook::Notebook)
-	cached = notebook._cached_topological_order
-	if cached === nothing || cached.input_topology !== notebook.topology
-		topological_order(notebook, notebook.topology, notebook.cells)
-	else
-		cached
-	end
-end
-
-Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
-
 
 function disjoint(a::Set, b::Set)
 	!any(x in a for x in b)
