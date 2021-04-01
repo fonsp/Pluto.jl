@@ -29,6 +29,7 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
     }, [popupOpen])
     const show = binder_phase === BinderPhase.wait_for_user
     if (!show) return null
+    const show_binder = binder_phase != null
     return html` <div id="launch_binder">
         <span
             id="binder_launch_help"
@@ -41,24 +42,28 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             ><b>Edit</b> or <b>run</b> this notebook</span
         >
         ${popupOpen &&
-        html` <div id="binder_help_text">
+        html`<div id="binder_help_text">
             <span onClick=${() => setPopupOpen(false)} class="close"></span>
-            <p style="text-align: center;">
-                ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
-                <b>Where would you like to run the notebook?</b>
-            </p>
-            <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
-            <div style="padding: 0 2rem;">
-                <button onClick=${start_binder}>
-                    <img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
-                </button>
-            </div>
-            <p style="opacity: .5; margin: 20px 10px;">
-                <a target="_blank" href="https://mybinder.org">Binder</a> is a free, open source service that runs scientific notebooks in the cloud! It will
-                take a while, usually 2-7 minutes to get a session.
-            </p>
-            <h2 style="margin-top: 4em;">On your computer</h2>
-            <p style="opacity: .5;">(Recommended if you want to store your changes.)</p>
+            ${show_binder
+                ? html`
+                      <p style="text-align: center;">
+                          ${`To be able to edit code and run cells, you need to run the notebook yourself. `}
+                          <b>Where would you like to run the notebook?</b>
+                      </p>
+                      <h2 style="margin-top: 3em;">In the cloud <em>(experimental)</em></h2>
+                      <div style="padding: 0 2rem;">
+                          <button onClick=${start_binder}>
+                              <img src="https://cdn.jsdelivr.net/gh/jupyterhub/binderhub@0.2.0/binderhub/static/logo.svg" height="30" alt="binder" />
+                          </button>
+                      </div>
+                      <p style="opacity: .5; margin: 20px 10px;">
+                          <a target="_blank" href="https://mybinder.org/">Binder</a> is a free, open source service that runs scientific notebooks in the cloud!
+                          It will take a while, usually 2-7 minutes to get a session.
+                      </p>
+                      <h2 style="margin-top: 4em;">On your computer</h2>
+                      <p style="opacity: .5;">(Recommended if you want to store your changes.)</p>
+                  `
+                : null}
             <ol style="padding: 0 2rem;">
                 <li>
                     <div>
@@ -67,8 +72,8 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
                             <input onClick=${(e) => e.target.select()} value=${notebookfile_ref.current} readonly />
                             <span
                                 class=${`copy_icon ${showCopyPopup ? "success_copy" : ""}`}
-                                onClick=${() => {
-                                    copyTextToClipboard(notebookfile_ref.current)
+                                onClick=${async () => {
+                                    await navigator.clipboard.writeText(notebookfile_ref.current)
                                     setShowCopyPopup(true)
                                     setTimeout(() => setShowCopyPopup(false), 3000)
                                 }}
@@ -91,18 +96,4 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             </ol>
         </div>`}
     </div>`
-}
-
-function copyTextToClipboard(text, onSuccess, onFail) {
-    if (!navigator.clipboard) {
-        alert("Please use a newer browser")
-    }
-    navigator.clipboard.writeText(text).then(
-        function () {
-            console.error("Copied to clipboard!")
-        },
-        function (err) {
-            console.error("Async: Could not copy text: ", err)
-        }
-    )
 }

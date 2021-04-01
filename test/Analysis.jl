@@ -14,19 +14,27 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
             md"r \$x"
         end
         """),
-        Cell("html\"a \$b\""),
+        Cell("html\"a 7 \$b\""),
 
-        Cell("md\"a \$b\""),
-        Cell("@a md\"asdf\""),
+        Cell("md\"a 8 \$b\""),
+        Cell("@a md\"asdf 9\""),
         Cell("x()"),
         Cell("x() = y()"),
-        Cell("1 + 1"),
+        Cell("12 + 12"),
         Cell("import Dates"),
         Cell("import Dates"),
         Cell("while false end"),
-        Cell("for i in [1,2]; end"),
-        Cell("[i for i in [1,2]]"),
-        
+        Cell("for i in [16]; end"),
+        Cell("[i for i in [17]]"),
+        Cell("module x18 end"),
+        Cell("""
+        module x19
+            exit()
+        end
+        """),
+        Cell("""quote end"""),
+        Cell("""quote x = 21 end"""),
+        Cell("""quote \$(x = 22) end"""),
     ])
 
     old = notebook.topology
@@ -51,5 +59,10 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
         @test !is_just_text(new, notebook.cells[15])
         @test !is_just_text(new, notebook.cells[16])
         @test !is_just_text(new, notebook.cells[17])
+        @test !is_just_text(new, notebook.cells[18])
+        @test !is_just_text(new, notebook.cells[19])
+        @test !is_just_text(new, notebook.cells[20])
+        @test !is_just_text(new, notebook.cells[21])
+        @test !is_just_text(new, notebook.cells[22])
     end
 end

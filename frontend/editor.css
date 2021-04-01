@@ -629,7 +629,7 @@ body.binder > header > nav#at_the_top > pluto-filepicker > * {
 }
 body.binder > header > nav#at_the_top > pluto-filepicker > a {
     display: block;
-    font-size: 18px;
+    font-size: 16px;
     font-family: JuliaMono, monospace;
     opacity: 0.8;
     text-decoration: none;

@@ -21,7 +21,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { request_binder, BinderPhase, trailingslash } from "../common/Binder.js"
+import { start_binder, BinderPhase, trailingslash } from "../common/Binder.js"
 import { hash_arraybuffer, hash_str, debounced_promises, base64_arraybuffer } from "../common/PlutoHash.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
@@ -135,6 +135,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef CellDependencyData
+ * @type {{
+ *  cell_id: string,
+ *  downstream_cells_map: { [symbol: string]: Array<string>},
+ *  upstream_cells_map: { [symbol: string]: Array<string>},
+ *  precedence_heuristic: number,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -143,8 +153,10 @@ const first_true_key = (obj) => {
  *  in_temp_dir: boolean,
  *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
- *  cell_results: { [uuid: string]: CellResultData }
+ *  cell_results: { [uuid: string]: CellResultData },
+ *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
+ *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
  */
@@ -164,7 +176,9 @@ const initial_notebook = () => ({
     process_status: "starting",
     cell_inputs: {},
     cell_results: {},
+    cell_dependencies: {},
     cell_order: [],
+    cell_execution_order: [],
     bonds: {},
 })
 
@@ -181,7 +195,7 @@ export class Editor extends Component {
             //@ts-ignore
             disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
             //@ts-ignore
-            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
+            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
             //@ts-ignore
             slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
         }
@@ -195,7 +209,7 @@ export class Editor extends Component {
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
             statefile_download_progress: null,
-            offer_binder: this.launch_params.notebookfile != null,
+            offer_binder: this.launch_params.notebookfile != null && this.launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
             binder_session_token: null,
@@ -299,6 +313,7 @@ export class Editor extends Component {
                  *  */
 
                 for (const cell of new_cells) {
+                    //@ts-ignore
                     const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
                     cm.setValue(cell.code) // Update codemirror synchronously
                 }
@@ -640,10 +655,10 @@ patch: ${JSON.stringify(
             }).then(on_establish_connection)
 
         let real_actions, fake_actions
-        const use_slider_server = launch_params.slider_server_url != null
+        const use_slider_server = this.launch_params.slider_server_url != null
         if (use_slider_server) {
             const notebookfile_hash = use_slider_server
-                ? fetch(launch_params.notebookfile)
+                ? fetch(this.launch_params.notebookfile)
                       .then((r) => r.arrayBuffer())
                       .then(hash_arraybuffer)
                 : null
@@ -651,7 +666,7 @@ patch: ${JSON.stringify(
 
             const bond_connections = use_slider_server
                 ? notebookfile_hash
-                      .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+                      .then((hash) => fetch(trailingslash(this.launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
                       .then((r) => r.arrayBuffer())
                       .then((b) => unpack(new Uint8Array(b)))
                 : null
@@ -662,7 +677,7 @@ patch: ${JSON.stringify(
                 current: new Set(),
             }
             const request_bond_response = debounced_promises(async () => {
-                const base = trailingslash(launch_params.slider_server_url)
+                const base = trailingslash(this.launch_params.slider_server_url)
                 const hash = await notebookfile_hash
                 const graph = await bond_connections
 
@@ -711,7 +726,7 @@ patch: ${JSON.stringify(
 
             real_actions = this.actions
             fake_actions = Object.fromEntries(Object.keys(this.actions).map((k) => [k, () => {}]))
-            if (launch_params.slider_server_url != null) {
+            if (this.launch_params.slider_server_url != null) {
                 fake_actions = {
                     ...fake_actions,
                     set_bond: async (symbol, value, is_first_value) => {
@@ -756,86 +771,9 @@ patch: ${JSON.stringify(
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
             })()
-            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`)
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`).catch(() => {})
         } else {
             this.connect()
-        }
-
-        this.start_binder = async () => {
-            try {
-                fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.binder_phase = BinderPhase.requesting
-                        state.loading = true
-                        state.disable_ui = false
-                    })
-                )
-                const { binder_session_url, binder_session_token } = await request_binder(
-                    this.launch_params.binder_url.replace("mybinder.org/v2/", "mybinder.org/build/")
-                )
-
-                console.log("Binder URL:", `${binder_session_url}?token=${binder_session_token}`)
-
-                const shutdown_url = `${new URL("../api/shutdown", binder_session_url).href}?token=${binder_session_token}`
-                window.shutdown_binder = this.shutdown_binder = () => {
-                    fetch(shutdown_url, { method: "POST" })
-                }
-
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.binder_phase = BinderPhase.created
-                        state.binder_session_url = binder_session_url
-                        state.binder_session_token = binder_session_token
-                    })
-                )
-                // fetch once to say hello
-                const with_token = (u) => {
-                    const new_url = new URL(u)
-                    new_url.searchParams.set("token", binder_session_token)
-                    return String(new_url)
-                }
-                await fetch(with_token(binder_session_url))
-
-                let open_response = null
-
-                const open_path = new URL("open", binder_session_url)
-                open_path.searchParams.set("path", this.launch_params.notebookfile)
-
-                console.log("open_path: ", String(open_path))
-                open_response = await fetch(with_token(String(open_path)), {
-                    method: "POST",
-                })
-
-                if (!open_response.ok) {
-                    const open_url = new URL("open", binder_session_url)
-                    open_url.searchParams.set("url", new URL(this.launch_params.notebookfile, window.location.href).href)
-
-                    console.log("open_url: ", String(open_url))
-                    open_response = await fetch(with_token(String(open_url)), {
-                        method: "POST",
-                    })
-                }
-
-                const new_notebook_id = await open_response.text()
-                console.info("notebook_id:", new_notebook_id)
-                console.log(this.state)
-
-                await this.setStatePromise(
-                    immer((state) => {
-                        state.notebook.notebook_id = new_notebook_id
-                        state.binder_phase = BinderPhase.notebook_running
-                    })
-                )
-                console.log("Connecting ws")
-
-                this.connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
-            } catch (err) {
-                console.error("Failed to initialize binder!", err)
-                alert(
-                    "Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later."
-                )
-            }
         }
 
         // Not completely happy with this yet, but it will do for now - DRAL
@@ -1076,10 +1014,11 @@ patch: ${JSON.stringify(
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
-                if (this.shutdown_binder != null) {
+                //@ts-ignore
+                if (window.shutdown_binder != null) {
                     // hmmmm that would also shut down the binder if you refreshed, or if you navigate to the binder session main menu by clicking the pluto logo.
                     // Let's keep it disabled for now and let the timeout take care of shutting down the binder
-                    // this.shutdown_binder()
+                    // window.shutdown_binder()
                 }
                 // and don't prevent the unload
             }
@@ -1087,6 +1026,7 @@ patch: ${JSON.stringify(
     }
 
     componentDidUpdate(old_props, old_state) {
+        //@ts-ignore
         window.editor_state = this.state
 
         document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
@@ -1149,12 +1089,15 @@ patch: ${JSON.stringify(
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
                         <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
-                        <div id="binder_spinners">
-                    <binder-spinner id="ring_1"></binder-spinner>
-                    <binder-spinner id="ring_2"></binder-spinner>
-                    <binder-spinner id="ring_3"></binder-spinner>
-                    </div>
-
+                        ${
+                            status.binder
+                                ? html`<div id="binder_spinners">
+                                      <binder-spinner id="ring_1"></binder-spinner>
+                                      <binder-spinner id="ring_2"></binder-spinner>
+                                      <binder-spinner id="ring_3"></binder-spinner>
+                                  </div>`
+                                : null
+                        }
                         <nav id="at_the_top">
                             <a href=${
                                 this.state.static_preview || this.state.binder_phase != null
@@ -1211,7 +1154,8 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
-                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${this.start_binder} notebookfile=${
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: this.launch_params })} notebookfile=${
             this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
