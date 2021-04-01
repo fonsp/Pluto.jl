@@ -195,7 +195,6 @@ export class Editor extends Component {
             disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
             //@ts-ignore
             binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-            // binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
         }
 
         this.state = {

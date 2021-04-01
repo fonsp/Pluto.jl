@@ -27,8 +27,9 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             document.body.removeEventListener("click", handleclick)
         }
     }, [popupOpen])
-    const show_binder = binder_phase === BinderPhase.wait_for_user
-    // if (!show) return null
+    const show = binder_phase === BinderPhase.wait_for_user
+    if (!show) return null
+    const show_binder = binder_phase != null
     return html` <div id="launch_binder">
         <span
             id="binder_launch_help"
