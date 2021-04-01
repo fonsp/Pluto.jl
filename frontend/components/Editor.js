@@ -194,7 +194,8 @@ export class Editor extends Component {
             //@ts-ignore
             disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
             //@ts-ignore
-            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
+            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
+            // binder_url: url_params.get("binder_url") ?? window.pluto_binder_url ?? "https://mybinder.org/build/gh/fonsp/pluto-on-binder/static-to-live-1",
         }
 
         this.state = {
@@ -206,7 +207,7 @@ export class Editor extends Component {
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
             statefile_download_progress: null,
-            offer_binder: this.launch_params.notebookfile != null,
+            offer_binder: this.launch_params.notebookfile != null && this.launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
             binder_session_token: null,
