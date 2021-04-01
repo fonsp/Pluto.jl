@@ -677,7 +677,7 @@ patch: ${JSON.stringify(
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
             })()
-            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`)
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`).catch(() => {})
         } else {
             this.connect()
         }
@@ -995,12 +995,15 @@ patch: ${JSON.stringify(
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
                         <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
-                        <div id="binder_spinners">
-                    <binder-spinner id="ring_1"></binder-spinner>
-                    <binder-spinner id="ring_2"></binder-spinner>
-                    <binder-spinner id="ring_3"></binder-spinner>
-                    </div>
-
+                        ${
+                            status.binder
+                                ? html`<div id="binder_spinners">
+                                      <binder-spinner id="ring_1"></binder-spinner>
+                                      <binder-spinner id="ring_2"></binder-spinner>
+                                      <binder-spinner id="ring_3"></binder-spinner>
+                                  </div>`
+                                : null
+                        }
                         <nav id="at_the_top">
                             <a href=${
                                 this.state.static_preview || this.state.binder_phase != null
