@@ -138,7 +138,7 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
-        "cell_execution_order" => cell_id.(notebook.cell_execution_order),
+        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
 

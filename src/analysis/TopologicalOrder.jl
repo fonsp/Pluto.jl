@@ -2,6 +2,7 @@ import .ExpressionExplorer: SymbolsState, FunctionName
 
 "Information container about the cells to run in a reactive call and any cells that will err."
 struct TopologicalOrder
+	input_topology::NotebookTopology
 	"Cells that form a directed acyclic graph, in topological order."
 	runnable::Array{Cell,1}
 	"Cells that are in a directed cycle, with corresponding `ReactivityError`s."
@@ -54,13 +55,19 @@ function topological_order(notebook::Notebook, topology::NotebookTopology, roots
 	prelim_order_2 = Iterators.reverse(prelim_order_1)
 	dfs.(prelim_order_2)
 	ordered = reverse(exits)
-	TopologicalOrder(setdiff(ordered, keys(errable)), errable)
+	TopologicalOrder(topology, setdiff(ordered, keys(errable)), errable)
 end
 
-topological_order(notebook:: Notebook) = topological_order(notebook, notebook.topology, notebook.cells)
+function topological_order(notebook::Notebook)
+	cached = notebook._cached_topological_order
+	if cached === nothing || cached.input_topology !== notebook.topology
+		topological_order(notebook, notebook.topology, notebook.cells)
+	else
+		cached
+	end
+end
 
-
-Base.collect(notebook_topo_order:: TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
+Base.collect(notebook_topo_order::TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
 
 
 function disjoint(a::Set, b::Set)

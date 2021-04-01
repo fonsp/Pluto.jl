@@ -38,8 +38,8 @@ end
 
 "Fills dependency information on notebook and cell level."
 function update_dependency_cache!(notebook::Notebook)
-    notebook.cell_execution_order = collect(topological_order(notebook))
-    for cell in notebook.cell_execution_order
+    notebook._cached_topological_order = topological_order(notebook)
+    for cell in notebook.cell_order
         update_dependency_cache!(cell, notebook)
     end
 end
