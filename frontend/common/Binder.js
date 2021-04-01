@@ -25,46 +25,52 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 */
 
-const trailingslash = (s) => (s.endsWith("/") ? s : s + "/")
+export const trailingslash = (s) => (s.endsWith("/") ? s : s + "/")
 
 export const request_binder = (build_url) =>
-    new Promise(async (resolve, reject) => {
-        let es = new EventSource(build_url)
-        es.onerror = (err) => {
-            console.error("Binder error: Lost connection to " + build_url, err)
-            es.close()
-            reject(err)
-        }
-        let phase = null
-        es.onmessage = (evt) => {
-            let msg = JSON.parse(evt.data)
-            if (msg.phase && msg.phase !== phase) {
-                phase = msg.phase.toLowerCase()
-                console.log("Binder subphase: " + phase)
-                let status = phase
-                if (status === "ready") {
-                    status = "server-ready"
+    new Promise((resolve, reject) => {
+        console.log("Starting binder connection to", build_url)
+        try {
+            let es = new EventSource(build_url)
+            es.onerror = (err) => {
+                console.error("Binder error: Lost connection to " + build_url, err)
+                es.close()
+                reject(err)
+            }
+            let phase = null
+            es.onmessage = (evt) => {
+                let msg = JSON.parse(evt.data)
+                if (msg.phase && msg.phase !== phase) {
+                    phase = msg.phase.toLowerCase()
+                    console.log("Binder subphase: " + phase)
+                    let status = phase
+                    if (status === "ready") {
+                        status = "server-ready"
+                    }
+                }
+                if (msg.message) {
+                    console.log("Binder message: " + msg.message)
+                }
+                switch (msg.phase) {
+                    case "failed":
+                        console.error("Binder error: Failed to build", build_url, msg)
+                        es.close()
+                        reject(new Error(msg))
+                        break
+                    case "ready":
+                        es.close()
+
+                        resolve({
+                            binder_session_url: trailingslash(msg.url) + "pluto/",
+                            binder_session_token: msg.token,
+                        })
+                        break
+                    default:
+                    // console.log(msg);
                 }
             }
-            if (msg.message) {
-                console.log("Binder message: " + msg.message)
-            }
-            switch (msg.phase) {
-                case "failed":
-                    console.error("Binder error: Failed to build", build_url, msg)
-                    es.close()
-                    reject(new Error(msg))
-                    break
-                case "ready":
-                    es.close()
-
-                    resolve({
-                        binder_session_url: trailingslash(msg.url) + "pluto/",
-                        binder_session_token: msg.token,
-                    })
-                    break
-                default:
-                // console.log(msg);
-            }
+        } catch (err) {
+            console.error(err)
+            reject("Failed to open event source the mybinder.org. This probably means that the URL is invalid.")
         }
     })
