@@ -96,10 +96,9 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         }
         console.log("Binder URL:", with_token(binder_session_url))
 
-        const shutdown_url = with_token(new URL("../api/shutdown", binder_session_url))
         //@ts-ignore
-        window.shutdown_binder = this.shutdown_binder = () => {
-            fetch(shutdown_url, { method: "POST" })
+        window.shutdown_binder = () => {
+            fetch(with_token(new URL("../api/shutdown", binder_session_url)), { method: "POST" })
         }
 
         await setStatePromise(
