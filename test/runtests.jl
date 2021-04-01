@@ -1,4 +1,5 @@
 include("./helpers.jl")
+include("./Throttled.jl")
 include("./WorkspaceManager.jl")
 include("./RichOutput.jl")
 include("./React.jl")
