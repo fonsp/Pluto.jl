@@ -140,9 +140,12 @@ function run(session::ServerSession)
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
-
         if HTTP.WebSockets.is_upgrade(http.message)
-            if is_authenticated(session, http.message)
+            secret_required = let
+                s = session.options.security
+                s.require_secret_for_access || s.require_secret_for_open_links
+            end
+            if !secret_required || is_authenticated(session, http.message)
                 try
 
                     HTTP.WebSockets.upgrade(http) do clientstream
