@@ -49,6 +49,7 @@ end
 function get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Set{Symbol})
     assigned = where_assigned(notebook, topology, outputs)
     provided_set = keys(inputs)
+    to_set = provided_set
 
     new_values = values(inputs)
     output_cell = where_assigned(notebook, topology, outputs)
