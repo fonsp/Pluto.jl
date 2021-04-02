@@ -10,6 +10,7 @@ include("./Notebook.jl")
 include("./Configuration.jl")
 include("./Analysis.jl")
 include("./Firebasey.jl")
+include("./Throttled.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook

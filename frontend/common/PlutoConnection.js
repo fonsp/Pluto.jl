@@ -178,6 +178,14 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
     })
 }
 
+export const ws_address_from_base = (base_url) => {
+    const ws_url = new URL("./", base_url)
+    ws_url.protocol = ws_url.protocol.replace("http", "ws")
+    return String(ws_url)
+}
+
+const default_ws_address = () => ws_address_from_base(window.location.href)
+
 /**
  * @typedef PlutoConnection
  * @type {{
@@ -206,10 +214,17 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *  on_reconnect: () => boolean,
  *  on_connection_status: (connection_status: boolean) => void,
  *  connect_metadata?: Object,
+ *  ws_address?: String,
  * }} options
  * @return {Promise<PlutoConnection>}
  */
-export const create_pluto_connection = async ({ on_unrequested_update, on_reconnect, on_connection_status, connect_metadata = {} }) => {
+export const create_pluto_connection = async ({
+    on_unrequested_update,
+    on_reconnect,
+    on_connection_status,
+    connect_metadata = {},
+    ws_address = default_ws_address(),
+}) => {
     var ws_connection = null // will be defined later i promise
     const client = {
         send: null,
@@ -262,11 +277,11 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             try {
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
-                if (response.status !== 200) {
+                if (!response.ok) {
                     return
                 }
                 const possible_binder_token = await response.text()
-                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                if (possible_binder_token !== "" && url.searchParams.get("token") !== possible_binder_token) {
                     url.searchParams.set("token", possible_binder_token)
                     history.replaceState({}, "", url.toString())
                 }
@@ -275,11 +290,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             }
         }
         update_url_with_binder_token()
-
-        const ws_address = new URL(window.location.href)
-        ws_address.protocol = ws_address.protocol.replace("http", "ws")
-        ws_address.pathname = ws_address.pathname.replace("/edit", "/")
-        ws_address.hash = ""
 
         try {
             ws_connection = await create_ws_connection(String(ws_address), {

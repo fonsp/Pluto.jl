@@ -25,6 +25,7 @@ Base.@kwdef mutable struct Notebook
     path::String
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
+    _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
@@ -41,7 +42,6 @@ Base.@kwdef mutable struct Notebook
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 
-    cell_execution_order::Union{Nothing,Vector{Cell}}=nothing
     wants_to_interrupt::Bool=false
 end
 
@@ -102,12 +102,7 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    cells_ordered = if notebook.cell_execution_order === nothing
-        get_ordered_cells(notebook)
-    else
-        # take already calculated cell order to avoid recalculating it
-        notebook.cell_execution_order
-    end
+    cells_ordered = collect(topological_order(notebook))
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))

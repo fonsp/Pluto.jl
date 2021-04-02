@@ -30,18 +30,16 @@ end
 
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, notebook::Notebook)
-    cell.downstream_cells_map = downstream_cells_map(cell, notebook)
-    cell.upstream_cells_map = upstream_cells_map(cell, notebook)
-    cell.precedence_heuristic = cell_precedence_heuristic(notebook.topology, cell)
+    cell.cell_dependencies = CellDependencies(
+        downstream_cells_map(cell, notebook), 
+        upstream_cells_map(cell, notebook), 
+        cell_precedence_heuristic(notebook.topology, cell))
 end
 
 "Fills dependency information on notebook and cell level."
 function update_dependency_cache!(notebook::Notebook)
-    notebook.cell_execution_order = get_ordered_cells(notebook)
-    for cell in notebook.cell_execution_order
+    notebook._cached_topological_order = topological_order(notebook)
+    for cell in values(notebook.cells_dict)
         update_dependency_cache!(cell, notebook)
     end
 end
-
-get_ordered_cells(notebook_topo_order:: TopologicalOrder) = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
-get_ordered_cells(notebook:: Notebook) = get_ordered_cells(topological_order(notebook))
