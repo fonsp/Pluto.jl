@@ -61,8 +61,8 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                         ids_of_cells_that_ran.forEach((id) => {
                             state.cell_results[id] = original.cell_results[id]
                         })
-                    })
-                )(get_current_state())
+                    })(get_current_state())
+                )
                 console.log("done!")
             } catch (e) {
                 console.error(e)
