@@ -1562,16 +1562,47 @@ nav#undo_delete.hidden {
 
 /* LOGS */
 
+@media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
+    pluto-cell.shrunk {
+        /* max-width: calc(100% - 100px); */
+    }
+}
+
 pluto-logs-container {
     display: block;
-    width: 200px;
-    max-height: 100%;
+    width: max(100px, 100vw - (700px + 25px));
+    max-height: calc(100% - 2px);
     position: absolute;
     z-index: 3;
-    right: -191px;
+    right: min(-100px, -100vw + (700px + 25px));
     top: 1px;
     overflow-x: auto;
     overflow-y: hidden;
+
+    background: hsl(0deg 0% 100% / 81%);
+}
+
+@media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
+    pluto-logs-container {
+        right: -6px;
+        width: 20px;
+        transition: width ease-in-out 100ms;
+
+        /* padding-left: 80px; */
+    }
+
+    pluto-logs-container:focus-within,
+    pluto-logs-container:hover {
+        width: 30vw;
+    }
+
+    pluto-logs-container pluto-logs {
+        grid-template-columns: repeat(auto-fill, 0px);
+    }
+    pluto-logs-container:focus-within pluto-logs,
+    pluto-logs-container:hover pluto-logs {
+        grid-template-columns: repeat(auto-fill, 10px);
+    }
 }
 
 pluto-logs {

@@ -91,7 +91,7 @@ export const Cell = ({
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
-                shrunk: Object.values(logs).length > 1,
+                shrunk: Object.values(logs).length > 0,
             })}
             id=${cell_id}
         >

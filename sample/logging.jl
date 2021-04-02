@@ -19,6 +19,9 @@ using PlutoUI
 # ╔═╡ 091d33fe-fffe-11ea-131f-01f4248b30ea
 @info "23aaa"
 
+# ╔═╡ e35e35f4-71c8-4f3b-8c72-4b3ffe4766a3
+@info collect(1:100)
+
 # ╔═╡ 2d01cdaa-fffe-11ea-09f5-63527a1b0f87
 x = 233564653
 
@@ -81,6 +84,7 @@ But im not working :(
 
 # ╔═╡ Cell order:
 # ╠═091d33fe-fffe-11ea-131f-01f4248b30ea
+# ╠═e35e35f4-71c8-4f3b-8c72-4b3ffe4766a3
 # ╠═2d01cdaa-fffe-11ea-09f5-63527a1b0f87
 # ╠═c50f7178-8c7d-4319-82d9-b9154e8892d9
 # ╠═e5a8e7bd-5734-4254-914d-6f87670bf7d4
