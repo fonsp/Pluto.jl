@@ -1,4 +1,5 @@
 import Pluto
+import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 using Test
 
@@ -96,12 +97,11 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
 end
 
 function setcode(cell, newcode)
-    cell.parsedcode = nothing
     cell.code = newcode
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
-    haystack.errored && occursin(needle, haystack.output_repr[:msg])
+    haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."

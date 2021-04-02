@@ -10,6 +10,7 @@ import Distributed
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
 mutable struct Workspace
     pid::Integer
+    discarded::Bool
     log_channel::Distributed.RemoteChannel
     module_name::Symbol
     dowork_token::Token
@@ -61,7 +62,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
-    workspace = Workspace(pid, log_channel, module_name, Token())
+    workspace = Workspace(pid, false, log_channel, module_name, Token())
 
     @async start_relaying_logs((session, notebook), log_channel)
     cd_workspace(workspace, notebook.path)
@@ -153,32 +154,49 @@ get_workspace(workspace::Workspace)::Workspace = workspace
 "Try our best to delete the workspace. `ProcessWorkspace` will have its worker process terminated."
 function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
     workspace = get_workspace(session_notebook)
+    workspace.discarded = true
 
     if workspace.pid != Distributed.myid()
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
         t = @async begin
             interrupt_workspace(workspace; verbose=false)
-            if workspace.pid != Distributed.myid()
-                Distributed.rmprocs(workspace.pid)
-            end
+            Distributed.rmprocs(workspace.pid)
         end
         async || wait(t)
     end
 end
 
-function distributed_exception_result(exs::CompositeException)
+function distributed_exception_result(exs::CompositeException, workspace::Workspace)
     ex = exs.exceptions |> first
 
     if ex isa Distributed.RemoteException &&
         ex.pid == workspace.pid &&
         ex.captured.ex isa InterruptException
 
-        (output_formatted = PlutoRunner.format_output(CapturedException(InterruptException(), [])), errored = true, interrupted = true, process_exited=false, runtime = nothing)
+        (
+            output_formatted=PlutoRunner.format_output(CapturedException(InterruptException(), [])),
+            errored=true,
+            interrupted=true,
+            process_exited=false,
+            runtime=nothing,
+        )
     elseif ex isa Distributed.ProcessExitedException
-        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=true, runtime = nothing)
+        (
+            output_formatted=PlutoRunner.format_output(CapturedException(exs, [])),
+            errored=true,
+            interrupted=true,
+            process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+            runtime=nothing,
+        )
     else
         @error "Unkown error during eval_format_fetch_in_workspace" ex
-        (output_formatted = PlutoRunner.format_output(CapturedException(exs, [])), errored = true, interrupted = true, process_exited=false, runtime = nothing)
+        (
+            output_formatted=PlutoRunner.format_output(CapturedException(exs, [])),
+            errored=true,
+            interrupted=true,
+            process_exited=false,
+            runtime=nothing,
+        )
     end
 end
 
@@ -206,7 +224,7 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
     catch exs
         # We don't use a `finally` because the token needs to be back asap for the interrupting code to pick it up.
         put!(workspace.dowork_token)
-        distributed_exception_result(exs)
+        distributed_exception_result(exs, workspace)
     end
 
     early_result === nothing ?
@@ -230,7 +248,7 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
         try
             Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
         catch ex
-            distributed_exception_result(CompositeException([ex]))
+            distributed_exception_result(CompositeException([ex]), workspace)
         end
     end
 end

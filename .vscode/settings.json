@@ -2,5 +2,11 @@
     "prettier.printWidth": 160,
     "prettier.tabWidth": 4,
     "prettier.semi": false,
-    "prettier.quoteProps": "consistent"
+    "prettier.quoteProps": "consistent",
+    "julia.format.calls": false,
+    "julia.format.comments": false,
+    "julia.format.curly": false,
+    "julia.format.docs": false,
+    "julia.format.indents": false,
+    "julia.format.iterOps": false
 }

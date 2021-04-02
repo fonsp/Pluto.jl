@@ -84,8 +84,11 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 # the only possible Arrays are:
 # - cell_order
+# - cell_execution_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
+# - cell_dependencies > * > downstream_cells_map > * > 
+# - cell_dependencies > * > upstream_cells_map > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -101,20 +104,34 @@ function notebook_to_js(notebook::Notebook)
                 "code_folded" => cell.code_folded,
             )
         for (id, cell) in notebook.cells_dict),
+        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
+            )
+        for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
+                "output" => Dict(                
+                    "body" => cell.output.body,
+                    "mime" => cell.output.mime,
+                    "rootassignee" => cell.output.rootassignee,
+                    "last_run_timestamp" => cell.output.last_run_timestamp,
+                    "persist_js_state" => cell.output.persist_js_state,
+                ),
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "output" => Dict(                
-                    "last_run_timestamp" => cell.last_run_timestamp,
-                    "persist_js_state" => cell.persist_js_state,
-                    "mime" => cell.repr_mime,
-                    "body" => cell.output_repr,
-                    "rootassignee" => cell.rootassignee,
-                ),
                 "logs" => Dict(
                     string(i) => log
                     for (i, log) in enumerate(cell.logs)
@@ -125,6 +142,7 @@ function notebook_to_js(notebook::Notebook)
         "bonds" => Dict{String,Dict{String,Any}}(
             String(key) => Dict("value" => bondvalue.value)
         for (key, bondvalue) in notebook.bonds),
+        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
 
@@ -211,7 +229,6 @@ const effects_of_changed_state = Dict(
             if length(rest) == 0
                 [CodeChanged, FileChanged]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
                 [CodeChanged, FileChanged]
             else
                 [FileChanged]
@@ -226,10 +243,10 @@ const effects_of_changed_state = Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
-            set_bond_value_reactive(
+            set_bond_values_reactive(
                 session=request.session,
                 notebook=request.notebook,
-                name=name,
+                bound_sym_names=[name],
                 is_first_value=patch isa Firebasey.AddPatch,
                 run_async=true,
             )
@@ -273,12 +290,6 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
 
             push!(changes, current_changes...)
         end
-
-        # if CodeChanged ∈ changes
-        #     update_caches!(notebook, cells)
-        #     old = notebook.topology
-        #     new = notebook.topology = updated_topology(old, notebook, cells)
-        # end
 
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
@@ -418,7 +429,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         🙋.notebook.cells_dict[cell_id]
     end
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
-    set_output!(cell, run)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell))
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end
@@ -429,35 +440,49 @@ end
 # HANDLE NEW BOND VALUES
 ###
 
-function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)
-    bound_sym = name
-    new_value = notebook.bonds[name].value
 
-    variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
-    if !variable_exists
-        # a bond was set while the cell is in limbo state
-        # we don't need to do anything
+function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value::Bool=false, kwargs...)
+
+    # filter out the bonds that don't need to be set
+    to_set = filter(bound_sym_names) do bound_sym
+
+        new_value = notebook.bonds[bound_sym].value
+
+        variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
+        if !variable_exists
+            # a bond was set while the cell is in limbo state
+            # we don't need to do anything
+            return false
+        end
+
+        # TODO: Not checking for any dependents now
+        # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
+
+        # fix for https://github.com/fonsp/Pluto.jl/issues/275
+        # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
+        # Check if the variable does not already have that value.
+        # because if the initial value is already set, then we don't want to run dependent cells again.
+        eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
+        if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
+            return false
+        end
+        return true
+    end
+
+    if isempty(to_set)
         return
     end
 
-    # TODO: Not checking for any dependents now
-    # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
-
-    # fix for https://github.com/fonsp/Pluto.jl/issues/275
-    # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-    # Check if the variable does not already have that value.
-    # because if the initial value is already set, then we don't want to run dependent cells again.
-    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-        return
-    end
-        
+    new_values = [notebook.bonds[bound_sym].value for bound_sym in to_set]
+    
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., bound_sym]) # also delete the bound symbol
+        to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
         WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-        WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+        for (bound_sym, new_value) in zip(to_set, new_values)
+            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+        end
     end
-    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
+    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
     update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
 end

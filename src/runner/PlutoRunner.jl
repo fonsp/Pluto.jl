@@ -645,6 +645,7 @@ pluto_showable(m::MIME, @nospecialize(x))::Bool = Base.invokelatest(showable, m,
 
 # We invent our own MIME _because we can_ but don't use it somewhere else because it might change :)
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractArray{<:Any,1}) = true
+pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractSet{<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::AbstractDict{<:Any,<:Any}) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Tuple) = true
 pluto_showable(::MIME"application/vnd.pluto.tree+object", ::NamedTuple) = true
@@ -672,6 +673,7 @@ end
 function array_prefix(@nospecialize(x::Array{<:Any,1}))::String
     string(eltype(x))
 end
+
 function array_prefix(@nospecialize(x))::String
     original = sprint(Base.showarg, x, false)
     lstrip(original, ':') * ": "
@@ -686,6 +688,28 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext
             b * get(d, (objectid(x), dim), 0)
         end
     end
+end
+
+function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
+    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+
+    L = min(my_limit+1, length(x))
+    elements = Vector{Any}(undef, L)
+    for (index, value) in enumerate(x)
+        if index <= my_limit
+            elements[index] = (index, format_output_default(value, context))
+        else
+            elements[index] = "more"
+            break
+        end
+    end
+
+    Dict{Symbol,Any}(
+        :prefix => string(typeof(x)),
+        :objectid => string(objectid(x), base=16),
+        :type => :Set,
+        :elements => elements
+    )
 end
 
 function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
