@@ -669,6 +669,15 @@ patch: ${JSON.stringify(
                       actions: this.actions,
                   })
 
+        this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            //@ts-ignore
+            this.actions =
+                this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+        }
+        this.on_disable_ui()
+
         this.original_state = null
         if (this.state.static_preview) {
             ;(async () => {
@@ -975,11 +984,9 @@ patch: ${JSON.stringify(
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
         }
 
-        document.body.classList.toggle("disable_ui", this.state.disable_ui)
-        document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
-
-        //@ts-ignore
-        this.actions = this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+        if (old_state.disable_ui !== this.state.disable_ui) {
+            this.on_disable_ui()
+        }
     }
 
     render() {
