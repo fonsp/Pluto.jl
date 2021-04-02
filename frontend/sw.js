@@ -1,5 +1,13 @@
 // mostly based on https://developers.google.com/web/fundamentals/primers/service-workers
 
+const DEBUG = false
+const noop = () => undefined
+const logger = {
+    log: DEBUG ? window.console.log : noop,
+    table: DEBUG ? window.console.table : noop,
+    warn: DEBUG ? window.console.warn : noop,
+    info: DEBUG ? window.console.info : noop,
+}
 var CACHE_NAME = "pluto-cache-v2"
 
 self.addEventListener("install", function (event) {
@@ -7,7 +15,7 @@ self.addEventListener("install", function (event) {
     // Perform install steps
     event.waitUntil(
         caches.open(CACHE_NAME).then(function (cache) {
-            console.log("Opened cache")
+            logger.log("Opened cache")
         })
     )
 })
@@ -24,7 +32,7 @@ self.addEventListener("fetch", function (event) {
     //     return
     // }
     if (!shouldCache(event.request)) {
-        // console.log("skipping cache")
+        logger.log("skipping cache")
         return
     }
     event.respondWith(
@@ -32,11 +40,11 @@ self.addEventListener("fetch", function (event) {
             return cache.match(event.request).then(function (response) {
                 // Cache hit - return response
                 if (response) {
-                    // console.warn("CACHE HIT", event.request)
+                    logger.warn("CACHE HIT", event.request)
                     return response
                 }
 
-                // console.warn("Cache miss", event.request.url)
+                logger.warn("Cache miss", event.request.url)
 
                 return fetch(event.request).then(function (response) {
                     // Check if we received a valid response
