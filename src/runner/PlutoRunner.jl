@@ -104,7 +104,6 @@ function sanitize_expr(func::Function)
 end
 
 function sanitize_expr(other)
-  @show typeof(other)
   other
 end
 
@@ -116,11 +115,8 @@ function try_macroexpand(mod, cell_uuid, expr)
 
     return sanitize_expr(expanded_expr)
   catch e
-    @error e
+    return e
   end
-
-  nothing # the error will happen when evaluating the cell
-  # TODO: report the error now
 end
 
 
@@ -313,6 +309,16 @@ end
 ###
 
 
+function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
+ for expr in module_imports_to_move
+    try
+        Core.eval(workspace_name, expr)
+    catch e
+        @error e
+    end # TODO catch specificallly
+  end
+end
+
 """
 Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined.
 
@@ -326,11 +332,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
-    for expr in module_imports_to_move
-        try
-            Core.eval(new_workspace, expr)
-        catch; end # TODO catch specificallly
-    end
+    do_reimports(new_workspace, module_imports_to_move)
 
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))

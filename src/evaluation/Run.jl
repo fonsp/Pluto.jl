@@ -64,7 +64,6 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
 	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
 	delete!.([notebook.bonds], to_delete_vars)
@@ -159,25 +158,74 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 # CONVENIENCE FUNCTIONS
 ###
 
+"We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
+function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
+  sn = (session, notebook)
+
+  to_reimport = union(Set{Expr}(), map(c -> notebook.topology.codes[c].module_usings_imports.usings, notebook.cells)...)
+  WorkspaceManager.do_reimports(sn, to_reimport)
+
+  function macroexpand_cell(cell)
+    try_macroexpand() = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id)
+    # TODO(Paul): Remove @info calls
+
+    # Several trying steps
+    #  1. Try in the new module with moved imports
+    #  2. Try in the previous module
+    #  3. Move imports and re-try in the new module
+    #  4. NotImplemented. Would be to run imports and execute only a part of the graph
+    res = try_macroexpand()
+    if isa(res, LoadError) && isa(res.error, UndefVarError)
+      @info "Try 1 failed, trying on old workspace" res
+      # We have not found the macro in the new workspace after reimports
+      # this most likely means that the macro is user defined, we try to expand it
+      # in the old workspace to see whether or not it is defined there
+
+      res = try_macroexpand()
+      # It was not defined previously, we try searching modules in our own batch
+      if isa(res, LoadError) && isa(res.error, UndefVarError)
+        @info "Try 2 failed, trying to import new Expr" res
+        # TODO(Paul): filter expressions so that it doesn't have side effects
+        # It should be only of type :(using MyModule)
+        to_import_from_batch = union(Set{Expr}(), 
+                                     map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
+                                         notebook.cells)...)
+        WorkspaceManager.do_reimports(sn, to_import_from_batch)
+        # Last try and we leave
+        return try_macroexpand()
+      end
+    end
+    res
+  end
+
+  # create new node & new codes for macrocalled cells
+  new_nodes = Dict(
+    cell => cell
+      |> macroexpand_cell
+      |> ExpressionExplorer.try_compute_symbolreferences
+      |> ReactiveNode
+    for cell in unresolved_topology.unresolved_cells)
+  all_nodes = merge(unresolved_topology.nodes, new_nodes)
+
+  NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
+end
+
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
 	update_dependency_cache!(notebook)
 
-	old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
-	function macroexpand_cb(cell::Cell, ex::Expr)
-		res = macroexpand_in_workspace((session, notebook), ex, cell.cell_id, old_workspace_name)
-		@show res
-		res
-	end
-	new = notebook.topology = updated_topology(old, notebook, cells; macroexpand_cb=macroexpand_cb)
+	unresolved_topology = updated_topology(old, notebook, cells)
 
-	# deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+  old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
+  new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+
+	save && save_notebook(notebook)
+
 	deletion_hook = function(sn, to_delete_vars, to_delete_funcs, to_reimport; to_run)
-		@show to_reimport
 		WorkspaceManager.move_vars(sn, old_workspace_name, to_delete_vars, to_delete_funcs, to_reimport)
-	end
+	end	
 
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 	

@@ -30,6 +30,9 @@ end
 Base.@kwdef struct NotebookTopology
     nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
     codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
+
+    # TODO: should this be in NotebookTopology or just a result from `updated_topology` 🤔
+    unresolved_cells::Vector{Cell}=[]
 end
 
 

@@ -107,7 +107,6 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, [pid], workspace_creation)
     Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
     
-    @show new_workspace_name
     new_workspace_name
 end
 
@@ -247,19 +246,19 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
     end
 end
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name)
+function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)
     workspace = get_workspace(session_notebook)
+    module_name = module_name === nothing ? workspace.module_name : module_name
 
     expr = quote
-        @info ccall(:jl_module_usings, Any, (Any,), $(module_name))
         PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
     end
-    @info "eval_fetch $(macrocall) in $(module_name)"
     try
       result = Distributed.remotecall_eval(Main, workspace.pid, expr)
       return result
     catch e
       @error e
+      return e
     end
 end
 
@@ -280,7 +279,13 @@ function bump_modulename(session_notebook)
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
     old_workspace_name
 end
-    
+
+function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_move::Set{Expr})
+    workspace = get_workspace(session_notebook)
+    workspace_name = workspace.module_name
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.do_reimports($(workspace_name), $module_imports_to_move)))  
+end
+
 function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
     workspace = get_workspace(session_notebook)
     new_workspace_name = workspace.module_name
