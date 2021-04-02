@@ -28,10 +28,10 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         const hash = await notebookfile_hash
         const graph = await bond_connections
 
-        console.groupCollapsed("Requesting bonds", bonds_to_set.current)
         if (bonds_to_set.current.size > 0) {
             const to_send = new Set(bonds_to_set.current)
             bonds_to_set.current.forEach((varname) => (graph[varname] ?? []).forEach((x) => to_send.add(x)))
+            console.debug("Requesting bonds", bonds_to_set.current, to_send)
             bonds_to_set.current = new Set()
 
             const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
@@ -63,13 +63,10 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                         })
                     })(get_current_state())
                 )
-                console.log("done!")
             } catch (e) {
                 console.error(e)
             }
         }
-
-        console.groupEnd()
     })
 
     return {
