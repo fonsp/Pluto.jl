@@ -54,10 +54,14 @@ main {
     width: 100%;
 }
 
+body:not(.disable_ui) main {
+    padding-bottom: 16rem;
+}
+
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
-@media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
+@media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     body:not(.disable_ui) main {
         margin-left: 0px;
         align-self: flex-start;
