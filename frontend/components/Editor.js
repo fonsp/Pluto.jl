@@ -616,9 +616,6 @@ patch: ${JSON.stringify(
                             apply_notebook_patches(message.patches)
                         }
                         break
-                    case "log":
-                        handle_log(message, this.state.notebook.path)
-                        break
                     default:
                         console.error("Received unknown update type!", update)
                         // alert("Something went wrong 🙈\n Try clearing your browser cache and refreshing the page")
