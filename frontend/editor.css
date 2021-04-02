@@ -1580,6 +1580,11 @@ pluto-logs {
 
 pluto-log-dot-positioner {
     display: block;
+    width: 10px;
+}
+pluto-log-dot-sizer {
+    display: block;
+    width: 100px;
 }
 pluto-log-dot {
     box-shadow: -2px 0px 1px #00000014;

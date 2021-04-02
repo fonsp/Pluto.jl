@@ -27,6 +27,9 @@ const Dot = ({ body, x, y, level }) => {
         node_ref.current.style.gridRow = `${y + 1}`
     }, [x, y])
     return html` <pluto-log-dot-positioner ref=${node_ref}>
+    <pluto-log-dot-sizer>
         <pluto-log-dot class=${level}><div ref=${label_ref}></div></pluto-log-dot
-    ></pluto-log-dot-positioner>`
+    >
+    </pluto-log-dot-sizer>
+    </pluto-log-dot-positioner>`
 }
