@@ -316,13 +316,16 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 invalidation.then(remove_bonds_listener)
             }
 
-            // convert LaTeX to svg
-            try {
-                // @ts-ignore
-                window.MathJax.typeset([container.current])
-            } catch (err) {
-                console.info("Failed to typeset TeX:")
-                console.info(err)
+            // Convert LaTeX to svg
+            // @ts-ignore
+            if (window.MathJax?.typeset != undefined) {
+                try {
+                    // @ts-ignore
+                    window.MathJax.typeset([container.current])
+                } catch (err) {
+                    console.info("Failed to typeset TeX:")
+                    console.info(err)
+                }
             }
 
             // Apply syntax highlighting
@@ -350,11 +353,17 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
         // @ts-ignore
-        window.CodeMirror.requireMode(language, function() {
-            window.CodeMirror.runMode(code_element.innerText, language, code_element)
-            code_element.classList.add("cm-s-default")
-        }, {path: function(language) {
-            return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
-        }})
+        window.CodeMirror.requireMode(
+            language,
+            function () {
+                window.CodeMirror.runMode(code_element.innerText, language, code_element)
+                code_element.classList.add("cm-s-default")
+            },
+            {
+                path: function (language) {
+                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
+                },
+            }
+        )
     }
 }

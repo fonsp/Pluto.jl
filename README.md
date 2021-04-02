@@ -96,7 +96,7 @@ julia> ]
 (v1.5) pkg> add Pluto
 ```
 
-_Using the package manager for the first time can take up to 15 minutes - hang in there!_
+_Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
 
 To run the notebook server:
 
