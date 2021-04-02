@@ -1558,31 +1558,54 @@ nav#undo_delete.hidden {
 
 /* LOGS */
 
-pluto-logs {
+pluto-logs-container {
+    display: block;
+    height: 100%;
+    width: 200px;
     position: absolute;
-    right: 0px;
-    top: 0px;
+    z-index: 3;
+    right: -191px;
+    top: 1px;
+    overflow-x: auto;
+}
+
+pluto-logs {
+    display: grid;
+    grid-auto-rows: 15px;
+    grid-template-rows: repeat(auto-fill, 15px);
+    grid-template-columns: repeat(auto-fill, 10px);
+    grid-auto-flow: column;
 }
 
 pluto-log-dot {
-    position: absolute;
-    width: 8px;
-    height: 8px;
-    border-radius: 100%;
-    background: rgb(132, 171, 190);
-    border: 3px solid #cbe5ff;
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.6rem;
+
+    /* position: absolute; */
+    padding: 1px 3px;
+    min-width: 18px;
+    min-height: 18px;
+    border-radius: 7px;
+}
+pluto-log-dot {
+    background: #cbe5ff;
+    border: 3px solid rgb(132, 171, 190);
 }
 pluto-log-dot.Warn {
-    background: rgb(235, 183, 138);
-    border: 3px solid #fae5ce;
+    background: #fae5ce;
+    border: 3px solid rgb(235, 183, 138);
 }
 pluto-log-dot.Error {
-    background: rgb(239, 139, 139);
-    border: 3px solid #ffd5cb;
+    background: #ffd5cb;
+    border: 3px solid rgb(239, 139, 139);
+}
+pluto-log-dot.Debug {
+    background: hsl(273deg 49% 94%);
+    border: 3px solid hsl(284deg 49% 79%);
 }
 
 pluto-log-dot div {
-    display: none;
+    /* display: none; */
 }
 
 /* PRESENTATION MODE */
