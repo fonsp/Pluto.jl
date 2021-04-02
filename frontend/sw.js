@@ -12,11 +12,11 @@ self.addEventListener("install", function (event) {
     )
 })
 
-const whiteList = ["www.gstatic.com", "fonts.gstatic.com", "fonts.googleapis.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "unpkg.com"]
+const allowList = ["www.gstatic.com", "fonts.gstatic.com", "fonts.googleapis.com", "cdn.jsdelivr.net", "cdnjs.cloudflare.com", "unpkg.com"]
 
 function shouldCache(request) {
     const url = new URL(request.url)
-    return request.method === "GET" && whiteList.includes(url.host)
+    return request.method === "GET" && allowList.includes(url.host)
 }
 
 self.addEventListener("fetch", function (event) {
