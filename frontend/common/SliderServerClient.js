@@ -2,6 +2,7 @@ import { trailingslash } from "./Binder.js"
 import { hash_arraybuffer, debounced_promises, base64_arraybuffer } from "./PlutoHash.js"
 import { pack, unpack } from "./MsgPack.js"
 import immer from "../imports/immer.js"
+import _ from "../imports/lodash.js"
 
 export const nothing_actions = ({ actions }) => Object.fromEntries(Object.keys(actions).map((k) => [k, () => {}]))
 
