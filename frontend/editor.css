@@ -1560,13 +1560,14 @@ nav#undo_delete.hidden {
 
 pluto-logs-container {
     display: block;
-    height: 100%;
     width: 200px;
+    max-height: 100%;
     position: absolute;
     z-index: 3;
     right: -191px;
     top: 1px;
     overflow-x: auto;
+    overflow-y: hidden;
 }
 
 pluto-logs {
@@ -1577,11 +1578,15 @@ pluto-logs {
     grid-auto-flow: column;
 }
 
+pluto-log-dot-positioner {
+    display: block;
+}
 pluto-log-dot {
     font-family: "Roboto Mono", monospace;
     font-size: 0.6rem;
 
     /* position: absolute; */
+    display: inline-flex;
     padding: 1px 3px;
     min-width: 18px;
     min-height: 18px;
