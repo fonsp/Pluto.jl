@@ -25,6 +25,7 @@ import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { Preamble } from "./Preamble.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -90,6 +91,9 @@ const ProcessStatus = {
     waiting_to_restart: "waiting_to_restart",
 }
 
+/**
+ * Map of status => Bool. In order of decreasing prioirty.
+ */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
@@ -97,6 +101,9 @@ const statusmap = (state) => ({
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
+    code_differs: state.notebook.cell_order.some(
+        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+    ),
 })
 
 const first_true_key = (obj) => {
@@ -205,6 +212,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+            last_apply_patches: Date.now(),
 
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
@@ -578,6 +586,7 @@ patch: ${JSON.stringify(
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
                             state.notebook = new_notebook
+                            // state.last_apply_patches = Date.now()
                         }),
                         resolve
                     )
@@ -758,6 +767,7 @@ patch: ${JSON.stringify(
                                 }),
                             this.setStatePromise({
                                 notebook: new_notebook,
+                                last_apply_patches: Date.now(),
                             }),
                         ])
                     } finally {
@@ -957,16 +967,10 @@ patch: ${JSON.stringify(
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
 
-        const status = statusmap(this.state)
-        Object.entries(status).forEach((e) => {
+        Object.entries(this.cached_status).forEach((e) => {
             document.body.classList.toggle(...e)
         })
 
-        const any_code_differs = this.state.notebook.cell_order.some(
-            (cell_id) =>
-                this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
-        )
-        document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
 
@@ -988,10 +992,14 @@ patch: ${JSON.stringify(
         }
     }
 
+    componentWillUpdate(new_props, new_state) {
+        this.cached_status = statusmap(new_state)
+    }
+
     render() {
         let { export_menu_open, notebook } = this.state
 
-        const status = statusmap(this.state)
+        const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
         const notebook_export_url =
@@ -1083,17 +1091,10 @@ patch: ${JSON.stringify(
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <preamble>
-                            <button
-                                onClick=${() => {
-                                    this.actions.set_and_run_all_changed_remote_cells()
-                                }}
-                                class="runallchanged"
-                                title="Save and run all changed cells"
-                            >
-                                <span></span>
-                            </button>
-                        </preamble>
+                        <${Preamble} 
+                            last_apply_patches=${this.state.last_apply_patches}
+                            any_code_differs=${status.code_differs}
+                        />
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
