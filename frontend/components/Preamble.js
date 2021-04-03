@@ -2,16 +2,19 @@ import { html, useEffect, useState, useContext, useRef } from "../imports/Preact
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { RunArea, useDebouncedTruth, useDelayedTruth } from "./RunArea.js"
 
 export const Preamble = ({ any_code_differs, last_update_time }) => {
     let pluto_actions = useContext(PlutoContext)
+
+    const any_code_differs_delayed = useDelayedTruth(any_code_differs)
 
     const [state, set_state] = useState("")
     const timeout_ref = useRef(null)
 
     useEffect(() => {
         clearTimeout(timeout_ref.current)
-        if (any_code_differs) {
+        if (any_code_differs_delayed) {
             set_state("ask_to_save")
         } else {
             if (Date.now() - last_update_time < 1000) {
@@ -23,7 +26,7 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
                 set_state("")
             }
         }
-    }, [any_code_differs])
+    }, [any_code_differs_delayed])
 
     return html`<preamble>
         ${state === "ask_to_save"

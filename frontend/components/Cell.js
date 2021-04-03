@@ -2,7 +2,7 @@ import { html, useState, useEffect, useMemo, useRef, useContext } from "../impor
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
-import { RunArea, useDebouncedTruth } from "./RunArea.js"
+import { RunArea, useDebouncedTruth, useDelayedTruth } from "./RunArea.js"
 import { cl } from "../common/ClassTable.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
@@ -74,16 +74,7 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
-    const [class_code_differs_delayed, set_class_code_differs_delayed] = useState(false)
-    const class_code_differs_delay_timeout = useRef(null)
-    useEffect(() => {
-        if (class_code_differs) {
-            class_code_differs_delay_timeout.current = setTimeout(() => set_class_code_differs_delayed(true), 500)
-        } else {
-            clearTimeout(class_code_differs_delay_timeout.current)
-            set_class_code_differs_delayed(false)
-        }
-    }, [class_code_differs])
+    const class_code_differs_delayed = useDelayedTruth(class_code_differs)
 
     return html`
         <pluto-cell
