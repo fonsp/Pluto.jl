@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { useState, useMemo, useContext } from "../imports/Preact.js"
 
@@ -41,7 +42,7 @@ export const useDropHandler = () => {
                 return "# File save failed"
             }
             if (code) return code
-            alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
+            alert("Pluto doesn't know what to do with this file 😥. Do you have a suggestion? Open an issue at https://github.com/fonsp/Pluto.jl")
             return ""
         }
         return (ev) => {
@@ -72,7 +73,7 @@ export const useDropHandler = () => {
                             if (!is_empty) {
                                 pluto_actions.add_remote_cell(drop_cell_id, "after", code)
                             } else {
-                                pluto_actions.set_local_cell(drop_cell_id, code, () => pluto_actions.set_and_run_multiple([drop_cell_id]))
+                                pluto_actions.set_local_cell(drop_cell_id, code).then(() => pluto_actions.set_and_run_multiple([drop_cell_id]))
                             }
                         }
                     })

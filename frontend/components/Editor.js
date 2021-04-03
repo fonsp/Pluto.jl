@@ -237,15 +237,14 @@ export class Editor extends Component {
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val, callback) => {
-                return this.setState(
+            set_local_cell: (cell_id, new_val) => {
+                return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    }),
-                    callback
+                    })
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
