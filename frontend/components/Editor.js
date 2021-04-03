@@ -844,13 +844,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
