@@ -214,6 +214,7 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
+            last_save_trigger_time: 0,
 
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
@@ -247,12 +248,16 @@ export class Editor extends Component {
             debounced_maybe_setters[cell_id] =
                 debounced_maybe_setters[cell_id] ??
                 _.throttle(
-                    (code) =>
+                    async (code) => {
+                        this.setState({
+                            last_save_trigger_time: Date.now(),
+                        })
                         this.client.send(
                             "maybe_update_cell_code",
                             { code: code, code_author: this.my_name, cell_id: cell_id },
                             { notebook_id: this.state.notebook.notebook_id }
-                        ),
+                        )
+                    },
                     300,
                     { leading: false }
                 )
@@ -1117,6 +1122,7 @@ patch: ${JSON.stringify(
                     <${Main}>
                         <${Preamble} 
                             last_update_time=${this.state.last_update_time}
+                            last_save_trigger_time=${this.state.last_save_trigger_time}
                             any_code_differs=${status.code_differs}
                         />
                         <${Notebook}
