@@ -6,6 +6,7 @@ import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
+import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
@@ -25,7 +26,6 @@ import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
-import { Preamble } from "./Preamble.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -212,7 +212,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
-            last_apply_patches: Date.now(),
+            last_update_time: 0,
 
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
@@ -586,7 +586,6 @@ patch: ${JSON.stringify(
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
                             state.notebook = new_notebook
-                            // state.last_apply_patches = Date.now()
                         }),
                         resolve
                     )
@@ -767,7 +766,7 @@ patch: ${JSON.stringify(
                                 }),
                             this.setStatePromise({
                                 notebook: new_notebook,
-                                last_apply_patches: Date.now(),
+                                last_update_time: Date.now(),
                             }),
                         ])
                     } finally {
@@ -1092,7 +1091,7 @@ patch: ${JSON.stringify(
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <${Preamble} 
-                            last_apply_patches=${this.state.last_apply_patches}
+                            last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
                         />
                         <${Notebook}

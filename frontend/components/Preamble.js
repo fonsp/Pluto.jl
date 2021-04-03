@@ -1,23 +1,20 @@
 import { html, useEffect, useState, useContext, useRef } from "../imports/Preact.js"
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
+import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
-export const Preamble = ({ any_code_differs, last_apply_patches }) => {
+export const Preamble = ({ any_code_differs, last_update_time }) => {
     let pluto_actions = useContext(PlutoContext)
 
     const [state, set_state] = useState("")
     const timeout_ref = useRef(null)
-    const is_first_time = useRef(true)
 
     useEffect(() => {
-        console.log(any_code_differs, is_first_time.current)
         clearTimeout(timeout_ref.current)
         if (any_code_differs) {
-            is_first_time.current = false
             set_state("ask_to_save")
         } else {
-            if (!is_first_time.current && Date.now() - last_apply_patches < 1000) {
+            if (Date.now() - last_update_time < 1000) {
                 set_state("saved")
                 timeout_ref.current = setTimeout(() => {
                     set_state("")
