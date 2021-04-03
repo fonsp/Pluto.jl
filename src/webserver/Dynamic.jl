@@ -15,9 +15,6 @@ end
 require_notebook(r::ClientRequest) = if r.notebook === nothing
     throw(ArgumentError("Notebook request called without a notebook 😗"))
 end
-require_initiator(r::ClientRequest) = if r.initiator === nothing
-    throw(ArgumentError("Request called without an initiator 😗"))
-end
 
 
 ###
@@ -104,7 +101,7 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
-                "code_author" => String(cell.code_author),
+                "code_author" => cell.code_author,
                 "code_folded" => cell.code_folded,
             )
         for (id, cell) in notebook.cells_dict),
@@ -452,7 +449,7 @@ responses[:maybe_update_cell_code] = function response_maybe_update_cell_code(�
 
         if PlutoRunner.expr_hash(remove_linenums(new_parsed)) == PlutoRunner.expr_hash(remove_linenums(old_parsed))
             cell.code = new_code
-            cell.code_author = Symbol(🙋.body["code_author"])
+            cell.code_author = 🙋.body["code_author"]
             save_notebook(🙋.notebook)
             # no need to update things because the expression is the same
             send_notebook_changes!(🙋 |> without_initiator)
