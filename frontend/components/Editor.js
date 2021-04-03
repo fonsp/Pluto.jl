@@ -238,7 +238,7 @@ export class Editor extends Component {
         const maybe_update_cell_code_debounced = (cell_id, new_val) => {
             debounced_maybe_setters[cell_id] =
                 debounced_maybe_setters[cell_id] ??
-                _.debounce(
+                _.throttle(
                     (code) =>
                         this.client.send(
                             "maybe_update_cell_code",
@@ -246,7 +246,7 @@ export class Editor extends Component {
                             { notebook_id: this.state.notebook.notebook_id }
                         ),
                     300,
-                    { maxWait: 2000 }
+                    { leading: false }
                 )
 
             debounced_maybe_setters[cell_id](new_val)

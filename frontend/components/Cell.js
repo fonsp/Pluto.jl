@@ -74,6 +74,17 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const [class_code_differs_delayed, set_class_code_differs_delayed] = useState(false)
+    const class_code_differs_delay_timeout = useRef(null)
+    useEffect(() => {
+        if (class_code_differs) {
+            class_code_differs_delay_timeout.current = setTimeout(() => set_class_code_differs_delayed(true), 500)
+        } else {
+            clearTimeout(class_code_differs_delay_timeout.current)
+            set_class_code_differs_delayed(false)
+        }
+    }, [class_code_differs])
+
     return html`
         <pluto-cell
             onDragOver=${handler}
@@ -86,7 +97,7 @@ export const Cell = ({
                 activate_animation: activate_animation,
                 errored: errored,
                 selected: selected,
-                code_differs: class_code_differs,
+                code_differs: class_code_differs_delayed,
                 code_folded: class_code_folded,
                 show_input: show_input,
                 drop_target: drag_active,
