@@ -2,7 +2,7 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, get_unique_short_id } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -112,6 +112,7 @@ const first_true_key = (obj) => {
  * @type {{
  *  cell_id: string,
  *  code: string,
+ *  code_author: string,
  *  code_folded: boolean,
  * }}
  */
@@ -231,13 +232,36 @@ export class Editor extends Component {
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
+        this.my_name = get_unique_short_id()
+
+        const debounced_maybe_setters = {}
+        const maybe_update_cell_code_debounced = (cell_id, new_val) => {
+            debounced_maybe_setters[cell_id] =
+                debounced_maybe_setters[cell_id] ??
+                _.debounce(
+                    (code) =>
+                        this.client.send(
+                            "maybe_update_cell_code",
+                            { code: code, code_author: this.my_name, cell_id: cell_id },
+                            { notebook_id: this.state.notebook.notebook_id }
+                        ),
+                    300,
+                    { maxWait: 2000 }
+                )
+
+            debounced_maybe_setters[cell_id](new_val)
+        }
+
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val) => {
+            set_local_cell: (cell_id, new_val, cm_event) => {
+                if (cm_event.origin !== "setValue") {
+                    maybe_update_cell_code_debounced(cell_id, new_val)
+                }
                 return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
@@ -269,6 +293,7 @@ export class Editor extends Component {
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
+                    code_author: "no_one_in_particular",
                     code_folded: false,
                 }))
                 if (index === -1) {
@@ -344,6 +369,7 @@ export class Editor extends Component {
                     return {
                         cell_id: uuidv4(),
                         code: code,
+                        code_author: "no_one_in_particular",
                         code_folded: false,
                     }
                 })
@@ -401,6 +427,7 @@ export class Editor extends Component {
                     notebook.cell_inputs[id] = {
                         cell_id: id,
                         code,
+                        code_author: "no_one_in_particular",
                         code_folded: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
@@ -507,10 +534,7 @@ export class Editor extends Component {
                 return this.client.send(
                     "write_file",
                     { file, name, type, path: this.state.notebook.path },
-                    {
-                        notebook_id: this.state.notebook.notebook_id,
-                        cell_id: cell_id,
-                    },
+                    { notebook_id: this.state.notebook.notebook_id },
                     true
                 )
             },
@@ -1096,6 +1120,7 @@ patch: ${JSON.stringify(
                         </preamble>
                         <${Notebook}
                             notebook=${this.state.notebook}
+                            my_name=${this.my_name}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}

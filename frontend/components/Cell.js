@@ -21,9 +21,10 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_result: { queued, running, runtime, errored, output },
-    cell_input: { cell_id, code, code_folded },
+    cell_input: { cell_id, code, code_author, code_folded },
     cell_input_local,
     notebook_id,
+    my_name,
     on_update_doc_query,
     on_change,
     on_focus_neighbor,
@@ -123,6 +124,7 @@ export const Cell = ({
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
+                remote_code_author=${code_author}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
@@ -143,18 +145,19 @@ export const Cell = ({
                     pluto_actions.add_remote_cell(cell_id, "after")
                 }}
                 on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
-                on_change=${(new_code) => {
+                on_change=${(new_code, cm_event) => {
                     if (!disable_input) {
                         if (code_folded && cm_forced_focus != null) {
                             pluto_actions.fold_remote_cell(cell_id, false)
                         }
-                        on_change(new_code)
+                        on_change(new_code, cm_event)
                     }
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
+                my_name=${my_name}
             />
             <${RunArea}
                 onClick=${() => {

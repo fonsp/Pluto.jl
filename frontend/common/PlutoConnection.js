@@ -62,7 +62,7 @@ export const resolvable_promise = () => {
 /**
  * @returns {string}
  */
-const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
+export const get_unique_short_id = () => crypto.getRandomValues(new Uint32Array(1))[0].toString(36)
 
 const socket_is_alright = (socket) => socket.readyState == WebSocket.OPEN || socket.readyState == WebSocket.CONNECTING
 
