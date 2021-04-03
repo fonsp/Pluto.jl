@@ -8,13 +8,16 @@ export const Preamble = ({ any_code_differs, last_apply_patches }) => {
 
     const [state, set_state] = useState("")
     const timeout_ref = useRef(null)
+    const is_first_time = useRef(true)
 
     useEffect(() => {
+        console.log(any_code_differs, is_first_time.current)
         clearTimeout(timeout_ref.current)
         if (any_code_differs) {
+            is_first_time.current = false
             set_state("ask_to_save")
         } else {
-            if (Date.now() - last_apply_patches < 1000) {
+            if (!is_first_time.current && Date.now() - last_apply_patches < 1000) {
                 set_state("saved")
                 timeout_ref.current = setTimeout(() => {
                     set_state("")
@@ -37,14 +40,20 @@ export const Preamble = ({ any_code_differs, last_apply_patches }) => {
                           class=${cl({ runallchanged: true })}
                           title="Save and run all changed cells"
                       >
-                          <b>Save all changes</b> ${is_mac_keyboard ? html`<kbd>⌘ S</kbd>` : html`<kbd>Ctrl</kbd>+<kbd>S</kbd>`}
+                          <span class="only-on-hover"><b>Save all changes</b> </span>${is_mac_keyboard
+                              ? html`<kbd>⌘ S</kbd>`
+                              : html`<kbd>Ctrl</kbd>+<kbd>S</kbd>`}
                       </button>
                   </div>
               `
             : // : state === "saving"
             // ? html` <div id="saveall-container" class=${state}>Saving... <span class="saving-icon"></span></div> `
             state === "saved" || state === "saving"
-            ? html` <div id="saveall-container" class=${state}>Saved <span class="saved-icon"></span></div> `
+            ? html`
+                  <div id="saveall-container" class=${state}>
+                      <span><span class="only-on-hover">Saved </span><span class="saved-icon"></span></span>
+                  </div>
+              `
             : null}
     </preamble>`
 }

@@ -46,7 +46,7 @@ main {
     flex: 1;
 
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
-    padding-top: 20px;
+    padding-top: 0px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
@@ -713,11 +713,15 @@ main > preamble {
     height: 20px;
     position: sticky;
     top: 5px;
+    margin-top: 5px;
+    padding-right: 5px;
     z-index: 20;
 }
 
 main > preamble #saveall-container {
-    margin: auto;
+    margin-left: auto;
+    right: min(0px, 700px + 25px - 100vw);
+    position: relative;
     background: #ffffff;
     padding: 5px 8px;
     border: 3px solid #e3e3e3;
@@ -730,6 +734,11 @@ main > preamble #saveall-container {
 main > preamble #saveall-container.saving,
 main > preamble #saveall-container.saved {
     border-color: transparent;
+}
+
+main > preamble #saveall-container.saving > span,
+main > preamble #saveall-container.saved > span {
+    opacity: 0.5;
 }
 
 main > preamble span.saved-icon::after,
@@ -752,6 +761,13 @@ main > preamble span.saved-icon::after {
 }
 main > preamble button {
     position: relative;
+}
+
+#saveall-container .only-on-hover {
+    display: none;
+}
+#saveall-container:hover .only-on-hover {
+    display: inline;
 }
 
 /* body:not(.code_differs) > main > preamble #saveall-container {
