@@ -489,6 +489,7 @@ export class Editor extends Component {
                         for (let cell_id of cell_ids) {
                             if (this.state.cell_inputs_local[cell_id]) {
                                 notebook.cell_inputs[cell_id].code = this.state.cell_inputs_local[cell_id].code
+                                notebook.cell_inputs[cell_id].code_author = this.my_name
                             }
                         }
                     })
