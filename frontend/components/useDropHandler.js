@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { useState, useMemo, useContext } from "../imports/Preact.js"
 
@@ -41,12 +42,19 @@ export const useDropHandler = () => {
                 return "# File save failed"
             }
             if (code) return code
-            alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
+            alert("Pluto doesn't know what to do with this file 😥. Do you have a suggestion? Open an issue at https://github.com/fonsp/Pluto.jl")
             return ""
         }
         return (ev) => {
             // dataTransfer is in Protected Mode here. see type, let Pluto DropRuler handle it.
-            if (ev.dataTransfer.types[0] === "text/pluto-cell" || ev.dataTransfer.types[0] === "text/plain") return
+            // if (ev.dataTransfer.types.includes("text/pluto-cell") || ev.dataTransfer.types[0] === "text/plain") return
+            // if (ev.dataTransfer.types.length === 0) return
+
+            // Instead of skipping on `text/pluto-cell` and `text/plain`, lets skip on everything but `Files` (that's the above three lines)
+            // https://developer.mozilla.org/en-US/docs/Web/API/DataTransfer/types#return_value mentions
+            // "If any files are included in the drag operation, then one of the types will be the string `Files`"
+            if (!ev.dataTransfer.types.includes("Files")) return
+
             ev.stopPropagation()
             switch (ev.type) {
                 case "cmdrop":
@@ -57,7 +65,7 @@ export const useDropHandler = () => {
                     const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")
                     set_drag_active(false)
-                    if (!ev.dataTransfer.files.length) {
+                    if (ev.dataTransfer.files.length === 0) {
                         return
                     }
                     uploadAndCreateCodeTemplate(ev.dataTransfer.files[0], drop_cell_id).then((code) => {
@@ -65,7 +73,7 @@ export const useDropHandler = () => {
                             if (!is_empty) {
                                 pluto_actions.add_remote_cell(drop_cell_id, "after", code)
                             } else {
-                                pluto_actions.set_local_cell(drop_cell_id, code, () => pluto_actions.set_and_run_multiple([drop_cell_id]))
+                                pluto_actions.set_local_cell(drop_cell_id, code).then(() => pluto_actions.set_and_run_multiple([drop_cell_id]))
                             }
                         }
                     })

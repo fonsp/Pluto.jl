@@ -23,7 +23,7 @@ const Triangle = ({ fill }) => html`
     </svg>
 `
 
-export const ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
+export const ExportBanner = ({ notebook, pluto_version, onClose, notebook_export_url }) => {
     // @ts-ignore
     let is_chrome = window.chrome == null
 
@@ -31,7 +31,7 @@ export const ExportBanner = ({ notebook, pluto_version, onClose, open }) => {
         <aside id="export">
             <div id="container">
                 <div class="export_title">export</div>
-                <a href="./notebookfile?id=${notebook.notebook_id}" target="_blank" class="export_card">
+                <a href=${notebook_export_url} target="_blank" class="export_card">
                     <header><${Triangle} fill="#a270ba" /> Notebook file</header>
                     <section>Download a copy of the <b>.jl</b> script.</section>
                 </a>

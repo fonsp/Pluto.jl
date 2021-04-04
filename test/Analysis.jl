@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, updated_topology, is_just_text
+import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is_just_text
 
 @testset "Analysis" begin
     notebook = Notebook([
@@ -7,28 +7,36 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         Cell("md\"a\""),
         Cell("html\"a\""),
         Cell("md\"a \$b\$\""),
+        Cell("md\"a ``b``\""),
         Cell("""
         let
             x = md"a"
             md"r \$x"
         end
         """),
-        Cell("html\"a \$b\""),
+        Cell("html\"a 7 \$b\""),
 
-        Cell("md\"a \$b\""),
-        Cell("@a md\"asdf\""),
+        Cell("md\"a 8 \$b\""),
+        Cell("@a md\"asdf 9\""),
         Cell("x()"),
         Cell("x() = y()"),
-        Cell("1 + 1"),
+        Cell("12 + 12"),
         Cell("import Dates"),
         Cell("import Dates"),
         Cell("while false end"),
-        Cell("for i in [1,2]; end"),
-        Cell("[i for i in [1,2]]"),
-        
+        Cell("for i in [16]; end"),
+        Cell("[i for i in [17]]"),
+        Cell("module x18 end"),
+        Cell("""
+        module x19
+            exit()
+        end
+        """),
+        Cell("""quote end"""),
+        Cell("""quote x = 21 end"""),
+        Cell("""quote \$(x = 22) end"""),
     ])
 
-    update_caches!(notebook, notebook.cells)
     old = notebook.topology
     new = notebook.topology = updated_topology(old, notebook, notebook.cells)
 
@@ -39,8 +47,8 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         @test is_just_text(new, notebook.cells[4])
         @test is_just_text(new, notebook.cells[5])
         @test is_just_text(new, notebook.cells[6])
+        @test is_just_text(new, notebook.cells[7])
 
-        @test !is_just_text(new, notebook.cells[7])
         @test !is_just_text(new, notebook.cells[8])
         @test !is_just_text(new, notebook.cells[9])
         @test !is_just_text(new, notebook.cells[10])
@@ -50,5 +58,11 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         @test !is_just_text(new, notebook.cells[14])
         @test !is_just_text(new, notebook.cells[15])
         @test !is_just_text(new, notebook.cells[16])
+        @test !is_just_text(new, notebook.cells[17])
+        @test !is_just_text(new, notebook.cells[18])
+        @test !is_just_text(new, notebook.cells[19])
+        @test !is_just_text(new, notebook.cells[20])
+        @test !is_just_text(new, notebook.cells[21])
+        @test !is_just_text(new, notebook.cells[22])
     end
 end

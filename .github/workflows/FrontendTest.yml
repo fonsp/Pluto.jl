@@ -1,13 +1,13 @@
 name: Pluto frontend tests
 
 # Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# events but only for the main branch
 on:
     push:
         paths-ignore:
             - "**.md"
         branches:
-            - master
+            - main
     pull_request:
         paths-ignore:
             - "**.md"
@@ -78,5 +78,5 @@ jobs:
             - uses: actions/upload-artifact@v2
               if: failure()
               with:
-                  name: test-screenshot-artefacts
-                  path: ${{ github.workspace }}/test/frontend/artefacts/*.png
+                  name: test-screenshot-artifacts
+                  path: ${{ github.workspace }}/test/frontend/artifacts/*.png
