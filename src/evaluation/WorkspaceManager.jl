@@ -211,7 +211,7 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
     take!(workspace.dowork_token)
     early_result = try
         # we use [pid] instead of pid to prevent fetching output
-        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info, $is_cached_on_notebook)))
+        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info)))
         put!(workspace.dowork_token)
         nothing
     catch exs
