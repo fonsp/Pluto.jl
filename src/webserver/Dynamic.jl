@@ -361,14 +361,14 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
+    @info "responses[:run_multiple_cells]"
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
     cells = map(uuids) do uuid
         🙋.notebook.cells_dict[uuid]
     end
-    active_cells = cell_deactivation!(cells, 🙋.notebook)
     if will_run_code(🙋.notebook)
-        foreach(c -> c.queued = true, active_cells)
+        foreach(c -> c.queued = true, cells)
         send_notebook_changes!(🙋)
     end
     

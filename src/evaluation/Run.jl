@@ -7,40 +7,44 @@ Base.push!(x::Set{Cell}) = x
 """
 Recursively deactivates all cells referenced by the current cell.
 """
-function _deactivate_referenced_cells!(cell:: Cell, cells_dict:: Dict{UUID,Cell})
+function _deactivate_referenced_cells!(cell:: Cell)
     cell.is_deactivated && return # if a cell is already deactived, all its downstream dependencies are also already processed
     cell.is_deactivated = true
-    cell.running = false
-    cell.queued = false
+	cell.queued = false
     references = cell.cell_dependencies.downstream_cells_map
     isempty(references) && return
 
     referenced_cells = vcat(values(references)...) |> unique
     for c ∈ referenced_cells
-        _deactivate_referenced_cells!(c, cells_dict)
+        _deactivate_referenced_cells!(c)
     end
 end
 
 """
 Deactivation of cells for execution barriers.
 """
-function cell_deactivation!(cells_in:: Vector{Cell}, notebook:: Notebook)
+function cell_deactivation!(cells_in:: Vector{Cell})
     # activate all cells before checking which cells are affected by execution barrier
+	@info "cell deactivation starts"
     for cell in cells_in
         cell.is_deactivated = false
     end
     # identify cells affected by active execution barrier and its references
     for cell in cells_in
+		@info "processing cell $(cell.cell_id)"
         if cell.has_execution_barrier
-            _deactivate_referenced_cells!(cell, notebook.cells_dict)
+			@info "deactivating cell $(cell.cell_id)"
+            _deactivate_referenced_cells!(cell)
         end
     end
+	@info "writing output cell array"
     cells_to_run = Cell[]
     for cell in cells_in
         if !cell.is_deactivated
             push!(cells_to_run, cell)
         end
     end
+	@info [cell.cell_id for cell in cells_to_run]
     return cells_to_run
 end
 
@@ -73,7 +77,10 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+	@info "cell_deactivation started in Run.jl"
+	to_run = cell_deactivation!(to_run_raw)
+	@info "cell_deactivation executed in Run.jl"
 
 
 	# change the bar on the sides of cells to "queued"
