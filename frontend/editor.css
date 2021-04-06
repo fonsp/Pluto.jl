@@ -745,6 +745,10 @@ pluto-output {
 }
 
 pluto-cell.is_deactivated > pluto-output {
+    opacity: 0.3;
+}
+
+pluto-cell.is_deactivated.has_execution_barrier > pluto-output {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -867,7 +871,11 @@ pluto-cell.code_differs > pluto-input > .CodeMirror {
 }
 
 pluto-cell.is_deactivated > pluto-input .CodeMirror {
-    background-color: rgba(139, 139, 139, 0.1);
+    opacity: 0.3;
+}
+
+pluto-cell.is_deactivated.has_execution_barrier > pluto-input .CodeMirror {
+    background-color: rgba(139, 139, 139, 0.25);
 }
 
 /* UI */
