@@ -115,16 +115,17 @@ export const Cell = ({
             </pluto-shoulder>
             <pluto-barrier>
                 <button
-                onClick=${() => {
-                    pluto_actions.update_notebook((notebook) => {
-                        notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier;
-                    });
-                    // run cell if execution barrier is deactivated
-                    if (has_execution_barrier == true) { // this is the status before the change
-                        set_waiting_to_run(true);
-                        pluto_actions.set_and_run_multiple([cell_id]);
-                    }
-                }}
+                    onClick=${() => {
+                        pluto_actions.update_notebook((notebook) => {
+                            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
+                        })
+                        // run cell if execution barrier is deactivated
+                        if (has_execution_barrier == true) {
+                            // this is the status before the change
+                            set_waiting_to_run(true)
+                            pluto_actions.set_and_run_multiple([cell_id])
+                        }
+                    }}
                     class="activatecode"
                     title="Barrier"
                 >
@@ -179,19 +180,34 @@ export const Cell = ({
                 notebook_id=${notebook_id}
             />
             <${RunArea}
-                onMenuContext=${(e) => { //not working
-                    e.preventDefault();
-                    e.stopPropagation();
+                onRightClick=${(e) => {
+                    //not working
+                    console.log("YEY")
+                    e.preventDefault()
+                    e.stopPropagation()
                     pluto_actions.update_notebook((notebook) => {
-                        notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier;
-                    });
+                        notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
+                    })
                     // run cell if execution barrier is deactivated
-                    if (has_execution_barrier == true) { // this is the status before the change
-                        set_waiting_to_run(true);
-                        pluto_actions.set_and_run_multiple([cell_id]);
+                    if (has_execution_barrier == true) {
+                        // this is the status before the change
+                        set_waiting_to_run(true)
+                        pluto_actions.set_and_run_multiple([cell_id])
                     }
+                    return false
                 }}
                 onClick=${() => {
+                    if (has_execution_barrier) {
+                        pluto_actions.update_notebook((notebook) => {
+                            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
+                        })
+                        // run cell if execution barrier is deactivated
+                        if (has_execution_barrier == true) {
+                            // this is the status before the change
+                            set_waiting_to_run(true)
+                            pluto_actions.set_and_run_multiple([cell_id])
+                        }
+                    }
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
