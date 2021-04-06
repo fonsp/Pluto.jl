@@ -26,7 +26,7 @@ Base.@kwdef mutable struct SymbolsState
     assignments::Set{Symbol} = Set{Symbol}()
     funccalls::Set{FunctionName} = Set{FunctionName}()
     funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
-    has_macrocalls::Bool = false
+    macrocalls::Set{FunctionName} = Set{FunctionName}()
 end
 
 
@@ -60,7 +60,7 @@ function union!(a::Dict{FunctionNameSignaturePair,SymbolsState}, bs::Dict{Functi
 end
 
 function union(a::SymbolsState, b::SymbolsState)
-    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs, a.has_macrocalls || b.has_macrocalls)
+    SymbolsState(a.references ∪ b.references, a.assignments ∪ b.assignments, a.funccalls ∪ b.funccalls, a.funcdefs ∪ b.funcdefs, a.macrocalls ∪ b.macrocalls)
 end
 
 function union!(a::SymbolsState, bs::SymbolsState...)
@@ -68,7 +68,7 @@ function union!(a::SymbolsState, bs::SymbolsState...)
     union!(a.assignments, (b.assignments for b in bs)...)
     union!(a.funccalls, (b.funccalls for b in bs)...)
     union!(a.funcdefs, (b.funcdefs for b in bs)...)
-    a.has_macrocalls = |(a.has_macrocalls, (b.has_macrocalls for b in bs)...)
+    union!(a.macrocalls, (b.macrocalls for b in bs)...)
     return a
 end
 
@@ -89,7 +89,7 @@ function union!(a::ScopeState, bs::ScopeState...)
 end
 
 function ==(a::SymbolsState, b::SymbolsState)
-    a.references == b.references && a.assignments == b.assignments && a.funccalls == b.funccalls && a.funcdefs == b.funcdefs && a.has_macrocalls == b.has_macrocalls
+    a.references == b.references && a.assignments == b.assignments && a.funccalls == b.funccalls && a.funcdefs == b.funcdefs && a.macrocalls == b.macrocalls
 end
 
 Base.push!(x::Set) = x
@@ -356,15 +356,10 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # This is not strictly the normal form of a `for` but that's okay
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
-        # Does not create sccope
-        # new_ex = maybe_macroexpand(ex)
-        # newnew_ex = Meta.isexpr(new_ex, :macrocall) ? Expr(:call, new_ex.args...) : new_ex
-        # symstate = explore!(newnew_ex, scopestate)
-        # push!(symstate.macrocalls, MacroCall(macro_name, ex))
-
         # Early stopping, this expression will have to be re-explored once
         # the macro is expanded in the notebook process.
-        return SymbolsState(has_macrocalls=true)
+        macro_name = split_funcname(ex.args[1])
+        return SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
     elseif ex.head == :call
         # Does not create scope
 

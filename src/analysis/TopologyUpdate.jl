@@ -15,19 +15,18 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	end
 	new_codes = merge(old_topology.codes, updated_codes)
 
-  cells_symstates = (cell => (
-        new_codes[cell].parsedcode 
-        |> ExpressionExplorer.try_compute_symbolreferences) for cell in cells)
+	cells_symstates = (cell => (new_codes[cell].parsedcode 
+				    |> ExpressionExplorer.try_compute_symbolreferences) for cell in cells)
 	updated_nodes = Dict{Cell,ReactiveNode}(cell_symstate.first => ReactiveNode(cell_symstate.second)
                                           for cell_symstate in cells_symstates 
-                                          if !cell_symstate.second.has_macrocalls)
+					  if isempty(cell_symstate.second.macrocalls))
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 
-  # The unresolved cells are the cells for wich we cannot create
-  # a ReactiveNode yet, because they contains macrocalls.
-  unresolved_cells = [cell_symstate.first
-                      for cell_symstate in cells_symstates 
-                      if cell_symstate.second.has_macrocalls]
+	# The unresolved cells are the cells for wich we cannot create
+	# a ReactiveNode yet, because they contains macrocalls.
+	unresolved_cells = [cell_symstate
+			    for cell_symstate in cells_symstates 
+			    if !isempty(cell_symstate.second.macrocalls)]
 
 	# DONE (performance): deleted cells should not stay in the topology
 	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)

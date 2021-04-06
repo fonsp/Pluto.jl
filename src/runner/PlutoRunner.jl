@@ -68,11 +68,24 @@ function visit_expr(macroexpand_cb, ex::Expr)
     macroexpand_cb(ex)
   else
     Expr(ex.head, map(x -> visit_expr(macroexpand_cb, x), ex.args)...)
-  end
-end
+  end end
 
 function visit_expr(_, other)
   other
+end
+
+"""
+Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
+"""
+no_workspace_ref(other) = other
+no_workspace_ref(expr::Expr) = Expr(expr.head, no_workspace_ref.(expr.args)...) 
+function no_workspace_ref(ref::GlobalRef)
+  mod_name =  nameof(ref.mod)
+  if startswith(string(mod_name), "workspace")
+    ref.name
+  else
+    Expr(:(.), mod_name, QuoteNode(ref.name))
+  end
 end
 
 function sanitize_expr(symbol::Symbol)
@@ -84,12 +97,7 @@ function sanitize_expr(dt::Union{DataType, Enum})
 end
 
 function sanitize_expr(ref::GlobalRef)
-  mod_name =  Symbol(ref.mod)
-  if startswith(string(mod_name), "workspace")
-    QuoteNode(ref.name)
-  else
-    Expr(:(.), mod_name, QuoteNode(ref.name))
-  end
+  no_workspace_ref(ref)
 end
 
 function sanitize_expr(expr::Expr)
@@ -111,7 +119,7 @@ function try_macroexpand(mod, cell_uuid, expr)
   try
     macroexpand_cb(macrocall) = Core.eval(mod, :(@macroexpand($macrocall)))
     expanded_expr = visit_expr(macroexpand_cb, expr)
-    ExpandedCallCells[cell_uuid] = expanded_expr
+    ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
 
     return sanitize_expr(expanded_expr)
   catch e

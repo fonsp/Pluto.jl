@@ -161,32 +161,26 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 "We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
   sn = (session, notebook)
-
   to_reimport = union(Set{Expr}(), map(c -> notebook.topology.codes[c].module_usings_imports.usings, notebook.cells)...)
   WorkspaceManager.do_reimports(sn, to_reimport)
 
   function macroexpand_cell(cell)
-    try_macroexpand() = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id)
-    # TODO(Paul): Remove @info calls
-
+    try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = 
+      macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
     # Several trying steps
     #  1. Try in the new module with moved imports
     #  2. Try in the previous module
     #  3. Move imports and re-try in the new module
-    #  4. NotImplemented. Would be to run imports and execute only a part of the graph
+    #  4. *NotImplemented*. Would be to run imports and execute only a part of the graph
     res = try_macroexpand()
     if isa(res, LoadError) && isa(res.error, UndefVarError)
-      @info "Try 1 failed, trying on old workspace" res
       # We have not found the macro in the new workspace after reimports
       # this most likely means that the macro is user defined, we try to expand it
       # in the old workspace to see whether or not it is defined there
 
-      res = try_macroexpand()
+      res = try_macroexpand(old_workspace_name)
       # It was not defined previously, we try searching modules in our own batch
       if isa(res, LoadError) && isa(res.error, UndefVarError)
-        @info "Try 2 failed, trying to import new Expr" res
-        # TODO(Paul): filter expressions so that it doesn't have side effects
-        # It should be only of type :(using MyModule)
         to_import_from_batch = union(Set{Expr}(), 
                                      map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
                                          notebook.cells)...)
@@ -200,11 +194,21 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
   # create new node & new codes for macrocalled cells
   new_nodes = Dict(
-    cell => cell
+    cell_symstate.first => cell_symstate.first
       |> macroexpand_cell
-      |> ExpressionExplorer.try_compute_symbolreferences
+      |> function(result) 
+	if typeof(result) <: Exception # if expansion failed, we use the "shallow" symbols state
+	  @warn "Failed to expand macro" result
+
+	  cell_symstate.second
+	else # otherwise, we use the expanded expression + the list of macrocalls
+	  expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+	  union!(expanded_symbols_state.macrocalls, cell_symstate.second.macrocalls)
+	  expanded_symbols_state
+	end
+      end
       |> ReactiveNode
-    for cell in unresolved_topology.unresolved_cells)
+    for cell_symstate in unresolved_topology.unresolved_cells)
   all_nodes = merge(unresolved_topology.nodes, new_nodes)
 
   NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
@@ -218,8 +222,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 	unresolved_topology = updated_topology(old, notebook, cells)
 
-  old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
-  new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+	old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
+	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
 
 	save && save_notebook(notebook)
 

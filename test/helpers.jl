@@ -22,7 +22,7 @@ function Base.show(io::IO, s::SymbolsState)
         print(io, "]")
     end
     print(io, "], [")
-    print(io, s.has_macrocalls)
+    print(io, s.macrocalls)
     print(io, "])")
 end
 

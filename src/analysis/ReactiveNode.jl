@@ -39,6 +39,7 @@ function ReactiveNode(symstate::SymbolsState)
 
 	# now we will add the function names to our edges:
 	push!(result.references, (symstate.funccalls .|> join_funcname_parts)...)
+	push!(result.references, (symstate.macrocalls .|> join_funcname_parts)...)
 
 	for (namesig, body_symstate) in symstate.funcdefs
 		push!(result.funcdefs_with_signatures, namesig)
