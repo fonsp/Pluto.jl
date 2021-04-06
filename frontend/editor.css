@@ -731,6 +731,12 @@ main > preamble #saveall-container {
     font-size: 0.75rem;
 }
 
+@media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
+    main > preamble #saveall-container {
+        right: -500px;
+    }
+}
+
 main > preamble #saveall-container.saving,
 main > preamble #saveall-container.saved {
     border-color: transparent;
