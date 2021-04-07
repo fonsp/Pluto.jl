@@ -333,16 +333,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 for (let code_element of container.current.querySelectorAll("code")) {
                     for (let className of code_element.classList) {
                         if (className.startsWith("language-")) {
-                            let aliases = {
-                                "html": "htmlmixed",
-                                "jl": "julia",
-                                "js": "javascript",
-                            }
-
                             let language = className.substr(9)
-                            if (language in aliases) {
-                                language = aliases[language]
-                            }
 
                             // Remove "language-"
                             highlight(code_element, language)
@@ -364,15 +355,27 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
         // @ts-ignore
+        let mode = language  // fallback
+
+        let info = window.CodeMirror.findModeByName(language)
+        if (info) {
+            mode = info.mode
+        }
+
+        // Not require since https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+        if (mode == "jl") {
+            mode = "julia"
+        }
+
         window.CodeMirror.requireMode(
-            language,
+            mode,
             function () {
-                window.CodeMirror.runMode(code_element.innerText, language, code_element)
+                window.CodeMirror.runMode(code_element.innerText, mode, code_element)
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: function (language) {
-                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
+                path: function (mode) {
+                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`
                 },
             }
         )
