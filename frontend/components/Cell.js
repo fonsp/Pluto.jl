@@ -113,25 +113,6 @@ export const Cell = ({
                     <span></span>
                 </button>
             </pluto-shoulder>
-            <pluto-barrier>
-                <button
-                    onClick=${() => {
-                        pluto_actions.update_notebook((notebook) => {
-                            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
-                        })
-                        // run cell if execution barrier is deactivated
-                        if (has_execution_barrier == true) {
-                            // this is the status before the change
-                            set_waiting_to_run(true)
-                            pluto_actions.set_and_run_multiple([cell_id])
-                        }
-                    }}
-                    class="activatecode"
-                    title="Barrier"
-                >
-                    <span></span>
-                </button>
-            </pluto-barrier>
             <pluto-trafficlight></pluto-trafficlight>
             <button
                 onClick=${() => {
