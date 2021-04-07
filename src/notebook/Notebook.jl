@@ -77,7 +77,7 @@ const _cell_id_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
-const _execution_barrier = "# 🛑 execution_barrier 🛑"
+const _execution_barrier = "# 🛑 execution barrier 🛑"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 

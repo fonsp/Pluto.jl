@@ -171,8 +171,8 @@ export const Cell = ({
                     if (has_execution_barrier == true) {
                         // this is the status before the change
                         set_waiting_to_run(true)
-                        pluto_actions.set_and_run_multiple([cell_id])
                     }
+                    pluto_actions.set_and_run_multiple([cell_id])
                     return false
                 }}
                 onClick=${() => {
