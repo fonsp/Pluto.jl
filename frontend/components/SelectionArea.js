@@ -129,7 +129,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
 
         // Ctrl+A to select all cells
         const onkeydown = (e) => {
-            if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key.toLowerCase() === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
                 if (document.activeElement === document.body && window.getSelection().isCollapsed) {
                     on_selection(cell_order)

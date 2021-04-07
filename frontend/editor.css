@@ -46,7 +46,7 @@ main {
     flex: 1;
 
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
-    padding-top: 20px;
+    padding-top: 0px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
@@ -368,6 +368,17 @@ pluto-output table > tbody tr:hover {
 pluto-output table pre {
     white-space: pre;
 }
+
+pluto-output kbd,
+kbd {
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: -0.7px;
+    border: 1px solid #dfdfdf;
+    padding: 0px 2px;
+    border-radius: 3px;
+}
+
 /* HEADER */
 
 body > header {
@@ -699,20 +710,51 @@ body.binder.loading loading-bar {
 
 main > preamble {
     display: flex;
-    position: relative;
     height: 20px;
+    position: sticky;
+    top: 5px;
+    margin-top: 5px;
+    padding-right: 5px;
+    z-index: 20;
 }
 
-main > preamble > button {
-    display: none;
-    right: 0px;
+main > preamble #saveall-container {
+    margin-left: auto;
+    right: min(0px, 700px + 25px - 100vw);
+    position: relative;
+    background: #ffffff;
+    padding: 5px 8px;
+    border: 3px solid #e3e3e3;
+    border-radius: 12px;
+    height: 35px;
+    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-size: 0.75rem;
 }
 
-main > preamble > button > span::after {
-    content: "Submit all changes";
-    display: block;
+@media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
+    main > preamble #saveall-container {
+        right: -500px;
+    }
+}
+
+main > preamble #saveall-container.saving,
+main > preamble #saveall-container.saved {
+    border-color: transparent;
+}
+
+main > preamble #saveall-container.saving > span,
+main > preamble #saveall-container.saved > span {
+    opacity: 0.5;
+}
+
+main > preamble span.saved-icon::after,
+main > preamble span.saving-icon::after {
+    content: "";
+    display: inline-block;
     padding-right: 20px;
-
+    /* width: 17px; */
+    height: 17px;
+    margin-bottom: -3px;
     background-size: 17px 17px;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-circle-outline.svg);
     background-repeat: no-repeat;
@@ -720,9 +762,23 @@ main > preamble > button > span::after {
     background-position-y: 1px;
 }
 
-body.code_differs > main > preamble > button {
-    display: block;
+main > preamble span.saved-icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/checkmark-outline.svg);
 }
+main > preamble button {
+    position: relative;
+}
+
+#saveall-container .only-on-hover {
+    display: none;
+}
+#saveall-container:hover .only-on-hover {
+    display: inline;
+}
+
+/* body:not(.code_differs) > main > preamble #saveall-container {
+    display: none;
+} */
 
 /* CELL */
 
@@ -880,7 +936,7 @@ pluto-cell.is_deactivated.has_execution_barrier > pluto-input .CodeMirror {
 
 /* UI */
 
-preamble > button,
+preamble button,
 pluto-cell > button,
 pluto-input > button,
 pluto-runarea > button,
@@ -1140,7 +1196,7 @@ pluto-input > button > span {
         transition: opacity 0.25s ease-in-out;
     }
     button.toggle_export:hover,
-    preamble > button:hover,
+    preamble button:hover,
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
     pluto-cell > pluto-runarea > button:hover,

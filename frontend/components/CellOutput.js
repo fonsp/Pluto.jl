@@ -333,8 +333,19 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 for (let code_element of container.current.querySelectorAll("code")) {
                     for (let className of code_element.classList) {
                         if (className.startsWith("language-")) {
+                            let aliases = {
+                                "html": "htmlmixed",
+                                "jl": "julia",
+                                "js": "javascript",
+                            }
+
+                            let language = className.substr(9)
+                            if (language in aliases) {
+                                language = aliases[language]
+                            }
+
                             // Remove "language-"
-                            highlight(code_element, className.substr(9))
+                            highlight(code_element, language)
                         }
                     }
                 }
