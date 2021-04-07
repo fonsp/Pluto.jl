@@ -162,8 +162,6 @@ export const Cell = ({
             />
             <${RunArea}
                 onRightClick=${(e) => {
-                    //not working
-                    console.log("YEY")
                     e.preventDefault()
                     e.stopPropagation()
                     pluto_actions.update_notebook((notebook) => {

@@ -361,7 +361,6 @@ responses[:reset_shared_state] = function response_reset_shared_state(🙋::Clie
 end
 
 responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::ClientRequest)
-    @info "responses[:run_multiple_cells]"
     require_notebook(🙋)
     uuids = UUID.(🙋.body["cells"])
     cells = map(uuids) do uuid
