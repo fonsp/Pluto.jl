@@ -176,23 +176,16 @@ export const Cell = ({
                     return false
                 }}
                 onClick=${() => {
-                    if (has_execution_barrier) {
-                        pluto_actions.update_notebook((notebook) => {
-                            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
-                        })
-                        // run cell if execution barrier is deactivated
-                        if (has_execution_barrier == true) {
-                            // this is the status before the change
-                            set_waiting_to_run(true)
-                            pluto_actions.set_and_run_multiple([cell_id])
-                        }
-                    }
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
-                        set_waiting_to_run(true)
-                        let cell_to_run = selected ? selected_cells : [cell_id]
-                        pluto_actions.set_and_run_multiple(cell_to_run)
+                        if (has_execution_barrier == false) {
+                            // this is the status before the change
+                            set_waiting_to_run(true)
+                            let cell_to_run = selected ? selected_cells : [cell_id]
+                            pluto_actions.set_and_run_multiple(cell_to_run)
+                        }
+                        
                     }
                 }}
                 runtime=${runtime}
