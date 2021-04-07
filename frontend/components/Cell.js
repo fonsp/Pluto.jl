@@ -21,6 +21,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_result: { queued, running, runtime, errored, output },
+    cell_dependencies: { downstream_cells_map, upstream_cells_map },
     cell_input: { cell_id, code, code_folded },
     cell_input_local,
     notebook_id,
@@ -93,6 +94,12 @@ export const Cell = ({
             })}
             id=${cell_id}
         >
+            <ul>
+                ${Object.entries(upstream_cells_map).map(([key, listofcell_ids]) => {
+                    const first = listofcell_ids.length > 0 ? listofcell_ids[0] : null
+                    return html`<li><a href="#${first}">${key}</a></li>`
+                })}
+            </ul>
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
