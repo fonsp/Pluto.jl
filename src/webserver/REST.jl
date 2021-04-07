@@ -4,6 +4,7 @@ import UUIDs: UUID
 import HTTP
 import JSON
 import MsgPack
+import Serialization
 
 function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
     filter(notebook.cells) do cell
@@ -124,23 +125,32 @@ function static_function(output::Symbol, inputs::Vector{Symbol}, filename::Abstr
     Meta.parse(String(response.body))
 end
 
-function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234", with_json=false; kwargs...)
-    query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
-    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/eval"); query=query)
+function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
+    # query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
+    request_uri = HTTP.URI("http://$(host)/notebook/$filename/eval")
 
-    response = HTTP.get(request_uri, [
-        "Accept" => with_json ? "application/json" : "application/x-msgpack"
-    ]; status_exception=false)
+    body = IOBuffer()
+    Serialization.serialize(body, Dict{String, Any}(
+        "outputs" => [output],
+        "inputs" => Dict(kwargs)
+    ))
+    serialized_body = take!(body)
+
+    response = HTTP.request("POST", request_uri, [
+        "Accept" => "application/x-julia",
+        "Content-Type" => "application/x-julia"
+    ], serialized_body; status_exception=false)
 
     if response.status >= 300
         throw(ErrorException(String(response.body)))
     end
-    
-    if with_json
-        return JSON.parse(String(response.body))[string(output)]
-    else
-        return MsgPack.unpack(response.body)[string(output)]
-    end
+
+    # if with_json
+    #     return JSON.parse(String(response.body))[string(output)]
+    # else
+    #     return MsgPack.unpack(response.body)[string(output)]
+    # end
+    return Serialization.deserialize(IOBuffer(response.body))[output]
 end
 
 function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234", with_json=false)
@@ -201,7 +211,7 @@ function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
         return REST.evaluate(symbol, Base.getfield(Base.getfield(with_args, :notebook), :filename), Base.getfield(Base.getfield(with_args, :notebook), :host); Base.getfield(with_args, :kwargs)...)
     catch e
         # if contains(e.msg, "function") # See if the function error was thrown, and return a PlutoCallable struct
-            return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
+            # return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
         # end
         throw(e)
     end

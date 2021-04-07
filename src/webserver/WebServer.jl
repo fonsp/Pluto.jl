@@ -228,7 +228,7 @@ function run(session::ServerSession)
             if eof(request_body)
                 # no request body
             else
-                @warn "HTTP request contains a body, huh?" request_body
+                # @warn "HTTP request contains a body, huh?" request_body
             end
     
             request.response::HTTP.Response = response_body

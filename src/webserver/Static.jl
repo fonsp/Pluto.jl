@@ -4,6 +4,7 @@ import UUIDs: UUID
 import JSON
 import MsgPack
 import Distributed: RemoteException
+import Serialization
 
 # Serve everything from `/frontend`, and create HTTP endpoints to open notebooks.
 
@@ -69,7 +70,10 @@ function with_msgpack!(response::HTTP.Response)
     push!(response.headers, "Content-Type" => "application/x-msgpack")
     response
 end
-
+function with_julia!(response::HTTP.Response)
+    push!(response.headers, "Content-Type" => "application/x-julia")
+    response
+end
 function with_cors!(response::HTTP.Response)
     push!(response.headers, "Access-Control-Allow-Origin" => "*")
     response
@@ -254,11 +258,41 @@ function http_router_for(session::ServerSession)
 
         notebook
     end
-    function rest_response(request::HTTP.Request, body)
+    function rest_parse(body::Vector{UInt8}, mime_type::AbstractString)
+        # TODO: either fix or remove json support
+        if mime_type == "application/json"
+            return JSON.parse(body)
+        elseif mime_type == "application/x-msgpack"
+            return MsgPack.unpack(body)
+        elseif mime_type == "application/x-julia"
+            return Serialization.deserialize(IOBuffer(body))
+        else
+            @error "Unrecognized MIME type for REST request body"
+        end
+    end
+    function rest_parameter(request::HTTP.Request, key::AbstractString)
+        uri = HTTP.URI(request.target)
+        query = HTTP.queryparams(uri)
+        parts = HTTP.URIs.splitpath(uri.path)
+
+        content_type = get_header(request, "Content-Type")
+        if haskey(query, key)
+            return rest_parse(Vector{UInt8}(get(query, key, "")), content_type)
+        end
+
+        parsed_body = rest_parse(request.body, content_type)
+        get(parsed_body, key, nothing)
+    end
+    function rest_serialize(request::HTTP.Request, body)
         accept_type = get_header(request, "Accept")
         try
             if accept_type == "application/json"
                 return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
+            elseif accept_type == "application/x-julia"
+                out_io = IOBuffer()
+                Serialization.serialize(out_io, body)
+                serialized_msg = take!(out_io)
+                return HTTP.Response(200, serialized_msg) |> with_julia! |> with_cors!
             else 
                 return HTTP.Response(200, MsgPack.pack(body)) |> with_msgpack! |> with_cors!
             end
@@ -274,13 +308,15 @@ function http_router_for(session::ServerSession)
         query = HTTP.queryparams(uri)
 
         parts = HTTP.URIs.splitpath(uri.path)
-        out_symbols = Symbol.(split(query["outputs"], ","))
+        out_symbols = Symbol.(rest_parameter(request, "outputs"))
+        # out_symbols = Symbol.(split(query["outputs"], ","))
 
         # Get notebook from request parameters
         notebook = get_notebook_from_request(request)
         topology = notebook.topology
 
-        inputs = MsgPack.unpack(query["inputs"])
+        inputs = rest_parameter(request, "inputs")
+        # inputs = MsgPack.unpack(query["inputs"])
         outputs = nothing
         try
             outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
@@ -293,20 +329,10 @@ function http_router_for(session::ServerSession)
             end
         end
 
-        accept_type = get_header(request, "Accept")
-        try
-            if accept_type == "application/json"
-                return HTTP.Response(200, JSON.json(outputs)) |> with_json! |> with_cors!
-            else 
-                return HTTP.Response(200, MsgPack.pack(outputs)) |> with_msgpack! |> with_cors!
-            end
-        catch e
-            # Likely an error serializing the object
-            showerror(stderr, e)
-            return HTTP.Response(400, "Cannot serialize requested output. See server logs for details")
-        end
+        rest_serialize(request, outputs)
     end
     HTTP.@register(router, "GET", "/notebook/*/eval", serve_notebook_eval)
+    HTTP.@register(router, "POST", "/notebook/*/eval", serve_notebook_eval)
 
     function serve_notebook_call(request::HTTP.Request)
         # Get notebook from request parameters
@@ -327,7 +353,7 @@ function http_router_for(session::ServerSession)
         fn_symbol = :($(fn_name)($(args...)))
         fn_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
 
-        rest_response(request, fn_result)
+        rest_serialize(request, fn_result)
     end
     HTTP.@register(router, "GET", "/notebook/*/call", serve_notebook_call)
 
