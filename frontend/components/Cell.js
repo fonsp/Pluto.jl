@@ -95,9 +95,8 @@ export const Cell = ({
             id=${cell_id}
         >
             <ul>
-                ${Object.entries(upstream_cells_map).map(([key, listofcell_ids]) => {
-                    const first = listofcell_ids.length > 0 ? listofcell_ids[0] : null
-                    return html`<li><a href="#${first}">${key}</a></li>`
+                ${Object.entries(upstream_cells_map ?? {}).map(([key, listofcell_ids]) => {
+                    return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
                 })}
             </ul>
             <pluto-shoulder draggable="true" title="Drag to move cell">

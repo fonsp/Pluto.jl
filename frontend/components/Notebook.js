@@ -154,7 +154,7 @@ export const Notebook = ({
                             output: null,
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
-                        cell_dependencies=${notebook.cell_dependencies[cell_id]}
+                        cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         on_update_doc_query=${on_update_doc_query}
