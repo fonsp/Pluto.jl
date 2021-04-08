@@ -1001,10 +1001,10 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        const notebook_export_url =
+        const export_url = (u) =>
             this.state.binder_session_url == null
-                ? `./notebookfile?id=${this.state.notebook.notebook_id}`
-                : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
+                ? `./${u}?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -1012,9 +1012,8 @@ patch: ${JSON.stringify(
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
-                            pluto_version=${this.client?.version_info?.pluto}
-                            notebook=${this.state.notebook}
-                            notebook_export_url=${notebook_export_url}
+                            notebookfile_url=${export_url("notebookfile")}
+                            notebookexport_url=${export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
@@ -1039,7 +1038,7 @@ patch: ${JSON.stringify(
                             <div class="flex_grow_1"></div>
                             ${
                                 this.state.binder_phase === BinderPhase.ready
-                                    ? html`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}

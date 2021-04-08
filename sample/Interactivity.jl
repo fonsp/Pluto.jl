@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.11
+# v0.14.0
 
 using Markdown
 using InteractiveUtils
@@ -94,7 +94,7 @@ Try drawing a rectangle in the canvas below 👇 and notice that the `area` vari
 
 <script>
 // 🐸 `currentScript` is the current script tag - we use it to select elements 🐸 //
-const canvas = currentScript.closest('pluto-output').querySelector("canvas")
+const canvas = currentScript.parentElement.querySelector("canvas")
 const ctx = canvas.getContext("2d")
 
 var startX = 80

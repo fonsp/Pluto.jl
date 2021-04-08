@@ -13,11 +13,13 @@ project_relative_path(xs...) = normpath(joinpath(dirname(dirname(pathof(Pluto)))
 
 import Pkg
 
+include_dependency("../Project.toml")
 const PLUTO_VERSION = VersionNumber(Pkg.TOML.parsefile(project_relative_path("Project.toml"))["version"])
 const PLUTO_VERSION_STR = 'v' * string(PLUTO_VERSION)
 const JULIA_VERSION_STR = 'v' * string(VERSION)
 
 include("./notebook/PathHelpers.jl")
+include("./notebook/Export.jl")
 include("./Configuration.jl")
 
 include("./evaluation/Tokens.jl")
