@@ -2,7 +2,8 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { require } from "../common/SetupCellEnvironment.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 import { Cell } from "./Cell.js"
-const ReactGridLayout = window.ReactGridLayout.WidthProvider(window.ReactGridLayout)
+const ReactGridLayout = window.ReactGridLayout.WidthProvider(window.ReactGridLayout.Responsive)
+//const ReactGridLayout = window.ReactGridLayout
 
 let CellMemo = ({
     cell_input,
@@ -134,6 +135,8 @@ export const Notebook = ({
     `
 }
 
+window.states = []
+
 function CustomGrid({
     notebook,
     is_initializing,
@@ -146,29 +149,54 @@ function CustomGrid({
     disable_input,
     is_first_load,
 }) {
-    const COLS = 4
-    const [layout, setLayout] = useState(() =>
-        new Array(notebook.cell_order.length).fill(0).map((x, idx) => {
-            return {
-                x: 0,
-                y: idx,
-                w: 1,
-                h: 2,
-                i: idx.toString(),
-            }
-        })
-    )
+    const COLS = 12
+    window.editor_state = { notebook }
+    const DASHBOARD_KEY = `notebook-layout: ${notebook.notebook_id}`
+    const init = localStorage[DASHBOARD_KEY]
+        ? JSON.parse(localStorage[DASHBOARD_KEY])
+        : new Array(notebook.cell_order.length).fill(0).map((x, idx) => {
+              return {
+                  x: idx,
+                  y: 0,
+                  w: 1,
+                  h: 2,
+                  i: idx.toString(),
+              }
+          })
+    const [layout, setLayout] = useState(init)
+    console.log(init, layout)
+    const onLayoutChange = (l) => {
+        if (l.length > 0) {
+            setLayout(l)
+            setStateLS(l)
+        }
+    }
+    const setStateLS = (state) => {
+        const state_str = JSON.stringify(state)
+        localStorage.setItem(DASHBOARD_KEY, state_str)
+        window.states.push(state_str)
+    }
+    if (!layout?.length > 0) return "..."
     return html`<${ReactGridLayout}
-                    cols=${COLS}
                     className="layout"
                     items=${notebook.cell_order.length}
+                    cols=${{ xss: COLS }}
+                    breakpoints=${{ xss: 0 }}
                     rowHeight=${60}
                     draggable
-                    onLayoutChange=${function () {}},
-                    onLayoutChange=${console.log}>
+                    onLayoutChange=${onLayoutChange}>
                         ${notebook.cell_order.map((cell_id, idx) => {
-                            return html`<div key=${idx}>
-                                <div data-grid=${{ ...layout[idx] }} class="borderThis">
+                            return html`<div
+                                key=${layout[idx].i}
+                                data-grid=${{
+                                    x: layout[idx].x,
+                                    i: layout[idx].i,
+                                    y: layout[idx].y,
+                                    w: layout[idx].w,
+                                    h: layout[idx].h,
+                                }}
+                            >
+                                <div class="borderThis">
                                     <${CellMemo}
                                         key=${cell_id}
                                         cell_input=${notebook.cell_inputs[cell_id]}
