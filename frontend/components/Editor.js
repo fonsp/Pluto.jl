@@ -1010,6 +1010,7 @@ patch: ${JSON.stringify(
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${Scroller} active=${this.state.scroller} />
+                    <a href=${`/dashboard?id=${notebook.notebook_id}`} class="goto_dashboard">💫</a>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}

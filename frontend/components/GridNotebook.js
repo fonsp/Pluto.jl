@@ -135,8 +135,6 @@ export const Notebook = ({
     `
 }
 
-window.states = []
-
 function CustomGrid({
     notebook,
     is_initializing,
@@ -150,21 +148,22 @@ function CustomGrid({
     is_first_load,
 }) {
     const COLS = 12
-    window.editor_state = { notebook }
     const DASHBOARD_KEY = `notebook-layout: ${notebook.notebook_id}`
-    const init = localStorage[DASHBOARD_KEY]
-        ? JSON.parse(localStorage[DASHBOARD_KEY])
-        : new Array(notebook.cell_order.length).fill(0).map((x, idx) => {
-              return {
-                  x: idx,
-                  y: 0,
-                  w: 1,
-                  h: 2,
-                  i: idx.toString(),
-              }
-          })
-    const [layout, setLayout] = useState(init)
-    console.log(init, layout)
+
+    const saved = localStorage[DASHBOARD_KEY] ? _.keyBy(JSON.parse(localStorage[DASHBOARD_KEY]), "i") : {}
+    const setupState = () =>
+        notebook.cell_order.map((cell_id, idx) => {
+            return (
+                saved?.[cell_id] ?? {
+                    x: idx,
+                    y: 0,
+                    w: 1,
+                    h: 2,
+                    i: cell_id,
+                }
+            )
+        })
+    const [layout, setLayout] = useState(setupState)
     const onLayoutChange = (l) => {
         if (l.length > 0) {
             setLayout(l)
@@ -174,15 +173,15 @@ function CustomGrid({
     const setStateLS = (state) => {
         const state_str = JSON.stringify(state)
         localStorage.setItem(DASHBOARD_KEY, state_str)
-        window.states.push(state_str)
     }
-    if (!layout?.length > 0) return "..."
+    if (!(layout?.length > 0)) return "..."
     return html`<${ReactGridLayout}
                     className="layout"
                     items=${notebook.cell_order.length}
                     cols=${{ xss: COLS }}
                     breakpoints=${{ xss: 0 }}
-                    rowHeight=${60}
+                    rowHeight=${80}
+                    verticalCompact=${false}
                     draggable
                     onLayoutChange=${onLayoutChange}>
                         ${notebook.cell_order.map((cell_id, idx) => {

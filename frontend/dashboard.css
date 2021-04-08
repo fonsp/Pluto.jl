@@ -1,6 +1,9 @@
 .layout {
     width: calc(100% - 3rem);
     padding: 1rem;
+    margin-bottom: 50vh;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid lightgrey;
 }
 .layout pluto-cell {
     max-height: 97%;
@@ -21,4 +24,19 @@
     bottom: 8px;
     right: 8px;
     cursor: se-resize;
+    z-index: 10000;
+}
+
+.goto_edit {
+    position: fixed;
+    bottom: 0.5em;
+    left: 0.5em;
+    padding: 0.25em;
+    text-align: center;
+    border-radius: 0.25em;
+    background-color: wheat;
+    font-size: larger;
+    z-index: 10000;
+    text-decoration: none;
+    cursor: pointer;
 }

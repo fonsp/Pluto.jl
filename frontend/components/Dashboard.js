@@ -3,28 +3,20 @@ import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
 import { create_pluto_connection } from "../common/PlutoConnection.js"
-import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./GridNotebook.js"
-import { LiveDocs } from "./LiveDocs.js"
-import { DropRuler } from "./DropRuler.js"
-import { SelectionArea } from "./SelectionArea.js"
-import { UndoDelete } from "./UndoDelete.js"
-import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
 
-import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
+import { slice_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
-import { start_binder, BinderPhase } from "../common/Binder.js"
+import { BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
-import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 
 const default_path = "..."
@@ -634,8 +626,6 @@ patch: ${JSON.stringify(
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
             await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
-
-            setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
 
         const on_connection_status = (val) => this.setState({ connected: val })
@@ -993,6 +983,7 @@ patch: ${JSON.stringify(
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${Scroller} active=${this.state.scroller} />
+                    <a href=${`/edit?id=${notebook.notebook_id}`} class="goto_edit">📝</a>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}
@@ -1076,17 +1067,6 @@ patch: ${JSON.stringify(
                                 disable_input=${!this.state.connected}
                             />`
                         }
-                    <footer>
-                        <div id="info">
-                            <form id="feedback" action="#" method="post">
-                                <a href="https://github.com/fonsp/Pluto.jl/wiki" target="_blank">FAQ</a>
-                                <span style="flex: 1"></span>
-                                <label for="opinion">🙋 How can we make <a href="https://github.com/fonsp/Pluto.jl" target="_blank">Pluto.jl</a> better?</label>
-                                <input type="text" name="opinion" id="opinion" autocomplete="off" placeholder="Instant feedback..." />
-                                <button>Send</button>
-                            </form>
-                        </div>
-                    </footer>
                 </${PlutoBondsContext.Provider}>
             </${PlutoContext.Provider}>
         `

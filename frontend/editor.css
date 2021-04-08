@@ -1864,3 +1864,17 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
 }
+
+.goto_dashboard {
+    position: fixed;
+    bottom: 0.5em;
+    left: 0.5em;
+    padding: 0.25em;
+    text-align: center;
+    border-radius: 0.25em;
+    background-color: wheat;
+    font-size: larger;
+    z-index: 10000;
+    text-decoration: none;
+    cursor: pointer;
+}
