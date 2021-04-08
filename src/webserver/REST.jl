@@ -127,7 +127,7 @@ end
 
 function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
     # query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
-    request_uri = HTTP.URI("http://$(host)/notebook/$filename/eval")
+    request_uri = HTTP.URI("http://$(host)/notebook/$(HTTP.escapeuri(filename))/eval")
 
     body = IOBuffer()
     Serialization.serialize(body, Dict{String, Any}(

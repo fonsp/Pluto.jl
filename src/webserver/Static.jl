@@ -239,7 +239,7 @@ function http_router_for(session::ServerSession)
         splitpath = HTTP.URIs.splitpath(request.target)
 
         sess_id = get(query, "session", splitpath[2])
-        file = get(query, "file", splitpath[2])
+        file = get(query, "file", HTTP.unescapeuri(splitpath[2]))
         notebook = nothing
         if !isnothing(file)
             notebook_id = findfirst(session.notebooks) do nb
