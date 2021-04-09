@@ -3,7 +3,7 @@ import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
+import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
@@ -41,10 +41,10 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
     useLayoutEffect(() => {
         // Actually, showing the jldoctest stuff wasn't as pretty... should make a mode for that sometimes
         // for (let code_element of container_ref.current.querySelectorAll("code.language-jldoctest")) {
-        //     highlight_julia(code_element)
+        //     highlight(code_element, "julia")
         // }
         for (let code_element of container_ref.current.querySelectorAll("code:not([class])")) {
-            highlight_julia(code_element)
+            highlight(code_element, "julia")
         }
     }, [state.body])
 

@@ -1,5 +1,5 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FunctionName, join_funcname_parts
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings_imports, SymbolsState, FunctionName, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -154,13 +154,15 @@ function get_assignees(ex::Expr)::FunctionName
     end
 end
 
-# e.g. x = 123
-get_assignees(ex::Symbol) = Symbol[ex]
+# e.g. x = 123, but ignore _ = 456
+get_assignees(ex::Symbol) = all_underscores(ex) ? Symbol[] : Symbol[ex]
 
 # When you assign to a datatype like Int, String, or anything bad like that
 # e.g. 1 = 2
 # This is parsable code, so we have to treat it
 get_assignees(::Any) = Symbol[]
+
+all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
@@ -315,6 +317,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+        filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
         return symstate
     elseif ex.head in modifiers
@@ -482,7 +485,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcroot = ex.args[1]
         args_ex = if funcroot isa Symbol || (funcroot isa Expr && funcroot.head == :(::))
             [funcroot]
-        elseif funcroot.head == :tuple || funcroot.head == :(...)
+        elseif funcroot.head == :tuple || funcroot.head == :(...) || funcroot.head == :block
             funcroot.args
         else
             @error "Unknown lambda type"
@@ -593,19 +596,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return explore!(Expr(:call, ex.args[1], ex.args[2].args...), scopestate)
     elseif ex.head == :using || ex.head == :import
-        if scopestate.inglobalscope
-            imports = if ex.args[1].head == :(:)
-                ex.args[1].args[2:end]
-            else
-            ex.args
-            end
-
-            packagenames = map(e -> e.args[end], imports)
-
-            return SymbolsState(assignments=Set{Symbol}(packagenames))
+        imports = if ex.args[1].head == :(:)
+            ex.args[1].args[2:end]
         else
-            return SymbolsState()
+            ex.args
         end
+
+        packagenames = map(e -> e.args[end], imports)
+
+        return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
         # We ignore contents
 
@@ -977,19 +976,54 @@ function try_compute_symbolreferences(ex::Any)::SymbolsState
 	end
 end
 
-# TODO: this can be done during the `explore` recursion
-"Get the set of `using Module` expressions that are contained in this expression."
-function compute_usings(ex::Any)::Set{Expr}
+Base.@kwdef struct UsingsImports
+    usings::Set{Expr}=Set{Expr}()
+    imports::Set{Expr}=Set{Expr}()
+end
+
+# Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
+"Preallocated version of [`compute_usings_imports`](@ref)."
+function compute_usings_imports!(out::UsingsImports, ex::Any)
     if isa(ex, Expr)
         if ex.head == :using
-        Set{Expr}([ex])
-        else
-            union!(Set{Expr}(), compute_usings.(ex.args)...)
+			push!(out.usings, ex)
+		elseif ex.head == :import
+			push!(out.imports, ex)
+        elseif ex.head != :quote
+			for a in ex.args
+				compute_usings_imports!(out, a)
+			end
         end
-    else
-        Set{Expr}()
     end
+	out
 end
+
+"""
+Given `:(using Plots, Something.Else, .LocalModule)`, return `Set([:Plots, :Something])`.
+"""
+function external_package_names(ex::Expr)::Set{Symbol}
+	@assert ex.head == :import || ex.head == :using
+	if Meta.isexpr(ex.args[1], :(:))
+		external_package_names(Expr(ex.head, ex.args[1].args[1]))
+	else
+		out = Set{Symbol}()
+		for a in ex.args
+			if Meta.isexpr(a, :(.))
+				if a.args[1] != :(.)
+					push!(out, a.args[1])
+				end
+			end
+		end
+		out
+	end
+end
+
+function external_package_names(x::UsingsImports)::Set{Symbol}
+    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+end
+
+"Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."
+compute_usings_imports(ex) = compute_usings_imports!(UsingsImports(), ex)
 
 "Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
 function is_toplevel_expr(ex::Expr)::Bool

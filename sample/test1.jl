@@ -388,7 +388,7 @@ begin
 	struct B end
 	
 	function Base.show(io::IO, ::MIME"image/svg+xml", x::A)
-		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/master/frontend/img/logo.svg")))
+		write(io, read(download("https://raw.githubusercontent.com/fonsp/Pluto.jl/main/frontend/img/logo.svg")))
 	end
 	function Base.show(io::IO, ::MIME"image/jpg", x::B)
 		write(io, read(download("https://fonsp.com/img/doggoSmall.jpg?raw=true")))

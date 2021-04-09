@@ -54,10 +54,10 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, 
         fakeclient.connected_notebook = notebook
 
         update_save_run!(🍭, notebook, notebook.cells[1:4])
-        @test notebook.cells[1].output_repr == "1"
-        @test notebook.cells[2].output_repr == "1"
-        @test notebook.cells[3].output_repr == "3"
-        @test notebook.cells[4].output_repr == "3"
+        @test notebook.cells[1].output.body == "1"
+        @test notebook.cells[2].output.body == "1"
+        @test notebook.cells[3].output.body == "3"
+        @test notebook.cells[4].output.body == "3"
         
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
