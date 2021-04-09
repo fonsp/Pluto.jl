@@ -89,7 +89,7 @@ end
 
 "Still a bit unsure about this, but it will for now give you the (relative) path for your module requests"
 function get_base_url(module_name::Union{AbstractString, Symbol})
-    "/integrations/$(string(module_name))/$(workspace_info.notebook_id)"
+    "/integrations/$(workspace_info.notebook_id)/$(string(module_name))"
 end
 
 module AssetRegistryIntegrations
@@ -144,13 +144,13 @@ module WebIOIntegrations
             Sockets.send(::WebIOConnection, data) = begin
                 put!(message_channel, Dict(
                     :module_name => "WebIO",
-                    :body => data,
+                    :message => data,
                 ))
             end
             Base.isopen(::WebIOConnection) = Base.isopen(message_channel)
             
-            function on_websocket_message(::Val{:WebIO}, body)
-                WebIO.dispatch(WebIOConnection(), body)
+            function on_websocket_message(::Val{:WebIO}, message)
+                WebIO.dispatch(WebIOConnection(), message)
                 nothing
             end
         end

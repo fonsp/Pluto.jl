@@ -151,7 +151,7 @@ function http_router_for(session::ServerSession)
 
     function handle_integrations_request(request::HTTP.Request)
         try
-            _1, module_name, notebook_id = HTTP.URIs.splitpath(request.target)
+            _1, notebook_id, module_name = HTTP.URIs.splitpath(request.target)
             rest = HTTP.URIs.splitpath(request.target)[4:end]
 
             if !haskey(session.notebooks, UUID(notebook_id))
