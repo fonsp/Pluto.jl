@@ -95,19 +95,19 @@ export const Cell = ({
             id=${cell_id}
         >
             <!-- This code would display for each cell a list of all upstream dependencies, with hyperlinks to the corresponding cells, if the dependencies are defined inside the notebook.
-            <ul>
+            <UL>
                 ${Object.entries(upstream_cells_map ?? {}).map(([key, listofcell_ids]) => {
                     return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
                 })}
-            </ul>
+            </UL>
             -->
             <!-- Show raw cell dependency data of the cell
-            <u1>
-                Cell ID: ${cell_id},
-                Upstream dependencies: ${JSON.stringify(upstream_cells_map)},
-                Downstream dependencies: ${JSON.stringify(downstream_cells_map)},
-                Cell preceedence: ${precedence_heuristic}
-            </u1>
+            <UL>
+                <LI>Cell ID: ${cell_id}</LI>
+                <LI>Upstream dependencies: ${JSON.stringify(upstream_cells_map)}</LI>
+                <LI>Downstream dependencies: ${JSON.stringify(downstream_cells_map)}</LI>
+                <LI>Cell preceedence: ${precedence_heuristic}</LI>
+            </UL>
             -->
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
