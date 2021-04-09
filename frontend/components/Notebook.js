@@ -10,6 +10,7 @@ let CellMemo = ({
     notebook_id,
     on_update_doc_query,
     on_cell_input,
+    cell_dependencies,
     on_focus_neighbor,
     selected,
     selected_cells,
@@ -26,6 +27,7 @@ let CellMemo = ({
         return html`
             <${Cell}
                 cell_result=${cell_result}
+                cell_dependencies=${cell_dependencies}
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
@@ -59,6 +61,7 @@ let CellMemo = ({
         notebook_id,
         on_update_doc_query,
         on_cell_input,
+        cell_dependencies,
         on_focus_neighbor,
         selected,
         selected_cells_diffable_primitive,
@@ -153,6 +156,7 @@ export const Notebook = ({
                             output: null,
                         }}
                         cell_input=${notebook.cell_inputs[cell_id]}
+                        cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
                         on_update_doc_query=${on_update_doc_query}

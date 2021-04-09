@@ -22,6 +22,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, has_execution_barrier },
     cell_result: { queued, running, runtime, errored, output, is_deactivated },
+    cell_dependencies: { downstream_cells_map, upstream_cells_map, precedence_heuristic },
     cell_input_local,
     notebook_id,
     on_update_doc_query,
@@ -97,6 +98,21 @@ export const Cell = ({
             })}
             id=${cell_id}
         >
+            <!-- This code would display for each cell a list of all upstream dependencies, with hyperlinks to the corresponding cells, if the dependencies are defined inside the notebook.
+            <ul>
+                ${Object.entries(upstream_cells_map ?? {}).map(([key, listofcell_ids]) => {
+                    return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
+                })}
+            </ul>
+            -->
+            <!-- Show raw cell dependency data of the cell
+            <u1>
+                Cell ID: ${cell_id},
+                Upstream dependencies: ${JSON.stringify(upstream_cells_map)},
+                Downstream dependencies: ${JSON.stringify(downstream_cells_map)},
+                Cell preceedence: ${precedence_heuristic}
+            </u1>
+            -->
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
