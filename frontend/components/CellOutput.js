@@ -9,6 +9,9 @@ import { cl } from "../common/ClassTable.js"
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 
+//@ts-ignore
+const CodeMirror = window.CodeMirror
+
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -333,16 +336,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 for (let code_element of container.current.querySelectorAll("code")) {
                     for (let className of code_element.classList) {
                         if (className.startsWith("language-")) {
-                            let aliases = {
-                                "html": "htmlmixed",
-                                "jl": "julia",
-                                "js": "javascript",
-                            }
-
                             let language = className.substr(9)
-                            if (language in aliases) {
-                                language = aliases[language]
-                            }
 
                             // Remove "language-"
                             highlight(code_element, language)
@@ -363,17 +357,26 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
-        // @ts-ignore
-        window.CodeMirror.requireMode(
-            language,
-            function () {
-                window.CodeMirror.runMode(code_element.innerText, language, code_element)
+        let mode = language // fallback
+
+        let info = CodeMirror.findModeByName(language)
+        if (info) {
+            mode = info.mode
+        }
+
+        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+        if (mode == "jl") {
+            mode = "julia"
+        }
+
+        CodeMirror.requireMode(
+            mode,
+            () => {
+                CodeMirror.runMode(code_element.innerText, mode, code_element)
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: function (language) {
-                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
-                },
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`,
             }
         )
     }
