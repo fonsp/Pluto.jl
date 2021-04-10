@@ -112,7 +112,7 @@ export const FindReplace = () => {
     }
     const handler = (ev) => {
         const { composedPath, ctrlKey, key, path: p } = ev
-        const path = p || composedPath()
+        const path = p || ev.composedPath()
         if (key === "Escape") {
             clear_all_markers()
             set_visible(false)
@@ -132,7 +132,7 @@ export const FindReplace = () => {
         } else {
             !visible ? create_textmarkers() : clear_all_markers()
             set_visible(!visible)
-            setTimeout(create_textmarkers, 500)
+            //setTimeout(create_textmarkers, 500)
         }
     }
     useEffect(() => {
