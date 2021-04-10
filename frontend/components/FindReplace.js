@@ -47,6 +47,13 @@ export const FindReplace = () => {
     const find_next = () => {
         const { length } = textmarkers
         const markerIndex = textmarkers.indexOf(marker)
+
+        // last in the list
+        if(markerIndex + 1 == length){
+          create_textmarkers()
+          return
+        }
+
         const nextMarker = textmarkers[(markerIndex + 1) % length]
         if (nextMarker) {
             const { cm, from, to } = nextMarker
