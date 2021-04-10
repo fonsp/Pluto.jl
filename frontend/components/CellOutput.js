@@ -9,6 +9,9 @@ import { cl } from "../common/ClassTable.js"
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 
+//@ts-ignore
+const CodeMirror = window.CodeMirror
+
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -354,29 +357,26 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
-        // @ts-ignore
-        let mode = language  // fallback
+        let mode = language // fallback
 
-        let info = window.CodeMirror.findModeByName(language)
+        let info = CodeMirror.findModeByName(language)
         if (info) {
             mode = info.mode
         }
 
-        // Not require since https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
         if (mode == "jl") {
             mode = "julia"
         }
 
-        window.CodeMirror.requireMode(
+        CodeMirror.requireMode(
             mode,
-            function () {
-                window.CodeMirror.runMode(code_element.innerText, mode, code_element)
+            () => {
+                CodeMirror.runMode(code_element.innerText, mode, code_element)
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: function (mode) {
-                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`
-                },
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`,
             }
         )
     }
