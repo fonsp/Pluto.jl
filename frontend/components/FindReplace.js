@@ -16,6 +16,7 @@ export const FindReplace = () => {
     const [visible, set_visible] = useState(false)
     const [textmarkers, set_textmarkers] = useState([])
     const [marker, set_marker] = useState(null)
+    const [invalid_regex, set_invalid_regex] = useState(null)
 
     const [replace_value, set_replace_value] = useState(null)
     const input_find = useRef(null)
@@ -25,11 +26,30 @@ export const FindReplace = () => {
             each_marker?.deselect()
         })
     }
+
+    const try_as_regex = (word) => {
+      try{
+        var regex_word = new RegExp(word.substring(1, word.length - 1))
+        set_invalid_regex(false)
+        return regex_word
+      }
+      catch(e){
+        set_invalid_regex(true)
+      }
+      return word
+    }
+
+    const preprocess_word = (word) => {
+      set_invalid_regex(false)
+      var is_regex_candidate = word && word.length > 2 && word[0] == "/" && word.slice(-1) == "/"
+      return is_regex_candidate ? try_as_regex(word) : word
+    }
+
     const create_textmarkers = (replaceText) => {
         clear_all_markers()
         const tms = get_codeMirrors().flatMap(({ cell_id, cm }) => {
             const localCursors = []
-            const cursor = cm.getSearchCursor(word)
+            const cursor = cm.getSearchCursor(preprocess_word(word))
             while (cursor.findNext()) {
                 if (replaceText) cursor.replace(replaceText)
                 const textmarker = new TextMarker(cell_id, cm, cursor.from(), cursor.to())
@@ -159,7 +179,7 @@ export const FindReplace = () => {
     return html`<div id="findreplace">
         <aside id="findreplace_container" class=${visible ? "show_findreplace" : ""}>
             <div id="findform">
-                <input type="text" ref=${input_find} onKeyUp=${handle_find_value_change} />
+                <input id="value_input" type="text" class=${invalid_regex ? "findreplace_invalid_regex" : ""} ref=${input_find} onKeyUp=${handle_find_value_change} />
                 <button onClick=${find_next}>Next</button>
                 <output>${textmarkers?.indexOf(marker) + 1 || "?"}/${textmarkers?.length || 0}</output>
             </div>

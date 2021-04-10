@@ -452,6 +452,10 @@ aside#findreplace_container > div > button {
     font-size: 0.75rem;
     margin-right: 2px;
 }
+aside#findreplace_container > div > input#value_input.findreplace_invalid_regex {
+  border: 2px red solid;
+}
+
 aside#export {
     position: absolute;
     top: 0;
