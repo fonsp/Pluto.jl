@@ -1080,13 +1080,9 @@ pluto-cell.activate_animation pluto-trafficlight::after {
     animation: 10s linear 0s infinite running scrollbackground;
 }
 
-<<<<<<< HEAD
-pluto-cell:not(.show_input) > pluto-trafficlight {
-=======
 /* in ascending order of severity: */
 /* we need the :not(.___) to fix our CSS selector specificity when `body.disable_ui` */
 body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
->>>>>>> upstream/main
     background: none;
 }
 
