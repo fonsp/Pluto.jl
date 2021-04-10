@@ -96,10 +96,11 @@ end
 # Deprecation errors
 
 function run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...)
-    @error "Deprecated in favor of:
+    @error """run(host, port) is deprecated in favor of:
     
-        run(;host=$host, port=$port)
-    "
+        run(;host="$host", port=$port)  
+    
+    """
 end
 
 function run(port::Integer; kwargs...)
@@ -139,9 +140,12 @@ function run(session::ServerSession)
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
-
         if HTTP.WebSockets.is_upgrade(http.message)
-            if is_authenticated(session, http.message)
+            secret_required = let
+                s = session.options.security
+                s.require_secret_for_access || s.require_secret_for_open_links
+            end
+            if !secret_required || is_authenticated(session, http.message)
                 try
 
                     HTTP.WebSockets.upgrade(http) do clientstream
@@ -156,8 +160,11 @@ function run(session::ServerSession)
                             try
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
-
-                                sleep(session.options.server.simulated_lag)
+                                
+                                let
+                                    lag = session.options.server.simulated_lag
+                                    (lag > 0) && sleep(lag) # sleep(0) would yield to the process manager which we dont want
+                                end
 
                                 process_ws_message(session, parentbody, clientstream)
                             catch ex
@@ -217,12 +224,7 @@ function run(session::ServerSession)
             end
 
             request_body = IOBuffer(HTTP.payload(request))
-            if eof(request_body)
-                # no request body
-                response_body = HTTP.handle(pluto_router, request)
-            else
-                @warn "HTTP request contains a body, huh?" request_body
-            end
+            response_body = HTTP.handle(pluto_router, request)
     
             request.response::HTTP.Response = response_body
             request.response.request = request
@@ -263,7 +265,7 @@ function run(session::ServerSession)
         end
         empty!(session.connected_clients)
         for (notebook_id, ws) in WorkspaceManager.workspaces
-            @async WorkspaceManager.unmake_workspace(wait(ws))
+            @async WorkspaceManager.unmake_workspace(fetch(ws))
         end
     end
 
@@ -327,7 +329,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
     messagetype = Symbol(parentbody["type"])
     request_id = Symbol(parentbody["request_id"])
 
-    notebook = if haskey(parentbody, "notebook_id")
+    notebook = if haskey(parentbody, "notebook_id") && parentbody["notebook_id"] !== nothing
         notebook = let
             notebook_id = UUID(parentbody["notebook_id"])
             get(session.notebooks, notebook_id, nothing)

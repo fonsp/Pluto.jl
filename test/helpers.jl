@@ -1,6 +1,28 @@
 import Pluto
+import Pluto.ExpressionExplorer
 import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
 using Test
+
+function Base.show(io::IO, s::SymbolsState)
+    print(io, "SymbolsState([")
+    join(io, s.references, ", ")
+    print(io, "], [")
+    join(io, s.assignments, ", ")
+    print(io, "], [")
+    join(io, s.funccalls, ", ")
+    print(io, "], [")
+    if isempty(s.funcdefs)
+        print(io, "]")
+    else
+        println(io)
+        for (k, v) in s.funcdefs
+            print(io, "    ", k, ": ", v)
+            println(io)
+        end
+        print(io, "]")
+    end
+    print(io, ")")
+end
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
 
@@ -23,7 +45,13 @@ true
 "
 function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
     expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+
+    original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
+    new_hash = Pluto.PlutoRunner.expr_hash(expr)
+    if original_hash != new_hash
+        error("\n== The expression explorer modified the expression. Don't do that! ==\n")
+    end
 
     # Anonymous function are given a random name, which looks like anon67387237861123
     # To make testing easier, we rename all such functions to anon
@@ -69,12 +97,11 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
 end
 
 function setcode(cell, newcode)
-    cell.parsedcode = nothing
     cell.code = newcode
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
-    haystack.errored && occursin(needle, haystack.output_repr[:msg])
+    haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."

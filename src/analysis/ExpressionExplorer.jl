@@ -1,5 +1,5 @@
 module ExpressionExplorer
-export compute_symbolreferences, try_compute_symbolreferences, compute_usings, SymbolsState, FunctionName, join_funcname_parts
+export compute_symbolreferences, try_compute_symbolreferences, compute_usings_imports, SymbolsState, FunctionName, join_funcname_parts
 
 import ..PlutoRunner
 import Markdown
@@ -26,27 +26,6 @@ Base.@kwdef mutable struct SymbolsState
     assignments::Set{Symbol} = Set{Symbol}()
     funccalls::Set{FunctionName} = Set{FunctionName}()
     funcdefs::Dict{FunctionNameSignaturePair,SymbolsState} = Dict{FunctionNameSignaturePair,SymbolsState}()
-end
-
-function Base.show(io::IO, s::SymbolsState)
-    print(io, "SymbolsState([")
-    join(io, s.references, ", ")
-    print(io, "], [")
-    join(io, s.assignments, ", ")
-    print(io, "], [")
-    join(io, s.funccalls, ", ")
-    print(io, "], [")
-    if isempty(s.funcdefs)
-        print(io, "]")
-    else
-        println(io)
-        for (k, v) in s.funcdefs
-            print(io, "    ", k, ": ", v)
-            println(io)
-        end
-        print(io, "]")
-    end
-    print(io, ")")
 end
 
 
@@ -175,13 +154,15 @@ function get_assignees(ex::Expr)::FunctionName
     end
 end
 
-# e.g. x = 123
-get_assignees(ex::Symbol) = Symbol[ex]
+# e.g. x = 123, but ignore _ = 456
+get_assignees(ex::Symbol) = all_underscores(ex) ? Symbol[] : Symbol[ex]
 
 # When you assign to a datatype like Int, String, or anything bad like that
 # e.g. 1 = 2
 # This is parsable code, so we have to treat it
 get_assignees(::Any) = Symbol[]
+
+all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
@@ -208,6 +189,9 @@ end
 
 function split_funcname(funcname_ex::QuoteNode)::FunctionName
     split_funcname(funcname_ex.value)
+end
+function split_funcname(funcname_ex::GlobalRef)::FunctionName
+    split_funcname(funcname_ex.name)
 end
 
 function split_funcname(funcname_ex::Symbol)::FunctionName
@@ -333,6 +317,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+        filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
         return symstate
     elseif ex.head in modifiers
@@ -370,48 +355,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return explore!(Expr(:for, ex.args[2:end]..., ex.args[1]), scopestate)
     elseif ex.head == :macrocall
         # Does not create sccope
-        
-        funcname = ex.args[1] |> split_funcname
-        # Macros can transform the expression into anything - the best way to treat them is to macroexpand
-        # the problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
-        if (length(funcname) == 1 || (length(funcname) >= 2 && (funcname[1] == :Base || funcname[1] == :PlutoRunner)))
-            if funcname[end] == Symbol("@md_str") || funcname[end] == Symbol("@bind") || funcname[end] == Symbol("@gensym") || funcname[end] == Symbol("@kwdef")
-                # we macroexpand these, and recurse
-                expanded = macroexpand(PlutoRunner, ex; recursive=false)
-                return explore!(Expr(:call, ex.args[1], expanded), scopestate)
-            elseif funcname[end] == Symbol("@enum")
-                # we could do macroexpand, but the expanded macro defines typemin and typemax methods for the new enum type, and because of 
-                # https://github.com/fonsp/Pluto.jl/issues/177
-                # this would mean that you can only define one enum per notebook :(
-                syms = filter(x -> x isa Symbol, ex.args[2:end])
-                rest = setdiff(ex.args[2:end], syms)
-                
-                return mapfoldl(a -> explore!(a, scopestate), union!, rest, init=SymbolsState(assignments=Set{Symbol}(syms), funccalls=Set{FunctionName}([[Symbol("@enum")]])))
-            end
-        end
+        new_ex = maybe_macroexpand(ex)
 
-        new_ex = if length(ex.args) > 3 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
-            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
-            Expr(:call, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
-        else
-            Expr(:call, ex.args...)
-        end
+        newnew_ex = Meta.isexpr(new_ex, :macrocall) ? Expr(:call, new_ex.args...) : new_ex
 
-	   if length(new_ex.args) >= 3 && Meta.isexpr(new_ex.args[3], :(:=))
-            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
-            ein = new_ex.args[3]
-            left = if Meta.isexpr(ein.args[1], :ref)
-                # assign to the symbol, and save LHS indices as fake RHS argument
-                push!(new_ex.args, Expr(:ref, :Float64, ein.args[1].args[2:end]...))
-                ein.args[1].args[1]
-            else
-                ein.args[1]  # scalar case `c := A[i,j]`
-            end
-            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
-            new_ex = Expr(:call, new_ex.args[1:2]..., ein_done, strip_indexing.(new_ex.args[4:end])...)
-        end
-
-        return explore!(new_ex, scopestate)
+        return explore!(newnew_ex, scopestate)
     elseif ex.head == :call
         # Does not create scope
 
@@ -537,7 +485,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         funcroot = ex.args[1]
         args_ex = if funcroot isa Symbol || (funcroot isa Expr && funcroot.head == :(::))
             [funcroot]
-        elseif funcroot.head == :tuple
+        elseif funcroot.head == :tuple || funcroot.head == :(...) || funcroot.head == :block
             funcroot.args
         else
             @error "Unknown lambda type"
@@ -648,19 +596,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return explore!(Expr(:call, ex.args[1], ex.args[2].args...), scopestate)
     elseif ex.head == :using || ex.head == :import
-        if scopestate.inglobalscope
-            imports = if ex.args[1].head == :(:)
-                ex.args[1].args[2:end]
-            else
-            ex.args
-            end
-
-            packagenames = map(e -> e.args[end], imports)
-
-            return SymbolsState(assignments=Set{Symbol}(packagenames))
+        imports = if ex.args[1].head == :(:)
+            ex.args[1].args[2:end]
         else
-            return SymbolsState()
+            ex.args
         end
+
+        packagenames = map(e -> e.args[end], imports)
+
+        return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
         # We ignore contents
 
@@ -685,11 +629,25 @@ end
 Is also used for `struct` and `abstract`."
 function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,SymbolsState}
     if ex.head == :call
-        # get the function name
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
-        # and explore the function arguments
-        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, ex.args[2:end], init=(name, symstate))
+        params_to_explore = ex.args[2:end]
+        # Using the keyword args syntax f(;y) the :parameters node is the first arg in the AST when it should
+        # be explored last. We change from (parameters, ...) to (..., parameters)
+        if length(params_to_explore) >= 2 && params_to_explore[1] isa Expr && params_to_explore[1].head == :parameters
+            params_to_explore = [params_to_explore[2:end]..., params_to_explore[1]]
+        end
 
+        # Handle struct as callables, `(obj::MyType)(a, b) = ...`
+        # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
+        # function MyType(obj, a, b) ...; end
+        funcroot = ex.args[1]
+        if funcroot isa Expr && funcroot.head == :(::)
+            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+        end
+
+        # get the function name
+        name, symstate = explore_funcdef!(funcroot, scopestate)
+        # and explore the function arguments
+        return mapfoldl(a -> explore_funcdef!(a, scopestate), union!, params_to_explore, init=(name, symstate))
     elseif ex.head == :(::) || ex.head == :kw || ex.head == :(=)
         # account for unnamed params, like in f(::Example) = 1
         if ex.head == :(::) && length(ex.args) == 1
@@ -761,6 +719,103 @@ end
 function explore_funcdef!(::Any, ::ScopeState)::Tuple{FunctionName,SymbolsState}
     Symbol[], SymbolsState()
 end
+
+
+
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@enum", "Base.@enum", "@cmd"]))
+const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
+
+macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)
+
+function symbolics_mockexpand(s::Any)
+    # goofy implementation of the syntax described in https://symbolics.juliasymbolics.org/dev/manual/variables/
+    if Meta.isexpr(s, :ref, 2)
+        :($(s.args[1]) = $(s.args[2]))
+    elseif Meta.isexpr(s, :call, 2)
+        second = s.args[2] === Symbol("..") ? 123 : s.args[2]
+        :($(symbolics_mockexpand(s.args[1])); $(second) = 123)
+    elseif s isa Symbol
+        :($(s) = 123)
+    else
+        nothing
+    end
+end
+
+is_symbolics_arg(s) = symbolics_mockexpand(s) !== nothing
+
+"""
+If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
+
+Macros can transform the expression into anything - the best way to treat them is to `macroexpand`. The problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
+"""
+function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
+    result = if ex.head === :macrocall
+        funcname = ex.args[1] |> split_funcname
+        funcname_joined = join_funcname_parts(funcname)
+
+        args = ex.args[3:end]
+        
+        if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
+            expanded = macroexpand(PlutoRunner, ex; recursive=false)
+            Expr(:call, ex.args[1], expanded)
+
+        elseif !isempty(args) && Meta.isexpr(args[1], :(:=))
+            ex = macro_kwargs_as_kw(ex)
+            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
+            ein = args[1]
+            left = if Meta.isexpr(ein.args[1], :ref)
+                # assign to the symbol, and save LHS indices as fake RHS argument
+                ex = Expr(ex.head, ex.args..., Expr(:ref, :Float64, ein.args[1].args[2:end]...))
+                ein.args[1].args[1]
+            else
+                ein.args[1]  # scalar case `c := A[i,j]`
+            end
+            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
+            Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
+            
+        elseif !isempty(args) && funcname_joined === Symbol("@ode_def")
+            if args[1] isa Symbol
+                :($(args[1]) = @ode_def 123)
+            else
+                :(@ode_def)
+            end
+        elseif !isempty(args) && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
+            Expr(:macrocall, ex.args[1:2]..., :($(args[1]) = 123), ex.args[4:end]...)
+        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, args)
+            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(args)...)
+        # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
+        #     if Meta.isexpr(ex.args[4], :comparison)
+        #         parts = ex.args[4].args[1:2:end]
+        #         if length(parts) == 2
+        #         foldl(parts) do (e,next)
+        #             :($(e) = $(next))
+        #         end
+        #     elseif Meta.isexpr(ex.args[4], :block)
+
+        #     end
+
+
+        #     Expr(:macrocall, ex.args[1:3]..., )
+            # add more macros here
+        elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
+            macro_kwargs_as_kw(ex)
+        else
+            ex
+        end
+    else
+        ex
+    end
+
+    if recursive && (result isa Expr)
+        Expr(result.head, maybe_macroexpand.(result.args; recursive=recursive, expand_bind=expand_bind)...)
+    else
+        result
+    end
+end
+
+maybe_macroexpand(ex::Any; kwargs...) = ex
+
 
 ###
 # CANONICALIZE FUNCTION DEFINITIONS
@@ -856,7 +911,7 @@ function canonalize(ex::Expr)
 		Expr(:where, canonalize(ex.args[1]), ex.args[2:end]...)
 	elseif ex.head == :call || ex.head == :tuple
 		skip_index = ex.head == :call ? 2 : 1
-		ex.args[1] # if ex.head == :call this is the function name, we dont want it
+		# ex.args[1], if ex.head == :call this is the function name, we dont want it
 
 		interesting = filter(ex.args[skip_index:end]) do arg
 			!(arg isa Expr && arg.head == :parameters)
@@ -921,19 +976,54 @@ function try_compute_symbolreferences(ex::Any)::SymbolsState
 	end
 end
 
-# TODO: this can be done during the `explore` recursion
-"Get the set of `using Module` expressions that are contained in this expression."
-function compute_usings(ex::Any)::Set{Expr}
+Base.@kwdef struct UsingsImports
+    usings::Set{Expr}=Set{Expr}()
+    imports::Set{Expr}=Set{Expr}()
+end
+
+# Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
+"Preallocated version of [`compute_usings_imports`](@ref)."
+function compute_usings_imports!(out::UsingsImports, ex::Any)
     if isa(ex, Expr)
         if ex.head == :using
-        Set{Expr}([ex])
-        else
-            union!(Set{Expr}(), compute_usings.(ex.args)...)
+			push!(out.usings, ex)
+		elseif ex.head == :import
+			push!(out.imports, ex)
+        elseif ex.head != :quote
+			for a in ex.args
+				compute_usings_imports!(out, a)
+			end
         end
-    else
-        Set{Expr}()
     end
+	out
 end
+
+"""
+Given `:(using Plots, Something.Else, .LocalModule)`, return `Set([:Plots, :Something])`.
+"""
+function external_package_names(ex::Expr)::Set{Symbol}
+	@assert ex.head == :import || ex.head == :using
+	if Meta.isexpr(ex.args[1], :(:))
+		external_package_names(Expr(ex.head, ex.args[1].args[1]))
+	else
+		out = Set{Symbol}()
+		for a in ex.args
+			if Meta.isexpr(a, :(.))
+				if a.args[1] != :(.)
+					push!(out, a.args[1])
+				end
+			end
+		end
+		out
+	end
+end
+
+function external_package_names(x::UsingsImports)::Set{Symbol}
+    union!(Set{Symbol}(), external_package_names.(x.usings)..., external_package_names.(x.imports)...)
+end
+
+"Get the sets of `using Module` and `import Module` subexpressions that are contained in this expression."
+compute_usings_imports(ex) = compute_usings_imports!(UsingsImports(), ex)
 
 "Return whether the expression is of the form `Expr(:toplevel, LineNumberNode(..), any)`."
 function is_toplevel_expr(ex::Expr)::Bool

@@ -36,43 +36,56 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                         a = A(16, 0)
                         a.y = [1, (2, A(3, (r=4, t=(5 => Dict(6 => Ref(a))))))]
                         a
-                    end""")
+                    end"""),
+                    Cell("Set([17:20,\"Wonderful\"])"),
+                    Cell("Set(0 : 0.1 : 20)"),
                 ])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
 
-            @test notebook.cells[1].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[3].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[4].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[10].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[1].output_repr isa Dict
-            @test notebook.cells[2].output_repr isa Dict
-            @test notebook.cells[3].output_repr isa Dict
-            @test notebook.cells[4].output_repr isa Dict
-            @test notebook.cells[5].output_repr isa Dict
-            @test notebook.cells[6].output_repr isa Dict
-            @test notebook.cells[7].output_repr isa Dict
-            @test notebook.cells[8].output_repr isa Dict
-            @test notebook.cells[9].output_repr isa Dict
-            @test notebook.cells[10].output_repr isa Dict
+            @test notebook.cells[1].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[4].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[5].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[7].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[8].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[9].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[10].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[1].output.body isa Dict
+            @test notebook.cells[2].output.body isa Dict
+            @test notebook.cells[3].output.body isa Dict
+            @test notebook.cells[4].output.body isa Dict
+            @test notebook.cells[5].output.body isa Dict
+            @test notebook.cells[6].output.body isa Dict
+            @test notebook.cells[7].output.body isa Dict
+            @test notebook.cells[8].output.body isa Dict
+            @test notebook.cells[9].output.body isa Dict
+            @test notebook.cells[10].output.body isa Dict
 
-            @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[12].output_repr isa Dict
-            @test notebook.cells[14].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[14].output_repr isa Dict
+            @test notebook.cells[12].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[12].output.body isa Dict
+            @test notebook.cells[14].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[14].output.body isa Dict
 
-            @test notebook.cells[15].repr_mime isa MIME"text/plain"
+            @test notebook.cells[15].output.mime isa MIME"text/plain"
             
-            @test notebook.cells[16].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            @test notebook.cells[16].output_repr isa Dict
-            @test occursin("circular", notebook.cells[16].output_repr |> string)
+            @test notebook.cells[16].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test notebook.cells[16].output.body isa Dict
+            @test occursin("circular", notebook.cells[16].output.body |> string)
+
+            @test notebook.cells[17].output.body isa Dict
+            @test length(notebook.cells[17].output.body[:elements]) == 2
+            @test notebook.cells[17].output.body[:prefix] == "Set{Any}"
+            @test notebook.cells[17].output.mime isa MIME"application/vnd.pluto.tree+object"
+            @test occursin("Set", notebook.cells[17].output.body |> string)
+
+            @test notebook.cells[18].output.body isa Dict
+            @test length(notebook.cells[18].output.body[:elements]) < 200
+            @test notebook.cells[18].output.body[:prefix] == "Set{Float64}"
+            @test notebook.cells[18].output.mime isa MIME"application/vnd.pluto.tree+object"
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
@@ -102,17 +115,19 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             update_run!(🍭, notebook, notebook.cells)
             
-            @test notebook.cells[1].repr_mime isa MIME"image/png"
-            @test notebook.cells[1].output_repr == codeunits("1")
-            @test notebook.cells[2].repr_mime isa MIME"text/html"
-            @test notebook.cells[2].output_repr == "2"
-            @test notebook.cells[3].repr_mime isa MIME"text/plain"
-            @test notebook.cells[3].output_repr == "3"
+            @test notebook.cells[1].output.mime isa MIME"image/png"
+            @test notebook.cells[1].output.body == codeunits("1")
+            @test notebook.cells[2].output.mime isa MIME"text/html"
+            @test notebook.cells[2].output.body == "2"
+            @test notebook.cells[3].output.mime isa MIME"text/plain"
+            @test notebook.cells[3].output.body == "3"
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
 
+        
         @testset "Special arrays" begin
+            🍭.options.evaluation.workspace_use_distributed = true
 
             notebook = Notebook([
                 Cell("using OffsetArrays"),
@@ -122,8 +137,8 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             update_run!(🍭, notebook, notebook.cells)
             
-            @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.tree+object"
-            s = string(notebook.cells[2].output_repr)
+            @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.tree+object"
+            s = string(notebook.cells[2].output.body)
             @test occursin("OffsetArray", s)
             @test occursin("21", s)
             if VERSION >= v"1.3"
@@ -132,10 +147,13 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             end
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
+            🍭.options.evaluation.workspace_use_distributed = false
         end
     end
 
+    
     @testset "Table viewer" begin
+        🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
                 Cell("using DataFrames, Tables"),
                 Cell("DataFrame()"),
@@ -154,28 +172,28 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test notebook.cells[2].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[3].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[4].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[5].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[6].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[7].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[8].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[9].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[11].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[12].repr_mime isa MIME"application/vnd.pluto.table+object"
-        @test notebook.cells[2].output_repr isa Dict
-        @test notebook.cells[3].output_repr isa Dict
-        @test notebook.cells[4].output_repr isa Dict
-        @test notebook.cells[5].output_repr isa Dict
-        @test notebook.cells[6].output_repr isa Dict
-        @test notebook.cells[7].output_repr isa Dict
-        @test notebook.cells[8].output_repr isa Dict
-        @test notebook.cells[9].output_repr isa Dict
-        @test notebook.cells[11].output_repr isa Dict
-        @test notebook.cells[12].output_repr isa Dict
+        @test notebook.cells[2].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[3].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[4].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[5].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[6].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[7].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[8].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[9].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[11].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[12].output.mime isa MIME"application/vnd.pluto.table+object"
+        @test notebook.cells[2].output.body isa Dict
+        @test notebook.cells[3].output.body isa Dict
+        @test notebook.cells[4].output.body isa Dict
+        @test notebook.cells[5].output.body isa Dict
+        @test notebook.cells[6].output.body isa Dict
+        @test notebook.cells[7].output.body isa Dict
+        @test notebook.cells[8].output.body isa Dict
+        @test notebook.cells[9].output.body isa Dict
+        @test notebook.cells[11].output.body isa Dict
+        @test notebook.cells[12].output.body isa Dict
 
-        @test notebook.cells[10].repr_mime isa MIME"text/plain"
+        @test notebook.cells[10].output.mime isa MIME"text/plain"
         @test notebook.cells[10].errored == false
         
         # to see if we truncated correctly, we convert the output to string and check how big it is
@@ -191,8 +209,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         # TODO: test lazy loading more rows/cols
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
     end
-    
+
     begin
         escape_me = "16 \\ \" ' / \b \f \n \r \t 💩 \x10 \$"
         notebook = Notebook([
@@ -224,26 +243,26 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursinerror("syntax: extra token after", notebook.cells[3])
 
             @test notebook.cells[4].errored == false
-            @test notebook.cells[4].output_repr == "4"
-            @test notebook.cells[4].rootassignee == :c
+            @test notebook.cells[4].output.body == "4"
+            @test notebook.cells[4].output.rootassignee == :c
 
             @test notebook.cells[5].errored == false
-            @test notebook.cells[5].output_repr == ""
-            @test notebook.cells[5].rootassignee === nothing
+            @test notebook.cells[5].output.body == ""
+            @test notebook.cells[5].output.rootassignee === nothing
 
             @test notebook.cells[6].errored == false
-            @test notebook.cells[6].output_repr == "6"
-            @test notebook.cells[6].rootassignee === nothing
+            @test notebook.cells[6].output.body == "6"
+            @test notebook.cells[6].output.rootassignee === nothing
 
             @test notebook.cells[7].errored == false
-            @test notebook.cells[7].output_repr == ""
-            @test notebook.cells[7].rootassignee === nothing
+            @test notebook.cells[7].output.body == ""
+            @test notebook.cells[7].output.rootassignee === nothing
 
             @test notebook.cells[8].errored == false
-            @test notebook.cells[8].output_repr == ""
+            @test notebook.cells[8].output.body == ""
 
             @test notebook.cells[9].errored == false
-            @test notebook.cells[9].output_repr == ""
+            @test notebook.cells[9].output.body == ""
 
             @test occursinerror("syntax: extra token after", notebook.cells[10])
 
@@ -284,7 +303,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             @test occursinerror("DomainError", notebook.cells[1])
             let
-                st = notebook.cells[1].output_repr
+                st = notebook.cells[1].output.body
                 @test length(st[:stacktrace]) == 4 # check in REPL
                 if Pluto.can_insert_filename
                     @test st[:stacktrace][4][:line] == 1
@@ -297,7 +316,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             @test occursinerror("DomainError", notebook.cells[2])
             let
-                st = notebook.cells[2].output_repr
+                st = notebook.cells[2].output.body
                 @test length(st[:stacktrace]) == 4
                 if Pluto.can_insert_filename
                     @test st[:stacktrace][4][:line] == 3
@@ -310,7 +329,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
 
             @test occursinerror("DomainError", notebook.cells[4])
             let
-                st = notebook.cells[4].output_repr
+                st = notebook.cells[4].output.body
                 @test length(st[:stacktrace]) == 5
 
                 if Pluto.can_insert_filename
@@ -327,7 +346,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             end
 
             let
-                st = notebook.cells[5].output_repr
+                st = notebook.cells[5].output.body
                 @test occursin(escape_me, st[:msg])
             end
 

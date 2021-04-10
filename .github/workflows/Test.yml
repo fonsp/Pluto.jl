@@ -1,7 +1,7 @@
 name: Pluto backend tests
 
 # Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
+# events but only for the main branch
 on:
     workflow_dispatch:
     push:
@@ -9,7 +9,7 @@ on:
             - "frontend/**"
             - "**.md"
         branches:
-            - master
+            - main
     pull_request:
         paths-ignore:
             - "frontend/**"
@@ -24,7 +24,7 @@ jobs:
         strategy:
             matrix:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
-                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "^1.6.0-0"]
+                julia-version: ["1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6"]
                 os: [ubuntu-latest]
                 include:
                     # macOS and windows - only the extremes, linux covers pretty much everything already i think
@@ -47,4 +47,4 @@ jobs:
                   version: ${{ matrix.julia-version }}
 
             # 🚗
-            - uses: julia-actions/julia-runtest@v0.1
+            - uses: julia-actions/julia-runtest@v1

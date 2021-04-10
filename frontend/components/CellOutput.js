@@ -9,6 +9,9 @@ import { cl } from "../common/ClassTable.js"
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 
+//@ts-ignore
+const CodeMirror = window.CodeMirror
+
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -187,13 +190,26 @@ let execute_dynamic_function = async ({ environment, code }) => {
     return result
 }
 
+const is_displayable = (result) => result instanceof Element && result.nodeType === Node.ELEMENT_NODE
+
 /**
  * @typedef PlutoScript
  * @type {HTMLScriptElement | { pluto_is_loading_me?: boolean }}
  */
-
 const execute_scripttags = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
     let results_map = new Map()
+
+    // Reattach DOM results from old scripts, you might want to skip reading this
+    for (let node of script_nodes) {
+        if (node.src != null && node.src !== "") {
+        } else {
+            let script_id = node.id
+            let old_result = script_id ? previous_results_map.get(script_id) : null
+            if (is_displayable(old_result)) {
+                node.parentElement.insertBefore(old_result, node)
+            }
+        }
+    }
 
     // Run scripts sequentially
     for (let node of script_nodes) {
@@ -223,9 +239,14 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
             // If there is no src="", we take the content and run it in an observablehq-like environment
             try {
                 let script_id = node.id
+                let old_result = script_id ? previous_results_map.get(script_id) : null
+
+                if (is_displayable(old_result)) {
+                    node.parentElement.insertBefore(old_result, node)
+                }
                 let result = await execute_dynamic_function({
                     environment: {
-                        this: script_id ? previous_results_map.get(script_id) : window,
+                        this: script_id ? old_result : window,
                         currentScript: node,
                         invalidation: invalidation,
                         ...observablehq_for_cells,
@@ -237,8 +258,13 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     results_map.set(script_id, result)
                 }
                 // Insert returned element
-                if (result instanceof Element && result.nodeType === Node.ELEMENT_NODE) {
-                    node.parentElement.insertBefore(result, node)
+                if (result !== old_result) {
+                    if (is_displayable(old_result)) {
+                        old_result.remove()
+                    }
+                    if (is_displayable(result)) {
+                        node.parentElement.insertBefore(result, node)
+                    }
                 }
             } catch (err) {
                 console.error("Couldn't execute script:", node)
@@ -293,19 +319,29 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 invalidation.then(remove_bonds_listener)
             }
 
-            // convert LaTeX to svg
-            try {
-                // @ts-ignore
-                window.MathJax.typeset([container.current])
-            } catch (err) {
-                console.info("Failed to typeset TeX:")
-                console.info(err)
+            // Convert LaTeX to svg
+            // @ts-ignore
+            if (window.MathJax?.typeset != undefined) {
+                try {
+                    // @ts-ignore
+                    window.MathJax.typeset([container.current])
+                } catch (err) {
+                    console.info("Failed to typeset TeX:")
+                    console.info(err)
+                }
             }
 
-            // Apply julia syntax highlighting
+            // Apply syntax highlighting
             try {
-                for (let code_element of container.current.querySelectorAll("code.language-julia")) {
-                    highlight_julia(code_element)
+                for (let code_element of container.current.querySelectorAll("code")) {
+                    for (let className of code_element.classList) {
+                        if (className.startsWith("language-")) {
+                            let language = className.substr(9)
+
+                            // Remove "language-"
+                            highlight(code_element, language)
+                        }
+                    }
                 }
             } catch (err) {}
         })
@@ -319,10 +355,29 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 }
 
 /** @param {HTMLElement} code_element */
-export let highlight_julia = (code_element) => {
+export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
-        // @ts-ignore
-        window.CodeMirror.runMode(code_element.innerText, "julia", code_element)
-        code_element.classList.add("cm-s-default")
+        let mode = language // fallback
+
+        let info = CodeMirror.findModeByName(language)
+        if (info) {
+            mode = info.mode
+        }
+
+        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+        if (mode == "jl") {
+            mode = "julia"
+        }
+
+        CodeMirror.requireMode(
+            mode,
+            () => {
+                CodeMirror.runMode(code_element.innerText, mode, code_element)
+                code_element.classList.add("cm-s-default")
+            },
+            {
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`,
+            }
+        )
     }
 }

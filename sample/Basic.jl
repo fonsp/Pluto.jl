@@ -1,19 +1,25 @@
 ### A Pluto.jl notebook ###
-# v0.10.2
+# v0.14.0
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ b2d786ec-7f73-11ea-1a0c-f38d7b6bbc1e
-md"# The Basel problem
+md"""
+# The Basel problem
 
 _Leonard Euler_ proved in 1741 that the series
 
-$$\frac{1}{1} + \frac{1}{4} + \frac{1}{9} + \cdots$$
+```math
+\frac{1}{1} + \frac{1}{4} + \frac{1}{9} + \cdots
+```
 
 converges to
 
-$$\frac{\pi^2}{6}$$"
+```math
+\frac{\pi^2}{6}.
+```
+"""
 
 # ╔═╡ b2d79330-7f73-11ea-0d1c-a9aad1efaae1
 n = 1:100000
