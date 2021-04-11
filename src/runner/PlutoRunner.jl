@@ -74,16 +74,24 @@ function visit_expr(_, other)
   other
 end
 
+function wrap_dot(name)
+  if length(name) == 1
+    name[1]
+  else
+    Expr(:(.), wrap_dot(name[1:end-1]), QuoteNode(name[end]))
+  end
+end
+
 """
 Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
 """
 no_workspace_ref(other) = other
 no_workspace_ref(expr::Expr) = Expr(expr.head, no_workspace_ref.(expr.args)...) 
 function no_workspace_ref(ref::GlobalRef)
-  mod_name =  nameof(ref.mod)
-  if startswith(string(mod_name), "workspace")
+  if startswith(nameof(ref.mod) |> string, "workspace")
     ref.name
   else
+    mod_name = fullname(ref.mod) |> wrap_dot
     Expr(:(.), mod_name, QuoteNode(ref.name))
   end
 end
@@ -317,9 +325,7 @@ function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
  for expr in module_imports_to_move
     try
         Core.eval(workspace_name, expr)
-    catch e
-        @error e
-    end # TODO catch specificallly
+    catch e end # TODO catch specificallly
   end
 end
 

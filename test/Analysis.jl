@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is_just_text
+import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, static_resolve_topology, is_just_text
 
 @testset "Analysis" begin
     notebook = Notebook([
@@ -38,7 +38,7 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
     ])
 
     old = notebook.topology
-    new = notebook.topology = updated_topology(old, notebook, notebook.cells)
+    new = notebook.topology = updated_topology(old, notebook, notebook.cells) |> static_resolve_topology
 
     @testset "Only-text detection" begin
         @test is_just_text(new, notebook.cells[1])

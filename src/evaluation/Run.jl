@@ -161,7 +161,7 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 "We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
   sn = (session, notebook)
-  to_reimport = union(Set{Expr}(), map(c -> notebook.topology.codes[c].module_usings_imports.usings, notebook.cells)...)
+  to_reimport = union(Set{Expr}(), map(c -> unresolved_topology.codes[c].module_usings_imports.usings, notebook.cells)...)
   WorkspaceManager.do_reimports(sn, to_reimport)
 
   function macroexpand_cell(cell)
@@ -173,14 +173,14 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
     #  3. Move imports and re-try in the new module
     #  4. *NotImplemented*. Would be to run imports and execute only a part of the graph
     res = try_macroexpand()
-    if isa(res, LoadError) && isa(res.error, UndefVarError)
+    if res isa LoadError && res.error isa UndefVarError
       # We have not found the macro in the new workspace after reimports
       # this most likely means that the macro is user defined, we try to expand it
       # in the old workspace to see whether or not it is defined there
 
       res = try_macroexpand(old_workspace_name)
       # It was not defined previously, we try searching modules in our own batch
-      if isa(res, LoadError) && isa(res.error, UndefVarError)
+      if res isa LoadError && res.error isa UndefVarError
         to_import_from_batch = union(Set{Expr}(), 
                                      map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
                                          notebook.cells)...)
@@ -193,25 +193,43 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
   end
 
   # create new node & new codes for macrocalled cells
-  new_nodes = Dict(
-    cell_symstate.first => cell_symstate.first
+  new_nodes = Dict{Cell,ReactiveNode}(
+    cell => cell
       |> macroexpand_cell
       |> function(result) 
-	if typeof(result) <: Exception # if expansion failed, we use the "shallow" symbols state
-	  @warn "Failed to expand macro" result
+        if typeof(result) <: Exception # if expansion failed, we use the "shallow" symbols state
+            error = result
+            @warn "Failed to expand macro" error
 
-	  cell_symstate.second
-	else # otherwise, we use the expanded expression + the list of macrocalls
-	  expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-	  union!(expanded_symbols_state.macrocalls, cell_symstate.second.macrocalls)
-	  expanded_symbols_state
-	end
+            old_symstate
+        else # otherwise, we use the expanded expression + the list of macrocalls
+            expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+            union!(expanded_symbols_state.macrocalls, old_symstate.macrocalls)
+            expanded_symbols_state
+        end
       end
       |> ReactiveNode
-    for cell_symstate in unresolved_topology.unresolved_cells)
+    for (cell, old_symstate) in unresolved_topology.unresolved_cells)
   all_nodes = merge(unresolved_topology.nodes, new_nodes)
 
   NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
+end
+
+"The same as `resolve_topology` but does not require custom code execution, only works with a few `Base` & `PlutoRunner` macros"
+function static_resolve_topology(topology::NotebookTopology)
+  function static_macroexpand(cell_symstate)
+    cell, old_symstate = cell_symstate
+    new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
+      ExpressionExplorer.try_compute_symbolreferences
+    union!(new_symstate.macrocalls, old_symstate.macrocalls)
+
+    cell => ReactiveNode(new_symstate)
+  end
+
+  new_nodes = Dict{Cell,ReactiveNode}(static_macroexpand.(topology.unresolved_cells))
+  all_nodes = merge(topology.nodes, new_nodes)
+
+  NotebookTopology(nodes=all_nodes, codes=topology.codes)
 end
 
 "Do all the things!"
