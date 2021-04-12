@@ -197,10 +197,9 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
     cell => cell
       |> macroexpand_cell
       |> function(result) 
-        if typeof(result) <: Exception # if expansion failed, we use the "shallow" symbols state
-            error = result
-            @warn "Failed to expand macro" error
-
+        if typeof(result) <: Exception 
+            # if expansion failed, we use the "shallow" symbols state
+            # we could also use ExpressionExplorer.maybe_macroexpand
             old_symstate
         else # otherwise, we use the expanded expression + the list of macrocalls
             expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
@@ -236,12 +235,12 @@ end
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
-	update_dependency_cache!(notebook)
+	old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
 
 	unresolved_topology = updated_topology(old, notebook, cells)
-
-	old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+
+	update_dependency_cache!(notebook)
 
 	save && save_notebook(notebook)
 

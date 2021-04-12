@@ -17,9 +17,9 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 
 	cells_symstates = (cell => (new_codes[cell].parsedcode 
 				    |> ExpressionExplorer.try_compute_symbolreferences) for cell in cells)
-	updated_nodes = Dict{Cell,ReactiveNode}(cell_symstate.first => ReactiveNode(cell_symstate.second)
-                                          for cell_symstate in cells_symstates 
-					  if isempty(cell_symstate.second.macrocalls))
+	updated_nodes = Dict{Cell,ReactiveNode}(cell => ReactiveNode(symstate)
+																					for (cell, symstate) in cells_symstates 
+																					if isempty(symstate.macrocalls))
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 
 	# The unresolved cells are the cells for wich we cannot create

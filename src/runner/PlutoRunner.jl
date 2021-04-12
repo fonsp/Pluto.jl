@@ -63,17 +63,6 @@ function set_current_module(newname)
     global current_module = getfield(Main, newname)
 end
 
-function visit_expr(macroexpand_cb, ex::Expr)
-  if Meta.isexpr(ex, :macrocall)
-    macroexpand_cb(ex)
-  else
-    Expr(ex.head, map(x -> visit_expr(macroexpand_cb, x), ex.args)...)
-  end end
-
-function visit_expr(_, other)
-  other
-end
-
 function wrap_dot(name)
   if length(name) == 1
     name[1]
@@ -125,8 +114,7 @@ end
 
 function try_macroexpand(mod, cell_uuid, expr)
   try
-    macroexpand_cb(macrocall) = Core.eval(mod, :(@macroexpand($macrocall)))
-    expanded_expr = visit_expr(macroexpand_cb, expr)
+    expanded_expr = macroexpand(mod, expr)
     ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
 
     return sanitize_expr(expanded_expr)
