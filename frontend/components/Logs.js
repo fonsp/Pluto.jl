@@ -56,7 +56,11 @@ const Dot = ({ msg, kwargs, x, y, level }) => {
         }}
     >
         <pluto-log-dot-sizer>
-            <pluto-log-dot class=${level}>${mimepair_output(msg)}</pluto-log-dot>
+            <pluto-log-dot class=${level}
+                >${mimepair_output(msg)}${kwargs.map(
+                    ([k, v]) => html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
+                )}</pluto-log-dot
+            >
         </pluto-log-dot-sizer>
     </pluto-log-dot-positioner>`
 }

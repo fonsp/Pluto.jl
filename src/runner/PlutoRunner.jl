@@ -1217,7 +1217,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
             # "id" => id,
             "file" => file,
             "line" => line,
-            "kwargs" => Dict{String,Any}((string(k)=>format_output_default(v) for (k, v) in kwargs)...),
+            "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )
         )
         # also print to console

@@ -1679,8 +1679,7 @@ pluto-log-dot-positioner {
 /* pluto-log-dot-positioner:hover, */
 pluto-log-dot-positioner.inspecting {
     z-index: 5;
-    transform: translate(0px, -5px);
-    /* transform: rotate(90deg); */
+    /* transform: translate(0px, -5px); */
 }
 pluto-log-dot-sizer {
     display: block;
@@ -1695,6 +1694,7 @@ pluto-log-dot {
 
     /* position: absolute; */
     display: inline-flex;
+    flex-direction: column;
     padding: 1px 3px;
     min-width: 18px;
     min-height: 18px;
@@ -1717,10 +1717,32 @@ pluto-log-dot.Debug {
     border: 3px solid hsl(284deg 49% 79%);
 }
 
-pluto-log-dot div {
-    /* display: none; */
+pluto-log-dot jltree,
+pluto-log-dot jlpair {
+    font-size: 0.6rem;
+}
+pluto-log-dot > img {
+    max-width: 100px;
 }
 
+pluto-log-dot-kwarg {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+pluto-log-dot-kwarg > * {
+    flex: 0 0 auto;
+}
+pluto-log-dot-kwarg > pluto-key {
+    color: hsl(0, 0%, 40%);
+    margin-right: calc(1em - 30px);
+}
+pluto-log-dot-kwarg > pluto-key::after {
+    content: ": ";
+}
+pluto-log-dot-kwarg > pluto-value {
+    margin-left: 30px;
+}
 /* PRESENTATION MODE */
 
 body.presentation pluto-output h1,
