@@ -85,10 +85,11 @@ export let PlutoImage = ({ body, mime }) => {
             // the solution is to make the <img> invisible until the image is loaded
             imgref.current.style.display = "none"
         }
+        imgref.current.type = mime
         imgref.current.src = url
 
         return () => URL.revokeObjectURL(url)
-    }, [body])
+    }, [body, mime])
 
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
