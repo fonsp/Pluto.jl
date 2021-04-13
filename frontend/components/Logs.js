@@ -1,3 +1,4 @@
+import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
 
 export const Logs = ({ logs, line_heights }) => {
@@ -26,7 +27,35 @@ const Dot = ({ body, x, y, level }) => {
         node_ref.current.style.gridColumn = `${x + 1}`
         node_ref.current.style.gridRow = `${y + 1}`
     }, [x, y])
-    return html` <pluto-log-dot-positioner ref=${node_ref}>
+
+    const [inspecting, set_inspecting] = useState(false)
+    useLayoutEffect(() => {
+        // node_ref.current.addEventListener()
+    }, [])
+
+    useLayoutEffect(() => {
+        if (inspecting) {
+            const f = (e) => {
+                if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
+                    set_inspecting(false)
+                }
+            }
+            window.addEventListener("click", f)
+            window.addEventListener("blur", f)
+
+            return () => {
+                window.removeEventListener("click", f)
+                window.removeEventListener("blur", f)
+            }
+        }
+    }, [inspecting])
+    return html` <pluto-log-dot-positioner
+        ref=${node_ref}
+        class=${cl({ inspecting })}
+        onClick=${() => {
+            set_inspecting(true)
+        }}
+    >
         <pluto-log-dot-sizer>
             <pluto-log-dot class=${level}><div ref=${label_ref}></div></pluto-log-dot>
         </pluto-log-dot-sizer>

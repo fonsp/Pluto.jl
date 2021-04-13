@@ -1616,12 +1616,22 @@ pluto-logs {
 pluto-log-dot-positioner {
     display: block;
     width: 10px;
+    transition: transform 100ms ease-in-out;
+}
+
+/* pluto-log-dot-positioner:hover, */
+pluto-log-dot-positioner.inspecting {
+    z-index: 5;
+    transform: translate(0px, -5px);
+    /* transform: rotate(90deg); */
 }
 pluto-log-dot-sizer {
     display: block;
     width: 100px;
+    pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
 }
 pluto-log-dot {
+    pointer-events: auto; /* part 2 */
     box-shadow: -2px 0px 1px #00000014;
     font-family: "Roboto Mono", monospace;
     font-size: 0.6rem;
