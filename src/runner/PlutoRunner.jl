@@ -939,7 +939,7 @@ const integrations = Integration[
                 0
             end
 
-            const max_plot_size = 20000
+            const max_plot_size = 8000
             pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
 
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
