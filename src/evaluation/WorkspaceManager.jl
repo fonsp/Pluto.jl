@@ -109,11 +109,16 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     new_workspace_name
 end
 
+const DistributedPkgId = Base.PkgId(UUID("8ba89e20-285c-5b6f-9357-94700520ee1b"), "Distributed")
+
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
 function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
-    pid = Distributed.addprocs(1; exeflags=_convert_to_flags(compiler_options)) |> first
+    # only process 1 can add or remove worker processes. if you are running Pluto inside Pluto, then this is a problem, which is solved using this hack:
+    pid = Distributed.remotecall_eval(Main, 1, quote
+        Base.loaded_modules[$DistributedPkgId].addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
+    end)
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)
