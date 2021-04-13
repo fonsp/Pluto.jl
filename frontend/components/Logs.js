@@ -3,7 +3,6 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "
 import { SimpleOutputBody } from "./TreeView.js"
 
 export const Logs = ({ logs, line_heights }) => {
-    console.log(logs)
     return html`
         <pluto-logs-container>
             <pluto-logs style="grid-template-rows: ${line_heights.map((y) => y + "px").join(" ") + " repeat(auto-fill, 15px)"};">
