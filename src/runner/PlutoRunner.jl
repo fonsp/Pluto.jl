@@ -927,9 +927,6 @@ const integrations = Integration[
     Integration(
         id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots"),
         code = quote
-            makeint(x::Integer) = x
-            makeint(x) = parse(Int, x)
-
             approx_size(p::Plots.Plot) = try
                 sum(p.series_list) do series
                     length(series[:y])
@@ -938,10 +935,8 @@ const integrations = Integration[
                 @warn "Failed to guesstimate plot size" exception=(e,catch_backtrace())
                 0
             end
-
             const max_plot_size = 8000
             pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
-
             pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
         end,
     )
