@@ -74,6 +74,7 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const [line_heights, set_line_heights] = useState([15])
     return html`
         <pluto-cell
             onDragOver=${handler}
@@ -155,10 +156,11 @@ export const Cell = ({
                 }}
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
+                on_line_heights=${set_line_heights}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
             />
-            <${Logs} logs=${Object.values(logs)} />
+            <${Logs} logs=${Object.values(logs)} line_heights=${line_heights} />
             <${RunArea}
                 onClick=${() => {
                     if (running || queued) {
