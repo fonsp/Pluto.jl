@@ -32,6 +32,7 @@ html {
 }
 
 body {
+    overscroll-behavior: contain;
     margin: 0px;
     overflow-anchor: none;
     position: relative;
@@ -1641,7 +1642,7 @@ pluto-logs-container {
 
 @media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
     pluto-logs-container {
-        right: -6px;
+        right: min(-6px, 700px + 25px - 100vw);
         width: 20px;
         transition: width ease-in-out 100ms;
 
@@ -1662,6 +1663,19 @@ pluto-logs-container {
     }
 }
 
+@media screen and (min-width: calc(700px + 25px + 6px + 500px)) and (max-width: calc(700px + 25px + 6px + 500px + 500px)) {
+    pluto-logs-container {
+        right: calc(-500px - 6px);
+        width: calc(500px + 6px);
+    }
+}
+@media screen and (min-width: calc(700px + 25px + 6px + 500px + 500px)) {
+    pluto-logs-container {
+        width: calc(0.5 * (6px + 100vw - (700px + 25px)));
+        right: calc(-0.5 * (6px + 100vw - (700px + 25px)));
+    }
+}
+
 pluto-logs {
     display: grid;
     grid-auto-rows: 15px;
@@ -1676,7 +1690,7 @@ pluto-log-dot-positioner {
     transition: transform 100ms ease-in-out;
 }
 
-/* pluto-log-dot-positioner:hover, */
+pluto-log-dot-positioner:hover,
 pluto-log-dot-positioner.inspecting {
     z-index: 5;
     /* transform: translate(0px, -5px); */
