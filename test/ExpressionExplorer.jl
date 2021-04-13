@@ -375,8 +375,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], [])
         # symbolics
         @test testee(:(@variables a b c), [], [:a, :b, :c], [Symbol("@variables")], [])
+        @test testee(:(@variables a, b, c), [], [:a, :b, :c], [Symbol("@variables")], [])
         @test testee(:(@variables a b[1:2] c(t) d(..)), [], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
         @test testee(:(@variables a b[1:x] c[1:10](t) d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
+        @test testee(:(@variables a, b[1:x], c[1:10](t), d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
         @test_nowarn testee(:(@variables(m, begin
             x
             y[i=1:2] >= i, (start = i, base_name = "Y_$i")
