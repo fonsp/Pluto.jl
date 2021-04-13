@@ -120,7 +120,7 @@ end
 
 function open_safe_write(fn::Function, path, mode)
     file_content = sprint(fn)
-    mkpath(splitdir(path)[1])
+    mkpath(dirname(path))
     open(path, mode) do io
         print(io, file_content)
     end
