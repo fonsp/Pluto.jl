@@ -9,7 +9,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 // whatever
 //
 // TODO: remove this, use OutputBody instead, and fix the CSS classes so that i all looks nice again
-const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
+export const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -94,7 +94,9 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         case "Set":
         case "Tuple":
             inner = html`${body.prefix}<jlarray class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`))}</jlarray
+                    >${body.elements.map((r) =>
+                        r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`
+                    )}</jlarray
                 >`
             break
         case "Dict":
