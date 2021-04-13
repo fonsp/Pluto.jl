@@ -61,12 +61,9 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         if (e.target !== self && !self.classList.contains("collapsed")) {
             return
         }
-        var parent_tree = self.parentElement
-        while (parent_tree.tagName != "PLUTO-OUTPUT") {
-            parent_tree = parent_tree.parentElement
-            if (parent_tree.tagName == "JLTREE" && parent_tree.classList.contains("collapsed")) {
-                return // and bubble upwards
-            }
+        const parent_tree = self.parentElement.closest("jltree")
+        if (parent_tree != null && parent_tree.classList.contains("collapsed")) {
+            return // and bubble upwards
         }
 
         self.classList.toggle("collapsed")
