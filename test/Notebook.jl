@@ -95,7 +95,7 @@ end
 
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
-        for file in ["Basic.jl", "Tower of Hanoi.jl", "Interactivity.jl"]
+        for file in ["Basic.pluto.jl", "Tower of Hanoi.pluto.jl", "Interactivity.pluto.jl"]
             path = normpath(Pluto.project_relative_path("sample", file))
 
             @testset "$(file)" begin
@@ -107,7 +107,7 @@ end
 
     🍭 = ServerSession()
     for (name, nb) in nbs
-        nb.path = tempname() * "é🧡💛.jl"
+        nb.path = tempname() * "é🧡💛.pluto.jl"
 
         client = ClientSession(Symbol("client", rand(UInt16)), nothing)
         client.connected_notebook = nb
@@ -143,7 +143,7 @@ end
     end
 
     # Some notebooks are designed to error (inside/outside Pluto)
-    expect_error = [String(nameof(bad_code_notebook)), "sample Interactivity.jl"]
+    expect_error = [String(nameof(bad_code_notebook)), "sample Interactivity.pluto.jl"]
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs

@@ -28,7 +28,7 @@ end
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
 md"""# PlutoUI.jl
 
-The [Interactivity sample notebook](./sample/Interactivity.jl) explains how Pluto notebooks can use **`@bind`** to add _interactivity_ to your notebook. It's a simple concept - it uses the same reactivity that you have when editing code, except now you use sliders and buttons, instead of editing code.
+The [Interactivity sample notebook](./sample/Interactivity.pluto.jl) explains how Pluto notebooks can use **`@bind`** to add _interactivity_ to your notebook. It's a simple concept - it uses the same reactivity that you have when editing code, except now you use sliders and buttons, instead of editing code.
 
 However, code like
 
@@ -436,9 +436,9 @@ md"# PlutoUI without Pluto
 
 Huh?
 
-Did you know that you can run Pluto notebooks _without Pluto_? If your notebook is called `wow.jl`, then 
+Did you know that you can run Pluto notebooks _without Pluto_? If your notebook is called `wow.pluto.jl`, then 
 ```
-$ julia wow.jl
+$ julia wow.pluto.jl
 ```
 will run the notebook just fine. 
 

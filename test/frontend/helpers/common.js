@@ -110,7 +110,7 @@ const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
 export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
-export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".jl")
+export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".pluto.jl")
 
 export const getTestScreenshotPath = () => path.join(getArtifactsDir(), "test_screenshot_" + Date.now() + ".png")
 

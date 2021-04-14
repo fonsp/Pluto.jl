@@ -13,7 +13,7 @@ function stringify_keys(d::Dict)
 end
 stringify_keys(x::Any) = x
 
-import Pluto.Firebasey
+import Pluto.Diffing
 
 
 function await_with_timeout(check::Function, timeout::Real=60.0, interval::Real=.05)
@@ -64,7 +64,7 @@ end
         end
 
         function send_new_state(new_state)
-            patches::Array{Dict} = Firebasey.diff(new_state, local_state)
+            patches::Array{Dict} = Diffing.diff(new_state, local_state)
             # @info "patches" patches
             send(:update_notebook, Dict("updates" => patches))
 
@@ -93,10 +93,10 @@ end
             if process
                 if response["type"] == "notebook_diff"
                     message = response["message"]
-                    patches = [Base.convert(Firebasey.JSONPatch, update) for update in message["patches"]]
+                    patches = [Base.convert(Diffing.JSONPatch, update) for update in message["patches"]]
                     # @show patches
                     for patch in patches
-                        Firebasey.applypatch!(local_state, patch)
+                        Diffing.applypatch!(local_state, patch)
                     end
                 end
             end

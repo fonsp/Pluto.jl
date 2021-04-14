@@ -83,7 +83,7 @@ emptynotebook(args...) = Notebook([Cell()], args...)
 """
 Save the notebook to `io`, `file` or to `notebook.path`.
 
-In the produced file, cells are not saved in the notebook order. If `notebook.topology` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.jl`.
+In the produced file, cells are not saved in the notebook order. If `notebook.topology` is up-to-date, I will save cells in _topological order_. This guarantees that you can run the notebook file outside of Pluto, with `julia my_notebook.pluto.jl`.
 
 Have a look at our [JuliaCon 2020 presentation](https://youtu.be/IAF8DjrQSSk?t=1085) to learn more!
 """

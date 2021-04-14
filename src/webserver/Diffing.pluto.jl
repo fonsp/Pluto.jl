@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.0
+# v0.14.1
 
 using Markdown
 using InteractiveUtils
@@ -762,7 +762,7 @@ begin
 		end
 	end
 	# Do nothing inside pluto (so we don't need to have Test as dependency)
-	# test/Firebasey is `using Test` before including this file
+	# test/Diffing is `using Test` before including this file
 	@only_as_script ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
 end
 
