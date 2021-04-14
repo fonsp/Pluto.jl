@@ -69,6 +69,11 @@ const pluto_file_extensions = [
 
 endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
 
+"""
+Does the path end with a pluto file extension (like `.jl` or `.pluto.jl`) and does the first line say `### A Pluto.jl notebook ###`? 
+"""
+is_pluto_notebook(path::String) = endswith_pluto_file_extension(path) && readline(path) == "### A Pluto.jl notebook ###"
+
 function without_pluto_file_extension(s)
     for e in pluto_file_extensions
         if endswith(s, e)
