@@ -34,7 +34,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         end
     end
     
-    nb = load_notebook(tamepath(path), session.options.evaluation.run_notebook_on_load; disable_writing_notebook_files=disable_writing_notebook_files)
+    nb = load_notebook(tamepath(path); disable_writing_notebook_files=disable_writing_notebook_files)
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing

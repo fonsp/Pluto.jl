@@ -195,7 +195,7 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String, run_notebook_on_load::Bool=true, disable_writing_notebook_files::Bool=false)::Notebook
+function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
     backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
     # local backup_num = 1
     # backup_path = path
@@ -211,10 +211,7 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true, disable_wr
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
-    # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if run_notebook_on_load
-        loaded.topology = NotebookTopology()
-    end
+    loaded.topology = NotebookTopology()
 
     disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
