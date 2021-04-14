@@ -80,13 +80,13 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = default_number_of_threads()
+        threads::Union{Nothing,String,Int} = default_number_of_threads()
     end
 end
 
 function default_number_of_threads()
     env_value = get(ENV, "JULIA_NUM_THREADS", "")
-    all(isspace, env_value) ? string(roughly_the_number_of_physical_cpu_cores()) : env_value
+    all(isspace, env_value) ? roughly_the_number_of_physical_cpu_cores() : parse(Int,env_value)
 end
 
 function roughly_the_number_of_physical_cpu_cores()
