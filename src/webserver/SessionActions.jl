@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_dotjl, numbered_until_new, readwrite, move_notebook!, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_dotjl, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -19,7 +19,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
     open(session, path; kwargs...)
 end
 
-function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
+function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false, disable_writing_notebook_files::Bool=false)
     if as_sample
         new_filename = "sample " * without_dotjl(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
@@ -34,7 +34,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         end
     end
     
-    nb = load_notebook(tamepath(path), session.options.evaluation.run_notebook_on_load)
+    nb = load_notebook(tamepath(path); disable_writing_notebook_files=disable_writing_notebook_files)
 
     # overwrites the notebook environment if specified
     if compiler_options !== nothing
