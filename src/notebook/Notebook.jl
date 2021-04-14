@@ -212,7 +212,7 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true, save_to_pa
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     update_dependency_cache!(loaded)
 
-    ave_to_path && save_notebook(loaded)
+    save_to_path && save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if run_notebook_on_load
         loaded.topology = NotebookTopology()
