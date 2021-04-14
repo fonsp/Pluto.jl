@@ -706,6 +706,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
 
     Dict{Symbol,Any}(
         :prefix => string(typeof(x)),
+        :prefix_short => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Set,
         :elements => elements
@@ -729,8 +730,10 @@ function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
         ]
     end
 
+    prefix = array_prefix(x)
     Dict{Symbol,Any}(
-        :prefix => array_prefix(x),
+        :prefix => prefix,
+        :prefix_short => x isa Vector ? "" : prefix, # if not abstract
         :objectid => string(objectid(x), base=16),
         :type => :Array,
         :elements => elements
@@ -761,7 +764,8 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 
     Dict{Symbol,Any}(
-        :prefix => string(typeof(x) |> trynameof),
+        :prefix => string(typeof(x)),
+        :prefix_short => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Dict,
         :elements => elements
@@ -822,6 +826,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
 
         Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
+            :prefix_short => string(t |> trynameof),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
             :elements => elements,
