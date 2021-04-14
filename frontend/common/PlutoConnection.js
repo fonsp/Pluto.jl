@@ -92,9 +92,10 @@ const try_close_socket_connection = (socket) => {
  * @typedef {{socket: WebSocket, send: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
+ * @param {number} timeout_s Timeout for creating the websocket connection (seconds)
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
@@ -104,7 +105,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
             try_close_socket_connection(socket)
             reject("Socket timeout")
-        }, timeout_ms)
+        }, timeout_s * 1000)
 
         const send_encoded = (message) => {
             const encoded = pack(message)
