@@ -52,13 +52,17 @@ const More = ({ on_click_more }) => {
     >`
 }
 
+// const prefix = ({ prefix, prefix_short }) => prefix_short
+const prefix = ({ prefix, prefix_short }) => html`<jlprefix class="long">${prefix}</jlprefix><jlprefix class="short">${prefix_short}</jlprefix>`
+
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoContext)
     const node_ref = useRef(null)
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
-        if (e.target !== self && !self.classList.contains("collapsed")) {
+        let clicked = e.target.tagName === "JLPREFIX" ? e.target.parentElement : e.target
+        if (clicked !== self && !self.classList.contains("collapsed")) {
             return
         }
         const parent_tree = self.parentElement.closest("jltree")
@@ -90,12 +94,14 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         case "Array":
         case "Set":
         case "Tuple":
-            inner = html`${body.prefix}<jlarray class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`))}</jlarray
+            inner = html`${prefix(body)}<jlarray class=${body.type}
+                    >${body.elements.map((r) =>
+                        r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`
+                    )}</jlarray
                 >`
             break
         case "Dict":
-            inner = html`${body.prefix}<jldict class=${body.type}
+            inner = html`${prefix(body)}<jldict class=${body.type}
                     >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
                 >`
             break
@@ -105,7 +111,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
             >`
             break
         case "struct":
-            inner = html`${body.prefix}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
+            inner = html`${prefix(body)}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
             break
     }
 
