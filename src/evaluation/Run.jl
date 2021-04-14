@@ -152,7 +152,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 	update_dependency_cache!(notebook)
 
-	save && notebook.save_to_path && save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 

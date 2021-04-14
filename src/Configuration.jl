@@ -17,6 +17,7 @@ Base.@kwdef mutable struct ServerOptions
     launch_browser::Bool = true
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
+    disable_writing_notebook_files::Bool = false
     notebook::Union{Nothing,String} = nothing
     simulated_lag::Real=0.0
 end

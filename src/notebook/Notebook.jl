@@ -23,7 +23,6 @@ Base.@kwdef mutable struct Notebook
     cell_order::Array{UUID,1}
     
     path::String
-    save_to_path::Bool=true
     notebook_id::UUID
     topology::NotebookTopology=NotebookTopology()
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
@@ -196,7 +195,7 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String, run_notebook_on_load::Bool=true, save_to_path::Bool=true)::Notebook
+function load_notebook(path::String, run_notebook_on_load::Bool=true, disable_writing_notebook_files::Bool=false)::Notebook
     backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
     # local backup_num = 1
     # backup_path = path
@@ -204,21 +203,20 @@ function load_notebook(path::String, run_notebook_on_load::Bool=true, save_to_pa
     #     backup_path = path * ".backup" * string(backup_num)
     #     backup_num += 1
     # end
-    save_to_path && readwrite(path, backup_path)
+    disable_writing_notebook_files || readwrite(path, backup_path)
 
     loaded = load_notebook_nobackup(path)
-    loaded.save_to_path = save_to_path
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     update_dependency_cache!(loaded)
 
-    save_to_path && save_notebook(loaded)
+    disable_writing_notebook_files || save_notebook(loaded)
     # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
     if run_notebook_on_load
         loaded.topology = NotebookTopology()
     end
 
-    save_to_path && if only_versions_or_lineorder_differ(path, backup_path)
+    disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
     else
         @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backup_path
@@ -241,12 +239,12 @@ function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Boo
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
-function move_notebook!(notebook::Notebook, newpath::String)
+function move_notebook!(notebook::Notebook, newpath::String; disable_writing_notebook_files::Bool=false)
     # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
     oldpath_tame = tamepath(notebook.path)
     newpath_tame = tamepath(newpath)
 
-    if notebook.save_to_path
+    if !disable_writing_notebook_files
         save_notebook(notebook, oldpath_tame)
         save_notebook(notebook, newpath_tame)
 
