@@ -161,16 +161,22 @@ const pathhints = (cm, options) => {
             }))
 
             if (options.suggest_new_file != null) {
-                for (var initLength = 3; initLength >= 0; initLength--) {
-                    const init = ".jl".substring(0, initLength)
-                    if (queryFileName.endsWith(init)) {
-                        var suggestedFileName = queryFileName + ".jl".substring(initLength)
+                if (queryFileName.endsWith(".jl")) {
+                    return null
+                }
 
-                        if (suggestedFileName == ".jl") {
-                            suggestedFileName = "notebook.jl"
+                const recommended_extension = ".pluto.jl"
+
+                for (var initLength = recommended_extension.length; initLength >= 0; initLength--) {
+                    const init = recommended_extension.substring(0, initLength)
+                    if (queryFileName.endsWith(init)) {
+                        var suggestedFileName = queryFileName + recommended_extension.substring(initLength)
+
+                        if (suggestedFileName == recommended_extension) {
+                            suggestedFileName = "notebook" + recommended_extension
                         }
 
-                        if (initLength == 3) {
+                        if (initLength == recommended_extension.length) {
                             return null
                         }
                         if (!results.includes(suggestedFileName)) {
