@@ -52,7 +52,6 @@ const More = ({ on_click_more }) => {
     >`
 }
 
-// const prefix = ({ prefix, prefix_short }) => prefix_short
 const prefix = ({ prefix, prefix_short }) => html`<jlprefix class="long">${prefix}</jlprefix><jlprefix class="short">${prefix_short}</jlprefix>`
 
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {

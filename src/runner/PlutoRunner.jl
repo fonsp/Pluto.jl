@@ -824,9 +824,8 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
             for i in 1:nf
         ]
 
-        prefix = repr(t; context=context)
         Dict{Symbol,Any}(
-            :prefix => prefix,
+            :prefix => repr(t; context=context),
             :prefix_short => string(t |> trynameof),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
