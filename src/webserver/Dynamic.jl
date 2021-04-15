@@ -346,6 +346,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
+            :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),
     ), nothing, nothing, 🙋.initiator))
 end

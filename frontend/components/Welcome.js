@@ -179,7 +179,7 @@ export class Welcome extends Component {
                     const base1 = (n) => "1".repeat(n)
 
                     console.log(`Pluto version ${local}`)
-                    if (remote != local) {
+                    if (remote != local && !this.client.version_info.dismiss_update_notification) {
                         const rs = remote.slice(1).split(".").map(Number)
                         const ls = local.slice(1).split(".").map(Number)
 

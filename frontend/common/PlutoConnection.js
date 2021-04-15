@@ -196,6 +196,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *  version_info: {
  *      julia: string,
  *      pluto: string,
+ *      dismiss_update_notification: boolean,
  *  },
  * }}
  */
@@ -234,6 +235,7 @@ export const create_pluto_connection = async ({
         version_info: {
             julia: "unknown",
             pluto: "unknown",
+            dismiss_update_notification: false,
         },
     } // same
 

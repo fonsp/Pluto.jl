@@ -15,6 +15,7 @@ Base.@kwdef mutable struct ServerOptions
     host::String = "127.0.0.1"
     port::Union{Nothing,Integer} = nothing
     launch_browser::Bool = true
+    dismiss_update_notification::Bool = false
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = false
