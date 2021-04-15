@@ -73,8 +73,28 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const [popped_out, set_popped_out] = useState(false)
+
+    const nodeRef = useRef(null)
+    useEffect(() => {
+        const l = (e) => {
+            if (popped_out) {
+                // nodeRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`
+                // nodeRef.current.style.position = 10
+                // nodeRef.current.style.zIndex = 10
+                // nodeRef.current.style.width = `200px`
+                // console.log(e)
+            }
+        }
+        window.addEventListener("mousemove", l)
+        return () => {
+            window.removeEventListener("mousemove", l)
+        }
+    })
+
     return html`
         <pluto-cell
+            ref=${nodeRef}
             onDragOver=${handler}
             onDrop=${handler}
             onDragEnter=${handler}
@@ -90,24 +110,38 @@ export const Cell = ({
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
+                popped_out: popped_out,
             })}
             id=${cell_id}
         >
             <pluto-shoulder draggable="true" title="Drag to move cell">
-                <button
-                    onClick=${() => {
-                        let cells_to_fold = selected ? selected_cells : [cell_id]
-                        pluto_actions.update_notebook((notebook) => {
-                            for (let cell_id of cells_to_fold) {
-                                notebook.cell_inputs[cell_id].code_folded = !code_folded
-                            }
-                        })
-                    }}
-                    class="foldcode"
-                    title="Show/hide code"
-                >
-                    <span></span>
-                </button>
+                ${code_folded
+                    ? html``
+                    : html`<button
+                          onClick=${() => {
+                              set_popped_out(!popped_out)
+                          }}
+                          class="popout"
+                          title="Pop out"
+                      >
+                          <span></span>
+                      </button>`}
+                ${popped_out
+                    ? html``
+                    : html`<button
+                          onClick=${() => {
+                              let cells_to_fold = selected ? selected_cells : [cell_id]
+                              pluto_actions.update_notebook((notebook) => {
+                                  for (let cell_id of cells_to_fold) {
+                                      notebook.cell_inputs[cell_id].code_folded = !code_folded
+                                  }
+                              })
+                          }}
+                          class="foldcode"
+                          title="Show/hide code"
+                      >
+                          <span></span>
+                      </button>`}
             </pluto-shoulder>
             <pluto-trafficlight></pluto-trafficlight>
             <button
