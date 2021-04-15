@@ -241,15 +241,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
 
 	update_dependency_cache!(notebook)
-
-	save && save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	deletion_hook = function(sn, to_delete_vars, to_delete_funcs, to_reimport; to_run)
 		WorkspaceManager.move_vars(sn, old_workspace_name, to_delete_vars, to_delete_funcs, to_reimport)
 	end	
-
-	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
-	
 	# _assume `prerender_text == false` if you want to skip some details_
 
 	to_run_online = if !prerender_text
