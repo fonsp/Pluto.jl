@@ -19,7 +19,6 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     update_run!(🍭, notebook, notebook.cells)
 
-
     @test cell(1).errored == false
     @test [:🍎, :🍐] ⊆ notebook.topology.nodes[cell(1)].definitions
     @test :Fruit ∈ notebook.topology.nodes[cell(1)].funcdefs_without_signatures
@@ -71,5 +70,30 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @test cell(1).errored == false
     @test cell(2).errored == false
+  end
+
+  @testset "Previous workspace for unknowns" begin
+    notebook = Notebook([
+      Cell("""macro my_macro(expr)
+        expr
+      end"""),
+      Cell("(@__MODULE__, (@my_macro 1 + 1))"),
+      Cell("@__MODULE__"),
+    ])
+    cell(idx) = notebook.cells[idx]
+
+    update_run!(🍭, notebook, notebook.cells[1:1])
+    update_run!(🍭, notebook, notebook.cells[2:end])
+
+    @test cell(1).errored == false
+    @test cell(2).errored == false
+    @test cell(3).errored == false
+
+    module_from_cell2 = cell(2).output.body[:elements][1][2][1]
+    module_from_cell3 = cell(3).output.body
+
+    # Current limitation of using the previous module 
+    # for expansion of unknowns macros on the whole expression
+    @test_broken module_from_cell2 == module_from_cell3
   end
 end
