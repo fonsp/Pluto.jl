@@ -32,9 +32,9 @@ function generate_html(;
         <script data-pluto-file="launch-parameters">
         window.pluto_notebookfile = $(notebookfile_js)
         window.pluto_disable_ui = $(disable_ui ? "true" : "false")
-        window.pluto_statefile = $(statefile_js)
         window.pluto_slider_server_url = $(slider_server_url_js)
         window.pluto_binder_url = $(binder_url_js)
+        window.pluto_statefile = $(statefile_js)
         </script>
         <!-- [automatically generated launch parameters can be inserted here] -->
         """
