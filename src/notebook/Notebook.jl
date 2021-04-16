@@ -106,7 +106,8 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        print(io, c.code)
+        # write the cell code and prevent collisions with the cell delimiter
+        print(io, replace(c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
     end
 
@@ -161,7 +162,7 @@ function load_notebook_nobackup(io, path)::Notebook
             code_raw = String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
-            # remove the cell appendix
+            # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
