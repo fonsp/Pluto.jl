@@ -356,6 +356,10 @@ pluto-output table > tbody td {
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
+pluto-output table > tbody td code {
+    font-size: 0.75rem;
+}
+
 
 pluto-output table td,
 pluto-output table th {

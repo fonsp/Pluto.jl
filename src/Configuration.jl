@@ -55,6 +55,7 @@ For internal use only.
 Base.@kwdef mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
     workspace_use_distributed::Bool = true
+    lazy_workspace_creation::Bool = false
 end
 
 """
