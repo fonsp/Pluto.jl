@@ -368,7 +368,7 @@ export const create_pluto_connection = async ({
     return client
 }
 
-export const fetch_latest_pluto_version = async () => {
+export const fetch_pluto_releases = async () => {
     let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
@@ -379,6 +379,5 @@ export const fetch_latest_pluto_version = async () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-    let json = await response.json()
-    return json[0].tag_name
+    return (await response.json()).reverse()
 }
