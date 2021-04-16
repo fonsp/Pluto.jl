@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_dotjl, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -21,7 +21,7 @@ end
 
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
     if as_sample
-        new_filename = "sample " * without_dotjl(basename(path))
+        new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
         
         readwrite(path, new_path)
