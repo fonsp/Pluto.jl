@@ -130,7 +130,8 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		expr_cache.parsedcode, 
 		cell.cell_id, 
 		ends_with_semicolon(cell.code), 
-		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
+		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
+    cell.cell_dependencies.contains_user_defined_macros,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
 	if session_notebook isa Tuple && run.process_exited

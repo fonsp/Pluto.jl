@@ -28,12 +28,24 @@ function upstream_cells_map(cell::Cell, notebook::Notebook)::Dict{Symbol,Vector{
     )
 end
 
+function contains_user_defined_macrocalls(cell::Cell, notebook::Notebook)::Bool
+  calls = filter(sym -> string(sym)[1] == '@', notebook.topology.nodes[cell].references)
+  for call in calls
+    if !isempty(where_assigned(notebook, notebook.topology, Set([call])))
+      return true
+    end
+  end
+  false
+end
+
 "Fills cell dependency information for display in the GUI"
 function update_dependency_cache!(cell::Cell, notebook::Notebook)
     cell.cell_dependencies = CellDependencies(
         downstream_cells_map(cell, notebook), 
         upstream_cells_map(cell, notebook), 
-        cell_precedence_heuristic(notebook.topology, cell))
+        cell_precedence_heuristic(notebook.topology, cell),
+        contains_user_defined_macrocalls(cell, notebook)
+    )
 end
 
 "Fills dependency information on notebook and cell level."

@@ -74,10 +74,13 @@ end
 """
 Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
 """
-no_workspace_ref(other) = other
-no_workspace_ref(expr::Expr) = Expr(expr.head, no_workspace_ref.(expr.args)...) 
-function no_workspace_ref(ref::GlobalRef)
-  if startswith(nameof(ref.mod) |> string, "workspace")
+no_workspace_ref(other, _=nothing) = other
+no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, no_workspace_ref.(expr.args, mod_name)...) 
+function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
+  test_mod_name = nameof(ref.mod) |> string
+  if startswith(test_mod_name, "workspace") &&
+    (mod_name === nothing ||
+        string(mod_name)[9:end] !== test_mod_name[9:end])
     ref.name
   else
     mod_name = fullname(ref.mod) |> wrap_dot
@@ -249,6 +252,18 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
 end
 
 
+visit_expand(other) = other
+function visit_expand(expr::Expr)
+  if expr.head == :macrocall
+    no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
+  else
+    Expr(expr.head, visit_expand.(expr.args)...)
+  end
+end
+
+contains_macrocall(expr::Expr) = expr.head == :macrocall || any(contains_macrocall.(expr.args))
+contains_macrocall(other) = false
+
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
 
@@ -256,13 +271,19 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macros::Bool=false)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     result, runtime = if function_wrapped_info === nothing
         expr = pop!(ExpandedCallCells, cell_id, expr)
         proof = ReturnProof()
+
+        # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
+        if contains_user_defined_macros
+          expr = visit_expand(expr)
+        end
+
         wrapped = timed_expr(expr, proof)
         run_inside_trycatch(wrapped, cell_id, proof)
     else

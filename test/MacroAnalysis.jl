@@ -61,7 +61,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
     ])
     cell(idx) = notebook.cells[idx]
 
-    update_run!(🍭, notebook, notebook.cells[2:2])
+    update_run!(🍭, notebook, notebook.cells[2])
 
     @test cell(2).errored == true
     @test occursinerror("UndefVarError: @dateformat_str", cell(2)) == true
@@ -95,5 +95,32 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
     # Current limitation of using the previous module 
     # for expansion of unknowns macros on the whole expression
     @test_broken module_from_cell2 == module_from_cell3
+  end
+
+  @testset "Definitions" begin
+    notebook = Notebook([
+      Cell("""macro my_macro(sym, val)
+        :(\$(esc(sym)) = \$(val))
+      end"""),
+      Cell("c = :hello"),
+      Cell("@my_macro b c"),
+      Cell("b"),
+    ])
+    cell(idx) = notebook.cells[idx]
+
+    update_run!(🍭, notebook, notebook.cells)
+    update_run!(🍭, notebook, notebook.cells)
+
+    @test ":hello" == cell(3).output.body
+    @test ":hello" == cell(4).output.body
+    @test :b ∈ notebook.topology.nodes[cell(3)].definitions
+    @test [:c, Symbol("@my_macro")] ⊆ notebook.topology.nodes[cell(3)].references
+    @test cell(3).cell_dependencies.contains_user_defined_macros == true
+
+    setcode(notebook.cells[2], "c = :world")
+    update_run!(🍭, notebook, cell(2))
+
+    @test ":world" == cell(3).output.body
+    @test ":world" == cell(4).output.body
   end
 end
