@@ -28,6 +28,9 @@ end
         @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
             ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
 
+        @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
+            ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
+
         @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
             ["--project=@.", "--startup-file=no", "--history-file=no"]
     else

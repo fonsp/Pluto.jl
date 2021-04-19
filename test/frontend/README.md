@@ -1,12 +1,22 @@
 # Pluto end-to-end tests
 
+All commands here are executed in this folder (`Pluto.jl/test/frontend`).
+
 ## Install packages
 
 `npm install`
 
 ## Run Pluto.jl server
 
-`PLUTO_PORT=2345 julia --project=/path/to/PlutoDev -e "import Pluto; Pluto.run(port=$PLUTO_PORT, require_secret_for_access=false, require_secret_for_open_links=false, launch_browser=false)"`
+```
+PLUTO_PORT=2345; julia --project=/path/to/PlutoDev -e "import Pluto; Pluto.run(port=$PLUTO_PORT, require_secret_for_access=false, require_secret_for_open_links=false, launch_browser=false)"
+```
+
+or if Pluto is dev'ed in your global environment:
+
+```
+PLUTO_PORT=2345; julia -e "import Pluto; Pluto.run(port=$PLUTO_PORT, require_secret_for_access=false, require_secret_for_open_links=false, launch_browser=false)"
+```
 
 ## Run tests
 

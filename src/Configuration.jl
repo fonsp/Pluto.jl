@@ -15,8 +15,10 @@ Base.@kwdef mutable struct ServerOptions
     host::String = "127.0.0.1"
     port::Union{Nothing,Integer} = nothing
     launch_browser::Bool = true
+    dismiss_update_notification::Bool = false
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
+    disable_writing_notebook_files::Bool = false
     notebook::Union{Nothing,String} = nothing
     simulated_lag::Real=0.0
 end
@@ -53,6 +55,7 @@ For internal use only.
 Base.@kwdef mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
     workspace_use_distributed::Bool = true
+    lazy_workspace_creation::Bool = false
 end
 
 """
@@ -79,8 +82,13 @@ Base.@kwdef mutable struct CompilerOptions
     history_file::Union{Nothing,String} = "no"
 
     @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = get(ENV, "JULIA_NUM_THREADS", string(roughly_the_number_of_physical_cpu_cores()))
+        threads::Union{Nothing,String,Int} = default_number_of_threads()
     end
+end
+
+function default_number_of_threads()
+    env_value = get(ENV, "JULIA_NUM_THREADS", "")
+    all(isspace, env_value) ? roughly_the_number_of_physical_cpu_cores() : parse(Int,env_value)
 end
 
 function roughly_the_number_of_physical_cpu_cores()

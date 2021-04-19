@@ -376,16 +376,18 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebook/*/static", serve_notebook_static_fn)
 
+    notebook_from_uri(request) = let
+        uri = HTTP.URI(request.target)        
+        query = HTTP.queryparams(uri)
+        id = UUID(query["id"])
+        session.notebooks[id]
+    end
     serve_notebookfile = with_authentication(; 
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
     ) do request::HTTP.Request
         try
-            uri = HTTP.URI(request.target)        
-            query = HTTP.queryparams(uri)
-            id = UUID(query["id"])
-            notebook = session.notebooks[id]
-
+            notebook = notebook_from_uri(request)
             response = HTTP.Response(200, sprint(save_notebook, notebook))
             push!(response.headers, "Content-Type" => "text/plain; charset=utf-8")
             push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path))\"")
@@ -395,6 +397,22 @@ function http_router_for(session::ServerSession)
         end
     end
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
+
+    serve_notebookexport = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            notebook = notebook_from_uri(request)
+            response = HTTP.Response(200, generate_html(notebook))
+            push!(response.headers, "Content-Type" => "text/html; charset=utf-8")
+            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).html\"")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.@register(router, "GET", "/notebookexport", serve_notebookexport)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)

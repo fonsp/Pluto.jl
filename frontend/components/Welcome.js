@@ -1,7 +1,7 @@
 import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
@@ -171,35 +171,26 @@ export class Welcome extends Component {
                 document.body.classList.remove("loading")
             })
 
-            fetch_latest_pluto_version()
-                .then((version) => {
-                    const remote = version
+            fetch_pluto_releases()
+                .then((releases) => {
                     const local = this.client.version_info.pluto
-
-                    const base1 = (n) => "1".repeat(n)
-
+                    const latest = releases[releases.length-1].tag_name
                     console.log(`Pluto version ${local}`)
-                    if (remote != local) {
-                        const rs = remote.slice(1).split(".").map(Number)
-                        const ls = local.slice(1).split(".").map(Number)
+                    const local_index = releases.findIndex(r => r.tag_name === local)
+                    if(local_index !== -1) {
+                        const updates = releases.slice(local_index+1)
+                        const recommended_updates = updates.filter(r => r.body.toLowerCase().includes("recommended update"))
+                        if(recommended_updates.length > 0){
+                            console.log(`Newer version ${latest} is available`)
+                            alert(
+                                "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                    local +
+                                    ", the latest is " +
+                                    latest +
+                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                            )
 
-                        // if the semver can't be parsed correctly, we always show it to the user
-                        if (rs.length == 3 && ls.length == 3) {
-                            if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                                // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
-                                if (rs.map(base1) <= ls.map(base1)) {
-                                    return
-                                }
-                            }
                         }
-                        console.log(`Newer version ${remote} is available`)
-                        alert(
-                            "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                local +
-                                ", the latest is " +
-                                remote +
-                                '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
-                        )
                     }
                 })
                 .catch(() => {

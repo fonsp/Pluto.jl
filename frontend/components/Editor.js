@@ -6,6 +6,7 @@ import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
+import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
@@ -90,6 +91,9 @@ const ProcessStatus = {
     waiting_to_restart: "waiting_to_restart",
 }
 
+/**
+ * Map of status => Bool. In order of decreasing prioirty.
+ */
 const statusmap = (state) => ({
     disconnected: !(state.connected || state.initializing || state.static_preview),
     loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
@@ -97,6 +101,9 @@ const statusmap = (state) => ({
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
+    code_differs: state.notebook.cell_order.some(
+        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+    ),
 })
 
 const first_true_key = (obj) => {
@@ -205,6 +212,7 @@ export class Editor extends Component {
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+            last_update_time: 0,
 
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
@@ -237,15 +245,14 @@ export class Editor extends Component {
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val, callback) => {
-                return this.setState(
+            set_local_cell: (cell_id, new_val) => {
+                return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    }),
-                    callback
+                    })
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
@@ -428,6 +435,7 @@ export class Editor extends Component {
                                     cell: this.state.notebook.cell_inputs[cell_id],
                                 }
                             }),
+                            selected_cells: [],
                         })
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
@@ -630,7 +638,7 @@ patch: ${JSON.stringify(
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
-            await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
@@ -759,6 +767,7 @@ patch: ${JSON.stringify(
                                 }),
                             this.setStatePromise({
                                 notebook: new_notebook,
+                                last_update_time: Date.now(),
                             }),
                         ])
                     } finally {
@@ -820,13 +829,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -958,16 +967,10 @@ patch: ${JSON.stringify(
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
 
-        const status = statusmap(this.state)
-        Object.entries(status).forEach((e) => {
+        Object.entries(this.cached_status).forEach((e) => {
             document.body.classList.toggle(...e)
         })
 
-        const any_code_differs = this.state.notebook.cell_order.some(
-            (cell_id) =>
-                this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
-        )
-        document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
 
@@ -989,16 +992,20 @@ patch: ${JSON.stringify(
         }
     }
 
+    componentWillUpdate(new_props, new_state) {
+        this.cached_status = statusmap(new_state)
+    }
+
     render() {
         let { export_menu_open, notebook } = this.state
 
-        const status = statusmap(this.state)
+        const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        const notebook_export_url =
+        const export_url = (u) =>
             this.state.binder_session_url == null
-                ? `./notebookfile?id=${this.state.notebook.notebook_id}`
-                : `${this.state.binder_session_url}notebookfile?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
+                ? `./${u}?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -1006,9 +1013,8 @@ patch: ${JSON.stringify(
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
-                            pluto_version=${this.client?.version_info?.pluto}
-                            notebook=${this.state.notebook}
-                            notebook_export_url=${notebook_export_url}
+                            notebookfile_url=${export_url("notebookfile")}
+                            notebookexport_url=${export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
@@ -1033,7 +1039,7 @@ patch: ${JSON.stringify(
                             <div class="flex_grow_1"></div>
                             ${
                                 this.state.binder_phase === BinderPhase.ready
-                                    ? html`<pluto-filepicker><a href=${notebook_export_url} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1084,17 +1090,10 @@ patch: ${JSON.stringify(
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <preamble>
-                            <button
-                                onClick=${() => {
-                                    this.actions.set_and_run_all_changed_remote_cells()
-                                }}
-                                class="runallchanged"
-                                title="Save and run all changed cells"
-                            >
-                                <span></span>
-                            </button>
-                        </preamble>
+                        <${Preamble} 
+                            last_update_time=${this.state.last_update_time}
+                            any_code_differs=${status.code_differs}
+                        />
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
