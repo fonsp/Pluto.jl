@@ -13,6 +13,7 @@ describe("PlutoAutocomplete", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should get the correct autocomplete suggestions", async () => {

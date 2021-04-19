@@ -47,6 +47,7 @@ describe("PlutoNewNotebook", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should create new notebook", async () => {

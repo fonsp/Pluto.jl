@@ -49,6 +49,7 @@ describe("Paste Functionality", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should *not* create new cell when you paste code into cell", async () => {

@@ -15,6 +15,7 @@ export const prewarmPluto = async (page) => {
     await page.waitForSelector(runSelector, { visible: true })
     await page.click(runSelector)
     await waitForContent(page, "pluto-output")
+    await page.evaluate(() => shutdownNotebook())
 }
 
 export const createNewNotebook = async (page) => {
