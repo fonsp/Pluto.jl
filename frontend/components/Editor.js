@@ -14,7 +14,7 @@ import { SelectionArea } from "./SelectionArea.js"
 import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
-import { ExportBanner } from "./ExportBanner.js"
+import { SaveBanner, ExportBanner } from "./ExportBanner.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -26,6 +26,7 @@ import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { cl } from "../common/ClassTable.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -229,6 +230,7 @@ export class Editor extends Component {
                 up: false,
                 down: false,
             },
+            save_menu_open: true,
             export_menu_open: false,
 
             last_created_cell: null,
@@ -997,7 +999,7 @@ patch: ${JSON.stringify(
     }
 
     render() {
-        let { export_menu_open, notebook } = this.state
+        let { save_menu_open, export_menu_open, notebook } = this.state
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
@@ -1011,11 +1013,13 @@ patch: ${JSON.stringify(
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${Scroller} active=${this.state.scroller} />
-                    <header className=${export_menu_open ? "show_export" : ""}>
+                    <header className=${cl({export_menu_open, save_menu_open})}>
+                        <${SaveBanner}
+                            onClose=${() => this.setState({ save_menu_open: false })}
+                        />
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}
                             notebookexport_url=${export_url("notebookexport")}
-                            open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
                         <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
@@ -1054,7 +1058,7 @@ patch: ${JSON.stringify(
                             }
                             <div class="flex_grow_2"></div>
                             <button class="toggle_export" title="Export..." onClick=${() => {
-                                this.setState({ export_menu_open: !export_menu_open })
+                                this.setState({ save_menu_open: !save_menu_open })
                             }}><span></span></button>
                             <div id="process_status">${
                                 status.binder && status.loading

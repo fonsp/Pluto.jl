@@ -402,13 +402,28 @@ body > header {
     font-size: 0.75rem;
 }
 
-body > header.show_export {
+body > header.export_menu_open,
+body > header.save_menu_open {
     position: sticky;
     top: 0;
     transform: translateY(130px);
 }
 
-aside#export {
+header > aside {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms linear;
+}
+header.export_menu_open > aside#export_menu,
+header.save_menu_open > aside#save_menu {
+    opacity: 1;
+    pointer-events: inherit;
+
+    transition: opacity 0s linear;
+
+}
+
+aside.banner_menu {
     position: absolute;
     top: 0;
     width: 100%;
@@ -417,7 +432,10 @@ aside#export {
     color: rgba(255, 255, 255, 0.7);
     transform: translateY(-101%);
 }
-aside#export::before {
+aside#save_menu{
+    background: rgb(101, 60, 74);
+}
+aside.banner_menu::before {
     content: "";
     position: absolute;
     bottom: 100%;
@@ -426,18 +444,19 @@ aside#export::before {
     height: 100px;
     background: inherit;
 }
-aside#export div#container {
+aside.banner_menu div#container {
     flex-direction: row;
     display: flex;
     max-width: 1000px;
     padding-right: 20px;
     margin: 0 auto;
 }
-header aside#export div#container {
+header aside.banner_menu div#container {
     /* to prevent the div from taking up horizontal page when the export pane is closed. On small screen this causes overscroll on the right. */
     overflow-x: hidden;
 }
-header.show_export aside#export div#container {
+header.save_menu_open aside.banner_menu div#container,
+header.export_menu_open aside.banner_menu div#container {
     overflow-x: auto;
 }
 a.export_card {
@@ -477,7 +496,14 @@ a.export_card section {
     color: rgba(0, 0, 0, 0.5);
     font-weight: 500;
 }
-aside#export button.toggle_export {
+
+#save_menu #grid {
+    display: grid;
+    grid-template-rows: auto auto;
+    grid-template-columns: auto auto;
+}
+
+aside.banner_menu button.toggle_export {
     margin-left: auto;
     height: 60px;
 }
@@ -598,7 +624,7 @@ button.toggle_export span {
 nav#at_the_top button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/shapes-outline.svg);
 }
-aside#export button.toggle_export span {
+aside.banner_menu button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-outline.svg);
     filter: invert();
 }
