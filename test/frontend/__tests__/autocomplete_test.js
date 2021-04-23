@@ -18,6 +18,8 @@ describe("PlutoAutocomplete", () => {
 
     it("should get the correct autocomplete suggestions", async () => {
         await importNotebook("autocomplete_notebook.jl")
+        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
 
@@ -32,6 +34,8 @@ describe("PlutoAutocomplete", () => {
         await page.waitForTimeout(500)
 
         // Trigger autocomplete suggestions
+        await page.keyboard.press("Tab")
+        await page.waitForTimeout(500)
         await page.keyboard.press("Tab")
         await page.waitForSelector(".CodeMirror-hints")
         // Get suggestions
