@@ -359,7 +359,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # Early stopping, this expression will have to be re-explored once
         # the macro is expanded in the notebook process.
         macro_name = split_funcname(ex.args[1])
-        return SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
+        symstate = SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
+
+        # Some macros can be expanded on the server process
+        if join_funcname_parts(macro_name) ∈ can_macroexpand
+          new_ex = maybe_macroexpand(ex)
+          union!(symstate, explore!(new_ex, scopestate))
+        end
+
+        return symstate
     elseif ex.head == :call
         # Does not create scope
 
@@ -762,8 +770,7 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
         args = ex.args[3:end]
         
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            expanded = macroexpand(PlutoRunner, ex; recursive=false)
-            Expr(:call, ex.args[1], expanded)
+            return macroexpand(PlutoRunner, ex; recursive=false)
 
         elseif !isempty(args) && Meta.isexpr(args[1], :(:=))
             ex = macro_kwargs_as_kw(ex)

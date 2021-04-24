@@ -193,23 +193,27 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
     res
   end
 
+  function analyze_macrocell(cell::Cell, current_symstate)
+    if ExpressionExplorer.join_funcname_parts.(current_symstate.macrocalls) ⊆ ExpressionExplorer.can_macroexpand
+      return current_symstate
+    else
+      result = macroexpand_cell(cell)
+      if typeof(result) <: Exception 
+          # if expansion failed, we use the "shallow" symbols state
+          # we could also use ExpressionExplorer.maybe_macroexpand
+          current_symstate
+      else # otherwise, we use the expanded expression + the list of macrocalls
+          expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+          union!(expanded_symbols_state.macrocalls, current_symstate.macrocalls)
+          expanded_symbols_state
+      end
+    end
+  end
+
   # create new node & new codes for macrocalled cells
   new_nodes = Dict{Cell,ReactiveNode}(
-    cell => cell
-      |> macroexpand_cell
-      |> function(result) 
-        if typeof(result) <: Exception 
-            # if expansion failed, we use the "shallow" symbols state
-            # we could also use ExpressionExplorer.maybe_macroexpand
-            old_symstate
-        else # otherwise, we use the expanded expression + the list of macrocalls
-            expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-            union!(expanded_symbols_state.macrocalls, old_symstate.macrocalls)
-            expanded_symbols_state
-        end
-      end
-      |> ReactiveNode
-    for (cell, old_symstate) in unresolved_topology.unresolved_cells)
+    cell => analyze_macrocell(cell, current_symstate) |> ReactiveNode
+    for (cell, current_symstate) in unresolved_topology.unresolved_cells)
   all_nodes = merge(unresolved_topology.nodes, new_nodes)
 
   NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
