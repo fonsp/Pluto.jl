@@ -29,7 +29,7 @@ import { slider_server_actions, nothing_actions } from "../common/SliderServerCl
 
 const default_path = "..."
 const DEBUG_DIFFING = false
-let pending_local_updates = 0q
+let pending_local_updates = 0
 // from our friends at https://stackoverflow.com/a/2117523
 // i checked it and it generates Julia-legal UUIDs and that's all we need -SNOF
 const uuidv4 = () =>

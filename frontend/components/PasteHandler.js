@@ -62,7 +62,7 @@ const processFile = async (ev) => {
         }
     }
     if (!notebook) {
-        alert("Notebook not found 😥😥")
+        // Notebook not found! Doing nothing :)
         return
     }
     document.body.classList.add("loading")

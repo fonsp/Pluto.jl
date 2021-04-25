@@ -1,9 +1,9 @@
 import MsgPack
-import UUIDs: UUID
+import UUIDs:UUID
 import HTTP
 import Sockets
 
-import Base: endswith
+import Base:endswith
 function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     local liv = lastindex(vec)
     local lis = lastindex(suffix)
@@ -225,10 +225,6 @@ function run(session::ServerSession)
 
             request_body = IOBuffer(HTTP.payload(request))
             response_body = HTTP.handle(pluto_router, request)
-            if !eof(request_body)
-                # no request body
-                @warn "HTTP request contains a body, huh?" request_body
-            end
     
             request.response::HTTP.Response = response_body
             request.response.request = request
