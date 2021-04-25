@@ -41,6 +41,8 @@ const readFile = (file) =>
 const processFile = async (ev) => {
     let notebook
     console.log(ev)
+    // Don't do anything if paste on CodeMirror
+    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.tagName === "INPUT" || node?.classList?.contains("CodeMirror"))?.length > 0) return
     switch (ev.type) {
         case "paste":
             notebook = detectNotebook(ev.clipboardData.getData("text/plain"))
