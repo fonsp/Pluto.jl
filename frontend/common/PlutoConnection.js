@@ -196,6 +196,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *  version_info: {
  *      julia: string,
  *      pluto: string,
+ *      dismiss_update_notification: boolean,
  *  },
  * }}
  */
@@ -234,6 +235,7 @@ export const create_pluto_connection = async ({
         version_info: {
             julia: "unknown",
             pluto: "unknown",
+            dismiss_update_notification: false,
         },
     } // same
 
@@ -366,7 +368,7 @@ export const create_pluto_connection = async ({
     return client
 }
 
-export const fetch_latest_pluto_version = async () => {
+export const fetch_pluto_releases = async () => {
     let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
@@ -377,6 +379,5 @@ export const fetch_latest_pluto_version = async () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-    let json = await response.json()
-    return json[0].tag_name
+    return (await response.json()).reverse()
 }

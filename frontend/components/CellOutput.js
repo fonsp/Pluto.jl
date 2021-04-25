@@ -85,10 +85,11 @@ export let PlutoImage = ({ body, mime }) => {
             // the solution is to make the <img> invisible until the image is loaded
             imgref.current.style.display = "none"
         }
+        imgref.current.type = mime
         imgref.current.src = url
 
         return () => URL.revokeObjectURL(url)
-    }, [body])
+    }, [body, mime])
 
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
@@ -376,7 +377,7 @@ export let highlight = (code_element, language) => {
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`,
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
             }
         )
     }

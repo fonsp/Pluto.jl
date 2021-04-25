@@ -1,5 +1,5 @@
 import immer from "../imports/immer.js"
-import { ws_address_from_base } from "./PlutoConnection.js"
+import { timeout_promise, ws_address_from_base } from "./PlutoConnection.js"
 
 export const BinderPhase = {
     wait_for_user: 0,
@@ -141,7 +141,12 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
         )
         console.log("Connecting ws")
 
-        connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+        const connect_promise = connect(with_token(ws_address_from_base(binder_session_url) + "channels"))
+        await timeout_promise(connect_promise, 10_000).catch(() => {
+            const edit_url = new URL("edit", binder_session_url)
+            edit_url.searchParams.set("id", new_notebook_id)
+            window.location.href = with_token(edit_url)
+        })
     } catch (err) {
         console.error("Failed to initialize binder!", err)
         alert("Something went wrong! 😮\n\nWe failed to initialize the binder connection. Please try again with a different browser, or come back later.")

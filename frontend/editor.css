@@ -356,6 +356,10 @@ pluto-output table > tbody td {
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
+pluto-output table > tbody td code {
+    font-size: 0.75rem;
+}
+
 
 pluto-output table td,
 pluto-output table th {
@@ -463,7 +467,7 @@ aside#export {
     height: 130px;
     background: rgb(60, 67, 101);
     color: rgba(255, 255, 255, 0.7);
-    transform: translateY(-100%);
+    transform: translateY(-101%);
 }
 aside#export::before {
     content: "";

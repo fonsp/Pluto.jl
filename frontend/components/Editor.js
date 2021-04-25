@@ -435,6 +435,7 @@ export class Editor extends Component {
                                     cell: this.state.notebook.cell_inputs[cell_id],
                                 }
                             }),
+                            selected_cells: [],
                         })
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
@@ -637,7 +638,7 @@ patch: ${JSON.stringify(
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
-            await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }

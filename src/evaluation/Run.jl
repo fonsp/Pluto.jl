@@ -152,7 +152,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 	update_dependency_cache!(notebook)
 
-	save && save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 
@@ -180,7 +180,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	if will_run_code(notebook)
+	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 		run_task = @async begin
 			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
 		end
