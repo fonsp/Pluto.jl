@@ -1,13 +1,17 @@
 import { html, useEffect } from "../imports/Preact.js"
 import { link_open_path } from "./Welcome.js"
 
-const detectNotebook = (text) => {
+const detectNotebook = (inputtext) => {
+    // Add a newline in the end for the case user didn't copy it
+    // That helps if the user copied up to the last line of the cell order
+    const text = `${inputtext}\n`
     const from = text.indexOf("### A Pluto.jl notebook ###")
-    const cellscount = text.match(/# ... ........-....-....-....-............/g)?.length
+    const cellsfound = text.match(/# ... ........-....-....-....-............/g)
+    const cellscount = cellsfound?.length
     const cellsorder = text.indexOf("# ╔═╡ Cell order:") + "# ╔═╡ Cell order:".length + 1
     let i = 0
     let to = cellsorder
-    console.log(cellscount)
+
     while (++i <= cellscount) {
         to = text.indexOf("\n", to + 1) + 1
     }
@@ -42,7 +46,9 @@ const processFile = async (ev) => {
     let notebook
     console.log(ev)
     // Don't do anything if paste on CodeMirror
-    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.tagName === "INPUT" || node?.classList?.contains("CodeMirror"))?.length > 0) return
+    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.classList?.contains("CodeMirror"))?.length > 0) {
+        return
+    }
     switch (ev.type) {
         case "paste":
             notebook = detectNotebook(ev.clipboardData.getData("text/plain"))
