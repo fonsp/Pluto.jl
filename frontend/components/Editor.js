@@ -2,10 +2,11 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection, resolvable_promise } from "../common/PlutoConnection.js"
+import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 
 import { FilePicker } from "./FilePicker.js"
+import { Preamble } from "./Preamble.js"
 import { NotebookMemo as Notebook } from "./Notebook.js"
 import { LiveDocs } from "./LiveDocs.js"
 import { DropRuler } from "./DropRuler.js"
@@ -19,7 +20,12 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
+import { start_binder, BinderPhase } from "../common/Binder.js"
+import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
+import { BinderButton } from "./BinderButton.js"
+import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -85,11 +91,19 @@ const ProcessStatus = {
     waiting_to_restart: "waiting_to_restart",
 }
 
+/**
+ * Map of status => Bool. In order of decreasing prioirty.
+ */
 const statusmap = (state) => ({
-    disconnected: !(state.connected || state.initializing),
-    loading: state.initializing || state.moving_file || state.notebook.process_status === ProcessStatus.starting,
+    disconnected: !(state.connected || state.initializing || state.static_preview),
+    loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    static_preview: state.static_preview,
+    binder: state.offer_binder || state.binder_phase != null,
+    code_differs: state.notebook.cell_order.some(
+        (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
+    ),
 })
 
 const first_true_key = (obj) => {
@@ -128,6 +142,16 @@ const first_true_key = (obj) => {
  */
 
 /**
+ * @typedef CellDependencyData
+ * @type {{
+ *  cell_id: string,
+ *  downstream_cells_map: { [symbol: string]: Array<string>},
+ *  upstream_cells_map: { [symbol: string]: Array<string>},
+ *  precedence_heuristic: number,
+ * }}
+ */
+
+/**
  * @typedef NotebookData
  * @type {{
  *  notebook_id: string,
@@ -136,11 +160,16 @@ const first_true_key = (obj) => {
  *  in_temp_dir: boolean,
  *  process_status: string,
  *  cell_inputs: { [uuid: string]: CellInputData },
- *  cell_results: { [uuid: string]: CellResultData }
+ *  cell_results: { [uuid: string]: CellResultData },
+ *  cell_dependencies: { [uuid: string]: CellDependencyData },
  *  cell_order: Array<string>,
+ *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
  * }}
  */
+
+const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
+const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
 /**
  *
@@ -154,7 +183,9 @@ const initial_notebook = () => ({
     process_status: "starting",
     cell_inputs: {},
     cell_results: {},
+    cell_dependencies: {},
     cell_order: [],
+    cell_execution_order: [],
     bonds: {},
 })
 
@@ -162,13 +193,37 @@ export class Editor extends Component {
     constructor() {
         super()
 
+        const url_params = new URLSearchParams(window.location.search)
+        this.launch_params = {
+            //@ts-ignore
+            statefile: url_params.get("statefile") ?? window.pluto_statefile,
+            //@ts-ignore
+            notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+            //@ts-ignore
+            disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+            //@ts-ignore
+            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
+            //@ts-ignore
+            slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
+        }
+
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
+            last_update_time: 0,
+
+            disable_ui: this.launch_params.disable_ui,
+            static_preview: this.launch_params.statefile != null,
+            statefile_download_progress: null,
+            offer_binder: this.launch_params.notebookfile != null && this.launch_params.binder_url != null,
+            binder_phase: null,
+            binder_session_url: null,
+            binder_session_token: null,
             connected: false,
             initializing: true,
+
             moving_file: false,
             scroller: {
                 up: false,
@@ -187,17 +242,17 @@ export class Editor extends Component {
         // these are things that can be done to the local notebook
         this.actions = {
             send: (...args) => this.client.send(...args),
+            //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
             set_doc_query: (query) => this.setState({ desired_doc_query: query }),
-            set_local_cell: (cell_id, new_val, callback) => {
-                return this.setState(
+            set_local_cell: (cell_id, new_val) => {
+                return this.setStatePromise(
                     immer((state) => {
                         state.cell_inputs_local[cell_id] = {
                             code: new_val,
                         }
                         state.selected_cells = []
-                    }),
-                    callback
+                    })
                 )
             },
             focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
@@ -265,6 +320,7 @@ export class Editor extends Component {
                  *  */
 
                 for (const cell of new_cells) {
+                    //@ts-ignore
                     const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
                     cm.setValue(cell.code) // Update codemirror synchronously
                 }
@@ -379,6 +435,7 @@ export class Editor extends Component {
                                     cell: this.state.notebook.cell_inputs[cell_id],
                                 }
                             }),
+                            selected_cells: [],
                         })
                         await update_notebook((notebook) => {
                             for (let cell_id of cell_ids) {
@@ -580,11 +637,11 @@ patch: ${JSON.stringify(
 
             await this.client.send("update_notebook", { updates: [] }, { notebook_id: this.state.notebook.notebook_id }, false)
 
-            this.setState({ initializing: false })
+            this.setState({ initializing: false, static_preview: false, binder_phase: this.state.binder_phase == null ? null : BinderPhase.ready })
 
             // do one autocomplete to trigger its precompilation
             // TODO Do this from julia itself
-            await this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
+            this.client.send("complete", { query: "sq" }, { notebook_id: this.state.notebook.notebook_id })
 
             setTimeout(init_feedback, 2 * 1000) // 2 seconds - load feedback a little later for snappier UI
         }
@@ -598,12 +655,61 @@ patch: ${JSON.stringify(
         }
 
         this.client = {}
-        create_pluto_connection({
-            on_unrequested_update: on_update,
-            on_connection_status: on_connection_status,
-            on_reconnect: on_reconnect,
-            connect_metadata: { notebook_id: this.state.notebook.notebook_id },
-        }).then(on_establish_connection)
+
+        this.connect = (ws_address = undefined) =>
+            create_pluto_connection({
+                ws_address: ws_address,
+                on_unrequested_update: on_update,
+                on_connection_status: on_connection_status,
+                on_reconnect: on_reconnect,
+                connect_metadata: { notebook_id: this.state.notebook.notebook_id },
+            }).then(on_establish_connection)
+
+        this.real_actions = this.actions
+        this.fake_actions =
+            this.launch_params.slider_server_url != null
+                ? slider_server_actions({
+                      setStatePromise: this.setStatePromise,
+                      actions: this.actions,
+                      launch_params: this.launch_params,
+                      apply_notebook_patches,
+                      get_original_state: () => this.original_state,
+                      get_current_state: () => this.state.notebook,
+                  })
+                : nothing_actions({
+                      actions: this.actions,
+                  })
+
+        this.on_disable_ui = () => {
+            document.body.classList.toggle("disable_ui", this.state.disable_ui)
+            document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
+            //@ts-ignore
+            this.actions =
+                this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+        }
+        this.on_disable_ui()
+
+        this.original_state = null
+        if (this.state.static_preview) {
+            ;(async () => {
+                const r = await fetch(this.launch_params.statefile)
+                const data = await read_Uint8Array_with_progress(r, (progress) => {
+                    this.setState({
+                        statefile_download_progress: progress,
+                    })
+                })
+                const state = unpack(data)
+                this.original_state = state
+                this.setState({
+                    notebook: state,
+                    initializing: false,
+                    binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
+                })
+            })()
+            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`).catch(() => {})
+        } else {
+            this.connect()
+        }
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
@@ -668,6 +774,7 @@ patch: ${JSON.stringify(
                                 }),
                             this.setStatePromise({
                                 notebook: new_notebook,
+                                last_update_time: Date.now(),
                             }),
                         ])
                     } finally {
@@ -729,13 +836,13 @@ patch: ${JSON.stringify(
             // if (e.defaultPrevented) {
             //     return
             // }
-            if (e.key === "q" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key.toLowerCase() === "q" && has_ctrl_or_cmd_pressed(e)) {
                 // This one can't be done as cmd+q on mac, because that closes chrome - Dral
                 if (Object.values(this.state.notebook.cell_results).some((c) => c.running || c.queued)) {
                     this.actions.interrupt_remote()
                 }
                 e.preventDefault()
-            } else if (e.key === "s" && has_ctrl_or_cmd_pressed(e)) {
+            } else if (e.key.toLowerCase() === "s" && has_ctrl_or_cmd_pressed(e)) {
                 const some_cells_ran = this.actions.set_and_run_all_changed_remote_cells()
                 if (!some_cells_ran) {
                     // all cells were in sync allready
@@ -773,6 +880,18 @@ patch: ${JSON.stringify(
                 )
                 e.preventDefault()
             }
+
+            if (this.state.disable_ui && this.state.offer_binder) {
+                // const code = e.key.charCodeAt(0)
+                if (e.key === "Enter" || e.key.length === 1) {
+                    if (!document.body.classList.contains("wiggle_binder")) {
+                        document.body.classList.add("wiggle_binder")
+                        setTimeout(() => {
+                            document.body.classList.remove("wiggle_binder")
+                        }, 1000)
+                    }
+                }
+            }
         })
 
         document.addEventListener("copy", (e) => {
@@ -786,22 +905,22 @@ patch: ${JSON.stringify(
             }
         })
 
-        // Disabled because we don't want to accidentally delete cells
-        // or we can enable it with a prompt
-        // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
-        // document.addEventListener("cut", (e) => {
-        //     if (!in_textarea_or_input()) {
-        //         const serialized = this.serialize_selected()
-        //         if (serialized) {
-        //             navigator.clipboard
-        //                 .writeText(serialized)
-        //                 .then(() => this.delete_selected("Cut"))
-        //                 .catch((err) => {
-        //                     alert(`Error cutting cells: ${e}`)
-        //                 })
-        //         }
-        //     }
-        // })
+        document.addEventListener("cut", (e) => {
+            // Disabled because we don't want to accidentally delete cells
+            // or we can enable it with a prompt
+            // Even better would be excel style: grey out until you paste it. If you paste within the same notebook, then it is just a move.
+            // if (!in_textarea_or_input()) {
+            //     const serialized = this.serialize_selected()
+            //     if (serialized) {
+            //         navigator.clipboard
+            //             .writeText(serialized)
+            //             .then(() => this.delete_selected("Cut"))
+            //             .catch((err) => {
+            //                 alert(`Error cutting cells: ${e}`)
+            //             })
+            //     }
+            // }
+        })
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
@@ -835,12 +954,19 @@ patch: ${JSON.stringify(
                 event.returnValue = ""
             } else {
                 console.warn("unloading 👉 disconnecting websocket")
+                //@ts-ignore
+                if (window.shutdown_binder != null) {
+                    // hmmmm that would also shut down the binder if you refreshed, or if you navigate to the binder session main menu by clicking the pluto logo.
+                    // Let's keep it disabled for now and let the timeout take care of shutting down the binder
+                    // window.shutdown_binder()
+                }
                 // and don't prevent the unload
             }
         })
     }
 
     componentDidUpdate(old_props, old_state) {
+        //@ts-ignore
         window.editor_state = this.state
 
         document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
@@ -848,16 +974,10 @@ patch: ${JSON.stringify(
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
 
-        const status = statusmap(this.state)
-        Object.entries(status).forEach((e) => {
+        Object.entries(this.cached_status).forEach((e) => {
             document.body.classList.toggle(...e)
         })
 
-        const any_code_differs = this.state.notebook.cell_order.some(
-            (cell_id) =>
-                this.state.cell_inputs_local[cell_id] != null && this.state.notebook.cell_inputs[cell_id].code !== this.state.cell_inputs_local[cell_id].code
-        )
-        document.body.classList.toggle("code_differs", any_code_differs)
         // this class is used to tell our frontend tests that the updates are done
         document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
 
@@ -869,13 +989,31 @@ patch: ${JSON.stringify(
                 applyPatches(notebook, bonds_patches)
             })
         }
+
+        if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
+            const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
+            console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)
+        }
+
+        if (old_state.disable_ui !== this.state.disable_ui) {
+            this.on_disable_ui()
+        }
+    }
+
+    componentWillUpdate(new_props, new_state) {
+        this.cached_status = statusmap(new_state)
     }
 
     render() {
         let { export_menu_open, notebook } = this.state
 
-        const status = statusmap(this.state)
+        const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
+
+        const export_url = (u) =>
+            this.state.binder_session_url == null
+                ? `./${u}?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -883,33 +1021,53 @@ patch: ${JSON.stringify(
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
-                            pluto_version=${this.client?.version_info?.pluto}
-                            notebook=${this.state.notebook}
+                            notebookfile_url=${export_url("notebookfile")}
+                            notebookexport_url=${export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
+                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
+                        ${
+                            status.binder
+                                ? html`<div id="binder_spinners">
+                                      <binder-spinner id="ring_1"></binder-spinner>
+                                      <binder-spinner id="ring_2"></binder-spinner>
+                                      <binder-spinner id="ring_3"></binder-spinner>
+                                  </div>`
+                                : null
+                        }
                         <nav id="at_the_top">
-                            <a href="./">
-                                <h1><img id="logo-big" src="img/logo.svg" alt="Pluto.jl" /><img id="logo-small" src="img/favicon_unsaturated.svg" /></h1>
+                            <a href=${
+                                this.state.static_preview || this.state.binder_phase != null
+                                    ? `${this.state.binder_session_url}?token=${this.state.binder_session_token}`
+                                    : "./"
+                            }>
+                                <h1><img id="logo-big" src=${url_logo_big} alt="Pluto.jl" /><img id="logo-small" src=${url_logo_small} /></h1>
                             </a>
                             <div class="flex_grow_1"></div>
-                            <${FilePicker}
-                                client=${this.client}
-                                value=${notebook.in_temp_dir ? "" : notebook.path}
-                                on_submit=${this.submit_file_change}
-                                suggest_new_file=${{
-                                    base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
-                                    name: notebook.shortpath,
-                                }}
-                                placeholder="Save notebook..."
-                                button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
-                            />
+                            ${
+                                this.state.binder_phase === BinderPhase.ready
+                                    ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    : html`<${FilePicker}
+                                          client=${this.client}
+                                          value=${notebook.in_temp_dir ? "" : notebook.path}
+                                          on_submit=${this.submit_file_change}
+                                          suggest_new_file=${{
+                                              base: this.client.session_options == null ? "" : this.client.session_options.server.notebook_path_suggestion,
+                                              name: notebook.shortpath,
+                                          }}
+                                          placeholder="Save notebook..."
+                                          button_label=${notebook.in_temp_dir ? "Choose" : "Move"}
+                                      />`
+                            }
                             <div class="flex_grow_2"></div>
-                            <button class="toggle_export" title="Export..." onClick=${() => this.setState({ export_menu_open: !export_menu_open })}>
-                                <span></span>
-                            </button>
+                            <button class="toggle_export" title="Export..." onClick=${() => {
+                                this.setState({ export_menu_open: !export_menu_open })
+                            }}><span></span></button>
                             <div id="process_status">${
-                                statusval === "disconnected"
+                                status.binder && status.loading
+                                    ? "Loading binder..."
+                                    : statusval === "disconnected"
                                     ? "Reconnecting..."
                                     : statusval === "loading"
                                     ? "Loading..."
@@ -934,24 +1092,23 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
+                    <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: this.launch_params })} notebookfile=${
+            this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
+        } />
+                    <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <preamble>
-                            <button
-                                onClick=${() => {
-                                    this.actions.set_and_run_all_changed_remote_cells()
-                                }}
-                                class="runallchanged"
-                                title="Save and run all changed cells"
-                            >
-                                <span></span>
-                            </button>
-                        </preamble>
+                        <${Preamble} 
+                            last_update_time=${this.state.last_update_time}
+                            any_code_differs=${status.code_differs}
+                        />
                         <${Notebook}
                             notebook=${this.state.notebook}
                             cell_inputs_local=${this.state.cell_inputs_local}
                             on_update_doc_query=${this.actions.set_doc_query}
                             on_cell_input=${this.actions.set_local_cell}
                             on_focus_neighbor=${this.actions.focus_on_neighbor}
+                            disable_input=${this.state.disable_ui || !this.state.connected /* && this.state.binder_phase == null*/}
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
@@ -960,35 +1117,36 @@ patch: ${JSON.stringify(
                             }
                             disable_input=${!this.state.connected}
                         />
-
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells} 
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
-                            }} 
+                            }}
                             serialize_selected=${this.serialize_selected}
                         />
-
-                        <${SelectionArea}
-                            actions=${this.actions}
-                            cell_order=${this.state.notebook.cell_order}
-                            selected_cell_ids=${this.state.selected_cell_ids}
-                            set_scroller=${(enabled) => {
-                                this.setState({ scroller: enabled })
-                            }}
-                            on_selection=${(selected_cell_ids) => {
-                                // @ts-ignore
-                                if (
-                                    selected_cell_ids.length !== this.state.selected_cells ||
-                                    _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
-                                ) {
-                                    this.setState({
-                                        selected_cells: selected_cell_ids,
-                                    })
-                                }
-                            }}
-                        />
+                        ${
+                            this.state.disable_ui ||
+                            html`<${SelectionArea}
+                                actions=${this.actions}
+                                cell_order=${this.state.notebook.cell_order}
+                                selected_cell_ids=${this.state.selected_cell_ids}
+                                set_scroller=${(enabled) => {
+                                    this.setState({ scroller: enabled })
+                                }}
+                                on_selection=${(selected_cell_ids) => {
+                                    // @ts-ignore
+                                    if (
+                                        selected_cell_ids.length !== this.state.selected_cells ||
+                                        _.difference(selected_cell_ids, this.state.selected_cells).length !== 0
+                                    ) {
+                                        this.setState({
+                                            selected_cells: selected_cell_ids,
+                                        })
+                                    }
+                                }}
+                            />`
+                        }
                     </${Main}>
                     <${LiveDocs}
                         desired_doc_query=${this.state.desired_doc_query}

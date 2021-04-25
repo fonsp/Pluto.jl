@@ -20,7 +20,24 @@ jltree {
     cursor: pointer;
 }
 
-jltree * {
+jltree,
+jlarray,
+jldict,
+jlstruct {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: baseline;
+}
+jltree,
+jltree.collapsed jlarray,
+jltree.collapsed jldict,
+jltree.collapsed jlstruct {
+    flex-direction: row;
+}
+
+jlarray,
+jldict,
+jlstruct {
     cursor: auto;
 }
 
@@ -45,14 +62,6 @@ jltree.collapsed::before {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-outline.svg);
 }
 
-jltree r {
-    display: block;
-}
-
-jltree.collapsed r {
-    display: inline-block;
-}
-
 jltree r > v {
     display: inline-flex;
     color: hsl(0, 0%, 25%, 1);
@@ -61,6 +70,19 @@ jltree r > v {
 jltree.collapsed jlarray > r > k,
 jltree.collapsed jlstruct > r > k {
     display: none;
+}
+
+jltree > jlprefix.long {
+    display: block;
+}
+jltree > jlprefix.short {
+    display: none;
+}
+jltree.collapsed > jlprefix.long {
+    display: none;
+}
+jltree.collapsed > jlprefix.short {
+    display: block;
 }
 
 /*  */

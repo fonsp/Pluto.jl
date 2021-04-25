@@ -92,9 +92,10 @@ const try_close_socket_connection = (socket) => {
  * @typedef {{socket: WebSocket, send: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
+ * @param {number} timeout_s Timeout for creating the websocket connection (seconds)
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
@@ -104,7 +105,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
             try_close_socket_connection(socket)
             reject("Socket timeout")
-        }, timeout_ms)
+        }, timeout_s * 1000)
 
         const send_encoded = (message) => {
             const encoded = pack(message)
@@ -182,6 +183,14 @@ let next_tick_promise = () => {
     return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
+export const ws_address_from_base = (base_url) => {
+    const ws_url = new URL("./", base_url)
+    ws_url.protocol = ws_url.protocol.replace("http", "ws")
+    return String(ws_url)
+}
+
+const default_ws_address = () => ws_address_from_base(window.location.href)
+
 /**
  * @typedef PlutoConnection
  * @type {{
@@ -191,6 +200,7 @@ let next_tick_promise = () => {
  *  version_info: {
  *      julia: string,
  *      pluto: string,
+ *      dismiss_update_notification: boolean,
  *  },
  * }}
  */
@@ -210,10 +220,17 @@ let next_tick_promise = () => {
  *  on_reconnect: () => boolean,
  *  on_connection_status: (connection_status: boolean) => void,
  *  connect_metadata?: Object,
+ *  ws_address?: String,
  * }} options
  * @return {Promise<PlutoConnection>}
  */
-export const create_pluto_connection = async ({ on_unrequested_update, on_reconnect, on_connection_status, connect_metadata = {} }) => {
+export const create_pluto_connection = async ({
+    on_unrequested_update,
+    on_reconnect,
+    on_connection_status,
+    connect_metadata = {},
+    ws_address = default_ws_address(),
+}) => {
     var ws_connection = null // will be defined later i promise
     const client = {
         send: null,
@@ -222,6 +239,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         version_info: {
             julia: "unknown",
             pluto: "unknown",
+            dismiss_update_notification: false,
         },
     } // same
 
@@ -322,11 +340,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
         update_url_with_binder_token()
 
-        const ws_address = new URL(window.location.href)
-        ws_address.protocol = ws_address.protocol.replace("http", "ws")
-        ws_address.pathname = ws_address.pathname.replace("/edit", "/")
-        ws_address.hash = ""
-
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: (update) => {
@@ -401,7 +414,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     return client
 }
 
-export const fetch_latest_pluto_version = async () => {
+export const fetch_pluto_releases = async () => {
     let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
@@ -412,6 +425,5 @@ export const fetch_latest_pluto_version = async () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-    let json = await response.json()
-    return json[0].tag_name
+    return (await response.json()).reverse()
 }

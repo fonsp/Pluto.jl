@@ -109,7 +109,7 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
 end
 
 quote_if_needed(x) = x
-quote_if_needed(x::Union{Expr,Symbol}) = QuoteNode(x)
+quote_if_needed(x::Union{Expr, Symbol, QuoteNode}) = QuoteNode(x)
 
 function compute(computer::Computer)
     # 1. get the referenced global variables
@@ -408,7 +408,7 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
-    load_Tables_support_if_needed()
+    load_integration_if_needed.(integrations)
 
     extra_items = if showmore === nothing
         tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
@@ -706,6 +706,7 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
 
     Dict{Symbol,Any}(
         :prefix => string(typeof(x)),
+        :prefix_short => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Set,
         :elements => elements
@@ -729,8 +730,10 @@ function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
         ]
     end
 
+    prefix = array_prefix(x)
     Dict{Symbol,Any}(
-        :prefix => array_prefix(x),
+        :prefix => prefix,
+        :prefix_short => x isa Vector ? "" : prefix, # if not abstract
         :objectid => string(objectid(x), base=16),
         :type => :Array,
         :elements => elements
@@ -761,7 +764,8 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
     end
 
     Dict{Symbol,Any}(
-        :prefix => string(typeof(x) |> trynameof),
+        :prefix => string(typeof(x)),
+        :prefix_short => string(typeof(x) |> trynameof),
         :objectid => string(objectid(x), base=16),
         :type => :Dict,
         :elements => elements
@@ -822,6 +826,7 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
 
         Dict{Symbol,Any}(
             :prefix => repr(t; context=context),
+            :prefix_short => string(t |> trynameof),
             :objectid => string(objectid(x), base=16),
             :type => :struct,
             :elements => elements,
@@ -837,119 +842,130 @@ trynameof(x::Any) = Symbol()
 # TABLE VIEWER
 ##
 
-const tables_pkgid = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables")
+Base.@kwdef struct Integration
+    id::Base.PkgId
+    code::Expr
+    loaded::Ref{Bool}=Ref(false)
+end
 
 # We have a super cool viewer for objects that are a Tables.jl table. To avoid version conflicts, we only load this code after the user (indirectly) loaded the package Tables.jl.
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
-const _load_tables_code = quote
-
-    const Tables = Base.loaded_modules[tables_pkgid]
-
-    function maptruncated(f::Function, xs, filler, limit; truncate=true)
-        if truncate
-            result = Any[
-                # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
-                f(xs[i]) for i in 1:limit
-            ]
-            push!(result, filler)
-            result
-        else
-            Any[f(x) for x in xs]
-        end
-    end
-
-    function table_data(x::Any, io::IOContext)
-        rows = Tables.rows(x)
-
-        my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
-
-        # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
-
-        my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
-        # my_column_limit = table_column_display_limit
-
-        # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-        truncate_rows = my_row_limit + 5 < length(rows)
-        truncate_columns = if isempty(rows)
-            false
-        else
-            my_column_limit + 5 < length(first(rows))
-        end
-
-        row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
-            format_output_default(el, io)
-        end
-
-        # ugliest code in Pluto:
-
-        # not a map(row) because it needs to be a Vector
-        # not enumerate(rows) because of some silliness
-        # not rows[i] because `getindex` is not guaranteed to exist
-        L = truncate_rows ? my_row_limit : length(rows)
-        row_data = Array{Any,1}(undef, L)
-        for (i, row) in zip(1:L,rows)
-            row_data[i] = (i, row_data_for(row))
-        end
-
-        if truncate_rows
-            push!(row_data, "more")
-            if applicable(lastindex, rows)
-                push!(row_data, (length(rows), row_data_for(last(rows))))
+const integrations = Integration[
+    Integration(
+        id = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables"),
+        code = quote
+            function maptruncated(f::Function, xs, filler, limit; truncate=true)
+                if truncate
+                    result = Any[
+                        # not xs[1:limit] because of https://github.com/JuliaLang/julia/issues/38364
+                        f(xs[i]) for i in 1:limit
+                    ]
+                    push!(result, filler)
+                    result
+                else
+                    Any[f(x) for x in xs]
+                end
             end
-        end
-        
-        # TODO: render entire schema by default?
 
-        schema = Tables.schema(rows)
-        schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
-            :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
-            :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
-        )
+            function table_data(x::Any, io::IOContext)
+                rows = Tables.rows(x)
 
-        Dict{Symbol,Any}(
-            :objectid => string(objectid(x), base=16),
-            :schema => schema_data,
-            :rows => row_data,
-        )
+                my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+
+                # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
+
+                my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+                # my_column_limit = table_column_display_limit
+
+                # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+                truncate_rows = my_row_limit + 5 < length(rows)
+                truncate_columns = if isempty(rows)
+                    false
+                else
+                    my_column_limit + 5 < length(first(rows))
+                end
+
+                row_data_for(row) = maptruncated(row, "more", my_column_limit; truncate=truncate_columns) do el
+                    format_output_default(el, io)
+                end
+
+                # ugliest code in Pluto:
+
+                # not a map(row) because it needs to be a Vector
+                # not enumerate(rows) because of some silliness
+                # not rows[i] because `getindex` is not guaranteed to exist
+                L = truncate_rows ? my_row_limit : length(rows)
+                row_data = Array{Any,1}(undef, L)
+                for (i, row) in zip(1:L,rows)
+                    row_data[i] = (i, row_data_for(row))
+                end
+
+                if truncate_rows
+                    push!(row_data, "more")
+                    if applicable(lastindex, rows)
+                        push!(row_data, (length(rows), row_data_for(last(rows))))
+                    end
+                end
+                
+                # TODO: render entire schema by default?
+
+                schema = Tables.schema(rows)
+                schema_data = schema === nothing ? nothing : Dict{Symbol,Any}(
+                    :names => maptruncated(string, schema.names, "more", my_column_limit; truncate=truncate_columns),
+                    :types => String.(maptruncated(trynameof, schema.types, "more", my_column_limit; truncate=truncate_columns)),
+                )
+
+                Dict{Symbol,Any}(
+                    :objectid => string(objectid(x), base=16),
+                    :schema => schema_data,
+                    :rows => row_data,
+                )
+            end
+
+
+            pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
+            pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
+
+        end,
+    ),
+    Integration(
+        id = Base.PkgId(UUID("91a5bcdd-55d7-5caf-9e0b-520d859cae80"), "Plots"),
+        code = quote
+            approx_size(p::Plots.Plot) = try
+                sum(p.series_list) do series
+                    length(series[:y])
+                end
+            catch e
+                @warn "Failed to guesstimate plot size" exception=(e,catch_backtrace())
+                0
+            end
+            const max_plot_size = 8000
+            pluto_showable(::MIME"image/svg+xml", p::Plots.Plot{Plots.GRBackend}) = approx_size(p) <= max_plot_size
+            pluto_showable(::MIME"text/html", p::Plots.Plot{Plots.GRBackend}) = false
+        end,
+    )
+]
+
+function load_integration_if_needed(integration::Integration)
+    if !integration.loaded[] && haskey(Base.loaded_modules, integration.id)
+        load_integration(integration)
     end
-
-
-    pluto_showable(::MIME"application/vnd.pluto.table+object", x::Any) = try Tables.rowaccess(x)::Bool catch; false end
-    pluto_showable(::MIME"application/vnd.pluto.table+object", t::Type) = false
-    pluto_showable(::MIME"application/vnd.pluto.table+object", t::AbstractVector{<:NamedTuple}) = false
-
 end
 
-const _Tables_support_loaded = Ref(false)
-
-function load_Tables_support_if_needed()
-    if !_Tables_support_loaded[] && haskey(Base.loaded_modules, tables_pkgid)
-        load_Tables_support()
-    end
-end
-        
-
-function load_Tables_support()
-    _Tables_support_loaded[] = true
+function load_integration(integration::Integration)
+    integration.loaded[] = true
     try
-        eval(_load_tables_code)
+        eval(quote
+            const $(Symbol(integration.id.name)) = Base.loaded_modules[$(integration.id)]
+            $(integration.code)
+        end)
         true
     catch e
-        @error "Failed to load display support for Tables.jl" exception=(e, catch_backtrace())
+        @error "Failed to load integration with $(integration.id.name).jl" exception=(e, catch_backtrace())
         false
     end
 end
-
-
-
-
-
-
-
-
-
-
-
 
 
 ###
@@ -1227,9 +1243,10 @@ end
 
 # we put this in __init__ to fix a world age problem
 function __init__()
-    if Distributed.myid() != 1
+    if !isdefined(Main, Symbol("##Pluto_logger_switched")) && Distributed.myid() != 1
         old_logger[] = Logging.global_logger()
         Logging.global_logger(PlutoLogger(nothing))
+        Core.eval(Main, Expr(:(=), Symbol("##Pluto_logger_switched"), true)) # if Pluto is loaded again on the same process, prevent it from also setting the logger
     end
 end
 

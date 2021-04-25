@@ -1,3 +1,4 @@
+
 import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
@@ -84,8 +85,11 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 # the only possible Arrays are:
 # - cell_order
+# - cell_execution_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
+# - cell_dependencies > * > downstream_cells_map > * > 
+# - cell_dependencies > * > upstream_cells_map > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -99,6 +103,20 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
+            )
+        for (id, cell) in notebook.cells_dict),
+        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
@@ -125,6 +143,7 @@ function notebook_to_js(notebook::Notebook)
                 "is_first_value" => bondvalue.is_first_value
             )
         for (key, bondvalue) in notebook.bonds),
+        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
 
@@ -194,7 +213,7 @@ const effects_of_changed_state = Dict(
         if isfile(newpath)
             throw(UserError("File exists already - you need to delete the old file manually."))
         else
-            move_notebook!(request.notebook, newpath)
+            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
@@ -271,7 +290,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged() ∈ changes && CodeChanged() ∉ changes
-            save_notebook(notebook)
+             🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
         end
 
         let bond_changes = filter(x -> x isa BondChanged, changes)
@@ -336,6 +355,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
+            :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),
     ), nothing, nothing, 🙋.initiator))
 end

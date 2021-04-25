@@ -144,7 +144,7 @@ export const Notebook = ({
                         key=${cell_id}
                         cell_result=${notebook.cell_results[cell_id] ?? {
                             cell_id: cell_id,
-                            queued: false,
+                            queued: true,
                             running: false,
                             errored: false,
                             runtime: null,
