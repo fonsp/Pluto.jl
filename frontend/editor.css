@@ -193,12 +193,16 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
+pluto-output pre > code{
+    font-size: inherit;
+}
+
 pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
 }
-pluto-output.rich_output pre code {
+pluto-output.rich_output pre > code {
     padding: 0px;
 }
 
@@ -210,6 +214,7 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-size: .75rem;
     font-variant-ligatures: none;
 }
 
@@ -225,7 +230,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output.rich_output pre,
+pluto-output.rich_output pre:not(.no-block),
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);

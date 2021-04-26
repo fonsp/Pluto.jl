@@ -8,6 +8,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import register from "../common/PreactCustomElement.js"
 
 //@ts-ignore
 const CodeMirror = window.CodeMirror
@@ -134,10 +135,9 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_tim
             break
 
         case "text/plain":
-        default:
             if (body) {
                 return html`<div>
-                    <pre><code>${body}</code></pre>
+                    <pre class="no-block"><code>${body}</code></pre>
                 </div>`
             } else {
                 return html`<div></div>`
@@ -145,6 +145,8 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_tim
             break
     }
 }
+
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
