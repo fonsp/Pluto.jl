@@ -845,6 +845,10 @@ pluto-output > div {
     overflow-y: hidden;
 }
 
+pluto-output div.raw-html-wrapper {
+    display: contents;
+}
+
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }

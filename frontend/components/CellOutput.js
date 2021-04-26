@@ -354,7 +354,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div ref=${container}></div>`
+    return html`<div class="raw-html-wrapper" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */
