@@ -17,14 +17,14 @@ import Distributed
 import Base64
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
-import UUIDs: UUID
+import UUIDs: UUID, uuid4
 import Logging
 
 export @bind
 
-MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
-ObjectID = typeof(objectid("hello computer"))
-ObjectDimPair = Tuple{ObjectID,Int64}
+const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+const ObjectID = typeof(objectid("hello computer"))
+const ObjectDimPair = Tuple{ObjectID,Int64}
 
 
 
@@ -190,6 +190,9 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    currently_running_cell_id[] = cell_id
+    cell_published_objects[cell_id] = Dict{String,Any}()
+
     result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
@@ -397,6 +400,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID,Any}()
 const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
+const cell_published_objects = Dict{UUID,Dict{String,Any}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -407,7 +411,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
 
     extra_items = if showmore === nothing
@@ -427,11 +431,12 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         ("", MIME"text/plain"())
     end
     return (
-        output_formatted = output_formatted, 
+        output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
-        runtime = get(cell_runtimes, id, nothing)
+        runtime = get(cell_runtimes, id, nothing),
+        published_objects = get(cell_published_objects, id, Dict{String,Any}()),
     )
 end
 
@@ -838,6 +843,14 @@ end
 trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
+
+
+
+
+
+
+
+
 ###
 # TABLE VIEWER
 ##
@@ -1201,7 +1214,18 @@ end"""
 
 
 
+###
+# PUBLISHED OBJECTS
+###
 
+const currently_running_cell_id = Ref{UUID}(uuid4())
+
+function publish_object(x)::String
+    d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
+    id = string(objectid(x), base=16)
+    d[id] = x
+    return id
+end
 
 
 

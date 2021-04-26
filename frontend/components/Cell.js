@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useMemo, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -20,7 +20,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * }} props
  * */
 export const Cell = ({
-    cell_result: { queued, running, runtime, errored, output },
+    cell_result: { queued, running, runtime, errored, output, published_objects },
     cell_input: { cell_id, code, code_folded },
     cell_input_local,
     notebook_id,
@@ -73,8 +73,18 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const node_ref = useRef(null)
+
+    const published_objects_ref = useRef(published_objects)
+    published_objects_ref.current = published_objects
+
+    useLayoutEffect(() => {
+        node_ref.current.get_published_object = id => published_objects_ref.current[id]
+    })
+
     return html`
         <pluto-cell
+            ref=${node_ref}
             onDragOver=${handler}
             onDrop=${handler}
             onDragEnter=${handler}
