@@ -1,9 +1,9 @@
 import MsgPack
-import UUIDs:UUID
+import UUIDs: UUID
 import HTTP
 import Sockets
 
-import Base:endswith
+import Base: endswith
 function endswith(vec::Vector{T}, suffix::Vector{T}) where T
     local liv = lastindex(vec)
     local lis = lastindex(suffix)
