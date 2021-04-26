@@ -1,18 +1,16 @@
 import { html, useEffect } from "../imports/Preact.js"
-import { link_open_path } from "./Welcome.js"
+import { link_edit } from "./Welcome.js"
 
 const detectNotebook = (inputtext) => {
     // Add a newline in the end for the case user didn't copy it
     // That helps if the user copied up to the last line of the cell order
-    const text = `${inputtext}\n`
+    const text = `${inputtext}\n`.replace("\r\n", "\n")
     const from = text.indexOf("### A Pluto.jl notebook ###")
     const cellsfound = text.match(/# ... ........-....-....-....-............/g)
     const cellscount = cellsfound?.length
     const cellsorder = text.indexOf("# ╔═╡ Cell order:") + "# ╔═╡ Cell order:".length + 1
-    let i = 0
     let to = cellsorder
-
-    while (++i <= cellscount) {
+    for (let i = 1; i <= cellscount; i++) {
         to = text.indexOf("\n", to + 1) + 1
     }
     return text.slice(from, to)
@@ -74,13 +72,13 @@ const processFile = async (ev) => {
         return
     }
     document.body.classList.add("loading")
-    const reply = await fetch("/notebookupload", {
+    const reply = await fetch("./notebookupload", {
         method: "POST",
         body: notebook,
         cache: "no-cache",
         credentials: "same-origin",
     }).then((res) => res.text())
-    window.location.href = link_open_path(reply)
+    window.location.href = link_edit(reply)
 }
 
 export const PasteHandler = () => {
