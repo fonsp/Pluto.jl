@@ -99,7 +99,8 @@ end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) =
   run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
-function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=false, kwargs...)
+
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
   run_task = @async begin
     run_reactive!(session, notebook, old, new, to_run; kwargs...)
   end
