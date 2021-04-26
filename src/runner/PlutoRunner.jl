@@ -41,6 +41,11 @@ const ObjectDimPair = Tuple{ObjectID,Int64}
 "The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
 
+"""
+`PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
+"""
+const notebook_id = Ref{UUID}(uuid4())
+
 function set_current_module(newname)
     # Revise.jl support
     if isdefined(current_module, :Revise) &&

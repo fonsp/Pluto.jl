@@ -97,6 +97,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	return new_order
 end
 
+run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
+
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+	run_task = @async begin
+		run_reactive!(session, notebook, old, new, to_run; kwargs...)
+	end
+	if run_async
+		run_task
+	else
+		fetch(run_task)
+	end
+end
+
 const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
@@ -182,14 +195,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-		run_task = @async begin
-			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		end
-		if run_async
-			run_task
-		else
-			fetch(run_task)
-		end
+		run_reactive_async!(session, notebook, old, new, to_run_online; run_async=run_async, kwargs...)
 	end
 end
 

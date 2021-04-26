@@ -482,7 +482,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, persist_js_state=true, run_async=false, kwargs...)
 end
 
 responses[:write_file] = function (🙋::ClientRequest)

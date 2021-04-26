@@ -57,6 +57,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         pid
     end
 
+    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)

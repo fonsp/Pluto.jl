@@ -148,4 +148,21 @@ end
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
     end
+
+    @testset "PlutoRunner API" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = true
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        notebook = Notebook([
+            Cell("PlutoRunner.notebook_id[] |> Text"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_save_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1].output.body == notebook.notebook_id |> string
+        
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 end
