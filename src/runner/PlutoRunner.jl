@@ -1254,7 +1254,7 @@ let
     // we interpolate into JavaScript:
     const x = \$(PlutoRunner.publish_to_js(x))
 
-    console.log(x)
+    console.log(x.name, x.data)
     </script>
     "\"")
 end
