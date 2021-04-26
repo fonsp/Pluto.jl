@@ -95,7 +95,7 @@ Return `base` * `suffix` if the file does not exist yet.
 
 If it does, return `base * sep * string(n) * suffix`, where `n` is the smallest natural number such that the file is new. (no 0 is not a natural number you snake)
 """
-function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffix::AbstractString=".pluto.jl", create_file::Bool=true, skip_original::Bool=false)
+function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffix::AbstractString=".jl", create_file::Bool=true, skip_original::Bool=false)
     chosen = base * suffix
     n = 1
     while (n == 1 && skip_original) || isfile(chosen)
