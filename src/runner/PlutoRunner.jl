@@ -22,7 +22,7 @@ import Logging
 
 export @bind
 
-const MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
+MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
