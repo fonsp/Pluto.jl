@@ -8,7 +8,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
-import register from "../common/PreactCustomElement.js"
+import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
 const CodeMirror = window.CodeMirror

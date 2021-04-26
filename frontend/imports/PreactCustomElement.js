@@ -1,9 +1,11 @@
+// @ts-nocheck
+
 // copied from
 // https://github.com/preactjs/preact-custom-element/blob/master/src/index.js
 
 // MIT licensed: https://github.com/preactjs/preact-custom-element/blob/master/LICENSE
 
-import  { h, cloneElement, render, hydrate } from "../imports/Preact.js"
+import  { h, cloneElement, render, hydrate } from "./Preact.js"
 
 export default function register(Component, tagName, propNames, options) {
 	function PreactElement() {
