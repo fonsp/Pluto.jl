@@ -17,7 +17,7 @@ import Distributed
 import Base64
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
-import UUIDs: UUID
+import UUIDs: UUID, uuid4
 import Logging
 
 export @bind
@@ -40,6 +40,11 @@ ObjectDimPair = Tuple{ObjectID,Int64}
 # Will be set to the latest workspace module
 "The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
+
+"""
+`PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
+"""
+const notebook_id = Ref{UUID}(uuid4())
 
 function set_current_module(newname)
     # Revise.jl support
