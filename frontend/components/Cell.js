@@ -75,11 +75,16 @@ export const Cell = ({
 
     const node_ref = useRef(null)
 
+    const [cell_api_ready, set_cell_api_ready] = useState(false)
     const published_objects_ref = useRef(published_objects)
     published_objects_ref.current = published_objects
 
     useLayoutEffect(() => {
-        node_ref.current.get_published_object = id => published_objects_ref.current[id]
+        Object.assign(node_ref.current, {
+            getPublishedObject: (id) => published_objects_ref.current[id],
+        })
+
+        set_cell_api_ready(true)
     })
 
     return html`
@@ -129,7 +134,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} cell_id=${cell_id} />
+            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}

@@ -1220,7 +1220,7 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish_object(x)::String
+function publish_to_js(x)::String
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
     id = string(objectid(x), base=16)
     d[id] = x
