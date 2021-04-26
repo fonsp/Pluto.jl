@@ -18,6 +18,7 @@ import Base64
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
 import UUIDs: UUID, uuid4
+import Dates: DateTime
 import Logging
 
 export @bind
@@ -1226,11 +1227,25 @@ end"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function publish_to_js(x)::String
+    if !packable(x)
+        throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
+    end
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
 end
+
+const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
+packable(::Packable) = true
+packable(::Any) = false
+packable(::Vector{<:Packable}) = true
+packable(xs::Vector) = all(packable, xs)
+packable(d::Dict{<:Packable,<:Packable}) = true
+packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
+packable(t::Tuple) = all(packable, t)
+packable(t::NamedTuple) = all(packable, t)
+
 
 
 
