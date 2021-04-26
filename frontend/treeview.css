@@ -222,6 +222,11 @@ jltree svg {
     max-height: 8rem;
 }
 
+jltree r pre {
+    white-space: pre;
+    word-break: normal;
+}
+
 /*  */
 
 jlerror {
