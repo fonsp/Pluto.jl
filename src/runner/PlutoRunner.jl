@@ -1244,13 +1244,15 @@ Make the object `x` available to the JS runtime of this cell. The returned strin
 # Example
 ```julia
 let
-    # this is Julia:
-    x = rand(Float64, 20)
+    x = Dict(
+        "data" => rand(Float64, 20),
+        "name" => "juliette",
+    )
 
     HTML("\""
     <script>
     // we interpolate into JavaScript:
-    const x = \$(publish_to_js(x))
+    const x = \$(PlutoRunner.publish_to_js(x))
 
     console.log(x)
     </script>
