@@ -1227,7 +1227,7 @@ const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function publish_to_js(x)::String
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
-    id = string(currently_running_cell_id[], "_", string(objectid(x), base=16))
+    id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
 end
