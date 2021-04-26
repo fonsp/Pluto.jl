@@ -35,7 +35,9 @@ jltree.collapsed jlstruct {
     flex-direction: row;
 }
 
-jltree * {
+jlarray,
+jldict,
+jlstruct {
     cursor: auto;
 }
 
@@ -68,6 +70,19 @@ jltree r > v {
 jltree.collapsed jlarray > r > k,
 jltree.collapsed jlstruct > r > k {
     display: none;
+}
+
+jltree > jlprefix.long {
+    display: block;
+}
+jltree > jlprefix.short {
+    display: none;
+}
+jltree.collapsed > jlprefix.long {
+    display: none;
+}
+jltree.collapsed > jlprefix.short {
+    display: block;
 }
 
 /*  */

@@ -743,6 +743,12 @@ end
 
 is_symbolics_arg(s) = symbolics_mockexpand(s) !== nothing
 
+maybe_untuple(es) = if length(es) == 1 && Meta.isexpr(first(es), :tuple)
+    first(es).args
+else
+    es
+end
+
 """
 If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
 
@@ -781,8 +787,8 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
             end
         elseif !isempty(args) && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
             Expr(:macrocall, ex.args[1:2]..., :($(args[1]) = 123), ex.args[4:end]...)
-        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, args)
-            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(args)...)
+        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, maybe_untuple(args))
+            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(maybe_untuple(args))...)
         # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
         #     if Meta.isexpr(ex.args[4], :comparison)
         #         parts = ex.args[4].args[1:2:end]

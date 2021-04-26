@@ -377,7 +377,7 @@ export let highlight = (code_element, language) => {
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${mode}/${mode}.min.js`,
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
             }
         )
     }

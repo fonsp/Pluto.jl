@@ -996,11 +996,23 @@ import Distributed
             Cell("@__FILE__; eighteen = :(1 + 1)"),
             Cell("@__FILE__; eighteen"),
             Cell("eighteen"),
+
+            Cell("qb = quote value end"),
+            Cell("typeof(qb)"),
+
+            Cell("qn0 = QuoteNode(:value)"),
+            Cell("qn1 = :(:value)"),
+            Cell("qn0"),
+            Cell("qn1"),
+
         ])
 
         update_run!(🍭, notebook, notebook.cells)
         @test notebook.cells[1].errored == false
         @test notebook.cells[1].output.body == "false"
+        @test notebook.cells[22].output.body == "Expr"
+        @test notebook.cells[25].output.body == ":(:value)"
+        @test notebook.cells[26].output.body == ":(:value)"
 
         function benchmark(fonsi)
             filter(1:fonsi) do x

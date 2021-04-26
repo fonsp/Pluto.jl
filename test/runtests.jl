@@ -1,5 +1,4 @@
 include("./helpers.jl")
-include("./DependencyCache.jl")
 include("./WorkspaceManager.jl")
 include("./RichOutput.jl")
 include("./React.jl")
@@ -10,6 +9,7 @@ include("./Notebook.jl")
 include("./Configuration.jl")
 include("./Analysis.jl")
 include("./Firebasey.jl")
+include("./DependencyCache.jl")
 include("./Throttled.jl")
 
 # TODO: test PlutoRunner functions like:
