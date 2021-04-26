@@ -159,16 +159,17 @@ end
             Cell("PlutoRunner.notebook_id[] |> Text"),
             Cell("""
             let
-                a = PlutoRunner.publish_to_js(Dict(
+                a = PlutoRunner.publish(Dict(
                     "hello" => "world",
                     "xx" => UInt8[6,7,8],
                 ))
-                b = PlutoRunner.publish_to_js("cool")
+                b = PlutoRunner.publish("cool")
                 Text((a, b))
             end
             """),
             Cell("3"),
-            Cell("PlutoRunner.published_objects(Ref(4))"),
+            Cell("PlutoRunner.publish_to_js(Ref(4))"),
+            Cell("PlutoRunner.publish_to_js((ref=4,))"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -191,7 +192,8 @@ end
         update_save_run!(🍭, notebook, notebook.cells)
         @test isempty(notebook.cells[2].published_objects)
 
-        @test !notebook.cells[4].errored
+        @test notebook.cells[4].errored
+        @test !notebook.cells[5].errored
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end

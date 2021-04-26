@@ -1226,7 +1226,7 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish_to_js(x)::String
+function publish(x)::String
     if !packable(x)
         throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
     end
@@ -1234,6 +1234,33 @@ function publish_to_js(x)::String
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
+end
+
+"""
+    publish_to_js(x)
+
+Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
+
+# Example
+```julia
+let
+    # this is Julia:
+    x = rand(Float64, 20)
+
+    HTML("\""
+    <script>
+    // we interpolate into JavaScript:
+    const x = \$(publish_to_js(x))
+
+    console.log(x)
+    </script>
+    "\"")
+end
+```
+"""
+function publish_to_js(x)::String
+    id = publish(x)
+    return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
 end
 
 const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
