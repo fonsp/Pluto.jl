@@ -148,6 +148,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
 	)
+	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
 	cell.errored = run.errored
 end

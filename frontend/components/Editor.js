@@ -138,6 +138,7 @@ const first_true_key = (obj) => {
  *      mime: string,
  *      rootassignee: ?string,
  *  }
+ *  published_objects: object,
  * }}
  */
 
