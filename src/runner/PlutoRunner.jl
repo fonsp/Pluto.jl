@@ -1269,7 +1269,7 @@ function publish_to_js(x)::String
     return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
 end
 
-const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
+const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
 packable(::Packable) = true
 packable(::Any) = false
 packable(::Vector{<:Packable}) = true
