@@ -25,6 +25,7 @@ Base.@kwdef mutable struct Cell
     cell_id::UUID=uuid1()
 
     code::String=""
+    code_author::String="no_one_in_particular"
     code_folded::Bool=false
     
     output::CellOutput=CellOutput()

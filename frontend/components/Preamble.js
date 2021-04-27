@@ -2,19 +2,22 @@ import { html, useEffect, useState, useContext, useRef } from "../imports/Preact
 import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
+import { RunArea, useDebouncedTruth, useDelayedTruth } from "./RunArea.js"
 
-export const Preamble = ({ any_code_differs, last_update_time }) => {
+export const Preamble = ({ any_code_differs, last_update_time, last_save_trigger_time }) => {
     let pluto_actions = useContext(PlutoContext)
+
+    const any_code_differs_delayed = useDelayedTruth(any_code_differs)
 
     const [state, set_state] = useState("")
     const timeout_ref = useRef(null)
 
     useEffect(() => {
         clearTimeout(timeout_ref.current)
-        if (any_code_differs) {
+        if (any_code_differs_delayed) {
             set_state("ask_to_save")
         } else {
-            if (Date.now() - last_update_time < 1000) {
+            if (Date.now() - last_save_trigger_time < 1000 || Date.now() - last_update_time < 1000) {
                 set_state("saved")
                 timeout_ref.current = setTimeout(() => {
                     set_state("")
@@ -22,6 +25,18 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
             } else {
                 set_state("")
             }
+        }
+    }, [any_code_differs_delayed])
+
+    useEffect(() => {
+        const diff = Date.now() - last_save_trigger_time
+
+        console.log({ diff, last_save_trigger_time, last_update_time, any_code_differs, any_code_differs_delayed })
+        if (!any_code_differs && diff >= 0 && diff < 300) {
+            set_state("saved")
+            timeout_ref.current = setTimeout(() => {
+                set_state("")
+            }, 1000)
         }
     }, [any_code_differs])
 
@@ -31,7 +46,6 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
                   <div id="saveall-container" class=${state}>
                       <button
                           onClick=${() => {
-                              set_state("saving")
                               pluto_actions.set_and_run_all_changed_remote_cells()
                           }}
                           class=${cl({ runallchanged: true })}
@@ -43,9 +57,7 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
                       </button>
                   </div>
               `
-            : // : state === "saving"
-            // ? html` <div id="saveall-container" class=${state}>Saving... <span class="saving-icon"></span></div> `
-            state === "saved" || state === "saving"
+            : state === "saved" || state === "saving"
             ? html`
                   <div id="saveall-container" class=${state}>
                       <span><span class="only-on-hover">Saved </span><span class="saved-icon"></span></span>

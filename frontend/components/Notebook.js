@@ -8,6 +8,7 @@ let CellMemo = ({
     cell_input,
     cell_input_local,
     notebook_id,
+    my_name,
     on_update_doc_query,
     on_cell_input,
     on_focus_neighbor,
@@ -21,7 +22,7 @@ let CellMemo = ({
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored } = cell_result || {}
-    const { cell_id, code, code_folded } = cell_input || {}
+    const { cell_id, code, code_author, code_folded } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -29,8 +30,9 @@ let CellMemo = ({
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
+                my_name=${my_name}
                 on_update_doc_query=${on_update_doc_query}
-                on_change=${(val) => on_cell_input(cell_input.cell_id, val)}
+                on_change=${(val, cm_event) => on_cell_input(cell_input.cell_id, val, cm_event)}
                 on_focus_neighbor=${on_focus_neighbor}
                 selected=${selected}
                 selected_cells=${selected_cells}
@@ -52,9 +54,11 @@ let CellMemo = ({
         persist_js_state,
         rootassignee,
         code,
+        code_author,
         code_folded,
         cell_input_local,
         notebook_id,
+        my_name,
         on_update_doc_query,
         on_cell_input,
         on_focus_neighbor,
@@ -82,6 +86,7 @@ const render_cell_outputs_minimum = 20
 /**
  * @param {{
  *  notebook: import("./Editor.js").NotebookData,
+ *  my_name: string,
  *  cell_inputs_local: { [uuid: string]: import("./Editor.js").CellInputData },
  *  on_update_doc_query: any,
  *  on_cell_input: any,
@@ -95,6 +100,7 @@ const render_cell_outputs_minimum = 20
  * */
 export const Notebook = ({
     notebook,
+    my_name,
     cell_inputs_local,
     on_update_doc_query,
     on_cell_input,
@@ -153,6 +159,7 @@ export const Notebook = ({
                         cell_input=${notebook.cell_inputs[cell_id]}
                         cell_input_local=${cell_inputs_local[cell_id]}
                         notebook_id=${notebook.notebook_id}
+                        my_name=${my_name}
                         on_update_doc_query=${on_update_doc_query}
                         on_cell_input=${on_cell_input}
                         on_focus_neighbor=${on_focus_neighbor}

@@ -1,5 +1,5 @@
-import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { html, useEffect, useMemo, useState } from "../imports/Preact.js"
+import _ from "../imports/lodash.js"
+import { html, useEffect, useMemo, useState, useRef } from "../imports/Preact.js"
 
 export const RunArea = ({ runtime, onClick, running }) => {
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
@@ -65,4 +65,19 @@ export const useDebouncedTruth = (truthy) => {
         return () => {}
     }, [truthy])
     return mytruth
+}
+
+export const useDelayedTruth = (truthy, delay = 500) => {
+    const [val, set_val] = useState(truthy)
+    const timeout_handle = useRef(null)
+    useEffect(() => {
+        if (truthy) {
+            timeout_handle.current = setTimeout(() => set_val(true), delay)
+        } else {
+            clearTimeout(timeout_handle.current)
+            set_val(false)
+        }
+        return () => {}
+    }, [truthy])
+    return val
 }

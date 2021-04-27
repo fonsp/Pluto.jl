@@ -6,21 +6,26 @@ pluto_filename(notebook::Notebook, cell::Cell)::String = notebook.path * "#==#" 
 "Is Julia new enough to support filenames in parsing?"
 const can_insert_filename = (Base.parse_input_line("1;2") != Base.parse_input_line("1\n2"))
 
-"Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
+"""
+Parse the code from `cell.code` into a Julia expression (`Expr`). Equivalent to `Meta.parse_input_line` in Julia v1.3, no matter the actual Julia version.
 
 1. Turn multiple expressions into an error expression.
 2. Fix some `LineNumberNode` idiosyncrasies to be more like modern Julia.
 3. Will always produce an expression of the form: `Expr(:toplevel, LineNumberNode(..), root)`. It gets transformed (i.e. wrapped) into this form if needed. A `LineNumberNode` contains a line number and a file name. We use the cell UUID as a 'file name', which makes the stack traces easier to interpret. (Otherwise it would be impossible to tell from which cell a stack frame originates.) Not all Julia versions insert these `LineNumberNode`s, so we insert it ourselves if Julia doesn't.
-4. Apply `preprocess_expr` (below) to `root` (from rule 2)."
+4. Apply `preprocess_expr` (below) to `root` (from rule 2).
+"""
 function parse_custom(notebook::Notebook, cell::Cell)::Expr
+    parse_custom(cell.code, pluto_filename(notebook, cell))
+end
+
+function parse_custom(code::String, filename::String)::Expr
     # 1.
     raw = if can_insert_filename
-        filename = pluto_filename(notebook, cell)
-        ex = Base.parse_input_line(cell.code, filename=filename)
+        ex = Base.parse_input_line(code, filename=filename)
         if (ex isa Expr) && (ex.head == :toplevel)
             # if there is more than one expression:
             if count(a -> !(a isa LineNumberNode), ex.args) > 1
-                Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
+                Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(code))")
             else
                 ex
             end
@@ -29,20 +34,18 @@ function parse_custom(notebook::Notebook, cell::Cell)::Expr
         end
     else
         # Meta.parse returns the "extra token..." like we want, but also in cases like "\n\nx = 1\n# comment", so we need to do the multiple expressions check ourselves after all
-        parsed1, next_ind1 = Meta.parse(cell.code, 1, raise=false)
-        parsed2, next_ind2 = Meta.parse(cell.code, next_ind1, raise=false)
+        parsed1, next_ind1 = Meta.parse(code, 1, raise=false)
+        parsed2, next_ind2 = Meta.parse(code, next_ind1, raise=false)
 
         if parsed2 === nothing
             # only whitespace or comments after the first expression
             parsed1
         else
-            Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(cell.code))")
+            Expr(:error, "extra token after end of expression\n\nBoundaries: $(expression_boundaries(code))")
         end
     end
 
     # 2.
-    filename = pluto_filename(notebook, cell)
-
     if !can_insert_filename
         fix_linenumbernodes!(raw, filename)
     end
@@ -109,3 +112,6 @@ end
 
 # for expressions that are just values, like :(1) or :(x)
 preprocess_expr(val::Any) = val
+
+remove_linenums(e::Expr) = Expr(e.head, (remove_linenums(x) for x in e.args if !(x isa LineNumberNode))...)
+remove_linenums(x) = x

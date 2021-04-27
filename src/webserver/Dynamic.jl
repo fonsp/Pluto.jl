@@ -101,6 +101,7 @@ function notebook_to_js(notebook::Notebook)
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
+                "code_author" => cell.code_author,
                 "code_folded" => cell.code_folded,
             )
         for (id, cell) in notebook.cells_dict),
@@ -431,6 +432,31 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
     send_notebook_changes!(🙋 |> without_initiator)
 end
 
+
+responses[:maybe_update_cell_code] = function response_maybe_update_cell_code(🙋::ClientRequest)
+    require_notebook(🙋)
+    cell = let
+        cell_id = UUID(🙋.body["cell_id"])
+        🙋.notebook.cells_dict[cell_id]
+    end
+
+    client_id = 🙋.initiator.client.id
+
+    old_code = cell.code
+    new_code = 🙋.body["code"]
+    if old_code != new_code
+        new_parsed = parse_custom(new_code, pluto_filename(🙋.notebook, cell))
+        old_parsed = 🙋.notebook.topology.codes[cell].parsedcode
+
+        if PlutoRunner.expr_hash(remove_linenums(new_parsed)) == PlutoRunner.expr_hash(remove_linenums(old_parsed))
+            cell.code = new_code
+            cell.code_author = 🙋.body["code_author"]
+            save_notebook(🙋.notebook)
+            # no need to update things because the expression is the same
+            send_notebook_changes!(🙋 |> without_initiator)
+        end
+    end
+end
 
 
 ###

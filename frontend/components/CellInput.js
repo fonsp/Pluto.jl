@@ -40,6 +40,7 @@ var offsetFromViewport = function (elem) {
 export const CellInput = ({
     local_code,
     remote_code,
+    remote_code_author,
     disable_input,
     focus_after_creation,
     cm_forced_focus,
@@ -54,6 +55,7 @@ export const CellInput = ({
     on_drag_drop_events,
     cell_id,
     notebook_id,
+    my_name,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -69,17 +71,19 @@ export const CellInput = ({
     const time_last_genuine_backspace = useRef(0)
 
     useEffect(() => {
-        const current_value = cm_ref.current?.getValue() ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
+        if (remote_code_author !== my_name) {
+            const current_value = cm_ref.current?.getValue() ?? ""
+            if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+                // this cell is being initialized with empty code, but it already has local code set.
+                // this happens when pasting or dropping cells
+                return
+            }
+            remote_code_ref.current = remote_code
+            if (current_value !== remote_code) {
+                cm_ref.current?.setValue(remote_code)
+            }
         }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            cm_ref.current?.setValue(remote_code)
-        }
-    }, [remote_code])
+    }, [remote_code, remote_code_author, my_name])
 
     useLayoutEffect(() => {
         const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
@@ -437,7 +441,7 @@ export const CellInput = ({
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
-            on_change_ref.current(new_value)
+            on_change_ref.current(new_value, e)
         })
 
         cm.on("blur", () => {
