@@ -1279,6 +1279,53 @@ packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
 packable(t::Tuple) = all(packable, t)
 packable(t::NamedTuple) = all(packable, t)
 
+struct EmbeddableDisplay
+    x
+end
+
+function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
+    body, mime = format_output_default(e.x, io)
+	
+	write(io, """
+<pluto-display></pluto-display>
+
+<script>
+
+const display = currentScript.previousElementSibling
+
+display.body = $(publish_to_js(body))
+display.mime = "$(string(mime))"
+
+</script>
+
+""")
+end
+
+export embed_display
+
+"""
+    embed_display(x)
+
+A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_. 
+
+# Example
+
+```julia
+using HypertextLiteral
+```
+
+```julia
+@htl("\""
+<h1>Cool data</h1>
+
+\$(embed_display(rand(10)))
+
+<p>Wow!</p>
+"\"")
+```
+"""
+embed_display(x) = EmbeddableDisplay(x)
+
 
 
 
