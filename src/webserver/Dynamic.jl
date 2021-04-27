@@ -128,6 +128,7 @@ function notebook_to_js(notebook::Notebook)
                     "last_run_timestamp" => cell.output.last_run_timestamp,
                     "persist_js_state" => cell.output.persist_js_state,
                 ),
+                "published_objects" => cell.published_objects,
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,

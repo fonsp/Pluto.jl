@@ -17,14 +17,15 @@ import Distributed
 import Base64
 import FuzzyCompletions: Completion, ModuleCompletion, PropertyCompletion, FieldCompletion, completions, completion_text, score
 import Base: show, istextmime
-import UUIDs: UUID
+import UUIDs: UUID, uuid4
+import Dates: DateTime
 import Logging
 
 export @bind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
-ObjectID = typeof(objectid("hello computer"))
-ObjectDimPair = Tuple{ObjectID,Int64}
+const ObjectID = typeof(objectid("hello computer"))
+const ObjectDimPair = Tuple{ObjectID,Int64}
 
 
 
@@ -40,6 +41,11 @@ ObjectDimPair = Tuple{ObjectID,Int64}
 # Will be set to the latest workspace module
 "The current workspace where your variables live. See [`move_vars`](@ref)."
 current_module = Main
+
+"""
+`PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
+"""
+const notebook_id = Ref{UUID}(uuid4())
 
 function set_current_module(newname)
     # Revise.jl support
@@ -190,6 +196,9 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
 function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+    currently_running_cell_id[] = cell_id
+    cell_published_objects[cell_id] = Dict{String,Any}()
+
     result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
@@ -397,6 +406,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 # TODO: clear key when a cell is deleted furever
 const cell_results = Dict{UUID,Any}()
 const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
+const cell_published_objects = Dict{UUID,Dict{String,Any}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -407,7 +417,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
+function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
 
     extra_items = if showmore === nothing
@@ -427,11 +437,12 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         ("", MIME"text/plain"())
     end
     return (
-        output_formatted = output_formatted, 
+        output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
-        runtime = get(cell_runtimes, id, nothing)
+        runtime = get(cell_runtimes, id, nothing),
+        published_objects = get(cell_published_objects, id, Dict{String,Any}()),
     )
 end
 
@@ -838,6 +849,14 @@ end
 trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
+
+
+
+
+
+
+
+
 ###
 # TABLE VIEWER
 ##
@@ -1201,6 +1220,64 @@ end"""
 
 
 
+###
+# PUBLISHED OBJECTS
+###
+
+const currently_running_cell_id = Ref{UUID}(uuid4())
+
+function publish(x)::String
+    if !packable(x)
+        throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
+    end
+    d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
+    id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
+    d[id] = x
+    return id
+end
+
+"""
+    publish_to_js(x)
+
+Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
+
+!!! warning
+
+    This function is not yet public API, it will become public in the next weeks. Only use for experiments.
+
+# Example
+```julia
+let
+    x = Dict(
+        "data" => rand(Float64, 20),
+        "name" => "juliette",
+    )
+
+    HTML("\""
+    <script>
+    // we interpolate into JavaScript:
+    const x = \$(PlutoRunner.publish_to_js(x))
+
+    console.log(x.name, x.data)
+    </script>
+    "\"")
+end
+```
+"""
+function publish_to_js(x)::String
+    id = publish(x)
+    return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
+end
+
+const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
+packable(::Packable) = true
+packable(::Any) = false
+packable(::Vector{<:Packable}) = true
+packable(::Dict{<:Packable,<:Packable}) = true
+packable(x::Vector) = all(packable, x)
+packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
+packable(t::Tuple) = all(packable, t)
+packable(t::NamedTuple) = all(packable, t)
 
 
 

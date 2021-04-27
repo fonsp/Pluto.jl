@@ -238,6 +238,22 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebookexport", serve_notebookexport)
     
+    serve_notebookupload = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        save_path = SessionActions.save_upload(request.body)
+        try_launch_notebook_response(
+            SessionActions.open,
+            save_path,
+            as_redirect=false,
+            as_sample=false,
+            title="Failed to load notebook",
+            advice="Make sure that you copy the entire notebook file. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+        )
+    end
+    HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
+    
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         
