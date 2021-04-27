@@ -1310,19 +1310,35 @@ A wrapper around any object that will display it using Pluto's interactive multi
 
 # Example
 
+Markdown can interpolate HTML-showable objects, including the embedded display:
+
+```julia
+md"\""
+# Cool data
+
+\$(embed_display(rand(10)))
+
+Wow!
+"\""
+```
+
+You can use HTML templating packages to create cool layouts, like two arrays side-by-side:
+
 ```julia
 using HypertextLiteral
 ```
 
 ```julia
 @htl("\""
-<h1>Cool data</h1>
 
-\$(embed_display(rand(10)))
+<div style="display: flex;">
+\$(embed_display(rand(4)))
+\$(embed_display(rand(4)))
+</div>
 
-<p>Wow!</p>
 "\"")
 ```
+
 """
 embed_display(x) = EmbeddableDisplay(x)
 
