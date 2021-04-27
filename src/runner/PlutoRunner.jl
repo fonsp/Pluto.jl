@@ -1241,6 +1241,10 @@ end
 
 Make the object `x` available to the JS runtime of this cell. The returned string is a JS command that, when executed in this cell's output, gives the object.
 
+!!! warning
+
+    This function is not yet public API, it will become public in the next weeks. Only use for experiments.
+
 # Example
 ```julia
 let
