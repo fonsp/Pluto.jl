@@ -228,7 +228,7 @@ function http_router_for(session::ServerSession)
     ) do request::HTTP.Request
         try
             notebook = notebook_from_uri(request)
-            response = HTTP.Response(200, MsgPack.pack(Pluto.notebook_to_js(notebook)))
+            response = HTTP.Response(200, Pluto.pack(Pluto.notebook_to_js(notebook)))
             push!(response.headers, "Content-Type" => "application/octet-stream")
             push!(response.headers, "Content-Disposition" => "inline; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
             response
