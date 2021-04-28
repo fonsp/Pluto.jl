@@ -36,14 +36,14 @@ codec.addExtUnpacker(0x0d, (uintarray) => {
     }
 })
 
-codec.addExtUnpacker(0x11, (buffer) => new Int8Array(buffer))
-codec.addExtUnpacker(0x12, (buffer) => new Uint8Array(buffer))
-codec.addExtUnpacker(0x13, (buffer) => new Int16Array(buffer))
-codec.addExtUnpacker(0x14, (buffer) => new Uint16Array(buffer))
-codec.addExtUnpacker(0x15, (buffer) => new Int32Array(buffer))
-codec.addExtUnpacker(0x16, (buffer) => new Uint32Array(buffer))
-codec.addExtUnpacker(0x17, (buffer) => new Float32Array(buffer))
-codec.addExtUnpacker(0x18, (buffer) => new Float64Array(buffer))
+codec.addExtUnpacker(0x11, (x) => new Int8Array(x.buffer))
+codec.addExtUnpacker(0x12, (x) => new Uint8Array(x.buffer))
+codec.addExtUnpacker(0x13, (x) => new Int16Array(x.buffer))
+codec.addExtUnpacker(0x14, (x) => new Uint16Array(x.buffer))
+codec.addExtUnpacker(0x15, (x) => new Int32Array(x.buffer))
+codec.addExtUnpacker(0x16, (x) => new Uint32Array(x.buffer))
+codec.addExtUnpacker(0x17, (x) => new Float32Array(x.buffer))
+codec.addExtUnpacker(0x18, (x) => new Float64Array(x.buffer))
 
 /** @param {any} x */
 export const pack = (x) => {
