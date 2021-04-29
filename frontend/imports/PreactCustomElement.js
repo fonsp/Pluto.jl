@@ -5,6 +5,8 @@
 
 // MIT licensed: https://github.com/preactjs/preact-custom-element/blob/master/LICENSE
 
+// but with some modifications
+
 import  { h, cloneElement, render, hydrate } from "./Preact.js"
 
 export default function register(Component, tagName, propNames, options) {
@@ -70,25 +72,31 @@ function ContextProvider(props) {
 }
 
 function connectedCallback() {
-	// Obtain a reference to the previous context by pinging the nearest
-	// higher up node that was rendered with Preact. If one Preact component
-	// higher up receives our ping, it will set the `detail` property of
-	// our custom event. This works because events are dispatched
-	// synchronously.
-	const event = new CustomEvent('_preact', {
-		detail: {},
-		bubbles: true,
-		cancelable: true,
-	});
-	this.dispatchEvent(event);
-	const context = event.detail.context;
+	if(this.on_connect){
+		this.on_connect()
+	} else {
+		console.error("connected", this)
 
-	this._vdom = h(
-		ContextProvider,
-		{ ...this._props, context },
-		toVdom(this, this._vdomComponent)
-	);
-	(this.hasAttribute('hydrate') ? hydrate : render)(this._vdom, this._root);
+		// Obtain a reference to the previous context by pinging the nearest
+		// higher up node that was rendered with Preact. If one Preact component
+		// higher up receives our ping, it will set the `detail` property of
+		// our custom event. This works because events are dispatched
+		// synchronously.
+		const event = new CustomEvent('_preact', {
+			detail: {},
+			bubbles: true,
+			cancelable: true,
+		});
+		this.dispatchEvent(event);
+		const context = event.detail.context;
+	
+		this._vdom = h(
+			ContextProvider,
+			{ ...this._props, context },
+			toVdom(this, this._vdomComponent)
+		);
+		(this.hasAttribute('hydrate') ? hydrate : render)(this._vdom, this._root);
+	}
 }
 
 function toCamelCase(str) {
@@ -110,7 +118,13 @@ function attributeChangedCallback(name, oldValue, newValue) {
 }
 
 function disconnectedCallback() {
-	render((this._vdom = null), this._root);
+	// instead of disconnecting right now, we have a 1sec grace period, in case the component is re-attached to the DOM
+	// rea-attaching to the DOM means that it was "moved" in the DOM, rather than removed.
+	const handle = setTimeout(() => {
+		console.error("disconnected", this)
+		render((this._vdom = null), this._root);
+	}, 1000)
+	this.on_connect = () => clearTimeout(handle)
 }
 
 /**
