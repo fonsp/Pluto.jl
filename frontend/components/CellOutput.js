@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
@@ -97,7 +97,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp = Date.now() }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":

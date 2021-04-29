@@ -1290,19 +1290,31 @@ end
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     body, mime = format_output_default(e.x, io)
 	
-	write(io, """
-<pluto-display></pluto-display>
+    write(io, """
+    <pluto-display></pluto-display>
+    <script id=$(e.script_id)>
+        
+        const body = $(publish_to_js(body, e.script_id))
+        const mime = "$(string(mime))"
+        
+        const create_new = this == null || this._mime !== mime
+        
+        // console.log(mime, this?._mime, this?._body, body, this?._body === body, create_new)
 
-<script id=$(e.script_id)>
 
-const display = currentScript.previousElementSibling
+        const display = create_new ? currentScript.previousElementSibling : this //document.createElement("pluto-display") : this
+        
+        display.persist_js_state = true
+        display.body = body
+        display._body = body
+        if(create_new) {
+            display.mime = mime
+            display._mime = mime
+        }
+        return display
 
-display.body = $(publish_to_js(body, e.script_id))
-display.mime = "$(string(mime))"
-
-</script>
-
-""")
+    </script>
+	""")
 end
 
 export embed_display
