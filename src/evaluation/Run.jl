@@ -239,6 +239,7 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	for c in changed
 		notebook.cells_dict[c].code = new_codes[c]
 	end
+
 	notebook.cell_order = just_loaded.cell_order
 	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
 end
