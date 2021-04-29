@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
@@ -8,6 +8,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
 const CodeMirror = window.CodeMirror
@@ -78,7 +79,9 @@ export let PlutoImage = ({ body, mime }) => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
 
         imgref.current.onload = imgref.current.onerror = () => {
-            imgref.current.style.display = null
+            if (imgref.current) {
+                imgref.current.style.display = null
+            }
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
@@ -94,7 +97,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_timestamp }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp = Date.now() }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -134,17 +137,21 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_tim
             break
 
         case "text/plain":
-        default:
             if (body) {
                 return html`<div>
-                    <pre><code>${body}</code></pre>
+                    <pre class="no-block"><code>${body}</code></pre>
                 </div>`
             } else {
                 return html`<div></div>`
             }
             break
+        default:
+            return html``
+            break
     }
 }
+
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -354,7 +361,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div ref=${container}></div>`
+    return html`<div class="raw-html-wrapper" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */
