@@ -2,7 +2,6 @@ import HTTP
 import Markdown: htmlesc
 import UUIDs: UUID
 import JSON
-import MsgPack
 import Distributed: RemoteException
 import Serialization
 
@@ -233,13 +232,14 @@ function http_router_for(session::ServerSession)
 
 
 
-    function get_notebook_from_request(request::HTTP.Request)
+    function get_notebook_from_api_request(request::HTTP.Request)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
         splitpath = HTTP.URIs.splitpath(request.target)
 
-        sess_id = get(query, "session", splitpath[2])
-        file = get(query, "file", HTTP.unescapeuri(splitpath[2]))
+        sess_id = get(query, "session", splitpath[3])
+        file = get(query, "file", HTTP.unescapeuri(splitpath[3]))
+
         notebook = nothing
         if !isnothing(file)
             notebook_id = findfirst(session.notebooks) do nb
@@ -260,9 +260,7 @@ function http_router_for(session::ServerSession)
     end
     function rest_parse(body::Vector{UInt8}, mime_type::AbstractString)
         # TODO: either fix or remove json support
-        if mime_type == "application/json"
-            return JSON.parse(body)
-        elseif mime_type == "application/x-msgpack"
+        if mime_type == "application/x-msgpack"
             return MsgPack.unpack(body)
         elseif mime_type == "application/x-julia"
             return Serialization.deserialize(IOBuffer(body))
@@ -270,7 +268,7 @@ function http_router_for(session::ServerSession)
             @error "Unrecognized MIME type for REST request body"
         end
     end
-    function rest_parameter(request::HTTP.Request, key::AbstractString)
+    function rest_parameter(request::HTTP.Request, key::AbstractString, default=nothing)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
         parts = HTTP.URIs.splitpath(uri.path)
@@ -281,7 +279,7 @@ function http_router_for(session::ServerSession)
         end
 
         parsed_body = rest_parse(request.body, content_type)
-        get(parsed_body, key, nothing)
+        get(parsed_body, key, default)
     end
     function rest_serialize(request::HTTP.Request, body)
         accept_type = get_header(request, "Accept")
@@ -294,7 +292,7 @@ function http_router_for(session::ServerSession)
                 serialized_msg = take!(out_io)
                 return HTTP.Response(200, serialized_msg) |> with_julia! |> with_cors!
             else 
-                return HTTP.Response(200, MsgPack.pack(body)) |> with_msgpack! |> with_cors!
+                return HTTP.Response(200, Pluto.pack(body)) |> with_msgpack! |> with_cors!
             end
         catch e
             # Likely an error serializing the object
@@ -309,14 +307,12 @@ function http_router_for(session::ServerSession)
 
         parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(rest_parameter(request, "outputs"))
-        # out_symbols = Symbol.(split(query["outputs"], ","))
 
         # Get notebook from request parameters
-        notebook = get_notebook_from_request(request)
+        notebook = get_notebook_from_api_request(request)
         topology = notebook.topology
 
         inputs = rest_parameter(request, "inputs")
-        # inputs = MsgPack.unpack(query["inputs"])
         outputs = nothing
         try
             outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
@@ -331,31 +327,28 @@ function http_router_for(session::ServerSession)
 
         rest_serialize(request, outputs)
     end
-    HTTP.@register(router, "GET", "/notebook/*/eval", serve_notebook_eval)
-    HTTP.@register(router, "POST", "/notebook/*/eval", serve_notebook_eval)
+    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/eval", serve_notebook_eval)
+    HTTP.@register(router, "POST", "/$(REST.VERSION)/notebook/*/eval", serve_notebook_eval)
 
     function serve_notebook_call(request::HTTP.Request)
         # Get notebook from request parameters
-        notebook = get_notebook_from_request(request)
+        notebook = get_notebook_from_api_request(request)
         topology = notebook.topology
 
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
 
-        if "function" ∉ keys(query)
-            return HTTP.Response(400, "Function name is required")
-        end
+        fn_name = Symbol(rest_parameter(request, "function"))
+        args = rest_parameter(request, "args")
+        kwargs = rest_parameter(request, "kwargs")
 
-        fn_name = Symbol(query["function"])
-        args = "args" ∈ keys(query) ? MsgPack.unpack(query["args"]) : []
-        kwargs = "kwargs" ∈ keys(query) ? MsgPack.unpack(query["args"]) : Dict()
-
-        fn_symbol = :($(fn_name)($(args...)))
+        fn_symbol = :($(fn_name)($(args...); $([:($k=$v) for (k, v) ∈ kwargs]...)))
         fn_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
 
         rest_serialize(request, fn_result)
     end
-    HTTP.@register(router, "GET", "/notebook/*/call", serve_notebook_call)
+    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/call", serve_notebook_call)
+    HTTP.@register(router, "POST", "/$(REST.VERSION)/notebook/*/call", serve_notebook_call)
 
     function serve_notebook_static_fn(request::HTTP.Request)
         uri = HTTP.URI(request.target)
@@ -364,7 +357,7 @@ function http_router_for(session::ServerSession)
         parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
-        notebook = get_notebook_from_request(request)
+        notebook = get_notebook_from_api_request(request)
         topology = notebook.topology
 
         input_symbols = Symbol.(split(query["inputs"], ","))
@@ -374,7 +367,7 @@ function http_router_for(session::ServerSession)
         push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
         res
     end
-    HTTP.@register(router, "GET", "/notebook/*/static", serve_notebook_static_fn)
+    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/static", serve_notebook_static_fn)
 
     notebook_from_uri(request) = let
         uri = HTTP.URI(request.target)        

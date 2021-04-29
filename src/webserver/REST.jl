@@ -6,6 +6,8 @@ import JSON
 import MsgPack
 import Serialization
 
+VERSION = "v1"
+
 function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
     filter(notebook.cells) do cell
         any(x ∈ topology[node].references for x ∈ topology[cell].definitions)
@@ -55,7 +57,7 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
     new_values = values(inputs)
     output_cell = where_assigned(notebook, topology, outputs)
 
-    if length(output_cell) != length(outputs)
+    if length(output_cell) < length(outputs)
         throw(ErrorException("A requested output does not exist"))
     end
     output_cell = output_cell[1]
@@ -119,7 +121,7 @@ function static_function(output::Symbol, inputs::Vector{Symbol}, filename::Abstr
     @warn "Ensure you trust this host, as the function returned could be malicious"
 
     query = ["outputs" => String(output), "inputs" => join(inputs, ",")]
-    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/static"); query=query)
+    request_uri = merge(HTTP.URI("http://$(host)/$(VERSION)/notebook/$filename/static"); query=query)
     response = HTTP.get(request_uri)
 
     Meta.parse(String(response.body))
@@ -138,8 +140,7 @@ julia> Pluto.REST.evaluate(:c, "EuclideanDistance.jl"; a=5., b=12.)
 ```
 """
 function evaluate(output::Symbol, filename::AbstractString, host::AbstractString="localhost:1234"; kwargs...)
-    # query = ["outputs" => string(output), "inputs" => String(MsgPack.pack(kwargs))]
-    request_uri = HTTP.URI("http://$(host)/notebook/$(HTTP.escapeuri(filename))/eval")
+    request_uri = HTTP.URI("http://$(host)/$(VERSION)/notebook/$(HTTP.escapeuri(filename))/eval")
 
     body = IOBuffer()
     Serialization.serialize(body, Dict{String, Any}(
@@ -157,11 +158,6 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
         throw(ErrorException(String(response.body)))
     end
 
-    # if with_json
-    #     return JSON.parse(String(response.body))[string(output)]
-    # else
-    #     return MsgPack.unpack(response.body)[string(output)]
-    # end
     return Serialization.deserialize(IOBuffer(response.body))[output]
 end
 
@@ -170,27 +166,27 @@ end
 
 Function equivalent of syntax described in documentation for `PlutoCallable`.
 """
-function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234", with_json=false)
-    query = [
-        "function" => string(fn_name),
-        "args" => String(MsgPack.pack([args...])),
-        "kwargs" => String(MsgPack.pack(kwargs))
-    ]
-    request_uri = merge(HTTP.URI("http://$(host)/notebook/$filename/call"); query=query)
+function call(fn_name::Symbol, args::Tuple, kwargs::Iterators.Pairs, filename::AbstractString, host::AbstractString="localhost:1234")
+    request_uri = HTTP.URI("http://$(host)/$(VERSION)/notebook/$(HTTP.escapeuri(filename))/call")
 
-    response = HTTP.get(request_uri, [
-        "Accept" => with_json ? "application/json" : "application/x-msgpack"
-    ]; status_exception=false)
+    body = IOBuffer()
+    Serialization.serialize(body, Dict{String, Any}(
+        "function" => fn_name,
+        "args" => [args...],
+        "kwargs" => Dict(kwargs...)
+    ))
+    serialized_body = take!(body)
+
+    response = HTTP.request("POST", request_uri, [
+        "Accept" => "application/x-julia",
+        "Content-Type" => "application/x-julia"
+    ], serialized_body; status_exception=false)
 
     if response.status >= 300
         throw(ErrorException(String(response.body)))
     end
     
-    if with_json
-        return JSON.parse(String(response.body))
-    else
-        return MsgPack.unpack(response.body)
-    end
+    return Serialization.deserialize(IOBuffer(response.body))
 end
 end
 
@@ -290,7 +286,7 @@ function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
         if contains(e.msg, "function") # See if the function error was thrown, and return a PlutoCallable struct
             return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
         end
-        # throw(e)
+        throw(e)
     end
 end
 # Looks like notebook_instance(a=3, b=4)[:c, :m] ⟹ 5
