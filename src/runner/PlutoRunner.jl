@@ -1293,22 +1293,22 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
     write(io, """
     <pluto-display></pluto-display>
     <script id=$(e.script_id)>
+
+        // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
         
         const body = $(publish_to_js(body, e.script_id))
         const mime = "$(string(mime))"
         
         const create_new = this == null || this._mime !== mime
         
-        // console.log(mime, this?._mime, this?._body, body, this?._body === body, create_new)
-
-
-        const display = create_new ? currentScript.previousElementSibling : this //document.createElement("pluto-display") : this
+        const display = create_new ? currentScript.previousElementSibling : this
         
         display.persist_js_state = true
         display.body = body
-        display._body = body
         if(create_new) {
+            // only set the mime if necessary, it triggers a second preact update
             display.mime = mime
+            // add it also as unwatched property to prevent interference from Preact
             display._mime = mime
         }
         return display

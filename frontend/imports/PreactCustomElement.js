@@ -75,8 +75,6 @@ function connectedCallback() {
 	if(this.on_connect){
 		this.on_connect()
 	} else {
-		console.error("connected", this)
-
 		// Obtain a reference to the previous context by pinging the nearest
 		// higher up node that was rendered with Preact. If one Preact component
 		// higher up receives our ping, it will set the `detail` property of
@@ -121,9 +119,8 @@ function disconnectedCallback() {
 	// instead of disconnecting right now, we have a 1sec grace period, in case the component is re-attached to the DOM
 	// rea-attaching to the DOM means that it was "moved" in the DOM, rather than removed.
 	const handle = setTimeout(() => {
-		console.error("disconnected", this)
 		render((this._vdom = null), this._root);
-	}, 1000)
+	}, 500)
 	this.on_connect = () => clearTimeout(handle)
 }
 
