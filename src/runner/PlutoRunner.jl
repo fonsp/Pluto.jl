@@ -1226,15 +1226,17 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish(x)::String
+function publish(x, id_start)::String
     if !packable(x)
         throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
     end
+    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
 end
+
+publish(x) = publish(x, string(objectid(x), base=16))
 
 """
     publish_to_js(x)
@@ -1264,8 +1266,8 @@ let
 end
 ```
 """
-function publish_to_js(x)::String
-    id = publish(x)
+function publish_to_js(args...)::String
+    id = publish(args...)
     return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
 end
 
@@ -1281,6 +1283,7 @@ packable(t::NamedTuple) = all(packable, t)
 
 struct EmbeddableDisplay
     x
+    script_id
 end
 
 function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
@@ -1289,11 +1292,11 @@ function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
 	write(io, """
 <pluto-display></pluto-display>
 
-<script>
+<script id=$(e.script_id)>
 
 const display = currentScript.previousElementSibling
 
-display.body = $(publish_to_js(body))
+display.body = $(publish_to_js(body, e.script_id))
 display.mime = "$(string(mime))"
 
 </script>
@@ -1340,7 +1343,7 @@ using HypertextLiteral
 ```
 
 """
-embed_display(x) = EmbeddableDisplay(x)
+embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
 
 
