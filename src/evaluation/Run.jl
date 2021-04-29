@@ -205,7 +205,7 @@ update_run!(args...) = update_save_run!(args...; save=false)
 
 function update_from_file(session::ServerSession, notebook::Notebook)
 	just_loaded = try
-		sleep(1) ## There seems to be a synchronization issue if your OS is VERYFAST
+		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
