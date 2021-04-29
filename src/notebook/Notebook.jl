@@ -110,7 +110,8 @@ function save_notebook(io, notebook::Notebook)
         if c.has_execution_barrier
             println(io, _execution_barrier)
         end
-        print(io, c.code)
+        # write the cell code and prevent collisions with the cell delimiter
+        print(io, replace(c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
     end
 
@@ -174,7 +175,6 @@ function load_notebook_nobackup(io, path)::Notebook
                 code_normalised = replace(code_normalised, _execution_barrier *"\n" => "")
             end
 
-            # remove the cell appendix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
@@ -211,28 +211,25 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
-    backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
+function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
+    backup_path = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)
     #     backup_path = path * ".backup" * string(backup_num)
     #     backup_num += 1
     # end
-    readwrite(path, backup_path)
+    disable_writing_notebook_files || readwrite(path, backup_path)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
     update_dependency_cache!(loaded)
 
-    save_notebook(loaded)
-    # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if run_notebook_on_load
-        loaded.topology = NotebookTopology()
-    end
+    disable_writing_notebook_files || save_notebook(loaded)
+    loaded.topology = NotebookTopology()
 
-    if only_versions_or_lineorder_differ(path, backup_path)
+    disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
     else
         @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backup_path
@@ -255,20 +252,25 @@ function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Boo
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
-function move_notebook!(notebook::Notebook, newpath::String)
+function move_notebook!(notebook::Notebook, newpath::String; disable_writing_notebook_files::Bool=false)
     # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
     oldpath_tame = tamepath(notebook.path)
     newpath_tame = tamepath(newpath)
-    save_notebook(notebook, oldpath_tame)
-    save_notebook(notebook, newpath_tame)
 
-    # @assert that the new file looks alright
-    @assert only_versions_differ(oldpath_tame, newpath_tame)
+    if !disable_writing_notebook_files
+        save_notebook(notebook, oldpath_tame)
+        save_notebook(notebook, newpath_tame)
 
-    notebook.path = newpath_tame
+        # @assert that the new file looks alright
+        @assert only_versions_differ(oldpath_tame, newpath_tame)
 
-    if oldpath_tame != newpath_tame
-        rm(oldpath_tame)
+        notebook.path = newpath_tame
+
+        if oldpath_tame != newpath_tame
+            rm(oldpath_tame)
+        end
+    else
+        notebook.path = newpath_tame
     end
     if isdir("$oldpath_tame.assets")
         mv("$oldpath_tame.assets", "$newpath_tame.assets")

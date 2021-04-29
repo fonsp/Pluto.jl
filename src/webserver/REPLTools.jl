@@ -58,7 +58,7 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
 end
 
 responses[:complete] = function response_complete(🙋::ClientRequest)
-    require_notebook(🙋)
+    try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]
     pos = lastindex(query) # the query is cut at the cursor position by the front-end, so the cursor position is just the last legal index
 

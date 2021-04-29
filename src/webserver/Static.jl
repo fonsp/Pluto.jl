@@ -222,6 +222,22 @@ function http_router_for(session::ServerSession)
     end
     HTTP.@register(router, "GET", "/notebookfile", serve_notebookfile)
 
+    serve_statefile = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        try
+            notebook = notebook_from_uri(request)
+            response = HTTP.Response(200, Pluto.pack(Pluto.notebook_to_js(notebook)))
+            push!(response.headers, "Content-Type" => "application/octet-stream")
+            push!(response.headers, "Content-Disposition" => "inline; filename=\"$(without_pluto_file_extension(basename(notebook.path))).plutostate\"")
+            response
+        catch e
+            return error_response(400, "Bad query", "Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!", sprint(showerror, e, stacktrace(catch_backtrace())))
+        end
+    end
+    HTTP.@register(router, "GET", "/statefile", serve_statefile)
+
     serve_notebookexport = with_authentication(; 
         required=security.require_secret_for_access || 
         security.require_secret_for_open_links
@@ -237,6 +253,22 @@ function http_router_for(session::ServerSession)
         end
     end
     HTTP.@register(router, "GET", "/notebookexport", serve_notebookexport)
+    
+    serve_notebookupload = with_authentication(; 
+        required=security.require_secret_for_access || 
+        security.require_secret_for_open_links
+    ) do request::HTTP.Request
+        save_path = SessionActions.save_upload(request.body)
+        try_launch_notebook_response(
+            SessionActions.open,
+            save_path,
+            as_redirect=false,
+            as_sample=false,
+            title="Failed to load notebook",
+            advice="Make sure that you copy the entire notebook file. Please <a href='https://github.com/fonsp/Pluto.jl/issues'>report this error</a>!"
+        )
+    end
+    HTTP.@register(router, "POST", "/notebookupload", serve_notebookupload)
     
     function serve_asset(request::HTTP.Request)
         uri = HTTP.URI(request.target)

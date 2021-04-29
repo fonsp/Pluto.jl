@@ -130,6 +130,7 @@ function notebook_to_js(notebook::Notebook)
                     "last_run_timestamp" => cell.output.last_run_timestamp,
                     "persist_js_state" => cell.output.persist_js_state,
                 ),
+                "published_objects" => cell.published_objects,
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -207,7 +208,7 @@ const effects_of_changed_state = Dict(
         if isfile(newpath)
             throw(UserError("File exists already - you need to delete the old file manually."))
         else
-            move_notebook!(request.notebook, newpath)
+            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
@@ -292,7 +293,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
         if FileChanged ∈ changes && CodeChanged ∉ changes
-            save_notebook(notebook)
+            🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
@@ -347,6 +348,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
+            :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),
     ), nothing, nothing, 🙋.initiator))
 end
@@ -480,7 +482,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, persist_js_state=true, run_async=false, kwargs...)
 end
 
 responses[:write_file] = function (🙋::ClientRequest)

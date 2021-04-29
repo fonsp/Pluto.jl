@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useMemo, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
 import { CellInput } from "./CellInput.js"
@@ -21,7 +21,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * */
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, has_execution_barrier },
-    cell_result: { queued, running, runtime, errored, output, is_deactivated },
+    cell_result: { queued, running, runtime, errored, output, published_objects, is_deactivated },
     cell_dependencies: { downstream_cells_map, upstream_cells_map, precedence_heuristic },
     cell_input_local,
     notebook_id,
@@ -76,8 +76,23 @@ export const Cell = ({
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
 
+    const node_ref = useRef(null)
+
+    const [cell_api_ready, set_cell_api_ready] = useState(false)
+    const published_objects_ref = useRef(published_objects)
+    published_objects_ref.current = published_objects
+
+    useLayoutEffect(() => {
+        Object.assign(node_ref.current, {
+            getPublishedObject: (id) => published_objects_ref.current[id],
+        })
+
+        set_cell_api_ready(true)
+    })
+
     return html`
         <pluto-cell
+            ref=${node_ref}
             onDragOver=${handler}
             onDrop=${handler}
             onDragEnter=${handler}
@@ -139,7 +154,7 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            <${CellOutput} ...${output} cell_id=${cell_id} />
+            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}

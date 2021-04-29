@@ -18,4 +18,7 @@ jobs:
         steps:
             - uses: JuliaRegistries/TagBot@v1
               with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
+                  # We use that PAT token instead of GITHUB_TOKEN because we are triggering another github action on the 'release' event.
+                  # Triggering a workflow from a workflow is only allowed if the relaying event is signed with a PAT.
+                  # See https://docs.github.com/en/actions/reference/events-that-trigger-workflows#triggering-new-workflows-using-a-personal-access-token
+                  token: ${{ secrets.PAT_TOKEN }}
