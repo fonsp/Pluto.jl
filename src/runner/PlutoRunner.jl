@@ -417,18 +417,19 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
+    currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
+        tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
     else
-        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, id)
+        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, cell_id)
         old[showmore] = get(old, showmore, 0) + 1
         old
     end
 
-    ans = cell_results[id]
+    ans = cell_results[cell_id]
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
@@ -441,8 +442,8 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
-        runtime = get(cell_runtimes, id, nothing),
-        published_objects = get(cell_published_objects, id, Dict{String,Any}()),
+        runtime = get(cell_runtimes, cell_id, nothing),
+        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
     )
 end
 
