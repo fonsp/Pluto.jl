@@ -79,7 +79,9 @@ export let PlutoImage = ({ body, mime }) => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
 
         imgref.current.onload = imgref.current.onerror = () => {
-            imgref.current.style.display = null
+            if (imgref.current) {
+                imgref.current.style.display = null
+            }
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
@@ -95,7 +97,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state=false, last_run_timestamp }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -142,6 +144,9 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state=false, last_r
             } else {
                 return html`<div></div>`
             }
+            break
+        default:
+            return html``
             break
     }
 }
