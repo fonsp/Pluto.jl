@@ -153,7 +153,7 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
         )}
     </tbody>`
 
-    return html`<table class="pluto-table">
+    return html`<table class="pluto-table" ref=${node_ref}>
         ${thead}${tbody}
     </table>`
 }
