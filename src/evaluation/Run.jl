@@ -34,12 +34,7 @@ function cell_deactivation!(cells_in:: Vector{Cell})
             _deactivate_referenced_cells!(cell)
         end
     end
-    cells_to_run = Cell[]
-    for cell in cells_in
-        if !cell.is_deactivated
-            push!(cells_to_run, cell)
-        end
-    end
+    cells_to_run = filter(cell -> !cell.is_deactivated, cells_in)
     return cells_to_run
 end
 
