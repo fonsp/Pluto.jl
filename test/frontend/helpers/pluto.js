@@ -47,6 +47,8 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }
 
+export const waitForNoUpdateOngoing = (page, options = {}) => page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+
 export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
     await page.type(`${plutoInputSelector} .CodeMirror textarea`, text)
     // Wait for CodeMirror to process the input and display the text

@@ -973,7 +973,8 @@ patch: ${JSON.stringify(
         })
 
         // this class is used to tell our frontend tests that the updates are done
-        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
+        //@ts-ignore
+        document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
