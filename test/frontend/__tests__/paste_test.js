@@ -14,6 +14,7 @@ import {
     createNewNotebook,
     getCellIds,
     waitForCellOutput,
+    waitForNoUpdateOngoing,
     getPlutoUrl,
     prewarmPluto,
     waitForCellOutputToChange,
@@ -56,7 +57,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 
@@ -87,7 +88,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 
@@ -129,7 +130,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 

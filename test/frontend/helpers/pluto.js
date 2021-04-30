@@ -47,6 +47,20 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }
 
+export const waitForNoUpdateOngoing = (page, options = {}) => page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+
+// const delay = (t) => new Promise(r => setTimeout(r, t))
+
+// const pollForTruthy = async (f, {poll=100}) => {
+//     if(f()) {
+//         return
+//     } else {
+//         await delay(poll)
+//         return await pollForTruthy(f, {poll})
+//     }
+// }
+// const waitForNoUpdateOngoing = (options) => pollForTruthy(() => document.body._update_is_ongoing === false, options)
+
 export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
     await page.type(`${plutoInputSelector} .CodeMirror textarea`, text)
     // Wait for CodeMirror to process the input and display the text
