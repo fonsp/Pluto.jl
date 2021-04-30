@@ -193,7 +193,7 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
-pluto-output pre > code{
+pluto-output pre > code {
     font-size: inherit;
 }
 
@@ -214,8 +214,13 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
-    font-size: .75rem;
+    font-size: 0.75rem;
     font-variant-ligatures: none;
+}
+
+pluto-display pre {
+    white-space: pre;
+    word-break: normal;
 }
 
 pluto-output hr {
@@ -364,7 +369,6 @@ pluto-output table > tbody td {
 pluto-output table > tbody td code {
     font-size: 0.75rem;
 }
-
 
 pluto-output table td,
 pluto-output table th {
@@ -725,10 +729,12 @@ main > preamble {
     margin-top: 5px;
     padding-right: 5px;
     z-index: 20;
+    pointer-events: none;
 }
 
 main > preamble #saveall-container {
     margin-left: auto;
+    pointer-events: all;
     right: min(0px, 700px + 25px - 100vw);
     position: relative;
     background: #ffffff;
@@ -853,6 +859,11 @@ pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
+/* as embedded display: */
+
+pluto-display > div {
+    display: inline-block;
+}
 /* SELECTION */
 
 pluto-cell.selected {

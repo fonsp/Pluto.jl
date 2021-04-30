@@ -920,7 +920,7 @@ details(md"""
 
 # ╔═╡ cc318a19-316f-4fd9-8436-fb1d42f888a3
 demo_img = let
-	url = "https://upload.wikimedia.org/wikipedia/commons/thumb/8/86/Golden_Retriever_10weeks.jpg/120px-Golden_Retriever_10weeks.jpg"
+	url = "https://user-images.githubusercontent.com/6933510/116753174-fa40ab80-aa06-11eb-94d7-88f4171970b2.jpeg"
 	data = read(download(url))
 	PlutoUI.Show(MIME"image/jpg"(), data)
 end
