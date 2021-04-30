@@ -496,8 +496,8 @@ export class Editor extends Component {
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
 
-                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
+                    // We wrap the bond value in an object so immer assumes it is changed
                     notebook.bonds[symbol] = { value: value }
                 })
             },
