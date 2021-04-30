@@ -1133,6 +1133,16 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+
+pluto-cell.is_deactivated > pluto-trafficlight {
+    background-color: rgb(255, 255, 255);
+}
+
+pluto-cell.is_deactivated.has_execution_barrier > pluto-trafficlight {
+    background-color: rgba(139, 139, 139, 0.25);
+    opacity: 0.3;
+}
+
 pluto-cell.drop_target {
     position: relative;
 }
