@@ -963,8 +963,8 @@ patch: ${JSON.stringify(
         //@ts-ignore
         window.editor_state = this.state
 
-        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
+            document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
 

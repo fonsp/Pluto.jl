@@ -84,7 +84,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
             if (!node_is_invalidated) {
                 // send to the Pluto back-end (have a look at set_bond in Editor.js)
                 const to_send = await transformed_val(val)
-                on_bond_change(bond_node.getAttribute("def"), to_send, is_first_value)
+                await on_bond_change(bond_node.getAttribute("def"), to_send, is_first_value)
             }
             // the first value might want to be ignored - https://github.com/fonsp/Pluto.jl/issues/275
             is_first_value = false
