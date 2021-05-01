@@ -1688,6 +1688,7 @@ body > nav#slide_controls > button.next > span::after {
 .CodeMirror-hints {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
+    z-index: 100;
 }
 
 li.CodeMirror-hint {
