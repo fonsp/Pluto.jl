@@ -97,7 +97,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp = Date.now() }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -310,13 +310,19 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
             }
         })
 
+        const dump = document.createElement("p-dumpster")
+        dump.append(...container.current.childNodes)
+
         // Actually "load" the html
         container.current.innerHTML = body
+
+        // do this synchronously after loading HTML
+        const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
-                script_nodes: Array.from(container.current.querySelectorAll("script")),
+                script_nodes: new_scripts,
                 invalidation: invalidation,
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
