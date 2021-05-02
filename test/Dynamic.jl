@@ -148,4 +148,53 @@ end
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
     end
+
+    @testset "PlutoRunner API" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = true
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        notebook = Notebook([
+            Cell("PlutoRunner.notebook_id[] |> Text"),
+            Cell("""
+            let
+                a = PlutoRunner.publish(Dict(
+                    "hello" => "world",
+                    "xx" => UInt8[6,7,8],
+                ))
+                b = PlutoRunner.publish("cool")
+                Text((a, b))
+            end
+            """),
+            Cell("3"),
+            Cell("PlutoRunner.publish_to_js(Ref(4))"),
+            Cell("PlutoRunner.publish_to_js((ref=4,))"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_save_run!(🍭, notebook, notebook.cells)
+        @test notebook.cells[1].output.body == notebook.notebook_id |> string
+
+        @test !notebook.cells[2].errored
+        a, b = Meta.parse(notebook.cells[2].output.body) |> eval
+        p = notebook.cells[2].published_objects
+        @test sort(collect(keys(p))) == sort([a,b])
+        @test isempty(notebook.cells[3].published_objects)
+
+        @test p[a] == Dict(
+            "hello" => "world",
+            "xx" => UInt8[6,7,8],
+        )
+        @test p[b] == "cool"
+
+        setcode(notebook.cells[2], "2")
+        update_save_run!(🍭, notebook, notebook.cells)
+        @test isempty(notebook.cells[2].published_objects)
+
+        @test notebook.cells[4].errored
+        @test !notebook.cells[5].errored
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 end

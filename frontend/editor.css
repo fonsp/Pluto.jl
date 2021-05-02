@@ -46,7 +46,7 @@ main {
     flex: 1;
 
     max-width: calc(700px + 25px + 6px); /* 700px + both paddings */
-    padding-top: 20px;
+    padding-top: 0px;
     padding-bottom: 4rem;
     padding-left: 25px;
     padding-right: 6px;
@@ -54,10 +54,14 @@ main {
     width: 100%;
 }
 
+body:not(.disable_ui) main {
+    padding-bottom: 16rem;
+}
+
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 
-@media screen and (min-width: calc(700px + 25px + 6px + 350px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
+@media screen and (min-width: calc(700px + 25px + 6px)) and (max-width: calc(700px + 25px + 6px + 500px)) {
     body:not(.disable_ui) main {
         margin-left: 0px;
         align-self: flex-start;
@@ -189,12 +193,16 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
+pluto-output pre > code {
+    font-size: inherit;
+}
+
 pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
 }
-pluto-output.rich_output pre code {
+pluto-output.rich_output pre > code {
     padding: 0px;
 }
 
@@ -206,7 +214,13 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
     font-variant-ligatures: none;
+}
+
+pluto-display pre {
+    white-space: pre;
+    word-break: normal;
 }
 
 pluto-output hr {
@@ -221,7 +235,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output.rich_output pre,
+pluto-output.rich_output pre:not(.no-block),
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
@@ -352,6 +366,9 @@ pluto-output table > tbody td {
     font-size: 0.75rem;
     font-variant-ligatures: none;
 }
+pluto-output table > tbody td code {
+    font-size: 0.75rem;
+}
 
 pluto-output table td,
 pluto-output table th {
@@ -364,6 +381,17 @@ pluto-output table > tbody tr:hover {
 pluto-output table pre {
     white-space: pre;
 }
+
+pluto-output kbd,
+kbd {
+    font-family: "Space Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: -0.7px;
+    border: 1px solid #dfdfdf;
+    padding: 0px 2px;
+    border-radius: 3px;
+}
+
 /* HEADER */
 
 body > header {
@@ -372,7 +400,7 @@ body > header {
     width: 100%;
     min-height: 60px;
 
-    z-index: 5;
+    z-index: 50;
     background-color: white;
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
@@ -396,7 +424,7 @@ aside#export {
     height: 130px;
     background: rgb(60, 67, 101);
     color: rgba(255, 255, 255, 0.7);
-    transform: translateY(-100%);
+    transform: translateY(-101%);
 }
 aside#export::before {
     content: "";
@@ -480,7 +508,7 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
-    z-index: 10;
+    z-index: 100;
 }
 
 nav#at_the_top > * {
@@ -672,7 +700,7 @@ nav#at_the_top > #process_status {
     margin: 5px;
     background: white;
     border-radius: 10px;
-    z-index: 1;
+    z-index: 10;
     margin-left: 1em;
 }
 
@@ -703,20 +731,53 @@ body.binder.loading loading-bar {
 
 main > preamble {
     display: flex;
-    position: relative;
     height: 20px;
+    position: sticky;
+    top: 5px;
+    margin-top: 5px;
+    padding-right: 5px;
+    z-index: 200;
+    pointer-events: none;
 }
 
-main > preamble > button {
-    display: none;
-    right: 0px;
+main > preamble #saveall-container {
+    margin-left: auto;
+    pointer-events: all;
+    right: min(0px, 700px + 25px - 100vw);
+    position: relative;
+    background: #ffffff;
+    padding: 5px 8px;
+    border: 3px solid #e3e3e3;
+    border-radius: 12px;
+    height: 35px;
+    font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
+    font-size: 0.75rem;
 }
 
-main > preamble > button > span::after {
-    content: "Submit all changes";
-    display: block;
+@media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
+    main > preamble #saveall-container {
+        right: -500px;
+    }
+}
+
+main > preamble #saveall-container.saving,
+main > preamble #saveall-container.saved {
+    border-color: transparent;
+}
+
+main > preamble #saveall-container.saving > span,
+main > preamble #saveall-container.saved > span {
+    opacity: 0.5;
+}
+
+main > preamble span.saved-icon::after,
+main > preamble span.saving-icon::after {
+    content: "";
+    display: inline-block;
     padding-right: 20px;
-
+    /* width: 17px; */
+    height: 17px;
+    margin-bottom: -3px;
     background-size: 17px 17px;
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/sync-circle-outline.svg);
     background-repeat: no-repeat;
@@ -724,9 +785,23 @@ main > preamble > button > span::after {
     background-position-y: 1px;
 }
 
-body.code_differs > main > preamble > button {
-    display: block;
+main > preamble span.saved-icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/checkmark-outline.svg);
 }
+main > preamble button {
+    position: relative;
+}
+
+#saveall-container .only-on-hover {
+    display: none;
+}
+#saveall-container:hover .only-on-hover {
+    display: inline;
+}
+
+/* body:not(.code_differs) > main > preamble #saveall-container {
+    display: none;
+} */
 
 /* CELL */
 
@@ -784,10 +859,19 @@ pluto-output > div {
     overflow-y: hidden;
 }
 
+pluto-output div.raw-html-wrapper {
+    display: contents;
+}
+
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
+/* as embedded display: */
+
+pluto-display > div {
+    display: inline-block;
+}
 /* SELECTION */
 
 pluto-cell.selected {
@@ -842,7 +926,7 @@ pluto-cell:hover > pluto-output > div::-webkit-scrollbar-thumb {
 pluto-input .CodeMirror {
     height: auto !important;
     width: auto;
-    z-index: 2;
+    z-index: 20;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
@@ -868,7 +952,7 @@ pluto-cell.code_differs > pluto-input > .CodeMirror {
 
 /* UI */
 
-preamble > button,
+preamble button,
 pluto-cell > button,
 pluto-input > button,
 pluto-runarea > button,
@@ -885,7 +969,7 @@ nav#slide_controls > button {
     color: black;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
-    z-index: 3;
+    z-index: 30;
     /* CodeMirror is 2 */
 }
 
@@ -1075,7 +1159,7 @@ pluto-cell.drop_target pluto-input::after {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2;
+    z-index: 20;
     background-color: rgba(255, 255, 255, 0.75);
     content: "+ Drop file here";
 }
@@ -1128,7 +1212,7 @@ pluto-input > button > span {
         transition: opacity 0.25s ease-in-out;
     }
     button.toggle_export:hover,
-    preamble > button:hover,
+    preamble button:hover,
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
     pluto-cell > pluto-runarea > button:hover,
@@ -1422,7 +1506,7 @@ dropruler {
     bottom: 0px;
     height: 0px;
     width: 100%;
-    z-index: 5;
+    z-index: 50;
 }
 
 @media (min-width: 500px) {
@@ -1576,7 +1660,7 @@ footer {
     font-size: 0.75rem;
     background-color: #d7dcd3;
     color: #333333;
-    z-index: 7;
+    z-index: 70;
 }
 
 footer form {
@@ -1648,7 +1732,7 @@ footer button {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 20;
+    z-index: 1000;
     display: block;
     position: fixed;
     bottom: 0px;
@@ -1708,7 +1792,7 @@ body.presentation > nav#slide_controls {
     position: fixed;
     bottom: 0px;
     right: 0px;
-    z-index: 10;
+    z-index: 100;
 }
 
 body > nav#slide_controls > button {
@@ -1735,6 +1819,7 @@ body > nav#slide_controls > button.next > span::after {
 .CodeMirror-hints {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
+    z-index: 100;
 }
 
 li.CodeMirror-hint {

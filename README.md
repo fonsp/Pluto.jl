@@ -3,7 +3,7 @@
 <blockquote>
 <a href="https://plutojl.org/plutocon2021"><img align="right" src=https://user-images.githubusercontent.com/6933510/111311607-b49a7000-865e-11eb-9c67-dd411b832096.png height="130px"></a>
   <h2><a href="https://plutojl.org/plutocon2021">PlutoCon 2021</a> — April 8th-9th</h2>
-  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers. <em>You can give a talk!</em></p>
+  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers</p>
 </blockquote>
 
 <br>
@@ -24,7 +24,7 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 -   **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
-<p align="center"><a href="https://mybinder.org/v2/gh/fonsp/pluto-on-binder/master?urlpath=pluto">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
+<p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
 
 ### Input
 
@@ -96,7 +96,7 @@ julia> ]
 (v1.5) pkg> add Pluto
 ```
 
-_Using the package manager for the first time can take up to 15 minutes - hang in there!_
+_Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
 
 To run the notebook server:
 

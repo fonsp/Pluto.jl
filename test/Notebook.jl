@@ -231,6 +231,8 @@ end
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
+
+            @test readdir(new_dir) == ["nb backup 1.jl", "nb.jl"]
         end
     end
 

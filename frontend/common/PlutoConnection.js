@@ -92,9 +92,10 @@ const try_close_socket_connection = (socket) => {
  * @typedef {{socket: WebSocket, send: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
+ * @param {number} timeout_s Timeout for creating the websocket connection (seconds)
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
@@ -104,7 +105,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
             try_close_socket_connection(socket)
             reject("Socket timeout")
-        }, timeout_ms)
+        }, timeout_s * 1000)
 
         const send_encoded = (message) => {
             const encoded = pack(message)
@@ -195,6 +196,7 @@ const default_ws_address = () => ws_address_from_base(window.location.href)
  *  version_info: {
  *      julia: string,
  *      pluto: string,
+ *      dismiss_update_notification: boolean,
  *  },
  * }}
  */
@@ -233,6 +235,7 @@ export const create_pluto_connection = async ({
         version_info: {
             julia: "unknown",
             pluto: "unknown",
+            dismiss_update_notification: false,
         },
     } // same
 
@@ -365,7 +368,7 @@ export const create_pluto_connection = async ({
     return client
 }
 
-export const fetch_latest_pluto_version = async () => {
+export const fetch_pluto_releases = async () => {
     let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
@@ -376,6 +379,5 @@ export const fetch_latest_pluto_version = async () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-    let json = await response.json()
-    return json[0].tag_name
+    return (await response.json()).reverse()
 }

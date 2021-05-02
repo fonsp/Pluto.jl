@@ -1,6 +1,6 @@
 // mostly based on https://developers.google.com/web/fundamentals/primers/service-workers
 
-const DEBUG = true
+const DEBUG = false
 const noop = () => {}
 const logger = {
     log: DEBUG ? console.log : noop,

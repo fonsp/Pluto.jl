@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
@@ -8,6 +8,10 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import register from "../imports/PreactCustomElement.js"
+
+//@ts-ignore
+const CodeMirror = window.CodeMirror
 
 export class CellOutput extends Component {
     constructor() {
@@ -75,22 +79,25 @@ export let PlutoImage = ({ body, mime }) => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
 
         imgref.current.onload = imgref.current.onerror = () => {
-            imgref.current.style.display = null
+            if (imgref.current) {
+                imgref.current.style.display = null
+            }
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
             // the solution is to make the <img> invisible until the image is loaded
             imgref.current.style.display = "none"
         }
+        imgref.current.type = mime
         imgref.current.src = url
 
         return () => URL.revokeObjectURL(url)
-    }, [body])
+    }, [body, mime])
 
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_timestamp }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -130,17 +137,21 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_tim
             break
 
         case "text/plain":
-        default:
             if (body) {
                 return html`<div>
-                    <pre><code>${body}</code></pre>
+                    <pre class="no-block"><code>${body}</code></pre>
                 </div>`
             } else {
                 return html`<div></div>`
             }
             break
+        default:
+            return html``
+            break
     }
 }
+
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -241,11 +252,13 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 if (is_displayable(old_result)) {
                     node.parentElement.insertBefore(old_result, node)
                 }
+
                 let result = await execute_dynamic_function({
                     environment: {
                         this: script_id ? old_result : window,
                         currentScript: node,
                         invalidation: invalidation,
+                        getPublishedObject: (id) => node.closest("pluto-cell").getPublishedObject(id),
                         ...observablehq_for_cells,
                     },
                     code: node.innerText,
@@ -297,21 +310,27 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
             }
         })
 
+        const dump = document.createElement("p-dumpster")
+        dump.append(...container.current.childNodes)
+
         // Actually "load" the html
         container.current.innerHTML = body
+
+        // do this synchronously after loading HTML
+        const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
-                script_nodes: Array.from(container.current.querySelectorAll("script")),
+                script_nodes: new_scripts,
                 invalidation: invalidation,
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
-                    pluto_actions.set_bond(name, value, is_first_value)
+                let remove_bonds_listener = add_bonds_listener(container.current, async (name, value, is_first_value) => {
+                    await pluto_actions.set_bond(name, value, is_first_value)
                 })
                 invalidation.then(remove_bonds_listener)
             }
@@ -333,8 +352,10 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                 for (let code_element of container.current.querySelectorAll("code")) {
                     for (let className of code_element.classList) {
                         if (className.startsWith("language-")) {
+                            let language = className.substr(9)
+
                             // Remove "language-"
-                            highlight(code_element, className.substr(9))
+                            highlight(code_element, language)
                         }
                     }
                 }
@@ -346,23 +367,32 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div ref=${container}></div>`
+    return html`<div class="raw-html-wrapper" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
     if (code_element.children.length === 0) {
-        // @ts-ignore
-        window.CodeMirror.requireMode(
-            language,
-            function () {
-                window.CodeMirror.runMode(code_element.innerText, language, code_element)
+        let mode = language // fallback
+
+        let info = CodeMirror.findModeByName(language)
+        if (info) {
+            mode = info.mode
+        }
+
+        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+        if (mode == "jl") {
+            mode = "julia"
+        }
+
+        CodeMirror.requireMode(
+            mode,
+            () => {
+                CodeMirror.runMode(code_element.innerText, mode, code_element)
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: function (language) {
-                    return `https://cdn.jsdelivr.net/npm/codemirror@5.58.1/mode/${language}/${language}.min.js`
-                },
+                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
             }
         )
     }

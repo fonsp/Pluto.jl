@@ -29,7 +29,7 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
             return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
         case "text/plain":
-            return html`<pre>${body}</pre>`
+            return html`<pre class="no-block">${body}</pre>`
         default:
             return html`<pre title="Something went wrong displaying this object">🛑</pre>`
             break
@@ -52,21 +52,21 @@ const More = ({ on_click_more }) => {
     >`
 }
 
+const prefix = ({ prefix, prefix_short }) => html`<jlprefix class="long">${prefix}</jlprefix><jlprefix class="short">${prefix_short}</jlprefix>`
+
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoContext)
     const node_ref = useRef(null)
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
-        if (e.target !== self && !self.classList.contains("collapsed")) {
+        let clicked = e.target.tagName === "JLPREFIX" ? e.target.parentElement : e.target
+        if (clicked !== self && !self.classList.contains("collapsed")) {
             return
         }
-        var parent_tree = self.parentElement
-        while (parent_tree.tagName != "PLUTO-OUTPUT") {
-            parent_tree = parent_tree.parentElement
-            if (parent_tree.tagName == "JLTREE" && parent_tree.classList.contains("collapsed")) {
-                return // and bubble upwards
-            }
+        const parent_tree = self.parentElement.closest("jltree")
+        if (parent_tree != null && parent_tree.classList.contains("collapsed")) {
+            return // and bubble upwards
         }
 
         self.classList.toggle("collapsed")
@@ -75,7 +75,8 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         if (node_ref.current.closest("jltree.collapsed") != null) {
             return false
         }
-        pluto_actions.reshow_cell(cell_id, body.objectid, 1)
+        const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
+        actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, body.objectid, 1)
     }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
@@ -93,12 +94,14 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         case "Array":
         case "Set":
         case "Tuple":
-            inner = html`${body.prefix}<jlarray class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`))}</jlarray
+            inner = html`${prefix(body)}<jlarray class=${body.type}
+                    >${body.elements.map((r) =>
+                        r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`
+                    )}</jlarray
                 >`
             break
         case "Dict":
-            inner = html`${body.prefix}<jldict class=${body.type}
+            inner = html`${prefix(body)}<jldict class=${body.type}
                     >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
                 >`
             break
@@ -108,7 +111,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
             >`
             break
         case "struct":
-            inner = html`${body.prefix}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
+            inner = html`${prefix(body)}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
             break
     }
 
@@ -122,7 +125,8 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
     const more = (dim) => html`<${More}
         on_click_more=${() => {
-            pluto_actions.reshow_cell(cell_id, body.objectid, dim)
+            const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
+            actions.reshow_cell(cell_id ?? node_ref.current.closest("pluto-cell").id, body.objectid, dim)
         }}
     />`
 
@@ -149,7 +153,7 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
         )}
     </tbody>`
 
-    return html`<table class="pluto-table">
+    return html`<table class="pluto-table" ref=${node_ref}>
         ${thead}${tbody}
     </table>`
 }

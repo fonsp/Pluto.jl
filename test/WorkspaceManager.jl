@@ -11,6 +11,7 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, 
         fakeclientA = ClientSession(:fakeA, nothing)
         fakeclientB = ClientSession(:fakeB, nothing)
         🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = true
         🍭.connected_clients[fakeclientA.id] = fakeclientA
         🍭.connected_clients[fakeclientB.id] = fakeclientB
 
