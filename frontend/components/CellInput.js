@@ -88,6 +88,9 @@ export const CellInput = ({
             mode: "julia",
             lineWrapping: true,
             viewportMargin: Infinity,
+            dragDrop: false /* Performance is too bad. 
+            - Before: https://user-images.githubusercontent.com/6933510/116729854-fcdfd880-a9e7-11eb-9c88-f88f31ac352e.mov 
+            - After: https://user-images.githubusercontent.com/6933510/116729764-d91c9280-a9e7-11eb-82df-d2f804630394.mov */,
             placeholder: "Enter cell code...",
             indentWithTabs: true,
             indentUnit: 4,

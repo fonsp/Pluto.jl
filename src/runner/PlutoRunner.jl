@@ -417,18 +417,19 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
+    currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
+        tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
     else
-        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, id)
+        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, cell_id)
         old[showmore] = get(old, showmore, 0) + 1
         old
     end
 
-    ans = cell_results[id]
+    ans = cell_results[cell_id]
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
@@ -441,8 +442,8 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
-        runtime = get(cell_runtimes, id, nothing),
-        published_objects = get(cell_published_objects, id, Dict{String,Any}()),
+        runtime = get(cell_runtimes, cell_id, nothing),
+        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
     )
 end
 
@@ -1226,15 +1227,17 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish(x)::String
+function publish(x, id_start)::String
     if !packable(x)
         throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
     end
+    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
 end
+
+publish(x) = publish(x, string(objectid(x), base=16))
 
 """
     publish_to_js(x)
@@ -1264,12 +1267,12 @@ let
 end
 ```
 """
-function publish_to_js(x)::String
-    id = publish(x)
+function publish_to_js(args...)::String
+    id = publish(args...)
     return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
 end
 
-const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
+const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
 packable(::Packable) = true
 packable(::Any) = false
 packable(::Vector{<:Packable}) = true
@@ -1278,6 +1281,82 @@ packable(x::Vector) = all(packable, x)
 packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
 packable(t::Tuple) = all(packable, t)
 packable(t::NamedTuple) = all(packable, t)
+
+struct EmbeddableDisplay
+    x
+    script_id
+end
+
+function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
+    body, mime = format_output_default(e.x, io)
+	
+    write(io, """
+    <pluto-display></pluto-display>
+    <script id=$(e.script_id)>
+
+        // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
+        
+        const body = $(publish_to_js(body, e.script_id))
+        const mime = "$(string(mime))"
+        
+        const create_new = this == null || this._mime !== mime
+        
+        const display = create_new ? currentScript.previousElementSibling : this
+        
+        display.persist_js_state = true
+        display.body = body
+        if(create_new) {
+            // only set the mime if necessary, it triggers a second preact update
+            display.mime = mime
+            // add it also as unwatched property to prevent interference from Preact
+            display._mime = mime
+        }
+        return display
+
+    </script>
+	""")
+end
+
+export embed_display
+
+"""
+    embed_display(x)
+
+A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_. 
+
+# Example
+
+Markdown can interpolate HTML-showable objects, including the embedded display:
+
+```julia
+md"\""
+# Cool data
+
+\$(embed_display(rand(10)))
+
+Wow!
+"\""
+```
+
+You can use HTML templating packages to create cool layouts, like two arrays side-by-side:
+
+```julia
+using HypertextLiteral
+```
+
+```julia
+@htl("\""
+
+<div style="display: flex;">
+\$(embed_display(rand(4)))
+\$(embed_display(rand(4)))
+</div>
+
+"\"")
+```
+
+"""
+embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
 
 

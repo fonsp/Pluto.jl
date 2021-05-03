@@ -85,6 +85,7 @@ export const Cell = ({
     useLayoutEffect(() => {
         Object.assign(node_ref.current, {
             getPublishedObject: (id) => published_objects_ref.current[id],
+            _internal_pluto_actions: pluto_actions,
         })
 
         set_cell_api_ready(true)

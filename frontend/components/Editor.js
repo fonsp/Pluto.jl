@@ -505,8 +505,8 @@ export class Editor extends Component {
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
 
-                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
+                    // We wrap the bond value in an object so immer assumes it is changed
                     notebook.bonds[symbol] = { value: value }
                 })
             },
@@ -972,8 +972,8 @@ patch: ${JSON.stringify(
         //@ts-ignore
         window.editor_state = this.state
 
-        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
         if (old_state?.notebook?.path !== this.state.notebook.path) {
+            document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
             update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
         }
 
@@ -982,7 +982,8 @@ patch: ${JSON.stringify(
         })
 
         // this class is used to tell our frontend tests that the updates are done
-        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
+        //@ts-ignore
+        document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done
