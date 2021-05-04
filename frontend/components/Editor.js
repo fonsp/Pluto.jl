@@ -972,9 +972,13 @@ patch: ${JSON.stringify(
         //@ts-ignore
         window.editor_state = this.state
 
-        if (old_state?.notebook?.path !== this.state.notebook.path) {
-            document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
-            update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
+        const new_state = this.state
+
+        if (old_state?.notebook?.path !== new_state.notebook.path) {
+            update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
+        }
+        if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
+            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
         Object.entries(this.cached_status).forEach((e) => {
