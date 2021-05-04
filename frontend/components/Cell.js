@@ -117,8 +117,8 @@ export const Cell = ({
             <!-- This code would display for each cell a list of all upstream dependencies, with hyperlinks to the corresponding cells, if the dependencies are defined inside the notebook.
             <UL>
                 ${Object.entries(upstream_cells_map ?? {}).map(([key, listofcell_ids]) => {
-                    return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
-                })}
+                return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
+            })}
             </UL>
             -->
             <!-- Show raw cell dependency data of the cell
@@ -191,22 +191,10 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
+                set_waiting_to_run=${set_waiting_to_run}
+                has_execution_barrier=${has_execution_barrier}
             />
             <${RunArea}
-                onRightClick=${(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    pluto_actions.update_notebook((notebook) => {
-                        notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
-                    })
-                    // run cell if execution barrier is deactivated
-                    if (has_execution_barrier == true) {
-                        // this is the status before the change
-                        set_waiting_to_run(true)
-                    }
-                    pluto_actions.set_and_run_multiple([cell_id])
-                    return false
-                }}
                 onClick=${() => {
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
@@ -217,7 +205,6 @@ export const Cell = ({
                             let cell_to_run = selected ? selected_cells : [cell_id]
                             pluto_actions.set_and_run_multiple(cell_to_run)
                         }
-                        
                     }
                 }}
                 runtime=${runtime}

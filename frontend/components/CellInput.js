@@ -54,6 +54,8 @@ export const CellInput = ({
     on_drag_drop_events,
     cell_id,
     notebook_id,
+    set_waiting_to_run,
+    has_execution_barrier,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -505,13 +507,61 @@ export const CellInput = ({
     }, [show_input])
 
     // TODO effect hook for disable_input?
-
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <${InputOptions}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                set_waiting_to_run=${set_waiting_to_run}
+                has_execution_barrier=${has_execution_barrier}
+            />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
+}
+
+const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_barrier }) => {
+    const timeout = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const [open, setOpen] = useState(false)
+    const mouseenter = () => {
+        clearTimeout(timeout.current)
+    }
+    const mouseleave = () => {
+        timeout.current = setTimeout(() => setOpen(false), 500)
+    }
+    const handleExecutionBarrier = (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
+        })
+        // run cell if execution barrier is deactivated
+        if (has_execution_barrier == true) {
+            // this is the status before the change
+            set_waiting_to_run(true)
+        }
+        pluto_actions.set_and_run_multiple([cell_id])
+        return false
+    }
+
+    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} class="delete_cell" title="Actions">
+        <span class="icon"></span>
+        ${open &&
+        html`<ul onMouseenter=${mouseenter} class="input_menu">
+            <li
+                onClick=${handleExecutionBarrier}
+                title=${has_execution_barrier
+                    ? "Removing the barrier re-runs your code"
+                    : "Adding a barrier stops this and dependent cells for reactive running"}
+            >
+                ${has_execution_barrier ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
+                ${has_execution_barrier ? html`Remove Execution Barrier` : html`Set Execution Barrier`}
+            </li>
+            <li class="coming_soon" title="Download output as CSV!"><span class="download_icon" /> Download as CSV</li>
+            <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+        </ul>`}
+    </button>`
 }
 
 const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"

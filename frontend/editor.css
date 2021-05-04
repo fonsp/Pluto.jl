@@ -1153,7 +1153,6 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-
 pluto-cell.is_deactivated > pluto-trafficlight {
     background-color: rgb(255, 255, 255);
 }
@@ -1297,6 +1296,88 @@ pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
 }
+pluto-input > button.delete_cell .input_menu {
+    left: 100%;
+    padding: 4px;
+    top: 0;
+    display: block;
+    position: absolute;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0 8px 0 8px;
+}
+ul.input_menu {
+    margin: 0;
+}
+.input_menu li {
+    font-family: "Roboto Mono", monospace;
+    font-size: 0.75rem;
+    color: #333333ff;
+    position: relative;
+    list-style: none;
+    padding: 8px;
+    width: 245px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 2px 6px 2px 6px;
+}
+
+.input_menu li:not(:last-child) {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+.input_menu li.coming_soon:hover::after{
+    color: #333333ff;
+    left: 0;
+    opacity: 1;
+    line-height: 32px;
+    pointer-events: none;
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    content: "Coming soon!! 😇";
+}
+
+.input_menu li.coming_soon:hover{
+    background-color:rgba(204, 247, 239, 0.5);
+    color: #33333311
+}
+
+.input_menu li:hover {
+    transition-property: background-color;
+    transition-duration: 200ms; 
+    background-color:rgba(0, 0, 0, 0.1)
+}
+
+.barrier_icon,
+.delete_icon, 
+.download_icon,
+.ccopy_icon,
+.run_icon {
+    --size: 17px;
+    width:  var(--size);
+    height: var(--size);
+    margin-top: 1px;
+    background-size: var(--size) var(--size);
+    background-position: center;
+    margin-right: calc(var(--size) / 3);
+}
+
+.run_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-outline.svg);
+}
+.ccopy_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/copy-outline.svg);
+}
+.download_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-download-outline.svg);
+}
+.barrier_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/stop-circle-outline.svg);
+}
+.delete_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg);
+}
 
 pluto-input > button.delete_cell {
     /* top: 3px; */
@@ -1305,8 +1386,8 @@ pluto-input > button.delete_cell {
     padding: 5px;
 }
 
-pluto-input > button.delete_cell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg);
+pluto-input > button.delete_cell > span.icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-circle-outline.svg);
 }
 
 /* RUNAREA */
@@ -1351,10 +1432,6 @@ pluto-runarea > button.runcell > span::after {
 pluto-cell.running > pluto-runarea > button.runcell > span::after,
 pluto-cell.queued > pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/stop-circle-outline.svg);
-}
-
-pluto-cell.has_execution_barrier > pluto-runarea > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/pause-circle-outline.svg);
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {
@@ -1921,4 +1998,5 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
 .cm-s-default.CodeMirror-empty {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
+}
 }
