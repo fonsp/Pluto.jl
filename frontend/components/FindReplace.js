@@ -28,28 +28,28 @@ export const FindReplace = () => {
     }
 
     const try_as_regex = (word) => {
-      try{
-        var regex_word = new RegExp(word.substring(1, word.length - 1))
-        set_invalid_regex(false)
-        return regex_word
-      }
-      catch(e){
-        set_invalid_regex(true)
-      }
-      return word
+        try {
+            var regex_word = new RegExp(word.substring(1, word.length - 1))
+            set_invalid_regex(false)
+            return regex_word
+        } catch (e) {
+            set_invalid_regex(true)
+        }
+        return word
     }
 
     const preprocess_word = (word) => {
-      set_invalid_regex(false)
-      var is_regex_candidate = word && word.length > 2 && word[0] == "/" && word.slice(-1) == "/"
-      return is_regex_candidate ? try_as_regex(word) : word
+        set_invalid_regex(false)
+        var is_regex_candidate = word && word.length > 2 && word[0] == "/" && word.slice(-1) == "/"
+        return is_regex_candidate ? try_as_regex(word) : word
     }
 
+    const processedWord = preprocess_word(word)
     const create_textmarkers = (replaceText) => {
         clear_all_markers()
         const tms = get_codeMirrors().flatMap(({ cell_id, cm }) => {
             const localCursors = []
-            const cursor = cm.getSearchCursor(preprocess_word(word))
+            const cursor = cm.getSearchCursor(processedWord)
             while (cursor.findNext()) {
                 if (replaceText) cursor.replace(replaceText)
                 const textmarker = new TextMarker(cell_id, cm, cursor.from(), cursor.to())
@@ -69,12 +69,13 @@ export const FindReplace = () => {
         const markerIndex = textmarkers.indexOf(marker)
 
         // last in the list
-        if(markerIndex + 1 == length){
-          create_textmarkers()
-          return
+        if (markerIndex + 1 == length) {
+            create_textmarkers()
+            return
         }
 
         const nextMarker = textmarkers[(markerIndex + 1) % length]
+        console.log(nextMarker, "nextmarker")
         if (nextMarker) {
             const { cm, from, to } = nextMarker
             cm?.scrollIntoView({ from, to })
@@ -87,17 +88,6 @@ export const FindReplace = () => {
     const replace_with = (word_to_replace_with) => {
         marker?.replace_with(word_to_replace_with ?? "")
         // Now we need to recalculate the markers of this codemirror, starting at the new end position of marker.
-        const offset = word_to_replace_with?.length - word.length
-        textmarkers.forEach((tm) => {
-            // If a marker is in the same cm and after the replaced marker, adjust offsets
-            if (
-                tm.codemirror === marker.codemirror &&
-                tm !== marker &&
-                (tm.from.line > marker.to.line || (tm.from.line === marker.to.line && tm.from.ch >= marker.to.ch))
-            ) {
-                tm.offset(offset)
-            }
-        })
         // replace (even if nothing is selected) results in a find-next
         // recalculate all markers!
         if (!word_to_replace_with) {
@@ -106,7 +96,9 @@ export const FindReplace = () => {
             const next = next_i !== i ? textmarkers[next_i] : null
             set_textmarkers(textmarkers.filter((tm) => tm !== marker))
             set_marker(next)
-        } else find_next()
+        } else {
+            find_next()
+        }
     }
 
     const replace_all = (with_word = "") => {
@@ -121,7 +113,7 @@ export const FindReplace = () => {
         })
         create_textmarkers()
     }
-    const throttle_set_word = _.throttle((word) => set_word(word), 250)
+    const throttle_set_word = _.throttle((word) => set_word(word), 120)
 
     const handle_find_value_change = (event) => {
         // Enter
@@ -159,7 +151,6 @@ export const FindReplace = () => {
         } else {
             !visible ? create_textmarkers() : clear_all_markers()
             set_visible(!visible)
-            //setTimeout(create_textmarkers, 500)
         }
     }
     useEffect(() => {
@@ -179,7 +170,13 @@ export const FindReplace = () => {
     return html`<div id="findreplace">
         <aside id="findreplace_container" class=${visible ? "show_findreplace" : ""}>
             <div id="findform">
-                <input id="value_input" type="text" class=${invalid_regex ? "findreplace_invalid_regex" : ""} ref=${input_find} onKeyUp=${handle_find_value_change} />
+                <input
+                    id="value_input"
+                    type="text"
+                    class=${invalid_regex ? "findreplace_invalid_regex" : ""}
+                    ref=${input_find}
+                    onKeyUp=${handle_find_value_change}
+                />
                 <button onClick=${find_next}>Next</button>
                 <output>${textmarkers?.indexOf(marker) + 1 || "?"}/${textmarkers?.length || 0}</output>
             </div>
