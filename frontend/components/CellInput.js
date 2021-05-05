@@ -2,7 +2,7 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 //@ts-ignore
@@ -59,6 +59,9 @@ export const CellInput = ({
     notebook_id,
 }) => {
     let pluto_actions = useContext(PlutoContext)
+
+    const notebook = pluto_actions.get_notebook()
+    const used_variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.upstream_cells_map || {})
 
     const cm_ref = useRef(null)
     const text_area_ref = useRef(null)
@@ -475,6 +478,17 @@ export const CellInput = ({
                 e.codemirrorIgnore = true
             }
             e.stopPropagation()
+        })
+
+        cm.on("mousedown", (cm, e) => {
+            console.log(cm, e)
+            const { which } = e
+            const path = e.path || e.composedPath()
+            const isVariable = path[0]?.classList.contains("cm-variable")
+            const varName = path[0]?.textContent
+            if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
+                document.getElementById(`variable-${varName}`).scrollIntoView()
+            }
         })
 
         if (focus_after_creation) {
