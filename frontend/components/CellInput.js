@@ -5,6 +5,9 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
+//@ts-ignore
+import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
+
 // @ts-ignore
 const CodeMirror = window.CodeMirror
 
@@ -109,6 +112,16 @@ export const CellInput = ({
                 },
             },
             matchBrackets: true,
+            configureMouse: (cm, repeat, event) => {
+                // modified version of https://github.com/codemirror/CodeMirror/blob/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a/src/edit/mouse_events.js#L116-L127
+                // because we want to change keys to match vs code
+                let alt = chromeOS ? event.metaKey : event.altKey
+                let rect = event.shiftKey && alt
+                return {
+                    unit: rect ? "rectangle" : repeat == "single" ? "char" : repeat == "double" ? "word" : "line",
+                    addNew: rect ? false : alt,
+                }
+            },
         }))
 
         const keys = {}
