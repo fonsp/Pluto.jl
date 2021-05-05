@@ -1,11 +1,43 @@
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { html, useEffect, useMemo, useState } from "../imports/Preact.js"
 
-export const RunArea = ({ runtime, onClick, running }) => {
+export const RunArea = ({ runtime, onClick, running, disable, cell_id }) => {
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
+
+    const upstream_of = (a_cell_id, notebook = window?.editor_state?.notebook) =>
+        Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
+
+    const all_upstreams_of = (a_cell_id, notebook) => {
+        const upstreams = upstream_of(a_cell_id, notebook)
+        if (upstreams.length === 0) return []
+        return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
+    }
+    const hasBarrier = (a_cell_id, notebook = window?.editor_state?.notebook) => {
+        return notebook?.cell_inputs?.[a_cell_id]?.has_execution_barrier
+    }
+
     return html`
         <pluto-runarea>
-            <button onClick=${onClick} class="runcell" title="Run"><span></span></button>
+            <button
+                onClick=${() => {
+                    if (!disable) return onClick()
+                    const barrier_cell_id = all_upstreams_of(cell_id).find((c) => hasBarrier(c))
+                    console.log(barrier_cell_id)
+                    barrier_cell_id &&
+                        window.dispatchEvent(
+                            new CustomEvent("cell_focus", {
+                                detail: {
+                                    cell_id: barrier_cell_id,
+                                    line: 1, // 1-based to 0-based index
+                                },
+                            })
+                        )
+                }}
+                class="runcell"
+                title=${disable ? "Please remove the barrier" : "Run"}
+            >
+                <span></span>
+            </button>
             <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>
         </pluto-runarea>
     `

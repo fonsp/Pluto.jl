@@ -1366,6 +1366,16 @@ ul.input_menu {
 .run_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-outline.svg);
 }
+
+pluto-cell.is_deactivated > pluto-runarea > button.runcell {
+    cursor: initial;
+}
+
+pluto-cell.has_execution_barrier > pluto-runarea > button.runcell > span::after,
+pluto-cell.is_deactivated > pluto-runarea > button.runcell > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/remove-circle-outline.svg);
+}
+
 .ccopy_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/copy-outline.svg);
 }

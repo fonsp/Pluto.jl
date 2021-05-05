@@ -195,6 +195,8 @@ export const Cell = ({
                 has_execution_barrier=${has_execution_barrier}
             />
             <${RunArea}
+                cell_id=${cell_id}
+                disable=${has_execution_barrier || is_deactivated}
                 onClick=${() => {
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)

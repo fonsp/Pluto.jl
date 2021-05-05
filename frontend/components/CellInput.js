@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -522,6 +522,7 @@ export const CellInput = ({
 
 const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_barrier }) => {
     const timeout = useRef(null)
+    const ref = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
