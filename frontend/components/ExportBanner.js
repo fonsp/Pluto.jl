@@ -23,7 +23,7 @@ const Triangle = ({ fill }) => html`
 
 export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url }) => {
     return html`
-        <aside id="export">
+        <aside id="export_menu" class="banner_menu">
             <div id="container">
                 <div class="export_title">export</div>
                 <a href=${notebookfile_url} target="_blank" class="export_card" download>
@@ -45,7 +45,28 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url }) 
                 <header>mybinder.org</header>
                 <section>Publish an interactive notebook online.</section>
             </a>-->
-                <button title="Close" class="toggle_export" onClick=${() => onClose()}>
+            <button title="Close" class="toggle_export" onClick=${onClose}>
+                    <span></span>
+                </button>
+            </div>
+        </aside>
+    `
+}
+
+
+
+export const SaveBanner = ({ onClose }) => {
+    return html`
+        <aside id="save_menu" class="banner_menu">
+            <div id="container">
+            <div id="grid">
+            <span>Filename:</span>
+            <div><input /></div>
+            <span>Folder:</span>
+            <div><input /></div>
+            </div>
+                
+                <button title="Close" class="toggle_export" onClick=${onClose}>
                     <span></span>
                 </button>
             </div>
