@@ -242,6 +242,7 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
