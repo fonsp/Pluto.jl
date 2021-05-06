@@ -557,10 +557,10 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_ba
                     : "Adding a barrier stops this and dependent cells for reactive running"}
             >
                 ${has_execution_barrier ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
-                ${has_execution_barrier ? html`Remove Execution Barrier` : html`Set Execution Barrier`}
+                ${has_execution_barrier ? html`Enable cell` : html`Disable cell`}
             </li>
-            <li class="coming_soon" title="Download output as CSV!"><span class="download_icon" /> Download as CSV</li>
             <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+            <li class="coming_soon" title=""><span class="bandage icon" /><em>Coming soon…</em></li>
         </ul>`}
     </button>`
 }

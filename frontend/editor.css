@@ -1297,13 +1297,30 @@ pluto-cell > button.add_cell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg);
 }
 pluto-input > button.delete_cell .input_menu {
+    --width: 156px;
     left: 100%;
-    padding: 4px;
+    padding: 6px;
     top: 0;
     display: block;
     position: absolute;
     border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 0 8px 0 8px;
+    background-color: white;
+}
+@media screen and (min-width: 921px) {
+
+    pluto-input > button.delete_cell .input_menu {
+        left: 100%;
+        border-radius: 0 8px 8px 8px;
+    }
+}
+@media screen and (max-width: 920px) {
+    pluto-input > button.delete_cell  {
+        z-index: 31;
+    }
+    pluto-input > button.delete_cell .input_menu {
+        left: calc(100% - var(--width) - 36px);
+        border-radius: 8px 0px 8px 8px;
+    }
 }
 ul.input_menu {
     margin: 0;
@@ -1311,36 +1328,34 @@ ul.input_menu {
 .input_menu li {
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
+    margin-block-end: 0px;
+    letter-spacing: -0.05em;
     color: #333333ff;
     position: relative;
     list-style: none;
     padding: 8px;
-    width: 245px;
+    width: var(--width);
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    border-radius: 2px 6px 2px 6px;
 }
-
+.input_menu li:last-child {
+    border-radius: 0 0 6px 6px;
+}
+.input_menu li:first-child {
+    border-radius: 6px 6px 0 0;
+}
 .input_menu li:not(:last-child) {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
-.input_menu li.coming_soon:hover::after{
-    color: #333333ff;
-    left: 0;
-    opacity: 1;
-    line-height: 32px;
-    pointer-events: none;
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    content: "Coming soon!! 😇";
-}
 
-.input_menu li.coming_soon:hover{
-    background-color:rgba(204, 247, 239, 0.5);
-    color: #33333311
+.input_menu li.coming_soon {
+    color: #55555544;
+}
+.input_menu li.coming_soon:hover {
+    cursor: not-allowed;
+    background-color:rgba(0, 0, 0, 0.1)
 }
 
 .input_menu li:hover {
@@ -1353,7 +1368,8 @@ ul.input_menu {
 .delete_icon, 
 .download_icon,
 .ccopy_icon,
-.run_icon {
+.run_icon,
+.icon {
     --size: 17px;
     width:  var(--size);
     height: var(--size);
@@ -1362,7 +1378,10 @@ ul.input_menu {
     background-position: center;
     margin-right: calc(var(--size) / 3);
 }
-
+.bandage {
+    filter: opacity(0.3);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/bandage-outline.svg);
+}
 .run_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-outline.svg);
 }
