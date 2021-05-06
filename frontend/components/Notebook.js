@@ -76,8 +76,8 @@ const render_cell_outputs_delay = (num_cells) => (num_cells > 20 ? 100 : 0)
 /**
  * The first <x> cells will bypass the {@link render_cell_inputs_delay} heuristic and render directly.
  */
-const render_cell_inputs_minimum = 5
-const render_cell_outputs_minimum = 20
+const render_cell_inputs_minimum = 5000
+const render_cell_outputs_minimum = 20000
 
 /**
  * @param {{

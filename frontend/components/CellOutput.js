@@ -11,7 +11,7 @@ import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
-const CodeMirror = window.CodeMirror
+// const CodeMirror = window.CodeMirror
 
 export class CellOutput extends Component {
     constructor() {
@@ -372,28 +372,25 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
-    if (code_element.children.length === 0) {
-        let mode = language // fallback
-
-        let info = CodeMirror.findModeByName(language)
-        if (info) {
-            mode = info.mode
-        }
-
-        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
-        if (mode == "jl") {
-            mode = "julia"
-        }
-
-        CodeMirror.requireMode(
-            mode,
-            () => {
-                CodeMirror.runMode(code_element.innerText, mode, code_element)
-                code_element.classList.add("cm-s-default")
-            },
-            {
-                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
-            }
-        )
-    }
+    // if (code_element.children.length === 0) {
+    //     let mode = language // fallback
+    //     let info = CodeMirror.findModeByName(language)
+    //     if (info) {
+    //         mode = info.mode
+    //     }
+    //     // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
+    //     if (mode == "jl") {
+    //         mode = "julia"
+    //     }
+    //     CodeMirror.requireMode(
+    //         mode,
+    //         () => {
+    //             CodeMirror.runMode(code_element.innerText, mode, code_element)
+    //             code_element.classList.add("cm-s-default")
+    //         },
+    //         {
+    //             path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
+    //         }
+    //     )
+    // }
 }
