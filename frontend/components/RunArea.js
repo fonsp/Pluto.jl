@@ -1,28 +1,28 @@
 import { in_textarea_or_input } from "../common/KeyboardShortcuts.js"
-import { html, useEffect, useMemo, useState } from "../imports/Preact.js"
+import { PlutoContext } from "../common/PlutoContext.js"
+import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
+
+const upstream_of = (a_cell_id, notebook) => Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
+
+const all_upstreams_of = (a_cell_id, notebook) => {
+    const upstreams = upstream_of(a_cell_id, notebook)
+    if (upstreams.length === 0) return []
+    return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
+}
+const hasBarrier = (a_cell_id, notebook) => {
+    return notebook?.cell_inputs?.[a_cell_id]?.has_execution_barrier
+}
 
 export const RunArea = ({ runtime, onClick, running, disable, cell_id }) => {
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
-
-    const upstream_of = (a_cell_id, notebook = window?.editor_state?.notebook) =>
-        Object.values(notebook?.cell_dependencies?.[a_cell_id]?.upstream_cells_map || {}).flatMap((x) => x)
-
-    const all_upstreams_of = (a_cell_id, notebook) => {
-        const upstreams = upstream_of(a_cell_id, notebook)
-        if (upstreams.length === 0) return []
-        return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
-    }
-    const hasBarrier = (a_cell_id, notebook = window?.editor_state?.notebook) => {
-        return notebook?.cell_inputs?.[a_cell_id]?.has_execution_barrier
-    }
-
+    const pluto_actions = useContext(PlutoContext)
     return html`
         <pluto-runarea>
             <button
                 onClick=${() => {
                     if (!disable) return onClick()
-                    const barrier_cell_id = all_upstreams_of(cell_id).find((c) => hasBarrier(c))
-                    console.log(barrier_cell_id)
+                    const notebook = pluto_actions.get_notebook() || {}
+                    const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
                     barrier_cell_id &&
                         window.dispatchEvent(
                             new CustomEvent("cell_focus", {

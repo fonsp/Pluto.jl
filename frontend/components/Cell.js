@@ -36,6 +36,8 @@ export const Cell = ({
     disable_input,
 }) => {
     let pluto_actions = useContext(PlutoContext)
+    const notebook = pluto_actions.get_notebook()
+    const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
@@ -129,6 +131,7 @@ export const Cell = ({
                 <LI>Cell preceedence: ${precedence_heuristic}</LI>
             </UL>
             -->
+            ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {

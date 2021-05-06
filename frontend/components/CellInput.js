@@ -2,8 +2,11 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+
+//@ts-ignore
+import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -59,6 +62,9 @@ export const CellInput = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
+    const notebook = pluto_actions.get_notebook()
+    const used_variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.upstream_cells_map || {})
+
     const cm_ref = useRef(null)
     const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
@@ -111,6 +117,16 @@ export const CellInput = ({
                 },
             },
             matchBrackets: true,
+            configureMouse: (cm, repeat, event) => {
+                // modified version of https://github.com/codemirror/CodeMirror/blob/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a/src/edit/mouse_events.js#L116-L127
+                // because we want to change keys to match vs code
+                let alt = chromeOS ? event.metaKey : event.altKey
+                let rect = event.shiftKey && alt
+                return {
+                    unit: rect ? "rectangle" : repeat == "single" ? "char" : repeat == "double" ? "word" : "line",
+                    addNew: rect ? false : alt,
+                }
+            },
         }))
 
         const keys = {}
@@ -464,6 +480,16 @@ export const CellInput = ({
                 e.codemirrorIgnore = true
             }
             e.stopPropagation()
+        })
+
+        cm.on("mousedown", (cm, e) => {
+            const { which } = e
+            const path = e.path || e.composedPath()
+            const isVariable = path[0]?.classList.contains("cm-variable")
+            const varName = path[0]?.textContent
+            if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
+                document.getElementById(encodeURI(varName)).scrollIntoView()
+            }
         })
 
         if (focus_after_creation) {
