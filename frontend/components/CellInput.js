@@ -481,7 +481,6 @@ export const CellInput = ({
         })
 
         cm.on("mousedown", (cm, e) => {
-            console.log(cm, e)
             const { which } = e
             const path = e.path || e.composedPath()
             const isVariable = path[0]?.classList.contains("cm-variable")
