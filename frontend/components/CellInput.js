@@ -487,7 +487,7 @@ export const CellInput = ({
             const isVariable = path[0]?.classList.contains("cm-variable")
             const varName = path[0]?.textContent
             if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
-                document.getElementById(`variable-${varName}`).scrollIntoView()
+                document.getElementById(encodeURI(varName)).scrollIntoView()
             }
         })
 

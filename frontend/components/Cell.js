@@ -111,7 +111,7 @@ export const Cell = ({
             })}
             id=${cell_id}
         >
-            ${variables.map((name) => html`<span id=${`variable-${name}`} />`)}
+            ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button
                     onClick=${() => {
