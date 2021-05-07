@@ -96,7 +96,7 @@ export const CellInput = ({
         let view = new EditorView({
             state: EditorState.create({
                 doc: local_code,
-                extensions: [basicSetup, javascript()],
+                extensions: [basicSetup, javascript(), EditorView.lineWrapping],
             }),
             parent: dom_node_ref.current,
         })
