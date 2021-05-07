@@ -20,8 +20,8 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, has_execution_barrier },
-    cell_result: { queued, running, runtime, errored, output, published_objects, is_deactivated },
+    cell_input: { cell_id, code, code_folded, is_disabled },
+    cell_result: { queued, running, runtime, errored, output, published_objects, is_indirectly_disabled },
     cell_dependencies: { downstream_cells_map, upstream_cells_map, precedence_heuristic },
     cell_input_local,
     notebook_id,
@@ -106,8 +106,8 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
-                has_execution_barrier: has_execution_barrier,
-                is_deactivated: is_deactivated,
+                is_disabled: is_disabled,
+                is_indirectly_disabled: is_indirectly_disabled,
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
@@ -178,16 +178,16 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 set_waiting_to_run=${set_waiting_to_run}
-                has_execution_barrier=${has_execution_barrier}
+                is_disabled=${is_disabled}
             />
             <${RunArea}
                 cell_id=${cell_id}
-                disable=${has_execution_barrier || is_deactivated}
+                disable=${is_disabled || is_indirectly_disabled}
                 onClick=${() => {
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)
                     } else {
-                        if (has_execution_barrier == false) {
+                        if (is_disabled == false) {
                             // this is the status before the change
                             set_waiting_to_run(true)
                             let cell_to_run = selected ? selected_cells : [cell_id]

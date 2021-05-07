@@ -102,7 +102,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
-                "has_execution_barrier" => cell.has_execution_barrier,
+                "is_disabled" => cell.is_disabled,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -122,7 +122,7 @@ function notebook_to_js(notebook::Notebook)
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
-                "is_deactivated" => cell.is_deactivated,
+                "is_indirectly_disabled" => cell.is_indirectly_disabled,
                 "output" => Dict(                
                     "body" => cell.output.body,
                     "mime" => cell.output.mime,

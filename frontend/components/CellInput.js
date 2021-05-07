@@ -58,7 +58,7 @@ export const CellInput = ({
     cell_id,
     notebook_id,
     set_waiting_to_run,
-    has_execution_barrier,
+    is_disabled,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -539,14 +539,14 @@ export const CellInput = ({
                 on_delete=${on_delete}
                 cell_id=${cell_id}
                 set_waiting_to_run=${set_waiting_to_run}
-                has_execution_barrier=${has_execution_barrier}
+                is_disabled=${is_disabled}
             />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
 }
 
-const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_barrier }) => {
+const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_disabled }) => {
     const timeout = useRef(null)
     const ref = useRef(null)
     let pluto_actions = useContext(PlutoContext)
@@ -561,10 +561,10 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_ba
         e.preventDefault()
         e.stopPropagation()
         pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].has_execution_barrier = !has_execution_barrier
+            notebook.cell_inputs[cell_id].is_disabled = !is_disabled
         })
         // run cell if execution barrier is deactivated
-        if (has_execution_barrier == true) {
+        if (is_disabled == true) {
             // this is the status before the change
             set_waiting_to_run(true)
         }
@@ -578,12 +578,12 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, has_execution_ba
         html`<ul onMouseenter=${mouseenter} class="input_menu">
             <li
                 onClick=${handleExecutionBarrier}
-                title=${has_execution_barrier
+                title=${is_disabled
                     ? "Removing the barrier re-runs your code"
                     : "Adding a barrier stops this and dependent cells for reactive running"}
             >
-                ${has_execution_barrier ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
-                ${has_execution_barrier ? html`Enable cell` : html`Disable cell`}
+                ${is_disabled ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
+                ${is_disabled ? html`Enable cell` : html`Disable cell`}
             </li>
             <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
             <li class="coming_soon" title=""><span class="bandage icon" /><em>Coming soon…</em></li>

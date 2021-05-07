@@ -815,11 +815,11 @@ pluto-output {
     background-color: white;
 }
 
-pluto-cell.is_deactivated > pluto-output {
+pluto-cell.is_indirectly_disabled > pluto-output {
     opacity: 0.3;
 }
 
-pluto-cell.is_deactivated.has_execution_barrier > pluto-output {
+pluto-cell.is_indirectly_disabled.is_disabled > pluto-output {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -950,11 +950,11 @@ pluto-cell.code_differs > pluto-input > .CodeMirror {
     border-left: none;
 }
 
-pluto-cell.is_deactivated > pluto-input .CodeMirror {
+pluto-cell.is_indirectly_disabled > pluto-input .CodeMirror {
     opacity: 0.3;
 }
 
-pluto-cell.is_deactivated.has_execution_barrier > pluto-input .CodeMirror {
+pluto-cell.is_indirectly_disabled.is_disabled > pluto-input .CodeMirror {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -1153,11 +1153,11 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.is_deactivated > pluto-trafficlight {
+pluto-cell.is_indirectly_disabled > pluto-trafficlight {
     background-color: rgb(255, 255, 255);
 }
 
-pluto-cell.is_deactivated.has_execution_barrier > pluto-trafficlight {
+pluto-cell.is_indirectly_disabled.is_disabled > pluto-trafficlight {
     background-color: rgba(139, 139, 139, 0.25);
     opacity: 0.3;
 }
@@ -1386,12 +1386,12 @@ ul.input_menu {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/play-outline.svg);
 }
 
-pluto-cell.is_deactivated > pluto-runarea > button.runcell {
+pluto-cell.is_indirectly_disabled > pluto-runarea > button.runcell {
     cursor: initial;
 }
 
-pluto-cell.has_execution_barrier > pluto-runarea > button.runcell > span::after,
-pluto-cell.is_deactivated > pluto-runarea > button.runcell > span::after {
+pluto-cell.is_disabled > pluto-runarea > button.runcell > span::after,
+pluto-cell.is_indirectly_disabled > pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/remove-circle-outline.svg);
 }
 

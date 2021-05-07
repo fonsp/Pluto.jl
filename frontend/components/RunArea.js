@@ -10,7 +10,7 @@ const all_upstreams_of = (a_cell_id, notebook) => {
     return [...upstreams, ...upstreams.flatMap((v) => all_upstreams_of(v, notebook))]
 }
 const hasBarrier = (a_cell_id, notebook) => {
-    return notebook?.cell_inputs?.[a_cell_id]?.has_execution_barrier
+    return notebook?.cell_inputs?.[a_cell_id]?.is_disabled
 }
 
 export const RunArea = ({ runtime, onClick, running, disable, cell_id }) => {
