@@ -77,7 +77,6 @@ const _cell_id_delimiter = "# ╔═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
-# const _execution_barrier = "# 🛑 execution barrier 🛑"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
@@ -107,10 +106,6 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        # Persistence of barrier in file is deferred to the future!
-        # if c.has_execution_barrier
-        #     println(io, _execution_barrier)
-        # end
         # write the cell code and prevent collisions with the cell delimiter
         print(io, replace(c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
@@ -165,23 +160,12 @@ function load_notebook_nobackup(io, path)::Notebook
         else
             cell_id = UUID(cell_id_str)
             code_raw = String(readuntil(io, _cell_id_delimiter))
-
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
-
-            # has_execution_barrier = false
-            # if startswith(code_normalised, _execution_barrier)
-            #     has_execution_barrier = true
-            #     # remove execution barrier identifier from code
-            #     code_normalised = replace(code_normalised, _execution_barrier *"\n" => "")
-            # end
-
+            # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
-            read_cell.has_execution_barrier = false
-            read_cell.is_deactivated = false
-
             collected_cells[cell_id] = read_cell
         end
     end
