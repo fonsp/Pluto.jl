@@ -72,8 +72,6 @@ export const Cell = ({
 
     const class_code_differs = code !== (cell_input_local?.code ?? code)
     const class_code_folded = code_folded && cm_forced_focus == null
-    const class_barrier = has_execution_barrier
-    const class_is_deactivated = is_deactivated
 
     // during the initial page load, force_hide_input === true, so that cell outputs render fast, and codemirrors are loaded after
     let show_input = !force_hide_input && (errored || class_code_differs || !class_code_folded)
@@ -108,29 +106,14 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
-                has_execution_barrier: class_barrier,
-                is_deactivated: class_is_deactivated,
+                has_execution_barrier: has_execution_barrier,
+                is_deactivated: is_deactivated,
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
             })}
             id=${cell_id}
         >
-            <!-- This code would display for each cell a list of all upstream dependencies, with hyperlinks to the corresponding cells, if the dependencies are defined inside the notebook.
-            <UL>
-                ${Object.entries(upstream_cells_map ?? {}).map(([key, listofcell_ids]) => {
-                return listofcell_ids.length > 0 ? html`<li><a href="#${listofcell_ids[0]}">${key}</a></li>` : html`<li>${key}</li>`
-            })}
-            </UL>
-            -->
-            <!-- Show raw cell dependency data of the cell
-            <UL>
-                <LI>Cell ID: ${cell_id}</LI>
-                <LI>Upstream dependencies: ${JSON.stringify(upstream_cells_map)}</LI>
-                <LI>Downstream dependencies: ${JSON.stringify(downstream_cells_map)}</LI>
-                <LI>Cell preceedence: ${precedence_heuristic}</LI>
-            </UL>
-            -->
             ${variables.map((name) => html`<span id=${encodeURI(name)} />`)}
             <pluto-shoulder draggable="true" title="Drag to move cell">
                 <button

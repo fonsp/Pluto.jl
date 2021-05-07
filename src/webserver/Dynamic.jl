@@ -149,6 +149,7 @@ end
 For each connected client, we keep a copy of their current state. This way we know exactly which updates to send when the server-side state changes.
 """
 const current_state_for_clients = WeakKeyDict{ClientSession,Any}()
+
 """
 Update the local state of all clients connected to this notebook.
 """
@@ -368,6 +369,7 @@ responses[:run_multiple_cells] = function response_run_multiple_cells(🙋::Clie
     cells = map(uuids) do uuid
         🙋.notebook.cells_dict[uuid]
     end
+
     if will_run_code(🙋.notebook)
         foreach(c -> c.queued = true, cells)
         send_notebook_changes!(🙋)
