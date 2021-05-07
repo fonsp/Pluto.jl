@@ -23,40 +23,40 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
     # helper functions
     id(i) = notebook.cells[i].cell_id
-    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.is_indirectly_disabled]
+    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.is_disabled]
 
+    @test !any(c.is_running_disabled for c in notebook.cells)
     @test !any(c.is_disabled for c in notebook.cells)
-    @test !any(c.is_indirectly_disabled for c in notebook.cells)
 
     # disable first cell
-    notebook.cells[1].is_disabled = true
+    notebook.cells[1].is_running_disabled = true
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
 
     # disable root cell
-    notebook.cells[2].is_disabled = true
+    notebook.cells[2].is_running_disabled = true
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == collect(1:length(notebook.cells))
 
-    # reactivate first cell - still all cells should be is_disabled
-    notebook.cells[1].is_disabled = false
+    # reactivate first cell - still all cells should be is_running_disabled
+    notebook.cells[1].is_running_disabled = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == collect(1:length(notebook.cells))
 
     # reactivate root cell
-    notebook.cells[2].is_disabled = false
+    notebook.cells[2].is_running_disabled = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
     # disable first cell again
-    notebook.cells[1].is_disabled = true
+    notebook.cells[1].is_running_disabled = true
     update_run!(🍭, notebook, notebook.cells)
     should_be_disabled = [1, 3, 5]
     @test get_disabled_cells(notebook) == should_be_disabled
 
     # and reactivate it
-    notebook.cells[1].is_disabled = false
+    notebook.cells[1].is_running_disabled = false
     update_run!(🍭, notebook, notebook.cells)
     @test get_disabled_cells(notebook) == []
 
