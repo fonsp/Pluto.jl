@@ -60,9 +60,6 @@ export const CellInput = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
-    const notebook = pluto_actions.get_notebook()
-    const used_variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.upstream_cells_map || {})
-
     const cm_ref = useRef(null)
     const text_area_ref = useRef(null)
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
@@ -481,15 +478,27 @@ export const CellInput = ({
         })
 
         cm.on("mousedown", (cm, e) => {
+            const notebook = pluto_actions.get_notebook()
+            const mycell = notebook?.cell_dependencies?.[cell_id]
+            const used_variables = Object.keys(mycell?.upstream_cells_map || {})
             const { which } = e
             const path = e.path || e.composedPath()
             const isVariable = path[0]?.classList.contains("cm-variable")
             const varName = path[0]?.textContent
             if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
-                document.getElementById(encodeURI(varName)).scrollIntoView()
+                e.preventDefault()
+
+                document.querySelector(`#${encodeURI(varName)}`).scrollIntoView()
+                window.dispatchEvent(
+                    new CustomEvent("cell_focus", {
+                        detail: {
+                            cell_id: mycell.upstream_cells_map[varName][0],
+                            line: 0, // 1-based to 0-based index
+                        },
+                    })
+                )
             }
         })
-
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()
