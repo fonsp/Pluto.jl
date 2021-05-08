@@ -962,17 +962,18 @@ patch: ${JSON.stringify(
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
             console.log("paste", topaste)
+
+            let deserializer
+            let deserialize = false
             if (topaste.match(/julia> /g)?.length) {
-                // Deselect everything first, to clean things up
-                this.setState({
-                    selected_cells: [],
-                })
-
-                // Paste in the cells at the end of the notebook
-                const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1, deserialize_repl)
-                e.preventDefault()
+                deserialize = true
+                deserializer = deserialize_repl
             } else if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+                deserialize = true
+                deserializer = deserialize_cells
+            }
+
+            if (deserialize) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],
@@ -980,7 +981,7 @@ patch: ${JSON.stringify(
 
                 // Paste in the cells at the end of the notebook
                 const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1)
+                this.actions.add_deserialized_cells(data, -1, deserializer)
                 e.preventDefault()
             }
         })
