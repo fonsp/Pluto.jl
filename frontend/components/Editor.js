@@ -81,7 +81,7 @@ function deserialize_cells(serialized_cells) {
     const segments = repl_session.replace(/\r\n/g, "\n").split(prompt)
     const indent = " ".repeat(prompt.length);
     return segments.map(function(s) {
-        return (indent + s).split("\n").filter((line) => line.startsWith(indent)).map((s) => s.trim()).join("\n")
+        return (indent + s).split("\n").filter((line) => line.startsWith(indent)).map((s) => s.replace(indent, "")).join("\n")
     }).map((s) => s.trim()).filter((s) => s !== "")
 }
 
