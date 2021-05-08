@@ -67,6 +67,24 @@ function deserialize_cells(serialized_cells) {
     return segments.map((s) => s.trim()).filter((s) => s !== "")
 }
 
+/**
+ * Deserialize a Julia REPL session.
+ *
+ * It will split the string into cells based on the Julia prompt. Multiple
+ * lines are detected based on indentation.
+ *
+ * @param {String} repl_session
+ * @return {Array<String>}
+ */
+ function deserialize_repl(repl_session) {
+    const prompt = "julia> "
+    const segments = repl_session.replace(/\r\n/g, "\n").split(prompt)
+    const indent = " ".repeat(prompt.length);
+    return segments.map(function(s) {
+        return (indent + s).split("\n").filter((line) => line.startsWith(indent)).map((s) => s.trim()).join("\n")
+    }).map((s) => s.trim()).filter((s) => s !== "")
+}
+
 const Main = ({ children }) => {
     const { handler } = useDropHandler()
     useEffect(() => {
@@ -278,8 +296,8 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index) => {
-                let new_codes = deserialize_cells(data)
+            add_deserialized_cells: async (data, index, deserializer=deserialize_cells) => {
+                let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
@@ -944,7 +962,17 @@ patch: ${JSON.stringify(
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
             console.log("paste", topaste)
-            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
+            if (topaste.match(/julia> /g)?.length) {
+                // Deselect everything first, to clean things up
+                this.setState({
+                    selected_cells: [],
+                })
+
+                // Paste in the cells at the end of the notebook
+                const data = e.clipboardData.getData("text/plain")
+                this.actions.add_deserialized_cells(data, -1, deserialize_repl)
+                e.preventDefault()
+            } else if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],
