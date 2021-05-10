@@ -61,7 +61,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
     ])
     cell(idx) = notebook.cells[idx]
 
-    update_run!(🍭, notebook, notebook.cells[2])
+    update_run!(🍭, notebook, cell(2))
 
     @test cell(2).errored == true
     @test occursinerror("UndefVarError: @dateformat_str", cell(2)) == true
@@ -82,7 +82,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
     ])
     cell(idx) = notebook.cells[idx]
 
-    update_run!(🍭, notebook, notebook.cells[1:1])
+    update_run!(🍭, notebook, cell(1))
     update_run!(🍭, notebook, notebook.cells[2:end])
 
     @test cell(1).errored == false
@@ -122,5 +122,33 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @test ":world" == cell(3).output.body
     @test ":world" == cell(4).output.body
+  end
+
+  @testset "Macros using import" begin
+    notebook = Notebook(Cell.([
+      """
+      @option "option_a" struct OptionA
+        option_value::option_type
+      end
+      """,
+      "option_type = String",
+      "import Configurations: @option",
+    ]))
+    cell(idx) = notebook.cells[idx]
+
+    update_run!(🍭, notebook, notebook.cells)
+
+    # When using `import Package: @macro`, the first execution will fail for
+    # the same reasons as in the "User defined macros" testset.
+    @test_broken :option_type ∈ notebook.topology.nodes[cell(1)].references
+    @test_broken cell(1).errored == true
+
+    update_run!(🍭, notebook, notebook.cells)
+
+    @show cell(1).output
+    @show cell(3).output
+
+    @test :option_type ∈ notebook.topology.nodes[cell(1)].references
+    @test cell(1).errored == false
   end
 end

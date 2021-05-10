@@ -28,14 +28,14 @@ function upstream_cells_map(cell::Cell, notebook::Notebook)::Dict{Symbol,Vector{
     )
 end
 
+"Checks whether or not the cell references user-defined macrocalls"
 function contains_user_defined_macrocalls(cell::Cell, notebook::Notebook)::Bool
-  calls = filter(sym -> string(sym)[1] == '@', notebook.topology.nodes[cell].references)
-  for call in calls
-    if !isempty(where_assigned(notebook, notebook.topology, Set([call])))
-      return true
-    end
+  # Note: This could use some optimization
+  calls = filter(sym -> '@' ∈ string(sym), notebook.topology.nodes[cell].references)
+  my_node = notebook.topology.nodes[cell]
+  any(notebook.cells) do other
+    !disjoint(notebook.topology.nodes[other].funcdefs_without_signatures, calls)
   end
-  false
 end
 
 "Fills cell dependency information for display in the GUI"

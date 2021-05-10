@@ -257,7 +257,6 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
       result = Distributed.remotecall_eval(Main, workspace.pid, expr)
       return result
     catch e
-      @error e
       return e
     end
 end
