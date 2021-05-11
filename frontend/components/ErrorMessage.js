@@ -89,6 +89,19 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             display: (x) => x.split("\n").map((line) => html`<p style="white-space: nowrap;">${line}</p>`),
         },
         {
+            pattern: /Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/,
+            display: (x) => {
+                const reg = x.match(/Cyclic references among ([^\s]+)(, .*)* and ([^\s.]+).*/)
+                const first = reg[1]
+                const last = reg[3]
+                const mids = reg[2]?.split(", ").slice(1) || []
+                return html`<p>
+                    Cyclic references among <a href="#${encodeURI(first)}">${first}</a>,
+                    ${mids.map((varName) => html`<a href="#${encodeURI(varName)}">${varName}</a>`)} <a href="#${encodeURI(last)}">${last}</a>
+                </p>`
+            },
+        },
+        {
             pattern: /.?/,
             display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
