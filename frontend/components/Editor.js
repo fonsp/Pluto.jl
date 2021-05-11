@@ -871,7 +871,9 @@ patch: ${JSON.stringify(
     ${ctrl_or_cmd_name}+X:   cut selected cells
     ${ctrl_or_cmd_name}+V:   paste selected cells
 
-    The notebook file saves every time you run`
+    ${ctrl_or_cmd_name}+M:   toogle Markdown
+
+    The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             }
