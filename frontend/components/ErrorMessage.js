@@ -102,6 +102,23 @@ export const ErrorMessage = ({ msg, stacktrace, cell_id }) => {
             },
         },
         {
+            pattern: /Multiple definitions for (.*)./,
+            display: (x) => {
+                const reg = x.match(/Multiple definitions for (.*)./)
+                const what = reg[1]
+                const onclick = (ev) => {
+                    const where = document.querySelector(`pluto-cell:not([id='${cell_id}']) span[id='${encodeURI(what)}']`)
+                    ev.preventDefault()
+                    where.scrollIntoView()
+                }
+
+                return html`<p>
+                    Multiple definitions for ${" "}
+                    <a href="#" onclick=${onclick}>${what}</a>
+                </p>`
+            },
+        },
+        {
             pattern: /.?/,
             display: (x) => x.split("\n").map((line) => html`<p>${line}</p>`),
         },
