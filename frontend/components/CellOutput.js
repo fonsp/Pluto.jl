@@ -260,12 +260,13 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     node.parentElement.insertBefore(old_result, node)
                 }
 
+                const cell = node.closest("pluto-cell")
                 let result = await execute_dynamic_function({
                     environment: {
                         this: script_id ? old_result : window,
                         currentScript: node,
                         invalidation: invalidation,
-                        getPublishedObject: (id) => node.closest("pluto-cell").getPublishedObject(id),
+                        getPublishedObject: (id) => cell.getPublishedObject(id),
                         ...observablehq_for_cells,
                     },
                     code: node.innerText,
