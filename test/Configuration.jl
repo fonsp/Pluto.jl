@@ -1,5 +1,7 @@
+using HTTP
 using Test
 using Pluto
+using Pluto: ServerSession
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 
@@ -36,6 +38,44 @@ end
 
     @test _convert_to_flags(Configuration.CompilerOptions(compile="min", project="test")) ⊇
     ["--compile=min", "--project=test", "--startup-file=no", "--history-file=no"]
+end
+
+@testset "authentication" begin
+    port = 1238
+    server = Pluto.Configuration.ServerOptions(; port=port, launch_browser=false)
+    options = Pluto.Configuration.Options(; server)
+    session = Pluto.ServerSession(; options=options)
+    host = session.options.server.host
+    secret = session.secret
+    @async Pluto.run(session)
+
+    url(suffix) = "http://$host:$port/$suffix"
+    function access_denied(url)
+        try
+            HTTP.get(url)
+            return false
+        catch e
+            return e.status == 403
+        end
+    end
+
+    @test HTTP.get(url("favicon.ico")).status == 200
+
+    routes = [
+        "",
+        "new",
+        "edit",
+        "notebookfile",
+        "notebookexport",
+        "open",
+        "sample",
+        "sample/Interactivity.jl",
+        "statefile",
+        "foo"
+    ]
+    for suffix in routes
+        @test access_denied(url("edit"))
+    end
 end
 
 end # testset
