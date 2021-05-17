@@ -43,7 +43,7 @@ end
 @testset "authentication" begin
     port = 1238
     server = Pluto.Configuration.ServerOptions(; port=port, launch_browser=false)
-    options = Pluto.Configuration.Options(; server)
+    options = Pluto.Configuration.Options(; server=server)
     session = Pluto.ServerSession(; options=options)
     host = session.options.server.host
     secret = session.secret
