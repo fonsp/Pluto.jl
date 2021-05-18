@@ -79,7 +79,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
                 })
             )
             if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                mybonds[symbol] = { value: value }
+                mybonds[symbol] = { value: _.cloneDeep(value) }
                 bonds_to_set.current.add(symbol)
                 await request_bond_response()
             }
