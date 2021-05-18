@@ -34,7 +34,7 @@ export const RunArea = ({ runtime, onClick, running, disable, cell_id }) => {
                         )
                 }}
                 class="runcell"
-                title=${disable ? "Please remove the barrier" : "Run"}
+                title=${disable ? "Please enable (parent) cell" : "Run"}
             >
                 <span></span>
             </button>
