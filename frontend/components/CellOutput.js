@@ -179,7 +179,14 @@ let IframeContainer = ({ body }) => {
         return () => URL.revokeObjectURL(url)
     }, [body])
 
-    return html`<iframe style=${{ width: "100%", border: "none" }} src="" ref=${iframeref}></div>`
+    return html`<iframe
+        style=${{ width: "100%", border: "none" }}
+        src=""
+        ref=${iframeref}
+        frameborder="0"
+        allow="accelerometer; ambient-light-sensor; autoplay; battery; camera; display-capture; document-domain; encrypted-media; execution-while-not-rendered; execution-while-out-of-viewport; fullscreen; geolocation; gyroscope; layout-animations; legacy-image-formats; magnetometer; microphone; midi; navigation-override; oversized-images; payment; picture-in-picture; publickey-credentials-get; sync-xhr; usb; wake-lock; screen-wake-lock; vr; web-share; xr-spatial-tracking"
+        allowfullscreen
+    ></iframe>`
 }
 
 /**
@@ -253,12 +260,13 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                     node.parentElement.insertBefore(old_result, node)
                 }
 
+                const cell = node.closest("pluto-cell")
                 let result = await execute_dynamic_function({
                     environment: {
                         this: script_id ? old_result : window,
                         currentScript: node,
                         invalidation: invalidation,
-                        getPublishedObject: (id) => node.closest("pluto-cell").getPublishedObject(id),
+                        getPublishedObject: (id) => cell.getPublishedObject(id),
                         ...observablehq_for_cells,
                     },
                     code: node.innerText,
