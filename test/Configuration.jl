@@ -58,29 +58,31 @@ end
     end
 
     function access_granted(url)
-        url = rstrip(url, '/')
-        url = "$url/?secret=$secret"
-        @show url
+        url = contains(url, '?') ? "$url&secret=$secret" : "$url?secret=$secret"
         r = HTTP.get(url, status_exception=false)
-        @show r.status
-        r.status == 200 || r.status == 400 || r.status == 404
+        r.status != 403
     end
 
     routes = [
-        "",
-        "edit",
+        "/",
+        "edit/",
+        # Interactivity.jl sample.
+        "edit?id=f30203d4-b88c-11eb-3320-a39e462705a0",
         "foo",
+        "foo/",
         "new",
-        "notebookfile",
-        "notebookexport",
-        "open",
-        "sample/Interactivity.jl",
+        "notebookfile/",
+        "notebookexport/",
+        "open/",
         "statefile",
     ]
     for suffix in routes
         url = local_url(suffix)
         @test access_denied(url)
-        @test access_granted(url)
+
+        if suffix != "new"
+            @test access_granted(url)
+        end
     end
 
     @async schedule(server_task, InterruptException(); error=true)
