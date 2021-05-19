@@ -46,18 +46,24 @@ end
     options = Pluto.Configuration.Options(; server=server)
     session = Pluto.ServerSession(; options=options)
     host = session.options.server.host
-    @async Pluto.run(session)
+    secret = session.secret
+    server_task = @async Pluto.run(session)
 
-    url(suffix) = "http://$host:$port/$suffix"
-    @test HTTP.get(url("favicon.ico")).status == 200
+    local_url(suffix) = "http://$host:$port/$suffix"
+    @test HTTP.get(local_url("favicon.ico")).status == 200
 
     function access_denied(url)
-        try
-            HTTP.get(url)
-            return false
-        catch e
-            return e.status == 403 || e.status == 404
-        end
+        r = HTTP.get(url, status_exception=false)
+        r.status == 403 || r.status == 404
+    end
+
+    function access_granted(url)
+        url = rstrip(url, '/')
+        url = "$url/?secret=$secret"
+        @show url
+        r = HTTP.get(url, status_exception=false)
+        @show r.status
+        r.status == 200 || r.status == 400 || r.status == 404
     end
 
     routes = [
@@ -72,8 +78,12 @@ end
         "statefile",
     ]
     for suffix in routes
-        @test access_denied(url(suffix))
+        url = local_url(suffix)
+        @test access_denied(url)
+        @test access_granted(url)
     end
+
+    @async schedule(server_task, InterruptException(); error=true)
 end
 
 end # testset
