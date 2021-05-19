@@ -171,6 +171,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
+        @test_broken testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+            :f => ([], [], [], [])
+        ]; verbose=false)
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
