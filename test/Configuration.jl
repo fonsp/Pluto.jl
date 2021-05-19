@@ -58,7 +58,7 @@ end
     end
 
     function access_granted(url)
-        url = contains(url, '?') ? "$url&secret=$secret" : "$url?secret=$secret"
+        url = occursin('?', url) ? "$url&secret=$secret" : "$url?secret=$secret"
         r = HTTP.get(url, status_exception=false)
         r.status != 403
     end
