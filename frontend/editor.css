@@ -1827,7 +1827,7 @@ li.CodeMirror-hint.c_Number::before,
 
 li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
-    color: #ce7d0a;
+    color: #da5616;
 }
 
 .cm-s-default span.cm-operator {
