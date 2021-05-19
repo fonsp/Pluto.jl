@@ -577,7 +577,11 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disab
             set_waiting_to_run(true)
         } else {
             // interrupt cell if it is still running when a barrier is activated
-            pluto_actions.interrupt_remote(cell_id)
+            /* currently, there is no way to interrupt a specific cell, the method
+            below interrupts all running cells, which has unintented side effects,
+            e.g. interrupting completely unrelated cells queued for execution.
+            Therefore, this feature is currently not activated. */
+            // pluto_actions.interrupt_remote(cell_id)
         }
         pluto_actions.set_and_run_multiple([cell_id])
         return false
