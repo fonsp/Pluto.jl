@@ -20,21 +20,8 @@ import {
     waitForCellOutputToChange,
     keyboardPressInPlutoInput,
     writeSingleLineInPlutoInput,
+    manuallyEnterCells,
 } from "../helpers/pluto"
-
-const manuallyEnterCells = async (page, cells) => {
-    const plutoCellIds = []
-    for (const cell of cells) {
-        const plutoCellId = lastElement(await getCellIds(page))
-        plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
-        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
-
-        await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
-        await page.waitForFunction((nCells) => document.querySelectorAll("pluto-cell").length === nCells, {}, plutoCellIds.length + 1)
-    }
-    return plutoCellIds
-}
 
 describe("Paste Functionality", () => {
     beforeAll(async () => {
