@@ -138,6 +138,7 @@ const first_true_key = (obj) => {
  *      mime: string,
  *      rootassignee: ?string,
  *  }
+ *  published_objects: object,
  * }}
  */
 
@@ -241,6 +242,7 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -495,8 +497,8 @@ export class Editor extends Component {
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
 
-                // Wrap the bond value in an object so immer assumes it is changed
                 await update_notebook((notebook) => {
+                    // We wrap the bond value in an object so immer assumes it is changed
                     notebook.bonds[symbol] = { value: value }
                 })
             },
@@ -716,67 +718,64 @@ patch: ${JSON.stringify(
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = (mutate_fn) => {
-            last_update_notebook_task = last_update_notebook_task
-                .then(async () => {
-                    // if (this.state.initializing) {
-                    //     console.error("Update notebook done during initializing, strange")
-                    //     return
-                    // }
+            const new_task = last_update_notebook_task.then(async () => {
+                // if (this.state.initializing) {
+                //     console.error("Update notebook done during initializing, strange")
+                //     return
+                // }
 
-                    let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
-                        mutate_fn(notebook)
-                    })
-
-                    // If "notebook is not idle" I seperate and store the bonds updates,
-                    // to send when the notebook is idle. This delays the updating of the bond for performance,
-                    // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
-                    // this will no longer be necessary
-                    if (!this.notebook_is_idle()) {
-                        let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                        this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
-                        changes = changes.filter((x) => x.path[0] !== "bonds")
-                    }
-
-                    if (DEBUG_DIFFING) {
-                        try {
-                            let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                            console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-                        } catch (error) {}
-                    }
-                    if (changes.length === 0) {
-                        return
-                    }
-
-                    for (let change of changes) {
-                        if (change.path.some((x) => typeof x === "number")) {
-                            throw new Error("This sounds like it is editing an array...")
-                        }
-                    }
-                    pending_local_updates++
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                    try {
-                        await Promise.all([
-                            this.client
-                                .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
-                                .then((response) => {
-                                    if (response.message.response.update_went_well === "👎") {
-                                        // We only throw an error for functions that are waiting for this
-                                        // Notebook state will already have the changes reversed
-                                        throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
-                                    }
-                                }),
-                            this.setStatePromise({
-                                notebook: new_notebook,
-                                last_update_time: Date.now(),
-                            }),
-                        ])
-                    } finally {
-                        pending_local_updates--
-                        this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                    }
+                let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
+                    mutate_fn(notebook)
                 })
-                .catch(console.error)
-            return last_update_notebook_task
+
+                // If "notebook is not idle" I seperate and store the bonds updates,
+                // to send when the notebook is idle. This delays the updating of the bond for performance,
+                // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
+                // this will no longer be necessary
+                if (!this.notebook_is_idle()) {
+                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                    this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                    changes = changes.filter((x) => x.path[0] !== "bonds")
+                }
+
+                if (DEBUG_DIFFING) {
+                    try {
+                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                        console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+                    } catch (error) {}
+                }
+                if (changes.length === 0) {
+                    return
+                }
+
+                for (let change of changes) {
+                    if (change.path.some((x) => typeof x === "number")) {
+                        throw new Error("This sounds like it is editing an array...")
+                    }
+                }
+                pending_local_updates++
+                this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                try {
+                    await Promise.all([
+                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
+                            if (response.message.response.update_went_well === "👎") {
+                                // We only throw an error for functions that are waiting for this
+                                // Notebook state will already have the changes reversed
+                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                            }
+                        }),
+                        this.setStatePromise({
+                            notebook: new_notebook,
+                            last_update_time: Date.now(),
+                        }),
+                    ])
+                } finally {
+                    pending_local_updates--
+                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                }
+            })
+            last_update_notebook_task = new_task.catch(console.error)
+            return new_task
         }
         this.update_notebook = update_notebook
         window.shutdownNotebook = this.close = () => {
@@ -880,7 +879,9 @@ patch: ${JSON.stringify(
     ${ctrl_or_cmd_name}+X:   cut selected cells
     ${ctrl_or_cmd_name}+V:   paste selected cells
 
-    The notebook file saves every time you run`
+    Ctrl+M:   toggle markdown
+
+    The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             }
@@ -973,9 +974,13 @@ patch: ${JSON.stringify(
         //@ts-ignore
         window.editor_state = this.state
 
-        document.title = "🎈 " + this.state.notebook.shortpath + " — Pluto.jl"
-        if (old_state?.notebook?.path !== this.state.notebook.path) {
-            update_stored_recent_notebooks(this.state.notebook.path, old_state?.notebook?.path)
+        const new_state = this.state
+
+        if (old_state?.notebook?.path !== new_state.notebook.path) {
+            update_stored_recent_notebooks(new_state.notebook.path, old_state?.notebook?.path)
+        }
+        if (old_state?.notebook?.shortpath !== new_state.notebook.shortpath) {
+            document.title = "🎈 " + new_state.notebook.shortpath + " — Pluto.jl"
         }
 
         Object.entries(this.cached_status).forEach((e) => {
@@ -983,7 +988,8 @@ patch: ${JSON.stringify(
         })
 
         // this class is used to tell our frontend tests that the updates are done
-        document.body.classList.toggle("update_is_ongoing", pending_local_updates > 0)
+        //@ts-ignore
+        document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
             let bonds_patches = this.bonds_changes_to_apply_when_done

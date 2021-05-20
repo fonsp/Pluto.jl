@@ -30,6 +30,8 @@ Base.@kwdef mutable struct Cell
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
+
+    published_objects::Dict{String,Any}=Dict{String,Any}()
     
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing

@@ -1,4 +1,4 @@
-import { html, Component, useRef, useLayoutEffect, useContext } from "../imports/Preact.js"
+import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
 import { TreeView, TableView } from "./TreeView.js"
@@ -8,6 +8,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
 const CodeMirror = window.CodeMirror
@@ -78,7 +79,9 @@ export let PlutoImage = ({ body, mime }) => {
         let url = URL.createObjectURL(new Blob([body], { type: mime }))
 
         imgref.current.onload = imgref.current.onerror = () => {
-            imgref.current.style.display = null
+            if (imgref.current) {
+                imgref.current.style.display = null
+            }
         }
         if (imgref.current.src === "") {
             // an <img> that is loading takes up 21 vertical pixels, which causes a 1-frame scroll flicker
@@ -94,7 +97,7 @@ export let PlutoImage = ({ body, mime }) => {
     return html`<img ref=${imgref} type=${mime} src=${""} />`
 }
 
-export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_timestamp }) => {
+export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last_run_timestamp }) => {
     switch (mime) {
         case "image/png":
         case "image/jpg":
@@ -134,17 +137,21 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state, last_run_tim
             break
 
         case "text/plain":
-        default:
             if (body) {
                 return html`<div>
-                    <pre><code>${body}</code></pre>
+                    <pre class="no-block"><code>${body}</code></pre>
                 </div>`
             } else {
                 return html`<div></div>`
             }
             break
+        default:
+            return html``
+            break
     }
 }
+
+register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
 
 let IframeContainer = ({ body }) => {
     let iframeref = useRef()
@@ -172,7 +179,14 @@ let IframeContainer = ({ body }) => {
         return () => URL.revokeObjectURL(url)
     }, [body])
 
-    return html`<iframe style=${{ width: "100%", border: "none" }} src="" ref=${iframeref}></div>`
+    return html`<iframe
+        style=${{ width: "100%", border: "none" }}
+        src=""
+        ref=${iframeref}
+        frameborder="0"
+        allow="accelerometer; ambient-light-sensor; autoplay; battery; camera; display-capture; document-domain; encrypted-media; execution-while-not-rendered; execution-while-out-of-viewport; fullscreen; geolocation; gyroscope; layout-animations; legacy-image-formats; magnetometer; microphone; midi; navigation-override; oversized-images; payment; picture-in-picture; publickey-credentials-get; sync-xhr; usb; wake-lock; screen-wake-lock; vr; web-share; xr-spatial-tracking"
+        allowfullscreen
+    ></iframe>`
 }
 
 /**
@@ -245,11 +259,14 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 if (is_displayable(old_result)) {
                     node.parentElement.insertBefore(old_result, node)
                 }
+
+                const cell = node.closest("pluto-cell")
                 let result = await execute_dynamic_function({
                     environment: {
                         this: script_id ? old_result : window,
                         currentScript: node,
                         invalidation: invalidation,
+                        getPublishedObject: (id) => cell.getPublishedObject(id),
                         ...observablehq_for_cells,
                     },
                     code: node.innerText,
@@ -301,21 +318,27 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
             }
         })
 
+        const dump = document.createElement("p-dumpster")
+        dump.append(...container.current.childNodes)
+
         // Actually "load" the html
         container.current.innerHTML = body
+
+        // do this synchronously after loading HTML
+        const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
-                script_nodes: Array.from(container.current.querySelectorAll("script")),
+                script_nodes: new_scripts,
                 invalidation: invalidation,
                 previous_results_map: persist_js_state ? previous_results_map.current : new Map(),
             })
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, (name, value, is_first_value) => {
-                    pluto_actions.set_bond(name, value, is_first_value)
+                let remove_bonds_listener = add_bonds_listener(container.current, async (name, value, is_first_value) => {
+                    await pluto_actions.set_bond(name, value, is_first_value)
                 })
                 invalidation.then(remove_bonds_listener)
             }
@@ -352,7 +375,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         }
     }, [body, persist_js_state, last_run_timestamp, pluto_actions])
 
-    return html`<div ref=${container}></div>`
+    return html`<div class="raw-html-wrapper" ref=${container}></div>`
 }
 
 /** @param {HTMLElement} code_element */

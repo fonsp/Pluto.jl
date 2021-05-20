@@ -128,6 +128,7 @@ function notebook_to_js(notebook::Notebook)
                     "last_run_timestamp" => cell.output.last_run_timestamp,
                     "persist_js_state" => cell.output.persist_js_state,
                 ),
+                "published_objects" => cell.published_objects,
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
@@ -204,7 +205,7 @@ const effects_of_changed_state = Dict(
         # SessionActions.move(request.session, request.notebook, newpath)
 
         if isfile(newpath)
-            throw(UserError("File exists already - you need to delete the old file manually."))
+            error("File exists already - you need to delete the old file manually.")
         else
             move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
@@ -426,7 +427,7 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         🙋.notebook.cells_dict[cell_id]
     end
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
-    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell))
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end
@@ -481,7 +482,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, persist_js_state=true, run_async=false, kwargs...)
 end
 
 responses[:write_file] = function (🙋::ClientRequest)

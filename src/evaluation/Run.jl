@@ -97,6 +97,19 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	return new_order
 end
 
+run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
+
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+	run_task = @async begin
+		run_reactive!(session, notebook, old, new, to_run; kwargs...)
+	end
+	if run_async
+		run_task
+	else
+		fetch(run_task)
+	end
+end
+
 const lazymap = Base.Generator
 
 function defined_variables(topology::NotebookTopology, cells)
@@ -135,6 +148,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
 	)
+	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
 	cell.errored = run.errored
 end
@@ -181,20 +195,54 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-		run_task = @async begin
-			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		end
-		if run_async
-			run_task
-		else
-			fetch(run_task)
-		end
+		run_reactive_async!(session, notebook, old, new, to_run_online; run_async=run_async, kwargs...)
 	end
 end
 
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
+
+function update_from_file(session::ServerSession, notebook::Notebook)
+	just_loaded = try
+		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
+		load_notebook_nobackup(notebook.path)
+	catch e
+		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
+		return
+	end
+
+	old_codes = Dict(
+		id => c.code
+		for (id,c) in notebook.cells_dict
+	)
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in just_loaded.cells_dict
+	)
+
+	added = setdiff(keys(new_codes), keys(old_codes))
+	removed = setdiff(keys(old_codes), keys(new_codes))
+	changed = let
+		remained = keys(old_codes) ∩ keys(new_codes)
+		filter(id -> old_codes[id] != new_codes[id], remained)
+	end
+
+	# @show added removed changed
+
+	for c in added
+		notebook.cells_dict[c] = just_loaded.cells_dict[c]
+	end
+	for c in removed
+		delete!(notebook.cells_dict, c)
+	end
+	for c in changed
+		notebook.cells_dict[c].code = new_codes[c]
+	end
+
+	notebook.cell_order = just_loaded.cell_order
+	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
+end
 
 
 """

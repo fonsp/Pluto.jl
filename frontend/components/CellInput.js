@@ -2,8 +2,11 @@ import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+
+//@ts-ignore
+import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -88,6 +91,9 @@ export const CellInput = ({
             mode: "julia",
             lineWrapping: true,
             viewportMargin: Infinity,
+            dragDrop: false /* Performance is too bad. 
+            - Before: https://user-images.githubusercontent.com/6933510/116729854-fcdfd880-a9e7-11eb-9c88-f88f31ac352e.mov 
+            - After: https://user-images.githubusercontent.com/6933510/116729764-d91c9280-a9e7-11eb-82df-d2f804630394.mov */,
             placeholder: "Enter cell code...",
             indentWithTabs: true,
             indentUnit: 4,
@@ -106,6 +112,16 @@ export const CellInput = ({
                 },
             },
             matchBrackets: true,
+            configureMouse: (cm, repeat, event) => {
+                // modified version of https://github.com/codemirror/CodeMirror/blob/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a/src/edit/mouse_events.js#L116-L127
+                // because we want to change keys to match vs code
+                let alt = chromeOS ? event.metaKey : event.altKey
+                let rect = event.shiftKey && alt
+                return {
+                    unit: rect ? "rectangle" : repeat == "single" ? "char" : repeat == "double" ? "word" : "line",
+                    addNew: rect ? false : alt,
+                }
+            },
         }))
 
         const keys = {}
@@ -461,6 +477,27 @@ export const CellInput = ({
             e.stopPropagation()
         })
 
+        cm.on("mousedown", (cm, e) => {
+            const notebook = pluto_actions.get_notebook()
+            const mycell = notebook?.cell_dependencies?.[cell_id]
+            const used_variables = Object.keys(mycell?.upstream_cells_map || {})
+            const { which } = e
+            const path = e.path || e.composedPath()
+            const isVariable = path[0]?.classList.contains("cm-variable")
+            const varName = path[0]?.textContent
+            if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
+                e.preventDefault()
+                document.querySelector(`[id='${encodeURI(varName)}']`).scrollIntoView()
+                window.dispatchEvent(
+                    new CustomEvent("cell_focus", {
+                        detail: {
+                            cell_id: mycell.upstream_cells_map[varName][0],
+                            line: 0, // 1-based to 0-based index
+                        },
+                    })
+                )
+            }
+        })
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()

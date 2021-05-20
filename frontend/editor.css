@@ -193,12 +193,16 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
+pluto-output pre > code {
+    font-size: inherit;
+}
+
 pluto-output.rich_output code {
     padding: 3px;
     border-radius: 8px;
     background-color: #f2f2f2;
 }
-pluto-output.rich_output pre code {
+pluto-output.rich_output pre > code {
     padding: 0px;
 }
 
@@ -210,7 +214,13 @@ pluto-output pre {
     tab-size: 4;
     -moz-tab-size: 4; /* https://bugzilla.mozilla.org/show_bug.cgi?id=737785 */
     font-family: JuliaMono, monospace;
+    font-size: 0.75rem;
     font-variant-ligatures: none;
+}
+
+pluto-display pre {
+    white-space: pre;
+    word-break: normal;
 }
 
 pluto-output hr {
@@ -225,7 +235,7 @@ pluto-output blockquote {
     margin-right: 1rem;
 }
 
-pluto-output.rich_output pre,
+pluto-output.rich_output pre:not(.no-block),
 pluto-output blockquote {
     margin-block-start: 0px;
     margin-block-end: var(--pluto-cell-spacing);
@@ -360,7 +370,6 @@ pluto-output table > tbody td code {
     font-size: 0.75rem;
 }
 
-
 pluto-output table td,
 pluto-output table th {
     padding: 0.2rem 0.5rem;
@@ -391,7 +400,7 @@ body > header {
     width: 100%;
     min-height: 60px;
 
-    z-index: 5;
+    z-index: 50;
     background-color: white;
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
@@ -499,7 +508,7 @@ nav#at_the_top {
     min-height: 60px;
     display: flex;
     flex-direction: row;
-    z-index: 10;
+    z-index: 100;
 }
 
 nav#at_the_top > * {
@@ -683,7 +692,7 @@ nav#at_the_top > #process_status {
     margin: 5px;
     background: white;
     border-radius: 10px;
-    z-index: 1;
+    z-index: 10;
     margin-left: 1em;
 }
 
@@ -719,11 +728,13 @@ main > preamble {
     top: 5px;
     margin-top: 5px;
     padding-right: 5px;
-    z-index: 20;
+    z-index: 200;
+    pointer-events: none;
 }
 
 main > preamble #saveall-container {
     margin-left: auto;
+    pointer-events: all;
     right: min(0px, 700px + 25px - 100vw);
     position: relative;
     background: #ffffff;
@@ -840,10 +851,19 @@ pluto-output > div {
     overflow-y: hidden;
 }
 
+pluto-output div.raw-html-wrapper {
+    display: contents;
+}
+
 pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
+/* as embedded display: */
+
+pluto-display > div {
+    display: inline-block;
+}
 /* SELECTION */
 
 pluto-cell.selected {
@@ -898,7 +918,7 @@ pluto-cell:hover > pluto-output > div::-webkit-scrollbar-thumb {
 pluto-input .CodeMirror {
     height: auto !important;
     width: auto;
-    z-index: 2;
+    z-index: 20;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
@@ -941,7 +961,7 @@ nav#slide_controls > button {
     color: black;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
-    z-index: 3;
+    z-index: 30;
     /* CodeMirror is 2 */
 }
 
@@ -1131,7 +1151,7 @@ pluto-cell.drop_target pluto-input::after {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 2;
+    z-index: 20;
     background-color: rgba(255, 255, 255, 0.75);
     content: "+ Drop file here";
 }
@@ -1355,7 +1375,7 @@ dropruler {
     bottom: 0px;
     height: 0px;
     width: 100%;
-    z-index: 5;
+    z-index: 50;
 }
 
 @media (min-width: 500px) {
@@ -1509,7 +1529,7 @@ footer {
     font-size: 0.75rem;
     background-color: #d7dcd3;
     color: #333333;
-    z-index: 7;
+    z-index: 70;
 }
 
 footer form {
@@ -1581,7 +1601,7 @@ footer button {
 /* UNDO DELETED CELL */
 
 nav#undo_delete {
-    z-index: 20;
+    z-index: 1000;
     display: block;
     position: fixed;
     bottom: 0px;
@@ -1641,7 +1661,7 @@ body.presentation > nav#slide_controls {
     position: fixed;
     bottom: 0px;
     right: 0px;
-    z-index: 10;
+    z-index: 100;
 }
 
 body > nav#slide_controls > button {
@@ -1668,6 +1688,7 @@ body > nav#slide_controls > button.next > span::after {
 .CodeMirror-hints {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
+    z-index: 100;
 }
 
 li.CodeMirror-hint {
