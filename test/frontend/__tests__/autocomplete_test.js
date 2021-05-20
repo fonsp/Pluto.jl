@@ -35,9 +35,6 @@ describe("PlutoAutocomplete", () => {
 
         // Trigger autocomplete suggestions
         await page.keyboard.press("Tab")
-        await page.waitForTimeout(500)
-        await page.keyboard.press("Tab")
-        await page.waitForSelector(".CodeMirror-hints")
         // Get suggestions
         const suggestions = await page.evaluate(() => Array.from(document.querySelectorAll(".CodeMirror-hints li")).map((suggestion) => suggestion.textContent))
         suggestions.sort()
