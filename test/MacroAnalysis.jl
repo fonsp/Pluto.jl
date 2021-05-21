@@ -145,9 +145,6 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     update_run!(🍭, notebook, notebook.cells)
 
-    @show cell(1).output
-    @show cell(3).output
-
     @test :option_type ∈ notebook.topology.nodes[cell(1)].references
     @test cell(1).errored == false
   end
