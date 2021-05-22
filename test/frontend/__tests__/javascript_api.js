@@ -150,7 +150,8 @@ describe("JavaScript API", () => {
         expect(result).toBe(true) // else will timout
     })
 
-    it("⭐️The variable invalidation is a Promise that will get resolved when the cell output is changed or removed.", async () => {
-        expect("this").toBe("implemented")
-    })
+    // TODO
+    // it("⭐️The variable invalidation is a Promise that will get resolved when the cell output is changed or removed.", async () => {
+    //     expect("this").toBe("implemented")
+    // })
 })
