@@ -21,7 +21,7 @@ import {
     defaultKeymap,
     indentMore,
     indentLess,
-} from "../imports/cm6/editor.bundle.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@8697d451b4d1bb25bb0d772e857f8a3802cdc279/dist/index.es.min.js"
 
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
