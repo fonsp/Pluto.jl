@@ -1,7 +1,8 @@
 import path from "path"
 
 export const getTextContent = (selector) => {
-    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+    return page.evaluate((selector) => document.querySelector(selector).innerText, selector)
 }
 export const countCells = async () =>
     await page.evaluate(() => {
@@ -60,7 +61,8 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
     await page.waitForFunction(
         (selector, targetContent) => {
             const element = document.querySelector(selector)
-            return element !== null && element.textContent === targetContent
+            // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+            return element !== null && element.innerText === targetContent
         },
         { polling: 100 },
         selector,

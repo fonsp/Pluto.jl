@@ -14,6 +14,7 @@ describe("PlutoImportNotebook", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     test.each([

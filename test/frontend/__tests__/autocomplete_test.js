@@ -1,5 +1,5 @@
 import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
-import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
+import { getCellIds, importNotebook, waitForCellOutput, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput, waitForNoUpdateOngoing } from "../helpers/pluto"
 
 describe("PlutoAutocomplete", () => {
     beforeAll(async () => {
@@ -13,10 +13,12 @@ describe("PlutoAutocomplete", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should get the correct autocomplete suggestions", async () => {
         await importNotebook(page, "autocomplete_notebook.jl")
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
 

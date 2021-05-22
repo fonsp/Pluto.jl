@@ -10,7 +10,7 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
     const timeout_ref = useRef(null)
 
     useEffect(() => {
-        clearTimeout(timeout_ref.current)
+        clearTimeout(timeout_ref?.current)
         if (any_code_differs) {
             set_state("ask_to_save")
         } else {
@@ -23,6 +23,7 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
                 set_state("")
             }
         }
+        return () => clearTimeout(timeout_ref?.current)
     }, [any_code_differs])
 
     return html`<preamble>

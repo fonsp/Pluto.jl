@@ -48,6 +48,7 @@ function relay_reactivity_error!(cell::Cell, error::Exception)
 		last_run_timestamp=time(),
 		persist_js_state=false,
 	)
+	cell.published_objects = Dict{String,Any}()
 	cell.runtime = nothing
 	cell.errored = true
 end

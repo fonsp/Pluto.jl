@@ -3,7 +3,7 @@
 <blockquote>
 <a href="https://plutojl.org/plutocon2021"><img align="right" src=https://user-images.githubusercontent.com/6933510/111311607-b49a7000-865e-11eb-9c67-dd411b832096.png height="130px"></a>
   <h2><a href="https://plutojl.org/plutocon2021">PlutoCon 2021</a> — April 8th-9th</h2>
-  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers. <em>You can give a talk!</em></p>
+  <p>To celebrate Pluto's 1 year anniversary, we are hosting a <b>two day mini conference</b> about.... Pluto! It will be a place to share your fun notebooks and to <b>learn techniques from other Pluto users</b> and from Pluto's designers</p>
 </blockquote>
 
 <br>
@@ -70,6 +70,10 @@ _notebook from [vdplasthijs/julia_sir](https://github.com/vdplasthijs/julia_sir)
 You don't need to know HTML to use it! The [PlutoUI package](https://github.com/fonsp/PlutoUI.jl) contains basic inputs like sliders and buttons.
 
 But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the sample notebooks inside Pluto to learn more!
+
+<br >
+
+https://user-images.githubusercontent.com/6933510/118800499-45c8d580-b8a0-11eb-8221-048b3e34b472.mov
 
 <br >
 <hr >

@@ -14,26 +14,14 @@ import {
     createNewNotebook,
     getCellIds,
     waitForCellOutput,
+    waitForNoUpdateOngoing,
     getPlutoUrl,
     prewarmPluto,
     waitForCellOutputToChange,
     keyboardPressInPlutoInput,
     writeSingleLineInPlutoInput,
+    manuallyEnterCells,
 } from "../helpers/pluto"
-
-const manuallyEnterCells = async (page, cells) => {
-    const plutoCellIds = []
-    for (const cell of cells) {
-        const plutoCellId = lastElement(await getCellIds(page))
-        plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
-        await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
-
-        await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
-        await page.waitForFunction((nCells) => document.querySelectorAll("pluto-cell").length === nCells, {}, plutoCellIds.length + 1)
-    }
-    return plutoCellIds
-}
 
 describe("Paste Functionality", () => {
     beforeAll(async () => {
@@ -49,6 +37,7 @@ describe("Paste Functionality", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should *not* create new cell when you paste code into cell", async () => {
@@ -56,7 +45,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 
@@ -87,7 +76,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 
@@ -129,7 +118,7 @@ describe("Paste Functionality", () => {
         const plutoCellIds = await manuallyEnterCells(page, cells)
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForSelector(`body:not(.update_is_ongoing)`, { polling: 100 })
+        await waitForNoUpdateOngoing(page, { polling: 100 })
         const initialLastCellContent = await waitForContentToBecome(page, `pluto-cell[id="${plutoCellIds[3]}"] pluto-output`, "6")
         expect(initialLastCellContent).toBe("6")
 

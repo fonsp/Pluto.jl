@@ -56,6 +56,15 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     nb
 end
 
+function save_upload(content::Vector{UInt8})
+    save_path = emptynotebook().path
+    Base.open(save_path, "w") do io
+        write(io, content)
+    end
+
+    save_path
+end
+
 function new(session::ServerSession; run_async=true)
     nb = emptynotebook()
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)

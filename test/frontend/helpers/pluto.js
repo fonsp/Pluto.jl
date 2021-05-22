@@ -30,6 +30,7 @@ export const prewarmPluto = async (page) => {
     await page.waitForSelector(runSelector, { visible: true })
     await page.click(runSelector)
     await waitForContent(page, "pluto-output")
+    await page.evaluate(() => shutdownNotebook())
 }
 
 /**
@@ -89,6 +90,8 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }
+
+export const waitForNoUpdateOngoing = (page, options = {}) => page.waitForFunction(() => document.body._update_is_ongoing === false, options)
 
 /**
  * @param {Page} page
