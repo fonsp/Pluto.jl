@@ -8,7 +8,6 @@ on:
             - "**.md"
         branches:
             - main
-            - Fix-front-end-tests
     pull_request:
         paths-ignore:
             - "**.md"
