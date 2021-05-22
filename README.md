@@ -72,6 +72,10 @@ You don't need to know HTML to use it! The [PlutoUI package](https://github.com/
 But for those who want to dive deeper - you can use HTML, JavaScript and CSS to write your own widgets! Custom update events can be fired by dispatching a `new CustomEvent("input")`, making it compatible with the [`viewof` operator of observablehq](https://observablehq.com/@observablehq/a-brief-introduction-to-viewof). Have a look at the sample notebooks inside Pluto to learn more!
 
 <br >
+
+https://user-images.githubusercontent.com/6933510/118800499-45c8d580-b8a0-11eb-8221-048b3e34b472.mov
+
+<br >
 <hr >
 <br >
 
