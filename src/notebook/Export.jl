@@ -1,10 +1,15 @@
 import Pkg
 using Base64
 
+const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
+
+"""
+See [PlutoSliderServer.jl](https://github.com/JuliaPluto/PlutoSliderServer.jl) if you are interested in exporting notebooks programatically.
+"""
 function generate_html(;
         version=nothing, pluto_cdn_root=nothing,
         notebookfile_js="undefined", statefile_js="undefined", 
-        slider_server_url_js="undefined", binder_url_js="undefined", 
+        slider_server_url_js="undefined", binder_url_js=repr(default_binder_url),
         disable_ui=true
     )::String
 
