@@ -636,7 +636,7 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         # We strip those, since Markdown.LaTeX should contain the math content.
         # (It will be rendered by MathJax, which is math-first, not text-first.)
         texed = repr(mime, x)
-        html(io, Markdown.LaTeX(strip(texed, ('$', '\n'))))
+        Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()
     else
         # the classic:
