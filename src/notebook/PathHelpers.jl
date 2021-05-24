@@ -1,3 +1,5 @@
+import Base64: base64decode
+
 const adjectives = [
 	"groundbreaking"
 	"revolutionary"
@@ -75,6 +77,19 @@ const pluto_file_extensions = [
 ]
 
 endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
+
+function embedded_notebookfile(html_contents::AbstractString)::String
+	if !occursin("</html>", html_contents)
+		throw(ArgumentError("Pass the contents of a Pluto-exported HTML file as argument."))
+	end
+
+	m = match(r"pluto_notebookfile.*\"data\:.*base64\,(.*)\"", html_contents)
+	if m === nothing
+		throw(ArgumentError("Notebook does not have an embedded notebook file."))
+	else
+		String(base64decode(m.captures[1]))
+	end
+end
 
 """
 Does the path end with a pluto file extension (like `.jl` or `.pluto.jl`) and does the first line say `### A Pluto.jl notebook ###`? 
