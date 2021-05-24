@@ -44,7 +44,7 @@ function generate_html(;
 end
 
 
-function generate_html(notebook; kwargs...)
+function generate_html(notebook; kwargs...)::String
     state = notebook_to_js(notebook)
 
     notebookfile_js = let
@@ -52,7 +52,7 @@ function generate_html(notebook; kwargs...)
             save_notebook(io, notebook)
         end
 
-        "\"data:;base64,$(notebookfile64)\""
+        "\"data:text/julia;charset=utf-8;base64,$(notebookfile64)\""
     end
 
     statefile_js = let
