@@ -632,9 +632,11 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         show(io, mime, x)
         nothing, mime
     elseif mime isa MIME"text/latex"
-        # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
+        # Some reprs include $ at the start and end.
+        # We strip those, since Markdown.LaTeX should contain the math content.
+        # (It will be rendered by MathJax, which is math-first, not text-first.)
         texed = repr(mime, x)
-        html(io, Markdown.LaTeX("\\text{$texed}"))
+        Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()
     else
         # the classic:
