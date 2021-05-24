@@ -71,7 +71,12 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
                         ${recommend_download
                             ? html`
                                   <div class="command">Download the notebook:</div>
-                                  <div onClick=${(e) => e.target.closest("div").firstElementChild.click()} class="download_div">
+                                  <div
+                                      onClick=${(e) => {
+                                          e.target.tagName === "A" || e.target.closest("div").firstElementChild.click()
+                                      }}
+                                      class="download_div"
+                                  >
                                       <a href=${notebookfile_ref.current} target="_blank" download="notebook.jl">notebook.jl</a>
                                       <span class="download_icon"></span>
                                   </div>
