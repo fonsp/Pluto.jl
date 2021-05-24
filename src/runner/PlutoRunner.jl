@@ -38,29 +38,42 @@ const ObjectDimPair = Tuple{ObjectID,Int64}
 # WORKSPACE MANAGER
 ###
 
-# Will be set to the latest workspace module
-"The current workspace where your variables live. See [`move_vars`](@ref)."
-current_module = Main
-
 """
 `PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
 """
 const notebook_id = Ref{UUID}(uuid4())
 
-function set_current_module(newname)
+function revise_if_possible(m::Module)
     # Revise.jl support
-    if isdefined(current_module, :Revise) &&
-        isdefined(current_module.Revise, :revise) && current_module.Revise.revise isa Function &&
-        isdefined(current_module.Revise, :revision_queue) && current_module.Revise.revision_queue isa AbstractSet
+    if isdefined(m, :Revise) &&
+        isdefined(m.Revise, :revise) && m.Revise.revise isa Function &&
+        isdefined(m.Revise, :revision_queue) && m.Revise.revision_queue isa AbstractSet
 
-        if !isempty(current_module.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
-            current_module.Revise.revise()
+        if !isempty(m.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
+            m.Revise.revise()
         end
     end
-
-    global default_iocontext = IOContext(default_iocontext, :module => current_module)
-    global current_module = getfield(Main, newname)
 end
+
+"These expressions get evaluated inside every newly create module inside a `Workspace`."
+const workspace_preamble = [
+    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
+    :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
+]
+
+const moduleworkspace_count = Ref(0)
+function increment_current_module()::Symbol
+    id = (moduleworkspace_count[] += 1)
+    new_workspace_name = Symbol("workspace", id)
+
+    new_module = Core.eval(Main, :(
+        module $(new_workspace_name) $(workspace_preamble...) end
+    ))
+    revise_if_possible(new_module)
+
+    new_workspace_name
+end
+
 
 
 
@@ -117,10 +130,10 @@ end
 quote_if_needed(x) = x
 quote_if_needed(x::Union{Expr, Symbol, QuoteNode}) = QuoteNode(x)
 
-function compute(computer::Computer)
+function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([current_module], computer.input_globals)
+    input_global_values = getfield.([m], computer.input_globals)
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
@@ -128,7 +141,7 @@ function compute(computer::Computer)
         result, output_global_values = out
 
         for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(current_module, Expr(:(=), name, quote_if_needed(val)))
+            Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
         end
 
         result
@@ -159,7 +172,7 @@ end
 """
 Run the expression or function inside a try ... catch block, and verify its "return proof".
 """
-function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof)
+function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::ReturnProof)
     # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
 
@@ -169,7 +182,7 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
     ans, runtime = try
         local invocation = if f isa Expr
             # We eval `f` in the global scope of the workspace module:
-            Core.eval(current_module, f)
+            Core.eval(m, f)
         else
             # f is a function
             f()
@@ -195,14 +208,14 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
         wrapped = timed_expr(expr, proof)
-        run_inside_trycatch(wrapped, cell_id, proof)
+        run_inside_trycatch(m, wrapped, proof)
     else
         key = expr_hash(expr)
         local computer = get(computers, key, nothing)
@@ -211,17 +224,15 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
                 computer = register_computer(expr, key, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(expr, cell_id, nothing)
+                return run_expression(m, expr, cell_id, nothing)
             end
         end
-        ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
-            compute(computer)
-        end
+        ans, runtime = run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
         # The fix is to detect this situation and run the expression in the classical way.
         if (ans isa CapturedException) && (ans.ex isa UndefVarError)
-            run_expression(expr, cell_id, nothing)
+            run_expression(m, expr, cell_id, nothing)
         else
             ans, runtime
         end
@@ -417,7 +428,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
     currently_running_cell_id[] = cell_id
 
@@ -433,7 +444,7 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=:extra_items=>extra_items)
+        format_output(ans; context=IOContext(devnull, :extra_items=>extra_items, :module => workspace))
     else
         ("", MIME"text/plain"())
     end
@@ -480,7 +491,7 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
+const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -1033,7 +1044,7 @@ function completions_exported(cs::Vector{<:Completion})
 end
 
 "You say Linear, I say Algebra!"
-function completion_fetcher(query, pos, workspace::Module=current_module)
+function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
         filter!(is_dot_completion, results)
@@ -1086,7 +1097,7 @@ is_pure_expression(q::String) = true
 is_pure_expression(x) = false # Better safe than sorry I guess
 
 # Based on /base/docs/bindings.jl from Julia source code
-function binding_from(x::Expr, workspace::Module=current_module)
+function binding_from(x::Expr, workspace::Module)
     if x.head == :macrocall
         macro_name = x.args[1]
         if is_pure_expression(macro_name)
@@ -1100,12 +1111,12 @@ function binding_from(x::Expr, workspace::Module=current_module)
         error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Core.eval(workspace, s)
-binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
-binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
+binding_from(s::Symbol, workspace::Module) = Core.eval(workspace, s)
+binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
+binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
-"You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
-function doc_fetcher(query, workspace::Module=current_module)
+"You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
+function doc_fetcher(query, workspace::Module)
     try
         value = binding_from(Meta.parse(query), workspace)
         (repr(MIME"text/html"(), Docs.doc(value)), :👍)
@@ -1380,7 +1391,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    _module === current_module || convert(Logging.LogLevel, level) >= Logging.Info
+    startswith(String(nameof(_module)), "workspace") || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
