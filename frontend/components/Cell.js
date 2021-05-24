@@ -80,6 +80,8 @@ export const Cell = ({
     const [cell_api_ready, set_cell_api_ready] = useState(false)
     const published_objects_ref = useRef(published_objects)
     published_objects_ref.current = published_objects
+    const disable_input_ref = useRef(disable_input)
+    disable_input_ref.current = disable_input
 
     useLayoutEffect(() => {
         Object.assign(node_ref.current, {
@@ -149,7 +151,7 @@ export const Cell = ({
                 show_input=${show_input}
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
-                    if (!disable_input) {
+                    if (!disable_input_ref.current) {
                         set_waiting_to_run(true)
                         pluto_actions.set_and_run_multiple([cell_id])
                     }
@@ -163,7 +165,7 @@ export const Cell = ({
                 }}
                 on_fold=${(new_folded) => pluto_actions.fold_remote_cell(cell_id, new_folded)}
                 on_change=${(new_code) => {
-                    if (!disable_input) {
+                    if (!disable_input_ref.current) {
                         if (code_folded && cm_forced_focus != null) {
                             pluto_actions.fold_remote_cell(cell_id, false)
                         }
