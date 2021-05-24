@@ -47,6 +47,14 @@ end
 function generate_html(notebook; kwargs...)
     state = notebook_to_js(notebook)
 
+    notebookfile_js = let
+        notebookfile64 = base64encode() do io
+            save_notebook(io, notebook)
+        end
+
+        "\"data:;base64,$(notebookfile64)\""
+    end
+
     statefile_js = let
         statefile64 = base64encode() do io
             pack(io, state)
@@ -55,5 +63,5 @@ function generate_html(notebook; kwargs...)
         "\"data:;base64,$(statefile64)\""
     end
     
-    generate_html(; statefile_js=statefile_js, kwargs...)
+    generate_html(; statefile_js=statefile_js, notebookfile_js=notebookfile_js, kwargs...)
 end
