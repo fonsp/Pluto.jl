@@ -1,7 +1,7 @@
 using HTTP
 using Test
 using Pluto
-using Pluto: ServerSession
+using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
 
@@ -42,47 +42,70 @@ end
 
 @testset "authentication" begin
     port = 1238
-    server = Pluto.Configuration.ServerOptions(; port=port, launch_browser=false)
-    options = Pluto.Configuration.Options(; server=server)
-    session = Pluto.ServerSession(; options=options)
-    host = session.options.server.host
-    secret = session.secret
-    server_task = @async Pluto.run(session)
+    options = Pluto.Configuration.from_flat_kwargs(; port=port, launch_browser=false, workspace_use_distributed=false)
+    🍭 = Pluto.ServerSession(; options=options)
+    fakeclient = ClientSession(:fake, nothing)
+    🍭.connected_clients[fakeclient.id] = fakeclient
+    host = 🍭.options.server.host
+    secret = 🍭.secret
+    println("Launching test server...")
+    server_task = @async Pluto.run(🍭)
+    sleep(2)
 
     local_url(suffix) = "http://$host:$port/$suffix"
+    withsecret(url) = occursin('?', url) ? "$url&secret=$secret" : "$url?secret=$secret"
     @test HTTP.get(local_url("favicon.ico")).status == 200
 
-    function access_denied(url)
-        r = HTTP.get(url, status_exception=false)
-        r.status == 403 || r.status == 404
+    function requeststatus(url, method)
+        r = HTTP.request(method, url; status_exception=false, redirect=false)
+        r.status
     end
 
-    function access_granted(url)
-        url = occursin('?', url) ? "$url&secret=$secret" : "$url?secret=$secret"
-        r = HTTP.get(url, status_exception=false)
-        r.status != 403
-    end
+    nb = SessionActions.open(🍭, Pluto.project_relative_path("sample", "Basic.jl"); as_sample=true)
 
-    routes = [
-        "/",
-        "edit/",
-        # Interactivity.jl sample.
-        "edit?id=f30203d4-b88c-11eb-3320-a39e462705a0",
-        "foo",
-        "foo/",
-        "new",
-        "notebookfile/",
-        "notebookexport/",
-        "open/",
-        "statefile",
+    simple_routes = [
+        ("", "GET"),
+        ("edit?id=$(nb.notebook_id)", "GET"),
+        ("notebookfile?id=$(nb.notebook_id)", "GET"),
+        ("notebookexport?id=$(nb.notebook_id)", "GET"),
+        ("statefile?id=$(nb.notebook_id)", "GET"),
     ]
-    for suffix in routes
-        url = local_url(suffix)
-        @test access_denied(url)
 
-        if suffix != "new"
-            @test access_granted(url)
-        end
+    function tempcopy(x)
+        p = tempname()
+        Pluto.readwrite(x, p)
+        p
+    end
+    @assert isfile(Pluto.project_relative_path("sample", "Basic.jl"))
+
+    effect_routes = [
+        ("new", "GET"),
+        ("new", "POST"),
+        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "GET"),
+        ("open?url=$(HTTP.URIs.escapeuri("https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.14.5/sample/Basic.jl"))", "POST"),
+        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "GET"),
+        ("open?path=$(HTTP.URIs.escapeuri(Pluto.project_relative_path("sample", "Basic.jl") |> tempcopy))", "POST"),
+        ("sample/Basic.jl", "GET"),
+        ("sample/Basic.jl", "POST"),
+        ("notebookupload", "POST"),
+    ]
+
+    for (suffix, method) in simple_routes ∪ effect_routes
+        url = local_url(suffix)
+        @test requeststatus(url, method) == 403
+    end
+
+    # no notebooks were opened
+    @test length(🍭.notebooks) == 1
+
+    for (suffix, method) in simple_routes
+        url = local_url(suffix) |> withsecret
+        @test requeststatus(url, method)  ∈ 200:299
+    end
+
+    for (suffix, method) in setdiff(effect_routes, [("notebookupload", "POST")])
+        url = local_url(suffix) |> withsecret
+        @test requeststatus(url, method) ∈ 200:399 # 3xx are redirects
     end
 
     @async schedule(server_task, InterruptException(); error=true)
