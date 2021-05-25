@@ -844,7 +844,12 @@ patch: ${JSON.stringify(
             }
         }
 
+        document.addEventListener("keyup", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+        })
+
         document.addEventListener("keydown", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }

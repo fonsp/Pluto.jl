@@ -1852,6 +1852,11 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
 */
 
+body.ctrl_down .cm-variable:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 ul.CodeMirror-hints {
     padding: 0;
     margin-left: -1.5em;
