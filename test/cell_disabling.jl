@@ -17,6 +17,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
                 Cell("z = sqrt(y)"),
                 Cell("a = 4x"),
                 Cell("w = z^5"),
+                Cell(""),
             ])
     fakeclient.connected_notebook = notebook
     update_run!(🍭, notebook, notebook.cells)
@@ -56,12 +57,20 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     # disable root cell
     notebook.cells[2].running_disabled = true
     update_run!(🍭, notebook, notebook.cells)
-    @test get_disabled_cells(notebook) == collect(1:length(notebook.cells))
+    @test get_disabled_cells(notebook) == collect(1:5)
+
+
+    original_6_output = notebook.cells[6].output.body
+    setcode(notebook.cells[6], "x + 6")
+    update_run!(🍭, notebook, notebook.cells[6])
+    @test notebook.cells[6].depends_on_disabled_cells
+    @test notebook.cells[6].errored === false
+    @test notebook.cells[6].output.body == original_6_output
 
     # reactivate first cell - still all cells should be running_disabled
     notebook.cells[1].running_disabled = false
     update_run!(🍭, notebook, notebook.cells)
-    @test get_disabled_cells(notebook) == collect(1:length(notebook.cells))
+    @test get_disabled_cells(notebook) == collect(1:6)
 
     # the x cell is disabled, so changing it should have no effect
     setcode(notebook.cells[2], "x = 123123")
