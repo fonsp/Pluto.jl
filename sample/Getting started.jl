@@ -31,11 +31,11 @@ cat = "Ks*;lj"
 if cat == "Ks*;lj"
 	md"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	HTML("""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>""")
+	HTML("""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>""")
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
-html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corner of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
+html"""<p>To edit any code, just click on it. When you're done programming, press the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> in the lower-right corner of a cell to run the code. You can also use `Shift+Enter` if you are in a hurry.</p>"""
 
 # ╔═╡ 6f7eecec-9543-11ea-1284-dd52fce3ecca
 md"I feel like our cat needs a friend. Let's call them $(friend)."
@@ -48,7 +48,7 @@ else
 end
 
 # ╔═╡ f112b662-9543-11ea-3dcb-2906a99b2188
-html"""<p>A cell is a container for code & output. To add one, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> above or below another cell. You can do it wherever you like. After you're done writing code in your cell, remember to run it!</p>"""
+html"""<p>A cell is a container for code & output. To add one, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> above or below another cell. You can do it wherever you like. After you're done writing code in your cell, remember to run it!</p>"""
 
 # ╔═╡ e0642f42-9545-11ea-14ee-fde52cb54ccc
 md"## Feeding neighbors
@@ -93,7 +93,7 @@ else
 end
 
 # ╔═╡ 36cd006a-9551-11ea-3c0c-df8b7f2843c1
-HTML("""<p>To delete a cell like the one defining $scary_dog, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> on the right of its code.</p>""")
+HTML("""<p>To delete a cell like the one defining $scary_dog, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> on the right of its code.</p>""")
 
 # ╔═╡ fb4e471c-9551-11ea-1ab5-41bbd5de76b8
 md"""
@@ -125,7 +125,7 @@ else
 end
 
 # ╔═╡ 5edadcd2-9554-11ea-1714-b5b7692c4797
-html"""<p>We're almost done! It's time to share your amazing story. Scroll to the top of the notebook, and click on <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/shapes-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to see the export options - or you can always share this notebook's save file. (The file is pure Julia, by the way, and it's runnable! You'll learn more about this in the advanced introduction.)</p>"""
+html"""<p>We're almost done! It's time to share your amazing story. Scroll to the top of the notebook, and click on <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to see the export options - or you can always share this notebook's save file. (The file is pure Julia, by the way, and it's runnable! You'll learn more about this in the advanced introduction.)</p>"""
 
 # ╔═╡ 4634c856-9553-11ea-008d-3539195970ea
 md"## Final notes"
