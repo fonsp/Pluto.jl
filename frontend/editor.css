@@ -1391,16 +1391,6 @@ ul.input_menu {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
-pluto-cell.is_running_disabled > pluto-runarea > button.runcell,
-pluto-cell.is_disabled > pluto-runarea > button.runcell {
-    cursor: initial;
-}
-
-pluto-cell.is_running_disabled > pluto-runarea > button.runcell > span::after,
-pluto-cell.is_disabled > pluto-runarea > button.runcell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/remove-circle-outline.svg);
-}
-
 .disable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
 }
@@ -1458,9 +1448,15 @@ pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
-pluto-cell.running > pluto-runarea > button.runcell > span::after,
-pluto-cell.queued > pluto-runarea > button.runcell > span::after {
+pluto-runarea.interrupt > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
+}
+
+pluto-runarea.jump > button.runcell > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/remove-circle-outline.svg);
+}
+pluto-runarea.save > button.runcell > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg);
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {

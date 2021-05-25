@@ -186,21 +186,19 @@ export const Cell = ({
             />
             <${RunArea}
                 cell_id=${cell_id}
-                disabled=${is_running_disabled || is_disabled}
-                onClick=${() => {
-                    if (running || queued) {
-                        pluto_actions.interrupt_remote(cell_id)
-                    } else {
-                        if (is_running_disabled == false) {
-                            // this is the status before the change
-                            set_waiting_to_run_smart(true)
-                            let cell_to_run = selected ? selected_cells : [cell_id]
-                            pluto_actions.set_and_run_multiple(cell_to_run)
-                        }
-                    }
+                is_running_disabled=${is_running_disabled}
+                is_disabled=${is_disabled}
+                on_run=${() => {
+                    set_waiting_to_run_smart(true)
+                    let cell_to_run = selected ? selected_cells : [cell_id]
+                    pluto_actions.set_and_run_multiple(cell_to_run)
+                }}
+                on_interrupt=${() => {
+                    pluto_actions.interrupt_remote(cell_id)
                 }}
                 runtime=${runtime}
                 running=${running}
+                queued=${queued}
             />
             <button
                 onClick=${() => {

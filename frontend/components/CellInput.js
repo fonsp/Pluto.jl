@@ -556,7 +556,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, is_running_disabled })
         clearTimeout(timeout.current)
     }
     const mouseleave = () => {
-        timeout.current = setTimeout(() => setOpen(false), 500)
+        timeout.current = setTimeout(() => setOpen(false), 250)
     }
     const toggle_running_disabled = async (e) => {
         const new_val = !is_running_disabled

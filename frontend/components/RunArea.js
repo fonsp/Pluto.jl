@@ -13,32 +13,42 @@ const hasBarrier = (a_cell_id, notebook) => {
     return notebook?.cell_inputs?.[a_cell_id]?.is_running_disabled
 }
 
-export const RunArea = ({ runtime, onClick, running, disabled, cell_id }) => {
+export const RunArea = ({ runtime, running, queued, on_run, on_interrupt, on_save, is_disabled, is_running_disabled, cell_id }) => {
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     const pluto_actions = useContext(PlutoContext)
+
+    const on_jump = () => {
+        const notebook = pluto_actions.get_notebook() || {}
+        const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
+        barrier_cell_id &&
+            window.dispatchEvent(
+                new CustomEvent("cell_focus", {
+                    detail: {
+                        cell_id: barrier_cell_id,
+                        line: 0, // 1-based to 0-based index
+                    },
+                })
+            )
+    }
+    const action = running || queued ? "interrupt" : is_running_disabled ? "save" : is_disabled ? "jump" : "run"
+
+    const fmap = {
+        on_interrupt,
+        on_save,
+        on_jump,
+        on_run,
+    }
+
+    const titlemap = {
+        interrupt: "Interrupt",
+        save: "Save code without running",
+        jump: "This cell depends on a disabled cell",
+        run: "Run cell",
+    }
+
     return html`
-        <pluto-runarea>
-            <button
-                onClick=${() => {
-                    if (!disabled) {
-                        return onClick()
-                    } else {
-                        const notebook = pluto_actions.get_notebook() || {}
-                        const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
-                        barrier_cell_id &&
-                            window.dispatchEvent(
-                                new CustomEvent("cell_focus", {
-                                    detail: {
-                                        cell_id: barrier_cell_id,
-                                        line: 1, // 1-based to 0-based index
-                                    },
-                                })
-                            )
-                    }
-                }}
-                class="runcell"
-                title=${disabled ? "This cell depends on a disabled cell" : "Run"}
-            >
+        <pluto-runarea class=${action}>
+            <button onClick=${fmap[`on_${action}`]} class="runcell" title=${titlemap[action]}>
                 <span></span>
             </button>
             <span class="runtime">${prettytime(running ? localTimeRunning || runtime : runtime)}</span>
