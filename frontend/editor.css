@@ -815,11 +815,12 @@ pluto-output {
     background-color: white;
 }
 
-pluto-cell.is_disabled > pluto-output {
+pluto-cell.is_disabled > pluto-output,
+pluto-cell.is_running_disabled > pluto-output {
     opacity: 0.3;
 }
 
-pluto-cell.is_disabled.is_running_disabled > pluto-output {
+pluto-cell.is_running_disabled > pluto-output {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -950,11 +951,12 @@ pluto-cell.code_differs > pluto-input > .CodeMirror {
     border-left: none;
 }
 
-pluto-cell.is_disabled > pluto-input .CodeMirror {
+pluto-cell.is_disabled > pluto-input .CodeMirror,
+pluto-cell.is_running_disabled > pluto-input .CodeMirror {
     opacity: 0.3;
 }
 
-pluto-cell.is_disabled.is_running_disabled > pluto-input .CodeMirror {
+pluto-cell.is_running_disabled > pluto-input .CodeMirror {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -1153,11 +1155,12 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.is_disabled > pluto-trafficlight {
+pluto-cell.is_disabled > pluto-trafficlight,
+pluto-cell.is_running_disabled > pluto-trafficlight {
     background-color: rgb(255, 255, 255);
 }
 
-pluto-cell.is_disabled.is_running_disabled > pluto-trafficlight {
+pluto-cell.is_running_disabled:not(.asjkdhf) > pluto-trafficlight {
     background-color: rgba(139, 139, 139, 0.25);
     opacity: 0.3;
 }
@@ -1388,6 +1391,7 @@ ul.input_menu {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
+pluto-cell.is_running_disabled > pluto-runarea > button.runcell,
 pluto-cell.is_disabled > pluto-runarea > button.runcell {
     cursor: initial;
 }
