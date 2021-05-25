@@ -705,53 +705,71 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext
 end
 
 function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
+    else
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
 
-    L = min(my_limit+1, length(x))
-    elements = Vector{Any}(undef, L)
-    for (index, value) in enumerate(x)
-        if index <= my_limit
-            elements[index] = (index, format_output_default(value, context))
-        else
-            elements[index] = "more"
-            break
+        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+
+        L = min(my_limit+1, length(x))
+        elements = Vector{Any}(undef, L)
+        for (index, value) in enumerate(x)
+            if index <= my_limit
+                elements[index] = (index, format_output_default(value, recur_io))
+            else
+                elements[index] = "more"
+                break
+            end
         end
-    end
 
-    Dict{Symbol,Any}(
-        :prefix => string(typeof(x)),
-        :prefix_short => string(typeof(x) |> trynameof),
-        :objectid => string(objectid(x), base=16),
-        :type => :Set,
-        :elements => elements
-    )
+        Dict{Symbol,Any}(
+            :prefix => string(typeof(x)),
+            :prefix_short => string(typeof(x) |> trynameof),
+            :objectid => string(objectid(x), base=16),
+            :type => :Set,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
-    indices = eachindex(x)
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
-
-    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-    elements = if length(x) <= my_limit + 5
-        tree_data_array_elements(x, indices, context)
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
     else
-        firsti = firstindex(x)
-        from_end = my_limit > 20 ? 10 : 1
-        Any[
-            tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], context)...,
-            "more",
-            tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
-        ]
-    end
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
 
-    prefix = array_prefix(x)
-    Dict{Symbol,Any}(
-        :prefix => prefix,
-        :prefix_short => x isa Vector ? "" : prefix, # if not abstract
-        :objectid => string(objectid(x), base=16),
-        :type => :Array,
-        :elements => elements
-    )
+        indices = eachindex(x)
+        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+
+        # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
+        elements = if length(x) <= my_limit + 5
+            tree_data_array_elements(x, indices, recur_io)
+        else
+            firsti = firstindex(x)
+            from_end = my_limit > 20 ? 10 : 1
+            Any[
+                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io)...,
+                "more",
+                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)...,
+            ]
+        end
+
+        prefix = array_prefix(x)
+        Dict{Symbol,Any}(
+            :prefix => prefix,
+            :prefix_short => x isa Vector ? "" : prefix, # if not abstract
+            :objectid => string(objectid(x), base=16),
+            :type => :Array,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data(@nospecialize(x::Tuple), context::IOContext)
@@ -763,27 +781,36 @@ function tree_data(@nospecialize(x::Tuple), context::IOContext)
 end
 
 function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
-    elements = []
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
+    else
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
+        
+        elements = []
 
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
-    row_index = 1
-    for pair in x
-        k, v = pair
-        push!(elements, (format_output_default(k, context), format_output_default(v, context)))
-        if row_index == my_limit
-            push!(elements, "more")
-            break
+        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+        row_index = 1
+        for pair in x
+            k, v = pair
+            push!(elements, (format_output_default(k, recur_io), format_output_default(v, recur_io)))
+            if row_index == my_limit
+                push!(elements, "more")
+                break
+            end
+            row_index += 1
         end
-        row_index += 1
-    end
 
-    Dict{Symbol,Any}(
-        :prefix => string(typeof(x)),
-        :prefix_short => string(typeof(x) |> trynameof),
-        :objectid => string(objectid(x), base=16),
-        :type => :Dict,
-        :elements => elements
-    )
+        Dict{Symbol,Any}(
+            :prefix => string(typeof(x)),
+            :prefix_short => string(typeof(x) |> trynameof),
+            :objectid => string(objectid(x), base=16),
+            :type => :Dict,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data_nt_row(pair::Tuple, context::IOContext)
@@ -812,10 +839,6 @@ end
 
 # Based on Julia source code but without writing to IO
 function tree_data(@nospecialize(x::Any), context::IOContext)
-    t = typeof(x)
-    nf = nfields(x)
-    nb = sizeof(x)
-
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
@@ -825,6 +848,10 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
         recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
                                 Pair{Symbol,Any}(:typeinfo, Any))
 
+        t = typeof(x)
+        nf = nfields(x)
+        nb = sizeof(x)
+        
         elements = Any[
             let
                 f = fieldname(t, i)
