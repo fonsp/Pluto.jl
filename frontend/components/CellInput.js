@@ -543,12 +543,7 @@ export const CellInput = ({
     // TODO effect hook for disable_input?
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <${InputOptions}
-                on_delete=${on_delete}
-                cell_id=${cell_id}
-                set_waiting_to_run=${set_waiting_to_run}
-                is_running_disabled=${is_running_disabled}
-            />
+            <${InputOptions} on_delete=${on_delete} cell_id=${cell_id} set_waiting_to_run=${set_waiting_to_run} is_running_disabled=${is_running_disabled} />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
@@ -589,20 +584,21 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disab
 
     return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} class="delete_cell" title="Actions">
         <span class="icon"></span>
-        ${open &&
-        html`<ul onMouseenter=${mouseenter} class="input_menu">
-            <li
-                onClick=${handleExecutionBarrier}
-                title=${is_running_disabled
-                    ? "Removing the barrier re-runs your code"
-                    : "Adding a barrier stops this and dependent cells for reactive running"}
-            >
-                ${is_running_disabled ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
-                ${is_running_disabled ? html`Enable cell` : html`Disable cell`}
-            </li>
-            <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
-            <li class="coming_soon" title=""><span class="bandage icon" /><em>Coming soon…</em></li>
-        </ul>`}
+        ${open
+            ? html`<ul onMouseenter=${mouseenter} class="input_menu">
+                  <li
+                      onClick=${handleExecutionBarrier}
+                      title=${is_running_disabled
+                          ? "Removing the barrier re-runs your code"
+                          : "Adding a barrier stops this and dependent cells for reactive running"}
+                  >
+                      ${is_running_disabled ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
+                      ${is_running_disabled ? html`Enable cell` : html`Disable cell`}
+                  </li>
+                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li class="coming_soon" title=""><span class="bandage icon" /><em>Coming soon…</em></li>
+              </ul>`
+            : html``}
     </button>`
 }
 
