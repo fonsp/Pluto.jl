@@ -1305,8 +1305,9 @@ pluto-cell > button.add_cell > span::after {
 pluto-input > button.delete_cell .input_menu {
     --width: 156px;
     left: 100%;
-    padding: 6px;
-    top: 0;
+    padding: 0px;
+    border-radius: 6px;
+    top: -8px;
     display: block;
     position: absolute;
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -1315,8 +1316,7 @@ pluto-input > button.delete_cell .input_menu {
 @media screen and (min-width: 921px) {
 
     pluto-input > button.delete_cell .input_menu {
-        left: 100%;
-        border-radius: 0 8px 8px 8px;
+        left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
@@ -1325,15 +1325,14 @@ pluto-input > button.delete_cell .input_menu {
     }
     pluto-input > button.delete_cell .input_menu {
         left: calc(100% - var(--width) - 36px);
-        border-radius: 8px 0px 8px 8px;
     }
 }
 ul.input_menu {
     margin: 0;
 }
 .input_menu li {
-    font-family: "Roboto Mono", monospace;
-    font-size: 0.75rem;
+    font-family: system-ui;
+    font-size: .8rem;
     margin-block-end: 0px;
     letter-spacing: -0.05em;
     color: #333333ff;
@@ -1345,15 +1344,15 @@ ul.input_menu {
     display: flex;
     align-items: center;
     justify-content: flex-start;
+    border-radius: 2px;
 }
 .input_menu li:last-child {
-    border-radius: 0 0 6px 6px;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
 }
 .input_menu li:first-child {
-    border-radius: 6px 6px 0 0;
-}
-.input_menu li:not(:last-child) {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
 }
 
 .input_menu li.coming_soon {
