@@ -1251,13 +1251,16 @@ pluto-input > button > span {
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
+        transition: opacity 0.25s ease-in-out;
     }
     pluto-cell:focus-within > button,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
         opacity: 0.25;
+        transition: opacity 0.25s ease-in-out;
     }
+    pluto-cell > pluto-input > button:focus-within,
     pluto-cell > button:focus-within,
     pluto-cell > pluto-input > button:focus-within pluto-cell > pluto-runarea > button:focus-within,
     pluto-cell > pluto-shoulder > button:focus-within,

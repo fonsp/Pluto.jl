@@ -582,7 +582,7 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disab
         return false
     }
 
-    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} class="delete_cell" title="Actions">
+    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter} class="input_menu">
