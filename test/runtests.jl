@@ -11,6 +11,7 @@ include("./Analysis.jl")
 include("./Firebasey.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
+include("./cell_disabling.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook

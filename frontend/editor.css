@@ -815,6 +815,15 @@ pluto-output {
     background-color: white;
 }
 
+pluto-cell.depends_on_disabled_cells > pluto-output,
+pluto-cell.running_disabled > pluto-output {
+    opacity: 0.3;
+}
+
+pluto-cell.running_disabled > pluto-output {
+    background-color: rgba(139, 139, 139, 0.25);
+}
+
 .scroll_y {
     overflow-y: auto;
     max-height: 80vh;
@@ -940,6 +949,15 @@ pluto-cell:not(.show_input) > pluto-input {
 pluto-cell.code_differs > pluto-input > .CodeMirror {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
+}
+
+pluto-cell.depends_on_disabled_cells > pluto-input .CodeMirror,
+pluto-cell.running_disabled > pluto-input .CodeMirror {
+    opacity: 0.3;
+}
+
+pluto-cell.running_disabled > pluto-input .CodeMirror {
+    background-color: rgba(139, 139, 139, 0.25);
 }
 
 /* UI */
@@ -1137,6 +1155,16 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
+pluto-cell.depends_on_disabled_cells > pluto-trafficlight,
+pluto-cell.running_disabled > pluto-trafficlight {
+    background-color: rgb(255, 255, 255);
+}
+
+pluto-cell.running_disabled:not(.asjkdhf) > pluto-trafficlight {
+    background-color: rgba(139, 139, 139, 0.25);
+    opacity: 0.3;
+}
+
 pluto-cell.drop_target {
     position: relative;
 }
@@ -1226,13 +1254,16 @@ pluto-input > button > span {
     pluto-input > button,
     pluto-shoulder > button {
         opacity: 0.25;
+        transition: opacity 0.25s ease-in-out;
     }
     pluto-cell:focus-within > button,
     pluto-cell:focus-within > pluto-input > button,
     pluto-cell:focus-within > pluto-runarea,
     pluto-cell:focus-within > pluto-shoulder > button {
         opacity: 0.25;
+        transition: opacity 0.25s ease-in-out;
     }
+    pluto-cell > pluto-input > button:focus-within,
     pluto-cell > button:focus-within,
     pluto-cell > pluto-input > button:focus-within pluto-cell > pluto-runarea > button:focus-within,
     pluto-cell > pluto-shoulder > button:focus-within,
@@ -1271,6 +1302,100 @@ pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
 }
+pluto-input > button.delete_cell .input_menu {
+    --width: 156px;
+    left: 100%;
+    padding: 0px;
+    border-radius: 6px;
+    top: -8px;
+    display: block;
+    position: absolute;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: white;
+}
+@media screen and (min-width: 921px) {
+
+    pluto-input > button.delete_cell .input_menu {
+        left: calc(100% - 3px);
+    }
+}
+@media screen and (max-width: 920px) {
+    pluto-input > button.delete_cell  {
+        z-index: 31;
+    }
+    pluto-input > button.delete_cell .input_menu {
+        left: calc(100% - var(--width) - 36px);
+    }
+}
+ul.input_menu {
+    margin: 0;
+}
+.input_menu li {
+    font-family: system-ui;
+    font-size: .8rem;
+    margin-block-end: 0px;
+    letter-spacing: -0.05em;
+    color: #333333ff;
+    position: relative;
+    list-style: none;
+    padding: 8px;
+    width: var(--width);
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    border-radius: 2px;
+}
+.input_menu li:last-child {
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+.input_menu li:first-child {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+}
+
+.input_menu li.coming_soon {
+    color: #55555544;
+}
+.input_menu li.coming_soon:hover {
+    cursor: not-allowed;
+    background-color:rgba(0, 0, 0, 0.1)
+}
+
+.input_menu li:hover {
+    transition-property: background-color;
+    transition-duration: 200ms; 
+    background-color:rgba(0, 0, 0, 0.1)
+}
+
+.disable_cell_icon,
+.delete_icon, 
+.enable_cell_icon,
+.bandage_icon,
+.icon {
+    --size: 17px;
+    width:  var(--size);
+    height: var(--size);
+    margin-top: 1px;
+    background-size: var(--size) var(--size);
+    background-position: center;
+    margin-right: calc(var(--size) / 3);
+}
+.bandage_icon {
+    filter: opacity(0.3);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg);
+}
+.enable_cell_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+}
+
+.disable_cell_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
+}
+.delete_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
+}
 
 pluto-input > button.delete_cell {
     /* top: 3px; */
@@ -1279,8 +1404,8 @@ pluto-input > button.delete_cell {
     padding: 5px;
 }
 
-pluto-input > button.delete_cell > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
+pluto-input > button.delete_cell > span.icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
 }
 
 /* RUNAREA */
@@ -1322,9 +1447,15 @@ pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
-pluto-cell.running > pluto-runarea > button.runcell > span::after,
-pluto-cell.queued > pluto-runarea > button.runcell > span::after {
+pluto-runarea.interrupt > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
+}
+
+pluto-runarea.jump > button.runcell > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/remove-circle-outline.svg);
+}
+pluto-runarea.save > button.runcell > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg);
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {
@@ -1891,4 +2022,5 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
 .cm-s-default.CodeMirror-empty {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
+}
 }

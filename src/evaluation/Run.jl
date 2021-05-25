@@ -33,12 +33,23 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# get the new topological order
 	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
+	# find (indirectly) deactivated cells and update their status
+	deactivated = filter(c -> c.running_disabled, notebook.cells)
+	indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.depends_on_disabled_cells = true
+	end
+
+    to_run = setdiff(to_run_raw, indirectly_deactivated)
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
 		cell.queued = true
+		cell.depends_on_disabled_cells = false
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
