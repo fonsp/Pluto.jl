@@ -39,16 +39,16 @@ Deactivation of cells for execution barriers.
 function cell_deactivation!(cells_in:: Vector{Cell}, deactivated_uuids:: Set{UUID})
     # activate all cells before checking which cells are affected by execution barrier
     for cell in cells_in
-        cell.is_disabled = false
+        cell.depends_on_disabled_cells = false
     end
     # identify cells affected by active execution barrier and its references
     for cell in cells_in
 		if cell.cell_id ∈ deactivated_uuids
-			cell.is_disabled = true
+			cell.depends_on_disabled_cells = true
 			cell.queued = false
 		end
     end
-    cells_to_run = filter(cell -> !cell.is_disabled, cells_in)
+    cells_to_run = filter(cell -> !cell.depends_on_disabled_cells, cells_in)
     return cells_to_run
 end
 

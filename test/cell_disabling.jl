@@ -23,10 +23,10 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
     # helper functions
     id(i) = notebook.cells[i].cell_id
-    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.is_disabled]
+    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.depends_on_disabled_cells]
 
     @test !any(c.is_running_disabled for c in notebook.cells)
-    @test !any(c.is_disabled for c in notebook.cells)
+    @test !any(c.depends_on_disabled_cells for c in notebook.cells)
 
     # disable first cell
     notebook.cells[1].is_running_disabled = true

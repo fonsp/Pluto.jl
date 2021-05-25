@@ -136,7 +136,7 @@ const first_true_key = (obj) => {
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: ?number,
  *  is_running_disabled: boolean,
- *  is_disabled: boolean,
+ *  depends_on_disabled_cells: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,

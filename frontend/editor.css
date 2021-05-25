@@ -815,7 +815,7 @@ pluto-output {
     background-color: white;
 }
 
-pluto-cell.is_disabled > pluto-output,
+pluto-cell.depends_on_disabled_cells > pluto-output,
 pluto-cell.is_running_disabled > pluto-output {
     opacity: 0.3;
 }
@@ -951,7 +951,7 @@ pluto-cell.code_differs > pluto-input > .CodeMirror {
     border-left: none;
 }
 
-pluto-cell.is_disabled > pluto-input .CodeMirror,
+pluto-cell.depends_on_disabled_cells > pluto-input .CodeMirror,
 pluto-cell.is_running_disabled > pluto-input .CodeMirror {
     opacity: 0.3;
 }
@@ -1155,7 +1155,7 @@ body:not(.___) pluto-cell.running.errored > pluto-trafficlight::after {
     background-size: 4px var(--patternHeight); /* 16 * sqrt(2) */
 }
 
-pluto-cell.is_disabled > pluto-trafficlight,
+pluto-cell.depends_on_disabled_cells > pluto-trafficlight,
 pluto-cell.is_running_disabled > pluto-trafficlight {
     background-color: rgb(255, 255, 255);
 }
