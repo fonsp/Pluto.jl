@@ -34,7 +34,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     Cell("""begin
                         mutable struct A x; y end
                         a = A(16, 0)
-                        a.y = [1, (2, A(3, (r=4, t=(5 => Dict(6 => Ref(a))))))]
+                        a.y = (2, Dict(6 => a))
                         a
                     end"""),
                     Cell("Set([17:20,\"Wonderful\"])"),
@@ -155,6 +155,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("""let
                     x = Any[1,2,3]
                     push!(x,x)
+                    push!(x,[x])
+                    push!(x,(a=x,))
+                    push!(x,:b=>x)
                 end"""),
                 Cell("""let
                     x = Set(Any[1,2,3])
@@ -162,13 +165,17 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 end"""),
                 Cell("""let
                     x = Dict{Any,Any}(1 => 2, 3 => 4)
-                    x[5] = x
+                    x[5] = (123, x)
                 end"""),
                 Cell("""let
                     x = Ref{Any}(123)
                     x[] = x
                 end"""),
-                ])
+                Cell("""let
+                    x = Ref{Any}(123)
+                    x[] = (1,x)
+                end"""),
+            ])
             fakeclient.connected_notebook = notebook
 
             update_run!(🍭, notebook, notebook.cells)
