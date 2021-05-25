@@ -198,6 +198,7 @@ export const Cell = ({
                 }}
                 runtime=${runtime}
                 running=${running}
+                code_differs=${class_code_differs}
                 queued=${queued}
             />
             <button

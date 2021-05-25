@@ -13,7 +13,9 @@ const hasBarrier = (a_cell_id, notebook) => {
     return notebook?.cell_inputs?.[a_cell_id]?.running_disabled
 }
 
-export const RunArea = ({ runtime, running, queued, on_run, on_interrupt, on_save, depends_on_disabled_cells, running_disabled, cell_id }) => {
+export const RunArea = ({ runtime, running, queued, code_differs, on_run, on_interrupt, depends_on_disabled_cells, running_disabled, cell_id }) => {
+    const on_save = on_run /* because disabled cells save without running */
+
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     const pluto_actions = useContext(PlutoContext)
 
@@ -30,7 +32,7 @@ export const RunArea = ({ runtime, running, queued, on_run, on_interrupt, on_sav
                 })
             )
     }
-    const action = running || queued ? "interrupt" : running_disabled ? "save" : depends_on_disabled_cells ? "jump" : "run"
+    const action = running || queued ? "interrupt" : running_disabled ? "save" : depends_on_disabled_cells && !code_differs ? "jump" : "run"
 
     const fmap = {
         on_interrupt,
