@@ -135,7 +135,12 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
         t = @async begin
             interrupt_workspace(workspace; verbose=false)
-            Distributed.rmprocs(workspace.pid)
+            # run on proc 1 in case Pluto is being used inside a notebook process
+            # Workaround for "only process 1 can add/remove workers"
+            Distributed.remotecall_eval(Main, 1, quote
+                import Distributed
+                Distributed.rmprocs($(workspace.pid))
+            end)
         end
         async || wait(t)
     end
