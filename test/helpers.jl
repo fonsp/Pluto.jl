@@ -100,6 +100,13 @@ function setcode(cell, newcode)
     cell.code = newcode
 end
 
+function noerror(cell)
+    if cell.errored
+        @show cell.output.body
+    end
+    !cell.errored
+end
+
 function occursinerror(needle, haystack::Pluto.Cell)
     haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
