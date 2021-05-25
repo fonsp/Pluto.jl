@@ -78,6 +78,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
 
+	delete!.([notebook.bonds], to_delete_vars)
+
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
 		
