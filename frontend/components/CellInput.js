@@ -57,7 +57,6 @@ export const CellInput = ({
     on_drag_drop_events,
     cell_id,
     notebook_id,
-    set_waiting_to_run,
     is_running_disabled,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -543,15 +542,14 @@ export const CellInput = ({
     // TODO effect hook for disable_input?
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <${InputOptions} on_delete=${on_delete} cell_id=${cell_id} set_waiting_to_run=${set_waiting_to_run} is_running_disabled=${is_running_disabled} />
+            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} is_running_disabled=${is_running_disabled} />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
 }
 
-const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, is_running_disabled }) => {
     const timeout = useRef(null)
-    const ref = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
     const mouseenter = () => {
@@ -560,26 +558,15 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disab
     const mouseleave = () => {
         timeout.current = setTimeout(() => setOpen(false), 500)
     }
-    const handleExecutionBarrier = (e) => {
+    const toggle_running_disabled = async (e) => {
+        const new_val = !is_running_disabled
         e.preventDefault()
         e.stopPropagation()
-        pluto_actions.update_notebook((notebook) => {
-            notebook.cell_inputs[cell_id].is_running_disabled = !is_running_disabled
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].is_running_disabled = new_val
         })
-        // run cell if execution barrier is deactivated
-        if (is_running_disabled == true) {
-            // this is the status before the change
-            set_waiting_to_run(true)
-        } else {
-            // interrupt cell if it is still running when a barrier is activated
-            /* currently, there is no way to interrupt a specific cell, the method
-            below interrupts all running cells, which has unintented side effects,
-            e.g. interrupting completely unrelated cells queued for execution.
-            Therefore, this feature is currently not activated. */
-            // pluto_actions.interrupt_remote(cell_id)
-        }
-        pluto_actions.set_and_run_multiple([cell_id])
-        return false
+        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+        await run_cell()
     }
 
     return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
@@ -587,7 +574,7 @@ const InputOptions = ({ on_delete, cell_id, set_waiting_to_run, is_running_disab
         ${open
             ? html`<ul onMouseenter=${mouseenter} class="input_menu">
                   <li
-                      onClick=${handleExecutionBarrier}
+                      onClick=${toggle_running_disabled}
                       title=${is_running_disabled
                           ? "Removing the barrier re-runs your code"
                           : "Adding a barrier stops this and dependent cells for reactive running"}

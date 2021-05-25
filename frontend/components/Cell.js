@@ -65,7 +65,7 @@ export const Cell = ({
     const [waiting_to_run, set_waiting_to_run] = useState(false)
     useEffect(() => {
         set_waiting_to_run(false)
-    }, [queued, running, output?.last_run_timestamp])
+    }, [queued, running, output?.last_run_timestamp, is_disabled, is_running_disabled])
     // We activate animations instantly BUT deactivate them NSeconds later.
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
@@ -83,6 +83,9 @@ export const Cell = ({
     published_objects_ref.current = published_objects
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
+    const should_set_waiting_to_run_ref = useRef(true)
+    should_set_waiting_to_run_ref.current = !is_running_disabled && !is_disabled
+    const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
 
     useLayoutEffect(() => {
         Object.assign(node_ref.current, {
@@ -155,7 +158,7 @@ export const Cell = ({
                 on_drag_drop_events=${handler}
                 on_submit=${() => {
                     if (!disable_input_ref.current) {
-                        set_waiting_to_run(true)
+                        set_waiting_to_run_smart(true)
                         pluto_actions.set_and_run_multiple([cell_id])
                     }
                 }}
@@ -179,7 +182,6 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-                set_waiting_to_run=${set_waiting_to_run}
                 is_running_disabled=${is_running_disabled}
             />
             <${RunArea}
@@ -191,7 +193,7 @@ export const Cell = ({
                     } else {
                         if (is_running_disabled == false) {
                             // this is the status before the change
-                            set_waiting_to_run(true)
+                            set_waiting_to_run_smart(true)
                             let cell_to_run = selected ? selected_cells : [cell_id]
                             pluto_actions.set_and_run_multiple(cell_to_run)
                         }
