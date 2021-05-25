@@ -693,8 +693,14 @@ function array_prefix(@nospecialize(x))::String
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
-    a + let
+function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+    let
+        if depth < 3
+            a ÷ (1 + 2 * depth)
+        else
+            0
+        end
+    end + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
@@ -711,19 +717,22 @@ function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
             :type => :circular,
         )
     else
-        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
 
         L = min(my_limit+1, length(x))
         elements = Vector{Any}(undef, L)
-        for (index, value) in enumerate(x)
+        index = 1
+        for value in x
             if index <= my_limit
                 elements[index] = (index, format_output_default(value, recur_io))
             else
                 elements[index] = "more"
                 break
             end
+            index += 1
         end
 
         Dict{Symbol,Any}(
@@ -743,17 +752,18 @@ function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
             :type => :circular,
         )
     else
-        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
         indices = eachindex(x)
-        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
 
-        # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-        elements = if length(x) <= my_limit + 5
+        # additional couple of elements so that we don't cut off 1 or 2 itmes - that's silly
+        elements = if length(x) <= ((my_limit * 6) ÷ 5)
             tree_data_array_elements(x, indices, recur_io)
         else
             firsti = firstindex(x)
-            from_end = my_limit > 20 ? 10 : 1
+            from_end = my_limit > 20 ? 10 : my_limit > 1 ? 1 : 0
             Any[
                 tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io)...,
                 "more",
@@ -773,10 +783,13 @@ function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
 end
 
 function tree_data(@nospecialize(x::Tuple), context::IOContext)
+    depth = get(context, :tree_viewer_depth, 0)
+    recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
+
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x, [context]))),
+        :elements => collect(enumerate(format_output_default.(x, [recur_io]))),
     )
 end
 
@@ -787,16 +800,18 @@ function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOConte
             :type => :circular,
         )
     else
-        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x))
-        
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
+
         elements = []
 
-        my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
         row_index = 1
         for pair in x
             k, v = pair
-            push!(elements, (format_output_default(k, recur_io), format_output_default(v, recur_io)))
-            if row_index == my_limit
+            if row_index <= my_limit
+                push!(elements, (format_output_default(k, recur_io), format_output_default(v, recur_io)))
+            else
                 push!(elements, "more")
                 break
             end
@@ -821,10 +836,13 @@ end
 
 
 function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+    depth = get(context, :tree_viewer_depth, 0)
+    recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
+
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(zip(eachindex(x), x), (context,))
+        :elements => tree_data_nt_row.(zip(eachindex(x), x), (recur_io,))
     )
 end
 
@@ -845,8 +863,12 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
             :type => :circular,
         )
     else
-        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
-                                Pair{Symbol,Any}(:typeinfo, Any))
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, 
+            Pair{Symbol,Any}(:SHOWN_SET, x),
+            Pair{Symbol,Any}(:typeinfo, Any),
+            Pair{Symbol,Any}(:tree_viewer_depth, depth + 1),
+            )
 
         t = typeof(x)
         nf = nfields(x)
@@ -919,11 +941,11 @@ const integrations = Integration[
             function table_data(x::Any, io::IOContext)
                 rows = Tables.rows(x)
 
-                my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+                my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
 
-                my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+                my_column_limit = get_my_display_limit(x, 2, 0, io, table_column_display_limit, table_column_display_limit_increase)
                 # my_column_limit = table_column_display_limit
 
                 # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
