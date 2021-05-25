@@ -149,6 +149,35 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false
         end
+
+        @testset "Circular references" begin
+            notebook = Notebook([
+                Cell("""let
+                    x = Any[1,2,3]
+                    push!(x,x)
+                end"""),
+                Cell("""let
+                    x = Set(Any[1,2,3])
+                    push!(x,x)
+                end"""),
+                Cell("""let
+                    x = Dict{Any,Any}(1 => 2, 3 => 4)
+                    x[5] = x
+                end"""),
+                Cell("""let
+                    x = Ref{Any}(123)
+                    x[] = x
+                end"""),
+                ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells)
+
+            @test notebook.cells[1].errored == false
+            @test notebook.cells[2].errored == false
+            @test notebook.cells[3].errored == false
+            @test notebook.cells[4].errored == false
+        end
     end
 
     
