@@ -4,54 +4,6 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 
 Base.push!(x::Set{Cell}) = x
 
-"""
-Recursively checks which downstream dependencies need to be deactivated
-"""
-function get_deactivated_cell_uuids!(deactivated_uuids:: Set{UUID}, cell:: Cell)
-	cell.cell_id ∈ deactivated_uuids && return # if a cell is already deactived, all its downstream dependencies are also already processed
-	push!(deactivated_uuids, cell.cell_id)
-	references = cell.cell_dependencies.downstream_cells_map
-    isempty(references) && return
-
-    referenced_cells = vcat(values(references)...) |> unique
-    for c ∈ referenced_cells
-        get_deactivated_cell_uuids!(deactivated_uuids, c)
-    end
-	nothing
-end
-
-"""
-Get UUIDs for all deactivated cells (directly or indirectly)
-"""
-function get_deactivated_cell_uuids(cells:: Vector{Cell}):: Set{UUID}
-	deactivated_uuids = Set{UUID}()
-	for cell in cells
-		if cell.running_disabled
-			get_deactivated_cell_uuids!(deactivated_uuids, cell)
-		end
-	end
-	return deactivated_uuids
-end
-
-"""
-Deactivation of cells for execution barriers.
-"""
-function cell_deactivation!(cells_in:: Vector{Cell}, deactivated_uuids:: Set{UUID})
-    # activate all cells before checking which cells are affected by execution barrier
-    for cell in cells_in
-        cell.depends_on_disabled_cells = false
-    end
-    # identify cells affected by active execution barrier and its references
-    for cell in cells_in
-		if cell.cell_id ∈ deactivated_uuids
-			cell.depends_on_disabled_cells = true
-			cell.queued = false
-		end
-    end
-    cells_to_run = filter(cell -> !cell.depends_on_disabled_cells, cells_in)
-    return cells_to_run
-end
-
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
@@ -83,12 +35,21 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
 	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
-    deactivated_uuids = get_deactivated_cell_uuids(values(notebook.cells_dict) |> collect)
-    to_run = cell_deactivation!(to_run_raw, deactivated_uuids)	
+	# find (indirectly) deactivated cells and update their status
+	deactivated = filter(c -> c.running_disabled, to_run_raw)
+	indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.depends_on_disabled_cells = true
+	end
+
+    to_run = setdiff(to_run_raw, indirectly_deactivated)
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
 		cell.queued = true
+		cell.depends_on_disabled_cells = false
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
