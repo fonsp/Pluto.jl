@@ -5,12 +5,12 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells = Cell[cells..., removed_cells...]
+	roots = Cell[roots..., removed_cells...]
 
 	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
 	new_topology = NotebookTopology(
@@ -25,14 +25,14 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+	old_order = topological_order(notebook, old_topology, roots)
 
 	old_runnable = old_order.runnable
 	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
 	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
+	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
 	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
 	# find (indirectly) deactivated cells and update their status
@@ -93,7 +93,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			run = run_single!(
 				(session, notebook), cell, 
 				new_topology.nodes[cell], new_topology.codes[cell]; 
-				persist_js_state=(persist_js_state || cell ∉ cells)
+				persist_js_state=(persist_js_state || cell ∉ roots)
 			)
 			any_interrupted |= run.interrupted
 		end
