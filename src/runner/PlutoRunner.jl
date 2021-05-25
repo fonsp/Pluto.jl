@@ -632,9 +632,11 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         show(io, mime, x)
         nothing, mime
     elseif mime isa MIME"text/latex"
-        # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
+        # Some reprs include $ at the start and end.
+        # We strip those, since Markdown.LaTeX should contain the math content.
+        # (It will be rendered by MathJax, which is math-first, not text-first.)
         texed = repr(mime, x)
-        html(io, Markdown.LaTeX("\\text{$texed}"))
+        Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()
     else
         # the classic:
@@ -1228,9 +1230,8 @@ end"""
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
 function publish(x, id_start)::String
-    if !packable(x)
-        throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
-    end
+    assertpackable(x)
+    
     id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
     d[id] = x
@@ -1273,14 +1274,17 @@ function publish_to_js(args...)::String
 end
 
 const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
-packable(::Packable) = true
-packable(::Any) = false
-packable(::Vector{<:Packable}) = true
-packable(::Dict{<:Packable,<:Packable}) = true
-packable(x::Vector) = all(packable, x)
-packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
-packable(t::Tuple) = all(packable, t)
-packable(t::NamedTuple) = all(packable, t)
+assertpackable(::Packable) = true
+assertpackable(t::Any) = throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries. $(string(typeof(t))) is not compatible."))
+assertpackable(::Vector{<:Packable}) = true
+assertpackable(::Dict{<:Packable,<:Packable}) = true
+assertpackable(x::Vector) = foreach(assertpackable, x)
+assertpackable(d::Dict) = let
+    foreach(assertpackable, keys(d))
+    foreach(assertpackable, values(d))
+end
+assertpackable(t::Tuple) = foreach(assertpackable, t)
+assertpackable(t::NamedTuple) = foreach(assertpackable, t)
 
 struct EmbeddableDisplay
     x

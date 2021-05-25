@@ -489,7 +489,7 @@ export const CellInput = ({
             const varName = path[0]?.textContent
             if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
                 e.preventDefault()
-                document.querySelector(`#${encodeURI(varName)}`).scrollIntoView()
+                document.querySelector(`[id='${encodeURI(varName)}']`).scrollIntoView()
                 window.dispatchEvent(
                     new CustomEvent("cell_focus", {
                         detail: {

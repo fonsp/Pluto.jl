@@ -787,7 +787,18 @@ patch: ${JSON.stringify(
             return new_task
         }
         this.update_notebook = update_notebook
-
+        window.shutdownNotebook = this.close = () => {
+            this.client.send(
+                "shutdown_notebook",
+                {
+                    keep_in_session: false,
+                },
+                {
+                    notebook_id: this.state.notebook.notebook_id,
+                },
+                false
+            )
+        }
         this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
