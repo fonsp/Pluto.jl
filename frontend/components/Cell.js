@@ -186,7 +186,7 @@ export const Cell = ({
             />
             <${RunArea}
                 cell_id=${cell_id}
-                disable=${is_running_disabled || is_disabled}
+                disabled=${is_running_disabled || is_disabled}
                 onClick=${() => {
                     if (running || queued) {
                         pluto_actions.interrupt_remote(cell_id)

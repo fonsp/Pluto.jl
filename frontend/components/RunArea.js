@@ -13,28 +13,31 @@ const hasBarrier = (a_cell_id, notebook) => {
     return notebook?.cell_inputs?.[a_cell_id]?.is_running_disabled
 }
 
-export const RunArea = ({ runtime, onClick, running, disable, cell_id }) => {
+export const RunArea = ({ runtime, onClick, running, disabled, cell_id }) => {
     const localTimeRunning = 10e5 * useMillisSinceTruthy(running)
     const pluto_actions = useContext(PlutoContext)
     return html`
         <pluto-runarea>
             <button
                 onClick=${() => {
-                    if (!disable) return onClick()
-                    const notebook = pluto_actions.get_notebook() || {}
-                    const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
-                    barrier_cell_id &&
-                        window.dispatchEvent(
-                            new CustomEvent("cell_focus", {
-                                detail: {
-                                    cell_id: barrier_cell_id,
-                                    line: 1, // 1-based to 0-based index
-                                },
-                            })
-                        )
+                    if (!disabled) {
+                        return onClick()
+                    } else {
+                        const notebook = pluto_actions.get_notebook() || {}
+                        const barrier_cell_id = all_upstreams_of(cell_id, notebook).find((c) => hasBarrier(c, notebook))
+                        barrier_cell_id &&
+                            window.dispatchEvent(
+                                new CustomEvent("cell_focus", {
+                                    detail: {
+                                        cell_id: barrier_cell_id,
+                                        line: 1, // 1-based to 0-based index
+                                    },
+                                })
+                            )
+                    }
                 }}
                 class="runcell"
-                title=${disable ? "Please enable (parent) cell" : "Run"}
+                title=${disabled ? "This cell depends on a disabled cell" : "Run"}
             >
                 <span></span>
             </button>

@@ -575,15 +575,13 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, is_running_disabled })
             ? html`<ul onMouseenter=${mouseenter} class="input_menu">
                   <li
                       onClick=${toggle_running_disabled}
-                      title=${is_running_disabled
-                          ? "Removing the barrier re-runs your code"
-                          : "Adding a barrier stops this and dependent cells for reactive running"}
+                      title=${is_running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
                   >
-                      ${is_running_disabled ? html`<span class="run_icon" />` : html`<span class="barrier_icon" />`}
+                      ${is_running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${is_running_disabled ? html`Enable cell` : html`Disable cell`}
                   </li>
                   <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
-                  <li class="coming_soon" title=""><span class="bandage icon" /><em>Coming soon…</em></li>
+                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
     </button>`
