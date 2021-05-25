@@ -1,4 +1,4 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
@@ -57,6 +57,7 @@ export const CellInput = ({
     on_drag_drop_events,
     cell_id,
     notebook_id,
+    running_disabled,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -539,13 +540,51 @@ export const CellInput = ({
     }, [show_input])
 
     // TODO effect hook for disable_input?
-
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
+}
+
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+    const timeout = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const [open, setOpen] = useState(false)
+    const mouseenter = () => {
+        clearTimeout(timeout.current)
+    }
+    const mouseleave = () => {
+        timeout.current = setTimeout(() => setOpen(false), 250)
+    }
+    const toggle_running_disabled = async (e) => {
+        const new_val = !running_disabled
+        e.preventDefault()
+        e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].running_disabled = new_val
+        })
+        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+        await run_cell()
+    }
+
+    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
+        <span class="icon"></span>
+        ${open
+            ? html`<ul onMouseenter=${mouseenter} class="input_menu">
+                  <li
+                      onClick=${toggle_running_disabled}
+                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                  >
+                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`Enable cell` : html`Disable cell`}
+                  </li>
+                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+              </ul>`
+            : html``}
+    </button>`
 }
 
 const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
