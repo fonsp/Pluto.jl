@@ -120,7 +120,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
- *  is_running_disabled: boolean,
+ *  running_disabled: boolean,
  * }}
  */
 
@@ -135,7 +135,7 @@ const first_true_key = (obj) => {
  *  downstream_cells_map: { string: [string]},
  *  upstream_cells_map: { string: [string]},
  *  precedence_heuristic: ?number,
- *  is_running_disabled: boolean,
+ *  running_disabled: boolean,
  *  depends_on_disabled_cells: boolean,
  *  output: {
  *      body: string,
@@ -286,7 +286,7 @@ export class Editor extends Component {
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
-                    is_running_disabled: false,
+                    running_disabled: false,
                 }))
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
@@ -362,7 +362,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
-                        is_running_disabled: false,
+                        running_disabled: false,
                     }
                 })
 
@@ -420,7 +420,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
-                        is_running_disabled: false,
+                        running_disabled: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })

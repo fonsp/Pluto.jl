@@ -26,7 +26,7 @@ Get UUIDs for all deactivated cells (directly or indirectly)
 function get_deactivated_cell_uuids(cells:: Vector{Cell}):: Set{UUID}
 	deactivated_uuids = Set{UUID}()
 	for cell in cells
-		if cell.is_running_disabled
+		if cell.running_disabled
 			get_deactivated_cell_uuids!(deactivated_uuids, cell)
 		end
 	end

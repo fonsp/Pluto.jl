@@ -22,7 +22,7 @@ let CellMemo = ({
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
     const { queued, running, runtime, errored, depends_on_disabled_cells } = cell_result || {}
-    const { cell_id, code, code_folded, is_running_disabled } = cell_input || {}
+    const { cell_id, code, code_folded, running_disabled } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
@@ -44,7 +44,7 @@ let CellMemo = ({
         `
     }, [
         cell_id,
-        is_running_disabled,
+        running_disabled,
         depends_on_disabled_cells,
         queued,
         running,

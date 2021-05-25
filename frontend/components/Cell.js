@@ -20,7 +20,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  * }} props
  * */
 export const Cell = ({
-    cell_input: { cell_id, code, code_folded, is_running_disabled },
+    cell_input: { cell_id, code, code_folded, running_disabled },
     cell_result: { queued, running, runtime, errored, output, published_objects, depends_on_disabled_cells },
     cell_dependencies: { downstream_cells_map, upstream_cells_map, precedence_heuristic },
     cell_input_local,
@@ -65,7 +65,7 @@ export const Cell = ({
     const [waiting_to_run, set_waiting_to_run] = useState(false)
     useEffect(() => {
         set_waiting_to_run(false)
-    }, [queued, running, output?.last_run_timestamp, depends_on_disabled_cells, is_running_disabled])
+    }, [queued, running, output?.last_run_timestamp, depends_on_disabled_cells, running_disabled])
     // We activate animations instantly BUT deactivate them NSeconds later.
     // We then toggle animation visibility using opacity. This saves a bunch of repaints.
     const activate_animation = useDebouncedTruth(running || queued || waiting_to_run)
@@ -84,7 +84,7 @@ export const Cell = ({
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
     const should_set_waiting_to_run_ref = useRef(true)
-    should_set_waiting_to_run_ref.current = !is_running_disabled && !depends_on_disabled_cells
+    should_set_waiting_to_run_ref.current = !running_disabled && !depends_on_disabled_cells
     const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
 
     useLayoutEffect(() => {
@@ -111,7 +111,7 @@ export const Cell = ({
                 selected: selected,
                 code_differs: class_code_differs,
                 code_folded: class_code_folded,
-                is_running_disabled: is_running_disabled,
+                running_disabled: running_disabled,
                 depends_on_disabled_cells: depends_on_disabled_cells,
                 show_input: show_input,
                 drop_target: drag_active,
@@ -182,11 +182,11 @@ export const Cell = ({
                 on_focus_neighbor=${on_focus_neighbor}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
-                is_running_disabled=${is_running_disabled}
+                running_disabled=${running_disabled}
             />
             <${RunArea}
                 cell_id=${cell_id}
-                is_running_disabled=${is_running_disabled}
+                running_disabled=${running_disabled}
                 depends_on_disabled_cells=${depends_on_disabled_cells}
                 on_run=${() => {
                     set_waiting_to_run_smart(true)
