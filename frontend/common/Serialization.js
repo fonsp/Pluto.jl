@@ -49,6 +49,6 @@ import { in_textarea_or_input } from "./KeyboardShortcuts"
 export const detect_deserializer = (topaste) =>
     !in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
         ? deserialize_cells
-        : topaste.match(/julia> /) != null
+        : topaste.match(/^julia> /m) != null
         ? deserialize_repl
         : null
