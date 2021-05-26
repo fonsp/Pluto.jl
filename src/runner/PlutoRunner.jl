@@ -444,7 +444,7 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=IOContext(devnull, :extra_items=>extra_items, :module => workspace))
+        format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
     else
         ("", MIME"text/plain"())
     end
@@ -509,10 +509,9 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=nothing))::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        new_iocontext = IOContext(default_iocontext, context)
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=new_iocontext)
+        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -529,11 +528,11 @@ function format_output_default(@nospecialize(val), @nospecialize(context=nothing
     end
 end
 
-format_output(@nospecialize(x); context=nothing) = format_output_default(x, context)
+format_output(@nospecialize(x); context=default_iocontext) = format_output_default(x, context)
 
-format_output(::Nothing; context=nothing) = ("", MIME"text/plain"())
+format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
-function format_output(val::CapturedException; context=nothing)
+function format_output(val::CapturedException; context=default_iocontext)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s, _) in val.processed_bt]
 

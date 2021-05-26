@@ -38,7 +38,11 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                         a
                     end"""),
                     Cell("Set([17:20,\"Wonderful\"])"),
-                    Cell("Set(0 : 0.1 : 20)"),
+                    Cell("Set(0 : 0.1 : 18)"),
+                    Cell("rand(50,50)"),
+                    Cell("rand(500,500)"),
+                    Cell("[ rand(50,50) ]"),
+                    Cell("[ rand(500,500) ]"),
                 ])
             fakeclient.connected_notebook = notebook
 
@@ -83,9 +87,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("Set", notebook.cells[17].output.body |> string)
 
             @test notebook.cells[18].output.body isa Dict
-            @test length(notebook.cells[18].output.body[:elements]) < 200
+            @test length(notebook.cells[18].output.body[:elements]) < 180
             @test notebook.cells[18].output.body[:prefix] == "Set{Float64}"
             @test notebook.cells[18].output.mime isa MIME"application/vnd.pluto.tree+object"
+
+            sizes = [length(string(notebook.cells[i].output.body)) for i in 19:22]
+
+            # without truncation, we would have sizes[2] ≈ sizes[1] * 10 * 10
+            # with truncation, their displayed sizes should be similar
+            @test sizes[2] < sizes[1] * 1.5
+            @test sizes[4] < sizes[3] * 1.5
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
