@@ -1,3 +1,5 @@
+import { in_textarea_or_input } from "./KeyboardShortcuts"
+
 /**
  * Serialize an array of cells into a string form (similar to the .jl file).
  *
@@ -42,3 +44,11 @@
         return (indent + s).split("\n").filter((line) => line.startsWith(indent)).map((s) => s.replace(indent, "")).join("\n")
     }).map((s) => s.trim()).filter((s) => s !== "")
 }
+
+
+export const detect_deserializer = (topaste) =>
+    !in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
+        ? deserialize_cells
+        : topaste.match(/julia> /) != null
+        ? deserialize_repl
+        : null

@@ -4,7 +4,7 @@ import _ from "../imports/lodash.js"
 
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
-import { serialize_cells, deserialize_cells, deserialize_repl } from "../common/Serialization.js"
+import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
@@ -252,7 +252,7 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index, deserializer=deserialize_cells) => {
+            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
@@ -919,17 +919,8 @@ patch: ${JSON.stringify(
             const topaste = e.clipboardData.getData("text/plain")
             console.log("paste", topaste)
 
-            let deserializer
-            let deserialize = false
-            if (topaste.match(/julia> /g)?.length) {
-                deserialize = true
-                deserializer = deserialize_repl
-            } else if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                deserialize = true
-                deserializer = deserialize_cells
-            }
-
-            if (deserialize) {
+            const deserializer = detect_deserializer(topaste)
+            if (deserializer != null) {
                 // Deselect everything first, to clean things up
                 this.setState({
                     selected_cells: [],
