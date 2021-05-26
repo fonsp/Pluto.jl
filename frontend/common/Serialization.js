@@ -1,4 +1,4 @@
-import { in_textarea_or_input } from "./KeyboardShortcuts"
+import { in_textarea_or_input } from "./KeyboardShortcuts.js"
 
 /**
  * Serialize an array of cells into a string form (similar to the .jl file).
@@ -53,8 +53,8 @@ export function deserialize_repl(repl_session) {
 }
 
 export const detect_deserializer = (topaste) =>
-    !in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
-        ? deserialize_cells
-        : topaste.match(/^julia> /m) != null
+    topaste.match(/^julia> /m) != null
         ? deserialize_repl
+        : !in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
+        ? deserialize_cells
         : null

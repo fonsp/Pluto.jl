@@ -272,6 +272,9 @@ export class Editor extends Component {
                  */
                 await this.setStatePromise(
                     immer((state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+
                         for (let cell of new_cells) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -917,18 +920,9 @@ patch: ${JSON.stringify(
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            console.log("paste", topaste)
-
             const deserializer = detect_deserializer(topaste)
             if (deserializer != null) {
-                // Deselect everything first, to clean things up
-                this.setState({
-                    selected_cells: [],
-                })
-
-                // Paste in the cells at the end of the notebook
-                const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1, deserializer)
+                this.actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.preventDefault()
             }
         })
