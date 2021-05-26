@@ -90,6 +90,10 @@ function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end
 
+const Distributed_expr = :(
+    Base.loaded_modules[Base.PkgId(Base.UUID("8ba89e20-285c-5b6f-9357-94700520ee1b"), "Distributed")]
+)
+
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
@@ -97,8 +101,7 @@ function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
     # run on proc 1 in case Pluto is being used inside a notebook process
     # Workaround for "only process 1 can add/remove workers"
     pid = Distributed.remotecall_eval(Main, 1, quote
-        import Distributed
-        Distributed.addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
+        $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
     end)
 
     for expr in process_preamble
@@ -138,8 +141,7 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
             # run on proc 1 in case Pluto is being used inside a notebook process
             # Workaround for "only process 1 can add/remove workers"
             Distributed.remotecall_eval(Main, 1, quote
-                import Distributed
-                Distributed.rmprocs($(workspace.pid))
+                $(Distributed_expr).rmprocs($(workspace.pid))
             end)
         end
         async || wait(t)
