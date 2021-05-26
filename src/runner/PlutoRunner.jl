@@ -64,11 +64,11 @@ function set_current_module(newname)
 end
 
 function wrap_dot(name)
-  if length(name) == 1
-    name[1]
-  else
-    Expr(:(.), wrap_dot(name[1:end-1]), QuoteNode(name[end]))
-  end
+    if length(name) == 1
+        name[1]
+    else
+        Expr(:(.), wrap_dot(name[1:end-1]), QuoteNode(name[end]))
+    end
 end
 
 """
@@ -77,53 +77,58 @@ Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates
 no_workspace_ref(other, _=nothing) = other
 no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, no_workspace_ref.(expr.args, mod_name)...) 
 function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
-  test_mod_name = nameof(ref.mod) |> string
-  if startswith(test_mod_name, "workspace") &&
-    (mod_name === nothing ||
-        string(mod_name)[9:end] !== test_mod_name[9:end])
-    ref.name
-  else
-    mod_name = fullname(ref.mod) |> wrap_dot
-    Expr(:(.), mod_name, QuoteNode(ref.name))
-  end
+    test_mod_name = nameof(ref.mod) |> string
+    if startswith(test_mod_name, "workspace") &&
+        (mod_name === nothing ||
+            string(mod_name)[9:end] !== test_mod_name[9:end])
+        ref.name
+    else
+        mod_name = fullname(ref.mod) |> wrap_dot
+        Expr(:(.), mod_name, QuoteNode(ref.name))
+    end
 end
 
 function sanitize_expr(symbol::Symbol)
-  symbol
+    symbol
 end
 
-function sanitize_expr(dt::Union{DataType, Enum}) 
-  Symbol(dt) # quick workaround
+function sanitize_expr(dt::Union{DataType,Enum}) 
+    Symbol(dt) # quick workaround
 end
 
 function sanitize_expr(ref::GlobalRef)
-  no_workspace_ref(ref)
+    no_workspace_ref(ref)
 end
 
 function sanitize_expr(expr::Expr)
-  Expr(expr.head, sanitize_expr.(expr.args)...)
+    Expr(expr.head, sanitize_expr.(expr.args)...)
 end
 
 # a function as part of an Expr is most likely a closure
 # returned from a macro
 function sanitize_expr(func::Function)
-  mt = typeof(func).name.mt
-  GlobalRef(mt.module, mt.name) |> sanitize_expr
+    mt = typeof(func).name.mt
+    GlobalRef(mt.module, mt.name) |> sanitize_expr
 end
 
+# An instanciation of a struct as part of an Expr
+# will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
 function sanitize_expr(other)
-  other
+    typename = other |> typeof
+    typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
+        other :
+        Symbol(typename)
 end
 
 function try_macroexpand(mod, cell_uuid, expr)
-  try
-    expanded_expr = macroexpand(mod, expr)
-    ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
+    try
+        expanded_expr = macroexpand(mod, expr)
+        ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
 
-    return sanitize_expr(expanded_expr)
-  catch e
-    return e
-  end
+        return sanitize_expr(expanded_expr)
+    catch e
+        return e
+    end
 end
 
 
@@ -254,11 +259,11 @@ end
 
 visit_expand(other) = other
 function visit_expand(expr::Expr)
-  if expr.head == :macrocall
-    no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
-  else
-    Expr(expr.head, visit_expand.(expr.args)...)
-  end
+    if expr.head == :macrocall
+        no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
+    else
+        Expr(expr.head, visit_expand.(expr.args)...)
+    end
 end
 
 contains_macrocall(expr::Expr) = expr.head == :macrocall || any(contains_macrocall.(expr.args))
@@ -281,7 +286,7 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
 
         # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
         if contains_user_defined_macros
-          expr = visit_expand(expr)
+            expr = visit_expand(expr)
         end
 
         wrapped = timed_expr(expr, proof)
@@ -331,11 +336,11 @@ end
 
 
 function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
- for expr in module_imports_to_move
-    try
-        Core.eval(workspace_name, expr)
-    catch e end # TODO catch specificallly
-  end
+    for expr in module_imports_to_move
+        try
+            Core.eval(workspace_name, expr)
+        catch e end # TODO catch specificallly
+    end
 end
 
 """
