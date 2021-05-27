@@ -86,6 +86,11 @@ function cd_workspace(workspace, path::AbstractString)
     end)
 end
 
+function create_emptyworkspacemodule(session_notebook::SN)
+    workspace = get_workspace(session_notebook)
+    create_emptyworkspacemodule(workspace.pid)
+end
+
 function create_emptyworkspacemodule(pid::Integer)::Symbol
     Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end
@@ -267,17 +272,6 @@ function eval_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     workspace = get_workspace(session_notebook)
     
     Distributed.remotecall_eval(Main, workspace.pid, :(Core.eval($(workspace.module_name), $(expr |> QuoteNode))))
-end
-
-function bump_modulename(session_notebook)
-    workspace = get_workspace(session_notebook)
-
-    old_workspace_name = workspace.module_name
-    new_workspace_name = create_emptyworkspacemodule(workspace.pid)
-
-    workspace.module_name = new_workspace_name
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
-    old_workspace_name
 end
 
 function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_move::Set{Expr})

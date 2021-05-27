@@ -235,7 +235,7 @@ function static_resolve_topology(topology::NotebookTopology)
 	function static_macroexpand(cell_symstate)
 	cell, old_symstate = cell_symstate
 	new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-	  ExpressionExplorer.try_compute_symbolreferences
+	    ExpressionExplorer.try_compute_symbolreferences
 	union!(new_symstate.macrocalls, old_symstate.macrocalls)
 
 	cell => ReactiveNode(new_symstate)
@@ -251,7 +251,7 @@ end
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
-	old_workspace_name = WorkspaceManager.bump_modulename((session, notebook))
+	old_workspace_name = WorkspaceManager.create_emptyworkspacemodule((session, notebook))
 
 	unresolved_topology = updated_topology(old, notebook, cells)
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)

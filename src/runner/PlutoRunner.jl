@@ -270,12 +270,12 @@ function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::R
 end
 
 
-visit_expand(other) = other
-function visit_expand(expr::Expr)
+visit_expand(_, other) = other
+function visit_expand(current_module::Module, expr::Expr)
     if expr.head == :macrocall
         no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
     else
-        Expr(expr.head, visit_expand.(expr.args)...)
+        Expr(expr.head, map(arg -> visit_expand(current_module, arg), expr.args)...)
     end
 end
 
@@ -299,7 +299,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 
         # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
         if contains_user_defined_macros
-            expr = visit_expand(expr)
+            expr = visit_expand(m, expr)
         end
 
         wrapped = timed_expr(expr, proof)
