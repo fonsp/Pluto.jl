@@ -24,7 +24,7 @@ function generate_html(;
         pluto_cdn_root
     end
 
-    @info "Using CDN for Pluto assets:" cdn_root
+    @debug "Using CDN for Pluto assets:" cdn_root
 
     cdnified = replace(
     replace(original, 

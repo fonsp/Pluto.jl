@@ -803,6 +803,7 @@ pluto-cell {
     min-height: calc(23px + 1px + 1px);
     margin-top: var(--pluto-cell-spacing);
     position: relative;
+    break-inside: avoid;
 }
 
 pluto-output {
