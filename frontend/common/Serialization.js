@@ -6,7 +6,7 @@ import { in_textarea_or_input } from "./KeyboardShortcuts.js"
  * Used for implementing clipboard functionality. This isn't in topological
  * order, so you won't necessarily be able to run it directly.
  *
- * @param {Array<CellInputData>} cells
+ * @param {Array<import("../components/Editor.js").CellInputData>} cells
  * @return {String}
  */
 export function serialize_cells(cells) {
@@ -52,9 +52,9 @@ export function deserialize_repl(repl_session) {
         .filter((s) => s !== "")
 }
 
-export const detect_deserializer = (topaste) =>
+export const detect_deserializer = (topaste, check_in_textarea_or_input = true) =>
     topaste.match(/^julia> /m) != null
         ? deserialize_repl
-        : !in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
+        : (check_in_textarea_or_input && !in_textarea_or_input()) || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
         ? deserialize_cells
         : null

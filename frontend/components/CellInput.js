@@ -470,7 +470,7 @@ export const CellInput = ({
 
         cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            const deserializer = detect_deserializer(topaste)
+            const deserializer = detect_deserializer(topaste, false)
             if (deserializer != null) {
                 pluto_actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.stopImmediatePropagation()
