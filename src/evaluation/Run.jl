@@ -2,6 +2,7 @@ import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 import .WorkspaceManager: macroexpand_in_workspace
+
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
@@ -177,31 +178,31 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	WorkspaceManager.do_reimports(sn, to_reimport)
 
 	function macroexpand_cell(cell)
-	try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = 
-		macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
-	# Several trying steps
-	#  1. Try in the new module with moved imports
-	#  2. Try in the previous module
-	#  3. Move imports and re-try in the new module
-	#  4. *NotImplemented*. Would be to run imports and execute only a part of the graph
-	res = try_macroexpand()
-	if res isa LoadError && res.error isa UndefVarError
-		# We have not found the macro in the new workspace after reimports
-		# this most likely means that the macro is user defined, we try to expand it
-		# in the old workspace to see whether or not it is defined there
+	    try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = 
+		    macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
+	    # Several trying steps
+	    #  1. Try in the new module with moved imports
+	    #  2. Try in the previous module
+	    #  3. Move imports and re-try in the new module
+	    #  4. *NotImplemented*. Would be to run imports and execute only a part of the graph
+	    res = try_macroexpand()
+	    if res isa LoadError && res.error isa UndefVarError
+		    # We have not found the macro in the new workspace after reimports
+		    # this most likely means that the macro is user defined, we try to expand it
+		    # in the old workspace to see whether or not it is defined there
 
-		res = try_macroexpand(old_workspace_name)
-		# It was not defined previously, we try searching modules in our own batch
-		if res isa LoadError && res.error isa UndefVarError
-		to_import_from_batch = union(Set{Expr}(), 
-						 map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
-						 notebook.cells)...)
-		WorkspaceManager.do_reimports(sn, to_import_from_batch)
-		# Last try and we leave
-		return try_macroexpand()
-		end
-	end
-	res
+		    res = try_macroexpand(old_workspace_name)
+		    # It was not defined previously, we try searching modules in our own batch
+		    if res isa LoadError && res.error isa UndefVarError
+		    to_import_from_batch = union(Set{Expr}(), 
+						     map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
+						     notebook.cells)...)
+		    WorkspaceManager.do_reimports(sn, to_import_from_batch)
+		    # Last try and we leave
+		    return try_macroexpand()
+		    end
+	    end
+	    res
 	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
@@ -233,12 +234,12 @@ end
 "The same as `resolve_topology` but does not require custom code execution, only works with a few `Base` & `PlutoRunner` macros"
 function static_resolve_topology(topology::NotebookTopology)
 	function static_macroexpand(cell_symstate)
-	cell, old_symstate = cell_symstate
-	new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-	    ExpressionExplorer.try_compute_symbolreferences
-	union!(new_symstate.macrocalls, old_symstate.macrocalls)
+	    cell, old_symstate = cell_symstate
+	    new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
+		ExpressionExplorer.try_compute_symbolreferences
+	    union!(new_symstate.macrocalls, old_symstate.macrocalls)
 
-	cell => ReactiveNode(new_symstate)
+	    cell => ReactiveNode(new_symstate)
 	end
 
 	new_nodes = Dict{Cell,ReactiveNode}(static_macroexpand.(topology.unresolved_cells))
@@ -251,7 +252,7 @@ end
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
-	old_workspace_name = WorkspaceManager.create_emptyworkspacemodule((session, notebook))
+	old_workspace_name = WorkspaceManager.bump_workspace_module_name((session, notebook))
 
 	unresolved_topology = updated_topology(old, notebook, cells)
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)

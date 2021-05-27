@@ -30,12 +30,12 @@ end
 
 "Checks whether or not the cell references user-defined macrocalls"
 function contains_user_defined_macrocalls(cell::Cell, notebook::Notebook)::Bool
-  # Note: This could use some optimization
-  calls = filter(sym -> '@' ∈ string(sym), notebook.topology.nodes[cell].references)
-  my_node = notebook.topology.nodes[cell]
-  any(notebook.cells) do other
-    !disjoint(notebook.topology.nodes[other].funcdefs_without_signatures, calls)
-  end
+    # Note: This could use some optimization
+    calls = filter(sym -> '@' ∈ string(sym), notebook.topology.nodes[cell].references)
+    my_node = notebook.topology.nodes[cell]
+    any(notebook.cells) do other
+        !disjoint(notebook.topology.nodes[other].funcdefs_without_signatures, calls)
+    end
 end
 
 "Fills cell dependency information for display in the GUI"

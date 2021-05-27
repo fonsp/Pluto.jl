@@ -363,8 +363,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         # Some macros can be expanded on the server process
         if join_funcname_parts(macro_name) ∈ can_macroexpand
-          new_ex = maybe_macroexpand(ex)
-          union!(symstate, explore!(new_ex, scopestate))
+            new_ex = maybe_macroexpand(ex)
+            union!(symstate, explore!(new_ex, scopestate))
         end
 
         return symstate

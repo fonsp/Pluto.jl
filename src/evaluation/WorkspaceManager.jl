@@ -86,9 +86,13 @@ function cd_workspace(workspace, path::AbstractString)
     end)
 end
 
-function create_emptyworkspacemodule(session_notebook::SN)
+"Create a new empty workspace and return the *OLD* workspace name"
+function bump_workspace_module_name(session_notebook::SN)
     workspace = get_workspace(session_notebook)
-    create_emptyworkspacemodule(workspace.pid)
+    old_name = workspace.module_name
+    workspace.module_name = create_emptyworkspacemodule(workspace.pid)
+
+    old_name
 end
 
 function create_emptyworkspacemodule(pid::Integer)::Symbol
@@ -260,10 +264,10 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
         PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
     end
     try
-      result = Distributed.remotecall_eval(Main, workspace.pid, expr)
-      return result
+        result = Distributed.remotecall_eval(Main, workspace.pid, expr)
+        return result
     catch e
-      return e
+        return e
     end
 end
 
