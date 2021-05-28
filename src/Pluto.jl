@@ -51,6 +51,18 @@ include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
 
+# Precompile the essential parts of Pluto:
+let
+  c = Configuration.from_flat_kwargs(; workspace_use_distributed=true)
+  s = ServerSession(;options=c)
+  http_router_for(s)
+  nb = Notebook([Cell("x = y"), Cell("y = x")]) # circular reference to avoid running any code
+  nb.topology = updated_topology(nb.topology, nb, nb.cells)
+  update_dependency_cache!(nb)
+  save_notebook(nb)
+  run_reactive!(s, nb, nb.topology, nb.topology, nb.cells; deletion_hook=((a...; k...) -> ()))
+end
+
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 @info """\n
     Welcome to Pluto $(PLUTO_VERSION_STR) 🎈
