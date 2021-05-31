@@ -78,6 +78,11 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
+const _running_disabled_on_startup_prefix = "#= 🛑 disabled at startup 🛑"
+const _running_disabled_on_startup_suffix = "\n🛑 disabled at startup 🛑 =#"
+const _depends_on_disabled_cells_on_startup_prefix = "#= 🛑 depends on disabled cell(s) 🛑"
+const _depends_on_disabled_cells_on_startup_suffix = "\n🛑 depends on disabled cell(s) 🛑 =#"
+
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 """
@@ -107,7 +112,21 @@ function save_notebook(io, notebook::Notebook)
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
         # write the cell code and prevent collisions with the cell delimiter
-        print(io, replace(c.code, _cell_id_delimiter => "# "))
+
+        if c.running_disabled_on_startup
+            println(io, _running_disabled_on_startup_prefix)
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            println(io, _running_disabled_on_startup_suffix)
+        elseif c.depends_on_disabled_cells_on_startup
+            # if a cell is both disabled directly and indirectly, the first has higher priority
+            println(io, _depends_on_disabled_cells_on_startup_prefix)
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+            println(io, _depends_on_disabled_cells_on_startup_suffix)
+        else
+            # cell is not disabled on startup
+            print(io, replace(c.code, _cell_id_delimiter => "# "))
+        end
+
         print(io, _cell_suffix)
     end
 
@@ -162,10 +181,22 @@ function load_notebook_nobackup(io, path)::Notebook
             code_raw = String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
+            
+            # get the information if a cell is directly disabled at startup
+            # the information if a cell is indirectly disabled is not fetched from the notebook file,
+            # but inferred in Pluto again.
+            running_disabled_on_startup = startswith(code_normalised, _running_disabled_on_startup_prefix)
+
+            # remove the disabled on startup comments for further processing in Julia
+            code_normalised = replace(replace(code_normalised, _running_disabled_on_startup_prefix => ""), _running_disabled_on_startup_suffix => "")
+            code_normalised = replace(replace(code_normalised, _depends_on_disabled_cells_on_startup_prefix => ""), _depends_on_disabled_cells_on_startup_suffix => "")
+
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
+            read_cell.running_disabled_on_startup = running_disabled_on_startup
+            read_cell.running_disabled = running_disabled_on_startup
             collected_cells[cell_id] = read_cell
         end
     end
