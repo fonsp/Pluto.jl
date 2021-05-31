@@ -14,7 +14,7 @@ export let map_cmd_to_ctrl_on_mac = (keymap) => {
         keymap_with_cmd[key.replace(/Ctrl/g, "Cmd")] = handler
         // remove Ctrl-D from Pluto.jl keybind for MacOS
         if (key == "Ctrl-D") {
-            delete keymap_withcmd[key]
+            delete keymap_with_cmd[key]
         }
     }
     return keymap_with_cmd
