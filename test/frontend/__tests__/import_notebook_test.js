@@ -1,4 +1,4 @@
-// import { page } from "../helpers/"
+//import { page } from "../helpers/page.js"
 import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
 import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
 
@@ -41,6 +41,8 @@ describe("PlutoImportNotebook", () => {
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "sum(2, 3)")
 
         // Run cells
+
+        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(".runallchanged")
         const lastCellContent = await waitForCellOutput(page, lastPlutoCellId)
         expect(lastCellContent).toBe("5")

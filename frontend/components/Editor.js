@@ -488,7 +488,7 @@ export class Editor extends Component {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
-
+                console.log(name, value, is_first_value, "Updating bond")
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
                     let new_bond = { value: value, is_first_value: is_first_value }

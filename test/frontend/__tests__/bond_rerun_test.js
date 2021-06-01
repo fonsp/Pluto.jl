@@ -1,5 +1,5 @@
 import { saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, waitForPlutoToCalmDown } from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, waitForNoUpdateOngoing } from "../helpers/pluto"
 
 describe("Bonds should run once", () => {
     beforeAll(async () => {
@@ -14,22 +14,10 @@ describe("Bonds should run once", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
+        // await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should not rerun bond values when refreshing page", async () => {
-        await paste(
-            page,
-            `
-# ╔═╡ 15f65099-1deb-4c73-b1cd-1bae1eec12e9
-let x; y; z; numberoftimes[] += 1 end
-
-# ╔═╡ 15f65099-1deb-4c73-b1cd-1bae1eec12e9
-numberoftimes = Ref(0)
-        `
-        )
-        await page.click(`.runallchanged`)
-        await waitForPlutoToCalmDown(page)
-
         await paste(
             page,
             `
@@ -43,19 +31,40 @@ numberoftimes = Ref(0)
 @bind z html"<input type=range>"
 `
         )
+        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await waitForPlutoToCalmDown(page)
+
+        await page.waitForSelector(`pluto-cell.running`, { visible: true, timeout: 0 })
+        await waitForNoUpdateOngoing(page)
+
+        await paste(
+            page,
+            `
+# ╔═╡ 15f65099-1deb-4c73-b1cd-1bae1eec12e9
+let x; y; z; numberoftimes[] += 1 end
+
+# ╔═╡ 15f65099-1deb-4c73-b1cd-1bae1eec12e9
+numberoftimes = Ref(0)
+        `
+        )
+
+        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
+        await page.click(`.runallchanged`)
+        await page.waitForFunction(() => document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent !== "")
+
+        await waitForNoUpdateOngoing(page)
         let output_after_running_bonds = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-of-type(2) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent
         })
-        expect(output_after_running_bonds).toBe("1")
+        expect(output_after_running_bonds).not.toBe("")
 
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
-
+        await page.waitForFunction(() => document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent !== "")
+        await waitForNoUpdateOngoing(page)
         let output_after_reload = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-of-type(2) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent
         })
-        expect(output_after_reload).toBe("1")
+        expect(output_after_reload).toBe(output_after_running_bonds)
     })
 })

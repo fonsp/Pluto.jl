@@ -69,7 +69,8 @@ export const getCellIds = (page) => page.evaluate(() => Array.from(document.quer
  * @param {Page} page
  */
 export const waitForPlutoToCalmDown = async (page) => {
-    await page.waitForSelector(`body.update_is_ongoing, pluto-cell.running, pluto-cell.queued`, { hidden: true })
+    await page.waitForTimeout(1000)
+    await page.waitForFunction(() => document.body._update_is_ongoing === false && document.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
 }
 
 /**
@@ -91,7 +92,10 @@ export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }
 
-export const waitForNoUpdateOngoing = (page, options = {}) => page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+export const waitForNoUpdateOngoing = async (page, options = {}) => {
+    await page.waitForTimeout(1000)
+    return await page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+}
 
 /**
  * @param {Page} page
