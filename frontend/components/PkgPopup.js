@@ -18,9 +18,9 @@ export const PkgPopup = ({ notebook }) => {
     const open = (e) => {
         const el = e.detail.status_mark_element
 
-        pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: ${
+        pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: min(max(0px,100vw - 269px - 30px), ${
             el.getBoundingClientRect().left - document.body.getBoundingClientRect().left
-        }px;`
+        }px);`
         set_recent_event(e.detail)
     }
 
@@ -66,7 +66,7 @@ export const PkgPopup = ({ notebook }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = pkg_status?.busy ?? true
+    const busy = pkg_status?.busy ?? recent_event != null
 
     useEffect(() => {
         set_showterminal(busy)
