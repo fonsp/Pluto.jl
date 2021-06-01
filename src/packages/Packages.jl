@@ -90,6 +90,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
         
+        isready(pkg_token) || @info "Waiting for other notebooks to finish Pkg operations..."
         withtoken(pkg_token) do
             to_remove = filter(removed) do p
                 haskey(ctx.env.project.deps, p)
