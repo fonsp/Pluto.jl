@@ -80,6 +80,8 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     
 
     if ctx !== nothing
+        iolistener = IOListener(callback=on_terminal_output)
+
         # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
@@ -89,11 +91,13 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
         
+        isready(pkg_token) || println("Waiting for other notebooks to finish Pkg operations...")
         withtoken(pkg_token) do
             to_remove = filter(removed) do p
                 haskey(ctx.env.project.deps, p)
             end
             if !isempty(to_remove)
+                @show to_remove
                 # See later comment
                 mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
                 old_manifest_keys = mkeys()
@@ -106,7 +110,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
                 new_manifest_keys = mkeys()
                 
-                # TODO: we might want to upgrade other packages now that constraints have loosened???
+                # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
             end
 
             
@@ -114,10 +118,9 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
             to_add = filter(PkgTools.package_exists, added)
-            @show to_add
-
-            iolistener = IOListener(callback=on_terminal_output)
+            
             if !isempty(to_add)
+                @show to_add
                 startlistening(iolistener)
 
                 withio(ctx, IOContext(iolistener.buffer, :color => true)) do
@@ -168,7 +171,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
                     env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
                     pushfirst!(LOAD_PATH, env_dir)
-                    Pkg.instantiate(ctx)
+
+                    # update registries if this is the first time
+                    Pkg.Types.update_registries(ctx)
+                    # instantiate without forcing registry update
+                    Pkg.instantiate(ctx; update_registry=false)
+                    
                     @assert LOAD_PATH[1] == env_dir
                     popfirst!(LOAD_PATH)
                 end

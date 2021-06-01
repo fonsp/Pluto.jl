@@ -5,7 +5,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { get_avaible_versions, package_status } from "./PkgStatusMark.js"
+import { package_status } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 
 export const PkgPopup = ({ notebook }) => {
@@ -53,7 +53,7 @@ export const PkgPopup = ({ notebook }) => {
         if (recent_event == null) {
             set_pkg_status(null)
         } else {
-            get_avaible_versions({ package_name: recent_event.package_name, pluto_actions: pluto_actions, notebook_id: notebook.notebook_id }).then(
+            ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
                 (versions) => {
                     if (still_valid) {
                         set_pkg_status(package_status({ nbpkg: notebook.nbpkg, package_name: recent_event.package_name, available_versions: versions }))

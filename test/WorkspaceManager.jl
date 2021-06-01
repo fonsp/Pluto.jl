@@ -81,7 +81,7 @@ import Distributed
             project_relative_path("Project.toml")
     end
 
-    @testset "Pluto inside Pluto" begin
+    Sys.iswindows() || @testset "Pluto inside Pluto" begin
 
         client = ClientSession(:fakeA, nothing)
         🍭 = ServerSession()
@@ -100,7 +100,7 @@ import Distributed
             s = Pluto.ServerSession()
             """),
             Cell("""
-            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=true, as_sample=true)"""),
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
             Cell("length(nb.cells)"),
             Cell(""),
         ])

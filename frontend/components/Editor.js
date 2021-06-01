@@ -542,6 +542,15 @@ export class Editor extends Component {
                     true
                 )
             },
+            get_avaible_versions: async ({ package_name, notebook_id }) => {
+                return []
+                if (this.state.static_preview) {
+                    return []
+                } else {
+                    const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+                    return message.versions
+                }
+            },
         }
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
@@ -1144,7 +1153,6 @@ patch: ${JSON.stringify(
                             is_process_ready=${
                                 this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
                             }
-                            disable_input=${!this.state.connected}
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
                         <${PkgTerminalView} value=${this.state.notebook.nbpkg?.terminal_output} />
