@@ -15,12 +15,6 @@ mutable struct Workspace
     dowork_token::Token
 end
 
-"These expressions get evaluated inside every newly create module inside a `Workspace`."
-const workspace_preamble = [
-    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
-    :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
-]
-
 "These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
     :(ccall(:jl_exit_on_sigint, Cvoid, (Cint,), 0)),
@@ -29,7 +23,6 @@ const process_preamble = [
     :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
 ]
 
-const moduleworkspace_count = Ref(0)
 const workspaces = Dict{UUID,Promise{Workspace}}()
 
 const SN = Tuple{ServerSession,Notebook}
@@ -107,28 +100,23 @@ function cd_workspace(workspace, path::AbstractString)
     end)
 end
 
-# TODO: move to PlutoRunner
 function create_emptyworkspacemodule(pid::Integer)::Symbol
-    id = (moduleworkspace_count[] += 1)
-    
-    new_workspace_name = if Distributed.myid() == 1
-        Symbol("workspace", id)
-    else
-        Symbol("workspace", id, "_", Distributed.myid())
-    end
-    workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
-    
-    Distributed.remotecall_eval(Main, [pid], workspace_creation)
-    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
-    
-    new_workspace_name
+    Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end
+
+const Distributed_expr = :(
+    Base.loaded_modules[Base.PkgId(Base.UUID("8ba89e20-285c-5b6f-9357-94700520ee1b"), "Distributed")]
+)
 
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
 function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
-    pid = Distributed.addprocs(1; exeflags=_convert_to_flags(compiler_options)) |> first
+    # run on proc 1 in case Pluto is being used inside a notebook process
+    # Workaround for "only process 1 can add/remove workers"
+    pid = Distributed.remotecall_eval(Main, 1, quote
+        $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
+    end)
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)
@@ -164,7 +152,11 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
         t = @async begin
             interrupt_workspace(workspace; verbose=false)
-            Distributed.rmprocs(workspace.pid)
+            # run on proc 1 in case Pluto is being used inside a notebook process
+            # Workaround for "only process 1 can add/remove workers"
+            Distributed.remotecall_eval(Main, 1, quote
+                $(Distributed_expr).rmprocs($(workspace.pid))
+            end)
         end
         async || wait(t)
     end
@@ -225,7 +217,12 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
     take!(workspace.dowork_token)
     early_result = try
         # we use [pid] instead of pid to prevent fetching output
-        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info)))
+        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression(
+            getfield(Main, $(QuoteNode(workspace.module_name))), 
+            $(QuoteNode(expr)), 
+            $cell_id, 
+            $function_wrapped_info
+        )))
         put!(workspace.dowork_token)
         nothing
     catch exs
@@ -253,7 +250,10 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
         try
-            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
+                $cell_id, $ends_with_semicolon, $showmore_id,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+                )))
         catch ex
             distributed_exception_result(CompositeException([ex]), workspace)
         end
@@ -275,7 +275,6 @@ function delete_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbo
     new_workspace_name = create_emptyworkspacemodule(workspace.pid)
 
     workspace.module_name = new_workspace_name
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
 
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end

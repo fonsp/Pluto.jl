@@ -12,14 +12,10 @@ include("./Analysis.jl")
 include("./Firebasey.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
+include("./cell_disabling.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
-# - tree viewer
-
-# TODO: test HTTP
-# We could use NodeJS.jl to run these tests without a browser
-# We could also do real browser testing, but that seems difficult
 
 # TODO: test include() inside notebooks
 

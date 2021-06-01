@@ -4,6 +4,7 @@ import _ from "../imports/lodash.js"
 
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
+import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
@@ -40,33 +41,6 @@ const uuidv4 = () =>
 /**
  * @typedef {import('../imports/immer').Patch} Patch
  * */
-
-/**
- * Serialize an array of cells into a string form (similar to the .jl file).
- *
- * Used for implementing clipboard functionality. This isn't in topological
- * order, so you won't necessarily be able to run it directly.
- *
- * @param {Array<CellInputData>} cells
- * @return {String}
- */
-function serialize_cells(cells) {
-    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.code + "\n").join("\n")
-}
-
-/**
- * Deserialize a Julia program or output from `serialize_cells`.
- *
- * If a Julia program, it will return a single String containing it. Otherwise,
- * it will split the string into cells based on the special delimiter.
- *
- * @param {String} serialized_cells
- * @return {Array<String>}
- */
-function deserialize_cells(serialized_cells) {
-    const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
-    return segments.map((s) => s.trim()).filter((s) => s !== "")
-}
 
 const Main = ({ children }) => {
     const { handler } = useDropHandler()
@@ -124,6 +98,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
+ *  running_disabled: boolean,
  * }}
  */
 
@@ -134,7 +109,12 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime?: number,
+ *  runtime: ?number,
+ *  downstream_cells_map: { string: [string]},
+ *  upstream_cells_map: { string: [string]},
+ *  precedence_heuristic: ?number,
+ *  running_disabled: boolean,
+ *  depends_on_disabled_cells: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
@@ -264,6 +244,7 @@ export class Editor extends Component {
 
         // these are things that can be done to the local notebook
         this.actions = {
+            get_notebook: () => this?.state?.notebook || {},
             send: (...args) => this.client.send(...args),
             //@ts-ignore
             update_notebook: (...args) => this.update_notebook(...args),
@@ -293,14 +274,15 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index) => {
-                let new_codes = deserialize_cells(data)
+            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
+                let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
+                    running_disabled: false,
                 }))
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
@@ -312,6 +294,9 @@ export class Editor extends Component {
                  */
                 await this.setStatePromise(
                     immer((state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+
                         for (let cell of new_cells) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -376,6 +361,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
+                        running_disabled: false,
                     }
                 })
 
@@ -433,6 +419,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
+                        running_disabled: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -747,70 +734,78 @@ patch: ${JSON.stringify(
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
         let update_notebook = (mutate_fn) => {
-            last_update_notebook_task = last_update_notebook_task
-                .then(async () => {
-                    // if (this.state.initializing) {
-                    //     console.error("Update notebook done during initializing, strange")
-                    //     return
-                    // }
+            const new_task = last_update_notebook_task.then(async () => {
+                // if (this.state.initializing) {
+                //     console.error("Update notebook done during initializing, strange")
+                //     return
+                // }
 
-                    let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
-                        mutate_fn(notebook)
-                    })
-
-                    // If "notebook is not idle" I seperate and store the bonds updates,
-                    // to send when the notebook is idle. This delays the updating of the bond for performance,
-                    // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
-                    // this will no longer be necessary
-                    if (!this.notebook_is_idle()) {
-                        let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
-                        this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
-                        changes = changes.filter((x) => x.path[0] !== "bonds")
-                    }
-
-                    if (DEBUG_DIFFING) {
-                        try {
-                            let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
-                            console.log(`Changes to send to server from "${previous_function_name}":`, changes)
-                        } catch (error) {}
-                    }
-                    if (changes.length === 0) {
-                        return
-                    }
-
-                    for (let change of changes) {
-                        if (change.path.some((x) => typeof x === "number")) {
-                            throw new Error("This sounds like it is editing an array...")
-                        }
-                    }
-                    pending_local_updates++
-                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                    try {
-                        await Promise.all([
-                            this.client
-                                .send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false)
-                                .then((response) => {
-                                    if (response.message.response.update_went_well === "👎") {
-                                        // We only throw an error for functions that are waiting for this
-                                        // Notebook state will already have the changes reversed
-                                        throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
-                                    }
-                                }),
-                            this.setStatePromise({
-                                notebook: new_notebook,
-                                last_update_time: Date.now(),
-                            }),
-                        ])
-                    } finally {
-                        pending_local_updates--
-                        this.setState({ update_is_ongoing: pending_local_updates > 0 })
-                    }
+                let [new_notebook, changes, inverseChanges] = produceWithPatches(this.state.notebook, (notebook) => {
+                    mutate_fn(notebook)
                 })
-                .catch(console.error)
-            return last_update_notebook_task
+
+                // If "notebook is not idle" I seperate and store the bonds updates,
+                // to send when the notebook is idle. This delays the updating of the bond for performance,
+                // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
+                // this will no longer be necessary
+                if (!this.notebook_is_idle()) {
+                    let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
+                    this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
+                    changes = changes.filter((x) => x.path[0] !== "bonds")
+                }
+
+                if (DEBUG_DIFFING) {
+                    try {
+                        let previous_function_name = new Error().stack.split("\n")[2].trim().split(" ")[1]
+                        console.log(`Changes to send to server from "${previous_function_name}":`, changes)
+                    } catch (error) {}
+                }
+                if (changes.length === 0) {
+                    return
+                }
+
+                for (let change of changes) {
+                    if (change.path.some((x) => typeof x === "number")) {
+                        throw new Error("This sounds like it is editing an array...")
+                    }
+                }
+                pending_local_updates++
+                this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                try {
+                    await Promise.all([
+                        this.client.send("update_notebook", { updates: changes }, { notebook_id: this.state.notebook.notebook_id }, false).then((response) => {
+                            if (response.message.response.update_went_well === "👎") {
+                                // We only throw an error for functions that are waiting for this
+                                // Notebook state will already have the changes reversed
+                                throw new Error(`Pluto update_notebook error: ${response.message.response.why_not})`)
+                            }
+                        }),
+                        this.setStatePromise({
+                            notebook: new_notebook,
+                            last_update_time: Date.now(),
+                        }),
+                    ])
+                } finally {
+                    pending_local_updates--
+                    this.setState({ update_is_ongoing: pending_local_updates > 0 })
+                }
+            })
+            last_update_notebook_task = new_task.catch(console.error)
+            return new_task
         }
         this.update_notebook = update_notebook
-
+        window.shutdownNotebook = this.close = () => {
+            this.client.send(
+                "shutdown_notebook",
+                {
+                    keep_in_session: false,
+                },
+                {
+                    notebook_id: this.state.notebook.notebook_id,
+                },
+                false
+            )
+        }
         this.submit_file_change = async (new_path, reset_cm_value) => {
             const old_path = this.state.notebook.path
             if (old_path === new_path) {
@@ -856,7 +851,12 @@ patch: ${JSON.stringify(
             }
         }
 
+        document.addEventListener("keyup", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+        })
+
         document.addEventListener("keydown", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }
@@ -900,7 +900,9 @@ patch: ${JSON.stringify(
     ${ctrl_or_cmd_name}+X:   cut selected cells
     ${ctrl_or_cmd_name}+V:   paste selected cells
 
-    The notebook file saves every time you run`
+    Ctrl+M:   toggle markdown
+
+    The notebook file saves every time you run a cell.`
                 )
                 e.preventDefault()
             }
@@ -948,16 +950,9 @@ patch: ${JSON.stringify(
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            console.log("paste", topaste)
-            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                // Deselect everything first, to clean things up
-                this.setState({
-                    selected_cells: [],
-                })
-
-                // Paste in the cells at the end of the notebook
-                const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1)
+            const deserializer = detect_deserializer(topaste)
+            if (deserializer != null) {
+                this.actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.preventDefault()
             }
         })
@@ -1131,7 +1126,7 @@ patch: ${JSON.stringify(
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <${Preamble} 
+                        <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
                         />
@@ -1151,9 +1146,9 @@ patch: ${JSON.stringify(
                             disable_input=${!this.state.connected}
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
-                        <${DropRuler} 
+                        <${DropRuler}
                             actions=${this.actions}
-                            selected_cells=${this.state.selected_cells} 
+                            selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
                             }}

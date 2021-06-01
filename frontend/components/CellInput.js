@@ -1,10 +1,14 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
+import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
+
+//@ts-ignore
+import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
+import { detect_deserializer } from "../common/Serialization.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -75,6 +79,7 @@ export const CellInput = ({
     nbpkg,
     cell_id,
     notebook_id,
+    running_disabled,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -147,6 +152,16 @@ export const CellInput = ({
                 },
             },
             matchBrackets: true,
+            configureMouse: (cm, repeat, event) => {
+                // modified version of https://github.com/codemirror/CodeMirror/blob/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a/src/edit/mouse_events.js#L116-L127
+                // because we want to change keys to match vs code
+                let alt = chromeOS ? event.metaKey : event.altKey
+                let rect = event.shiftKey && alt
+                return {
+                    unit: rect ? "rectangle" : repeat == "single" ? "char" : repeat == "double" ? "word" : "line",
+                    addNew: rect ? false : alt,
+                }
+            },
         }))
 
         const keys = {}
@@ -555,8 +570,9 @@ export const CellInput = ({
 
         cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                pluto_actions.add_deserialized_cells(topaste, -1)
+            const deserializer = detect_deserializer(topaste, false)
+            if (deserializer != null) {
+                pluto_actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.stopImmediatePropagation()
                 e.preventDefault()
                 e.codemirrorIgnore = true
@@ -564,6 +580,27 @@ export const CellInput = ({
             e.stopPropagation()
         })
 
+        cm.on("mousedown", (cm, e) => {
+            const notebook = pluto_actions.get_notebook()
+            const mycell = notebook?.cell_dependencies?.[cell_id]
+            const used_variables = Object.keys(mycell?.upstream_cells_map || {})
+            const { which } = e
+            const path = e.path || e.composedPath()
+            const isVariable = path[0]?.classList.contains("cm-variable")
+            const varName = path[0]?.textContent
+            if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
+                e.preventDefault()
+                document.querySelector(`[id='${encodeURI(varName)}']`).scrollIntoView()
+                window.dispatchEvent(
+                    new CustomEvent("cell_focus", {
+                        detail: {
+                            cell_id: mycell.upstream_cells_map[varName][0],
+                            line: 0, // 1-based to 0-based index
+                        },
+                    })
+                )
+            }
+        })
         if (focus_after_creation) {
             // TODO Smooth scroll into view?
             cm.focus()
@@ -608,13 +645,51 @@ export const CellInput = ({
     }, [show_input])
 
     // TODO effect hook for disable_input?
-
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
+            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
             <textarea ref=${text_area_ref}></textarea>
         </pluto-input>
     `
+}
+
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+    const timeout = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const [open, setOpen] = useState(false)
+    const mouseenter = () => {
+        clearTimeout(timeout.current)
+    }
+    const mouseleave = () => {
+        timeout.current = setTimeout(() => setOpen(false), 250)
+    }
+    const toggle_running_disabled = async (e) => {
+        const new_val = !running_disabled
+        e.preventDefault()
+        e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].running_disabled = new_val
+        })
+        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+        await run_cell()
+    }
+
+    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
+        <span class="icon"></span>
+        ${open
+            ? html`<ul onMouseenter=${mouseenter} class="input_menu">
+                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li
+                      onClick=${toggle_running_disabled}
+                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                  >
+                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                  </li>
+                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+              </ul>`
+            : html``}
+    </button>`
 }
 
 const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"

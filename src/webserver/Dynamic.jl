@@ -104,6 +104,7 @@ function notebook_to_js(notebook::Notebook)
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
+                "running_disabled" => cell.running_disabled,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
@@ -123,6 +124,7 @@ function notebook_to_js(notebook::Notebook)
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
+                "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
                 "output" => Dict(                
                     "body" => cell.output.body,
                     "mime" => cell.output.mime,
@@ -219,7 +221,7 @@ const effects_of_changed_state = Dict(
         # SessionActions.move(request.session, request.notebook, newpath)
 
         if isfile(newpath)
-            throw(UserError("File exists already - you need to delete the old file manually."))
+            error("File exists already - you need to delete the old file manually.")
         else
             move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))

@@ -1,3 +1,13 @@
+"""
+The full list of keyword arguments that can be passed to [`Pluto.run`](@ref) (or [`Pluto.Configuration.from_flat_kwargs`](@ref)) is divided into four categories. Take a look at the documentation for:
+
+- [`Pluto.Configuration.CompilerOptions`](@ref) defines the command line arguments for notebook `julia` processes.
+- [`Pluto.Configuration.ServerOptions`](@ref) configures the HTTP server.
+- [`Pluto.Configuration.SecurityOptions`](@ref) configures the authentication options for Pluto's HTTP server. Change with caution.
+- [`Pluto.Configuration.EvaluationOptions`](@ref) is used internally during Pluto's testing.
+
+Note that Pluto is designed to be _zero-configuration_, and most users should not (have to) change these settings. Most 'customization' can be achieved using Julia's wide range of packages! That being said, the available settings are useful if you are using Pluto in a special environment, such as docker, mybinder, etc.
+"""
 module Configuration
 
 using Configurations # https://github.com/Roger-luo/Configurations.jl
@@ -10,7 +20,22 @@ function notebook_path_suggestion()
 end
 
 """
-The HTTP server options. See `SecurityOptions` for additional settings.
+    ServerOptions([; kwargs...])
+
+The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
+
+# Arguments
+
+- `root_url::Union{Nothing,String} = nothing`
+- `host::String = "127.0.0.1"`
+- `port::Union{Nothing,Integer} = nothing`
+- `launch_browser::Bool = true`
+- `dismiss_update_notification::Bool = false`
+- `show_file_system::Bool = true`
+- `notebook_path_suggestion::String = notebook_path_suggestion()`
+- `disable_writing_notebook_files::Bool = false`
+- `notebook::Union{Nothing,String} = nothing`
+- `simulated_lag::Real=0.0`
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
@@ -29,11 +54,13 @@ end
 """
     SecurityOptions([; kwargs...])
 
-Security settings for the HTTP server. Options are:
+Security settings for the HTTP server. 
+
+# Arguments
 
 - `require_secret_for_open_links::Bool = true`
 
-    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?path=http://www.a.b/c.jl` should be protected. 
+    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?url=http://www.a.b/c.jl` should be protected. 
 
     Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
 
@@ -53,7 +80,13 @@ Note that Pluto is quickly evolving software, maintained by designers, educators
 end
 
 """
-For internal use only.
+    EvaluationOptions([; kwargs...])
+
+Options to change Pluto's evaluation behaviour during internal testing. These options are not intended to be changed during normal use.
+
+- `run_notebook_on_load::Bool = true`
+- `workspace_use_distributed::Bool = true`
+- `lazy_workspace_creation::Bool = false`
 """
 @option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
@@ -62,9 +95,20 @@ For internal use only.
 end
 
 """
-These options will be passed as command line argument to newly launched processes.
+    CompilerOptions([; kwargs...])
 
-The ServerSession contains a global version of this configuration, and each notebook can also have its own version.
+These options will be passed as command line argument to newly launched processes. See [the Julia documentation on command-line options](https://docs.julialang.org/en/v1/manual/command-line-options/).
+
+# Arguments
+- `compile::Union{Nothing,String} = nothing`
+- `sysimage::Union{Nothing,String} = nothing`
+- `banner::Union{Nothing,String} = nothing`
+- `optimize::Union{Nothing,Int} = nothing`
+- `math_mode::Union{Nothing,String} = nothing`
+- `project::Union{Nothing,String} = "@."`
+- `startup_file::Union{Nothing,String} = "no"`
+- `history_file::Union{Nothing,String} = "no"`
+- `threads::Union{Nothing,String,Int} = default_number_of_threads()`
 """
 @option mutable struct CompilerOptions
     compile::Union{Nothing,String} = nothing

@@ -96,7 +96,7 @@ After learning HTML and CSS, you can already spice up your Pluto notebooks but c
 
 It is hard to say whether it is easy to _learn JavaScript using Pluto_. On one hand, we highly recommend the high-quality public learning material that already exists for JavaScript, which is generally written in the context of writing traditional web apps. On the other hand, if you have a specific Pluto-related project in mind, then this could be a great motivator to continue learning!
 
-A third option is to learn JavaScript using [observablehq.com](observablehq.com), an online reactive notebook for JavaScript (it's awesome!). Pluto's JavaScript runtime is designed to be very close to the way you write code in observable, so the skills you learn there will be transferable!
+A third option is to learn JavaScript using [observablehq.com](https://observablehq.com), an online reactive notebook for JavaScript (it's awesome!). Pluto's JavaScript runtime is designed to be very close to the way you write code in observable, so the skills you learn there will be transferable!
 
 If you chose to learn JavaScript using Pluto, let me know how it went, and how we can improve! [fons@plutojl.org](mailto:fons@plutojl.org)
 """

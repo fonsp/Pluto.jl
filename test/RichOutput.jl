@@ -34,11 +34,15 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     Cell("""begin
                         mutable struct A x; y end
                         a = A(16, 0)
-                        a.y = [1, (2, A(3, (r=4, t=(5 => Dict(6 => Ref(a))))))]
+                        a.y = (2, Dict(6 => a))
                         a
                     end"""),
                     Cell("Set([17:20,\"Wonderful\"])"),
-                    Cell("Set(0 : 0.1 : 20)"),
+                    Cell("Set(0 : 0.1 : 18)"),
+                    Cell("rand(50,50)"),
+                    Cell("rand(500,500)"),
+                    Cell("[ rand(50,50) ]"),
+                    Cell("[ rand(500,500) ]"),
                 ])
             fakeclient.connected_notebook = notebook
 
@@ -83,9 +87,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             @test occursin("Set", notebook.cells[17].output.body |> string)
 
             @test notebook.cells[18].output.body isa Dict
-            @test length(notebook.cells[18].output.body[:elements]) < 200
+            @test length(notebook.cells[18].output.body[:elements]) < 180
             @test notebook.cells[18].output.body[:prefix] == "Set{Float64}"
             @test notebook.cells[18].output.mime isa MIME"application/vnd.pluto.tree+object"
+
+            sizes = [length(string(notebook.cells[i].output.body)) for i in 19:22]
+
+            # without truncation, we would have sizes[2] ≈ sizes[1] * 10 * 10
+            # with truncation, their displayed sizes should be similar
+            @test sizes[2] < sizes[1] * 1.5
+            @test sizes[4] < sizes[3] * 1.5
 
             WorkspaceManager.unmake_workspace((🍭, notebook))
         end
@@ -148,6 +159,42 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
             
             WorkspaceManager.unmake_workspace((🍭, notebook))
             🍭.options.evaluation.workspace_use_distributed = false
+        end
+
+        @testset "Circular references" begin
+            notebook = Notebook([
+                Cell("""let
+                    x = Any[1,2,3]
+                    push!(x,x)
+                    push!(x,[x])
+                    push!(x,(a=x,))
+                    push!(x,:b=>x)
+                end"""),
+                Cell("""let
+                    x = Set(Any[1,2,3])
+                    push!(x,x)
+                end"""),
+                Cell("""let
+                    x = Dict{Any,Any}(1 => 2, 3 => 4)
+                    x[5] = (123, x)
+                end"""),
+                Cell("""let
+                    x = Ref{Any}(123)
+                    x[] = x
+                end"""),
+                Cell("""let
+                    x = Ref{Any}(123)
+                    x[] = (1,x)
+                end"""),
+            ])
+            fakeclient.connected_notebook = notebook
+
+            update_run!(🍭, notebook, notebook.cells)
+
+            @test notebook.cells[1].errored == false
+            @test notebook.cells[2].errored == false
+            @test notebook.cells[3].errored == false
+            @test notebook.cells[4].errored == false
         end
     end
 

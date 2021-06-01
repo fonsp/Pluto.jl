@@ -144,9 +144,9 @@ end
     end
 
     @testset "Docs" begin
-        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
-        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
-        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt", Main)[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt", Main)[1])
+        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
     end
 
     @testset "PlutoRunner API" begin
