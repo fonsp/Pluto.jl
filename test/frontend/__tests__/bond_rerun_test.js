@@ -1,7 +1,7 @@
-import { saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage, paste } from "../helpers/common"
+import { saveScreenshot, getTestScreenshotPath, setupPage, paste } from "../helpers/common"
 import { createNewNotebook, getPlutoUrl, waitForNoUpdateOngoing } from "../helpers/pluto"
 
-describe("Bonds should run once", () => {
+describe("Bonds should run once when refreshing page", () => {
     beforeAll(async () => {
         setupPage(page)
     })
@@ -14,7 +14,7 @@ describe("Bonds should run once", () => {
 
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
-        // await page.evaluate(() => window.shutdownNotebook())
+        await page.evaluate(() => window.shutdownNotebook())
     })
 
     it("should not rerun bond values when refreshing page", async () => {
