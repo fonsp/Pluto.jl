@@ -35,14 +35,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
 	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
-	# find (indirectly) deactivated cells and update their status
-	deactivated = filter(c -> c.running_disabled, notebook.cells)
-	indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
-	for cell in indirectly_deactivated
-		cell.running = false
-		cell.queued = false
-		cell.depends_on_disabled_cells = true
-	end
+	indirectly_deactivated = disable_dependent_cells!(notebook, new_topology)
 
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
@@ -106,6 +99,20 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
+end
+
+"""
+find (indirectly) deactivated cells and update their status
+"""
+function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology)
+	deactivated = filter(c -> c.running_disabled, notebook.cells)
+	indirectly_deactivated = collect(topological_order(notebook, topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.depends_on_disabled_cells = true
+	end
+	return indirectly_deactivated
 end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)

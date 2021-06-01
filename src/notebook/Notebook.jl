@@ -182,10 +182,9 @@ function load_notebook_nobackup(io, path)::Notebook
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
             
-            # get the information if a cell is directly disabled
-            # the information if a cell is indirectly disabled is not fetched from the notebook file,
-            # but inferred in Pluto again.
+            # get the information if a cell is disabled
             running_disabled = startswith(code_normalised, _running_disabled_prefix)
+            depends_on_disabled_cells = startswith(code_normalised, _depends_on_disabled_cells_prefix)
 
             # remove the disabled on startup comments for further processing in Julia
             code_normalised = replace(replace(code_normalised, _running_disabled_prefix => ""), _running_disabled_suffix => "")
@@ -196,6 +195,7 @@ function load_notebook_nobackup(io, path)::Notebook
 
             read_cell = Cell(cell_id, code)
             read_cell.running_disabled = running_disabled
+            read_cell.depends_on_disabled_cells = depends_on_disabled_cells || running_disabled
             collected_cells[cell_id] = read_cell
         end
     end
