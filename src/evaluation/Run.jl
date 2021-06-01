@@ -5,7 +5,8 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; 
+		deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false, indirectly_deactivated::Union{Nothing, Vector{Cell}}=nothing)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
@@ -35,7 +36,9 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
 	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
-	indirectly_deactivated = disable_dependent_cells!(notebook, new_topology)
+	if indirectly_deactivated === nothing
+		indirectly_deactivated = disable_dependent_cells!(notebook, new_topology)
+	end
 
     to_run = setdiff(to_run_raw, indirectly_deactivated)
 
@@ -104,7 +107,7 @@ end
 """
 find (indirectly) deactivated cells and update their status
 """
-function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology)
+function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology):: Vector{Cell}
 	for cell in notebook.cells
 		cell.depends_on_disabled_cells = false
 	end
@@ -187,7 +190,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 	update_dependency_cache!(notebook)
 
-	disable_dependent_cells!(notebook, new)
+	indirectly_deactivated = disable_dependent_cells!(notebook, new)
 
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
@@ -218,7 +221,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-		run_reactive_async!(session, notebook, old, new, to_run_online; run_async=run_async, kwargs...)
+		run_reactive_async!(session, notebook, old, new, to_run_online; run_async=run_async, indirectly_deactivated=indirectly_deactivated, kwargs...)
 	end
 end
 
