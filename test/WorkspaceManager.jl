@@ -106,36 +106,28 @@ import Distributed
         ])
         client.connected_notebook = notebook
 
-        if Sys.iswindows()
-            update_run!(🍭, notebook, notebook.cells[1])
+        update_run!(🍭, notebook, notebook.cells)
 
-            @test notebook.cells[1].errored == false
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
 
-            @test_broken false
-        else
-            update_run!(🍭, notebook, notebook.cells)
-
-            @test notebook.cells[1].errored == false
-            @test notebook.cells[2].errored == false
-            @test notebook.cells[3].errored == false
-            @test notebook.cells[4].errored == false
-            @test notebook.cells[5].errored == false
-
-            setcode(notebook.cells[5], "length(nb.cells)")
-            update_run!(🍭, notebook, notebook.cells[5])
-            @test notebook.cells[5].errored == false
+        setcode(notebook.cells[5], "length(nb.cells)")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test notebook.cells[5].errored == false
 
 
-            desired_nprocs = Distributed.nprocs() - 1
-            setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
-            update_run!(🍭, notebook, notebook.cells[5])
-            @test noerror(notebook.cells[5])
+        desired_nprocs = Distributed.nprocs() - 1
+        setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test noerror(notebook.cells[5])
 
-            while Distributed.nprocs() != desired_nprocs
-                sleep(.1)
-            end
+        while Distributed.nprocs() != desired_nprocs
             sleep(.1)
         end
+        sleep(.1)
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
