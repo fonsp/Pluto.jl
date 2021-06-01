@@ -2133,6 +2133,8 @@ li.CodeMirror-hint.c_Array::before,
     color: #ef6155;
 }
 
+li.CodeMirror-hint.c_package::before,
+li.CodeMirror-hint.c_Module::before,
 .cm-s-default span.cm-link {
     color: #815ba4;
 }
