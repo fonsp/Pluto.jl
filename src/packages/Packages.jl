@@ -163,7 +163,14 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     # @info "Resolving"
                     # Pkg.resolve(ctx)
                     @info "Instantiating"
+                    
+                    # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+                    # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+                    env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
+                    pushfirst!(LOAD_PATH, env_dir)
                     Pkg.instantiate(ctx)
+                    @assert LOAD_PATH[1] == env_dir
+                    popfirst!(LOAD_PATH)
                 end
                 notebook.nbpkg_ctx_instantiated = true
             end
