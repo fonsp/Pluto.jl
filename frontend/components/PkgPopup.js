@@ -64,17 +64,40 @@ export const PkgPopup = ({ notebook }) => {
         }
     }, [recent_event, ...nbpkg_fingerprint_without_terminal(notebook.nbpkg)])
 
+    const [showterminal, set_showterminal] = useState(false)
+
+    const busy = pkg_status?.busy ?? true
+
+    useEffect(() => {
+        set_showterminal(busy)
+    }, [busy])
+
+    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]
+
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
         class=${cl({
             visible: recent_event != null,
+            busy,
+            showterminal,
         })}
         style="${pos_ref.current}"
     >
         ${pkg_status?.hint ?? "Loading..."}
-        <a class="help" target="_blank" href="https://fonsp.com"
-            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/information-circle-outline.svg" width="17"
+        <a
+            class="toggle-terminal"
+            target="_blank"
+            style=${!!terminal_value ? "" : "display: none;"}
+            href="#"
+            onClick=${(e) => {
+                set_showterminal(!showterminal)
+                e.preventDefault()
+            }}
+            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/document-text-outline.svg" width="17"
         /></a>
-        <${PkgTerminalView} value=${notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]} />
+        <a class="help" target="_blank" href="https://fonsp.com"
+            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/help-circle-outline.svg" width="17"
+        /></a>
+        <${PkgTerminalView} value=${terminal_value} />
     </pkg-popup>`
 }

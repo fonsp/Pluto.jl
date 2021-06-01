@@ -49,7 +49,7 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
         }
     }
 
-    return { status, hint, hint_raw, available_versions, chosen_version }
+    return { status, hint, hint_raw, available_versions, chosen_version, busy }
 }
 
 // not preact because we're too cool

@@ -1507,7 +1507,7 @@ pkg-popup {
     margin-left: 1.1rem;
     margin-top: calc(0.5 * (1rem - 80px));
     background: rgb(255, 255, 255);
-    border: 3px solid #e4eff0;
+    border: 3px solid #f0e4ee;
     border-radius: 10px;
     padding: 8px;
     overflow-wrap: break-word;
@@ -1528,12 +1528,17 @@ pkg-popup.visible {
     pointer-events: initial;
 }
 
+pkg-popup.busy {
+    border: 3px solid hsl(282deg 31% 62%);
+}
+
 pkg-version {
     font-family: "Space Mono", monospace;
     font-size: 0.75rem;
     opacity: 0.5;
 }
 
+pkg-popup .toggle-terminal,
 pkg-popup .help {
     position: absolute;
     right: 0px;
@@ -1543,7 +1548,11 @@ pkg-popup .help {
     padding: 4px;
     box-sizing: content-box;
     background: white;
-    border-radius: 5px;
+    border-radius: 10px;
+}
+
+pkg-popup .toggle-terminal {
+    right: 20px;
 }
 
 pkg-terminal {
@@ -1560,6 +1569,14 @@ pkg-terminal pre {
 
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
+}
+
+pkg-popup pkg-terminal {
+    display: none;
+}
+
+pkg-popup.showterminal pkg-terminal {
+    display: block;
 }
 
 @keyframes loadspin {
