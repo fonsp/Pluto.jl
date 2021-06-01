@@ -77,6 +77,6 @@ export const PkgPopup = ({ notebook }) => {
         <a class="help" target="_blank" href="https://fonsp.com"
             ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/information-circle-outline.svg" width="17"
         /></a>
-        <${PkgTerminalView} value=${notebook.nbpkg?.terminal_output} />
+        <${PkgTerminalView} value=${notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]} />
     </pkg-popup>`
 }

@@ -1155,7 +1155,6 @@ patch: ${JSON.stringify(
                             }
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
-                        <${PkgTerminalView} value=${this.state.notebook.nbpkg?.terminal_output} />
                         <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells}

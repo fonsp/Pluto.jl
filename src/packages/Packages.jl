@@ -52,7 +52,7 @@ function use_plutopkg(topology::NotebookTopology)
     end
 end
 
-function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=identity)
+function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=((args...) -> nothing))
     ctx = notebook.nbpkg_ctx
 
     👺 = false
@@ -80,18 +80,25 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     
 
     if ctx !== nothing
-        iolistener = IOListener(callback=on_terminal_output)
+        ctx.env.original_project = deepcopy(ctx.env.project)
+        ctx.env.original_manifest = deepcopy(ctx.env.manifest)
 
         # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
         removed = setdiff(keys(ctx.env.project.deps), new_packages)
         added = setdiff(new_packages, keys(ctx.env.project.deps))
+
+        current_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
+        iolistener = IOListener(callback=(s -> on_terminal_output(current_packages, s)))
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
         
-        isready(pkg_token) || println("Waiting for other notebooks to finish Pkg operations...")
+        if !isready(pkg_token)
+            println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
+            trigger(iolistener)
+        end
         withtoken(pkg_token) do
             to_remove = filter(removed) do p
                 haskey(ctx.env.project.deps, p)

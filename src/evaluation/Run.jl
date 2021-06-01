@@ -211,8 +211,10 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 
 	pkg_task = @async try
 		pkg_result = withtoken(notebook.executetoken) do
-			iocallback = s -> let
-				notebook.nbpkg_terminal_output = s
+			function iocallback(pkgs, s)
+				for p in pkgs
+					notebook.nbpkg_terminal_outputs[p] = s
+				end
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
 			update_nbpkg(notebook, old, new; on_terminal_output=iocallback)

@@ -44,7 +44,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
-    nbpkg_terminal_output::String=""
+    nbpkg_terminal_outputs::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
 
