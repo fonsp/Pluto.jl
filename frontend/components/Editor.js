@@ -4,6 +4,7 @@ import _ from "../imports/lodash.js"
 
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
+import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
@@ -39,33 +40,6 @@ const uuidv4 = () =>
 /**
  * @typedef {import('../imports/immer').Patch} Patch
  * */
-
-/**
- * Serialize an array of cells into a string form (similar to the .jl file).
- *
- * Used for implementing clipboard functionality. This isn't in topological
- * order, so you won't necessarily be able to run it directly.
- *
- * @param {Array<CellInputData>} cells
- * @return {String}
- */
-function serialize_cells(cells) {
-    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.code + "\n").join("\n")
-}
-
-/**
- * Deserialize a Julia program or output from `serialize_cells`.
- *
- * If a Julia program, it will return a single String containing it. Otherwise,
- * it will split the string into cells based on the special delimiter.
- *
- * @param {String} serialized_cells
- * @return {Array<String>}
- */
-function deserialize_cells(serialized_cells) {
-    const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
-    return segments.map((s) => s.trim()).filter((s) => s !== "")
-}
 
 const Main = ({ children }) => {
     const { handler } = useDropHandler()
@@ -120,6 +94,7 @@ const first_true_key = (obj) => {
  *  cell_id: string,
  *  code: string,
  *  code_folded: boolean,
+ *  running_disabled: boolean,
  * }}
  */
 
@@ -130,7 +105,12 @@ const first_true_key = (obj) => {
  *  queued: boolean,
  *  running: boolean,
  *  errored: boolean,
- *  runtime?: number,
+ *  runtime: ?number,
+ *  downstream_cells_map: { string: [string]},
+ *  upstream_cells_map: { string: [string]},
+ *  precedence_heuristic: ?number,
+ *  running_disabled: boolean,
+ *  depends_on_disabled_cells: boolean,
  *  output: {
  *      body: string,
  *      persist_js_state: boolean,
@@ -272,14 +252,15 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index) => {
-                let new_codes = deserialize_cells(data)
+            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
+                let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
                     cell_id: uuidv4(),
                     code: code,
                     code_folded: false,
+                    running_disabled: false,
                 }))
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
@@ -291,6 +272,9 @@ export class Editor extends Component {
                  */
                 await this.setStatePromise(
                     immer((state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+
                         for (let cell of new_cells) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -355,6 +339,7 @@ export class Editor extends Component {
                         cell_id: uuidv4(),
                         code: code,
                         code_folded: false,
+                        running_disabled: false,
                     }
                 })
 
@@ -412,6 +397,7 @@ export class Editor extends Component {
                         cell_id: id,
                         code,
                         code_folded: false,
+                        running_disabled: false,
                     }
                     notebook.cell_order = [...notebook.cell_order.slice(0, index), id, ...notebook.cell_order.slice(index, Infinity)]
                 })
@@ -841,7 +827,12 @@ patch: ${JSON.stringify(
             }
         }
 
+        document.addEventListener("keyup", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
+        })
+
         document.addEventListener("keydown", (e) => {
+            document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
             // if (e.defaultPrevented) {
             //     return
             // }
@@ -935,16 +926,9 @@ patch: ${JSON.stringify(
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            console.log("paste", topaste)
-            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                // Deselect everything first, to clean things up
-                this.setState({
-                    selected_cells: [],
-                })
-
-                // Paste in the cells at the end of the notebook
-                const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1)
+            const deserializer = detect_deserializer(topaste)
+            if (deserializer != null) {
+                this.actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.preventDefault()
             }
         })
@@ -1114,7 +1098,7 @@ patch: ${JSON.stringify(
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <${Preamble} 
+                        <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
                         />
@@ -1133,9 +1117,9 @@ patch: ${JSON.stringify(
                             }
                             disable_input=${!this.state.connected}
                         />
-                        <${DropRuler} 
+                        <${DropRuler}
                             actions=${this.actions}
-                            selected_cells=${this.state.selected_cells} 
+                            selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
                             }}

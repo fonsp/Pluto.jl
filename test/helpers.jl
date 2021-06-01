@@ -100,15 +100,22 @@ function setcode(cell, newcode)
     cell.code = newcode
 end
 
+function noerror(cell)
+    if cell.errored
+        @show cell.output.body
+    end
+    !cell.errored
+end
+
 function occursinerror(needle, haystack::Pluto.Cell)
     haystack.errored && occursin(needle, haystack.output.body[:msg])
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB)
-    x = normpath(nbA.path) == normpath(nbB.path)
+function notebook_inputs_equal(nbA, nbB; check_paths_equality=true)
+    x = !check_paths_equality || (normpath(nbA.path) == normpath(nbB.path))
 
-    to_compare(cell) = (cell.cell_id, cell.code)
+    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code)
     y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
     
     x && y

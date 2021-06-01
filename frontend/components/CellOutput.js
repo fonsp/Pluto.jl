@@ -351,7 +351,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
             if (window.MathJax?.typeset != undefined) {
                 try {
                     // @ts-ignore
-                    window.MathJax.typeset([container.current])
+                    window.MathJax.typeset(container.current.querySelectorAll(".tex"))
                 } catch (err) {
                     console.info("Failed to typeset TeX:")
                     console.info(err)

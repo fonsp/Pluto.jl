@@ -85,7 +85,7 @@ https://user-images.githubusercontent.com/6933510/118800499-45c8d580-b8a0-11eb-8
 
 For one tasty notebook 🥞 you will need:
 
--   **Julia** v1.0 or above, _v1.5 is fastest_
+-   **Julia** v1.0 or above, _v1.6 or above is recommended_
 -   **Linux**, **macOS** or **Windows**, _Linux and macOS will work best_
 -   Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
 
@@ -97,7 +97,7 @@ Run Julia and add the package:
 
 ```julia
 julia> ]
-(v1.5) pkg> add Pluto
+(v1.6) pkg> add Pluto
 ```
 
 _Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
