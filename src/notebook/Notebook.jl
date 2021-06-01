@@ -8,7 +8,7 @@ mutable struct BondValue
     is_first_value::Bool
 end
 function Base.convert(::Type{BondValue}, dict::Dict)
-    BondValue(dict["value"], get(dict, "is_first_value", false))
+    BondValue(dict["value"], isnothing(get(dict, "is_first_value", false)) ? false : get(dict, "is_first_value", false))
 end
 
 const ProcessStatus = (
