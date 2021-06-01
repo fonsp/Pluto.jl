@@ -41,9 +41,6 @@ Base.@kwdef mutable struct Cell
 
     running_disabled::Bool=false
     depends_on_disabled_cells::Bool=false
-
-    running_disabled_on_startup::Bool=false
-    depends_on_disabled_cells_on_startup::Bool=false
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
