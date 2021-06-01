@@ -154,13 +154,15 @@ function get_assignees(ex::Expr)::FunctionName
     end
 end
 
-# e.g. x = 123
-get_assignees(ex::Symbol) = Symbol[ex]
+# e.g. x = 123, but ignore _ = 456
+get_assignees(ex::Symbol) = all_underscores(ex) ? Symbol[] : Symbol[ex]
 
 # When you assign to a datatype like Int, String, or anything bad like that
 # e.g. 1 = 2
 # This is parsable code, so we have to treat it
 get_assignees(::Any) = Symbol[]
+
+all_underscores(s::Symbol) = all(isequal('_'), string(s))
 
 # TODO: this should return a FunctionName, and use `split_funcname`.
 "Turn :(A{T}) into :A."
@@ -315,6 +317,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         push!(scopestate.hiddenglobals, global_assignees...)
         push!(symstate.assignments, global_assignees...)
         push!(symstate.references, setdiff(assigneesymstate.references, global_assignees)...)
+        filter!(!all_underscores, symstate.references)  # Never record _ as a reference
 
         return symstate
     elseif ex.head in modifiers
@@ -740,6 +743,12 @@ end
 
 is_symbolics_arg(s) = symbolics_mockexpand(s) !== nothing
 
+maybe_untuple(es) = if length(es) == 1 && Meta.isexpr(first(es), :tuple)
+    first(es).args
+else
+    es
+end
+
 """
 If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
 
@@ -778,8 +787,8 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
             end
         elseif !isempty(args) && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
             Expr(:macrocall, ex.args[1:2]..., :($(args[1]) = 123), ex.args[4:end]...)
-        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, args)
-            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(args)...)
+        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, maybe_untuple(args))
+            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(maybe_untuple(args))...)
         # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
         #     if Meta.isexpr(ex.args[4], :comparison)
         #         parts = ex.args[4].args[1:2:end]

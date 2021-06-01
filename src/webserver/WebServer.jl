@@ -41,7 +41,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`powershell.exe Start "$url"`)
+            Base.run(`powershell.exe Start "'$url'"`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
@@ -140,9 +140,12 @@ function run(session::ServerSession)
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
-
         if HTTP.WebSockets.is_upgrade(http.message)
-            if is_authenticated(session, http.message)
+            secret_required = let
+                s = session.options.security
+                s.require_secret_for_access || s.require_secret_for_open_links
+            end
+            if !secret_required || is_authenticated(session, http.message)
                 try
 
                     HTTP.WebSockets.upgrade(http) do clientstream
@@ -221,12 +224,7 @@ function run(session::ServerSession)
             end
 
             request_body = IOBuffer(HTTP.payload(request))
-            if eof(request_body)
-                # no request body
-                response_body = HTTP.handle(pluto_router, request)
-            else
-                @warn "HTTP request contains a body, huh?" request_body
-            end
+            response_body = HTTP.handle(pluto_router, request)
     
             request.response::HTTP.Response = response_body
             request.response.request = request

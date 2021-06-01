@@ -1,16 +1,16 @@
-import REPL: ends_with_semicolon
+import REPL:ends_with_semicolon
 import .Configuration
 import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, UsingsImports, external_package_names
 
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells = Cell[cells..., removed_cells...]
+	roots = Cell[roots..., removed_cells...]
 
 	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
 	new_topology = NotebookTopology(
@@ -25,20 +25,31 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+	old_order = topological_order(notebook, old_topology, roots)
 
 	old_runnable = old_order.runnable
 	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
 	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
+	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
 
+	# find (indirectly) deactivated cells and update their status
+	deactivated = filter(c -> c.running_disabled, notebook.cells)
+	indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.depends_on_disabled_cells = true
+	end
+
+    to_run = setdiff(to_run_raw, indirectly_deactivated)
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
 		cell.queued = true
+		cell.depends_on_disabled_cells = false
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
@@ -47,7 +58,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 
 	# Send intermediate updates to the clients at most 20 times / second during a reactive run. (The effective speed of a slider is still unbounded, because the last update is not throttled.)
-	send_notebook_changes_throttled = throttled(1.0/20, 0.0/20) do
+	# flush_send_notebook_changes_throttled, 
+	send_notebook_changes_throttled, flush_notebook_changes = throttled(1.0 / 20) do
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 	end
 	send_notebook_changes_throttled()
@@ -73,13 +85,16 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.queued = false
 		cell.running = true
-		cell.persist_js_state = persist_js_state || cell ∉ cells
 		send_notebook_changes_throttled()
-
+		
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
-			run = run_single!((session, notebook), cell, new_topology.nodes[cell], new_topology.codes[cell])
+			run = run_single!(
+				(session, notebook), cell, 
+				new_topology.nodes[cell], new_topology.codes[cell]; 
+				persist_js_state=(persist_js_state || cell ∉ roots)
+			)
 			any_interrupted |= run.interrupted
 		end
 		
@@ -87,10 +102,23 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	
 	notebook.wants_to_interrupt = false
-	send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+	flush_notebook_changes()
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
+end
+
+run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
+
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+	run_task = @async begin
+		run_reactive!(session, notebook, old, new, to_run; kwargs...)
+	end
+	if run_async
+		run_task
+	else
+		fetch(run_task)
+	end
 end
 
 const lazymap = Base.Generator
@@ -108,7 +136,7 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -116,20 +144,23 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing
 	)
-	set_output!(cell, run, expr_cache)
+	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
 	return run
 end
 
-function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache)
-	cell.last_run_timestamp = time()
+function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
+	cell.output = CellOutput(
+		body=run.output_formatted[1],
+		mime=run.output_formatted[2],
+		rootassignee=ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode),
+		last_run_timestamp=time(),
+		persist_js_state=persist_js_state,
+	)
+	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
-
-	cell.output_repr = run.output_formatted[1]
-	cell.repr_mime = run.output_formatted[2]
-	cell.rootassignee = ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode)
 	cell.errored = run.errored
 end
 
@@ -143,7 +174,10 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells)
-	save && save_notebook(notebook)
+
+	update_dependency_cache!(notebook)
+
+	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	# _assume `prerender_text == false` if you want to skip some details_
 
@@ -205,15 +239,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	if will_run_code(notebook)
-		run_task = @async begin
-			wait(pkg_task)
-			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		end
-		if run_async
-			run_task
-		else
-			fetch(run_task)
-		end
+		run_reactive_async!(session, notebook, old, new, to_run_online; run_async=run_async, kwargs...)
 	end
 end
 
@@ -221,21 +247,93 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 
-
-"Create a throttled function, which calls the given function `f` at most once per given interval `max_delay`.
-
-It is _leading_ (`f` is invoked immediately) and _not trailing_ (calls during a cooldown period are ignored).
-
-An optional third argument sets an initial cooldown period, default is `0`. With a non-zero value, the throttle is no longer _leading_."
-function throttled(f::Function, max_delay::Real, initial_offset::Real=0)
-	local last_run_at = time() - max_delay + initial_offset
-	# return f
-	() -> begin
-		now = time()
-		if now - last_run_at >= max_delay
-			f()
-			last_run_at = now
-		end
-		nothing
+function update_from_file(session::ServerSession, notebook::Notebook)
+	just_loaded = try
+		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
+		load_notebook_nobackup(notebook.path)
+	catch e
+		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
+		return
 	end
+
+	old_codes = Dict(
+		id => c.code
+		for (id,c) in notebook.cells_dict
+	)
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in just_loaded.cells_dict
+	)
+
+	added = setdiff(keys(new_codes), keys(old_codes))
+	removed = setdiff(keys(old_codes), keys(new_codes))
+	changed = let
+		remained = keys(old_codes) ∩ keys(new_codes)
+		filter(id -> old_codes[id] != new_codes[id], remained)
+	end
+
+	# @show added removed changed
+
+	for c in added
+		notebook.cells_dict[c] = just_loaded.cells_dict[c]
+	end
+	for c in removed
+		delete!(notebook.cells_dict, c)
+	end
+	for c in changed
+		notebook.cells_dict[c].code = new_codes[c]
+	end
+
+	notebook.cell_order = just_loaded.cell_order
+	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
 end
+
+
+"""
+	throttled(f::Function, timeout::Real)
+
+Return a function that when invoked, will only be triggered at most once
+during `timeout` seconds.
+The throttled function will run as much as it can, without ever
+going more than once per `wait` duration.
+Inspired by FluxML
+See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
+"""
+function throttled(f::Function, timeout::Real)
+	tlock = ReentrantLock()
+	iscoolnow = false
+	run_later = false
+
+	function flush()
+		lock(tlock) do
+			run_later = false
+			f()
+		end
+	end
+
+	function schedule()
+		@async begin
+			sleep(timeout)
+			if run_later
+				flush()
+			end
+			iscoolnow = true
+		end
+	end
+	schedule()
+
+	function throttled_f()
+		if iscoolnow
+			iscoolnow = false
+			flush()
+			schedule()
+		else
+			run_later = true
+		end
+	end
+
+	return throttled_f, flush
+end
+
+
+

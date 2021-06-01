@@ -97,12 +97,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
+        @test testee(:(_ = a + 1), [:a], [], [:+], [])
+        @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
     @testset "Tuples" begin
         @test testee(:((a, b,)), [:a,:b], [], [], [])
         @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
         @test testee(:((a = b,)), [:b], [], [], [])
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
+        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
         @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])
@@ -168,6 +171,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
+        @test_broken testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+            :f => ([], [], [], [])
+        ]; verbose=false)
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
@@ -372,8 +378,10 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], [])
         # symbolics
         @test testee(:(@variables a b c), [], [:a, :b, :c], [Symbol("@variables")], [])
+        @test testee(:(@variables a, b, c), [], [:a, :b, :c], [Symbol("@variables")], [])
         @test testee(:(@variables a b[1:2] c(t) d(..)), [], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
         @test testee(:(@variables a b[1:x] c[1:10](t) d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
+        @test testee(:(@variables a, b[1:x], c[1:10](t), d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
         @test_nowarn testee(:(@variables(m, begin
             x
             y[i=1:2] >= i, (start = i, base_name = "Y_$i")

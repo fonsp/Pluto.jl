@@ -11,6 +11,7 @@ let CellMemo = ({
     notebook_id,
     on_update_doc_query,
     on_cell_input,
+    cell_dependencies,
     on_focus_neighbor,
     selected,
     selected_cells,
@@ -23,12 +24,13 @@ let CellMemo = ({
 }) => {
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
-    const { queued, running, runtime, errored } = cell_result || {}
-    const { cell_id, code, code_folded } = cell_input || {}
+    const { queued, running, runtime, errored, depends_on_disabled_cells } = cell_result || {}
+    const { cell_id, code, code_folded, running_disabled } = cell_input || {}
     return useMemo(() => {
         return html`
             <${Cell}
                 cell_result=${cell_result}
+                cell_dependencies=${cell_dependencies}
                 cell_input=${cell_input}
                 cell_input_local=${cell_input_local}
                 notebook_id=${notebook_id}
@@ -47,6 +49,8 @@ let CellMemo = ({
         `
     }, [
         cell_id,
+        running_disabled,
+        depends_on_disabled_cells,
         queued,
         running,
         runtime,
@@ -62,6 +66,7 @@ let CellMemo = ({
         notebook_id,
         on_update_doc_query,
         on_cell_input,
+        cell_dependencies,
         on_focus_neighbor,
         selected,
         selected_cells_diffable_primitive,
@@ -78,11 +83,13 @@ let CellMemo = ({
  * We render all cell outputs directly when the page loads. Rendering cell *inputs* can slow down the initial page load significantly, so we delay rendering them using this heuristic function to determine the length of the delay (as a function of the number of cells in the notebook).
  * @param {Number} num_cells
  */
-const render_cell_inputs_delay = (num_cells) => (num_cells > 20 ? 500 : 100)
+const render_cell_inputs_delay = (num_cells) => 100 + 10 * num_cells
+const render_cell_outputs_delay = (num_cells) => (num_cells > 20 ? 100 : 0)
 /**
  * The first <x> cells will bypass the {@link render_cell_inputs_delay} heuristic and render directly.
  */
 const render_cell_inputs_minimum = 5
+const render_cell_outputs_minimum = 20
 
 /**
  * @param {{
@@ -112,54 +119,68 @@ export const Notebook = ({
     disable_input,
     nbpkg_local,
 }) => {
-    // This might look kinda silly...
-    // and it is... but it covers all the cases... - DRAL
     let pluto_actions = useContext(PlutoContext)
+
+    // Add new cell when the last cell gets deleted
     useEffect(() => {
+        // This might look kinda silly...
+        // and it is... but it covers all the cases... - DRAL
         if (notebook.cell_order.length === 0 && !is_initializing) {
             pluto_actions.add_remote_cell_at(0)
         }
     }, [is_initializing, notebook.cell_order.length])
 
-    const [is_first_load, set_is_first_load] = useState(true)
+    // Only render the notebook partially during the first few seconds
+    const [cell_inputs_delayed, set_cell_inputs_delayed] = useState(true)
+    const [cell_outputs_delayed, set_cell_outputs_delayed] = useState(true)
 
     useEffect(() => {
-        if (is_first_load && notebook.cell_order.length > 0) {
+        if (cell_inputs_delayed && notebook.cell_order.length > 0) {
             setTimeout(() => {
-                set_is_first_load(false)
+                set_cell_inputs_delayed(false)
             }, render_cell_inputs_delay(notebook.cell_order.length))
         }
-    }, [is_first_load, notebook.cell_order.length])
+    }, [cell_inputs_delayed, notebook.cell_order.length])
+    useEffect(() => {
+        if (cell_outputs_delayed && notebook.cell_order.length > 0) {
+            setTimeout(() => {
+                set_cell_outputs_delayed(false)
+            }, render_cell_outputs_delay(notebook.cell_order.length))
+        }
+    }, [cell_outputs_delayed, notebook.cell_order.length])
 
     return html`
         <pluto-notebook id=${notebook.notebook_id}>
-            ${notebook.cell_order.map(
-                (cell_id, i) => html`<${CellMemo}
-                    key=${cell_id}
-                    cell_result=${notebook.cell_results[cell_id] ?? {
-                        cell_id: cell_id,
-                        queued: true,
-                        running: false,
-                        errored: false,
-                        runtime: null,
-                        output: null,
-                    }}
-                    cell_input=${notebook.cell_inputs[cell_id]}
-                    cell_input_local=${cell_inputs_local[cell_id]}
-                    notebook_id=${notebook.notebook_id}
-                    on_update_doc_query=${on_update_doc_query}
-                    on_cell_input=${on_cell_input}
-                    on_focus_neighbor=${on_focus_neighbor}
-                    selected=${selected_cells.includes(cell_id)}
-                    selected_cells=${selected_cells}
-                    focus_after_creation=${last_created_cell === cell_id}
-                    force_hide_input=${is_first_load && i > render_cell_inputs_minimum}
-                    is_process_ready=${is_process_ready}
-                    disable_input=${disable_input}
-                    nbpkg_local=${nbpkg_local}
-                    nbpkg=${notebook.nbpkg}
-                />`
-            )}
+            ${notebook.cell_order
+                .filter((_, i) => !(cell_outputs_delayed && i > render_cell_outputs_minimum))
+                .map(
+                    (cell_id, i) => html`<${CellMemo}
+                        key=${cell_id}
+                        cell_result=${notebook.cell_results[cell_id] ?? {
+                            cell_id: cell_id,
+                            queued: true,
+                            running: false,
+                            errored: false,
+                            runtime: null,
+                            output: null,
+                        }}
+                        cell_input=${notebook.cell_inputs[cell_id]}
+                        cell_dependencies=${notebook.cell_dependencies[cell_id] ?? {}}
+                        cell_input_local=${cell_inputs_local[cell_id]}
+                        notebook_id=${notebook.notebook_id}
+                        on_update_doc_query=${on_update_doc_query}
+                        on_cell_input=${on_cell_input}
+                        on_focus_neighbor=${on_focus_neighbor}
+                        selected=${selected_cells.includes(cell_id)}
+                        selected_cells=${selected_cells}
+                        focus_after_creation=${last_created_cell === cell_id}
+                        force_hide_input=${cell_inputs_delayed && i > render_cell_inputs_minimum}
+                        is_process_ready=${is_process_ready}
+                        disable_input=${disable_input}
+                        nbpkg_local=${nbpkg_local}
+                        nbpkg=${notebook.nbpkg}
+                    />`
+                )}
         </pluto-notebook>
     `
 }

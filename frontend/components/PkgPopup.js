@@ -3,7 +3,7 @@ import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
 
-import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
+import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_avaible_versions, package_status } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"

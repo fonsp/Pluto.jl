@@ -27,6 +27,7 @@ Base.@kwdef mutable struct Notebook
     path::String
     notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
+    _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
     # buffer will contain all unfetched updates - must be big enough
     # We can keep 1024 updates pending. After this, any put! calls (i.e. calls that push an update to the notebook) will simply block, which is fine.
@@ -48,6 +49,7 @@ Base.@kwdef mutable struct Notebook
     process_status::String=ProcessStatus.starting
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+
     wants_to_interrupt::Bool=false
 end
 
@@ -111,19 +113,12 @@ function save_notebook(io, notebook::Notebook)
     end
     println(io)
 
-    # TODO: this can be optimised by caching the topological order:
-    # maintain cache with ordered UUIDs
-    # whenever a run_reactive! is done, move the found cells **down** until they are in one group, and order them topologically within that group. Errable cells go to the bottom.
-
-    # the next call took 2ms for a small-medium sized notebook: (so not too bad)
-    # 15 ms for a massive notebook - 120 cells, 800 lines
-    notebook_topo_order = topological_order(notebook, notebook.topology, notebook.cells)
-
-    cells_ordered = union(notebook_topo_order.runnable, keys(notebook_topo_order.errable))
-
+    cells_ordered = collect(topological_order(notebook))
+    
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
-        print(io, c.code)
+        # write the cell code and prevent collisions with the cell delimiter
+        print(io, replace(c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
     end
 
@@ -211,7 +206,7 @@ function load_notebook_nobackup(io, path)::Notebook
             code_raw = String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
-            # remove the cell appendix
+            # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
 
             read_cell = Cell(cell_id, code)
@@ -281,26 +276,25 @@ function load_notebook_nobackup(path::String)::Notebook
 end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
-function load_notebook(path::String, run_notebook_on_load::Bool=true)::Notebook
-    backup_path = numbered_until_new(path; sep=".backup", suffix="", create_file=false)
+function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
+    backup_path = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)
     #     backup_path = path * ".backup" * string(backup_num)
     #     backup_num += 1
     # end
-    readwrite(path, backup_path)
+    disable_writing_notebook_files || readwrite(path, backup_path)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
-    save_notebook(loaded)
-    # Clear symstates if autorun/autofun is disabled. Otherwise running a single cell for the first time will also run downstream cells.
-    if run_notebook_on_load
-        loaded.topology = NotebookTopology()
-    end
+    update_dependency_cache!(loaded)
 
-    if only_versions_or_lineorder_differ(path, backup_path)
+    disable_writing_notebook_files || save_notebook(loaded)
+    loaded.topology = NotebookTopology()
+
+    disable_writing_notebook_files || if only_versions_or_lineorder_differ(path, backup_path)
         rm(backup_path)
     else
         @warn "Old Pluto notebook might not have loaded correctly. Backup saved to: " backup_path
@@ -323,20 +317,25 @@ function only_versions_differ(pathA::AbstractString, pathB::AbstractString)::Boo
 end
 
 "Set `notebook.path` to the new value, save the notebook, verify file integrity, and if all OK, delete the old savefile. Normalizes the given path to make it absolute. Moving is always hard. 😢"
-function move_notebook!(notebook::Notebook, newpath::String)
+function move_notebook!(notebook::Notebook, newpath::String; disable_writing_notebook_files::Bool=false)
     # Will throw exception and return if anything goes wrong, so at least one file is guaranteed to exist.
     oldpath_tame = tamepath(notebook.path)
     newpath_tame = tamepath(newpath)
-    save_notebook(notebook, oldpath_tame)
-    save_notebook(notebook, newpath_tame)
 
-    # @assert that the new file looks alright
-    @assert only_versions_differ(oldpath_tame, newpath_tame)
+    if !disable_writing_notebook_files
+        save_notebook(notebook, oldpath_tame)
+        save_notebook(notebook, newpath_tame)
 
-    notebook.path = newpath_tame
+        # @assert that the new file looks alright
+        @assert only_versions_differ(oldpath_tame, newpath_tame)
 
-    if oldpath_tame != newpath_tame
-        rm(oldpath_tame)
+        notebook.path = newpath_tame
+
+        if oldpath_tame != newpath_tame
+            rm(oldpath_tame)
+        end
+    else
+        notebook.path = newpath_tame
     end
     if isdir("$oldpath_tame.assets")
         mv("$oldpath_tame.assets", "$newpath_tame.assets")

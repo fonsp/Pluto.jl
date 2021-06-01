@@ -231,7 +231,28 @@ end
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
+
+            @test readdir(new_dir) == ["nb backup 1.jl", "nb.jl"]
         end
+    end
+
+    @testset "Import & export HTML" begin
+        nb = basic_notebook()
+        export_html = Pluto.generate_html(nb)
+
+        embedded_jl = Pluto.embedded_notebookfile(export_html)
+        jl_path = tempname()
+        write(jl_path, embedded_jl)
+        
+        result = load_notebook_nobackup(jl_path)
+        @test notebook_inputs_equal(nb, result; check_paths_equality=false)
+
+        
+        filename = "howdy.jl"
+
+        export_html = Pluto.generate_html(nb; notebookfile_js=filename)
+        @test occursin(filename, export_html)
+        @test_throws ArgumentError Pluto.embedded_notebookfile(export_html)
     end
 
     @testset "Utilities" begin

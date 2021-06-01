@@ -16,14 +16,17 @@
     <link rel="icon" type="image/png" sizes="96x96" href="img/favicon-96x96.png">
     <meta name="description" content="Pluto.jl notebooks" />
 
-    <script src="common/RegisterSW.js"></script>
+    <link rel="pluto-sw" href="./sw.js" />
+    <script>
+        navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
+    </script>
 
     <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/hint/show-hint.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/display/placeholder.min.js" defer></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/lib/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.58.1/addon/hint/show-hint.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/display/placeholder.min.js" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.css">
 
 
     <link rel="stylesheet" href="index.css">
