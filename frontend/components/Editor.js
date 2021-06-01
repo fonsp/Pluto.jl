@@ -1108,7 +1108,6 @@ patch: ${JSON.stringify(
                             is_process_ready=${
                                 this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
                             }
-                            disable_input=${!this.state.connected}
                         />
                         <${DropRuler}
                             actions=${this.actions}
