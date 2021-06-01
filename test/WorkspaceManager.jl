@@ -100,7 +100,7 @@ import Distributed
             s = Pluto.ServerSession()
             """),
             Cell("""
-            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=true, as_sample=true)"""),
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
             Cell("length(nb.cells)"),
             Cell(""),
         ])
