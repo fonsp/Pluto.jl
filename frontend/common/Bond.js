@@ -90,7 +90,7 @@ export const set_bound_elements_to_their_value = (node, bond_values) => {
 
 /**
  * @param {Element} node
- * @param {({name: string, value: any, is_first_value: boolean}) => Promise} on_bond_change
+ * @param {(name: string, value: any, is_first_value: boolean) => Promise} on_bond_change
  */
 export const add_bonds_listener = (node, on_bond_change) => {
     // the <bond> node will be invalidated when the cell re-evaluates. when this happens, we need to stop processing input events
@@ -99,7 +99,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
     node.querySelectorAll("bond").forEach(async (bond_node) => {
         const initial_value = valueof(bond_node.firstElementChild)
         // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
-        on_bond_change({ name: bond_node.getAttribute("def"), value: initial_value, is_first_value: true })
+        on_bond_change(bond_node.getAttribute("def"), initial_value, true)
 
         // read the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
@@ -116,7 +116,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
                 const to_send = await transformed_val(val)
                 // await the setter to avoid collisions
                 //TODO : get this from state
-                await on_bond_change({ name: bond_node.getAttribute("def"), value: to_send, is_first_value: false }).catch(console.error)
+                await on_bond_change(bond_node.getAttribute("def"), to_send, false).catch(console.error)
             }
         }
     })

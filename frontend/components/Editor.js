@@ -478,8 +478,13 @@ export class Editor extends Component {
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
             },
-            /** @param {{ name: string, value: any, is_first_value: boolean }} bond */
-            set_bond: async ({ name, value, is_first_value }) => {
+            /**
+             *
+             * @param {string} name         | bond name
+             * @param {*} value             | bond value
+             * @param {boolean} is_first_value    | true during initialization
+             */
+            set_bond: async (name, value, is_first_value) => {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275

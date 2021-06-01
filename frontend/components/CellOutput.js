@@ -340,8 +340,8 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, async ({ name, value, is_first_value }) => {
-                    await pluto_actions.set_bond({ name, value, is_first_value: is_first_value })
+                let remove_bonds_listener = add_bonds_listener(container.current, async (name, value, is_first_value) => {
+                    await pluto_actions.set_bond(name, value, is_first_value)
                 })
                 invalidation.then(remove_bonds_listener)
             }
