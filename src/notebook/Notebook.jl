@@ -243,7 +243,7 @@ function load_notebook_nobackup(io, path)::Notebook
         ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
         mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
 
-        env_dir = mktempdir()
+        env_dir = mktempdir(;cleanup=false)
         write(joinpath(env_dir, "Project.toml"), ptoml_contents)
         write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
 
