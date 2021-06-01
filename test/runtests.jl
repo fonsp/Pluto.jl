@@ -1,6 +1,6 @@
 include("./helpers.jl")
-include("./Notebook.jl")
 include("./WorkspaceManager.jl")
+include("./Notebook.jl")
 include("./RichOutput.jl")
 include("./React.jl")
 include("./ExpressionExplorer.jl")
