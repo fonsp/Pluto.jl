@@ -4,25 +4,34 @@ import { html as phtml } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 const html = observablehq_for_myself.html
 
-export const nbpkg_fingerprint = (nbpkg) =>
-    nbpkg == null ? [null] : [...Object.values(nbpkg), ...Object.keys(nbpkg.installed_versions), ...Object.values(nbpkg.installed_versions)]
+// does not include terminal outputs
+export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg))
+
+export const nbpkg_fingerprint_without_terminal = (nbpkg) =>
+    nbpkg == null ? [null] : Object.entries(nbpkg).flatMap(([k, v]) => (k === "terminal_outputs" ? [] : [v]))
 
 export const package_status = ({ nbpkg, package_name, available_versions }) => {
-    console.log(available_versions)
-
     let status = null
     let hint_raw = null
     let hint = null
-    const installed_version = nbpkg?.installed_versions[package_name]
+    const chosen_version = nbpkg?.installed_versions[package_name]
+    const busy = (nbpkg?.busy_packages ?? []).includes(package_name)
 
-    if (installed_version != null || _.isEqual(available_versions, ["stdlib"])) {
-        status = "installed"
-        if (installed_version == null || installed_version === "stdlib") {
+    if (chosen_version != null || _.isEqual(available_versions, ["stdlib"])) {
+        if (chosen_version == null || chosen_version === "stdlib") {
+            status = "installed"
             hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
             hint = phtml`<b>${package_name}</b> is part of Julia's pre-installed <em>standard library</em>.`
         } else {
-            hint_raw = `${package_name} (v${installed_version}) is installed in the notebook.`
-            hint = phtml`<header><b>${package_name}</b> <pkg-version>v${installed_version}</pkg-version></header> is installed in the notebook.`
+            if (busy) {
+                status = "busy"
+                hint_raw = `${package_name} (v${chosen_version}) is installing...`
+                hint = phtml`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header> is installing...`
+            } else {
+                status = "installed"
+                hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.`
+                hint = phtml`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header> is installed in the notebook.`
+            }
         }
     } else {
         if (_.isArray(available_versions)) {
@@ -40,7 +49,7 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
         }
     }
 
-    return { status, hint, hint_raw, available_versions, installed_version }
+    return { status, hint, hint_raw, available_versions, chosen_version }
 }
 
 // not preact because we're too cool
@@ -60,11 +69,12 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
 
         node.title = hint_raw
 
+        node.classList.toggle("busy", status === "busy")
         node.classList.toggle("installed", status === "installed")
         node.classList.toggle("not_found", status === "not_found")
         node.classList.toggle("will_be_installed", status === "will_be_installed")
 
-        refresh_cm()
+        // refresh_cm()
     }
 
     node.on_nbpkg_local = (p) => {
@@ -77,7 +87,6 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
     }
     ;(pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])).then((versions) => {
         available_versions_ref.current = versions
-        console.log(versions)
         render()
     })
 

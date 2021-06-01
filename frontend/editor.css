@@ -1463,6 +1463,10 @@ pkg-status-mark.installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/checkmark-outline.svg);
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-done-outline.svg); */
 }
+pkg-status-mark.busy > button > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
+    animation: loadspin 3s ease-in-out infinite;
+}
 pkg-status-mark.not_found > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-offline-outline.svg);
     opacity: 0.6;
@@ -1539,12 +1543,13 @@ pkg-popup .help {
     padding: 4px;
     box-sizing: content-box;
     background: white;
+    border-radius: 5px;
 }
 
 pkg-terminal {
     display: block;
-    width: 20rem;
-    height: 10rem;
+    /* width: 20rem; */
+    max-height: 10rem;
     overflow-y: auto;
     cursor: text;
 }
@@ -1556,6 +1561,25 @@ pkg-terminal pre {
     font-size: 0.6rem;
     font-family: "Space Mono", monospace;
 }
+
+@keyframes loadspin {
+    0% {
+        transform: rotate(0deg);
+    }
+    25% {
+        transform: rotate(180deg);
+    }
+    50% {
+        transform: rotate(180deg);
+    }
+    75% {
+        transform: rotate(360deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
 
 /* RUNAREA */
 

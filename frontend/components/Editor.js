@@ -1018,7 +1018,6 @@ patch: ${JSON.stringify(
             })
         }
 
-        console.log(this.state.notebook.nbpkg)
         if (old_state.binder_phase !== this.state.binder_phase && this.state.binder_phase != null) {
             const phase = Object.entries(BinderPhase).find(([k, v]) => v == this.state.binder_phase)[0]
             console.info(`Binder phase: ${phase} at ${new Date().toLocaleTimeString()}`)

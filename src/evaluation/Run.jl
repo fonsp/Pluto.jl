@@ -213,6 +213,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	pkg_task = @async try
 		pkg_result = withtoken(notebook.executetoken) do
 			function iocallback(pkgs, s)
+				notebook.nbpkg_busy_packages = pkgs
 				for p in pkgs
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
@@ -224,7 +225,6 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		if pkg_result.did_something
 			@info "PlutoPkg: success!" pkg_result
 
-			# TODO: these warning should be in the frontend
 			if pkg_result.restart_recommended
 				@warn "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "yes"
@@ -233,6 +233,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				@error "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "yes"
 			end
+
+			notebook.nbpkg_busy_packages = String[]
 
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			save && save_notebook(notebook)

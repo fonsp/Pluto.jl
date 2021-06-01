@@ -108,7 +108,7 @@ export const CellInput = ({
         pkg_bubbles.current.forEach((b) => {
             b.on_nbpkg(nbpkg)
         })
-        console.log("effect!")
+        // console.log("nbpkg effect!", nbpkg_fingerprint(nbpkg))
     }, nbpkg_fingerprint(nbpkg))
 
     useEffect(() => {
@@ -482,7 +482,7 @@ export const CellInput = ({
         })
 
         cm.on("change", (cm, e) => {
-            // console.log(e)
+            // console.log("cm changed event ", e)
             const new_value = cm.getValue()
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))

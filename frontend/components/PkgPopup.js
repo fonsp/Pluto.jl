@@ -5,7 +5,7 @@ import { cl } from "../common/ClassTable.js"
 
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { package_status } from "./PkgStatusMark.js"
+import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 
 export const PkgPopup = ({ notebook }) => {
@@ -16,8 +16,6 @@ export const PkgPopup = ({ notebook }) => {
     const pos_ref = useRef("")
 
     const open = (e) => {
-        console.log(e)
-
         const el = e.detail.status_mark_element
 
         pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: ${
@@ -64,7 +62,7 @@ export const PkgPopup = ({ notebook }) => {
         return () => {
             still_valid = false
         }
-    }, [recent_event])
+    }, [recent_event, ...nbpkg_fingerprint_without_terminal(notebook.nbpkg)])
 
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup

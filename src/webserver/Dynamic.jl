@@ -154,6 +154,7 @@ function notebook_to_js(notebook::Notebook)
                     x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
                 ),
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
+                "busy_packages" => notebook.nbpkg_busy_packages,
             )
         end,
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
