@@ -70,7 +70,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
 
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-    results_text, loc, found = if @show(package_name_to_complete(query)) !== nothing
+    results_text, loc, found = if package_name_to_complete(query) !== nothing
         p = package_name_to_complete(query)
         cs = package_completions(p) |> sort
         [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
