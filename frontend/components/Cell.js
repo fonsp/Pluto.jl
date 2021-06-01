@@ -96,6 +96,20 @@ export const Cell = ({
         set_cell_api_ready(true)
     })
 
+    useEffect(() => {
+        if (!node_ref.current) return () => {}
+        console.log("Registering event listener")
+        const updater = (ev) => {
+            console.log("Event captured", cell_id, node_ref.current, ev)
+            pluto_actions.set_local_cell(cell_id, ev.detail.new_code)
+        }
+        node_ref.current.addEventListener("update_cell_code", updater)
+        return () => {
+            console.log("UnRegistering event listener")
+            node_ref.current.removeEventListener("update_cell_code", updater)
+        }
+    }, [node_ref.current, pluto_actions])
+
     return html`
         <pluto-cell
             ref=${node_ref}
