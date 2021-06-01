@@ -311,7 +311,6 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
     }, [body, persist_js_state, pluto_actions, pluto_bonds])
 
     useLayoutEffect(() => {
-        console.log("Cell ", body, "starting up")
         // Invalidate current scripts and create a new invalidation token immediately
         let invalidation = new Promise((resolve) => {
             invalidate_scripts.current = () => {
@@ -329,8 +328,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
-            console.log("Cell ", body, "starting up2")
-            container.current.classList.add("pluto-cell-javascript-initializing")
+            if (container.current) container.current._javascript_initializing = true
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: new_scripts,
@@ -371,10 +369,8 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                     }
                 }
             } catch (err) {}
-            container.current.classList.remove("pluto-cell-javascript-initializing")
+            if (container.current) container.current._javascript_initializing = false
         })
-
-        console.log("Cell ", body, "Going down")
 
         return () => {
             invalidate_scripts.current?.()

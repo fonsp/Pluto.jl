@@ -1,4 +1,3 @@
-
 import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
@@ -492,7 +491,6 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
 
     run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, persist_js_state=true, run_async=false, kwargs...)
 end
-
 
 responses[:write_file] = function (🙋::ClientRequest)
     path = 🙋.notebook.path

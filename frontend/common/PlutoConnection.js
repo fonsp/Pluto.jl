@@ -265,7 +265,7 @@ export const create_pluto_connection = async ({
             ...metadata,
         }
 
-        console.log(`message:`, message)
+        // Note: Message to be sent: message
 
         var p = resolvable_promise()
 

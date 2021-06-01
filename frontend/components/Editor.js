@@ -488,7 +488,6 @@ export class Editor extends Component {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
-                console.log(name, value, is_first_value, "Updating bond")
                 await update_notebook((notebook) => {
                     // Wrap the bond value in an object so immer assumes it is changed
                     let new_bond = { value: value, is_first_value: is_first_value }
@@ -707,8 +706,8 @@ patch: ${JSON.stringify(
         this.bonds_changes_to_apply_when_done = []
         this.notebook_is_idle = () => {
             let any_running = Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued)
-
-            return !any_running && !this.state.update_is_ongoing && document.querySelector(".pluto-cell-javascript-initializing") == null
+            const any_cell_initalizing_js = Array.from(document.querySelectorAll(".raw-html-wrapper")).some((node) => !!node?._javascript_initializing)
+            return !any_running && !this.state.update_is_ongoing && !any_cell_initalizing_js
         }
 
         let last_update_notebook_task = Promise.resolve()
@@ -728,7 +727,7 @@ patch: ${JSON.stringify(
                 // to send when the notebook is idle. This delays the updating of the bond for performance,
                 // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
                 // this will no longer be necessary
-                console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
+                // console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
                 if (!this.notebook_is_idle()) {
                     let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
                     this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
@@ -987,7 +986,7 @@ patch: ${JSON.stringify(
         document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
-            console.log(`bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done)
+            // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
             let bonds_patches = this.bonds_changes_to_apply_when_done
             this.bonds_changes_to_apply_when_done = []
             this.update_notebook((notebook) => {
