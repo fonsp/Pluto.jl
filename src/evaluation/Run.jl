@@ -162,6 +162,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
 	cell.errored = run.errored
+	cell.running = cell.queued = false
 end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
