@@ -105,6 +105,9 @@ end
 find (indirectly) deactivated cells and update their status
 """
 function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology)
+	for cell in notebook.cells
+		cell.depends_on_disabled_cells = false
+	end
 	deactivated = filter(c -> c.running_disabled, notebook.cells)
 	indirectly_deactivated = collect(topological_order(notebook, topology, deactivated))
 	for cell in indirectly_deactivated
@@ -183,6 +186,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells)
 
 	update_dependency_cache!(notebook)
+
+	disable_dependent_cells!(notebook, new)
 
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 

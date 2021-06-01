@@ -187,8 +187,8 @@ function load_notebook_nobackup(io, path)::Notebook
             depends_on_disabled_cells = startswith(code_normalised, _depends_on_disabled_cells_prefix)
 
             # remove the disabled on startup comments for further processing in Julia
-            code_normalised = replace(replace(code_normalised, _running_disabled_prefix => ""), _running_disabled_suffix => "")
-            code_normalised = replace(replace(code_normalised, _depends_on_disabled_cells_prefix => ""), _depends_on_disabled_cells_suffix => "")
+            code_normalised = replace(replace(code_normalised, _running_disabled_prefix * "\n" => ""), _running_disabled_suffix * "\n" => "")
+            code_normalised = replace(replace(code_normalised, _depends_on_disabled_cells_prefix * "\n" => ""), _depends_on_disabled_cells_suffix * "\n" => "")
 
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
