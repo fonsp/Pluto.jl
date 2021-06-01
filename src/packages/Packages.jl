@@ -96,6 +96,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 haskey(ctx.env.project.deps, p)
             end
             if !isempty(to_remove)
+                @show to_remove
                 # See later comment
                 mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
                 old_manifest_keys = mkeys()
@@ -108,7 +109,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
                 new_manifest_keys = mkeys()
                 
-                # TODO: we might want to upgrade other packages now that constraints have loosened???
+                # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
             end
 
             
@@ -116,9 +117,9 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
             to_add = filter(PkgTools.package_exists, added)
-            @show to_add
-
+            
             if !isempty(to_add)
+                @show to_add
                 # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                 clear_semver_compat_entries!(ctx)
 
@@ -160,7 +161,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
                 env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
                 pushfirst!(LOAD_PATH, env_dir)
-                Pkg.instantiate(ctx)
+
+                # update registries if this is the first time
+                Pkg.Types.update_registries(ctx)
+                # instantiate without forcing registry update
+                Pkg.instantiate(ctx; update_registry=false)
+
                 @assert LOAD_PATH[1] == env_dir
                 popfirst!(LOAD_PATH)
                 
