@@ -541,6 +541,15 @@ export class Editor extends Component {
                     true
                 )
             },
+            get_avaible_versions: async ({ package_name, notebook_id }) => {
+                return []
+                if (this.state.static_preview) {
+                    return []
+                } else {
+                    const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+                    return message.versions
+                }
+            },
         }
 
         const apply_notebook_patches = (patches, old_state = undefined) =>

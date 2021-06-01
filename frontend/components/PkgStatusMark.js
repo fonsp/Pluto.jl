@@ -43,11 +43,6 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
     return { status, hint, hint_raw, available_versions, installed_version }
 }
 
-export const get_avaible_versions = async ({ package_name, pluto_actions, notebook_id }) => {
-    const { message } = await pluto_actions.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
-    return message.versions
-}
-
 // not preact because we're too cool
 export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, notebook_id }) => {
     const button = html`<button><span></span></button>`
@@ -80,8 +75,7 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         nbpkg_ref.current = p
         render()
     }
-
-    get_avaible_versions({ package_name, pluto_actions, notebook_id }).then((versions) => {
+    ;(pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])).then((versions) => {
         available_versions_ref.current = versions
         console.log(versions)
         render()
