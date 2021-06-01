@@ -6,6 +6,7 @@ import { cl } from "../common/ClassTable.js"
 import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { package_status } from "./PkgStatusMark.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 
 export const PkgPopup = ({ notebook }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -71,7 +72,11 @@ export const PkgPopup = ({ notebook }) => {
             visible: recent_event != null,
         })}
         style="${pos_ref.current}"
-        >${pkg_status?.hint ?? "Loading..."}<a class="help" target="_blank" href="https://fonsp.com"
-            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/information-circle-outline.svg" width="17" /></a
-    ></pkg-popup>`
+    >
+        ${pkg_status?.hint ?? "Loading..."}
+        <a class="help" target="_blank" href="https://fonsp.com"
+            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/information-circle-outline.svg" width="17"
+        /></a>
+        <${PkgTerminalView} value=${notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]} />
+    </pkg-popup>`
 }

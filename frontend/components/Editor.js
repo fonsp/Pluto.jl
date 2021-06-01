@@ -24,6 +24,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
@@ -1154,7 +1155,7 @@ patch: ${JSON.stringify(
                             }
                             nbpkg_local=${this.state.nbpkg_local_local}
                         />
-                        <${DropRuler}
+                        <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => {

@@ -52,8 +52,7 @@ function use_plutopkg(topology::NotebookTopology)
     end
 end
 
-
-function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology)
+function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=((args...) -> nothing))
     ctx = notebook.nbpkg_ctx
 
     👺 = false
@@ -81,16 +80,25 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     
 
     if ctx !== nothing
+        ctx.env.original_project = deepcopy(ctx.env.project)
+        ctx.env.original_manifest = deepcopy(ctx.env.manifest)
+
         # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
         removed = setdiff(keys(ctx.env.project.deps), new_packages)
         added = setdiff(new_packages, keys(ctx.env.project.deps))
+
+        current_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
+        iolistener = IOListener(callback=(s -> on_terminal_output(current_packages, s)))
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
         
-        isready(pkg_token) || @info "Waiting for other notebooks to finish Pkg operations..."
+        if !isready(pkg_token)
+            println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
+            trigger(iolistener)
+        end
         withtoken(pkg_token) do
             to_remove = filter(removed) do p
                 haskey(ctx.env.project.deps, p)
@@ -120,58 +128,69 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             
             if !isempty(to_add)
                 @show to_add
-                # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                clear_semver_compat_entries!(ctx)
+                startlistening(iolistener)
 
-                for tier in [
-                    Pkg.PRESERVE_ALL,
-                    Pkg.PRESERVE_DIRECT,
-                    Pkg.PRESERVE_SEMVER,
-                    Pkg.PRESERVE_NONE,
-                ]
-                    used_tier = tier
+                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                    clear_semver_compat_entries!(ctx)
 
-                    try
-                        Pkg.add(ctx, [
-                            Pkg.PackageSpec(name=p)
-                            for p in to_add
-                        ]; preserve=used_tier)
-                        
-                        break
-                    catch e
-                        if used_tier == Pkg.PRESERVE_NONE
-                            # give up
-                            rethrow(e)
+                    for tier in [
+                        Pkg.PRESERVE_ALL,
+                        Pkg.PRESERVE_DIRECT,
+                        Pkg.PRESERVE_SEMVER,
+                        Pkg.PRESERVE_NONE,
+                    ]
+                        used_tier = tier
+
+                        try
+                            Pkg.add(ctx, [
+                                Pkg.PackageSpec(name=p)
+                                for p in to_add
+                            ]; preserve=used_tier)
+                            
+                            break
+                        catch e
+                            if used_tier == Pkg.PRESERVE_NONE
+                                # give up
+                                rethrow(e)
+                            end
                         end
                     end
-                end
 
-                write_semver_compat_entries!(ctx)
+                    write_semver_compat_entries!(ctx)
+
+                    # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                    println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                end
 
                 @info "PlutoPkg done"
             end
 
             should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
             if should_instantiate
-                # @info "Resolving"
-                # Pkg.resolve(ctx)
-                @info "Instantiating"
+                startlistening(iolistener)
+                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    # @info "Resolving"
+                    # Pkg.resolve(ctx)
+                    @info "Instantiating"
+                    
+                    # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+                    # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+                    env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
+                    pushfirst!(LOAD_PATH, env_dir)
 
-                # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
-                # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
-                pushfirst!(LOAD_PATH, env_dir)
-
-                # update registries if this is the first time
-                Pkg.Types.update_registries(ctx)
-                # instantiate without forcing registry update
-                Pkg.instantiate(ctx; update_registry=false)
-
-                @assert LOAD_PATH[1] == env_dir
-                popfirst!(LOAD_PATH)
-                
+                    # update registries if this is the first time
+                    Pkg.Types.update_registries(ctx)
+                    # instantiate without forcing registry update
+                    Pkg.instantiate(ctx; update_registry=false)
+                    
+                    @assert LOAD_PATH[1] == env_dir
+                    popfirst!(LOAD_PATH)
+                end
                 notebook.nbpkg_ctx_instantiated = true
             end
+
+            stoplistening(iolistener)
 
             return (
                 did_something=👺 || (
@@ -197,4 +216,46 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             restart_required=👺 || false,
         )
     end
+end
+
+
+
+"A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
+Base.@kwdef struct IOListener
+    callback::Function
+    buffer::IOBuffer=IOBuffer()
+    interval::Real=1.0/60
+    running::Ref{Bool}=Ref(false)
+    last_size::Ref{Int}=Ref(-1)
+end
+function trigger(listener::IOListener)
+    new_size = listener.buffer.size
+    if new_size > listener.last_size[]
+        listener.last_size[] = new_size
+        new_contents = String(listener.buffer.data[1:new_size])
+        listener.callback(new_contents)
+    end
+end
+function startlistening(listener::IOListener)
+    if !listener.running[]
+        listener.running[] = true
+        @async while listener.running[]
+            trigger(listener)
+            sleep(listener.interval)
+        end
+    end
+end
+function stoplistening(listener::IOListener)
+    if listener.running[]
+        listener.running[] = false
+        trigger(listener)
+    end
+end
+
+function withio(f::Function, ctx::Pkg.Types.Context, io::IO)
+    old_io = ctx.io
+    ctx.io = io
+    result = f()
+    ctx.io = old_io
+    result
 end
