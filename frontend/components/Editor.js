@@ -685,7 +685,7 @@ patch: ${JSON.stringify(
                     case "integrations":
                         let event = new IntegrationsMessageToClientEvent({
                             module_name: message.module_name,
-                            body: message.message,
+                            body: message.body,
                         })
                         // @ts-ignore
                         window.Pluto.pluto_api_event_target.dispatchEvent(event)
