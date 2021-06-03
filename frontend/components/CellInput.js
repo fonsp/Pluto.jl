@@ -489,7 +489,7 @@ export const CellInput = ({
             }
             on_change_ref.current(new_value)
 
-            // cm.replaceRange()
+            // remove the currently attached widgets from the codemirror DOM. Widgets corresponding to package imports that did not changed will be re-attached later.
             cm.getAllMarks().forEach((m) => {
                 const m_position = m.find()
                 if (e.from.line <= m_position.line && m_position.line <= e.to.line) {
@@ -504,10 +504,13 @@ export const CellInput = ({
             // TODO: debounce _any_ edit to update all imports for this cell
             // because adding #= to the start of a cell will remove imports later
 
-            range(e.from.line, e.to.line).map((line_i) => {
+            // iterate through changed lines
+            range(e.from.line, e.to.line).forEach((line_i) => {
                 /** @type {string} */
                 const line = cm.getLine(line_i)
                 if (line != undefined) {
+                    // search for the "import Example, Plots" expression using regex
+
                     // dunno
                     // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
 
@@ -522,16 +525,19 @@ export const CellInput = ({
 
                         const start = import_match.index + import_match[1].length
 
+                        // ask codemirror what its parser found for the "import" or "using" word. If it is not a "keyword", then this is part of a comment or a string.
                         const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
 
                         if (import_token.type === "keyword") {
                             const inner = import_match[0].substr(import_match[1].length)
 
+                            // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
                             const inner_re = /(\w+)(\.\w+)*/g
                             for (const package_match of inner.matchAll(inner_re)) {
                                 const package_name = package_match[1]
 
                                 if (package_name !== "Base" && package_name !== "Core") {
+                                    // if the widget already exists, keep it, if not, create a new one
                                     const widget = get(pkg_bubbles.current, package_name, () => {
                                         const b = PkgStatusMark({
                                             pluto_actions: pluto_actions,

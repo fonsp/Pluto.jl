@@ -2,6 +2,7 @@ import _ from "../imports/lodash.js"
 import { html as phtml } from "../imports/Preact.js"
 
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
+// widgets inside codemirror need to be DOM elements, not Preact VDOM components. So in this code, we will use html from observablehq, which is just like html from Preact, except it creates DOM nodes directly, not Preact VDOM elements.
 const html = observablehq_for_myself.html
 
 // does not include terminal outputs
