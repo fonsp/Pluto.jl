@@ -9,7 +9,9 @@ const TerminalViewAnsiUp = ({ value }) => {
         node_ref.current.parentElement.scrollTop = 1e5
     }, [value])
 
-    return html`<pkg-terminal><pre ref=${node_ref} class="pkg-terminal"></pre></pkg-terminal>`
+    return html`<pkg-terminal
+        ><div class="scroller"><pre ref=${node_ref} class="pkg-terminal"></pre></div
+    ></pkg-terminal>`
 }
 
 export const PkgTerminalView = TerminalViewAnsiUp
