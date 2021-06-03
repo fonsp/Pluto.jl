@@ -85,7 +85,7 @@ function activate_notebook(path::String)
 
     assert_has_nbpkg(notebook_ref[])
 
-    ourpath = joinpath(mktempdir(; cleanup=false), basename(path))
+    ourpath = joinpath(mktempdir(), basename(path))
     mkpath(ourpath)
 
     still_needed = Ref(true)

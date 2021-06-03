@@ -14,7 +14,7 @@ function getfirst(f::Function, xs)
 	error("Not found")
 end
 
-create_empty_ctx() = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(;cleanup=false),"Project.toml")))
+create_empty_ctx() = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
 # TODO: technically this is not constant
 const registry_paths = @static if isdefined(Pkg.Types, :registries)
