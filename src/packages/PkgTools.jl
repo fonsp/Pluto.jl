@@ -5,7 +5,11 @@ export package_versions, package_completions
 import Pkg
 import Pkg.Types: VersionRange
 
-function getfirst(f::Function, xs)
+# Should have been in Base
+flatmap(args...) = vcat(map(args...)...)
+
+# Should have been in Base
+function select(f::Function, xs)
 	for x ∈ xs
 		if f(x)
 			return x
@@ -14,20 +18,30 @@ function getfirst(f::Function, xs)
 	error("Not found")
 end
 
-create_empty_ctx() = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
-# TODO: technically this is not constant
-const registry_paths = @static if isdefined(Pkg.Types, :registries)
+create_empty_ctx()::Pkg.Types.Context = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+
+"Return paths to all installed registries."
+get_registry_paths() = @static if isdefined(Pkg.Types, :registries)
 	Pkg.Types.registries()
 else
 	registry_specs = Pkg.Types.collect_registries()
 	[s.path for s in registry_specs]
 end
 
-const registries = map(registry_paths) do r
+get_registries() = map(get_registry_paths()) do r
 	r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
 end
 
+"Contains all registries as `Pkg.Types.Registry` structs."
+const parsed_registries = Ref(get_registries())
+
+"Re-parse the installed registries from disk."
+function refresh_registry_cache()
+	parsed_registries[] = get_registries()
+end
+
+"Names of standard libraries."
 const stdlibs = readdir(Pkg.Types.stdlib_dir())::Vector{String}
 
 is_stdlib(package_name::AbstractString) = package_name ∈ stdlibs
@@ -40,6 +54,13 @@ const global_ctx = Pkg.Types.Context()
 # Package names
 ###
 
+function package_completions(partial_name::AbstractString)::Vector{String}
+	String[
+		filter(s -> startswith(s, partial_name), stdlibs);
+		registered_package_completions(partial_name)
+	]
+end
+
 function registered_package_completions(partial_name::AbstractString)
 	# compat
 	@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
@@ -49,25 +70,28 @@ function registered_package_completions(partial_name::AbstractString)
 	end
 end
 
-function package_completions(partial_name::AbstractString)::Vector{String}
-	String[
-		filter(s -> startswith(s, partial_name), stdlibs);
-		registered_package_completions(partial_name)
-	]
-end
-
-
 ###
 # Package versions
 ###
 
-function registries_path(registries::Vector, package_name::AbstractString)::Union{Nothing,String}
-	for (rpath, r) in registries
+"""
+Return paths to all found registry entries of a given package name.
+
+# Example
+```julia
+julia> Pluto.PkgTools.registry_entries("Pluto")
+1-element Vector{String}:
+ "/Users/fons/.julia/registries/General/P/Pluto"
+```
+"""
+function registry_entries(package_name::AbstractString, registries::Vector=parsed_registries[])::Vector{String}
+	flatmap(registries) do (rpath, r)
 		packages = values(r["packages"])
-		ds = Iterators.filter(d -> d["name"] == package_name, packages)
-		if !isempty(ds)
-			return joinpath(rpath, first(ds)["path"])
-		end
+		String[
+			joinpath(rpath, d["path"])
+			for d in packages
+			if d["name"] == package_name
+		]
 	end
 end
 
@@ -80,25 +104,26 @@ function package_versions_from_path(registry_entry_fullpath::AbstractString; ctx
     end) |> keys |> collect |> sort!
 end
 
+"""
+Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
+"""
 function package_versions(package_name::AbstractString)::Vector
     if package_name ∈ stdlibs
         ["stdlib"]
     else
-        p = registries_path(registries, package_name)
-        if p === nothing
-            VersionNumber[]
-        else
-            package_versions_from_path(p)
-        end
+        ps = registry_entries(package_name)
+		flatmap(package_versions_from_path, ps)
     end
 end
 
-package_exists(package_name::AbstractString) =
+"Does a package with this name exist in one of the installed registries?"
+package_exists(package_name::AbstractString)::Bool =
     package_name ∈ stdlibs || 
-    registries_path(registries, package_name) !== nothing
+    registry_entries(package_name) |> !isempty
 
+"Find a package in the manifest."
 get_manifest_entry(ctx::Pkg.Types.Context, package_name::AbstractString) = 
-    getfirst(e -> e.name == package_name, values(ctx.env.manifest))
+    select(e -> e.name == package_name, values(ctx.env.manifest))
 
 function get_manifest_version(ctx, package_name)
     if package_name ∈ stdlibs

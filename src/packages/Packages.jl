@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgTools
-import .PkgTools: getfirst, is_stdlib
+import .PkgTools: select, is_stdlib
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
@@ -20,7 +20,7 @@ const pkg_token = Token()
 function write_semver_compat_entries!(ctx::Pkg.Types.Context)
     for p in keys(ctx.env.project.deps)
         if !haskey(ctx.env.project.compat, p)
-            entry = getfirst(e -> e.name == p, values(ctx.env.manifest))
+            entry = select(e -> e.name == p, values(ctx.env.manifest))
             if entry.version !== nothing
                 ctx.env.project.compat[p] = "^" * string(entry.version)
             end
@@ -32,7 +32,7 @@ end
 
 function clear_semver_compat_entries!(ctx::Pkg.Types.Context)
     for p in keys(ctx.env.project.compat)
-        entry = getfirst(e -> e.name == p, values(ctx.env.manifest))
+        entry = select(e -> e.name == p, values(ctx.env.manifest))
         if entry.version !== nothing
             if ctx.env.project.compat[p] == "^" * string(entry.version)
                 delete!(ctx.env.project.compat, p)
@@ -99,7 +99,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             println(iolistener.buffer, "Waiting for other notebooks to finish Pkg operations...")
             trigger(iolistener)
         end
-        withtoken(pkg_token) do
+
+        can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
+
+        can_skip || withtoken(pkg_token) do
+            PkgTools.refresh_registry_cache()
+
             to_remove = filter(removed) do p
                 haskey(ctx.env.project.deps, p)
             end
