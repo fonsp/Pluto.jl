@@ -78,10 +78,10 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
-const _running_disabled_prefix = "#= ╠═ disabled ═╣"
-const _running_disabled_suffix = "\n╠═ disabled ═╣ =#"
-const _depends_on_disabled_cells_prefix = "#= ╠═ depends on disabled cell(s) ═╣"
-const _depends_on_disabled_cells_suffix = "\n╠═ depends on disabled cell(s) ═╣ =#"
+const _running_disabled_prefix =               "#=╠═╡ disabled"
+const _running_disabled_suffix =             "\n  ╠═╡ disabled =#"
+const _depends_on_disabled_cells_prefix =      "#=╠═╡ depends on disabled cell(s)"
+const _depends_on_disabled_cells_suffix =    "\n  ╠═╡ depends on disabled cell(s) =#"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
 
