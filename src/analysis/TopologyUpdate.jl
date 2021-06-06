@@ -16,12 +16,14 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			new_node = parsedcode |>
 				ExpressionExplorer.try_compute_symbolreferences |>
 				ReactiveNode
+
+
 			using_imports = ExpressionExplorer.compute_usings_imports(parsedcode)
 			new_code = ExprAnalysisCache(
 				code=cell.code,
 				parsedcode=parsedcode,
 				module_usings_imports=using_imports,
-				function_wrapped=isempty(filter(funcname -> !startswith(string(funcname), "anon"), new_node.funcdefs_without_signatures)) &&
+				function_wrapped=!any(funcname -> !startswith(string(funcname), "anon"), new_node.funcdefs_without_signatures) &&
 					:eval ∉ new_node.references && :include ∉ new_node.references &&
 					isempty(using_imports.usings) && isempty(using_imports.imports) &&
 					ExpressionExplorer.can_be_function_wrapped(parsedcode)
