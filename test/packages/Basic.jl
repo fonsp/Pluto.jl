@@ -133,27 +133,87 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    pre_pkg_notebook = """
-    ### A Pluto.jl notebook ###
-    # v0.14.7
+    simple_import_notebook = read(joinpath(@__DIR__, "simple_import.jl"), String)
 
-    using Markdown
-    using InteractiveUtils
+    @testset "Manifest loading" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
 
-    # ╔═╡ 22364cc8-c792-11eb-3458-75afd80f5a03
-    using Example
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, simple_import_notebook)
 
-    # ╔═╡ ca0765b8-ce3f-4869-bd65-855905d49a2d
-    using Dates
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        fakeclient.connected_notebook = notebook
+        
+        @test num_backups_in(dir) == 0
 
-    # ╔═╡ 5cbe4ac1-1bc5-4ef1-95ce-e09749343088
-    domath(20)
 
-    # ╔═╡ Cell order:
-    # ╠═22364cc8-c792-11eb-3458-75afd80f5a03
-    # ╠═ca0765b8-ce3f-4869-bd65-855905d49a2d
-    # ╠═5cbe4ac1-1bc5-4ef1-95ce-e09749343088
-    """
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+
+        @test notebook.cells[2].output.body == "0.2.2"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+
+    @testset "Pkg cell" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        
+        notebook = Notebook([
+            Cell("1"),
+            Cell("2"),
+            Cell("3"),
+            Cell("4"),
+            Cell("5"),
+            Cell("6"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_save_run!(🍭, notebook, notebook.cells)
+
+        setcode(notebook.cells[1], "import Pkg")
+        update_save_run!(🍭, notebook, notebook.cells[1])
+        setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
+        update_save_run!(🍭, notebook, notebook.cells[2])
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.nbpkg_ctx === nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        setcode(notebook.cells[3], "Pkg.add(\"JSON\")")
+        update_save_run!(🍭, notebook, notebook.cells[3])
+        setcode(notebook.cells[4], "using JSON")
+        update_save_run!(🍭, notebook, notebook.cells[4])
+        setcode(notebook.cells[5], "using Dates")
+        update_save_run!(🍭, notebook, notebook.cells[5])
+
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+
+        setcode(notebook.cells[2], "2")
+        setcode(notebook.cells[3], "3")
+        update_save_run!(🍭, notebook, notebook.cells[2:3])
+        
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_required_msg !== nothing
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
 
     local post_pkg_notebook = nothing
 
@@ -182,6 +242,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
     @testset "Forwards compat" begin
