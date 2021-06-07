@@ -39,6 +39,7 @@ pluto-tree-items {
 pluto-tree-prefix {
     display: inline-flex;
     flex-direction: row;
+    align-items: baseline;
 }
 
 pluto-tree > pluto-tree-prefix::before {
@@ -91,6 +92,9 @@ pluto-tree.collapsed > pluto-tree-prefix > .short {
 
 pluto-tree p-r {
     margin-left: 3em;
+}
+pluto-tree.collapsed p-r {
+    margin-left: 0.5em;
 }
 
 pluto-tree.collapsed p-r:first-child {
