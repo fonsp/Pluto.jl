@@ -73,14 +73,14 @@ end
 const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
-const _cell_id_delimiter = "# ╔═╡ "
-const _order_delimiter = "# ╠═"
-const _order_delimiter_folded = "# ╟─"
+const _cell_id_delimiter =                     "# ╔═╡ "
+const _order_delimiter =                       "# ╠═"
+const _order_delimiter_folded =                "# ╟─"
 const _cell_suffix = "\n\n"
 
-const _running_disabled_prefix =               "#=╠═╡ disabled"
+const _running_disabled_prefix =               "#=╠═╡ disabled\n"
 const _running_disabled_suffix =             "\n  ╠═╡ disabled =#"
-const _depends_on_disabled_cells_prefix =      "#=╠═╡ depends on disabled cell(s)"
+const _depends_on_disabled_cells_prefix =      "#=╠═╡ depends on disabled cell(s)\n"
 const _depends_on_disabled_cells_suffix =    "\n  ╠═╡ depends on disabled cell(s) =#"
 
 emptynotebook(args...) = Notebook([Cell()], args...)
@@ -114,14 +114,14 @@ function save_notebook(io, notebook::Notebook)
         # write the cell code and prevent collisions with the cell delimiter
 
         if c.running_disabled
-            println(io, _running_disabled_prefix)
+            print(io, _running_disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
-            println(io, _running_disabled_suffix)
+            print(io, _running_disabled_suffix)
         elseif c.depends_on_disabled_cells
             # if a cell is both disabled directly and indirectly, the first has higher priority
-            println(io, _depends_on_disabled_cells_prefix)
+            print(io, _depends_on_disabled_cells_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
-            println(io, _depends_on_disabled_cells_suffix)
+            print(io, _depends_on_disabled_cells_suffix)
         else
             # cell is not disabled on startup
             print(io, replace(c.code, _cell_id_delimiter => "# "))
@@ -187,8 +187,8 @@ function load_notebook_nobackup(io, path)::Notebook
             depends_on_disabled_cells = startswith(code_normalised, _depends_on_disabled_cells_prefix)
 
             # remove the disabled on startup comments for further processing in Julia
-            code_normalised = replace(replace(code_normalised, _running_disabled_prefix * "\n" => ""), _running_disabled_suffix * "\n" => "")
-            code_normalised = replace(replace(code_normalised, _depends_on_disabled_cells_prefix * "\n" => ""), _depends_on_disabled_cells_suffix * "\n" => "")
+            code_normalised = replace(replace(code_normalised, _running_disabled_prefix => ""), _running_disabled_suffix => "")
+            code_normalised = replace(replace(code_normalised, _depends_on_disabled_cells_prefix => ""), _depends_on_disabled_cells_suffix => "")
 
             # remove the cell suffix
             code = code_normalised[1:prevind(code_normalised, end, length(_cell_suffix))]
