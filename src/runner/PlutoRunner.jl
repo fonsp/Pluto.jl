@@ -70,7 +70,6 @@ function increment_current_module()::Symbol
     new_module = Core.eval(Main, :(
         module $(new_workspace_name) $(workspace_preamble...) end
     ))
-    revise_if_possible(new_module)
 
     new_workspace_name
 end
@@ -415,6 +414,8 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             end
         end
     end
+
+    revise_if_possible(new_workspace)
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."

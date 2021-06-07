@@ -163,6 +163,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
 	cell.errored = run.errored
+	cell.running = cell.queued = false
 end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
@@ -224,25 +225,24 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
 	# create new node & new codes for macrocalled cells
 	new_nodes = Dict{Cell,ReactiveNode}(
-	cell => analyze_macrocell(cell, current_symstate) |> ReactiveNode
-	for (cell, current_symstate) in unresolved_topology.unresolved_cells)
+		cell => analyze_macrocell(cell, current_symstate) |> ReactiveNode
+		for (cell, current_symstate) in unresolved_topology.unresolved_cells)
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
 
 	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
 end
 
+function static_macroexpand(topology::NotebookTopology, cell::Cell, old_symstate)
+	new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
+		ExpressionExplorer.try_compute_symbolreferences
+	union!(new_symstate.macrocalls, old_symstate.macrocalls)
+
+	ReactiveNode(new_symstate)
+end
+
 "The same as `resolve_topology` but does not require custom code execution, only works with a few `Base` & `PlutoRunner` macros"
 function static_resolve_topology(topology::NotebookTopology)
-	function static_macroexpand(cell_symstate)
-		cell, old_symstate = cell_symstate
-		new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-			ExpressionExplorer.try_compute_symbolreferences
-		union!(new_symstate.macrocalls, old_symstate.macrocalls)
-
-		cell => ReactiveNode(new_symstate)
-	end
-
-	new_nodes = Dict{Cell,ReactiveNode}(static_macroexpand.(topology.unresolved_cells))
+	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell, symstate) for (cell, symstate) in topology.unresolved_cells)
 	all_nodes = merge(topology.nodes, new_nodes)
 
 	NotebookTopology(nodes=all_nodes, codes=topology.codes)

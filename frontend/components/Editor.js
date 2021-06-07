@@ -4,6 +4,7 @@ import _ from "../imports/lodash.js"
 
 import { create_pluto_connection } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
+import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
 import { FilePicker } from "./FilePicker.js"
 import { Preamble } from "./Preamble.js"
@@ -39,33 +40,6 @@ const uuidv4 = () =>
 /**
  * @typedef {import('../imports/immer').Patch} Patch
  * */
-
-/**
- * Serialize an array of cells into a string form (similar to the .jl file).
- *
- * Used for implementing clipboard functionality. This isn't in topological
- * order, so you won't necessarily be able to run it directly.
- *
- * @param {Array<CellInputData>} cells
- * @return {String}
- */
-function serialize_cells(cells) {
-    return cells.map((cell) => `# ╔═╡ ${cell.cell_id}\n` + cell.code + "\n").join("\n")
-}
-
-/**
- * Deserialize a Julia program or output from `serialize_cells`.
- *
- * If a Julia program, it will return a single String containing it. Otherwise,
- * it will split the string into cells based on the special delimiter.
- *
- * @param {String} serialized_cells
- * @return {Array<String>}
- */
-function deserialize_cells(serialized_cells) {
-    const segments = serialized_cells.replace(/\r\n/g, "\n").split(/# ╔═╡ \S+\n/)
-    return segments.map((s) => s.trim()).filter((s) => s !== "")
-}
 
 const Main = ({ children }) => {
     const { handler } = useDropHandler()
@@ -278,8 +252,8 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index) => {
-                let new_codes = deserialize_cells(data)
+            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
+                let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
@@ -298,6 +272,9 @@ export class Editor extends Component {
                  */
                 await this.setStatePromise(
                     immer((state) => {
+                        // Deselect everything first, to clean things up
+                        state.selected_cells = []
+
                         for (let cell of new_cells) {
                             state.cell_inputs_local[cell.cell_id] = cell
                         }
@@ -487,11 +464,11 @@ export class Editor extends Component {
                     })
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
-                    this.setState(
+                    await this.setStatePromise(
                         immer((state) => {
                             for (let cell_id of cell_ids) {
-                                if (state.notebook.cell_results[cell_id]) {
-                                    // state.notebook.cell_results[cell_id].queued = true
+                                if (state.notebook.cell_results[cell_id] != null) {
+                                    state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }
@@ -943,16 +920,9 @@ patch: ${JSON.stringify(
 
         document.addEventListener("paste", async (e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            console.log("paste", topaste)
-            if (!in_textarea_or_input() || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                // Deselect everything first, to clean things up
-                this.setState({
-                    selected_cells: [],
-                })
-
-                // Paste in the cells at the end of the notebook
-                const data = e.clipboardData.getData("text/plain")
-                this.actions.add_deserialized_cells(data, -1)
+            const deserializer = detect_deserializer(topaste)
+            if (deserializer != null) {
+                this.actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.preventDefault()
             }
         })
@@ -1121,7 +1091,7 @@ patch: ${JSON.stringify(
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
-                        <${Preamble} 
+                        <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
                         />
@@ -1138,11 +1108,10 @@ patch: ${JSON.stringify(
                             is_process_ready=${
                                 this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
                             }
-                            disable_input=${!this.state.connected}
                         />
-                        <${DropRuler} 
+                        <${DropRuler}
                             actions=${this.actions}
-                            selected_cells=${this.state.selected_cells} 
+                            selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => {
                                 this.setState({ scroller: enabled })
                             }}

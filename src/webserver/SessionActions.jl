@@ -43,8 +43,10 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
 
     session.notebooks[nb.notebook_id] = nb
     if session.options.evaluation.run_notebook_on_load
+        for c in nb.cells
+            c.queued = true
+        end
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
-        # TODO: send message when initial run completed
     end
 
     if run_async

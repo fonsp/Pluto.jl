@@ -30,7 +30,7 @@ Base.@kwdef struct NotebookTopology
     nodes::DefaultDict{Cell,ReactiveNode} = DefaultDict{Cell,ReactiveNode}(ReactiveNode)
     codes::DefaultDict{Cell,ExprAnalysisCache}=DefaultDict{Cell,ExprAnalysisCache}(ExprAnalysisCache)
 
-    unresolved_cells::Vector{Pair{Cell,SymbolsState}} = []
+    unresolved_cells::Dict{Cell,SymbolsState} = Dict{Cell,SymbolsState}()
 end
 
 

@@ -7,6 +7,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
+import { detect_deserializer } from "../common/Serialization.js"
 
 // @ts-ignore
 const CodeMirror = window.CodeMirror
@@ -73,8 +74,9 @@ export const CellInput = ({
     const time_last_genuine_backspace = useRef(0)
 
     useEffect(() => {
+        const first_time = remote_code_ref.current == null
         const current_value = cm_ref.current?.getValue() ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+        if (first_time && remote_code === "" && current_value !== "") {
             // this cell is being initialized with empty code, but it already has local code set.
             // this happens when pasting or dropping cells
             return
@@ -82,6 +84,9 @@ export const CellInput = ({
         remote_code_ref.current = remote_code
         if (current_value !== remote_code) {
             cm_ref.current?.setValue(remote_code)
+            if (first_time) {
+                cm_ref.current.clearHistory()
+            }
         }
     }, [remote_code])
 
@@ -469,8 +474,9 @@ export const CellInput = ({
 
         cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
-            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                pluto_actions.add_deserialized_cells(topaste, -1)
+            const deserializer = detect_deserializer(topaste, false)
+            if (deserializer != null) {
+                pluto_actions.add_deserialized_cells(topaste, -1, deserializer)
                 e.stopImmediatePropagation()
                 e.preventDefault()
                 e.codemirrorIgnore = true
