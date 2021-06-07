@@ -102,125 +102,126 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
         can_skip = isempty(removed) && isempty(added) && notebook.nbpkg_ctx_instantiated
 
-        can_skip || withtoken(pkg_token) do
-            PkgTools.refresh_registry_cache()
+        if !can_skip
+            return withtoken(pkg_token) do
+                PkgTools.refresh_registry_cache()
 
-            to_remove = filter(removed) do p
-                haskey(ctx.env.project.deps, p)
-            end
-            if !isempty(to_remove)
-                @show to_remove
-                # See later comment
-                mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
-                old_manifest_keys = mkeys()
+                to_remove = filter(removed) do p
+                    haskey(ctx.env.project.deps, p)
+                end
+                if !isempty(to_remove)
+                    @show to_remove
+                    # See later comment
+                    mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
+                    old_manifest_keys = mkeys()
 
-                Pkg.rm(ctx, [
-                    Pkg.PackageSpec(name=p)
-                    for p in to_remove
-                ])
+                    Pkg.rm(ctx, [
+                        Pkg.PackageSpec(name=p)
+                        for p in to_remove
+                    ])
 
-                # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
-                new_manifest_keys = mkeys()
+                    # We record the manifest before and after, to prevent recommending a reboot when nothing got removed from the manifest (e.g. when removing GR, but leaving Plots), or when only stdlibs got removed.
+                    new_manifest_keys = mkeys()
+                    
+                    # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
+                end
+
                 
-                # TODO: we might want to upgrade other packages now that constraints have loosened? Does this happen automatically?
-            end
+                # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
+                # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
-            
-            # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
-            # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
+                to_add = filter(PkgTools.package_exists, added)
+                
+                if !isempty(to_add)
+                    @show to_add
+                    startlistening(iolistener)
 
-            to_add = filter(PkgTools.package_exists, added)
-            
-            if !isempty(to_add)
-                @show to_add
-                startlistening(iolistener)
+                    withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                        # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                        clear_semver_compat_entries!(ctx)
 
-                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
-                    # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                    clear_semver_compat_entries!(ctx)
+                        for tier in [
+                            Pkg.PRESERVE_ALL,
+                            Pkg.PRESERVE_DIRECT,
+                            Pkg.PRESERVE_SEMVER,
+                            Pkg.PRESERVE_NONE,
+                        ]
+                            used_tier = tier
 
-                    for tier in [
-                        Pkg.PRESERVE_ALL,
-                        Pkg.PRESERVE_DIRECT,
-                        Pkg.PRESERVE_SEMVER,
-                        Pkg.PRESERVE_NONE,
-                    ]
-                        used_tier = tier
-
-                        try
-                            Pkg.add(ctx, [
-                                Pkg.PackageSpec(name=p)
-                                for p in to_add
-                            ]; preserve=used_tier)
-                            
-                            break
-                        catch e
-                            if used_tier == Pkg.PRESERVE_NONE
-                                # give up
-                                rethrow(e)
+                            try
+                                Pkg.add(ctx, [
+                                    Pkg.PackageSpec(name=p)
+                                    for p in to_add
+                                ]; preserve=used_tier)
+                                
+                                break
+                            catch e
+                                if used_tier == Pkg.PRESERVE_NONE
+                                    # give up
+                                    rethrow(e)
+                                end
                             end
                         end
+
+                        write_semver_compat_entries!(ctx)
+
+                        # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                        println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                     end
 
-                    write_semver_compat_entries!(ctx)
-
-                    # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                    println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                    @info "PlutoPkg done"
                 end
 
-                @info "PlutoPkg done"
-            end
+                should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
+                if should_instantiate
+                    startlistening(iolistener)
+                    withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                        # @info "Resolving"
+                        # Pkg.resolve(ctx)
+                        @info "Instantiating"
+                        
+                        # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
+                        # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
+                        env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
+                        pushfirst!(LOAD_PATH, env_dir)
 
-            should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
-            if should_instantiate
-                startlistening(iolistener)
-                withio(ctx, IOContext(iolistener.buffer, :color => true)) do
-                    # @info "Resolving"
-                    # Pkg.resolve(ctx)
-                    @info "Instantiating"
-                    
-                    # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
-                    # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                    env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
-                    pushfirst!(LOAD_PATH, env_dir)
-
-                    # update registries if this is the first time
-                    Pkg.Types.update_registries(ctx)
-                    # instantiate without forcing registry update
-                    Pkg.instantiate(ctx; update_registry=false)
-                    
-                    @assert LOAD_PATH[1] == env_dir
-                    popfirst!(LOAD_PATH)
+                        # update registries if this is the first time
+                        Pkg.Types.update_registries(ctx)
+                        # instantiate without forcing registry update
+                        Pkg.instantiate(ctx; update_registry=false)
+                        
+                        @assert LOAD_PATH[1] == env_dir
+                        popfirst!(LOAD_PATH)
+                    end
+                    notebook.nbpkg_ctx_instantiated = true
                 end
-                notebook.nbpkg_ctx_instantiated = true
+
+                stoplistening(iolistener)
+
+                return (
+                    did_something=👺 || (
+                        should_instantiate
+                    ),
+                    used_tier=used_tier,
+                    # changed_versions=Dict{String,Pair}(),
+                    restart_recommended=👺 || (
+                        (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
+                        used_tier != Pkg.PRESERVE_ALL
+                    ),
+                    restart_required=👺 || (
+                        used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
+                    ),
+                )
             end
-
-            stoplistening(iolistener)
-
-            return (
-                did_something=👺 || (
-                    should_instantiate
-                ),
-                used_tier=used_tier,
-                # changed_versions=Dict{String,Pair}(),
-                restart_recommended=👺 || (
-                    (!isempty(to_remove) && old_manifest_keys != new_manifest_keys) ||
-                    used_tier != Pkg.PRESERVE_ALL
-                ),
-                restart_required=👺 || (
-                    used_tier ∈ [Pkg.PRESERVE_SEMVER, Pkg.PRESERVE_NONE]
-                ),
-            )
         end
-    else
-        return (
-            did_something=👺 || false,
-            used_tier=Pkg.PRESERVE_ALL,
-            # changed_versions=Dict{String,Pair}(),
-            restart_recommended=👺 || false,
-            restart_required=👺 || false,
-        )
     end
+    return (
+        did_something=👺 || false,
+        used_tier=Pkg.PRESERVE_ALL,
+        # changed_versions=Dict{String,Pair}(),
+        restart_recommended=👺 || false,
+        restart_required=👺 || false,
+    )
 end
 
 

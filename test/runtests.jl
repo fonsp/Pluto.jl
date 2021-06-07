@@ -1,5 +1,6 @@
 include("./helpers.jl")
 include("./WorkspaceManager.jl")
+include("./packages/Basic.jl")
 include("./Notebook.jl")
 include("./RichOutput.jl")
 include("./React.jl")
