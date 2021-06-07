@@ -487,11 +487,11 @@ export class Editor extends Component {
                     })
                     // This is a "dirty" trick, as this should actually be stored in some shared request_status => status state
                     // But for now... this is fine 😼
-                    this.setState(
+                    await this.setStatePromise(
                         immer((state) => {
                             for (let cell_id of cell_ids) {
-                                if (state.notebook.cell_results[cell_id]) {
-                                    // state.notebook.cell_results[cell_id].queued = true
+                                if (state.notebook.cell_results[cell_id] != null) {
+                                    state.notebook.cell_results[cell_id].queued = true
                                 } else {
                                     // nothing
                                 }

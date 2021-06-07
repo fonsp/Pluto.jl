@@ -285,13 +285,21 @@ function explore!(sym::Symbol, scopestate::ScopeState)::SymbolsState
     end
 end
 
+"""
+Returns whether or not an assignment Expr(:(=),...) is assigning to a new function
+  * f(x) = ...
+  * f(x)::V = ...
+  * f(::T) where {T} = ...
+"""
+is_function_assignment(ex::Expr) = ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
+
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     if ex.head == :(=)
         # Does not create scope
-        
-        if ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
+
+        if is_function_assignment(ex)
             # f(x, y) = x + y
             # Rewrite to:
             # function f(x, y) x + y end
@@ -1062,7 +1070,7 @@ function can_be_function_wrapped(x::Expr)
         x.head === :macrocall || # we might want to get rid of this one, but that requires some work
         x.head === :struct ||
         x.head === :abstract ||
-        (x.head === :(=) && x.args[1] isa Expr && x.args[1].head === :call) || # f(x) = ...
+        (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...
         (x.head === :call && (x.args[1] === :eval || x.args[1] === :include))
         false
     else
