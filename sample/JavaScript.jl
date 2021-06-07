@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.4
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -19,10 +19,9 @@ begin
     Pkg.activate(mktempdir())
     Pkg.add([
         Pkg.PackageSpec(name="PlutoUI", version="0.7"),
-        Pkg.PackageSpec(name="HypertextLiteral", version="0.6"),
-        Pkg.PackageSpec(name="JSON", version="0.21"),
+        Pkg.PackageSpec(name="HypertextLiteral", version="0.7"),
     ])
-    using PlutoUI, HypertextLiteral, JSON
+    using PlutoUI, HypertextLiteral
 end
 
 # ╔═╡ 97914842-76d2-11eb-0c48-a7eedca870fb
@@ -347,9 +346,33 @@ HTML("""
 
 # ╔═╡ 7afbf8ef-e91c-45b9-bf22-24201cbb4828
 md"""
-### Interpolating into JS -- JSON.jl
+### Interpolating into JS -- _HypertextLiteral.jl_
 
-Using HypertextLiteral.jl, we can interpolate objects into HTML output, great! Next, we want to **interpolate data into scripts**. The easiest way to do so is to use `JSON.jl`, in combination with string interpolation:
+As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this abality built-in! 
+
+> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it be converted to a JS object _automatically_. 
+"""
+
+# ╔═╡ b226da72-9512-4d14-8582-2f7787c25028
+simple_data = (msg="Hello! ", times=3)
+
+# ╔═╡ a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
+@htl("""
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(simple_data)
+
+	const span = document.createElement("span")
+	span.innerText = data.msg.repeat(data.times)
+	
+	return span
+	</script>
+""")
+
+# ╔═╡ 965f3660-6ec4-4a86-a2a2-c167dbe9315f
+md"""
+**Let's look at a more exciting example:**
 """
 
 # ╔═╡ 00d97588-d591-4dad-9f7d-223c237deefd
@@ -369,7 +392,7 @@ my_data = [
 	<script>
 
 	// interpolate the data 🐸
-	const data = $(JSON.json(my_data))
+	const data = $(my_data)
 
 	const svg = DOM.svg(600,200)
 	const s = d3.select(svg)
@@ -421,9 +444,6 @@ const { default: confetti } = await import("https://cdn.skypack.dev/canvas-confe
 const { html, render, useEffect } = await import( "https://cdn.jsdelivr.net/npm/htm@3.0.4/preact/standalone.mjs")
 ```
 """
-
-# ╔═╡ 27e4604c-5954-44b7-a348-1650dbc6d8a9
-
 
 # ╔═╡ 077c95cf-2a1b-459f-830e-c29c11a2c5cc
 md"""
@@ -481,7 +501,7 @@ films = [
 @htl("""
 	<script>
 	
-	let data = $(JSON.json(films))
+	let data = $(films)
 	
 	// html`...` is from https://github.com/observablehq/stdlib
 	// note the escaped dollar signs:
@@ -573,7 +593,7 @@ Notice that, even though the cell below re-runs, we **smoothly transition** betw
 
 <script id="hello">
 
-const positions = $(JSON.json(dot_positions))
+const positions = $(dot_positions)
 	
 const svg = this == null ? DOM.svg(600,200) : this
 const s = this == null ? d3.select(svg) : this.s
@@ -623,7 +643,7 @@ state = Dict(
 
 	const node = this ?? document.createElement("div")
 	
-	const new_state = $(json(state))
+	const new_state = $(state)
 	
 	if(this == null){
 	
@@ -760,6 +780,22 @@ details(md"""
 ```
 """, "Show with syntax highlighting")
 
+# ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
+details(md"""
+	```htmlmixed
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(simple_data)
+
+	const span = document.createElement("span")
+	span.innerText = data.msg.repeat(data.times)
+	
+	return span
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
 # ╔═╡ 94561cb1-2325-49b6-8b22-943923fdd91b
 details(md"""
 	```htmlmixed
@@ -768,7 +804,7 @@ details(md"""
 	<script>
 
 	// interpolate the data 🐸
-	const data = $(JSON.json(my_data))
+	const data = $(my_data)
 
 	const svg = DOM.svg(600,200)
 	const s = d3.select(svg)
@@ -790,7 +826,7 @@ details(md"""
 	```htmlmixed
 	<script>
 	
-	let data = $(JSON.json(films))
+	let data = $(films)
 	
 	// html`...` is from https://github.com/observablehq/stdlib
 	// note the escaped dollar signs:
@@ -831,33 +867,33 @@ details(md"""
 
 # ╔═╡ e910982c-8508-4729-a75d-8b5b847918b6
 details(md"""
-	```htmlmixed
-	<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
+```htmlmixed
+<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
 
-	<script id="hello">
+<script id="hello">
 
-	const positions = $(JSON.json(dot_positions))
+const positions = $(dot_positions)
 
-	const svg = this == null ? DOM.svg(600,200) : this
-	const s = this == null ? d3.select(svg) : this.s
+const svg = this == null ? DOM.svg(600,200) : this
+const s = this == null ? d3.select(svg) : this.s
 
-	s.selectAll("circle")
-		.data(positions)
-		.join("circle")
-		.transition()
-		.duration(300)
-		.attr("cx", d => d)
-		.attr("cy", 100)
-		.attr("r", 10)
-		.attr("fill", "gray")
+s.selectAll("circle")
+	.data(positions)
+	.join("circle")
+	.transition()
+	.duration(300)
+	.attr("cx", d => d)
+	.attr("cy", 100)
+	.attr("r", 10)
+	.attr("fill", "gray")
 
 
-	const output = svg
-	output.s = s
-	return output
-	</script>
-	```
-	""", "Show with syntax highlighting")
+const output = svg
+output.s = s
+return output
+</script>
+```
+""", "Show with syntax highlighting")
 
 # ╔═╡ 05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 details(md"""
@@ -869,7 +905,7 @@ details(md"""
 
 		const node = this ?? document.createElement("div")
 
-		const new_state = $(json(state))
+		const new_state = $(state)
 
 		if(this == null){
 
@@ -998,13 +1034,16 @@ You can [learn more](https://github.com/fonsp/Pluto.jl/pull/1126) about how this
 # ╠═1ba370cc-3631-47ea-9db5-75587e8e4ff3
 # ╠═7fcf2f3f-d902-4338-adf0-8ef181e79420
 # ╟─7afbf8ef-e91c-45b9-bf22-24201cbb4828
+# ╠═b226da72-9512-4d14-8582-2f7787c25028
+# ╠═a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
+# ╟─d12b98df-8c3f-4620-ba3c-2f3dadac521b
+# ╟─965f3660-6ec4-4a86-a2a2-c167dbe9315f
 # ╠═01ce31a9-6856-4ee7-8bce-7ce635167457
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
 # ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─d83d57e2-4787-4b8d-8669-64ed73d79e73
-# ╠═27e4604c-5954-44b7-a348-1650dbc6d8a9
 # ╟─077c95cf-2a1b-459f-830e-c29c11a2c5cc
 # ╟─8388a833-d535-4cbd-a27b-de323cea60e8
 # ╟─4cf27df3-6a69-402e-a71c-26538b2a52e7
