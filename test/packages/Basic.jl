@@ -95,7 +95,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         # restart the process, this should match the function `response_restrart_process`, except not async
 
-        @test_nowarn Pluto.response_restrart_process(Pluto.ClientRequest(
+        Pluto.response_restrart_process(Pluto.ClientRequest(
             session=🍭,
             notebook=notebook,
         ); run_async=false)
