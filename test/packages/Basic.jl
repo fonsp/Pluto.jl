@@ -3,7 +3,7 @@ import Pkg
 using Test
 using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
-import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions
+import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Distributed
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
@@ -132,6 +132,105 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+
+    pre_pkg_notebook = """
+    ### A Pluto.jl notebook ###
+    # v0.14.7
+
+    using Markdown
+    using InteractiveUtils
+
+    # ╔═╡ 22364cc8-c792-11eb-3458-75afd80f5a03
+    using Example
+
+    # ╔═╡ ca0765b8-ce3f-4869-bd65-855905d49a2d
+    using Dates
+
+    # ╔═╡ 5cbe4ac1-1bc5-4ef1-95ce-e09749343088
+    domath(20)
+
+    # ╔═╡ Cell order:
+    # ╠═22364cc8-c792-11eb-3458-75afd80f5a03
+    # ╠═ca0765b8-ce3f-4869-bd65-855905d49a2d
+    # ╠═5cbe4ac1-1bc5-4ef1-95ce-e09749343088
+    """
+
+    local post_pkg_notebook = nothing
+
+    @testset "Backwards compat" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, pre_pkg_notebook)
+
+        @test num_backups_in(dir) == 0
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        fakeclient.connected_notebook = notebook
+        
+        @test num_backups_in(dir) == 0
+        # @test num_backups_in(dir) == 1
+
+        post_pkg_notebook = read(path, String)
+
+        # test that pkg cells got added
+        @test length(post_pkg_notebook) > length(pre_pkg_notebook) + 50
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+    end
+
+    @testset "Forwards compat" begin
+        # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
+        p = Distributed.addprocs(1) |> first
+
+        @test post_pkg_notebook isa String
+
+        Distributed.remotecall_eval(Main, p, quote
+            path = tempname()
+            write(path, $(post_pkg_notebook))
+            import Pkg
+            # optimization:
+            if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
+                Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
+            end
+
+            Pkg.activate(mktempdir())
+            Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
+            import Pluto
+            @assert Pluto.PLUTO_VERSION == v"0.14.7"
+
+            s = Pluto.ServerSession()
+            s.options.evaluation.workspace_use_distributed = false
+
+            nb = Pluto.SessionActions.open(s, path; run_async=false)
+
+            nothing
+        end)
+
+        # Cells that use Example will error because the package is not installed.
+
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[1].errored == false
+        # end)
+        @test Distributed.remotecall_eval(Main, p, quote
+            nb.cells[2].errored == false
+        end)
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[3].errored == false
+        # end)
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[3].output.body == "25"
+        # end)
+
+        Distributed.rmprocs([p])
+    end
+
+    # @test false
 
     # @testset "File format" begin
     #     notebook = Notebook([

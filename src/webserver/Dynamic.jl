@@ -421,7 +421,7 @@ end
 
 without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
 
-responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
+responses[:restart_process] = function response_restrart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
 
     
@@ -434,7 +434,7 @@ responses[:restart_process] = function response_restrart_process(🙋::ClientReq
         🙋.notebook.process_status = ProcessStatus.starting
         send_notebook_changes!(🙋 |> without_initiator)
 
-        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
+        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=run_async, save=true)
     end
 end
 
