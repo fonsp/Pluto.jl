@@ -292,3 +292,10 @@ function move_notebook!(notebook::Notebook, newpath::String; disable_writing_not
     end
     notebook
 end
+
+function sample_notebook(name::String)
+    file = project_relative_path("sample", name * ".jl")
+    nb = load_notebook_nobackup(file)
+    nb.path = tempname() * ".jl"
+    nb
+end

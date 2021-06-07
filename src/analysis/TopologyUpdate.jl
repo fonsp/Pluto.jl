@@ -6,22 +6,24 @@ import REPL: ends_with_semicolon
 function updated_topology(old_topology::NotebookTopology, notebook::Notebook, cells)
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
+	updated_nodes = Dict{Cell,ReactiveNode}()
 	for cell in cells
 		if !(
 			haskey(old_topology.codes, cell) && 
 			old_topology.codes[cell].code === cell.code
 		)
-			updated_codes[cell] = ExprAnalysisCache(notebook, cell)
+			new_code = ExprAnalysisCache(notebook, cell)
+
+
+			new_node = new_code.parsedcode |>
+				ExpressionExplorer.try_compute_symbolreferences |>
+				ReactiveNode
+
+			updated_nodes[cell] = new_node
+			updated_codes[cell] = new_code
 		end
 	end
 	new_codes = merge(old_topology.codes, updated_codes)
-
-	updated_nodes = Dict{Cell,ReactiveNode}(cell => (
-			new_codes[cell].parsedcode |> 
-			ExpressionExplorer.try_compute_symbolreferences |> 
-			ReactiveNode
-		) for cell in cells)
-
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 
 	# DONE (performance): deleted cells should not stay in the topology

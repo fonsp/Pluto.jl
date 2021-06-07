@@ -39,7 +39,7 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
 const More = ({ on_click_more }) => {
     const [loading, set_loading] = useState(false)
 
-    return html`<jlmore
+    return html`<pluto-tree-more
         class=${loading ? "loading" : ""}
         onclick=${(e) => {
             if (!loading) {
@@ -48,11 +48,12 @@ const More = ({ on_click_more }) => {
                 }
             }
         }}
-        >more</jlmore
+        >more</pluto-tree-more
     >`
 }
 
-const prefix = ({ prefix, prefix_short }) => html`<jlprefix class="long">${prefix}</jlprefix><jlprefix class="short">${prefix_short}</jlprefix>`
+const prefix = ({ prefix, prefix_short }) =>
+    html`<pluto-tree-prefix><span class="long">${prefix}</span><span class="short">${prefix_short}</span></pluto-tree-prefix>`
 
 export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -60,11 +61,11 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     const onclick = (e) => {
         // TODO: this could be reactified but no rush
         let self = node_ref.current
-        let clicked = e.target.tagName === "JLPREFIX" ? e.target.parentElement : e.target
+        let clicked = e.target.closest("pluto-tree-prefix") != null ? e.target.closest("pluto-tree-prefix").parentElement : e.target
         if (clicked !== self && !self.classList.contains("collapsed")) {
             return
         }
-        const parent_tree = self.parentElement.closest("jltree")
+        const parent_tree = self.parentElement.closest("pluto-tree")
         if (parent_tree != null && parent_tree.classList.contains("collapsed")) {
             return // and bubble upwards
         }
@@ -72,7 +73,7 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
         self.classList.toggle("collapsed")
     }
     const on_click_more = () => {
-        if (node_ref.current.closest("jltree.collapsed") != null) {
+        if (node_ref.current.closest("pluto-tree.collapsed") != null) {
             return false
         }
         const actions = pluto_actions ?? node_ref.current.closest("pluto-cell")._internal_pluto_actions
@@ -80,42 +81,46 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
     }
 
     const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${persist_js_state} />`
-    const more = html`<r><${More} on_click_more=${on_click_more} /></r>`
+    const more = html`<p-r><${More} on_click_more=${on_click_more} /></p-r>`
 
     var inner = null
     switch (body.type) {
         case "Pair":
             const r = body.key_value
-            return html`<jlpair class=${body.type}
-                ><r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r></jlpair
+            return html`<pluto-tree-pair class=${body.type}
+                ><p-r><p-k>${mimepair_output(r[0])}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r></pluto-tree-pair
             >`
         case "circular":
             return html`<em>circular reference</em>`
         case "Array":
         case "Set":
         case "Tuple":
-            inner = html`${prefix(body)}<jlarray class=${body.type}
+            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
                     >${body.elements.map((r) =>
-                        r === "more" ? more : html`<r>${body.type === "Set" ? "" : html`<k>${r[0]}</k>`}<v>${mimepair_output(r[1])}</v></r>`
-                    )}</jlarray
+                        r === "more" ? more : html`<p-r>${body.type === "Set" ? "" : html`<p-k>${r[0]}</p-k>`}<p-v>${mimepair_output(r[1])}</p-v></p-r>`
+                    )}</pluto-tree-items
                 >`
             break
         case "Dict":
-            inner = html`${prefix(body)}<jldict class=${body.type}
-                    >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${mimepair_output(r[0])}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
+            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+                    >${body.elements.map((r) =>
+                        r === "more" ? more : html`<p-r><p-k>${mimepair_output(r[0])}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
+                    )}</pluto-tree-items
                 >`
             break
         case "NamedTuple":
-            inner = html`<jldict class=${body.type}
-                >${body.elements.map((r) => (r === "more" ? more : html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`))}</jldict
+            inner = html`<pluto-tree-items class=${body.type}
+                >${body.elements.map((r) => (r === "more" ? more : html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`))}</pluto-tree-items
             >`
             break
         case "struct":
-            inner = html`${prefix(body)}<jlstruct>${body.elements.map((r) => html`<r><k>${r[0]}</k><v>${mimepair_output(r[1])}</v></r>`)}</jlstruct>`
+            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+                    >${body.elements.map((r) => html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`)}</pluto-tree-items
+                >`
             break
     }
 
-    return html`<jltree class="collapsed" onclick=${onclick} ref=${node_ref}>${inner}</jltree>`
+    return html`<pluto-tree class="collapsed ${body.type}" onclick=${onclick} ref=${node_ref}>${inner}</pluto-tree>`
 }
 
 export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
@@ -146,7 +151,7 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
             (row) =>
                 html`<tr>
                     ${row === "more"
-                        ? html`<td class="jlmore-td" colspan="999">${more(1)}</td>`
+                        ? html`<td class="pluto-tree-more-td" colspan="999">${more(1)}</td>`
                         : html`<th>${row[0]}</th>
                               ${row[1].map((x) => html`<td>${x === "more" ? null : mimepair_output(x)}</td>`)}`}
                 </tr>`
