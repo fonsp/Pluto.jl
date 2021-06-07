@@ -119,7 +119,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[8].output.body == "0.1.0"
 
 
-        
+
 
         # we should have an isolated environment, so importing DataFrames should not work, even though it is available in the parent process.
         update_save_run!(🍭, notebook, notebook.cells[11])
@@ -129,11 +129,33 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    # @testset "File format" begin
+    #     notebook = Notebook([
+    #         Cell("import PlutoPkgTestA"), # cell 1
+    #         Cell("PlutoPkgTestA.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestB"), # cell 3
+    #         Cell("PlutoPkgTestB.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestC"), # cell 5
+    #         Cell("PlutoPkgTestC.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestD"), # cell 7
+    #         Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestE"), # cell 9
+    #         Cell("PlutoPkgTestE.MY_VERSION |> Text"),
+    #         Cell("eval(:(import DataFrames))")
+    #     ])
+
+    #     file1 = tempname()
+    #     notebook.path = file1
+
+    #     save_notebook()
+
+
+    #     save_notebook
+    # end
+
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")
-
-    @test false
 end
 
 # reg_path = mktempdir()

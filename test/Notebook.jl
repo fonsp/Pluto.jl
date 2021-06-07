@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite
 import Random
 import Pkg
 
@@ -133,12 +133,10 @@ end
 
     @testset "I/O basic" begin
         @testset "$(name)" for (name, nb) in nbs
-            @test let
-                save_notebook(nb)
-                # @info "File" name Text(read(nb.path,String))
-                result = load_notebook_nobackup(nb.path)
-                notebook_inputs_equal(nb, result)
-            end
+            save_notebook(nb)
+            # @info "File" name Text(read(nb.path,String))
+            result = load_notebook_nobackup(nb.path)
+            @test notebook_inputs_equal(nb, result)
         end
     end
 
@@ -159,8 +157,31 @@ end
         end
     end
 
+    @testset "Bijection test" begin
+        @testset "$(name)" for (name, nb) in nbs
+            new_path = tempname()
+            @assert !isfile(new_path)
+            readwrite(nb.path, new_path)
+
+            # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
+            # laod_notebook is how they are normally loaded, load_notebook_nobackup
+            new_nb = load_notebook(new_path)
+
+            before_contents = read(new_path, String)
+
+            after_path = tempname()
+            write(after_path, before_contents)
+
+            after = load_notebook(after_path)
+            after_contents = read(after_path, String)
+            
+            @test before_contents == after_contents
+        end
+    end
+
     # Some notebooks are designed to error (inside/outside Pluto)
     expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]
+
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
@@ -168,8 +189,6 @@ end
             @assert !isfile(new_path)
             cp(nb.path, new_path)
 
-            # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
-            # laod_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
 
             # println(read(new_nb.path, String))
