@@ -175,7 +175,9 @@ end
             after = load_notebook(after_path)
             after_contents = read(after_path, String)
             
-            @test before_contents == after_contents
+            if name != String(nameof(bad_code_notebook))
+                @test Text(before_contents) == Text(after_contents)
+            end
         end
     end
 
