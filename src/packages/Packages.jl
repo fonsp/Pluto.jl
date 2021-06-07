@@ -52,6 +52,17 @@ function use_plutopkg(topology::NotebookTopology)
     end
 end
 
+"""
+```julia
+update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=((args...) -> nothing))
+```
+
+Update the notebook package environment to match the notebook's code. This will:
+- Add packages that should be added (because they are imported in a cell).
+- Remove packages that are no longer needed.
+- Make sure that the environment is instantiated.
+- Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
+"""
 function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTopology; on_terminal_output::Function=((args...) -> nothing))
     ctx = notebook.nbpkg_ctx
 

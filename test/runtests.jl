@@ -1,10 +1,16 @@
 include("./helpers.jl")
+
+# tests that start new processes:
 include("./WorkspaceManager.jl")
 include("./packages/Basic.jl")
 include("./RichOutput.jl")
 include("./React.jl")
 include("./Dynamic.jl")
+
+# for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
 include("./Notebook.jl")
+
+# tests that don't start new processes:
 include("./ExpressionExplorer.jl")
 include("./MethodSignatures.jl")
 include("./Configuration.jl")
