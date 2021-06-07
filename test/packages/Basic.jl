@@ -32,8 +32,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("PlutoPkgTestC.MY_VERSION |> Text"),
             Cell("import PlutoPkgTestD"), # cell 7
             Cell("PlutoPkgTestD.MY_VERSION |> Text"),
-            Cell("import PlutoPkgTestE"), # cell 9
-            Cell("PlutoPkgTestE.MY_VERSION |> Text"),
             Cell("eval(:(import DataFrames))")
         ])
         fakeclient.connected_notebook = notebook
@@ -95,9 +93,15 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_required_msg !== nothing
 
 
-        # restart the process, this should match the function `response_restrart_process`
-        @test_nowarn SessionActions.shutdown(🍭, notebook; keep_in_session=true, async=true)
-        @test_nowarn update_save_run!(🍭, notebook, notebook.cells[1:8])
+        # restart the process, this should match the function `response_restrart_process`, except not async
+
+        @test_nowarn Pluto.response_restrart_process(Pluto.ClientRequest(
+            session=🍭,
+            notebook=notebook,
+        ); run_async=false)
+
+        # @test_nowarn SessionActions.shutdown(🍭, notebook; keep_in_session=true, async=true)
+        # @test_nowarn update_save_run!(🍭, notebook, notebook.cells[1:8]; , save=true)
 
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
@@ -122,8 +126,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
 
         # we should have an isolated environment, so importing DataFrames should not work, even though it is available in the parent process.
-        update_save_run!(🍭, notebook, notebook.cells[11])
-        @test notebook.cells[11].errored == true
+        update_save_run!(🍭, notebook, notebook.cells[9])
+        @test notebook.cells[9].errored == true
 
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
