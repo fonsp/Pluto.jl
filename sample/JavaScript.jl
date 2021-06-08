@@ -472,7 +472,7 @@ Pluto's original inspiration was [observablehq.com](https://observablehq.com/), 
 
 Read more about the observable runtime in their (interactive) [documentation](https://observablehq.com/@observablehq/observables-not-javascript). The following is also true for JavaScript-inside-scripts in Pluto:
 - ⭐️ If you return an HTML node, it will be displayed.
-- ⭐️ The [`observablehq/stdlib`](https://observablehq.com/@observablehq/standard-library) library is pre-imported, you can use `DOM`, `html`, `Promises`, etc.
+- ⭐️ The [`observablehq/stdlib`](https://observablehq.com/@observablehq/stdlib) library is pre-imported, you can use `DOM`, `html`, `Promises`, etc.
 - ⭐️ When a cell re-runs reactively, `this` will be set to the previous output (with caveat, see the later section)
 - The variable `invalidation` is a Promise that will get resolved when the cell output is changed or removed. You can use this to remove event listeners, for example.
 - You can use top-level `await`, and a returned HTML node will be displayed when ready.
