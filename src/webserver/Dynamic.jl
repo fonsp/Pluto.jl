@@ -447,7 +447,10 @@ end
 ###
 # HANDLE NEW BOND VALUES
 ###
-function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, kwargs...)
+function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value=nothing, kwargs...)
+    if is_first_value !== nothing
+        @warn "is_first_value is deprecated, you don't need to set it anymore: https://github.com/fonsp/Pluto.jl/pull/975"
+    end
     # filter out the bonds that don't need to be set
     to_set = filter(bound_sym_names) do bound_sym
         new_value = notebook.bonds[bound_sym].value
