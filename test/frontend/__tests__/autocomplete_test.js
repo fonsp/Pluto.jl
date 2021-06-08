@@ -17,7 +17,7 @@ describe("PlutoAutocomplete", () => {
     })
 
     it("should get the correct autocomplete suggestions", async () => {
-        await importNotebook("autocomplete_notebook.jl")
+        await importNotebook(page, "autocomplete_notebook.jl")
         await waitForNoUpdateOngoing(page, { polling: 100 })
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
@@ -43,7 +43,7 @@ describe("PlutoAutocomplete", () => {
 
     // Skipping because this doesn't work with FuzzyCompletions anymore
     it.skip("should automatically autocomplete if there is only one possible suggestion", async () => {
-        await importNotebook("autocomplete_notebook.jl")
+        await importNotebook(page, "autocomplete_notebook.jl")
         const importedCellIds = await getCellIds(page)
         await Promise.all(importedCellIds.map((cellId) => waitForCellOutput(page, cellId)))
 

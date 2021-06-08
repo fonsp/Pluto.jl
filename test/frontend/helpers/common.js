@@ -104,6 +104,8 @@ export const setupPage = (page) => {
     dismissVersionDialogs(page)
 }
 
+let testname = () => expect.getState().currentTestName.replace(/ /g, "_")
+
 export const lastElement = (arr) => arr[arr.length - 1]
 
 const getFixturesDir = () => path.join(__dirname, "..", "fixtures")
@@ -112,8 +114,10 @@ const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
 export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
-export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".jl")
+export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), `temporary_notebook_${testname()}_${Date.now()}.jl`)
 
-export const getTestScreenshotPath = () => path.join(getArtifactsDir(), "test_screenshot_" + Date.now() + ".png")
+export const getTestScreenshotPath = () => {
+    path.join(getArtifactsDir(), `screenshot_${testname()}_${Date.now()}.png`)
+}
 
 export const saveScreenshot = (page, path) => page.screenshot({ path: path })

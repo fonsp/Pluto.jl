@@ -20,7 +20,7 @@ import { ExportBanner } from "./ExportBanner.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { start_binder, BinderPhase } from "../common/Binder.js"
@@ -478,14 +478,20 @@ export class Editor extends Component {
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
             },
-            set_bond: async (symbol, value, is_first_value) => {
+            /**
+             *
+             * @param {string} name         | bond name
+             * @param {*} value             | bond value
+             * @param {boolean} is_first_value    | true during initialization
+             */
+            set_bond: async (name, value, is_first_value) => {
                 // For now I discard is_first_value, basing it on if there
                 // is a value already present in the state.
                 // Keep an eye on https://github.com/fonsp/Pluto.jl/issues/275
-
                 await update_notebook((notebook) => {
-                    // We wrap the bond value in an object so immer assumes it is changed
-                    notebook.bonds[symbol] = { value: value }
+                    // Wrap the bond value in an object so immer assumes it is changed
+                    let new_bond = { value: value, is_first_value: is_first_value }
+                    notebook.bonds[name] = new_bond
                 })
             },
             reshow_cell: (cell_id, objectid, dim) => {
@@ -698,8 +704,16 @@ patch: ${JSON.stringify(
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
-        this.notebook_is_idle = () =>
-            !Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) && !this.state.update_is_ongoing
+        this.js_init_set = new Set()
+        this.notebook_is_idle = () => {
+            return !(
+                this.state.update_is_ongoing ||
+                // a cell is running:
+                Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
+                // a cell is initializing JS:
+                !_.isEmpty(this.js_init_set)
+            )
+        }
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -718,6 +732,7 @@ patch: ${JSON.stringify(
                 // to send when the notebook is idle. This delays the updating of the bond for performance,
                 // but when the server can discard bond updates itself (now it executes them one by one, even if there is a newer update ready)
                 // this will no longer be necessary
+                // console.log(`this.notebook_is_idle():`, this.notebook_is_idle())
                 if (!this.notebook_is_idle()) {
                     let changes_involving_bonds = changes.filter((x) => x.path[0] === "bonds")
                     this.bonds_changes_to_apply_when_done = [...this.bonds_changes_to_apply_when_done, ...changes_involving_bonds]
@@ -764,6 +779,7 @@ patch: ${JSON.stringify(
             return new_task
         }
         this.update_notebook = update_notebook
+        //@ts-ignore
         window.shutdownNotebook = this.close = () => {
             this.client.send(
                 "shutdown_notebook",
@@ -976,6 +992,7 @@ patch: ${JSON.stringify(
         document.body._update_is_ongoing = pending_local_updates > 0
 
         if (this.notebook_is_idle() && this.bonds_changes_to_apply_when_done.length !== 0) {
+            // `bonds_changes_to_apply_when_done:`, this.bonds_changes_to_apply_when_done
             let bonds_patches = this.bonds_changes_to_apply_when_done
             this.bonds_changes_to_apply_when_done = []
             this.update_notebook((notebook) => {
@@ -1011,6 +1028,7 @@ patch: ${JSON.stringify(
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                    <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
@@ -1170,6 +1188,7 @@ patch: ${JSON.stringify(
                             </form>
                         </div>
                     </footer>
+                </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
             </${PlutoContext.Provider}>
         `

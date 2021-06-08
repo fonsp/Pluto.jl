@@ -2,11 +2,13 @@ import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
 
-struct BondValue
+mutable struct BondValue
     value::Any
+    # This is only so the client can send this, the updater will always put this to `false`
+    is_first_value::Bool
 end
 function Base.convert(::Type{BondValue}, dict::Dict)
-    BondValue(dict["value"])
+    BondValue(dict["value"], something(get(dict, "is_first_value", false), false))
 end
 
 const ProcessStatus = (
@@ -39,10 +41,9 @@ Base.@kwdef mutable struct Notebook
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
 
     process_status::String=ProcessStatus.starting
+    wants_to_interrupt::Bool=false
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
-
-    wants_to_interrupt::Bool=false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
