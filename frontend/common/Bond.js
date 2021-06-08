@@ -29,7 +29,7 @@ function get_input_value(input) {
         }
     } else {
         //@ts-ignore
-        input.value
+        return input.value
     }
 }
 
@@ -88,10 +88,11 @@ export const set_bound_elements_to_their_value = (node, bond_values) => {
     for (let bond_node of node.querySelectorAll("bond")) {
         let bond_name = bond_node.getAttribute("def")
         if (bond_node.firstElementChild != null && bond_values[bond_name] != null) {
+            let val = bond_values[bond_name].value
             try {
-                set_input_value(bond_node.firstElementChild, bond_values[bond_name].value)
+                set_input_value(bond_node.firstElementChild, val)
             } catch (error) {
-                console.error(`Rrror while setting input value`, bond_node.firstElementChild, `to value`, bond_values[bond_name].value, `: `, error)
+                console.error(`Error while setting input value`, bond_node.firstElementChild, `to value`, val, `: `, error)
             }
         }
     }
