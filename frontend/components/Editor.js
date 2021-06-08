@@ -20,7 +20,7 @@ import { ExportBanner } from "./ExportBanner.js"
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
-import { PlutoContext, PlutoBondsContext } from "../common/PlutoContext.js"
+import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { start_binder, BinderPhase } from "../common/Binder.js"
@@ -704,15 +704,16 @@ patch: ${JSON.stringify(
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
-        this.notebook_is_idle = () =>
-            !(
+        this.js_init_set = new Set()
+        this.notebook_is_idle = () => {
+            return !(
                 this.state.update_is_ongoing ||
                 // a cell is running:
                 Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
                 // a cell is initializing JS:
-                //@ts-ignore
-                Array.from(document.querySelectorAll(".raw-html-wrapper")).some((node) => !!node?._javascript_initializing)
+                !_.isEmpty(this.js_init_set)
             )
+        }
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -778,6 +779,7 @@ patch: ${JSON.stringify(
             return new_task
         }
         this.update_notebook = update_notebook
+        //@ts-ignore
         window.shutdownNotebook = this.close = () => {
             this.client.send(
                 "shutdown_notebook",
@@ -1026,6 +1028,7 @@ patch: ${JSON.stringify(
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                    <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
@@ -1186,6 +1189,7 @@ patch: ${JSON.stringify(
                             </form>
                         </div>
                     </footer>
+                </${PlutoJSInitializingContext.Provider}>
                 </${PlutoBondsContext.Provider}>
             </${PlutoContext.Provider}>
         `

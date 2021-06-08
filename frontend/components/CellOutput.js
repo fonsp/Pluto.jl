@@ -7,7 +7,7 @@ import { add_bonds_listener, set_bound_elements_to_their_value } from "../common
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
@@ -300,6 +300,7 @@ let run = (f) => f()
 export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
+    let js_init_set = useContext(PlutoJSInitializingContext)
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
@@ -328,7 +329,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
-            if (container.current) container.current._javascript_initializing = true
+            js_init_set.add(container.current)
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: new_scripts,
@@ -369,7 +370,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                     }
                 }
             } catch (err) {}
-            if (container.current) container.current._javascript_initializing = false
+            js_init_set.delete(container.current)
         })
 
         return () => {
