@@ -1,21 +1,22 @@
-import { html, useState, useRef, useLayoutEffect, useEffect, useMemo } from "../common/Preact.js"
-import immer from "https://cdn.jsdelivr.net/npm/immer@7.0.9/dist/immer.esm.js"
+import { html, useState, useRef, useLayoutEffect, useEffect, useMemo, useContext } from "../imports/Preact.js"
+import immer from "../imports/immer.js"
 import observablehq from "../common/SetupCellEnvironment.js"
 import { cl } from "../common/ClassTable.js"
-import { OutputBody } from "../components/CellOutput.js"
 
-import { RawHTMLContainer, highlight_julia } from "./CellOutput.js"
+import { RawHTMLContainer, highlight } from "./CellOutput.js"
+import { PlutoContext } from "../common/PlutoContext.js"
 
-export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, notebook }) => {
+export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => {
+    let pluto_actions = useContext(PlutoContext)
     let container_ref = useRef()
+    let live_doc_search_ref = useRef()
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: "Start typing in a cell to learn more!",
+        body:
+            "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
         hidden: true,
         loading: false,
-        rejected: null,
-        result_html: null,
     })
     let update_state = (mutation) => set_state(immer((state) => mutation(state)))
 
@@ -34,6 +35,19 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         return () => window.removeEventListener("open_live_docs", handler)
     }, [])
 
+    // Apply syntax highlighting to code blocks:
+    // In the standard HTML container we already do this for code.language-julia blocks,
+    // but in the docs it's safe to extend to to all highlighting I think
+    useLayoutEffect(() => {
+        // Actually, showing the jldoctest stuff wasn't as pretty... should make a mode for that sometimes
+        // for (let code_element of container_ref.current.querySelectorAll("code.language-jldoctest")) {
+        //     highlight(code_element, "julia")
+        // }
+        for (let code_element of container_ref.current.querySelectorAll("code:not([class])")) {
+            highlight(code_element, "julia")
+        }
+    }, [state.body])
+
     useEffect(() => {
         if (state.hidden || state.loading) {
             return
@@ -44,91 +58,73 @@ export let LiveDocs = ({ desired_doc_query, client, on_update_doc_query, noteboo
         }
 
         if (state.searched_query !== desired_doc_query) {
-            fetch_docs()
+            fetch_docs(desired_doc_query)
         }
-    }, [desired_doc_query, state.hidden, state.loading])
+    }, [desired_doc_query, state.hidden, state.loading, state.searched_query])
 
-    let fetch_docs = async () => {
-        try {
-            const new_query = desired_doc_query
-            update_state((state) => {
-                state.loading = true
-                state.searched_query = new_query
-            })
-            let message = await Promise.race([
-                observablehq.Promises.delay(2000, false).then(() => {
-                    throw new Error("Documentation request timed out")
-                }),
-                client.send("docs", { query: new_query }, { notebook_id: notebook.notebook_id }).then((u) => {
-                    if (u.message.status === "👍") {
-                        return u.message
-                    } else {
-                        throw new Error("Got negative response from the server")
-                    }
-                }),
-            ])
-
-            update_state((state) => {
-                state.rejected = null
-                state.shown_query = new_query
-                state.body = message.doc
-                state.result_html = message.result_html
-            })
-        } catch (error) {
-            update_state((state) => {
-                state.rejected = desired_doc_query
-            })
-        } finally {
+    let fetch_docs = (new_query) => {
+        update_state((state) => {
+            state.loading = true
+            state.searched_query = new_query
+        })
+        Promise.race([
+            observablehq.Promises.delay(2000, false),
+            pluto_actions.send("docs", { query: new_query.replace(/^\?/, "") }, { notebook_id: notebook.notebook_id }).then((u) => {
+                if (u.message.status === "⌛") {
+                    return false
+                }
+                if (u.message.status === "👍") {
+                    update_state((state) => {
+                        state.shown_query = new_query
+                        state.body = u.message.doc
+                    })
+                    return true
+                }
+            }),
+        ]).then(() => {
             update_state((state) => {
                 state.loading = false
             })
-        }
+        })
     }
 
     let docs_element = useMemo(() => html` <${RawHTMLContainer} body=${state.body} /> `, [state.body])
-
-    let doc_ref = useRef()
-    useLayoutEffect(() => {
-        resolve_doc_reference_links(doc_ref.current, on_update_doc_query)
-    }, [state.body])
-
-    // Apply syntax highlighting to code blocks:
-    // In the standard HTML container we already do this for code.language-julia blocks,
-    // but in the docs it's safe to extend to to all highlighting I think
-    useLayoutEffect(() => {
-        // Actually, showing the jldoctest stuff wasn't as pretty... should make a mode for that sometimes
-        // for (let code_element of container_ref.current.querySelectorAll("code.language-jldoctest")) {
-        //     highlight_julia(code_element)
-        // }
-        for (let code_element of container_ref.current.querySelectorAll("code:not([class])")) {
-            highlight_julia(code_element)
-        }
-    }, [state.body])
+    let no_docs_found = state.loading === false && state.searched_query !== "" && state.searched_query !== state.shown_query
 
     return html`
-        <aside id="helpbox-wrapper">
-            <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading })}>
+        <aside id="helpbox-wrapper" ref=${container_ref}>
+            <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading, notfound: no_docs_found })}>
                 <header
-                    onClick=${() => set_state((state) => ({ ...state, hidden: !state.hidden }))}
-                    title=${state.hidden || state.searched_query == null
-                        ? "Click to toggle visibility"
-                        : state.rejected
-                        ? `Couldn't get documentation for "${state.rejected}"`
-                        : state.searched_query}
+                    onClick=${() => {
+                        if (state.hidden) {
+                            set_state((state) => ({ ...state, hidden: false }))
+                            // wait for next event loop
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }
+                    }}
                 >
-                    ${state.hidden || state.searched_query == null ? "Live docs" : state.rejected ? html`<s>${state.rejected}</s>` : state.searched_query}
-                </header>
-                <section ref=${doc_ref}>
-                    <h1><code>${state.shown_query}</code></h1>
-                    <div ref=${container_ref}>${docs_element}</div>
-
-                    ${state.result_html &&
-                    html`
-                        <h1>Inspect</h1>
-                        <pluto-output class="inline_output">
-                            <${OutputBody} mime=${state.result_html[1]} body=${state.result_html[0]} all_completed_promise=${new Promise(() => {})} />
-                        </pluto-output>
+                    ${state.hidden
+                        ? "Live docs"
+                        : html`
+                        <input
+                            title=${no_docs_found ? `"${state.searched_query}" not found` : ""}
+                            id="live-docs-search"
+                            placeholder="Search docs..."
+                            ref=${live_doc_search_ref}
+                            onInput=${(e) => on_update_doc_query(e.target.value)}
+                            value=${desired_doc_query}
+                            type="text"
+                        ></input>
+                        <button onClick=${(e) => {
+                            set_state((state) => ({ ...state, hidden: true }))
+                            e.stopPropagation()
+                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                        }}><span></span></button>
                     `}
+                </header>
+                <section ref=${(ref) => ref != null && resolve_doc_reference_links(ref, on_update_doc_query)}>
+                    <h1><code>${state.shown_query}</code></h1>
+                    ${docs_element}
                 </section>
             </pluto-helpbox>
         </aside>
@@ -140,7 +136,6 @@ const resolve_doc_reference_links = (node, on_update_doc_query) => {
         const href = anchor.getAttribute("href")
         if (href != null && href.startsWith("@ref")) {
             const query = href.length > 4 ? href.substr(5) : anchor.textContent
-            anchor.href = `#doc=${query}`
             anchor.onclick = (e) => {
                 on_update_doc_query(query)
                 e.preventDefault()
