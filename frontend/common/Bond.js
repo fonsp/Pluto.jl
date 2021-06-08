@@ -3,24 +3,33 @@
 
 import observablehq from "./SetupCellEnvironment.js"
 
-// Copied straight from the observable stdlib source, but I need it to be faster than Generator.input
-// because Generator.input is async by nature, so will lagg behind that one tick that is breaking my code
-// https://github.com/observablehq/stdlib/blob/170f137ac266b397446320e959c36dd21888357b/src/generators/input.js#L13
-function valueof(input) {
-    switch (input.type) {
-        case "range":
-        case "number":
-            return input.valueAsNumber
-        case "date":
-            return input.valueAsDate
-        case "checkbox":
-            return input.checked
-        case "file":
-            return input.multiple ? input.files : input.files[0]
-        case "select-multiple":
-            return Array.from(input.selectedOptions, (o) => o.value)
-        default:
-            return input.value
+/**
+ * Copied from the observable stdlib source, but we need it to be faster than Generator.input because Generator.input is async by nature, so will lag behind that one tick that is breaking the code.
+ * https://github.com/observablehq/stdlib/blob/170f137ac266b397446320e959c36dd21888357b/src/generators/input.js#L13
+ * @param {Element} input
+ * @returns {any}
+ */
+function get_input_value(input) {
+    if (input instanceof HTMLInputElement) {
+        switch (input.type) {
+            case "range":
+            case "number":
+                return input.valueAsNumber
+            case "date":
+                return input.valueAsDate
+            case "checkbox":
+                return input.checked
+            case "file":
+                return input.multiple ? input.files : input.files[0]
+            case "select-multiple":
+                //@ts-ignore
+                return Array.from(input.selectedOptions, (o) => o.value)
+            default:
+                return input.value
+        }
+    } else {
+        //@ts-ignore
+        input.value
     }
 }
 
@@ -97,11 +106,11 @@ export const add_bonds_listener = (node, on_bond_change) => {
     let node_is_invalidated = false
 
     node.querySelectorAll("bond").forEach(async (bond_node) => {
-        const initial_value = valueof(bond_node.firstElementChild)
+        const initial_value = get_input_value(bond_node.firstElementChild)
         // Initialize the bond. This will send the data to the backend for the first time. If it's already there, and the value is the same, cells won't rerun.
-        on_bond_change(bond_node.getAttribute("def"), initial_value, true)
+        const init_promise = on_bond_change(bond_node.getAttribute("def"), initial_value, true)
 
-        // read the docs on Generators.input from observablehq/stdlib
+        // see the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
         for (let val of observablehq.Generators.input(bond_node.firstElementChild)) {
             if (node_is_invalidated) break
@@ -111,13 +120,13 @@ export const add_bonds_listener = (node, on_bond_change) => {
                 continue
             }
             // wait for a new input value. If a value is ready, then this promise resolves immediately
-            if (!node_is_invalidated) {
-                // send to the Pluto back-end (have a look at set_bond in Editor.js)
-                const to_send = await transformed_val(val)
-                // await the setter to avoid collisions
-                //TODO : get this from state
-                await on_bond_change(bond_node.getAttribute("def"), to_send, false).catch(console.error)
-            }
+            const to_send = await transformed_val(await val)
+
+            // send to the Pluto back-end (have a look at set_bond in Editor.js)
+            // await the setter to avoid collisions
+            //TODO : get this from state
+            await init_promise
+            await on_bond_change(bond_node.getAttribute("def"), to_send, false).catch(console.error)
         }
     })
 

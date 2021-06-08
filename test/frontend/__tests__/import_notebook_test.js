@@ -1,4 +1,3 @@
-//import { page } from "../helpers/page.js"
 import { lastElement, saveScreenshot, getTestScreenshotPath, setupPage } from "../helpers/common"
 import { getCellIds, waitForCellOutput, importNotebook, getPlutoUrl, prewarmPluto, writeSingleLineInPlutoInput } from "../helpers/pluto"
 
