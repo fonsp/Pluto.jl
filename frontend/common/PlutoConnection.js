@@ -311,13 +311,9 @@ export const create_pluto_connection = async ({
             }
 
             return await current_combined_updates_promise
+        } else {
+            return await send(message_type, body, metadata, no_broadcast)
         }
-
-        if (current_combined_updates_promise) {
-            await current_combined_updates_promise
-        }
-
-        return await send(message_type, body, metadata, no_broadcast)
     }
     client.send = batching_send
 
