@@ -329,7 +329,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
-            js_init_set.add(container.current)
+            js_init_set?.add(container.current)
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: new_scripts,
@@ -368,7 +368,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                     }
                 }
             } catch (err) {}
-            js_init_set.delete(container.current)
+            js_init_set?.delete(container.current)
         })
 
         return () => {
