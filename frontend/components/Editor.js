@@ -704,11 +704,15 @@ patch: ${JSON.stringify(
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
-        this.notebook_is_idle = () => {
-            let any_running = Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued)
-            const any_cell_initalizing_js = Array.from(document.querySelectorAll(".raw-html-wrapper")).some((node) => !!node?._javascript_initializing)
-            return !any_running && !this.state.update_is_ongoing && !any_cell_initalizing_js
-        }
+        this.notebook_is_idle = () =>
+            !(
+                this.state.update_is_ongoing ||
+                // a cell is running:
+                Object.values(this.state.notebook.cell_results).some((cell) => cell.running || cell.queued) ||
+                // a cell is initializing JS:
+                //@ts-ignore
+                Array.from(document.querySelectorAll(".raw-html-wrapper")).some((node) => !!node?._javascript_initializing)
+            )
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
