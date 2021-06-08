@@ -28,7 +28,7 @@ export class CellOutput extends Component {
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
                 const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-                if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                if (!(document.activeElement.tagName == "SUMMARY") && (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base))) {
                     window.scrollBy(0, new_height - this.old_height)
                 }
             }
