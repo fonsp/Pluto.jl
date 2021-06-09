@@ -18,7 +18,7 @@ export const PkgPopup = ({ notebook }) => {
     const open = (e) => {
         const el = e.detail.status_mark_element
 
-        pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: min(max(0px,100vw - 269px - 30px), ${
+        pos_ref.current = `top: ${el.getBoundingClientRect().top - document.body.getBoundingClientRect().top}px; left: min(max(0px,100vw - 251px - 30px), ${
             el.getBoundingClientRect().left - document.body.getBoundingClientRect().left
         }px);`
         set_recent_event(e.detail)
@@ -66,7 +66,7 @@ export const PkgPopup = ({ notebook }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = pkg_status?.busy ?? recent_event != null
+    const busy = pkg_status?.busy ?? false
 
     useEffect(() => {
         set_showterminal(busy)
@@ -74,30 +74,48 @@ export const PkgPopup = ({ notebook }) => {
 
     const terminal_value = notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]
 
+    const showupdate = pkg_status?.offer_update ?? false
+
     // <header>${recent_event?.package_name}</header>
     return html`<pkg-popup
         class=${cl({
             visible: recent_event != null,
             busy,
-            showterminal,
+            showterminal: showterminal,
+            showupdate,
         })}
         style="${pos_ref.current}"
     >
         ${pkg_status?.hint ?? "Loading..."}
-        <a
-            class="toggle-terminal"
-            target="_blank"
-            style=${!!terminal_value ? "" : "display: none;"}
-            href="#"
-            onClick=${(e) => {
-                set_showterminal(!showterminal)
-                e.preventDefault()
-            }}
-            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/document-text-outline.svg" width="17"
-        /></a>
-        <a class="help" target="_blank" href="https://fonsp.com"
-            ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/help-circle-outline.svg" width="17"
-        /></a>
-        <${PkgTerminalView} value=${terminal_value} />
+        <div class="pkg-buttons">
+            <a
+                class="pkg-update"
+                target="_blank"
+                title="Update packages"
+                style=${!!showupdate ? "" : "display: none;"}
+                href="#"
+                onClick=${(e) => {
+                    alert("updating!")
+                    e.preventDefault()
+                }}
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-up-circle-outline.svg" width="17"
+            /></a>
+            <a
+                class="toggle-terminal"
+                target="_blank"
+                title="Show/hide Pkg terminal output"
+                style=${!!terminal_value ? "" : "display: none;"}
+                href="#"
+                onClick=${(e) => {
+                    set_showterminal(!showterminal)
+                    e.preventDefault()
+                }}
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/document-text-outline.svg" width="17"
+            /></a>
+            <a class="help" target="_blank" title="Go to help page" href="https://fonsp.com"
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/help-circle-outline.svg" width="17"
+            /></a>
+        </div>
+        <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />
     </pkg-popup>`
 }

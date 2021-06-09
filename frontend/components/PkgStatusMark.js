@@ -11,10 +11,20 @@ export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.ent
 export const nbpkg_fingerprint_without_terminal = (nbpkg) =>
     nbpkg == null ? [null] : Object.entries(nbpkg).flatMap(([k, v]) => (k === "terminal_outputs" ? [] : [v]))
 
+const can_update = (installed, available) => {
+    if (installed === "stdlib" || !_.isArray(available)) {
+        return false
+    } else {
+        return true
+        // return _.last(available) !== installed
+    }
+}
+
 export const package_status = ({ nbpkg, package_name, available_versions }) => {
     let status = null
     let hint_raw = null
     let hint = null
+    let offer_update = false
     const chosen_version = nbpkg?.installed_versions[package_name]
     const busy = (nbpkg?.busy_packages ?? []).includes(package_name)
 
@@ -32,6 +42,7 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
                 status = "installed"
                 hint_raw = `${package_name} (v${chosen_version}) is installed in the notebook.`
                 hint = phtml`<header><b>${package_name}</b> <pkg-version>v${chosen_version}</pkg-version></header> is installed in the notebook.`
+                offer_update = can_update(chosen_version, available_versions)
             }
         }
     } else {
@@ -50,7 +61,7 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
         }
     }
 
-    return { status, hint, hint_raw, available_versions, chosen_version, busy }
+    return { status, hint, hint_raw, available_versions, chosen_version, busy, offer_update }
 }
 
 // not preact because we're too cool

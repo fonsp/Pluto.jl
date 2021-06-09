@@ -1509,7 +1509,7 @@ pkg-popup {
     z-index: 50;
     /* left: 1.5em; */
     /* top: calc((1.5em - 200px) * 0.5); */
-    width: min(90vw, 269px);
+    width: min(90vw, 251px);
     /* min-height: 80px; */
     margin-left: 1.1rem;
     margin-top: calc(0.5 * (1rem - 80px));
@@ -1543,17 +1543,26 @@ pkg-version {
     opacity: 0.5;
 }
 
-pkg-popup .toggle-terminal,
-pkg-popup .help {
-    position: absolute;
-    right: 0px;
-    bottom: 0px;
+
+pkg-popup .pkg-buttons {
+    float: right;
+    /* position: absolute; */
+    /* right: 0px; */
+    /* bottom: 0px; */
+    display: inline-flex;
+    height: 1em;
+    flex-direction: row;
+}
+
+pkg-popup .pkg-buttons > * {
     display: block;
     height: 17px;
     padding: 4px;
     box-sizing: content-box;
     background: white;
     border-radius: 10px;
+    z-index: 52;
+    margin-left: -4px;
 }
 
 pkg-popup .toggle-terminal {
@@ -1576,6 +1585,7 @@ pkg-terminal > .scroller {
     max-height: 10rem;
     overflow-y: auto;
     padding: 4px;
+    width: 100%;
 }
 
 pkg-terminal pre {
