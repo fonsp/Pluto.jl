@@ -11,6 +11,7 @@ include("./Dynamic.jl")
 include("./Notebook.jl")
 
 # tests that don't start new processes:
+include("./packages/PkgCompat.jl")
 include("./ExpressionExplorer.jl")
 include("./MethodSignatures.jl")
 include("./Configuration.jl")
