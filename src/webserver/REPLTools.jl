@@ -1,6 +1,6 @@
 import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
-import .PkgTools: package_completions
+import .PkgCompat: package_completions
 using Markdown
 
 ###

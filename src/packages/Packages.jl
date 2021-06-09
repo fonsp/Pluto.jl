@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
-import .PkgTools
-import .PkgTools: select, is_stdlib
+import .PkgCompat
+import .PkgCompat: select, is_stdlib
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
@@ -75,7 +75,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         @info "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
-        ctx = notebook.nbpkg_ctx = PkgTools.create_empty_ctx()
+        ctx = notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
     end
     if use_plutopkg_old && !use_plutopkg_new
         @info "Stopped using PlutoPkg 💔😟😢"
@@ -83,7 +83,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
             notebook.nbpkg_restart_recommended_msg === nothing &&
-            keys(ctx.env.project.deps) ⊆ PkgTools.stdlibs
+            keys(ctx.env.project.deps) ⊆ PkgCompat.stdlibs
         )
         👺 = !no_packages_loaded_yet
         ctx = notebook.nbpkg_ctx = nothing
@@ -115,7 +115,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
         if !can_skip
             return withtoken(pkg_token) do
-                PkgTools.refresh_registry_cache()
+                PkgCompat.refresh_registry_cache()
 
                 to_remove = filter(removed) do p
                     haskey(ctx.env.project.deps, p)
@@ -141,7 +141,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 # TODO: instead of Pkg.PRESERVE_ALL, we actually want:
                 # "Pkg.PRESERVE_DIRECT, but preserve exact verisons of Base.loaded_modules"
 
-                to_add = filter(PkgTools.package_exists, added)
+                to_add = filter(PkgCompat.package_exists, added)
                 
                 if !isempty(to_add)
                     @show to_add

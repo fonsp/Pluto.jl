@@ -2,7 +2,7 @@ import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
-import .PkgTools
+import .PkgCompat
 
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
@@ -151,7 +151,7 @@ function notebook_to_js(notebook::Notebook)
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : Dict{String,String}(
-                    x => string(PkgTools.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
+                    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
                 ),
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "busy_packages" => notebook.nbpkg_busy_packages,
@@ -570,14 +570,14 @@ end
 
 responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
     # require_notebook(🙋)
-    all_versions = PkgTools.package_versions(🙋.body["package_name"])
+    all_versions = PkgCompat.package_versions(🙋.body["package_name"])
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
         :versions => string.(all_versions),
     ), nothing, nothing, 🙋.initiator))
 end
 
 responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
-    results = PkgTools.package_completions(🙋.body["query"])
+    results = PkgCompat.package_completions(🙋.body["query"])
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
         :results => results,
     ), nothing, nothing, 🙋.initiator))

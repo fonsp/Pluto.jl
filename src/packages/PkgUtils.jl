@@ -3,7 +3,7 @@ module PkgUtils
 import FileWatching
 import Pkg
 import ..Pluto
-import ..Pluto: Notebook, save_notebook, load_notebook, withtoken, Token, readwrite, PkgTools
+import ..Pluto: Notebook, save_notebook, load_notebook, withtoken, Token, readwrite, PkgCompat
 
 using Markdown
 
@@ -65,7 +65,7 @@ end
 function write_dir_to_nb(dir::String, notebook::Notebook)
     assert_has_manifest(dir)
 
-    notebook.nbpkg_ctx = Pluto.PkgTools.create_empty_ctx()
+    notebook.nbpkg_ctx = Pluto.PkgCompat.create_empty_ctx()
 
     readwrite(dir |> project_file, notebook |> project_file)
     readwrite(dir |> manifest_file, notebook |> manifest_file)

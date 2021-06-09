@@ -1,4 +1,4 @@
-module PkgTools
+module PkgCompat
 
 export package_versions, package_completions
 
@@ -48,7 +48,7 @@ is_stdlib(package_name::AbstractString) = package_name ∈ stdlibs
 is_stdlib(pkg::Pkg.Types.PackageEntry) = pkg.version === nothing && (pkg.name ∈ stdlibs)
 
 # TODO: should this be the notebook context? it only matters for which registry is used
-const global_ctx = Pkg.Types.Context()
+global_ctx = Pkg.Types.Context()
 
 ###
 # Package names
@@ -79,7 +79,7 @@ Return paths to all found registry entries of a given package name.
 
 # Example
 ```julia
-julia> Pluto.PkgTools.registry_entries("Pluto")
+julia> Pluto.PkgCompat.registry_entries("Pluto")
 1-element Vector{String}:
  "/Users/fons/.julia/registries/General/P/Pluto"
 ```

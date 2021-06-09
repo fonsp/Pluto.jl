@@ -1,7 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
-import .PkgTools
+import .PkgCompat
 import Pkg
 
 struct BondValue
@@ -40,7 +40,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgTools.create_empty_ctx()
+    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgCompat.create_empty_ctx()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -257,7 +257,7 @@ function load_notebook_nobackup(io, path)::Notebook
             ErrorException
         end
     else
-        PkgTools.create_empty_ctx()
+        PkgCompat.create_empty_ctx()
     end
 
     appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
