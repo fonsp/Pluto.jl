@@ -33,7 +33,8 @@ import Pkg
         # we are querying the package environment that is currently active for testing
         ctx = Pkg.Types.Context()
 
-        @test PkgCompat.get_manifest_version(ctx, "Pluto") == Pluto.PLUTO_VERSION
+        ctx = PkgCompat.create_empty_ctx()
+        Pkg.add(ctx, [Pkg.PackageSpec("HTTP"), Pkg.PackageSpec("UUIDs"), ])
         @test PkgCompat.get_manifest_version(ctx, "HTTP") > v"0.8.0"
         @test PkgCompat.get_manifest_version(ctx, "UUIDs") == "stdlib"
 

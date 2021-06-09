@@ -15,7 +15,7 @@ function select(f::Function, xs)
 			return x
 		end
 	end
-	error("Not found")
+	nothing
 end
 
 
@@ -258,17 +258,20 @@ function dependencies(ctx)
 end
 
 # 🐸 "Public API", but using PkgContext
-"Find a package in the manifest."
+"Find a package in the manifest. Return `nothing` if not found."
 _get_manifest_entry(ctx::PkgContext, package_name::AbstractString) = 
     select(e -> e.name == package_name, values(dependencies(ctx)))
 
 # ⚠️ Internal API with fallback
-function get_manifest_version(ctx, package_name)
+"""
+Find a package in the manifest given its name, and return its installed version. Return `"stdlib"` for a standard library, and `nothing` if not found.
+"""
+function get_manifest_version(ctx::PkgContext, package_name::AbstractString)
     if is_stdlib(package_name)
         "stdlib"
     else
         entry = _get_manifest_entry(ctx, package_name)
-        entry.version
+		entry === nothing ? nothing : entry.version
     end
 end
 
@@ -303,9 +306,9 @@ function write_semver_compat_entries!(ctx::PkgContext)
 	_modify_compat!(ctx) do compat
 		for p in keys(Pkg.project(ctx).dependencies)
 			if !haskey(compat, p)
-				entry = _get_manifest_entry(ctx, p)
-				if entry.version !== nothing
-					compat[p] = "^" * string(entry.version)
+				m_version = get_manifest_version(ctx, p)
+				if m_version !== nothing
+					compat[p] = "^" * string(m_version)
 				end
 			end
 		end
@@ -317,9 +320,9 @@ end
 function clear_semver_compat_entries!(ctx::PkgContext)
 	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
 		for p in keys(compat)
-			entry = _get_manifest_entry(ctx, p)
-			if entry.version !== nothing
-				if compat[p] == "^" * string(entry.version)
+			m_version = get_manifest_version(ctx, p)
+			if m_version !== nothing
+				if compat[p] == "^" * string(m_version)
 					delete!(compat, p)
 				end
 			end
