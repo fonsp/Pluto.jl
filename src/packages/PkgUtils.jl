@@ -4,6 +4,7 @@ import FileWatching
 import Pkg
 import ..Pluto
 import ..Pluto: Notebook, save_notebook, load_notebook, withtoken, Token, readwrite, PkgCompat
+import ..Pluto.PkgCompat: project_file, manifest_file
 
 using Markdown
 
@@ -35,10 +36,6 @@ function assert_has_manifest(dir::String)
     end
 end
 
-project_file(x) = joinpath(x, "Project.toml")
-manifest_file(x) = joinpath(x, "Manifest.toml")
-project_file(notebook::Notebook) = project_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
-manifest_file(notebook::Notebook) = manifest_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
 
 function nb_and_dir_environments_equal(notebook::Notebook, dir::String)
     try

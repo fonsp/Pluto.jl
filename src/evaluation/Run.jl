@@ -230,7 +230,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 				notebook.nbpkg_restart_recommended_msg = "yes"
 			end
 			if pkg_result.restart_required
-				@error "PlutoPkg: Notebook restart REQUIRED"
+				@warn "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "yes"
 			end
 

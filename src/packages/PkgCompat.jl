@@ -43,12 +43,17 @@ function mark_original!(ctx::PkgContext)
 		ctx.env.original_project = deepcopy(ctx.env.project)
 		ctx.env.original_manifest = deepcopy(ctx.env.manifest)
 	catch e
-		@error "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
+		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
 end
 
 # ⛔️ Internal API
 env_dir(ctx::PkgContext) = dirname(ctx.env.project_file)
+
+project_file(x::AbstractString) = joinpath(x, "Project.toml")
+manifest_file(x::AbstractString) = joinpath(x, "Manifest.toml")
+project_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Project.toml")
+manifest_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Manifest.toml")
 
 
 # ⚠️ Internal API with fallback
@@ -237,35 +242,55 @@ end
 # WRITING COMPAT ENTRIES
 ###
 
+# ⚠️✅ Internal API with fallback
+function _modify_compat!(f!::Function, ctx::PkgContext)
+	try
+		f!(ctx.env.project.compat)
+		Pkg.Types.write_env(ctx.env)
+	catch e
+		@warn "Pkg compat: failed to call write_env" exception=(e,catch_backtrace())
+		toml = Pkg.TOML.parsefile(project_file(ctx))
+		compat = get!(Dict, toml, "compat")
 
-# ⛔️ Internal API
+		f!(compat)
+
+		isempty(compat) && delete!(toml, "compat")
+
+		write(project_file(ctx), sprint() do io
+			Pkg.TOML.print(io, toml; sorted=true)
+		end)
+	end
+end
+
+
+# ⚠️✅ Internal API with fallback
 function write_semver_compat_entries!(ctx::PkgContext)
-    for p in keys(Pkg.project(ctx).dependencies)
-        if !haskey(ctx.env.project.compat, p)
-            entry = select(e -> e.name == p, values(ctx.env.manifest))
-            if entry.version !== nothing
-                ctx.env.project.compat[p] = "^" * string(entry.version)
-            end
-        end
-    end
-    Pkg.Types.write_env(ctx.env)
+	_modify_compat!(ctx) do compat
+		for p in keys(Pkg.project(ctx).dependencies)
+			if !haskey(compat, p)
+				entry = _get_manifest_entry(ctx, p)
+				if entry.version !== nothing
+					compat[p] = "^" * string(entry.version)
+				end
+			end
+		end
+	end
 end
 
 
-# ⛔️ Internal API
+# ⚠️✅ Internal API with fallback
 function clear_semver_compat_entries!(ctx::PkgContext)
-    for p in keys(ctx.env.project.compat)
-        entry = select(e -> e.name == p, values(ctx.env.manifest))
-        if entry.version !== nothing
-            if ctx.env.project.compat[p] == "^" * string(entry.version)
-                delete!(ctx.env.project.compat, p)
-            end
-        end
-    end
-    Pkg.Types.write_env(ctx.env)
+	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
+		for p in keys(compat)
+			entry = _get_manifest_entry(ctx, p)
+			if entry.version !== nothing
+				if compat[p] == "^" * string(entry.version)
+					delete!(compat, p)
+				end
+			end
+		end
+	end
 end
-
-
 
 
 end
