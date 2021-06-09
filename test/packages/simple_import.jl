@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ c581d17a-c965-11eb-1607-bbeb44933d25
-# This file imports an outdated version of PlutoPkgTestA: 0.2.1, which is stored in the embedded Manifest file. 
+# This file imports an outdated version of PlutoPkgTestA: 0.2.1 (which is stored in the embedded Manifest file).
 
 # It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible), using Pluto, and I then used `Pluto.activate_notebook_environment` to change the version of PlutoPkgTestA.
 
