@@ -65,6 +65,10 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         if notebook.nbpkg_ctx === nothing
             # okaeyo
         else
+            d = PkgCompat.env_dir(notebook.nbpkg_ctx)
+            if d === nothing
+                @error "Env dir is nothing!"
+            end
             Distributed.remotecall_eval(Main, [pid], quote
                 empty!(LOAD_PATH)
                 push!(LOAD_PATH, "@")

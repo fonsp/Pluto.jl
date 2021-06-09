@@ -307,7 +307,7 @@ function write_semver_compat_entries!(ctx::PkgContext)
 		for p in keys(Pkg.project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
-				if m_version !== nothing
+				if m_version !== nothing && !is_stdlib(p)
 					compat[p] = "^" * string(m_version)
 				end
 			end
@@ -321,7 +321,7 @@ function clear_semver_compat_entries!(ctx::PkgContext)
 	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
 		for p in keys(compat)
 			m_version = get_manifest_version(ctx, p)
-			if m_version !== nothing
+			if m_version !== nothing && !is_stdlib(p)
 				if compat[p] == "^" * string(m_version)
 					delete!(compat, p)
 				end
