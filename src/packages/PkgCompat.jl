@@ -19,6 +19,30 @@ function select(f::Function, xs)
 end
 
 
+#=
+
+NOTE ABOUT PUBLIC/INTERNAL PKG API
+
+Pkg.jl exposes lots of API, but only some of it is "public": guaranteed to remain available. API is public if it is listed here:
+https://pkgdocs.julialang.org/v1/api/
+
+In this file, I labeled functions by their status using 🐸, ⚠️, etc.
+
+A status in brackets (like this) means that it is only called within this file, and the fallback might be in a caller function.
+
+---
+
+I tried to only use public API, except:
+- I use the `Pkg.Types.Context` value as first argument for many functions, since the server process manages multiple notebook processes, each with their own package environment. We could get rid of this, by settings `Base.ACTIVE_PROJECT[]` before and after each Pkg call. (This is temporarily activating the notebook environment.) This does have a performance impact, since the project and manifest caches are regenerated every time.
+- https://github.com/JuliaLang/Pkg.jl/issues/2607 seems to be impossible with the current public API.
+- Some functions try to use internal API for optimization/better features.
+
+=#
+
+
+
+
+
 ###
 # CONTEXT
 ###
@@ -34,7 +58,7 @@ else
 	Pkg.Types.Context
 end
 
-# ⛔️ Internal API
+# 🐸 "Public API", but using PkgContext
 create_empty_ctx()::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
 # ⚠️ Internal API with fallback
@@ -47,7 +71,7 @@ function mark_original!(ctx::PkgContext)
 	end
 end
 
-# ⛔️ Internal API
+# 🐸 "Public API", but using PkgContext
 env_dir(ctx::PkgContext) = dirname(ctx.env.project_file)
 
 project_file(x::AbstractString) = joinpath(x, "Project.toml")
@@ -100,7 +124,7 @@ end
 
 const _updated_registries_compat = Ref(false)
 
-# ⚠️✅ Internal API with fallback
+# ⚠️✅ Internal API with good fallback
 function update_registries(ctx)
 	@static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :update_registries)
 		Pkg.Types.update_registries(ctx)
@@ -213,7 +237,7 @@ function package_versions(package_name::AbstractString)::Vector
 			flatmap(_package_versions_from_path, ps)
 		catch e
 			@error "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
-			[]
+			["latest"]
 		end
     end
 end
@@ -223,7 +247,7 @@ end
 package_exists(package_name::AbstractString)::Bool =
     package_versions(package_name) |> !isempty
 
-# ✅ Public API
+# 🐸 "Public API", but using PkgContext
 "Find a package in the manifest."
 _get_manifest_entry(ctx::PkgContext, package_name::AbstractString) = 
     select(e -> e.name == package_name, values(Pkg.dependencies(ctx)))
@@ -242,7 +266,8 @@ end
 # WRITING COMPAT ENTRIES
 ###
 
-# ⚠️✅ Internal API with fallback
+# (⚠️✅ Internal API with fallback)
+# We try to use `Pkg.Types.write_env(ctx.env)` when possible, because it writes the TOML file in the expected format with sorting and such.
 function _modify_compat!(f!::Function, ctx::PkgContext)
 	try
 		f!(ctx.env.project.compat)
