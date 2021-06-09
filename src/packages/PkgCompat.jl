@@ -248,9 +248,19 @@ package_exists(package_name::AbstractString)::Bool =
     package_versions(package_name) |> !isempty
 
 # 🐸 "Public API", but using PkgContext
+function dependencies(ctx)
+	# Pkg.dependencies(ctx) should also work on 1.5, but there is some weird bug (run the tests without this patch). This is probably some Pkg bug that got fixed.
+	@static if VERSION < v"1.6.0-a"
+		ctx.env.manifest
+	else
+		Pkg.dependencies(ctx)
+	end
+end
+
+# 🐸 "Public API", but using PkgContext
 "Find a package in the manifest."
 _get_manifest_entry(ctx::PkgContext, package_name::AbstractString) = 
-    select(e -> e.name == package_name, values(Pkg.dependencies(ctx)))
+    select(e -> e.name == package_name, values(dependencies(ctx)))
 
 # ⚠️ Internal API with fallback
 function get_manifest_version(ctx, package_name)

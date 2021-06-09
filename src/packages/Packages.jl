@@ -72,14 +72,16 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     if ctx !== nothing
         PkgCompat.mark_original!(ctx)
 
-        # search all cells for imports and usings
-        new_packages = String.(external_package_names(new))
+        old_packages = String.(keys(Pkg.project(ctx).dependencies))
+        new_packages = String.(external_package_names(new)) # search all cells for imports and usings
         
-        removed = setdiff(keys(Pkg.project(ctx).dependencies), new_packages)
-        added = setdiff(new_packages, keys(Pkg.project(ctx).dependencies))
+        removed = setdiff(old_packages, new_packages)
+        added = setdiff(new_packages, old_packages)
 
-        current_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
-        iolistener = IOListener(callback=(s -> on_terminal_output(current_packages, s)))
+        iolistener = let
+            busy_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
+            IOListener(callback=(s -> on_terminal_output(busy_packages, s)))
+        end
         
         # We remember which Pkg.Types.PreserveLevel was used. If it's too low, we will recommend/require a notebook restart later.
         local used_tier = Pkg.PRESERVE_ALL
@@ -101,7 +103,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 if !isempty(to_remove)
                     @show to_remove
                     # See later comment
-                    mkeys() = filter(!is_stdlib, [m.name for m in values(Pkg.dependencies(ctx))])
+                    mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(ctx))])
                     old_manifest_keys = mkeys()
 
                     Pkg.rm(ctx, [

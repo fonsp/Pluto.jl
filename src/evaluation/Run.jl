@@ -240,9 +240,9 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 			save && save_notebook(notebook)
 		end
 	catch e
-		new_packages = external_package_names(new)
-		old_packages = keys(notebook.nbpkg_ctx.env.project.deps)
-		@error "PlutoPkg: Failed to add/remove package" new_packages old_packages exception=(e, catch_backtrace())
+		old_packages = String.(keys(Pkg.project(notebook.nbpkg_ctx).dependencies))
+		new_packages = String.(external_package_names(new))
+		@error "PlutoPkg: Failed to add/remove packages" old_packages new_packages exception=(e, catch_backtrace())
 
 		# TODO: send to user
 	end
