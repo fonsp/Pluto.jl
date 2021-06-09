@@ -151,7 +151,7 @@ function notebook_to_js(notebook::Notebook)
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
                 "installed_versions" => ctx === nothing ? Dict{String,String}() : Dict{String,String}(
-                    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(ctx.env.project.deps)
+                    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(Pkg.project(ctx).dependencies)
                 ),
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "busy_packages" => notebook.nbpkg_busy_packages,

@@ -120,7 +120,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     @show to_add
                     startlistening(iolistener)
 
-                    withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
                         clear_semver_compat_entries!(ctx)
 
@@ -159,7 +159,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 if should_instantiate
                     startlistening(iolistener)
-                    withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         # @info "Resolving"
                         # Pkg.resolve(ctx)
                         @info "Instantiating"
@@ -170,9 +170,9 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time
-                        Pkg.Types.update_registries(ctx)
+                        PkgCompat.update_registries(ctx)
                         # instantiate without forcing registry update
-                        Pkg.instantiate(ctx; update_registry=false)
+                        PkgCompat.instantiate(ctx; update_registry=false)
                         
                         @assert LOAD_PATH[1] == env_dir
                         popfirst!(LOAD_PATH)
@@ -240,12 +240,4 @@ function stoplistening(listener::IOListener)
         listener.running[] = false
         trigger(listener)
     end
-end
-
-function withio(f::Function, ctx::Pkg.Types.Context, io::IO)
-    old_io = ctx.io
-    ctx.io = io
-    result = f()
-    ctx.io = old_io
-    result
 end

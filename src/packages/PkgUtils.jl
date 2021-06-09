@@ -9,13 +9,15 @@ using Markdown
 
 export activate_notebook
 
-assert_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
+ensure_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
 
     # TODO: update_save the notebook to init packages and stuff?
     error("""
     This notebook is not using Pluto's package manager. This means that either:
     1. The notebook contains Pkg.activate or Pkg.add calls, or
     2. The notebook was created before Pluto 0.15.
+
+    Open the notebook using Pluto to get started.
     """)
 else
     for f in [notebook |> project_file, notebook |> manifest_file]
@@ -31,17 +33,16 @@ function assert_has_manifest(dir::String)
     if !isfile(dir |> manifest_file)
         error("The given directory does not contain a Manifest.toml file. Use `Pkg.resolve` to generate a Manifest.toml from a Project.toml.")
     end
-    true
 end
 
 project_file(x) = joinpath(x, "Project.toml")
 manifest_file(x) = joinpath(x, "Manifest.toml")
-project_file(notebook::Notebook) = notebook.nbpkg_ctx.env.project_file
-manifest_file(notebook::Notebook) = notebook.nbpkg_ctx.env.manifest_file
+project_file(notebook::Notebook) = project_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
+manifest_file(notebook::Notebook) = manifest_file(PkgCompat.env_dir(notebook.nbpkg_ctx))
 
 function nb_and_dir_environments_equal(notebook::Notebook, dir::String)
     try
-        assert_has_nbpkg(notebook)
+        ensure_has_nbpkg(notebook)
         assert_has_manifest(dir)
         true
     catch
@@ -54,7 +55,7 @@ end
 
 
 function write_nb_to_dir(notebook::Notebook, dir::String)
-    assert_has_nbpkg(notebook)
+    ensure_has_nbpkg(notebook)
     mkpath(dir)
 
     readwrite(notebook |> project_file, dir |> project_file)
@@ -83,7 +84,7 @@ nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_e
 function activate_notebook(path::String)
     notebook_ref = Ref(load_notebook(path))
 
-    assert_has_nbpkg(notebook_ref[])
+    ensure_has_nbpkg(notebook_ref[])
 
     ourpath = joinpath(mktempdir(), basename(path))
     mkpath(ourpath)

@@ -1,7 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
-import .PkgCompat
+import .PkgCompat: PkgCompat, PkgContext
 import Pkg
 
 struct BondValue
@@ -39,8 +39,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgCompat.create_empty_ctx()
+    # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
+    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -123,14 +123,17 @@ function save_notebook(io, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
+    ptoml_path() = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
+    mtoml_path() = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
+
     using_plutopkg = 
         notebook.nbpkg_ctx !== nothing && 
-        isfile(notebook.nbpkg_ctx.env.project_file) && 
-        isfile(notebook.nbpkg_ctx.env.manifest_file)
+        isfile(ptoml_path()) && 
+        isfile(mtoml_path())
     
     write_package = if using_plutopkg
-        ptoml_contents = read(notebook.nbpkg_ctx.env.project_file, String)
-        mtoml_contents = read(notebook.nbpkg_ctx.env.manifest_file, String)
+        ptoml_contents = read(ptoml_path(), String)
+        mtoml_contents = read(mtoml_path(), String)
         !isempty(ptoml_contents) && !isempty(mtoml_contents)
     else
         false
@@ -250,7 +253,7 @@ function load_notebook_nobackup(io, path)::Notebook
         write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
 
         try
-            Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+            PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
         catch e
             error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents))
             CompositeException

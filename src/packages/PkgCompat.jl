@@ -23,23 +23,22 @@ end
 # CONTEXT
 ###
 
-struct Unsupported end
 
-const pkg_supports_context = isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
-const PkgInternalContext = pkg_supports_context ? Pkg.Types.Context : Unsupported
-
-
-struct PkgContext
-	dir::String
-	ctx::PkgInternalContext
+const PkgContext = if isdefined(Pkg, :Context)
+	Pkg.Context
+elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+	Pkg.Types.Context
+elseif isdefined(Pkg, :API) && isdefined(Pkg.API, :Context)
+	Pkg.API.Context
+else
+	Pkg.Types.Context
 end
 
-
 # ⛔️ Internal API
-create_empty_ctx()::Pkg.Types.Context = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+create_empty_ctx()::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
 # ⚠️ Internal API with fallback
-function mark_original!(ctx::Pkg.Types.Context)
+function mark_original!(ctx::PkgContext)
 	try
 		ctx.env.original_project = deepcopy(ctx.env.project)
 		ctx.env.original_manifest = deepcopy(ctx.env.manifest)
@@ -48,9 +47,22 @@ function mark_original!(ctx::Pkg.Types.Context)
 	end
 end
 
+# ⛔️ Internal API
+env_dir(ctx::PkgContext) = dirname(ctx.env.project_file)
 
-env_dir(ctx::Pkg.Types.Context) = dirname(ctx.env.project_file)
-env_dir(ctx::PkgContext) = ctx.dir
+
+# ⚠️ Internal API with fallback
+function withio(f::Function, ctx::PkgContext, io::IO)
+    @static if :io ∈ fieldnames(PkgContext)
+        old_io = ctx.io
+        ctx.io = io
+        result = f()
+        ctx.io = old_io
+        result
+    else
+        f()
+    end
+end
 
 
 ###
@@ -81,6 +93,31 @@ function refresh_registry_cache()
 	_parsed_registries[] = _get_registries()
 end
 
+const _updated_registries_compat = Ref(false)
+
+# ⚠️✅ Internal API with fallback
+function update_registries(ctx)
+	@static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :update_registries)
+		Pkg.Types.update_registries(ctx)
+	else
+		if !_updated_registries_compat[]
+			_updated_registries_compat[] = true
+			Pkg.Registry.update()
+		end
+	end
+end
+
+# ⚠️✅ Internal API with fallback
+function instantiate(ctx; update_registry::Bool)
+	@static if hasmethod(Pkg.instantiate, Tuple{}, (:update_registry,))
+		Pkg.instantiate(ctx; update_registry=update_registry)
+	else
+		Pkg.instantiate(ctx)
+	end
+end
+
+
+
 # (⚠️ Internal API with fallback)
 _stdlibs() = try
 	values(Pkg.Types.stdlibs())
@@ -93,8 +130,7 @@ end
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
-# TODO: should this be the notebook context? it only matters for which registry is used
-global_ctx = Pkg.Types.Context()
+global_ctx = PkgContext()
 
 ###
 # Package names
@@ -150,12 +186,12 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 end
 
 # (⛔️ Internal API)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString; ctx=global_ctx)::Vector{VersionNumber}
+function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
     (@static if hasmethod(Pkg.Operations.load_versions, (String,))
         Pkg.Operations.load_versions(registry_entry_fullpath)
     else
-        Pkg.Operations.load_versions(ctx, registry_entry_fullpath)
+        Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
     end) |> keys |> collect |> sort!
 end
 
@@ -184,7 +220,7 @@ package_exists(package_name::AbstractString)::Bool =
 
 # ✅ Public API
 "Find a package in the manifest."
-_get_manifest_entry(ctx::Pkg.Types.Context, package_name::AbstractString) = 
+_get_manifest_entry(ctx::PkgContext, package_name::AbstractString) = 
     select(e -> e.name == package_name, values(Pkg.dependencies(ctx)))
 
 # ⚠️ Internal API with fallback
@@ -203,7 +239,7 @@ end
 
 
 # ⛔️ Internal API
-function write_semver_compat_entries!(ctx::Pkg.Types.Context)
+function write_semver_compat_entries!(ctx::PkgContext)
     for p in keys(Pkg.project(ctx).dependencies)
         if !haskey(ctx.env.project.compat, p)
             entry = select(e -> e.name == p, values(ctx.env.manifest))
@@ -217,7 +253,7 @@ end
 
 
 # ⛔️ Internal API
-function clear_semver_compat_entries!(ctx::Pkg.Types.Context)
+function clear_semver_compat_entries!(ctx::PkgContext)
     for p in keys(ctx.env.project.compat)
         entry = select(e -> e.name == p, values(ctx.env.manifest))
         if entry.version !== nothing
