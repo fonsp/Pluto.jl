@@ -513,6 +513,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
 end
 
 responses[:write_file] = function (🙋::ClientRequest)
+    require_notebook(🙋)
     path = 🙋.notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
@@ -589,4 +590,10 @@ responses[:package_completions] = function response_package_completions(🙋::Cl
     putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
         :results => results,
     ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:pkg_update] = function response_pkg_update(🙋::ClientRequest)
+    require_notebook(🙋)
+    update_nbpkg(🙋.session, 🙋.notebook)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
 end

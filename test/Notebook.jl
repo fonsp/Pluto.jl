@@ -66,7 +66,7 @@ end
 
 function init_packages!(nb::Notebook)
     nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
-    Pluto.update_nbpkg(nb, nb.topology, nb.topology)
+    Pluto.sync_nbpkg_core(nb)
     return nb
 end
 

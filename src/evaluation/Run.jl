@@ -210,57 +210,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	pkg_task = @async try
-		pkg_result = withtoken(notebook.executetoken) do
-			function iocallback(pkgs, s)
-				notebook.nbpkg_busy_packages = pkgs
-				for p in pkgs
-					notebook.nbpkg_terminal_outputs[p] = s
-				end
-				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-			end
-			update_nbpkg(notebook, old, new; on_terminal_output=iocallback)
-		end
-
-		if pkg_result.did_something
-			@info "PlutoPkg: success!" pkg_result
-
-			if pkg_result.restart_recommended
-				@warn "PlutoPkg: Notebook restart recommended"
-				notebook.nbpkg_restart_recommended_msg = "yes"
-			end
-			if pkg_result.restart_required
-				@warn "PlutoPkg: Notebook restart REQUIRED"
-				notebook.nbpkg_restart_required_msg = "yes"
-			end
-
-			notebook.nbpkg_busy_packages = String[]
-			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-			save && save_notebook(notebook)
-		end
-	catch e
-		bt = catch_backtrace()
-		old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
-		new_packages = String.(external_package_names(new))
-		@error """
-		PlutoPkg: Failed to add/remove packages! resetting package environment...
-		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
-		# TODO: send to user
-
-		error_text = sprint(showerror, e, bt)
-		for p in notebook.nbpkg_busy_packages
-			nbpkg_terminal_outputs[p] += "\n\n\nPkg error!\n\n" * error_text
-		end
-		notebook.nbpkg_busy_packages = String[]
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-
-		# Clear the embedded Project and Manifest and require a restart from the user.
-		reset_nbpkg(notebook; save=save)
-		notebook.nbpkg_restart_required_msg = "yes"
-		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
-
-		save && save_notebook(notebook)
-	end
+	pkg_task = @async sync_nbpkg(session, notebook; save=save)
 
 	maybe_async(run_async) do
 		wait(pkg_task)

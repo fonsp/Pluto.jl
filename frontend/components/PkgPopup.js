@@ -7,6 +7,7 @@ import { RawHTMLContainer, highlight } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
+import { useDebouncedTruth } from "./RunArea.js"
 
 export const PkgPopup = ({ notebook }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -66,11 +67,13 @@ export const PkgPopup = ({ notebook }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = pkg_status?.busy ?? false
+    const busy = recent_event != null && (notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name)
+    console.log(busy)
 
+    const debounced_busy = useDebouncedTruth(busy, 2)
     useEffect(() => {
-        set_showterminal(busy)
-    }, [busy])
+        set_showterminal(debounced_busy)
+    }, [debounced_busy])
 
     const terminal_value = notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]
 
@@ -95,7 +98,14 @@ export const PkgPopup = ({ notebook }) => {
                 style=${!!showupdate ? "" : "display: none;"}
                 href="#"
                 onClick=${(e) => {
-                    alert("updating!")
+                    if (busy) {
+                        alert("Pkg is currently busy with other packages... come back later!")
+                    } else {
+                        if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
+                            console.warn("Pkg.updating!")
+                            pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
+                        }
+                    }
                     e.preventDefault()
                 }}
                 ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-up-circle-outline.svg" width="17"

@@ -5,7 +5,6 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 // widgets inside codemirror need to be DOM elements, not Preact VDOM components. So in this code, we will use html from observablehq, which is just like html from Preact, except it creates DOM nodes directly, not Preact VDOM elements.
 const html = observablehq_for_myself.html
 
-// does not include terminal outputs
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg))
 
 export const nbpkg_fingerprint_without_terminal = (nbpkg) =>
@@ -15,8 +14,8 @@ const can_update = (installed, available) => {
     if (installed === "stdlib" || !_.isArray(available)) {
         return false
     } else {
-        return true
-        // return _.last(available) !== installed
+        // return true
+        return _.last(available) !== installed
     }
 }
 
@@ -86,6 +85,7 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         node.classList.toggle("not_found", status === "not_found")
         node.classList.toggle("will_be_installed", status === "will_be_installed")
 
+        // We don't need to refresh the codemirror for most updates because every mark is exactly the same size.
         // refresh_cm()
     }
 
@@ -94,6 +94,12 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         // render()
     }
     node.on_nbpkg = (p) => {
+        // if nbpkg is switch on/off
+        if ((nbpkg_ref.current == null) !== (p == null)) {
+            // refresh codemirror because the mark will appear/disappear
+            refresh_cm()
+            setTimeout(refresh_cm, 1000)
+        }
         nbpkg_ref.current = p
         render()
     }

@@ -73,6 +73,18 @@ function mark_original!(ctx::PkgContext)
 	end
 end
 
+function is_original(ctx::PkgContext)::Bool
+	try
+		ctx.env.original_project == ctx.env.project &&
+		ctx.env.original_manifest == ctx.env.manifest
+	catch e
+		@warn "Pkg compat: failed to get original_project" exception=(e,catch_backtrace())
+		false
+	end
+end
+
+
+
 # 🐸 "Public API", but using PkgContext
 env_dir(ctx::PkgContext) = dirname(ctx.env.project_file)
 
