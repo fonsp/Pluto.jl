@@ -4,6 +4,7 @@ using Test
 using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
+import Pluto.PkgUtils
 import Distributed
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
@@ -17,11 +18,18 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     # Pkg.Registry.rm("General")
     Pkg.Registry.add(pluto_test_registry_spec)
 
+    has_embedded_pkgfiles(nb) = let
+        contents = read(nb.path, String)
+        occursin("PROJECT", contents) && occursin("MANIFEST", contents)
+    end
+
 
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.connected_clients[fakeclient.id] = fakeclient
+
+        # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
 
         notebook = Notebook([
             Cell("import PlutoPkgTestA"), # cell 1
@@ -32,6 +40,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("PlutoPkgTestC.MY_VERSION |> Text"),
             Cell("import PlutoPkgTestD"), # cell 7
             Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+            Cell("import Dates"),
+            # eval to hide the import from Pluto's analysis
             Cell("eval(:(import DataFrames))")
         ])
         fakeclient.connected_notebook = notebook
@@ -50,6 +60,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test haskey(terminals, "PlutoPkgTestA")
         @test haskey(terminals, "PlutoPkgTestD")
+        # they were installed in one batch, so their terminal outputs should be the same
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
 
 
@@ -76,6 +87,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test notebook.cells[4].output.body == "1.0.0"
 
+        # running the 5th cell will import PlutoPkgTestC, putting a 0.2 compatibility bound on PlutoPkgTestA. This means that a notebook restart is required, since PlutoPkgTestA was already loaded at version 0.3.1.
         update_save_run!(🍭, notebook, notebook.cells[[5, 6]])
 
         @test notebook.cells[5].errored == false
@@ -87,13 +99,10 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         )
         @test notebook.nbpkg_restart_required_msg !== nothing
 
-        # running cells again should persist the message
+        # running cells again should persist the restart message
 
         update_save_run!(🍭, notebook, notebook.cells[1:8])
         @test notebook.nbpkg_restart_required_msg !== nothing
-
-
-        # restart the process, this should match the function `response_restrart_process`, except not async
 
         Pluto.response_restrart_process(Pluto.ClientRequest(
             session=🍭,
@@ -123,11 +132,75 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[8].output.body == "0.1.0"
 
 
+        update_save_run!(🍭, notebook, notebook.cells[9])
+
+        @test notebook.cells[9].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
 
 
         # we should have an isolated environment, so importing DataFrames should not work, even though it is available in the parent process.
+        update_save_run!(🍭, notebook, notebook.cells[10])
+        @test notebook.cells[10].errored == true
+
+
+        ptoml_file() = PkgUtils.project_file(notebook)
+        mtoml_file() = PkgUtils.manifest_file(notebook)
+
+        ptoml_contents() = read(ptoml_file(), String)
+        mtoml_contents() = read(mtoml_file(), String)
+
+        nb_contents() = read(notebook.path, String)
+
+        @testset "Project & Manifest stored in notebook" begin
+            
+            @test occursin(ptoml_contents(), nb_contents())
+            @test occursin(mtoml_contents(), nb_contents())
+
+            @test occursin("PlutoPkgTestA", mtoml_contents())
+            @test occursin("PlutoPkgTestB", mtoml_contents())
+            @test occursin("PlutoPkgTestC", mtoml_contents())
+            @test occursin("PlutoPkgTestD", mtoml_contents())
+            @test occursin("Dates", mtoml_contents())
+            @test count("PlutoPkgTestA", ptoml_contents()) == 2 # once in [deps], once in [compat]
+            @test count("PlutoPkgTestB", ptoml_contents()) == 2
+            @test count("PlutoPkgTestC", ptoml_contents()) == 2
+            @test count("PlutoPkgTestD", ptoml_contents()) == 2
+            @test count("Dates", ptoml_contents()) == 1 # once in [deps], but not in [compat] because it is a stdlib
+
+            ptoml = Pkg.TOML.parse(ptoml_contents())
+
+            @test haskey(ptoml["compat"], "PlutoPkgTestA")
+            @test haskey(ptoml["compat"], "PlutoPkgTestB")
+            @test haskey(ptoml["compat"], "PlutoPkgTestC")
+            @test haskey(ptoml["compat"], "PlutoPkgTestD")
+            @test !haskey(ptoml["compat"], "Dates")
+        end
+
+        ## remove `import Dates`
+        setcode(notebook.cells[9], "")
         update_save_run!(🍭, notebook, notebook.cells[9])
-        @test notebook.cells[9].errored == true
+
+        # removing a stdlib does not require a restart
+        @test notebook.cells[9].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test count("Dates", ptoml_contents()) == 0
+
+
+        ## remove `import PlutoPkgTestD`
+        setcode(notebook.cells[7], "")
+        update_save_run!(🍭, notebook, notebook.cells[7])
+
+        @test notebook.cells[7].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test count("PlutoPkgTestD", ptoml_contents()) == 0
 
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
@@ -181,6 +254,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         update_save_run!(🍭, notebook, notebook.cells)
 
+        # not necessary since there are no packages:
+        # @test has_embedded_pkgfiles(notebook)
+
         setcode(notebook.cells[1], "import Pkg")
         update_save_run!(🍭, notebook, notebook.cells[1])
         setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
@@ -191,6 +267,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx === nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test !has_embedded_pkgfiles(notebook)
 
         setcode(notebook.cells[3], "Pkg.add(\"JSON\")")
         update_save_run!(🍭, notebook, notebook.cells[3])
@@ -203,12 +280,15 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[4].errored == false
         @test notebook.cells[5].errored == false
 
+        @test !has_embedded_pkgfiles(notebook)
+
         setcode(notebook.cells[2], "2")
         setcode(notebook.cells[3], "3")
         update_save_run!(🍭, notebook, notebook.cells[2:3])
         
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_required_msg !== nothing
+        @test has_embedded_pkgfiles(notebook)
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
@@ -230,6 +310,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         notebook = SessionActions.open(🍭, path; run_async=false)
         fakeclient.connected_notebook = notebook
+        nb_contents() = read(notebook.path, String)
         
         @test num_backups_in(dir) == 0
         # @test num_backups_in(dir) == 1
@@ -238,6 +319,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         # test that pkg cells got added
         @test length(post_pkg_notebook) > length(pre_pkg_notebook) + 50
+        @test has_embedded_pkgfiles(notebook)
 
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing

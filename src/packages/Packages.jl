@@ -184,7 +184,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
 
                 return (
                     did_something=👺 || (
-                        should_instantiate
+                        should_instantiate || (use_plutopkg_old != use_plutopkg_new)
                     ),
                     used_tier=used_tier,
                     # changed_versions=Dict{String,Pair}(),
@@ -200,7 +200,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         end
     end
     return (
-        did_something=👺 || false,
+        did_something=👺 || (use_plutopkg_old != use_plutopkg_new),
         used_tier=Pkg.PRESERVE_ALL,
         # changed_versions=Dict{String,Pair}(),
         restart_recommended=👺 || false,
