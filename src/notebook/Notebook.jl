@@ -255,10 +255,10 @@ function load_notebook_nobackup(io, path)::Notebook
 
         try
             PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+            # TODO: try parsing
         catch e
             error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents))
-            CompositeException
-            ErrorException
         end
     else
         PkgCompat.create_empty_ctx()
@@ -282,7 +282,7 @@ end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
 function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
-    backup_path = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
+    backup_path = backup_filename(path)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)

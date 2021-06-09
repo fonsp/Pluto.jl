@@ -123,6 +123,8 @@ function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffi
     chosen
 end
 
+backup_filename(path) = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
+
 "Like `cp` except we create the file manually (to fix permission issues). (It's not plagiarism if you use this function to copy homework.)"
 function readwrite(from::AbstractString, to::AbstractString)
     write(to, read(from, String))

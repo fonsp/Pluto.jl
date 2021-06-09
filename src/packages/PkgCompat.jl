@@ -5,6 +5,8 @@ export package_versions, package_completions
 import Pkg
 import Pkg.Types: VersionRange
 
+import ..Pluto
+
 # Should be in Base
 flatmap(args...) = vcat(map(args...)...)
 
@@ -85,8 +87,12 @@ function withio(f::Function, ctx::PkgContext, io::IO)
     @static if :io ∈ fieldnames(PkgContext)
         old_io = ctx.io
         ctx.io = io
-        result = f()
-        ctx.io = old_io
+        result = try
+			f()
+		finally
+        	ctx.io = old_io
+			nothing
+		end
         result
     else
         f()
@@ -253,7 +259,22 @@ function dependencies(ctx)
 	@static if VERSION < v"1.6.0-a"
 		ctx.env.manifest
 	else
-		Pkg.dependencies(ctx)
+		try
+			ctx.env.manifest
+			# Pkg.dependencies(ctx)
+		catch e
+			@error """
+			Pkg error: you might need to use
+
+			Pluto.PkgUtils.reset_notebook_environment(notebook_path)
+
+			to reset this notebook's environment.
+
+			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
+			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+
+			Dict()
+		end
 	end
 end
 
