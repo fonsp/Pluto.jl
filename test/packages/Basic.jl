@@ -386,7 +386,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     unregistered_import_notebook = read(joinpath(@__DIR__, "unregistered_import.jl"), String)
 
     @testset "Bad files" begin
-        @testset "$(name)" for name in ["unregistered_import"]
+        @testset "$(name)" for name in ["corrupted_manifest", "unregistered_import"]
 
             original_path = joinpath(@__DIR__, "$(name).jl")
             original_contents = read(original_path, String)
@@ -405,9 +405,20 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             fakeclient.connected_notebook = notebook
             nb_contents() = read(notebook.path, String)
 
-            if (
+            should_restart = (
                 notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
             )
+
+            # if name == "corrupted_manifest"
+            #     @test !should_restart
+            # end
+
+            # this breaks julia for somee reason:
+            #     # we don't want to recommend restart right after launch, but it's easier for us
+            #     @test_broken !should_restart
+            # end
+
+            if should_restart
                 Pluto.response_restrart_process(Pluto.ClientRequest(
                     session=🍭,
                     notebook=notebook,
@@ -417,7 +428,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             if name != "unregistered_import"
                 @test notebook.cells[1].errored == false
                 @test notebook.cells[2].errored == false
-                @test notebook.cells[2].output.body == "0.2.2"
+                @test notebook.cells[2].output.body == "0.3.1" # latest
                 @test has_embedded_pkgfiles(notebook)
             end
 

@@ -255,10 +255,9 @@ function load_notebook_nobackup(io, path)::Notebook
 
         try
             PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
-
-            # TODO: try parsing
         catch e
-            error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents))
+            @error "Failed to load notebook files: Pkg files parse error" exception=(e,catch_backtrace())
+            PkgCompat.create_empty_ctx()
         end
     else
         PkgCompat.create_empty_ctx()
