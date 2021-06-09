@@ -111,6 +111,65 @@ export const CellInput = ({
         // console.log("nbpkg effect!", nbpkg_fingerprint(nbpkg))
     }, nbpkg_fingerprint(nbpkg))
 
+    const update_line_bubbles = (line_i) => {
+        const cm = cm_ref.current
+        /** @type {string} */
+        const line = cm.getLine(line_i)
+        console.log(line)
+        if (line != undefined) {
+            // search for the "import Example, Plots" expression using regex
+
+            // dunno
+            // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
+
+            // import A: b. c
+            // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
+
+            // import A, B, C
+            const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
+            // const re = /(using|import)\s*(\w+)/g
+            for (const import_match of line.matchAll(re)) {
+                const start = import_match.index + import_match[1].length
+
+                // ask codemirror what its parser found for the "import" or "using" word. If it is not a "keyword", then this is part of a comment or a string.
+                const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
+
+                if (import_token.type === "keyword") {
+                    const inner = import_match[0].substr(import_match[1].length)
+
+                    // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
+                    const inner_re = /(\w+)(\.\w+)*/g
+                    for (const package_match of inner.matchAll(inner_re)) {
+                        const package_name = package_match[1]
+
+                        if (package_name !== "Base" && package_name !== "Core") {
+                            // if the widget already exists, keep it, if not, create a new one
+                            const widget = get(pkg_bubbles.current, package_name, () => {
+                                const b = PkgStatusMark({
+                                    pluto_actions: pluto_actions,
+                                    package_name: package_name,
+                                    refresh_cm: () => cm.refresh(),
+                                    notebook_id: notebook_id,
+                                })
+                                b.on_nbpkg_local(nbpkg_local)
+                                b.on_nbpkg(nbpkg_ref.current)
+                                return b
+                            })
+
+                            cm.setBookmark(
+                                { line: line_i, ch: start + package_match.index + package_match[0].length },
+                                {
+                                    widget: widget,
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const update_all_line_bubbles = () => range(0, cm_ref.current.lineCount() - 1).forEach(update_line_bubbles)
+
     useEffect(() => {
         const first_time = remote_code_ref.current == null
         const current_value = cm_ref.current?.getValue() ?? ""
@@ -124,6 +183,8 @@ export const CellInput = ({
             cm_ref.current?.setValue(remote_code)
             if (first_time) {
                 cm_ref.current.clearHistory()
+                console.log("1112#")
+                range(0, cm_ref.current.lineCount() - 1).forEach(update_line_bubbles)
             }
         }
     }, [remote_code])
@@ -167,6 +228,8 @@ export const CellInput = ({
                 }
             },
         }))
+
+        setTimeout(update_all_line_bubbles, 300)
 
         const keys = {}
 
@@ -501,7 +564,7 @@ export const CellInput = ({
                 }
             })
 
-            // TODO: put this search in a function that returns the list of mathces
+            // TODO: split this function into a search that returns the list of mathces and an updater
             // we can use that when you submit the cell to definitively find the list of import
             // and then purge the map?
 
@@ -509,63 +572,7 @@ export const CellInput = ({
             // because adding #= to the start of a cell will remove imports later
 
             // iterate through changed lines
-            range(e.from.line, e.to.line).forEach((line_i) => {
-                /** @type {string} */
-                const line = cm.getLine(line_i)
-                if (line != undefined) {
-                    // search for the "import Example, Plots" expression using regex
-
-                    // dunno
-                    // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
-
-                    // import A: b. c
-                    // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
-
-                    // import A, B, C
-                    const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
-                    // const re = /(using|import)\s*(\w+)/g
-                    for (const import_match of line.matchAll(re)) {
-                        // console.log(import_match)
-
-                        const start = import_match.index + import_match[1].length
-
-                        // ask codemirror what its parser found for the "import" or "using" word. If it is not a "keyword", then this is part of a comment or a string.
-                        const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
-
-                        if (import_token.type === "keyword") {
-                            const inner = import_match[0].substr(import_match[1].length)
-
-                            // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
-                            const inner_re = /(\w+)(\.\w+)*/g
-                            for (const package_match of inner.matchAll(inner_re)) {
-                                const package_name = package_match[1]
-
-                                if (package_name !== "Base" && package_name !== "Core") {
-                                    // if the widget already exists, keep it, if not, create a new one
-                                    const widget = get(pkg_bubbles.current, package_name, () => {
-                                        const b = PkgStatusMark({
-                                            pluto_actions: pluto_actions,
-                                            package_name: package_name,
-                                            refresh_cm: () => cm.refresh(),
-                                            notebook_id: notebook_id,
-                                        })
-                                        b.on_nbpkg_local(nbpkg_local)
-                                        b.on_nbpkg(nbpkg_ref.current)
-                                        return b
-                                    })
-
-                                    cm.setBookmark(
-                                        { line: line_i, ch: start + package_match.index + package_match[0].length },
-                                        {
-                                            widget: widget,
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            })
+            range(e.from.line, e.to.line).forEach(update_line_bubbles)
         })
 
         cm.on("blur", () => {
