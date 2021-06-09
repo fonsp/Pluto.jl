@@ -141,7 +141,11 @@ function notebook_to_js(notebook::Notebook)
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict("value" => bondvalue.value)
+            String(key) => Dict(
+                "value" => bondvalue.value, 
+                # SHOULD always be false, but still putting it in here for completeness
+                "is_first_value" => bondvalue.is_first_value
+            )
         for (key, bondvalue) in notebook.bonds),
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx
@@ -206,9 +210,11 @@ A placeholder path. The path elements that it replaced will be given to the func
 """
 struct Wildcard end
 
-@enum Changed begin
-    CodeChanged
-    FileChanged
+abstract type Changed end
+struct CodeChanged <: Changed end
+struct FileChanged <: Changed end
+struct BondChanged <: Changed
+    bond_name::Symbol
 end
 
 # to support push!(x, y...) # with y = []
@@ -242,31 +248,23 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
-                [CodeChanged, FileChanged]
+                [CodeChanged(), FileChanged()]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                [CodeChanged, FileChanged]
+                [CodeChanged(), FileChanged()]
             else
-                [FileChanged]
+                [FileChanged()]
             end
         end,
     ),
     "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.applypatch!(request.notebook, patch)
-        [FileChanged]
+        [FileChanged()]
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
-            set_bond_values_reactive(
-                session=request.session,
-                notebook=request.notebook,
-                bound_sym_names=[name],
-                is_first_value=patch isa Firebasey.AddPatch,
-                run_async=true,
-            )
-            # [BondChanged]
-            return no_changes
+            [BondChanged(name)]
         end,
     )
 )
@@ -309,8 +307,18 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
-        if FileChanged ∈ changes && CodeChanged ∉ changes
-            🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+        if FileChanged() ∈ changes && CodeChanged() ∉ changes
+             🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+        end
+
+        let bond_changes = filter(x -> x isa BondChanged, changes)
+            bound_sym_names = Symbol[x.bond_name for x in bond_changes]
+            set_bond_values_reactive(
+                session=🙋.session,
+                notebook=🙋.notebook,
+                bound_sym_names=bound_sym_names,
+                run_async=true,
+            )
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
@@ -456,14 +464,14 @@ end
 ###
 # HANDLE NEW BOND VALUES
 ###
-
-
-function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value::Bool=false, kwargs...)
-
+function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value=nothing, kwargs...)
+    if is_first_value !== nothing
+        @warn "is_first_value is deprecated, you don't need to set it anymore: https://github.com/fonsp/Pluto.jl/pull/975"
+    end
     # filter out the bonds that don't need to be set
     to_set = filter(bound_sym_names) do bound_sym
-
         new_value = notebook.bonds[bound_sym].value
+        is_first_value = notebook.bonds[bound_sym].is_first_value
 
         variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
         if !variable_exists
