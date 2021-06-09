@@ -19,8 +19,45 @@ function select(f::Function, xs)
 end
 
 
+###
+# CONTEXT
+###
+
+struct Unsupported end
+
+const pkg_supports_context = isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+const PkgInternalContext = pkg_supports_context ? Pkg.Types.Context : Unsupported
+
+
+struct PkgContext
+	dir::String
+	ctx::PkgInternalContext
+end
+
+
+# ⛔️ Internal API
 create_empty_ctx()::Pkg.Types.Context = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
 
+# ⚠️ Internal API with fallback
+function mark_original!(ctx::Pkg.Types.Context)
+	try
+		ctx.env.original_project = deepcopy(ctx.env.project)
+		ctx.env.original_manifest = deepcopy(ctx.env.manifest)
+	catch e
+		@error "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
+	end
+end
+
+
+env_dir(ctx::Pkg.Types.Context) = dirname(ctx.env.project_file)
+env_dir(ctx::PkgContext) = ctx.dir
+
+
+###
+# REGISTRIES
+###
+
+# (⛔️ Internal API)
 "Return paths to all installed registries."
 _get_registry_paths() = @static if isdefined(Pkg.Types, :registries)
 	Pkg.Types.registries()
@@ -29,20 +66,32 @@ else
 	[s.path for s in registry_specs]
 end
 
+# (⛔️ Internal API)
 _get_registries() = map(_get_registry_paths()) do r
 	r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
 end
 
+# (⛔️ Internal API)
 "Contains all registries as `Pkg.Types.Registry` structs."
-const parsed_registries = Ref(_get_registries())
+const _parsed_registries = Ref(_get_registries())
 
+# (⛔️ Internal API)
 "Re-parse the installed registries from disk."
 function refresh_registry_cache()
-	parsed_registries[] = _get_registries()
+	_parsed_registries[] = _get_registries()
 end
 
-is_stdlib(package_name::AbstractString) = package_name ∈ values(Pkg.Types.stdlibs())
-is_stdlib(pkg::Pkg.Types.PackageEntry) = pkg.version === nothing && (pkg.name ∈ values(Pkg.Types.stdlibs()))
+# (⚠️ Internal API with fallback)
+_stdlibs() = try
+	values(Pkg.Types.stdlibs())
+catch e
+	@error "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
+
+	String["CRC32c", "Future", "Sockets", "MbedTLS_jll", "Random", "ArgTools", "libLLVM_jll", "GMP_jll", "Pkg", "Serialization", "LibSSH2_jll", "SHA", "OpenBLAS_jll", "REPL", "LibUV_jll", "nghttp2_jll", "Unicode", "Profile", "SparseArrays", "LazyArtifacts", "CompilerSupportLibraries_jll", "Base64", "Artifacts", "PCRE2_jll", "Printf", "p7zip_jll", "UUIDs", "Markdown", "TOML", "OpenLibm_jll", "Test", "MPFR_jll", "Mmap", "SuiteSparse", "LibGit2", "LinearAlgebra", "Logging", "NetworkOptions", "LibGit2_jll", "LibOSXUnwind_jll", "Dates", "LibUnwind_jll", "Libdl", "LibCURL_jll", "dSFMT_jll", "Distributed", "InteractiveUtils", "Downloads", "SharedArrays", "SuiteSparse_jll", "LibCURL", "Statistics", "Zlib_jll", "FileWatching", "DelimitedFiles", "Tar", "MozillaCACerts_jll"]
+end
+
+# ⚠️ Internal API with fallback
+is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
 # TODO: should this be the notebook context? it only matters for which registry is used
 global_ctx = Pkg.Types.Context()
@@ -51,19 +100,26 @@ global_ctx = Pkg.Types.Context()
 # Package names
 ###
 
+# ⚠️ Internal API with fallback
 function package_completions(partial_name::AbstractString)::Vector{String}
 	String[
-		filter(s -> startswith(s, partial_name), collect(values(Pkg.Types.stdlibs())));
+		filter(s -> startswith(s, partial_name), collect(_stdlibs()));
 		_registered_package_completions(partial_name)
 	]
 end
 
-function _registered_package_completions(partial_name::AbstractString)
+# (⚠️ Internal API with fallback)
+function _registered_package_completions(partial_name::AbstractString)::Vector{String}
 	# compat
-	@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
-		Pkg.REPLMode.complete_remote_package(partial_name)
-	else
-		Pkg.REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
+	try
+		@static if hasmethod(Pkg.REPLMode.complete_remote_package, (String,))
+			Pkg.REPLMode.complete_remote_package(partial_name)
+		else
+			Pkg.REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
+		end
+	catch e
+		@error "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
+		String[]
 	end
 end
 
@@ -71,6 +127,7 @@ end
 # Package versions
 ###
 
+# (⛔️ Internal API)
 """
 Return paths to all found registry entries of a given package name.
 
@@ -81,7 +138,7 @@ julia> Pluto.PkgCompat._registry_entries("Pluto")
  "/Users/fons/.julia/registries/General/P/Pluto"
 ```
 """
-function _registry_entries(package_name::AbstractString, registries::Vector=parsed_registries[])::Vector{String}
+function _registry_entries(package_name::AbstractString, registries::Vector=_parsed_registries[])::Vector{String}
 	flatmap(registries) do (rpath, r)
 		packages = values(r["packages"])
 		String[
@@ -92,6 +149,7 @@ function _registry_entries(package_name::AbstractString, registries::Vector=pars
 	end
 end
 
+# (⛔️ Internal API)
 function _package_versions_from_path(registry_entry_fullpath::AbstractString; ctx=global_ctx)::Vector{VersionNumber}
 	# compat
     (@static if hasmethod(Pkg.Operations.load_versions, (String,))
@@ -101,6 +159,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString; ct
     end) |> keys |> collect |> sort!
 end
 
+# ⚠️ Internal API with fallback
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
@@ -108,20 +167,27 @@ function package_versions(package_name::AbstractString)::Vector
     if is_stdlib(package_name)
         ["stdlib"]
     else
-        ps = _registry_entries(package_name)
-		flatmap(_package_versions_from_path, ps)
+		try
+			ps = _registry_entries(package_name)
+			flatmap(_package_versions_from_path, ps)
+		catch e
+			@error "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
+			[]
+		end
     end
 end
 
+# ⚠️ Internal API with fallback
 "Does a package with this name exist in one of the installed registries?"
 package_exists(package_name::AbstractString)::Bool =
-    is_stdlib(package_name) || 
-    _registry_entries(package_name) |> !isempty
+    package_versions(package_name) |> !isempty
 
+# ✅ Public API
 "Find a package in the manifest."
 _get_manifest_entry(ctx::Pkg.Types.Context, package_name::AbstractString) = 
     select(e -> e.name == package_name, values(Pkg.dependencies(ctx)))
 
+# ⚠️ Internal API with fallback
 function get_manifest_version(ctx, package_name)
     if is_stdlib(package_name)
         "stdlib"
@@ -130,5 +196,40 @@ function get_manifest_version(ctx, package_name)
         entry.version
     end
 end
+
+###
+# WRITING COMPAT ENTRIES
+###
+
+
+# ⛔️ Internal API
+function write_semver_compat_entries!(ctx::Pkg.Types.Context)
+    for p in keys(Pkg.project(ctx).dependencies)
+        if !haskey(ctx.env.project.compat, p)
+            entry = select(e -> e.name == p, values(ctx.env.manifest))
+            if entry.version !== nothing
+                ctx.env.project.compat[p] = "^" * string(entry.version)
+            end
+        end
+    end
+    Pkg.Types.write_env(ctx.env)
+end
+
+
+# ⛔️ Internal API
+function clear_semver_compat_entries!(ctx::Pkg.Types.Context)
+    for p in keys(ctx.env.project.compat)
+        entry = select(e -> e.name == p, values(ctx.env.manifest))
+        if entry.version !== nothing
+            if ctx.env.project.compat[p] == "^" * string(entry.version)
+                delete!(ctx.env.project.compat, p)
+            end
+        end
+    end
+    Pkg.Types.write_env(ctx.env)
+end
+
+
+
 
 end

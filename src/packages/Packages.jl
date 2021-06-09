@@ -1,11 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
-import .PkgCompat: select, is_stdlib
-
-function external_package_names(topology::NotebookTopology)::Set{Symbol}
-    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
-end
+import .PkgCompat: select, is_stdlib, write_semver_compat_entries!, clear_semver_compat_entries!
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -17,32 +13,6 @@ const tiers = [
 const pkg_token = Token()
 
 
-function write_semver_compat_entries!(ctx::Pkg.Types.Context)
-    for p in keys(ctx.env.project.deps)
-        if !haskey(ctx.env.project.compat, p)
-            entry = select(e -> e.name == p, values(ctx.env.manifest))
-            if entry.version !== nothing
-                ctx.env.project.compat[p] = "^" * string(entry.version)
-            end
-        end
-    end
-    Pkg.Types.write_env(ctx.env)
-end
-
-
-function clear_semver_compat_entries!(ctx::Pkg.Types.Context)
-    for p in keys(ctx.env.project.compat)
-        entry = select(e -> e.name == p, values(ctx.env.manifest))
-        if entry.version !== nothing
-            if ctx.env.project.compat[p] == "^" * string(entry.version)
-                delete!(ctx.env.project.compat, p)
-            end
-        end
-    end
-    Pkg.Types.write_env(ctx.env)
-end
-
-
 function use_plutopkg(topology::NotebookTopology)
     !any(values(topology.nodes)) do node
         Symbol("Pkg.activate") ∈ node.references ||
@@ -50,6 +20,10 @@ function use_plutopkg(topology::NotebookTopology)
         Symbol("Pkg.add") ∈ node.references ||
         Symbol("Pkg.API.add") ∈ node.references
     end
+end
+
+function external_package_names(topology::NotebookTopology)::Set{Symbol}
+    union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
 end
 
 """
@@ -83,7 +57,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
             notebook.nbpkg_restart_recommended_msg === nothing &&
-            keys(ctx.env.project.deps) ⊆ PkgCompat.stdlibs
+            all(PkgCompat.is_stdlib, keys(Pkg.project(ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
         ctx = notebook.nbpkg_ctx = nothing
@@ -91,14 +65,13 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     
 
     if ctx !== nothing
-        ctx.env.original_project = deepcopy(ctx.env.project)
-        ctx.env.original_manifest = deepcopy(ctx.env.manifest)
+        PkgCompat.mark_original!(ctx)
 
         # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
-        removed = setdiff(keys(ctx.env.project.deps), new_packages)
-        added = setdiff(new_packages, keys(ctx.env.project.deps))
+        removed = setdiff(keys(Pkg.project(ctx).dependencies), new_packages)
+        added = setdiff(new_packages, keys(Pkg.project(ctx).dependencies))
 
         current_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
         iolistener = IOListener(callback=(s -> on_terminal_output(current_packages, s)))
@@ -118,12 +91,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 PkgCompat.refresh_registry_cache()
 
                 to_remove = filter(removed) do p
-                    haskey(ctx.env.project.deps, p)
+                    haskey(Pkg.project(ctx).dependencies, p)
                 end
                 if !isempty(to_remove)
                     @show to_remove
                     # See later comment
-                    mkeys() = keys(filter(!is_stdlib ∘ last, ctx.env.manifest)) |> collect
+                    mkeys() = filter(!is_stdlib, [m.name for m in values(Pkg.dependencies(ctx))])
                     old_manifest_keys = mkeys()
 
                     Pkg.rm(ctx, [
@@ -193,7 +166,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
                         # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
-                        env_dir = dirname(notebook.nbpkg_ctx.env.project_file)
+                        env_dir = PkgCompat.env_dir(notebook.nbpkg_ctx)
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time

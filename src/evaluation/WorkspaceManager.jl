@@ -1,6 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -68,7 +69,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
                 empty!(LOAD_PATH)
                 push!(LOAD_PATH, "@")
                 push!(LOAD_PATH, "@stdlib")
-                Base.ACTIVE_PROJECT[] = $(dirname(notebook.nbpkg_ctx.env.project_file))
+                Base.ACTIVE_PROJECT[] = $(PkgCompat.env_dir(notebook.nbpkg_ctx))
             end)
         end
     else
