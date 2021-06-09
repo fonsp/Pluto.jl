@@ -55,7 +55,5 @@ import Pkg
 
     @testset "Misc" begin
         PkgCompat.create_empty_ctx()
-
-        PkgCompat.get_registries()
     end
 end
