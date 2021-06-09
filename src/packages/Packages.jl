@@ -62,7 +62,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
             notebook.nbpkg_restart_recommended_msg === nothing &&
-            all(PkgCompat.is_stdlib, keys(Pkg.project(ctx).dependencies))
+            all(PkgCompat.is_stdlib, keys(PkgCompat.project(ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
         ctx = notebook.nbpkg_ctx = nothing
@@ -72,7 +72,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     if ctx !== nothing
         PkgCompat.mark_original!(ctx)
 
-        old_packages = String.(keys(Pkg.project(ctx).dependencies))
+        old_packages = String.(keys(PkgCompat.project(ctx).dependencies))
         new_packages = String.(external_package_names(new)) # search all cells for imports and usings
         
         removed = setdiff(old_packages, new_packages)
@@ -104,7 +104,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 end
 
                 to_remove = filter(removed) do p
-                    haskey(Pkg.project(ctx).dependencies, p)
+                    haskey(PkgCompat.project(ctx).dependencies, p)
                 end
                 if !isempty(to_remove)
                     @show to_remove

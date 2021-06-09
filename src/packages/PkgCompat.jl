@@ -106,16 +106,25 @@ end
 
 # (⛔️ Internal API)
 "Return paths to all installed registries."
-_get_registry_paths() = @static if isdefined(Pkg.Types, :registries)
+_get_registry_paths() = @static if isdefined(Pkg, :Types) && isdefined(Pkg.Types, :registries)
 	Pkg.Types.registries()
-else
+elseif isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :reachable_registries)
+	registry_specs = Pkg.Registry.reachable_registries()
+	[s.path for s in registry_specs]
+elseif isdefined(Pkg, :Types) && isdefined(Pkg.Types, :collect_registries)
 	registry_specs = Pkg.Types.collect_registries()
 	[s.path for s in registry_specs]
+else
+	String[]
 end
 
 # (⛔️ Internal API)
 _get_registries() = map(_get_registry_paths()) do r
-	r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
+	@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :RegistryInstance)
+		Pkg.Registry.RegistryInstance(r)
+	else
+		r => Pkg.Types.read_registry(joinpath(r, "Registry.toml"))
+	end
 end
 
 # (⛔️ Internal API)
@@ -223,14 +232,16 @@ end
 # (⛔️ Internal API)
 function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
-    (@static if hasmethod(Pkg.Operations.load_versions, (String,))
+    vd = @static if isdefined(Pkg, :Operations) && isdefined(Pkg.Operations, :load_versions) && hasmethod(Pkg.Operations.load_versions, (String,))
         Pkg.Operations.load_versions(registry_entry_fullpath)
     else
         Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
-    end) |> keys |> collect |> sort!
+    end
+	vd |> keys |> collect |> sort!
 end
 
 # ⚠️ Internal API with fallback
+# See https://github.com/JuliaLang/Pkg.jl/issues/2607
 """
 Return all registered versions of the given package. Returns `["stdlib"]` for standard libraries, and a `Vector{VersionNumber}` for registered packages.
 """
@@ -239,8 +250,23 @@ function package_versions(package_name::AbstractString)::Vector
         ["stdlib"]
     else
 		try
-			ps = _registry_entries(package_name)
-			flatmap(_package_versions_from_path, ps)
+			@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
+				flatmap(_parsed_registries[]) do reg
+					uuids_with_name = Pkg.Registry.uuids_from_name(reg, package_name)
+					flatmap(uuids_with_name) do u
+						pkg = get(reg, u, nothing)
+						if pkg !== nothing
+							info = Pkg.Registry.registry_info(pkg)
+							collect(keys(info.version_info))
+						else
+							[]
+						end
+					end
+				end
+			else
+				ps = _registry_entries(package_name)
+				flatmap(_package_versions_from_path, ps)
+			end
 		catch e
 			@error "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
@@ -260,8 +286,12 @@ function dependencies(ctx)
 		ctx.env.manifest
 	else
 		try
-			ctx.env.manifest
-			# Pkg.dependencies(ctx)
+			# ctx.env.manifest
+			@static if hasmethod(Pkg.dependencies, (PkgContext,))
+				Pkg.dependencies(ctx)
+			else
+				Pkg.dependencies(ctx.env)
+			end
 		catch e
 			@error """
 			Pkg error: you might need to use
@@ -275,6 +305,14 @@ function dependencies(ctx)
 
 			Dict()
 		end
+	end
+end
+
+function project(ctx::PkgContext)
+	@static if hasmethod(Pkg.project, (PkgContext,))
+		Pkg.project(ctx)
+	else
+		Pkg.project(ctx.env)
 	end
 end
 
@@ -325,7 +363,7 @@ end
 # ⚠️✅ Internal API with fallback
 function write_semver_compat_entries!(ctx::PkgContext)
 	_modify_compat!(ctx) do compat
-		for p in keys(Pkg.project(ctx).dependencies)
+		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)

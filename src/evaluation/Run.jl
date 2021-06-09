@@ -240,7 +240,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		end
 	catch e
 		bt = catch_backtrace()
-		old_packages = String.(keys(Pkg.project(notebook.nbpkg_ctx).dependencies))
+		old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
 		new_packages = String.(external_package_names(new))
 		@error """
 		PlutoPkg: Failed to add/remove packages! resetting package environment...
