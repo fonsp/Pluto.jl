@@ -23,20 +23,51 @@ end
 # CONTEXT
 ###
 
-struct Unsupported end
+# struct Unsupported end
 
-const pkg_supports_context = isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
-const PkgInternalContext = pkg_supports_context ? Pkg.Types.Context : Unsupported
+# const pkg_supports_context = isdefined(Pkg, :Types) && isdefined(Pkg.Types, :Context)
+# const PkgInternalContext = pkg_supports_context ? Pkg.Types.Context : Unsupported
 
 
-struct PkgContext
-	dir::String
-	ctx::PkgInternalContext
+# ✅ Public API
+@Base.@kwdef struct PkgContext
+	dir::String=mktempdir()
 end
+
+function in_context(f::Function, ctx::PkgContext)
+	old = Base.ACTIVE_PROJECT[]
+    Base.ACTIVE_PROJECT[] = ctx.dir
+    try
+        f()
+    finally
+        Base.ACTIVE_PROJECT[] = old
+    end
+end
+
+function wrap_context(f::Function)
+	return function(ctx::PkgContext, args...; kwargs...)
+		in_context(ctx) do
+			f(args...; kwargs...)
+		end
+	end
+end
+
+const dependencies = wrap_context(Pkg.dependencies)
+const project = wrap_context(Pkg.project)
+const add = wrap_context(Pkg.add)
+const rm = wrap_context(Pkg.rm)
+const resolve = wrap_context(Pkg.resolve)
+const instantiate = wrap_context(Pkg.instantiate)
+const precompile = wrap_context(Pkg.precompile)
+const status = wrap_context(Pkg.status)
 
 
 # ⛔️ Internal API
-create_empty_ctx()::Pkg.Types.Context = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+# create_empty_ctx()::Pkg.Types.Context = Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+
+
+# ✅ Public API
+create_empty_ctx()::PkgContext = PkgContext()
 
 # ⚠️ Internal API with fallback
 function mark_original!(ctx::Pkg.Types.Context)
@@ -47,6 +78,8 @@ function mark_original!(ctx::Pkg.Types.Context)
 		@error "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
 end
+
+mark_original!(ctx::PkgContext) = nothing
 
 
 env_dir(ctx::Pkg.Types.Context) = dirname(ctx.env.project_file)
@@ -93,8 +126,12 @@ end
 # ⚠️ Internal API with fallback
 is_stdlib(package_name::AbstractString) = package_name ∈ _stdlibs()
 
-# TODO: should this be the notebook context? it only matters for which registry is used
-global_ctx = Pkg.Types.Context()
+# (⚠️ Internal API with fallback)
+global_ctx = try
+	Pkg.Types.Context()
+catch
+	nothing
+end
 
 ###
 # Package names
@@ -150,12 +187,12 @@ function _registry_entries(package_name::AbstractString, registries::Vector=_par
 end
 
 # (⛔️ Internal API)
-function _package_versions_from_path(registry_entry_fullpath::AbstractString; ctx=global_ctx)::Vector{VersionNumber}
+function _package_versions_from_path(registry_entry_fullpath::AbstractString)::Vector{VersionNumber}
 	# compat
     (@static if hasmethod(Pkg.Operations.load_versions, (String,))
         Pkg.Operations.load_versions(registry_entry_fullpath)
     else
-        Pkg.Operations.load_versions(ctx, registry_entry_fullpath)
+        Pkg.Operations.load_versions(global_ctx, registry_entry_fullpath)
     end) |> keys |> collect |> sort!
 end
 
@@ -182,13 +219,15 @@ end
 package_exists(package_name::AbstractString)::Bool =
     package_versions(package_name) |> !isempty
 
+
+
 # ✅ Public API
 "Find a package in the manifest."
-_get_manifest_entry(ctx::Pkg.Types.Context, package_name::AbstractString) = 
-    select(e -> e.name == package_name, values(Pkg.dependencies(ctx)))
+_get_manifest_entry(ctx::PkgContext, package_name::AbstractString) = 
+    select(e -> e.name == package_name, values(dependencies(ctx)))
 
-# ⚠️ Internal API with fallback
-function get_manifest_version(ctx, package_name)
+# ⚠️✅ Internal API with fallback
+function get_manifest_version(ctx::PkgContext, package_name)
     if is_stdlib(package_name)
         "stdlib"
     else

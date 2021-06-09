@@ -57,7 +57,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
             notebook.nbpkg_restart_recommended_msg === nothing &&
-            all(PkgCompat.is_stdlib, keys(Pkg.project(ctx).dependencies))
+            all(PkgCompat.is_stdlib, keys(PkgCompat.project(ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
         ctx = notebook.nbpkg_ctx = nothing
@@ -70,8 +70,8 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
         # search all cells for imports and usings
         new_packages = String.(external_package_names(new))
         
-        removed = setdiff(keys(Pkg.project(ctx).dependencies), new_packages)
-        added = setdiff(new_packages, keys(Pkg.project(ctx).dependencies))
+        removed = setdiff(keys(PkgCompat.project(ctx).dependencies), new_packages)
+        added = setdiff(new_packages, keys(PkgCompat.project(ctx).dependencies))
 
         current_packages = notebook.nbpkg_ctx_instantiated ? added : new_packages
         iolistener = IOListener(callback=(s -> on_terminal_output(current_packages, s)))
@@ -91,15 +91,15 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                 PkgCompat.refresh_registry_cache()
 
                 to_remove = filter(removed) do p
-                    haskey(Pkg.project(ctx).dependencies, p)
+                    haskey(PkgCompat.project(ctx).dependencies, p)
                 end
                 if !isempty(to_remove)
                     @show to_remove
                     # See later comment
-                    mkeys() = filter(!is_stdlib, [m.name for m in values(Pkg.dependencies(ctx))])
+                    mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(ctx))])
                     old_manifest_keys = mkeys()
 
-                    Pkg.rm(ctx, [
+                    PkgCompat.rm(ctx, [
                         Pkg.PackageSpec(name=p)
                         for p in to_remove
                     ])
@@ -133,7 +133,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                             used_tier = tier
 
                             try
-                                Pkg.add(ctx, [
+                                PkgCompat.add(ctx, [
                                     Pkg.PackageSpec(name=p)
                                     for p in to_add
                                 ]; preserve=used_tier)
@@ -161,7 +161,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                     startlistening(iolistener)
                     withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         # @info "Resolving"
-                        # Pkg.resolve(ctx)
+                        # PkgCompat.resolve(ctx)
                         @info "Instantiating"
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
@@ -172,7 +172,7 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
                         # update registries if this is the first time
                         Pkg.Types.update_registries(ctx)
                         # instantiate without forcing registry update
-                        Pkg.instantiate(ctx; update_registry=false)
+                        PkgCompat.instantiate(ctx; update_registry=false)
                         
                         @assert LOAD_PATH[1] == env_dir
                         popfirst!(LOAD_PATH)

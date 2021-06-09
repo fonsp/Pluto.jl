@@ -39,8 +39,8 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
-    # nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=nothing
-    nbpkg_ctx::Union{Nothing,Pkg.Types.Context}=PkgCompat.create_empty_ctx()
+    # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
+    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -250,11 +250,11 @@ function load_notebook_nobackup(io, path)::Notebook
         write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
 
         try
-            Pkg.Types.Context(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+            PkgContext(env_dir)
+
+            # TODO: try to parse the files
         catch e
-            error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents))
-            CompositeException
-            ErrorException
+            error(("Failed to load notebook files: Pkg files parse error", ptoml_contents, mtoml_contents, e))
         end
     else
         PkgCompat.create_empty_ctx()
