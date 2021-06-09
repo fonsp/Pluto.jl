@@ -170,3 +170,9 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
+
+has_embedded_pkgfiles(contents::AbstractString) = 
+    occursin("PROJECT", contents) && occursin("MANIFEST", contents)
+
+has_embedded_pkgfiles(nb::Pluto.Notebook) = 
+    read(nb.path, String) |> has_embedded_pkgfiles

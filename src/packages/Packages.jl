@@ -97,6 +97,12 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
             return withtoken(pkg_token) do
                 PkgCompat.refresh_registry_cache()
 
+                if !notebook.nbpkg_ctx_instantiated
+                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                        Pkg.resolve(ctx)
+                    end
+                end
+
                 to_remove = filter(removed) do p
                     haskey(Pkg.project(ctx).dependencies, p)
                 end
@@ -215,7 +221,18 @@ function update_nbpkg(notebook::Notebook, old::NotebookTopology, new::NotebookTo
     )
 end
 
+function reset_nbpkg(notebook::Notebook; backup::Bool=true, save::Bool=true)
+    if backup && save
+        backup_path = backup_filename(notebook.path)
+        Pluto.readwrite(notebook.path, backup_path)
 
+        @info "Backup saved to" backup_path
+    end
+
+    notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
+
+    save && save_notebook(notebook)
+end
 
 "A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
 Base.@kwdef struct IOListener

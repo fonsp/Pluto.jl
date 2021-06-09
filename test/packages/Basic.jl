@@ -18,11 +18,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     # Pkg.Registry.rm("General")
     Pkg.Registry.add(pluto_test_registry_spec)
 
-    has_embedded_pkgfiles(nb) = let
-        contents = read(nb.path, String)
-        occursin("PROJECT", contents) && occursin("MANIFEST", contents)
-    end
-
 
     @testset "Basic" begin
         fakeclient = ClientSession(:fake, nothing)
@@ -372,6 +367,86 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # end)
 
         Distributed.rmprocs([p])
+    end
+
+    @testset "PkgUtils -- reset" begin
+        dir = mktempdir()
+        f = joinpath(dir, "hello.jl")
+
+        write(f, simple_import_notebook)
+        
+        @test num_backups_in(dir) == 0
+        Pluto.PkgUtils.reset_notebook_environment(f)
+
+        @test num_backups_in(dir) == 1
+        @test !has_embedded_pkgfiles(read(f,String))
+    end
+
+    corrupted_manifest_notebook = 
+    unregistered_import_notebook = read(joinpath(@__DIR__, "unregistered_import.jl"), String)
+
+    @testset "Bad files" begin
+        @testset "$(name)" for name in ["unregistered_import"]
+
+            original_path = joinpath(@__DIR__, "$(name).jl")
+            original_contents = read(original_path, String)
+
+            fakeclient = ClientSession(:fake, nothing)
+            🍭 = ServerSession()
+            🍭.connected_clients[fakeclient.id] = fakeclient
+    
+            dir = mktempdir()
+            path = joinpath(dir, "hello.jl")
+            write(path, original_contents)
+    
+            @test num_backups_in(dir) == 0
+    
+            notebook = SessionActions.open(🍭, path; run_async=false)
+            fakeclient.connected_notebook = notebook
+            nb_contents() = read(notebook.path, String)
+
+            if (
+                notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
+            )
+                Pluto.response_restrart_process(Pluto.ClientRequest(
+                    session=🍭,
+                    notebook=notebook,
+                ); run_async=false)
+            end
+
+            if name != "unregistered_import"
+                @test notebook.cells[1].errored == false
+                @test notebook.cells[2].errored == false
+                @test notebook.cells[2].output.body == "0.2.2"
+                @test has_embedded_pkgfiles(notebook)
+            end
+
+
+            @test !Pluto.only_versions_differ(notebook.path, original_path)
+    
+            @test notebook.nbpkg_ctx !== nothing
+            @test notebook.nbpkg_restart_recommended_msg === nothing
+            @test notebook.nbpkg_restart_required_msg === nothing
+
+            setcode(notebook.cells[2], "1 + 1")
+            update_save_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[2].output.body == "2"
+
+            
+            setcode(notebook.cells[2], """
+            begin
+                import PlutoPkgTestD
+                PlutoPkgTestD.MY_VERSION |> Text
+            end
+            """)
+            update_save_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[2].output.body == "0.1.0"
+
+            @test has_embedded_pkgfiles(notebook)
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+
     end
 
     # @test false

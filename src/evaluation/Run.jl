@@ -235,16 +235,31 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 			end
 
 			notebook.nbpkg_busy_packages = String[]
-
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			save && save_notebook(notebook)
 		end
 	catch e
+		bt = catch_backtrace()
 		old_packages = String.(keys(Pkg.project(notebook.nbpkg_ctx).dependencies))
 		new_packages = String.(external_package_names(new))
-		@error "PlutoPkg: Failed to add/remove packages" old_packages new_packages exception=(e, catch_backtrace())
-
+		@error """
+		PlutoPkg: Failed to add/remove packages! resetting package environment...
+		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
+
+		error_text = sprint(showerror, e, bt)
+		for p in notebook.nbpkg_busy_packages
+			nbpkg_terminal_outputs[p] += "\n\n\nPkg error!\n\n" * error_text
+		end
+		notebook.nbpkg_busy_packages = String[]
+		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+
+		# Clear the embedded Project and Manifest and require a restart from the user.
+		reset_nbpkg(notebook; save=save)
+		notebook.nbpkg_restart_required_msg = "yes"
+		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
+
+		save && save_notebook(notebook)
 	end
 
 	maybe_async(run_async) do

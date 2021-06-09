@@ -3,7 +3,7 @@ module PkgUtils
 import FileWatching
 import Pkg
 import ..Pluto
-import ..Pluto: Notebook, save_notebook, load_notebook, withtoken, Token, readwrite, PkgCompat
+import ..Pluto: Notebook, save_notebook, load_notebook, load_notebook_nobackup, withtoken, Token, readwrite, PkgCompat
 import ..Pluto.PkgCompat: project_file, manifest_file
 
 using Markdown
@@ -77,8 +77,14 @@ write_nb_to_dir(notebook_path::String, dir::String) = write_nb_to_dir(load_noteb
 nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_environments_equal(load_notebook(notebook_path), dir)
 
 
+function reset_notebook_environment(path::String)
+    Pluto.reset_nbpkg(
+        load_notebook_nobackup(path)
+    )
+end
 
-function activate_notebook(path::String)
+
+function activate_notebook_environment(path::String)
     notebook_ref = Ref(load_notebook(path))
 
     ensure_has_nbpkg(notebook_ref[])
@@ -197,6 +203,8 @@ function activate_notebook(path::String)
 
 
 end
+
+const activate_notebook = activate_notebook_environment
 
 function testnb()
     t = tempname()
