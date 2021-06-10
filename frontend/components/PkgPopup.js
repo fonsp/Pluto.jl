@@ -121,7 +121,7 @@ export const PkgPopup = ({ notebook }) => {
                 }}
                 ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg" width="17"
             /></a>
-            <a class="help" target="_blank" title="Go to help page" href="https://fonsp.com"
+            <a class="help" target="_blank" title="Go to help page" href="https://github.com/fonsp/Pluto.jl/wiki/%F0%9F%8E%81-Package-management"
                 ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg" width="17"
             /></a>
         </div>
