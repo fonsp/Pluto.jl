@@ -41,7 +41,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         ])
         fakeclient.connected_notebook = notebook
 
-        update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]])
+        @test !notebook.nbpkg_ctx_instantiated
+        
+        update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
         @test notebook.cells[7].errored == false
@@ -50,6 +52,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_busy_packages |> isempty
 
         terminals = notebook.nbpkg_terminal_outputs
 
@@ -59,13 +63,17 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
 
 
-        @test notebook.cells[2].output.body == "0.3.1"
-        @test notebook.cells[8].output.body == "0.1.0"
+        @test notebook.cells[2].output.body == "0.3.1" # A
+        @test notebook.cells[8].output.body == "0.1.0" # D
+        
+        @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestA") == v"0.3.1"
+        @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestD") == v"0.1.0"
 
 
-        old_A_terminal = terminals["PlutoPkgTestA"]
+        old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
+        @show old_A_terminal
 
-        update_save_run!(🍭, notebook, notebook.cells[[3, 4]])
+        update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
         @test notebook.cells[3].errored == false
         @test notebook.cells[4].errored == false
@@ -80,7 +88,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test terminals["PlutoPkgTestA"] != terminals["PlutoPkgTestB"]
 
 
-        @test notebook.cells[4].output.body == "1.0.0"
+        @test notebook.cells[4].output.body == "1.0.0" # B
 
         # running the 5th cell will import PlutoPkgTestC, putting a 0.2 compatibility bound on PlutoPkgTestA. This means that a notebook restart is required, since PlutoPkgTestA was already loaded at version 0.3.1.
         update_save_run!(🍭, notebook, notebook.cells[[5, 6]])
@@ -140,8 +148,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[10].errored == true
 
 
-        ptoml_file() = PkgUtils.project_file(notebook)
-        mtoml_file() = PkgUtils.manifest_file(notebook)
+        ptoml_file() = PkgCompat.project_file(notebook)
+        mtoml_file() = PkgCompat.manifest_file(notebook)
 
         ptoml_contents() = read(ptoml_file(), String)
         mtoml_contents() = read(mtoml_file(), String)

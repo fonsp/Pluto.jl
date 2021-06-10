@@ -353,36 +353,31 @@ end
 # WRITING COMPAT ENTRIES
 ###
 
-# (⚠️✅ Internal API with fallback)
-# We try to use `Pkg.Types.write_env(ctx.env)` when possible, because it writes the TOML file in the expected format with sorting and such.
-function _modify_compat!(f!::Function, ctx::PkgContext)
-	try
-		f!(ctx.env.project.compat)
-		Pkg.Types.write_env(ctx.env)
-	catch e
-		@warn "Pkg compat: failed to call write_env" exception=(e,catch_backtrace())
-		toml = Pkg.TOML.parsefile(project_file(ctx))
-		compat = get!(Dict, toml, "compat")
+# ✅ Public API
+function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
+	toml = Pkg.TOML.parsefile(project_file(ctx))
+	compat = get!(Dict, toml, "compat")
 
-		f!(compat)
+	f!(compat)
 
-		isempty(compat) && delete!(toml, "compat")
+	isempty(compat) && delete!(toml, "compat")
 
-		write(project_file(ctx), sprint() do io
-			Pkg.TOML.print(io, toml; sorted=true)
-		end)
-	end
+	write(project_file(ctx), sprint() do io
+		Pkg.TOML.print(io, toml; sorted=true)
+	end)
+	
+	return load_ctx(env_dir(ctx))
 end
 
 
 # ⚠️✅ Internal API with fallback
 """
-Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries to the `Project.toml` for all direct dependencies. This serves as a 'fallback' in case someone (with a different Julia version) opens your notebook without being able to load the `Manifest.toml`.
+Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries to the `Project.toml` for all direct dependencies. This serves as a 'fallback' in case someone (with a different Julia version) opens your notebook without being able to load the `Manifest.toml`. Return the new `PkgContext`.
 
 The automatic compat entry is: `"~" * string(installed_version)`.
 """
-function write_auto_compat_entries!(ctx::PkgContext)
-	_modify_compat!(ctx) do compat
+function write_auto_compat_entries(ctx::PkgContext)::PkgContext
+	_modify_compat(ctx) do compat
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
@@ -392,38 +387,50 @@ function write_auto_compat_entries!(ctx::PkgContext)
 			end
 		end
 	end
+	ctx
 end
 
 
 # ⚠️✅ Internal API with fallback
 """
-Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries!`](@ref) but leave other (e.g. manual) compat entries intact.
+Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
-function clear_auto_compat_entries!(ctx::PkgContext)
-	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
-		for p in keys(compat)
-			m_version = get_manifest_version(ctx, p)
-			if m_version !== nothing && !is_stdlib(p)
-				if compat[p] == "~" * string(m_version)
-					delete!(compat, p)
+function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
+	if isfile(project_file(ctx))
+		@info "clearing"
+		_modify_compat(ctx) do compat
+			@show compat
+			for p in keys(compat)
+				m_version = get_manifest_version(ctx, p)
+				@show p m_version compat[p]
+				if m_version !== nothing && !is_stdlib(p)
+					if compat[p] == "~" * string(m_version)
+						delete!(compat, p)
+					end
 				end
 			end
 		end
+	else
+		ctx
 	end
 end
 
 # ⚠️✅ Internal API with fallback
 """
-Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl.
+Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl. Return the new `PkgContext`.
 """
-function clear_stdlib_compat_entries!(ctx::PkgContext)
-	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
-		for p in keys(compat)
-			if is_stdlib(p)
-				@info "Removing compat entry for stdlib" p
-				delete!(compat, p)
+function clear_stdlib_compat_entries(ctx::PkgContext)::PkgContext
+	if isfile(project_file(ctx))
+		_modify_compat(ctx) do compat
+			for p in keys(compat)
+				if is_stdlib(p)
+					@info "Removing compat entry for stdlib" p
+					delete!(compat, p)
+				end
 			end
 		end
+	else
+		ctx
 	end
 end
 

@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
-import .PkgCompat: select, is_stdlib, write_auto_compat_entries!, clear_auto_compat_entries!
+import .PkgCompat: select, is_stdlib
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -43,18 +43,17 @@ Update the notebook package environment to match the notebook's code. This will:
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
 function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
-    local ctx = notebook.nbpkg_ctx
-
+    
     👺 = false
 
-    use_plutopkg_old = ctx !== nothing
+    use_plutopkg_old = notebook.nbpkg_ctx !== nothing
     use_plutopkg_new = use_plutopkg(notebook.topology)
     
     if !use_plutopkg_old && use_plutopkg_new
         @info "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
-        ctx = notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
+        notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
     end
     if use_plutopkg_old && !use_plutopkg_new
         @info "Stopped using PlutoPkg 💔😟😢"
@@ -62,17 +61,17 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
             notebook.nbpkg_restart_recommended_msg === nothing &&
-            all(PkgCompat.is_stdlib, keys(PkgCompat.project(ctx).dependencies))
+            all(PkgCompat.is_stdlib, keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
-        ctx = notebook.nbpkg_ctx = nothing
+        notebook.nbpkg_ctx = nothing
     end
     
 
-    if ctx !== nothing
-        PkgCompat.mark_original!(ctx)
+    if notebook.nbpkg_ctx !== nothing
+        PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
-        old_packages = String.(keys(PkgCompat.project(ctx).dependencies))
+        old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
         new_packages = String.(external_package_names(notebook.topology)) # search all cells for imports and usings
         
         removed = setdiff(old_packages, new_packages)
@@ -98,29 +97,29 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 PkgCompat.refresh_registry_cache()
 
                 if !notebook.nbpkg_ctx_instantiated
-                    PkgCompat.clear_stdlib_compat_entries!(ctx)
-                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         try
-                            Pkg.resolve(ctx)
+                            Pkg.resolve(notebook.nbpkg_ctx)
                         catch e
                             @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                             reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            ctx = notebook.nbpkg_ctx
-                            Pkg.resolve(ctx)
+                            notebook.nbpkg_ctx = notebook.nbpkg_ctx
+                            Pkg.resolve(notebook.nbpkg_ctx)
                         end
                     end
                 end
 
                 to_remove = filter(removed) do p
-                    haskey(PkgCompat.project(ctx).dependencies, p)
+                    haskey(PkgCompat.project(notebook.nbpkg_ctx).dependencies, p)
                 end
                 if !isempty(to_remove)
                     @debug to_remove
                     # See later comment
-                    mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(ctx))])
+                    mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))])
                     old_manifest_keys = mkeys()
 
-                    Pkg.rm(ctx, [
+                    Pkg.rm(notebook.nbpkg_ctx, [
                         Pkg.PackageSpec(name=p)
                         for p in to_remove
                     ])
@@ -141,9 +140,9 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     @debug to_add
                     startlistening(iolistener)
 
-                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                        clear_auto_compat_entries!(ctx)
+                        notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
 
                         try
                             for tier in [
@@ -155,7 +154,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                                 used_tier = tier
 
                                 try
-                                    Pkg.add(ctx, [
+                                    Pkg.add(notebook.nbpkg_ctx, [
                                         Pkg.PackageSpec(name=p)
                                         for p in to_add
                                     ]; preserve=used_tier)
@@ -169,7 +168,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                                 end
                             end
                         finally
-                            write_auto_compat_entries!(ctx)
+                            notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
                         end
 
                         # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
@@ -182,9 +181,9 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
                 if should_instantiate
                     startlistening(iolistener)
-                    PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                    PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         # @info "Resolving"
-                        # Pkg.resolve(ctx)
+                        # Pkg.resolve(notebook.nbpkg_ctx)
                         @debug "Instantiating"
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
@@ -193,9 +192,9 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         pushfirst!(LOAD_PATH, env_dir)
 
                         # update registries if this is the first time
-                        PkgCompat.update_registries(ctx)
+                        PkgCompat.update_registries(notebook.nbpkg_ctx)
                         # instantiate without forcing registry update
-                        PkgCompat.instantiate(ctx; update_registry=false)
+                        PkgCompat.instantiate(notebook.nbpkg_ctx; update_registry=false)
                         
                         @assert LOAD_PATH[1] == env_dir
                         popfirst!(LOAD_PATH)
@@ -281,7 +280,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 		error_text = sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
-			nbpkg_terminal_outputs[p] += "\n\n\nPkg error!\n\n" * error_text
+			notebook.nbpkg_terminal_outputs[p] *= "\n\n\nPkg error!\n\n" * error_text
 		end
 		notebook.nbpkg_busy_packages = String[]
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
@@ -323,12 +322,10 @@ function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=
 end
 
 function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, on_terminal_output::Function=((args...) -> nothing))
-    ctx = notebook.nbpkg_ctx
+    if notebook.nbpkg_ctx !== nothing
+        PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
-    if ctx !== nothing
-        PkgCompat.mark_original!(ctx)
-
-        old_packages = String.(keys(PkgCompat.project(ctx).dependencies))
+        old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
 
         iolistener = let
             # we don't know which packages will be updated, so we send terminal output to all installed packages
@@ -347,36 +344,36 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             PkgCompat.refresh_registry_cache()
 
             if !notebook.nbpkg_ctx_instantiated
-                PkgCompat.clear_stdlib_compat_entries!(ctx)
-                PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+                notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+                PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                     try
-                        Pkg.resolve(ctx)
+                        Pkg.resolve(notebook.nbpkg_ctx)
                     catch e
                         @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                         reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                        Pkg.resolve(ctx)
+                        Pkg.resolve(notebook.nbpkg_ctx)
                     end
                 end
             end
 
             startlistening(iolistener)
 
-            PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
+            PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                 # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
-                clear_auto_compat_entries!(ctx)
+                notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
 
                 try
                     ###
-                    Pkg.update(ctx; level=level)
+                    Pkg.update(notebook.nbpkg_ctx; level=level)
                     ###
                 finally
-                    write_auto_compat_entries!(ctx)
+                    notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
                 end
             end
 
             stoplistening(iolistener)
 
-            🐧 = !PkgCompat.is_original(ctx)
+            🐧 = !PkgCompat.is_original(notebook.nbpkg_ctx)
             (
                 did_something=🐧,
                 restart_recommended=🐧,

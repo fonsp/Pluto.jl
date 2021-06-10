@@ -1,5 +1,6 @@
 import Pluto.PkgCompat
 import Pluto
+import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 using Test
 import Pkg
 
@@ -8,7 +9,7 @@ import Pkg
 
     @testset "Available versions" begin
         vs = PkgCompat.package_versions("HTTP")
-        
+
         @test v"0.9.0" ∈ vs
         @test v"0.9.1" ∈ vs
         @test "stdlib" ∉ vs
@@ -53,7 +54,68 @@ import Pkg
         @test isempty(cs)
     end
 
-
+    @testset "Compat manipulation" begin
+        old_path = joinpath(@__DIR__, "old_artifacts_import.jl")
+        old_contents = read(old_path, String)
+        
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        
+        write(path, old_contents)
+        
+        notebook = load_notebook(path)
+        ptoml_file() = PkgCompat.project_file(notebook)
+        mtoml_file() = PkgCompat.manifest_file(notebook)
+        ptoml_contents() = read(ptoml_file(), String)
+        mtoml_contents() = read(mtoml_file(), String)
+        
+        @test num_backups_in(dir) == 0
+        
+        
+        
+        @test Pluto.only_versions_or_lineorder_differ(old_path, path)
+        
+        ptoml = Pkg.TOML.parse(ptoml_contents())
+        @test haskey(ptoml["deps"], "PlutoPkgTestA")
+        @test haskey(ptoml["deps"], "Artifacts")
+        @test haskey(ptoml["compat"], "PlutoPkgTestA")
+        @test haskey(ptoml["compat"], "Artifacts")
+        
+        notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
+        
+        ptoml = Pkg.TOML.parse(ptoml_contents())
+        @test haskey(ptoml["deps"], "PlutoPkgTestA")
+        @test haskey(ptoml["deps"], "Artifacts")
+        @test haskey(ptoml["compat"], "PlutoPkgTestA")
+        if PkgCompat.is_stdlib("Artifacts")
+            @test !haskey(ptoml["compat"], "Artifacts")
+        end
+        
+        old_a_compat_entry = ptoml["compat"]["PlutoPkgTestA"]
+        notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+        
+        ptoml = Pkg.TOML.parse(ptoml_contents())
+        @test haskey(ptoml["deps"], "PlutoPkgTestA")
+        @test haskey(ptoml["deps"], "Artifacts")
+        @test !haskey(ptoml, "compat")
+        compat = get(ptoml, "compat", Dict())
+        @test !haskey(compat, "PlutoPkgTestA")
+        @test !haskey(compat, "Artifacts")
+        
+        notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
+        
+        ptoml = Pkg.TOML.parse(ptoml_contents())
+        @test haskey(ptoml["deps"], "PlutoPkgTestA")
+        @test haskey(ptoml["deps"], "Artifacts")
+        @test haskey(ptoml["compat"], "PlutoPkgTestA")
+        if PkgCompat.is_stdlib("Artifacts")
+            @test !haskey(ptoml["compat"], "Artifacts")
+        end
+        
+        
+    end
+    
+    
     @testset "Misc" begin
         PkgCompat.create_empty_ctx()
     end
