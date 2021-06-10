@@ -154,11 +154,10 @@ function notebook_to_js(notebook::Notebook)
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
-                "installed_versions" => ctx === nothing ? Dict{String,String}() : Dict{String,String}(
-                    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
-                ),
+                "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "busy_packages" => notebook.nbpkg_busy_packages,
+                "instantiated" => notebook.nbpkg_ctx_instantiated,
             )
         end,
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),

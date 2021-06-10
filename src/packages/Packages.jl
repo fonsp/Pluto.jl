@@ -247,6 +247,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 				for p in pkgs
 					notebook.nbpkg_terminal_outputs[p] = s
 				end
+                update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
 			sync_nbpkg_core(notebook; on_terminal_output=iocallback)
@@ -265,6 +266,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 			end
 
 			notebook.nbpkg_busy_packages = String[]
+            update_nbpkg_cache!(notebook)
 			send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			save && save_notebook(notebook)
 		end
@@ -283,12 +285,14 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\nPkg error!\n\n" * error_text
 		end
 		notebook.nbpkg_busy_packages = String[]
+        update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
 		reset_nbpkg(notebook; keep_project=false, save=save)
 		notebook.nbpkg_restart_required_msg = "yes"
         notebook.nbpkg_ctx_instantiated = false
+        update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		save && save_notebook(notebook)
@@ -403,6 +407,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
                     original = get(original_outputs, p, "")
 					notebook.nbpkg_terminal_outputs[p] = original * "\n\n" * s
 				end
+                update_nbpkg_cache!(notebook)
 				send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 			end
 			update_nbpkg_core(notebook; level=level, on_terminal_output=iocallback)
@@ -422,9 +427,19 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
         end
 	finally
 		notebook.nbpkg_busy_packages = String[]
+        update_nbpkg_cache!(notebook)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 		save && save_notebook(notebook)
 	end
+end
+
+nbpkg_cache(ctx::PkgContext) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
+    x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
+)
+
+function update_nbpkg_cache!(notebook::Notebook)
+    notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)
+    notebook
 end
 
 "A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."

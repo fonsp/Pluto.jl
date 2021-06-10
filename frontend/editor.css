@@ -1460,26 +1460,24 @@ pkg-status-mark > button > span::after {
     height: 1.5em;
     width: 1.5em;
 
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/checkmark-outline.svg);
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/add-circle-outline.svg);
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/time-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/time-outline.svg);
     opacity: 0.3;
 }
 
 pkg-status-mark.installed > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/checkmark-outline.svg);
-    /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-done-outline.svg); */
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
+    /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-done-outline.svg); */
 }
 pkg-status-mark.busy > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
     animation: loadspin 3s ease-in-out infinite;
 }
 pkg-status-mark.not_found > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-offline-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg);
     opacity: 0.6;
 }
 pkg-status-mark.will_be_installed > button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/cloud-download-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
     opacity: 0.6;
 }
 pkg-status-mark select {

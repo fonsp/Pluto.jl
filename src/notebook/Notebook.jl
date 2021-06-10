@@ -48,6 +48,7 @@ Base.@kwdef mutable struct Notebook
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
     nbpkg_terminal_outputs::Dict{String,String}=Dict{String,String}()
     nbpkg_busy_packages::Vector{String}=String[]
+    nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
     wants_to_interrupt::Bool=false
@@ -273,7 +274,7 @@ function load_notebook_nobackup(io, path)::Notebook
         k ∈ appeared_order
     end
 
-    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx)
+    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx, nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx))
 end
 
 function load_notebook_nobackup(path::String)::Notebook

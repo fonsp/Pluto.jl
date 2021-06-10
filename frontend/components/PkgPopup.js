@@ -67,7 +67,7 @@ export const PkgPopup = ({ notebook }) => {
 
     const [showterminal, set_showterminal] = useState(false)
 
-    const busy = recent_event != null && (notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name)
+    const busy = recent_event != null && ((notebook.nbpkg?.busy_packages ?? []).includes(recent_event.package_name) || (notebook.nbpkg?.instantiating ?? false))
 
     const debounced_busy = useDebouncedTruth(busy, 2)
     useEffect(() => {
@@ -107,7 +107,7 @@ export const PkgPopup = ({ notebook }) => {
                     }
                     e.preventDefault()
                 }}
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/arrow-up-circle-outline.svg" width="17"
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-up-circle-outline.svg" width="17"
             /></a>
             <a
                 class="toggle-terminal"
@@ -119,10 +119,10 @@ export const PkgPopup = ({ notebook }) => {
                     set_showterminal(!showterminal)
                     e.preventDefault()
                 }}
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/document-text-outline.svg" width="17"
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg" width="17"
             /></a>
             <a class="help" target="_blank" title="Go to help page" href="https://fonsp.com"
-                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/help-circle-outline.svg" width="17"
+                ><img alt="i" src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/help-circle-outline.svg" width="17"
             /></a>
         </div>
         <${PkgTerminalView} value=${terminal_value ?? "Loading..."} />

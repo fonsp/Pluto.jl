@@ -267,7 +267,7 @@ function _package_versions_from_path(registry_entry_fullpath::AbstractString)::V
     else
         Pkg.Operations.load_versions(PkgContext(), registry_entry_fullpath)
     end
-	vd |> keys |> collect |> sort!
+	vd |> keys |> collect
 end
 
 # ⚠️ Internal API with fallback
@@ -280,7 +280,7 @@ function package_versions(package_name::AbstractString)::Vector
         ["stdlib"]
     else
 		try
-			@static if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
+			@static(if isdefined(Pkg, :Registry) && isdefined(Pkg.Registry, :uuids_from_name)
 				flatmap(_parsed_registries[]) do reg
 					uuids_with_name = Pkg.Registry.uuids_from_name(reg, package_name)
 					flatmap(uuids_with_name) do u
@@ -296,7 +296,7 @@ function package_versions(package_name::AbstractString)::Vector
 			else
 				ps = _registry_entries(package_name)
 				flatmap(_package_versions_from_path, ps)
-			end
+			end) |> sort
 		catch e
 			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]

@@ -25,7 +25,7 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
     let hint = null
     let offer_update = false
     const chosen_version = nbpkg?.installed_versions[package_name]
-    const busy = (nbpkg?.busy_packages ?? []).includes(package_name)
+    const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || nbpkg?.instantiating
 
     if (chosen_version != null || _.isEqual(available_versions, ["stdlib"])) {
         if (chosen_version == null || chosen_version === "stdlib") {
