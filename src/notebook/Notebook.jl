@@ -124,18 +124,17 @@ function save_notebook(io, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
-    ptoml_path() = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
-    mtoml_path() = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
-
-    using_plutopkg = 
-        notebook.nbpkg_ctx !== nothing && 
-        isfile(ptoml_path()) && 
-        isfile(mtoml_path())
+    
+    using_plutopkg = notebook.nbpkg_ctx !== nothing
     
     write_package = if using_plutopkg
-        ptoml_contents = read(ptoml_path(), String)
-        mtoml_contents = read(mtoml_path(), String)
-        !isempty(ptoml_contents) && !isempty(mtoml_contents)
+        ptoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
+        mtoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
+        
+        ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
+        mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
+        
+        !isempty(ptoml_contents) || !isempty(mtoml_contents)
     else
         false
     end

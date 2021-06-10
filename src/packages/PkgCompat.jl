@@ -67,6 +67,20 @@ load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_d
 create_empty_ctx()::PkgContext = load_ctx(mktempdir())
 
 # ⚠️ Internal API with fallback
+function load_ctx(original::PkgContext)
+	new = load_ctx(env_dir(original))
+	
+	try
+		new.env.original_project = original.env.original_project
+		new.env.original_manifest = original.env.original_manifest
+	catch e
+		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
+	end
+	
+	new
+end
+
+# ⚠️ Internal API with fallback
 function mark_original!(ctx::PkgContext)
 	try
 		ctx.env.original_project = deepcopy(ctx.env.project)
@@ -76,6 +90,7 @@ function mark_original!(ctx::PkgContext)
 	end
 end
 
+# ⚠️ Internal API with fallback
 function is_original(ctx::PkgContext)::Bool
 	try
 		ctx.env.original_project == ctx.env.project &&
@@ -366,7 +381,7 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 		Pkg.TOML.print(io, toml; sorted=true)
 	end)
 	
-	return load_ctx(env_dir(ctx))
+	return load_ctx(ctx)
 end
 
 

@@ -94,10 +94,6 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
         new_LP = enabled ? ["@", "@stdlib"] : workspace.original_LOAD_PATH
         new_AP = enabled ? PkgCompat.env_dir(notebook.nbpkg_ctx) : workspace.original_ACTIVE_PROJECT
         
-        if new_AP === nothing
-            @error "Env dir is nothing!"
-        end
-        
         Distributed.remotecall_eval(Main, [workspace.pid], quote
             copy!(LOAD_PATH, $(new_LP))
             Base.ACTIVE_PROJECT[] = $(new_AP)

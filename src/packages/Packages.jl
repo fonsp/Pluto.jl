@@ -104,7 +104,6 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         catch e
                             @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                             reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            notebook.nbpkg_ctx = notebook.nbpkg_ctx
                             Pkg.resolve(notebook.nbpkg_ctx)
                         end
                     end
@@ -271,8 +270,8 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 		end
 	catch e
 		bt = catch_backtrace()
-		old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
-		new_packages = String.(external_package_names(notebook.topology))
+		old_packages = try String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies)); catch; ["unknown"] end
+		new_packages = try String.(external_package_names(notebook.topology)); catch; ["unknown"] end
 		@warn """
 		PlutoPkg: Failed to add/remove packages! Resetting package environment...
 		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
@@ -280,7 +279,8 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 
 		error_text = sprint(showerror, e, bt)
 		for p in notebook.nbpkg_busy_packages
-			notebook.nbpkg_terminal_outputs[p] *= "\n\n\nPkg error!\n\n" * error_text
+            old = get(notebook.nbpkg_terminal_outputs, p, "")
+			notebook.nbpkg_terminal_outputs[p] = old * "\n\n\nPkg error!\n\n" * error_text
 		end
 		notebook.nbpkg_busy_packages = String[]
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
