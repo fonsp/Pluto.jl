@@ -273,8 +273,8 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 		bt = catch_backtrace()
 		old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
 		new_packages = String.(external_package_names(notebook.topology))
-		@error """
-		PlutoPkg: Failed to add/remove packages! resetting package environment...
+		@warn """
+		PlutoPkg: Failed to add/remove packages! Resetting package environment...
 		""" PLUTO_VERSION VERSION old_packages new_packages exception=(e, bt)
 		# TODO: send to user
 

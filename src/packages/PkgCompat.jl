@@ -181,7 +181,7 @@ end
 _stdlibs() = try
 	values(Pkg.Types.stdlibs())
 catch e
-	@error "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
+	@warn "Pkg compat: failed to load standard libraries." exception=(e,catch_backtrace())
 
 	String["CRC32c", "Future", "Sockets", "MbedTLS_jll", "Random", "ArgTools", "libLLVM_jll", "GMP_jll", "Pkg", "Serialization", "LibSSH2_jll", "SHA", "OpenBLAS_jll", "REPL", "LibUV_jll", "nghttp2_jll", "Unicode", "Profile", "SparseArrays", "LazyArtifacts", "CompilerSupportLibraries_jll", "Base64", "Artifacts", "PCRE2_jll", "Printf", "p7zip_jll", "UUIDs", "Markdown", "TOML", "OpenLibm_jll", "Test", "MPFR_jll", "Mmap", "SuiteSparse", "LibGit2", "LinearAlgebra", "Logging", "NetworkOptions", "LibGit2_jll", "LibOSXUnwind_jll", "Dates", "LibUnwind_jll", "Libdl", "LibCURL_jll", "dSFMT_jll", "Distributed", "InteractiveUtils", "Downloads", "SharedArrays", "SuiteSparse_jll", "LibCURL", "Statistics", "Zlib_jll", "FileWatching", "DelimitedFiles", "Tar", "MozillaCACerts_jll"]
 end
@@ -213,7 +213,7 @@ function _registered_package_completions(partial_name::AbstractString)::Vector{S
 			Pkg.REPLMode.complete_remote_package(partial_name, 1, length(partial_name))[1]
 		end
 	catch e
-		@error "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
+		@warn "Pkg compat: failed to autocomplete packages" exception=(e,catch_backtrace())
 		String[]
 	end
 end
@@ -283,7 +283,7 @@ function package_versions(package_name::AbstractString)::Vector
 				flatmap(_package_versions_from_path, ps)
 			end
 		catch e
-			@error "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
+			@warn "Pkg compat: failed to get installable versions." exception=(e,catch_backtrace())
 			["latest"]
 		end
     end
@@ -397,12 +397,9 @@ Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/c
 """
 function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
 	if isfile(project_file(ctx))
-		@info "clearing"
 		_modify_compat(ctx) do compat
-			@show compat
 			for p in keys(compat)
 				m_version = get_manifest_version(ctx, p)
-				@show p m_version compat[p]
 				if m_version !== nothing && !is_stdlib(p)
 					if compat[p] == "~" * string(m_version)
 						delete!(compat, p)
