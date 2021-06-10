@@ -292,6 +292,8 @@ function writebackup(notebook::Notebook)
     Pluto.readwrite(notebook.path, backup_path)
 
     @info "Backup saved to" backup_path
+
+    backup_path
 end
 
 function reset_nbpkg(notebook::Notebook; backup::Bool=true, save::Bool=true)
@@ -366,7 +368,9 @@ end
 
 
 function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, backup::Bool=true, save::Bool=true)
-    backup && save && writebackup(notebook)
+    if backup && save
+        bp = writebackup(notebook)
+    end
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
@@ -391,7 +395,9 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 				@warn "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "yes"
 			end
-		end
+		else
+            isfile(bp) && rm(bp)
+        end
 	finally
 		notebook.nbpkg_busy_packages = String[]
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))

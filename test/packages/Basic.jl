@@ -397,6 +397,9 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test has_embedded_pkgfiles(read(f, String))
         @test !Pluto.only_versions_differ(f, simple_import_path)
         @test occursin("0.3.1", read(f, String))
+
+        Pluto.PkgUtils.update_notebook_environment(f)
+        @test num_backups_in(dir) == 1
     end
 
     corrupted_manifest_notebook = 

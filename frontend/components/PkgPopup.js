@@ -94,7 +94,7 @@ export const PkgPopup = ({ notebook }) => {
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${!!showupdate ? "" : "display: none;"}
+                style=${!!showupdate ? "" : "opacity: .4;"}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {
