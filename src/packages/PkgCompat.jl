@@ -370,7 +370,7 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 end
 
 
-# ⚠️✅ Internal API with fallback
+# ✅ Public API
 """
 Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries to the `Project.toml` for all direct dependencies. This serves as a 'fallback' in case someone (with a different Julia version) opens your notebook without being able to load the `Manifest.toml`. Return the new `PkgContext`.
 
@@ -387,11 +387,10 @@ function write_auto_compat_entries(ctx::PkgContext)::PkgContext
 			end
 		end
 	end
-	ctx
 end
 
 
-# ⚠️✅ Internal API with fallback
+# ✅ Public API
 """
 Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries`](@ref) but leave other (e.g. manual) compat entries intact. Return the new `PkgContext`.
 """
@@ -412,7 +411,7 @@ function clear_auto_compat_entries(ctx::PkgContext)::PkgContext
 	end
 end
 
-# ⚠️✅ Internal API with fallback
+# ✅ Public API
 """
 Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl. Return the new `PkgContext`.
 """

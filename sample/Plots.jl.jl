@@ -18,9 +18,6 @@ I wrote this notebook so you can understand it even if you have never used `Plot
 Let's start by importing the `Plots` package. _(Pluto's package manager automatically takes care of installing and tracking dependencies!)_
 """
 
-# ╔═╡ f7b8c58e-e545-4ee5-aefb-17e26b0a801a
-import Dates
-
 # ╔═╡ e5abaf40-f105-11ea-1494-2da858d7db5b
 md"We need to choose a _backend_ for Plots.jl. We choose `plotly` because it works with no additional dependencies. You can [read more about backends](http://docs.juliaplots.org/latest/backends/#backends) in Plots.jl - it's one of its coolest features!"
 
@@ -218,7 +215,6 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 Plots = "~1.16.4"
 
 [deps]
-Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 """
 
@@ -1027,7 +1023,6 @@ version = "0.9.1+5"
 # ╔═╡ Cell order:
 # ╟─7b93882c-9ad8-11ea-0288-0941e163f9d5
 # ╠═5e611449-c239-4547-9d13-5db33a081e58
-# ╠═f7b8c58e-e545-4ee5-aefb-17e26b0a801a
 # ╟─e5abaf40-f105-11ea-1494-2da858d7db5b
 # ╠═9414a092-f105-11ea-10cd-23f84e47d876
 # ╟─5ae65950-9ad9-11ea-2e14-35119d369acd

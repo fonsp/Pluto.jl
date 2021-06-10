@@ -116,7 +116,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 if !isempty(to_remove)
                     @debug to_remove
                     # See later comment
-                    mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))])
+                    mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                     old_manifest_keys = mkeys()
 
                     Pkg.rm(notebook.nbpkg_ctx, [
