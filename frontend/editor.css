@@ -1454,7 +1454,7 @@ pkg-status-mark > button {
 }
 
 pkg-status-mark > button > span::after {
-    display: block;
+    display: inline-block;
     content: " " !important;
     background-size: 1.5em;
     height: 1.5em;
