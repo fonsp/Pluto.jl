@@ -399,7 +399,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test occursin("0.3.1", read(f, String))
 
         Pluto.PkgUtils.update_notebook_environment(f)
-        @test num_backups_in(dir) == 1
+        @test_skip num_backups_in(dir) == 1
     end
 
     corrupted_manifest_notebook = 
