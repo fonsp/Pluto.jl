@@ -8,6 +8,45 @@ import Serialization
 
 VERSION = "v1"
 
+"Return the given cells, and all cells that depend on them (recursively)."
+function downstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
+    found = Set{Cell}(copy(from))
+    downstream_recursive!(found, notebook, topology, from)
+    found
+end
+
+function downstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})
+    for cell in from
+        one_down = where_referenced(notebook, topology, cell)
+        for next in one_down
+            if next ∉ found
+                push!(found, next)
+                downstream_recursive!(found, notebook, topology, Cell[next])
+            end
+        end
+    end
+end
+
+
+"Return all cells that are depended upon by any of the given cells."
+function upstream_recursive(notebook::Notebook, topology::NotebookTopology, from::Union{Vector{Cell},Set{Cell}})
+    found = Set{Cell}(copy(from))
+    upstream_recursive!(found, notebook, topology, from)
+    found
+end
+
+function upstream_recursive!(found::Set{Cell}, notebook::Notebook, topology::NotebookTopology, from::Vector{Cell})
+    for cell in from
+        references = topology.nodes[cell].references
+        for upstream in where_assigned(notebook, topology, references)
+            if upstream ∉ found
+                push!(found, upstream)
+                upstream_recursive!(found, notebook, topology, Cell[upstream])
+            end
+        end
+    end
+end
+
 function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
     filter(notebook.cells) do cell
         any(x ∈ topology[node].references for x ∈ topology[cell].definitions)
@@ -56,18 +95,20 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
 
     new_values = values(inputs)
     output_cell = where_assigned(notebook, topology, outputs)
+    input_cells = where_assigned(notebook, topology, Set{Symbol}(to_set))
 
     if length(output_cell) < length(outputs)
         throw(ErrorException("A requested output does not exist"))
     end
     output_cell = output_cell[1]
 
-    to_reeval = Cell[
-        # Re-evaluate all cells that reference the modified input parameters
-        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
-        # Re-evaluate all input cells that were not provided as parameters
-        where_assigned(notebook, notebook.topology, Set{Symbol}(filter(x->(x ∉ provided_set), to_set)))...
-    ]
+
+    intersection_path = upstream_recursive(notebook, topology, Cell[output_cell]) ∩ downstream_recursive(notebook, topology, input_cells)
+
+
+    to_reeval = Cell[(intersection_path)...]
+
+    println((x->x.cell_id).(to_reeval))
 
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         to_delete_vars = Set{Symbol}([to_delete_vars..., to_set...]) # also delete the bound symbols
@@ -155,6 +196,7 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
     ], serialized_body; status_exception=false)
 
     if response.status >= 300
+        @error "Bad response" response.status
         throw(ErrorException(String(response.body)))
     end
 
