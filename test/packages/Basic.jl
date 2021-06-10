@@ -5,6 +5,7 @@ using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
+import Pluto.PkgCompat
 import Distributed
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
