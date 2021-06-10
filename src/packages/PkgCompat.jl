@@ -61,7 +61,10 @@ else
 end
 
 # 🐸 "Public API", but using PkgContext
-create_empty_ctx()::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(mktempdir(),"Project.toml")))
+load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+
+# 🐸 "Public API", but using PkgContext
+create_empty_ctx()::PkgContext = load_ctx(mktempdir())
 
 # ⚠️ Internal API with fallback
 function mark_original!(ctx::PkgContext)
@@ -404,6 +407,21 @@ function clear_auto_compat_entries!(ctx::PkgContext)
 				if compat[p] == "~" * string(m_version)
 					delete!(compat, p)
 				end
+			end
+		end
+	end
+end
+
+# ⚠️✅ Internal API with fallback
+"""
+Remove any [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml` for standard libraries. These entries are created when an old version of Julia uses a package that later became a standard library, like https://github.com/JuliaPackaging/Artifacts.jl.
+"""
+function clear_stdlib_compat_entries!(ctx::PkgContext)
+	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
+		for p in keys(compat)
+			if is_stdlib(p)
+				@info "Removing compat entry for stdlib" p
+				delete!(compat, p)
 			end
 		end
 	end

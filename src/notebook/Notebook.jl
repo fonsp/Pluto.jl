@@ -254,12 +254,12 @@ function load_notebook_nobackup(io, path)::Notebook
         write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
 
         try
-            PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+            PkgCompat.load_ctx(env_dir)
         catch e
             @error "Failed to load notebook files: Project.toml+Manifest.toml parse error. Trying to recover Project.toml without Manifest.toml..." exception=(e,catch_backtrace())
             try
                 rm(joinpath(env_dir, "Manifest.toml"))
-                PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
+                PkgCompat.load_ctx(env_dir)
             catch e
                 @error "Failed to load notebook files: Project.toml parse error." exception=(e,catch_backtrace())
                 PkgCompat.create_empty_ctx()

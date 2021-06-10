@@ -43,7 +43,7 @@ Update the notebook package environment to match the notebook's code. This will:
 - Detect the use of `Pkg.activate` and enable/disabled nbpkg accordingly.
 """
 function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
-    ctx = notebook.nbpkg_ctx
+    local ctx = notebook.nbpkg_ctx
 
     👺 = false
 
@@ -98,11 +98,14 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 PkgCompat.refresh_registry_cache()
 
                 if !notebook.nbpkg_ctx_instantiated
+                    PkgCompat.clear_stdlib_compat_entries!(ctx)
                     PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         try
                             Pkg.resolve(ctx)
-                        catch
+                        catch e
+                            @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                             reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                            ctx = notebook.nbpkg_ctx
                             Pkg.resolve(ctx)
                         end
                     end
@@ -308,10 +311,13 @@ function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=
     if notebook.nbpkg_ctx !== nothing
         p = PkgCompat.project_file(notebook)
         m = PkgCompat.manifest_file(notebook)
-        keep_project || isfile(p) && rm(p)
+        keep_project || (isfile(p) && rm(p))
         isfile(m) && rm(m)
+
+        notebook.nbpkg_ctx = PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx))
+    else
+        notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
     end
-    notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
 
     save && save_notebook(notebook)
 end
@@ -341,8 +347,15 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             PkgCompat.refresh_registry_cache()
 
             if !notebook.nbpkg_ctx_instantiated
+                PkgCompat.clear_stdlib_compat_entries!(ctx)
                 PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
-                    Pkg.resolve(ctx)
+                    try
+                        Pkg.resolve(ctx)
+                    catch e
+                        @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
+                        reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                        Pkg.resolve(ctx)
+                    end
                 end
             end
 
