@@ -75,7 +75,6 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
-    nbpkg_local,
     nbpkg,
     cell_id,
     notebook_id,
@@ -98,12 +97,6 @@ export const CellInput = ({
 
     const nbpkg_ref = useRef(nbpkg)
     useEffect(() => {
-        pkg_bubbles.current.forEach((b) => {
-            b.on_nbpkg_local(nbpkg_local)
-        })
-    }, [nbpkg_local.packages, nbpkg_local.is_pluto_managed])
-
-    useEffect(() => {
         nbpkg_ref.current = nbpkg
         pkg_bubbles.current.forEach((b) => {
             b.on_nbpkg(nbpkg)
@@ -115,7 +108,6 @@ export const CellInput = ({
         const cm = cm_ref.current
         /** @type {string} */
         const line = cm.getLine(line_i)
-        console.log(line)
         if (line != undefined) {
             // search for the "import Example, Plots" expression using regex
 
@@ -151,7 +143,6 @@ export const CellInput = ({
                                     refresh_cm: () => cm.refresh(),
                                     notebook_id: notebook_id,
                                 })
-                                b.on_nbpkg_local(nbpkg_local)
                                 b.on_nbpkg(nbpkg_ref.current)
                                 return b
                             })
@@ -183,8 +174,7 @@ export const CellInput = ({
             cm_ref.current?.setValue(remote_code)
             if (first_time) {
                 cm_ref.current.clearHistory()
-                console.log("1112#")
-                range(0, cm_ref.current.lineCount() - 1).forEach(update_line_bubbles)
+                update_all_line_bubbles()
             }
         }
     }, [remote_code])

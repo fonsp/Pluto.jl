@@ -19,7 +19,6 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
-    nbpkg_local,
     nbpkg,
 }) => {
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
@@ -43,7 +42,6 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
-                nbpkg_local=${nbpkg_local}
                 nbpkg=${nbpkg}
             />
         `
@@ -74,7 +72,6 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
-        nbpkg_local,
         ...nbpkg_fingerprint(nbpkg),
     ])
 }
@@ -103,7 +100,6 @@ const render_cell_outputs_minimum = 20
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
  *  disable_input: any,
- *  nbpkg_local: Object,
  * }} props
  * */
 export const Notebook = ({
@@ -117,7 +113,6 @@ export const Notebook = ({
     is_initializing,
     is_process_ready,
     disable_input,
-    nbpkg_local,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -177,7 +172,6 @@ export const Notebook = ({
                         force_hide_input=${cell_inputs_delayed && i > render_cell_inputs_minimum}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
-                        nbpkg_local=${nbpkg_local}
                         nbpkg=${notebook.nbpkg}
                     />`
                 )}
@@ -195,7 +189,6 @@ export const NotebookMemo = ({
     disable_input,
     last_created_cell,
     selected_cells,
-    nbpkg_local,
 }) => {
     return useMemo(() => {
         return html`
@@ -209,7 +202,6 @@ export const NotebookMemo = ({
                 disable_input=${disable_input}
                 last_created_cell=${last_created_cell}
                 selected_cells=${selected_cells}
-                nbpkg_local=${nbpkg_local}
             />
         `
     }, [
@@ -222,7 +214,6 @@ export const NotebookMemo = ({
         disable_input,
         last_created_cell,
         selected_cells,
-        nbpkg_local,
     ])
 }
 */

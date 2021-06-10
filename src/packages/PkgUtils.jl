@@ -76,10 +76,32 @@ write_dir_to_nb(dir::String, notebook_path::String) = write_dir_to_nb(dir::Strin
 write_nb_to_dir(notebook_path::String, dir::String) = write_nb_to_dir(load_notebook(notebook_path), dir)
 nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_environments_equal(load_notebook(notebook_path), dir)
 
+"""
+```julia
+reset_notebook_environment(notebook_path::String; backup::Bool=true)
+```
 
-function reset_notebook_environment(path::String)
+Remove the embedded Project.toml and Manifest.toml from a notebook file, modifying the file. A backup file is created by default.
+"""
+function reset_notebook_environment(path::String; kwargs...)
     Pluto.reset_nbpkg(
-        load_notebook_nobackup(path)
+        load_notebook_nobackup(path);
+        kwargs...
+    )
+end
+
+"""
+```julia
+reset_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
+```
+
+Update the embedded Project.toml and Manifest.toml in a notebook file, modifying the file. A backup file is created by default. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument.
+"""
+function update_notebook_environment(path::String; kwargs...)
+    Pluto.update_nbpkg(
+        Pluto.ServerSession(),
+        load_notebook_nobackup(path);
+        kwargs...
     )
 end
 

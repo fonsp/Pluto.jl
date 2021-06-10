@@ -67,7 +67,6 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
 export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, notebook_id }) => {
     const button = html`<button><span></span></button>`
     const node = html`<pkg-status-mark>${button}</pkg-status-mark>`
-    // const nbpkg_local_ref = { current: null }
     const nbpkg_ref = { current: null }
     const available_versions_ref = { current: null }
 
@@ -89,10 +88,6 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         // refresh_cm()
     }
 
-    node.on_nbpkg_local = (p) => {
-        // nbpkg_local_ref.current = p
-        // render()
-    }
     node.on_nbpkg = (p) => {
         // if nbpkg is switch on/off
         if ((nbpkg_ref.current == null) !== (p == null)) {

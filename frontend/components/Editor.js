@@ -222,22 +222,6 @@ export class Editor extends Component {
             last_created_cell: null,
             selected_cells: [],
 
-            nbpkg_local_local: {
-                is_pluto_managed: true,
-                packages: {
-                    PlutoUI: {
-                        running_version: "0.5.1",
-                        type: "version_range",
-                        version_range: "0.5",
-                    },
-                    Plots: {
-                        running_version: "1.2.3",
-                        type: "version_range",
-                        version_range: "1",
-                    },
-                },
-            },
-
             update_is_ongoing: false,
         }
 
@@ -500,14 +484,6 @@ export class Editor extends Component {
                     )
                     await this.client.send("run_multiple_cells", { cells: cell_ids }, { notebook_id: this.state.notebook.notebook_id })
                 }
-            },
-            update_local_nbpkg_local: (mutator) => {
-                this.setState(({ notebook }) => ({
-                    notebook: {
-                        ...notebook,
-                        nbpkg_local_local: immer(notebook.nbpkg_local_local, mutator),
-                    },
-                }))
             },
             /**
              *
@@ -1165,7 +1141,6 @@ patch: ${JSON.stringify(
                             is_process_ready=${
                                 this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
                             }
-                            nbpkg_local=${this.state.nbpkg_local_local}
                         />
                         <${DropRuler} 
                             actions=${this.actions}

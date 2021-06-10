@@ -201,7 +201,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    simple_import_notebook = read(joinpath(@__DIR__, "simple_import.jl"), String)
+    simple_import_path = joinpath(@__DIR__, "simple_import.jl")
+    simple_import_notebook = read(simple_import_path, String)
 
     @testset "Manifest loading" begin
         fakeclient = ClientSession(:fake, nothing)
@@ -379,7 +380,23 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         Pluto.PkgUtils.reset_notebook_environment(f)
 
         @test num_backups_in(dir) == 1
-        @test !has_embedded_pkgfiles(read(f,String))
+        @test !has_embedded_pkgfiles(read(f, String))
+    end
+
+    @testset "PkgUtils -- update" begin
+        dir = mktempdir()
+        f = joinpath(dir, "hello.jl")
+
+        write(f, simple_import_notebook)
+        @test !occursin("0.3.1", read(f, String))
+        
+        @test num_backups_in(dir) == 0
+        Pluto.PkgUtils.update_notebook_environment(f)
+
+        @test num_backups_in(dir) == 1
+        @test has_embedded_pkgfiles(read(f, String))
+        @test !Pluto.only_versions_differ(f, simple_import_path)
+        @test occursin("0.3.1", read(f, String))
     end
 
     corrupted_manifest_notebook = 

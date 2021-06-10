@@ -168,7 +168,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                         println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
                     end
 
-                    @info "PlutoPkg done"
+                    @debug "PlutoPkg done"
                 end
 
                 should_instantiate = !notebook.nbpkg_ctx_instantiated || !isempty(to_add) || !isempty(to_remove)
@@ -177,7 +177,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         # @info "Resolving"
                         # Pkg.resolve(ctx)
-                        @info "Instantiating"
+                        @debug "Instantiating"
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
                         # We could also run the Pkg calls on the notebook process, but somehow I think that doing it on the server is more charming, though it requires this workaround.
@@ -247,7 +247,7 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 		end
 
 		if pkg_result.did_something
-			@info "PlutoPkg: success!" pkg_result
+			@debug "PlutoPkg: success!" pkg_result
 
 			if pkg_result.restart_recommended
 				@warn "PlutoPkg: Notebook restart recommended"
@@ -287,13 +287,15 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 	end
 end
 
-function reset_nbpkg(notebook::Notebook; backup::Bool=true, save::Bool=true)
-    if backup && save
-        backup_path = backup_filename(notebook.path)
-        Pluto.readwrite(notebook.path, backup_path)
+function writebackup(notebook::Notebook)
+    backup_path = backup_filename(notebook.path)
+    Pluto.readwrite(notebook.path, backup_path)
 
-        @info "Backup saved to" backup_path
-    end
+    @info "Backup saved to" backup_path
+end
+
+function reset_nbpkg(notebook::Notebook; backup::Bool=true, save::Bool=true)
+    backup && save && writebackup(notebook)
 
     notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
 
@@ -309,6 +311,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
         old_packages = String.(keys(PkgCompat.project(ctx).dependencies))
 
         iolistener = let
+            # we don't know which packages will be updated, so we send terminal output to all installed packages
             IOListener(callback=(s -> on_terminal_output(old_packages, s)))
         end
         
@@ -363,12 +366,7 @@ end
 
 
 function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, backup::Bool=true, save::Bool=true)
-    if backup && save
-        backup_path = backup_filename(notebook.path)
-        Pluto.readwrite(notebook.path, backup_path)
-
-        @info "Backup saved to" backup_path
-    end
+    backup && save && writebackup(notebook)
 
     try
 		pkg_result = withtoken(notebook.executetoken) do
