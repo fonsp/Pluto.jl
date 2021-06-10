@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
-import .PkgCompat: select, is_stdlib, write_semver_compat_entries!, clear_semver_compat_entries!
+import .PkgCompat: select, is_stdlib, write_auto_compat_entries!, clear_auto_compat_entries!
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -99,7 +99,12 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
 
                 if !notebook.nbpkg_ctx_instantiated
                     PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
-                        Pkg.resolve(ctx)
+                        try
+                            Pkg.resolve(ctx)
+                        catch
+                            reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                            Pkg.resolve(ctx)
+                        end
                     end
                 end
 
@@ -107,7 +112,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     haskey(PkgCompat.project(ctx).dependencies, p)
                 end
                 if !isempty(to_remove)
-                    @show to_remove
+                    @debug to_remove
                     # See later comment
                     mkeys() = filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(ctx))])
                     old_manifest_keys = mkeys()
@@ -130,12 +135,12 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 to_add = filter(PkgCompat.package_exists, added)
                 
                 if !isempty(to_add)
-                    @show to_add
+                    @debug to_add
                     startlistening(iolistener)
 
                     PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                         # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                        clear_semver_compat_entries!(ctx)
+                        clear_auto_compat_entries!(ctx)
 
                         try
                             for tier in [
@@ -161,7 +166,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                                 end
                             end
                         finally
-                            write_semver_compat_entries!(ctx)
+                            write_auto_compat_entries!(ctx)
                         end
 
                         # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
@@ -250,11 +255,11 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 			@debug "PlutoPkg: success!" pkg_result
 
 			if pkg_result.restart_recommended
-				@warn "PlutoPkg: Notebook restart recommended"
+				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "yes"
 			end
 			if pkg_result.restart_required
-				@warn "PlutoPkg: Notebook restart REQUIRED"
+				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "yes"
 			end
 
@@ -279,8 +284,9 @@ function sync_nbpkg(session, notebook; save::Bool=true)
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		# Clear the embedded Project and Manifest and require a restart from the user.
-		reset_nbpkg(notebook; save=save)
+		reset_nbpkg(notebook; keep_project=false, save=save)
 		notebook.nbpkg_restart_required_msg = "yes"
+        notebook.nbpkg_ctx_instantiated = false
 		send_notebook_changes!(ClientRequest(session=session, notebook=notebook))
 
 		save && save_notebook(notebook)
@@ -296,9 +302,15 @@ function writebackup(notebook::Notebook)
     backup_path
 end
 
-function reset_nbpkg(notebook::Notebook; backup::Bool=true, save::Bool=true)
+function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
     backup && save && writebackup(notebook)
 
+    if notebook.nbpkg_ctx !== nothing
+        p = PkgCompat.project_file(notebook)
+        m = PkgCompat.manifest_file(notebook)
+        keep_project || isfile(p) && rm(p)
+        isfile(m) && rm(m)
+    end
     notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
 
     save && save_notebook(notebook)
@@ -338,14 +350,14 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
 
             PkgCompat.withio(ctx, IOContext(iolistener.buffer, :color => true)) do
                 # We temporarily clear the "semver-compatible" [deps] entries, because it is difficult to update them after the update 🙈. TODO
-                clear_semver_compat_entries!(ctx)
+                clear_auto_compat_entries!(ctx)
 
                 try
                     ###
                     Pkg.update(ctx; level=level)
                     ###
                 finally
-                    write_semver_compat_entries!(ctx)
+                    write_auto_compat_entries!(ctx)
                 end
             end
 
@@ -388,11 +400,11 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 
 		if pkg_result.did_something
 			if pkg_result.restart_recommended
-				@warn "PlutoPkg: Notebook restart recommended"
+				@debug "PlutoPkg: Notebook restart recommended"
 				notebook.nbpkg_restart_recommended_msg = "yes"
 			end
 			if pkg_result.restart_required
-				@warn "PlutoPkg: Notebook restart REQUIRED"
+				@debug "PlutoPkg: Notebook restart REQUIRED"
 				notebook.nbpkg_restart_required_msg = "yes"
 			end
 		else

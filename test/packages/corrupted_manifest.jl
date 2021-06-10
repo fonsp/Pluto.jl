@@ -14,6 +14,9 @@ PlutoPkgTestA.MY_VERSION |> Text
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 PlutoPkgTestA = "419c6f8d-b8cd-4309-abdc-cee491252f94"
+
+[compat]
+PlutoPkgTestA = "~0.2.2"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002

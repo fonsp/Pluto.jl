@@ -7,7 +7,18 @@ using InteractiveUtils
 # ╔═╡ c581d17a-c965-11eb-1607-bbeb44933d25
 # This file imports an outdated version of PlutoPkgTestA: 0.2.1 (which is stored in the embedded Manifest file).
 
-# It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible), using Pluto, and I then used `Pluto.activate_notebook_environment` to change the version of PlutoPkgTestA.
+# It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible):
+
+# 1. add our test registry: 
+#   pkg> registry add https://github.com/JuliaPluto/PlutoPkgTestRegistry
+
+# 2. using Pluto, create this notebook
+
+# 3. use `Pluto.activate_notebook_environment` to change the version of PlutoPkgTestA to 0.2.2
+
+# 4. open the notebook in Pluto again. Add a second package (PlutoPkgTestD) and then remove it again. This adds the auto-generated compat entry for PlutoPkgTestA.
+
+
 
 import PlutoPkgTestA
 
@@ -18,6 +29,9 @@ PlutoPkgTestA.MY_VERSION |> Text
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 PlutoPkgTestA = "419c6f8d-b8cd-4309-abdc-cee491252f94"
+
+[compat]
+PlutoPkgTestA = "~0.2.2"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002

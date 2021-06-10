@@ -17,7 +17,10 @@ PlutoPkgTestZZZZ.MY_VERSION |> Text
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
-PlutoPkgTestZZZZ = "99999999-b8cd-4309-abdc-cee491252f94"
+PlutoPkgTestZZZZ = "99999999-b8cd-4309-abdc-cee491252f94"[deps]
+
+[compat]
+PlutoPkgTestZZZZ = "~0.2.2"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002

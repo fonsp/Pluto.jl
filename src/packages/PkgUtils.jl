@@ -78,10 +78,10 @@ nb_and_dir_environments_equal(notebook_path::String, dir::String) = nb_and_dir_e
 
 """
 ```julia
-reset_notebook_environment(notebook_path::String; backup::Bool=true)
+reset_notebook_environment(notebook_path::String; keep_project::Bool=false, backup::Bool=true)
 ```
 
-Remove the embedded Project.toml and Manifest.toml from a notebook file, modifying the file. A backup file is created by default.
+Remove the embedded `Project.toml` and `Manifest.toml` from a notebook file, modifying the file. If `keep_project` is true, only `Manifest.toml` will be deleted. A backup file is created by default.
 """
 function reset_notebook_environment(path::String; kwargs...)
     Pluto.reset_nbpkg(
@@ -95,7 +95,7 @@ end
 reset_notebook_environment(notebook_path::String; backup::Bool=true, level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR)
 ```
 
-Update the embedded Project.toml and Manifest.toml in a notebook file, modifying the file. A backup file is created by default. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument.
+Update the embedded `Project.toml` and `Manifest.toml` in a notebook file, modifying the file. A [`Pkg.UpgradeLevel`](@ref) can be passed to the `level` keyword argument. A backup file is created by default. 
 """
 function update_notebook_environment(path::String; kwargs...)
     Pluto.update_nbpkg(

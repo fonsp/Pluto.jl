@@ -402,9 +402,6 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test_skip num_backups_in(dir) == 1
     end
 
-    corrupted_manifest_notebook = 
-    unregistered_import_notebook = read(joinpath(@__DIR__, "unregistered_import.jl"), String)
-
     @testset "Bad files" begin
         @testset "$(name)" for name in ["corrupted_manifest", "unregistered_import"]
 
@@ -448,7 +445,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             if name != "unregistered_import"
                 @test notebook.cells[1].errored == false
                 @test notebook.cells[2].errored == false
-                @test notebook.cells[2].output.body == "0.3.1" # latest
+                @test notebook.cells[2].output.body == "0.2.2" # the Project.toml remained, so we did not lose our compat bound.
                 @test has_embedded_pkgfiles(notebook)
             end
 

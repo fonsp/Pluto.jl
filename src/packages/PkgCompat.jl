@@ -373,13 +373,18 @@ end
 
 
 # ⚠️✅ Internal API with fallback
-function write_semver_compat_entries!(ctx::PkgContext)
+"""
+Add any missing [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries to the `Project.toml` for all direct dependencies. This serves as a 'fallback' in case someone (with a different Julia version) opens your notebook without being able to load the `Manifest.toml`.
+
+The automatic compat entry is: `"~" * string(installed_version)`.
+"""
+function write_auto_compat_entries!(ctx::PkgContext)
 	_modify_compat!(ctx) do compat
 		for p in keys(project(ctx).dependencies)
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)
-					compat[p] = "^" * string(m_version)
+					compat[p] = "~" * string(m_version)
 				end
 			end
 		end
@@ -388,12 +393,15 @@ end
 
 
 # ⚠️✅ Internal API with fallback
-function clear_semver_compat_entries!(ctx::PkgContext)
+"""
+Remove any automatically-generated [`compat`](https://pkgdocs.julialang.org/v1/compatibility/) entries from the `Project.toml`. This will undo the effects of [`write_auto_compat_entries!`](@ref) but leave other (e.g. manual) compat entries intact.
+"""
+function clear_auto_compat_entries!(ctx::PkgContext)
 	isfile(project_file(ctx)) && _modify_compat!(ctx) do compat
 		for p in keys(compat)
 			m_version = get_manifest_version(ctx, p)
 			if m_version !== nothing && !is_stdlib(p)
-				if compat[p] == "^" * string(m_version)
+				if compat[p] == "~" * string(m_version)
 					delete!(compat, p)
 				end
 			end
