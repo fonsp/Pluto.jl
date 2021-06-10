@@ -5,28 +5,26 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ c581d17a-c965-11eb-1607-bbeb44933d25
-# This file imports an outdated version of PlutoPkgTestA: 0.2.1 (which is stored in the embedded Manifest file).
+# This file imports an outdated version of PlutoPkgTestA: 0.2.1 (which is stored in the embedded Manifest file) and Artifacts, which is now a standard library (as of Julia 1.6), but it used to be a registered package (https://github.com/JuliaPackaging/Artifacts.jl). This notebook was generated on Julia 1.5, so the Manifest will be very very confusing for Julia 1.6 and up.
 
 # It is generated on Julia 1.5 (our oldest supported Julia version, Manifest.toml is not backwards-compatible):
 
 # 1. add our test registry: 
 #   pkg> registry add https://github.com/JuliaPluto/PlutoPkgTestRegistry
 
-# 2. using Pluto, create this notebook
+# 2. using Pluto, open the simple_import.jl notebook
 
-# 3. use `Pluto.activate_notebook_environment` to change the version of PlutoPkgTestA to 0.2.2
-
-# 4. open the notebook in Pluto again. Add a second package (PlutoPkgTestD) and then remove it again. This adds the auto-generated compat entry for PlutoPkgTestA.
+# 3. add the `import Artifacts` cell
 
 
 
 import PlutoPkgTestA
 
-# ╔═╡ f9bdbb35-4326-4786-b308-88b6894923df
-import Artifacts
-
 # ╔═╡ aef57966-ea36-478f-8724-e71430f10be9
 PlutoPkgTestA.MY_VERSION |> Text
+
+# ╔═╡ f9bdbb35-4326-4786-b308-88b6894923df
+import Artifacts
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -115,7 +113,7 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 
 # ╔═╡ Cell order:
 # ╠═c581d17a-c965-11eb-1607-bbeb44933d25
-# ╠═f9bdbb35-4326-4786-b308-88b6894923df
 # ╠═aef57966-ea36-478f-8724-e71430f10be9
+# ╠═f9bdbb35-4326-4786-b308-88b6894923df
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
