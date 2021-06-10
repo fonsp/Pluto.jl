@@ -267,7 +267,7 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     else
         PkgCompat.create_empty_ctx()
-    end
+    end::PkgCompat
 
     appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
     appeared_cells_dict = filter(collected_cells) do (k, v)

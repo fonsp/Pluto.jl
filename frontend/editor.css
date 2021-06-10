@@ -1435,7 +1435,7 @@ body.nbpkg_disabled pkg-popup {
 pkg-status-mark {
     width: 1em;
     height: 1em;
-    margin: 0px 0.3em;
+    margin: 0px .6em 0px 0.2em;
     display: inline-block;
 }
 

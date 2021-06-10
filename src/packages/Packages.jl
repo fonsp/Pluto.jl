@@ -433,7 +433,7 @@ function update_nbpkg(session, notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.U
 	end
 end
 
-nbpkg_cache(ctx::PkgContext) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
+nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
     x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
 )
 
