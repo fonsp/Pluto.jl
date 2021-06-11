@@ -16,6 +16,7 @@ import { UndoDelete } from "./UndoDelete.js"
 import { SlideControls } from "./SlideControls.js"
 import { Scroller } from "./Scroller.js"
 import { ExportBanner } from "./ExportBanner.js"
+import { PkgPopup } from "./PkgPopup.js"
 
 import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
@@ -23,6 +24,7 @@ import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
+import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
@@ -73,6 +75,9 @@ const statusmap = (state) => ({
     loading: (BinderPhase.wait_for_user < state.binder_phase && state.binder_phase < BinderPhase.ready) || state.initializing || state.moving_file,
     process_restarting: state.notebook.process_status === ProcessStatus.waiting_to_restart,
     process_dead: state.notebook.process_status === ProcessStatus.no_process || state.notebook.process_status === ProcessStatus.waiting_to_restart,
+    nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
+    nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
+    nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
     code_differs: state.notebook.cell_order.some(
@@ -146,6 +151,7 @@ const first_true_key = (obj) => {
  *  cell_order: Array<string>,
  *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
+ *  nbpkg: Object,
  * }}
  */
 
@@ -168,6 +174,7 @@ const initial_notebook = () => ({
     cell_order: [],
     cell_execution_order: [],
     bonds: {},
+    nbpkg: null,
 })
 
 export class Editor extends Component {
@@ -516,6 +523,10 @@ export class Editor extends Component {
                     },
                     true
                 )
+            },
+            get_avaible_versions: async ({ package_name, notebook_id }) => {
+                const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
+                return message.versions
             },
         }
 
@@ -1020,6 +1031,19 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
+        const restart_button = (text) => html`<a
+            href="#"
+            onClick=${() => {
+                this.client.send(
+                    "restart_process",
+                    {},
+                    {
+                        notebook_id: notebook.notebook_id,
+                    }
+                )
+            }}
+            >${text}</a
+        >`
         const export_url = (u) =>
             this.state.binder_session_url == null
                 ? `./${u}?id=${this.state.notebook.notebook_id}`
@@ -1082,23 +1106,14 @@ patch: ${JSON.stringify(
                                     ? "Reconnecting..."
                                     : statusval === "loading"
                                     ? "Loading..."
+                                    : statusval === "nbpkg_restart_required"
+                                    ? html`${restart_button("Restart notebook")}${" (required)"}`
+                                    : statusval === "nbpkg_restart_recommended"
+                                    ? html`${restart_button("Restart notebook")}${" (recommended)"}`
                                     : statusval === "process_restarting"
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
-                                    ? html`${"Process exited — "}
-                                          <a
-                                              href="#"
-                                              onClick=${() => {
-                                                  this.client.send(
-                                                      "restart_process",
-                                                      {},
-                                                      {
-                                                          notebook_id: notebook.notebook_id,
-                                                      }
-                                                  )
-                                              }}
-                                              >restart</a
-                                          >`
+                                    ? html`${"Process exited — "}${restart_button("restart")}`
                                     : null
                             }</div>
                         </nav>
@@ -1127,7 +1142,7 @@ patch: ${JSON.stringify(
                                 this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
                             }
                         />
-                        <${DropRuler}
+                        <${DropRuler} 
                             actions=${this.actions}
                             selected_cells=${this.state.selected_cells}
                             set_scroller=${(enabled) => {
@@ -1163,6 +1178,7 @@ patch: ${JSON.stringify(
                         on_update_doc_query=${this.actions.set_doc_query}
                         notebook=${this.state.notebook}
                     />
+                    <${PkgPopup} notebook=${this.state.notebook}/>
                     <${UndoDelete}
                         recently_deleted=${this.state.recently_deleted}
                         on_click=${() => {

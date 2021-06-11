@@ -2,6 +2,8 @@ import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
+import .PkgCompat
+
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
 
@@ -145,6 +147,19 @@ function notebook_to_js(notebook::Notebook)
                 "is_first_value" => bondvalue.is_first_value
             )
         for (key, bondvalue) in notebook.bonds),
+        "nbpkg" => let
+            ctx = notebook.nbpkg_ctx
+            Dict{String,Any}(
+                "enabled" => ctx !== nothing,
+                "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
+                "restart_required_msg" => notebook.nbpkg_restart_required_msg,
+                # TODO: cache this
+                "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
+                "terminal_outputs" => notebook.nbpkg_terminal_outputs,
+                "busy_packages" => notebook.nbpkg_busy_packages,
+                "instantiated" => notebook.nbpkg_ctx_instantiated,
+            )
+        end,
         "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
@@ -413,8 +428,9 @@ end
 
 without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
 
-responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
+responses[:restart_process] = function response_restrart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
+
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
@@ -425,7 +441,7 @@ responses[:restart_process] = function response_restrart_process(🙋::ClientReq
         🙋.notebook.process_status = ProcessStatus.starting
         send_notebook_changes!(🙋 |> without_initiator)
 
-        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
+        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=run_async, save=true)
     end
 end
 
@@ -496,6 +512,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
 end
 
 responses[:write_file] = function (🙋::ClientRequest)
+    require_notebook(🙋)
     path = 🙋.notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
@@ -557,4 +574,25 @@ end"""
     else
         code = missing
     end
+end
+
+responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
+    # require_notebook(🙋)
+    all_versions = PkgCompat.package_versions(🙋.body["package_name"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
+        :versions => string.(all_versions),
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
+    results = PkgCompat.package_completions(🙋.body["query"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
+        :results => results,
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:pkg_update] = function response_pkg_update(🙋::ClientRequest)
+    require_notebook(🙋)
+    update_nbpkg(🙋.session, 🙋.notebook)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
 end

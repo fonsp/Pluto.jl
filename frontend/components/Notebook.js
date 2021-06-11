@@ -2,6 +2,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 import { Cell } from "./Cell.js"
+import { nbpkg_fingerprint } from "./PkgStatusMark.js"
 
 let CellMemo = ({
     cell_result,
@@ -18,6 +19,7 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
+    nbpkg,
 }) => {
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
@@ -40,6 +42,7 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
+                nbpkg=${nbpkg}
             />
         `
     }, [
@@ -69,6 +72,7 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
+        ...nbpkg_fingerprint(nbpkg),
     ])
 }
 
@@ -168,6 +172,7 @@ export const Notebook = ({
                         force_hide_input=${cell_inputs_delayed && i > render_cell_inputs_minimum}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
+                        nbpkg=${notebook.nbpkg}
                     />`
                 )}
         </pluto-notebook>
@@ -199,7 +204,17 @@ export const NotebookMemo = ({
                 selected_cells=${selected_cells}
             />
         `
-    }, [is_initializing, notebook, cell_inputs_local, on_update_doc_query, on_cell_input, on_focus_neighbor, disable_input, last_created_cell, selected_cells])
+    }, [
+        is_initializing,
+        notebook,
+        cell_inputs_local,
+        on_update_doc_query,
+        on_cell_input,
+        on_focus_neighbor,
+        disable_input,
+        last_created_cell,
+        selected_cells,
+    ])
 }
 */
 export const NotebookMemo = Notebook

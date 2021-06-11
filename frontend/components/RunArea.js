@@ -98,10 +98,9 @@ export const useMillisSinceTruthy = (truthy) => {
     return truthy ? now - startRunning : undefined
 }
 
-const NSeconds = 5
-export const useDebouncedTruth = (truthy) => {
+export const useDebouncedTruth = (truthy, delay = 5) => {
     const [mytruth, setMyTruth] = useState(truthy)
-    const setMyTruthAfterNSeconds = useMemo(() => _.debounce(setMyTruth, NSeconds * 1000), [setMyTruth])
+    const setMyTruthAfterNSeconds = useMemo(() => _.debounce(setMyTruth, delay * 1000), [setMyTruth])
     useEffect(() => {
         if (truthy) {
             setMyTruth(true)

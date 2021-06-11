@@ -26,7 +26,6 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	new_codes = merge(old_topology.codes, updated_codes)
 	new_nodes = merge(old_topology.nodes, updated_nodes)
 
-	# DONE (performance): deleted cells should not stay in the topology
 	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
 		delete!(new_nodes, removed_cell)
 		delete!(new_codes, removed_cell)
