@@ -99,12 +99,14 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 if !notebook.nbpkg_ctx_instantiated
                     notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        try
-                            Pkg.resolve(notebook.nbpkg_ctx)
-                        catch e
-                            @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                            reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            Pkg.resolve(notebook.nbpkg_ctx)
+                        withinteractive(false) do
+                            try
+                                Pkg.resolve(notebook.nbpkg_ctx)
+                            catch e
+                                @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
+                                reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                                Pkg.resolve(notebook.nbpkg_ctx)
+                            end
                         end
                     end
                 end
@@ -140,38 +142,40 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     startlistening(iolistener)
 
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
-                        notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
+                        withinteractive(false) do
+                            # We temporarily clear the "semver-compatible" [deps] entries, because Pkg already respects semver, unless it doesn't, in which case we don't want to force it.
+                            notebook.nbpkg_ctx = PkgCompat.clear_auto_compat_entries(notebook.nbpkg_ctx)
 
-                        try
-                            for tier in [
-                                Pkg.PRESERVE_ALL,
-                                Pkg.PRESERVE_DIRECT,
-                                Pkg.PRESERVE_SEMVER,
-                                Pkg.PRESERVE_NONE,
-                            ]
-                                used_tier = tier
+                            try
+                                for tier in [
+                                    Pkg.PRESERVE_ALL,
+                                    Pkg.PRESERVE_DIRECT,
+                                    Pkg.PRESERVE_SEMVER,
+                                    Pkg.PRESERVE_NONE,
+                                ]
+                                    used_tier = tier
 
-                                try
-                                    Pkg.add(notebook.nbpkg_ctx, [
-                                        Pkg.PackageSpec(name=p)
-                                        for p in to_add
-                                    ]; preserve=used_tier)
-                                    
-                                    break
-                                catch e
-                                    if used_tier == Pkg.PRESERVE_NONE
-                                        # give up
-                                        rethrow(e)
+                                    try
+                                        Pkg.add(notebook.nbpkg_ctx, [
+                                            Pkg.PackageSpec(name=p)
+                                            for p in to_add
+                                        ]; preserve=used_tier)
+                                        
+                                        break
+                                    catch e
+                                        if used_tier == Pkg.PRESERVE_NONE
+                                            # give up
+                                            rethrow(e)
+                                        end
                                     end
                                 end
+                            finally
+                                notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
                             end
-                        finally
-                            notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
-                        end
 
-                        # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
-                        println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                            # Now that Pkg is set up, the notebook process will call `using Package`, which can take some time. We write this message to the io, to notify the user.
+                            println(iolistener.buffer, "\e[32m\e[1mLoading\e[22m\e[39m packages...")
+                        end
                     end
 
                     @debug "PlutoPkg done"
@@ -181,8 +185,6 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                 if should_instantiate
                     startlistening(iolistener)
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                        # @info "Resolving"
-                        # Pkg.resolve(notebook.nbpkg_ctx)
                         @debug "Instantiating"
                         
                         # Pkg.instantiate assumes that the environment to be instantiated is active, so we will have to modify the LOAD_PATH of this Pluto server
@@ -350,12 +352,14 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
             if !notebook.nbpkg_ctx_instantiated
                 notebook.nbpkg_ctx = PkgCompat.clear_stdlib_compat_entries(notebook.nbpkg_ctx)
                 PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
-                    try
-                        Pkg.resolve(notebook.nbpkg_ctx)
-                    catch e
-                        @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
-                        reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                        Pkg.resolve(notebook.nbpkg_ctx)
+                    withinteractive(false) do
+                        try
+                            Pkg.resolve(notebook.nbpkg_ctx)
+                        catch e
+                            @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
+                            reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
+                            Pkg.resolve(notebook.nbpkg_ctx)
+                        end
                     end
                 end
             end
@@ -440,6 +444,21 @@ nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,Stri
 function update_nbpkg_cache!(notebook::Notebook)
     notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)
     notebook
+end
+
+const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
+function withinteractive(f::Function, value::Bool)
+    old_value = isinteractive()
+    @static if is_interactive_defined
+        Core.eval(Base, :(is_interactive = $value))
+    end
+    try
+        f()
+    finally
+        @static if is_interactive_defined
+            Core.eval(Base, :(is_interactive = $old_value))
+        end
+    end
 end
 
 "A polling system to watch for writes to an IOBuffer. Up-to-date content will be passed as string to the `callback` function."
