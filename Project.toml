@@ -2,13 +2,14 @@ name = "Pluto"
 uuid = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 license = "MIT"
 authors = ["Fons van der Plas <fons@plutojl.org>"]
-version = "0.14.7"
+version = "0.15.0"
 
 [deps]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 Configurations = "5218b696-f38b-4ac9-8b61-a12ec717816d"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
+FileWatching = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 FuzzyCompletions = "fb4132e2-a121-4a70-b8a1-d5b831dcdcc2"
 HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
@@ -25,11 +26,11 @@ UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 [compat]
 Configurations = "0.15"
 FuzzyCompletions = "0.3,0.4"
-HTTP = "0.8.18,0.9"
+HTTP = "^0.9.1"
 MsgPack = "1.1"
 TableIOInterface = "0.1"
 Tables = "1"
-julia = "^1.0.4"
+julia = "^1.5"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"

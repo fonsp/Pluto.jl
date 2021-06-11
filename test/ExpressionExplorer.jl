@@ -454,7 +454,6 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
         # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
     end
-
     @testset "Extracting `using` and `import`" begin
         expr = quote
             using A

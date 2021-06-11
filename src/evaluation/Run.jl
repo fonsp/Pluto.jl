@@ -111,10 +111,14 @@ end
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
 
 function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
-	run_task = @async begin
+	maybe_async(run_async) do 
 		run_reactive!(session, notebook, old, new, to_run; kwargs...)
 	end
-	if run_async
+end
+
+function maybe_async(f::Function, async::Bool)
+	run_task = @asynclog f()
+	if async
 		run_task
 	else
 		fetch(run_task)
@@ -291,8 +295,14 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-		run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=run_async, kwargs...)
+	pkg_task = @async sync_nbpkg(session, notebook; save=save)
+
+	maybe_async(run_async) do
+		wait(pkg_task)
+		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
+			# not async because that would be double async
+			run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
+		end
 	end
 end
 

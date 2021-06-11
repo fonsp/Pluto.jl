@@ -1,5 +1,5 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, UsingsImports
 
 Base.@kwdef struct CellOutput
     body::Union{Nothing,String,Vector{UInt8},Dict}=nothing

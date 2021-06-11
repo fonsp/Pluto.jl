@@ -7,7 +7,7 @@ import { add_bonds_listener, set_bound_elements_to_their_value } from "../common
 import { cl } from "../common/ClassTable.js"
 
 import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
-import { PlutoBondsContext, PlutoContext } from "../common/PlutoContext.js"
+import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
 //@ts-ignore
@@ -28,7 +28,7 @@ export class CellOutput extends Component {
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
                 const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-                if (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base)) {
+                if (!(document.activeElement.tagName == "SUMMARY") && (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base))) {
                     window.scrollBy(0, new_height - this.old_height)
                 }
             }
@@ -300,11 +300,12 @@ let run = (f) => f()
 export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
     let pluto_actions = useContext(PlutoContext)
     let pluto_bonds = useContext(PlutoBondsContext)
+    let js_init_set = useContext(PlutoJSInitializingContext)
     let previous_results_map = useRef(new Map())
 
     let invalidate_scripts = useRef(() => {})
 
-    let container = useRef()
+    let container = useRef(/** @type {HTMLElement} */ (null))
 
     useLayoutEffect(() => {
         set_bound_elements_to_their_value(container.current, pluto_bonds)
@@ -328,6 +329,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
         const new_scripts = Array.from(container.current.querySelectorAll("script"))
 
         run(async () => {
+            js_init_set?.add(container.current)
             previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: new_scripts,
@@ -337,9 +339,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
             if (pluto_actions != null) {
                 set_bound_elements_to_their_value(container.current, pluto_bonds)
-                let remove_bonds_listener = add_bonds_listener(container.current, async (name, value, is_first_value) => {
-                    await pluto_actions.set_bond(name, value, is_first_value)
-                })
+                let remove_bonds_listener = add_bonds_listener(container.current, pluto_actions.set_bond)
                 invalidation.then(remove_bonds_listener)
             }
 
@@ -368,6 +368,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
                     }
                 }
             } catch (err) {}
+            js_init_set?.delete(container.current)
         })
 
         return () => {

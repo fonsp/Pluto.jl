@@ -1,6 +1,6 @@
 import Pluto
 import Pluto.ExpressionExplorer
-import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
 using Test
 
 function Base.show(io::IO, s::SymbolsState)
@@ -175,3 +175,9 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
+
+has_embedded_pkgfiles(contents::AbstractString) = 
+    occursin("PROJECT", contents) && occursin("MANIFEST", contents)
+
+has_embedded_pkgfiles(nb::Pluto.Notebook) = 
+    read(nb.path, String) |> has_embedded_pkgfiles

@@ -4,6 +4,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -19,6 +20,24 @@ const clear_selection = (cm) => {
 
 const last = (x) => x[x.length - 1]
 const all_equal = (x) => x.every((y) => y === x[0])
+const swap = (a, i, j) => {
+    ;[a[i], a[j]] = [a[j], a[i]]
+}
+const range = (a, b) => {
+    const x = Math.min(a, b)
+    const y = Math.max(a, b)
+    return [...Array(y + 1 - x).keys()].map((i) => i + x)
+}
+
+const get = (map, key, creator) => {
+    if (map.has(key)) {
+        return map.get(key)
+    } else {
+        const val = creator()
+        map.set(key, val)
+        return val
+    }
+}
 
 // Adapted from https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
 var offsetFromViewport = function (elem) {
@@ -56,6 +75,7 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
+    nbpkg,
     cell_id,
     notebook_id,
     running_disabled,
@@ -73,6 +93,74 @@ export const CellInput = ({
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
 
+    const pkg_bubbles = useRef(new Map())
+
+    const nbpkg_ref = useRef(nbpkg)
+    useEffect(() => {
+        nbpkg_ref.current = nbpkg
+        pkg_bubbles.current.forEach((b) => {
+            b.on_nbpkg(nbpkg)
+        })
+        // console.log("nbpkg effect!", nbpkg_fingerprint(nbpkg))
+    }, nbpkg_fingerprint(nbpkg))
+
+    const update_line_bubbles = (line_i) => {
+        const cm = cm_ref.current
+        /** @type {string} */
+        const line = cm.getLine(line_i)
+        if (line != undefined) {
+            // search for the "import Example, Plots" expression using regex
+
+            // dunno
+            // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
+
+            // import A: b. c
+            // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
+
+            // import A, B, C
+            const re = /(using|import)(\s*\w+(\.\w+)*)(\s*\,\s*\w+(\.\w+)*)*/g
+            // const re = /(using|import)\s*(\w+)/g
+            for (const import_match of line.matchAll(re)) {
+                const start = import_match.index + import_match[1].length
+
+                // ask codemirror what its parser found for the "import" or "using" word. If it is not a "keyword", then this is part of a comment or a string.
+                const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
+
+                if (import_token.type === "keyword") {
+                    const inner = import_match[0].substr(import_match[1].length)
+
+                    // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
+                    const inner_re = /(\w+)(\.\w+)*/g
+                    for (const package_match of inner.matchAll(inner_re)) {
+                        const package_name = package_match[1]
+
+                        if (package_name !== "Base" && package_name !== "Core") {
+                            // if the widget already exists, keep it, if not, create a new one
+                            const widget = get(pkg_bubbles.current, package_name, () => {
+                                const b = PkgStatusMark({
+                                    pluto_actions: pluto_actions,
+                                    package_name: package_name,
+                                    refresh_cm: () => cm.refresh(),
+                                    notebook_id: notebook_id,
+                                })
+                                b.on_nbpkg(nbpkg_ref.current)
+                                return b
+                            })
+
+                            cm.setBookmark(
+                                { line: line_i, ch: start + package_match.index + package_match[0].length },
+                                {
+                                    widget: widget,
+                                }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    const update_all_line_bubbles = () => range(0, cm_ref.current.lineCount() - 1).forEach(update_line_bubbles)
+
     useEffect(() => {
         const first_time = remote_code_ref.current == null
         const current_value = cm_ref.current?.getValue() ?? ""
@@ -86,6 +174,7 @@ export const CellInput = ({
             cm_ref.current?.setValue(remote_code)
             if (first_time) {
                 cm_ref.current.clearHistory()
+                update_all_line_bubbles()
             }
         }
     }, [remote_code])
@@ -129,6 +218,8 @@ export const CellInput = ({
                 }
             },
         }))
+
+        setTimeout(update_all_line_bubbles, 300)
 
         const keys = {}
 
@@ -219,14 +310,7 @@ export const CellInput = ({
                 cm.setSelections(new_selections)
             }
         }
-        const swap = (a, i, j) => {
-            ;[a[i], a[j]] = [a[j], a[i]]
-        }
-        const range = (a, b) => {
-            const x = Math.min(a, b)
-            const y = Math.max(a, b)
-            return [...Array(y + 1 - x).keys()].map((i) => i + x)
-        }
+
         const alt_move = (delta) => {
             const selections = cm.listSelections()
             const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
@@ -454,12 +538,31 @@ export const CellInput = ({
             }, 0)
         })
 
-        cm.on("change", (_, e) => {
+        cm.on("change", (cm, e) => {
+            // console.log("cm changed event ", e)
             const new_value = cm.getValue()
             if (new_value.length > 1 && new_value[0] === "?") {
                 window.dispatchEvent(new CustomEvent("open_live_docs"))
             }
             on_change_ref.current(new_value)
+
+            // remove the currently attached widgets from the codemirror DOM. Widgets corresponding to package imports that did not changed will be re-attached later.
+            cm.getAllMarks().forEach((m) => {
+                const m_position = m.find()
+                if (e.from.line <= m_position.line && m_position.line <= e.to.line) {
+                    m.clear()
+                }
+            })
+
+            // TODO: split this function into a search that returns the list of mathces and an updater
+            // we can use that when you submit the cell to definitively find the list of import
+            // and then purge the map?
+
+            // TODO: debounce _any_ edit to update all imports for this cell
+            // because adding #= to the start of a cell will remove imports later
+
+            // iterate through changed lines
+            range(e.from.line, e.to.line).forEach(update_line_bubbles)
         })
 
         cm.on("blur", () => {
@@ -514,6 +617,9 @@ export const CellInput = ({
         document.fonts.ready.then(() => {
             cm.refresh()
         })
+
+        // we initialize with "" and then call setValue to trigger the "change" event
+        cm.setValue(local_code)
     }, [])
 
     // useEffect(() => {

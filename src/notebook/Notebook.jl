@@ -1,12 +1,16 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
+import .PkgCompat: PkgCompat, PkgContext
+import Pkg
 
-struct BondValue
+mutable struct BondValue
     value::Any
+    # This is only so the client can send this, the updater will always put this to `false`
+    is_first_value::Bool
 end
 function Base.convert(::Type{BondValue}, dict::Dict)
-    BondValue(dict["value"])
+    BondValue(dict["value"], something(get(dict, "is_first_value", false), false))
 end
 
 const ProcessStatus = (
@@ -23,7 +27,7 @@ Base.@kwdef mutable struct Notebook
     cell_order::Array{UUID,1}
     
     path::String
-    notebook_id::UUID
+    notebook_id::UUID=uuid1()
     topology::NotebookTopology=NotebookTopology()
     _cached_topological_order::Union{Nothing,TopologicalOrder}=nothing
 
@@ -37,12 +41,19 @@ Base.@kwdef mutable struct Notebook
     # per notebook compiler options
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
+    # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
+    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
+    nbpkg_ctx_instantiated::Bool=false
+    nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
+    nbpkg_restart_required_msg::Union{Nothing,String}=nothing
+    nbpkg_terminal_outputs::Dict{String,String}=Dict{String,String}()
+    nbpkg_busy_packages::Vector{String}=String[]
+    nbpkg_installed_versions_cache::Dict{String,String}=Dict{String,String}()
 
     process_status::String=ProcessStatus.starting
+    wants_to_interrupt::Bool=false
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
-
-    wants_to_interrupt::Bool=false
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
@@ -78,6 +89,9 @@ const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
 
+const _ptoml_cell_id = UUID(1)
+const _mtoml_cell_id = UUID(2)
+
 emptynotebook(args...) = Notebook([Cell()], args...)
 
 """
@@ -111,11 +125,46 @@ function save_notebook(io, notebook::Notebook)
         print(io, _cell_suffix)
     end
 
+    
+    using_plutopkg = notebook.nbpkg_ctx !== nothing
+    
+    write_package = if using_plutopkg
+        ptoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
+        mtoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
+        
+        ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
+        mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
+        
+        !isempty(ptoml_contents) || !isempty(mtoml_contents)
+    else
+        false
+    end
+
+    if write_package
+        println(io, _cell_id_delimiter, string(_ptoml_cell_id))
+        print(io, "PLUTO_PROJECT_TOML_CONTENTS = \"\"\"\n")
+        write(io, ptoml_contents)
+        print(io, "\"\"\"")
+        print(io, _cell_suffix)
+        
+        println(io, _cell_id_delimiter, string(_mtoml_cell_id))
+        print(io, "PLUTO_MANIFEST_TOML_CONTENTS = \"\"\"\n")
+        write(io, mtoml_contents)
+        print(io, "\"\"\"")
+        print(io, _cell_suffix)
+    end
+    
+
     println(io, _cell_id_delimiter, "Cell order:")
     for c in notebook.cells
         delim = c.code_folded ? _order_delimiter_folded : _order_delimiter
         println(io, delim, string(c.cell_id))
     end
+    if write_package
+        println(io, _order_delimiter_folded, string(_ptoml_cell_id))
+        println(io, _order_delimiter_folded, string(_mtoml_cell_id))
+    end
+
     notebook
 end
 
@@ -147,7 +196,7 @@ function load_notebook_nobackup(io, path)::Notebook
         # @info "Loading a notebook saved with Pluto $(file_VERSION_STR). This is Pluto $(PLUTO_VERSION_STR)."
     end
 
-    collected_cells = Dict()
+    collected_cells = Dict{UUID,Cell}()
 
     # ignore first bits of file
     readuntil(io, _cell_id_delimiter)
@@ -170,21 +219,62 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     end
 
-    ordered_cells = Cell[]
+    cell_order = UUID[]
     while !eof(io)
         cell_id_str = String(readline(io))
-        o, c = startswith(cell_id_str, _order_delimiter),
         if length(cell_id_str) >= 36
             cell_id = let
                 UUID(cell_id_str[end - 35:end])
             end
-            next_cell = collected_cells[cell_id]
-            next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
-            push!(ordered_cells, next_cell)
+            next_cell = get(collected_cells, cell_id, nothing)
+            if next_cell !== nothing
+                next_cell.code_folded = startswith(cell_id_str, _order_delimiter_folded)
+            end
+            push!(cell_order, cell_id)
+        else
+            break
         end
     end
 
-    Notebook(ordered_cells, path)
+    read_package = 
+        _ptoml_cell_id ∈ cell_order && 
+        _mtoml_cell_id ∈ cell_order && 
+        haskey(collected_cells, _ptoml_cell_id) && 
+        haskey(collected_cells, _mtoml_cell_id)
+
+    nbpkg_ctx = if read_package
+        ptoml_code = collected_cells[_ptoml_cell_id].code
+        mtoml_code = collected_cells[_mtoml_cell_id].code
+
+        ptoml_contents = lstrip(split(ptoml_code, "\"\"\"")[2])
+        mtoml_contents = lstrip(split(mtoml_code, "\"\"\"")[2])
+
+        env_dir = mktempdir()
+        write(joinpath(env_dir, "Project.toml"), ptoml_contents)
+        write(joinpath(env_dir, "Manifest.toml"), mtoml_contents)
+
+        try
+            PkgCompat.load_ctx(env_dir)
+        catch e
+            @error "Failed to load notebook files: Project.toml+Manifest.toml parse error. Trying to recover Project.toml without Manifest.toml..." exception=(e,catch_backtrace())
+            try
+                rm(joinpath(env_dir, "Manifest.toml"))
+                PkgCompat.load_ctx(env_dir)
+            catch e
+                @error "Failed to load notebook files: Project.toml parse error." exception=(e,catch_backtrace())
+                PkgCompat.create_empty_ctx()
+            end
+        end
+    else
+        PkgCompat.create_empty_ctx()
+    end
+
+    appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
+    appeared_cells_dict = filter(collected_cells) do (k, v)
+        k ∈ appeared_order
+    end
+
+    Notebook(cells_dict=appeared_cells_dict, cell_order=appeared_order, path=path, nbpkg_ctx=nbpkg_ctx, nbpkg_installed_versions_cache=nbpkg_cache(nbpkg_ctx))
 end
 
 function load_notebook_nobackup(path::String)::Notebook
@@ -197,7 +287,7 @@ end
 
 "Create a backup of the given file, load the file as a .jl Pluto notebook, save the loaded notebook, compare the two files, and delete the backup of the newly saved file is equal to the backup."
 function load_notebook(path::String; disable_writing_notebook_files::Bool=false)::Notebook
-    backup_path = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
+    backup_path = backup_filename(path)
     # local backup_num = 1
     # backup_path = path
     # while isfile(backup_path)
