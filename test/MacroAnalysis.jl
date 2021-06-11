@@ -138,13 +138,6 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
         update_run!(🍭, notebook, notebook.cells)
 
-        # When using `import Package: @macro`, the first execution will fail for
-        # the same reasons as in the "User defined macros" testset.
-        @test_broken :option_type ∈ notebook.topology.nodes[cell(1)].references
-        @test_broken cell(1).errored == true
-
-        update_run!(🍭, notebook, notebook.cells)
-
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
         @test cell(1).errored == false
     end

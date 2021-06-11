@@ -195,9 +195,10 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 			res = try_macroexpand(old_workspace_name) # 2.
 			# It was not defined previously, we try searching modules in our own batch
 			if res isa LoadError && res.error isa UndefVarError
-				to_import_from_batch = union(Set{Expr}(),
-					map(c -> unresolved_topology.codes[c].module_usings_imports.usings, 
-						notebook.cells)...)
+				to_import_from_batch = mapreduce(union, unresolved_topology.codes) do (_, cache)
+				    union(cache.module_usings_imports.imports,
+					  cache.module_usings_imports.usings)
+				end
 				WorkspaceManager.do_reimports(sn, to_import_from_batch)
 				# Last try and we leave
 				return try_macroexpand() # 3.
