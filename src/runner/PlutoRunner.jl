@@ -1160,7 +1160,7 @@ function binding_from(x::Expr, workspace::Module)
         error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module) = Core.eval(workspace, s)
+binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
 binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
