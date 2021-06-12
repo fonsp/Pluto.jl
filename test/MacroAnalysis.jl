@@ -33,8 +33,8 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @testset "User defined macro" begin
         notebook = Notebook([
-            Cell("""macro my_macro(sym, val) 
-              :(\$(esc(sym)) = \$(val)) 
+            Cell("""macro my_macro(sym, val)
+              :(\$(esc(sym)) = \$(val))
             end"""),
             Cell("@my_macro x 1+1"),
         ])
@@ -92,7 +92,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         module_from_cell2 = cell(2).output.body[:elements][1][2][1]
         module_from_cell3 = cell(3).output.body
 
-        # Current limitation of using the previous module 
+        # Current limitation of using the previous module
         # for expansion of unknowns macros on the whole expression
         @test_broken module_from_cell2 == module_from_cell3
     end

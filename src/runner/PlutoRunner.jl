@@ -86,7 +86,7 @@ end
 Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
 """
 no_workspace_ref(other, _=nothing) = other
-no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, no_workspace_ref.(expr.args, mod_name)...) 
+no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, no_workspace_ref.(expr.args, mod_name)...)
 function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
     test_mod_name = nameof(ref.mod) |> string
     if startswith(test_mod_name, "workspace") &&
@@ -103,8 +103,8 @@ function sanitize_expr(symbol::Symbol)
     symbol
 end
 
-function sanitize_expr(dt::Union{DataType,Enum}) 
-    Symbol(dt) # quick workaround
+function sanitize_expr(dt::Union{DataType,Enum})
+    Symbol(dt)
 end
 
 function sanitize_expr(ref::GlobalRef)

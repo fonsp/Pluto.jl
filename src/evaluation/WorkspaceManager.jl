@@ -322,7 +322,7 @@ end
 function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_move::Set{Expr})
     workspace = get_workspace(session_notebook)
     workspace_name = workspace.module_name
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.do_reimports($(workspace_name), $module_imports_to_move)))  
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.do_reimports($(workspace_name), $module_imports_to_move)))
 end
 
 function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)

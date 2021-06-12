@@ -216,7 +216,7 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 			return current_symstate
 		else
 			result = macroexpand_cell(cell)
-			if typeof(result) <: Exception 
+			if typeof(result) <: Exception
 				# if expansion failed, we use the "shallow" symbols state
 				# we could also use ExpressionExplorer.maybe_macroexpand
 				current_symstate
