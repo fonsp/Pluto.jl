@@ -278,9 +278,6 @@ function visit_expand(current_module::Module, expr::Expr)
     end
 end
 
-contains_macrocall(expr::Expr) = expr.head == :macrocall || any(contains_macrocall.(expr.args))
-contains_macrocall(other) = false
-
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
 
@@ -298,11 +295,18 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
 
         # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
         if contains_user_defined_macros
-            expr = visit_expand(m, expr)
+            try
+                expr = visit_expand(m, expr)
+                wrapped = timed_expr(expr, proof)
+                run_inside_trycatch(m, wrapped, proof)
+            catch ex
+                bt = stacktrace(catch_backtrace())
+                (CapturedException(ex, bt), nothing)
+            end
+        else
+            wrapped = timed_expr(expr, proof)
+            run_inside_trycatch(m, wrapped, proof)
         end
-
-        wrapped = timed_expr(expr, proof)
-        run_inside_trycatch(m, wrapped, proof)
     else
         key = expr_hash(expr)
         local computer = get(computers, key, nothing)

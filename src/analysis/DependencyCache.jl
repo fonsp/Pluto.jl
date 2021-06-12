@@ -31,7 +31,7 @@ end
 "Checks whether or not the cell references user-defined macrocalls"
 function contains_user_defined_macrocalls(cell::Cell, notebook::Notebook)::Bool
     calls = notebook.topology.nodes[cell].macrocalls
-    isempty(calls) || any(notebook.cells) do other
+    !isempty(calls) && any(notebook.cells) do other
         !disjoint(notebook.topology.nodes[other].funcdefs_without_signatures, calls)
     end
 end
