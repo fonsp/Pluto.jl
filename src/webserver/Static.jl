@@ -244,7 +244,7 @@ function http_router_for(session::ServerSession)
     ) do request::HTTP.Request
         try
             notebook = notebook_from_uri(request)
-            response = HTTP.Response(200, generate_html(notebook; pluto_cdn_root="./"))
+            response = HTTP.Response(200, generate_html(notebook))
             push!(response.headers, "Content-Type" => "text/html; charset=utf-8")
             push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path)).html\"")
             response
