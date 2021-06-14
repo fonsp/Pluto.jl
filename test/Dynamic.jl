@@ -147,6 +147,17 @@ end
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt", Main)[1])
         @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt", Main)[1])
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
+        # Issue #1128
+        # Ref https://docs.julialang.org/en/v1/manual/documentation/#Dynamic-documentation
+        struct MyType
+            value::String
+        end
+
+        Docs.getdoc(t::MyType) = "Documentation for MyType with value $(t.value)"
+
+        global x = MyType("x")
+        
+        @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("x", Main)[1])
     end
 
     @testset "PlutoRunner API" begin
