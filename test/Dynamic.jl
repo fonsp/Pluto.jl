@@ -149,15 +149,20 @@ end
         @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
         # Issue #1128
         # Ref https://docs.julialang.org/en/v1/manual/documentation/#Dynamic-documentation
-        struct MyType
-            value::String
-        end
-
-        Docs.getdoc(t::MyType) = "Documentation for MyType with value $(t.value)"
-
-        global x = MyType("x")
+        m = Module(:m)
+        Core.eval(m, quote
+            "Normal docstring"
+            struct MyType
+                value::String
+            end
+            Docs.getdoc(t::MyType) = "Documentation for MyType with value $(t.value)"
+            const x = MyType("x")
+        end)
         
-        @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("x", Main)[1])
+        @test occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("MyType", m)[1])
+        @test_broken occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("m.MyType", Main)[1])
+        @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("x", m)[1])
+        @test_broken occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("m.x", Main)[1])
     end
 
     @testset "PlutoRunner API" begin
