@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.4
+# v0.15.0
 
 using Markdown
 using InteractiveUtils
@@ -14,16 +14,7 @@ macro bind(def, element)
 end
 
 # ╔═╡ 571613a1-6b4b-496d-9a68-aac3f6a83a4b
-begin
-    import Pkg
-    Pkg.activate(mktempdir())
-    Pkg.add([
-        Pkg.PackageSpec(name="PlutoUI", version="0.7"),
-        Pkg.PackageSpec(name="HypertextLiteral", version="0.6"),
-        Pkg.PackageSpec(name="JSON", version="0.21"),
-    ])
-    using PlutoUI, HypertextLiteral, JSON
-end
+using PlutoUI, HypertextLiteral
 
 # ╔═╡ 97914842-76d2-11eb-0c48-a7eedca870fb
 md"""
@@ -347,9 +338,33 @@ HTML("""
 
 # ╔═╡ 7afbf8ef-e91c-45b9-bf22-24201cbb4828
 md"""
-### Interpolating into JS -- JSON.jl
+### Interpolating into JS -- _HypertextLiteral.jl_
 
-Using HypertextLiteral.jl, we can interpolate objects into HTML output, great! Next, we want to **interpolate data into scripts**. The easiest way to do so is to use `JSON.jl`, in combination with string interpolation:
+As we see above, using HypertextLiteral.jl, we can interpolate objects (numbers, string, images) into HTML output, great! Next, we want to **interpolate _data_ into _scripts_**. Although you could use `JSON.jl`, HypertextLiteral.jl actually has this abality built-in! 
+
+> When you **interpolate Julia objects into a `<script>` tag** using the `@htl` macro, it be converted to a JS object _automatically_. 
+"""
+
+# ╔═╡ b226da72-9512-4d14-8582-2f7787c25028
+simple_data = (msg="Hello! ", times=3)
+
+# ╔═╡ a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
+@htl("""
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(simple_data)
+
+	const span = document.createElement("span")
+	span.innerText = data.msg.repeat(data.times)
+	
+	return span
+	</script>
+""")
+
+# ╔═╡ 965f3660-6ec4-4a86-a2a2-c167dbe9315f
+md"""
+**Let's look at a more exciting example:**
 """
 
 # ╔═╡ 00d97588-d591-4dad-9f7d-223c237deefd
@@ -369,7 +384,7 @@ my_data = [
 	<script>
 
 	// interpolate the data 🐸
-	const data = $(JSON.json(my_data))
+	const data = $(my_data)
 
 	const svg = DOM.svg(600,200)
 	const s = d3.select(svg)
@@ -422,9 +437,6 @@ const { html, render, useEffect } = await import( "https://cdn.jsdelivr.net/npm/
 ```
 """
 
-# ╔═╡ 27e4604c-5954-44b7-a348-1650dbc6d8a9
-
-
 # ╔═╡ 077c95cf-2a1b-459f-830e-c29c11a2c5cc
 md"""
 
@@ -452,7 +464,7 @@ Pluto's original inspiration was [observablehq.com](https://observablehq.com/), 
 
 Read more about the observable runtime in their (interactive) [documentation](https://observablehq.com/@observablehq/observables-not-javascript). The following is also true for JavaScript-inside-scripts in Pluto:
 - ⭐️ If you return an HTML node, it will be displayed.
-- ⭐️ The [`observablehq/stdlib`](https://observablehq.com/@observablehq/standard-library) library is pre-imported, you can use `DOM`, `html`, `Promises`, etc.
+- ⭐️ The [`observablehq/stdlib`](https://observablehq.com/@observablehq/stdlib) library is pre-imported, you can use `DOM`, `html`, `Promises`, etc.
 - ⭐️ When a cell re-runs reactively, `this` will be set to the previous output (with caveat, see the later section)
 - The variable `invalidation` is a Promise that will get resolved when the cell output is changed or removed. You can use this to remove event listeners, for example.
 - You can use top-level `await`, and a returned HTML node will be displayed when ready.
@@ -481,7 +493,7 @@ films = [
 @htl("""
 	<script>
 	
-	let data = $(JSON.json(films))
+	let data = $(films)
 	
 	// html`...` is from https://github.com/observablehq/stdlib
 	// note the escaped dollar signs:
@@ -573,7 +585,7 @@ Notice that, even though the cell below re-runs, we **smoothly transition** betw
 
 <script id="hello">
 
-const positions = $(JSON.json(dot_positions))
+const positions = $(dot_positions)
 	
 const svg = this == null ? DOM.svg(600,200) : this
 const s = this == null ? d3.select(svg) : this.s
@@ -623,7 +635,7 @@ state = Dict(
 
 	const node = this ?? document.createElement("div")
 	
-	const new_state = $(json(state))
+	const new_state = $(state)
 	
 	if(this == null){
 	
@@ -760,6 +772,22 @@ details(md"""
 ```
 """, "Show with syntax highlighting")
 
+# ╔═╡ d12b98df-8c3f-4620-ba3c-2f3dadac521b
+details(md"""
+	```htmlmixed
+	<script>
+
+	// interpolate the data 🐸
+	const data = $(simple_data)
+
+	const span = document.createElement("span")
+	span.innerText = data.msg.repeat(data.times)
+	
+	return span
+	</script>
+	```
+	""", "Show with syntax highlighting")
+
 # ╔═╡ 94561cb1-2325-49b6-8b22-943923fdd91b
 details(md"""
 	```htmlmixed
@@ -768,7 +796,7 @@ details(md"""
 	<script>
 
 	// interpolate the data 🐸
-	const data = $(JSON.json(my_data))
+	const data = $(my_data)
 
 	const svg = DOM.svg(600,200)
 	const s = d3.select(svg)
@@ -790,7 +818,7 @@ details(md"""
 	```htmlmixed
 	<script>
 	
-	let data = $(JSON.json(films))
+	let data = $(films)
 	
 	// html`...` is from https://github.com/observablehq/stdlib
 	// note the escaped dollar signs:
@@ -831,33 +859,33 @@ details(md"""
 
 # ╔═╡ e910982c-8508-4729-a75d-8b5b847918b6
 details(md"""
-	```htmlmixed
-	<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
+```htmlmixed
+<script src="https://cdn.jsdelivr.net/npm/d3@6.2.0/dist/d3.min.js"></script>
 
-	<script id="hello">
+<script id="hello">
 
-	const positions = $(JSON.json(dot_positions))
+const positions = $(dot_positions)
 
-	const svg = this == null ? DOM.svg(600,200) : this
-	const s = this == null ? d3.select(svg) : this.s
+const svg = this == null ? DOM.svg(600,200) : this
+const s = this == null ? d3.select(svg) : this.s
 
-	s.selectAll("circle")
-		.data(positions)
-		.join("circle")
-		.transition()
-		.duration(300)
-		.attr("cx", d => d)
-		.attr("cy", 100)
-		.attr("r", 10)
-		.attr("fill", "gray")
+s.selectAll("circle")
+	.data(positions)
+	.join("circle")
+	.transition()
+	.duration(300)
+	.attr("cx", d => d)
+	.attr("cy", 100)
+	.attr("r", 10)
+	.attr("fill", "gray")
 
 
-	const output = svg
-	output.s = s
-	return output
-	</script>
-	```
-	""", "Show with syntax highlighting")
+const output = svg
+output.s = s
+return output
+</script>
+```
+""", "Show with syntax highlighting")
 
 # ╔═╡ 05d28aa2-9622-4e62-ab39-ca4c7dde6eb4
 details(md"""
@@ -869,7 +897,7 @@ details(md"""
 
 		const node = this ?? document.createElement("div")
 
-		const new_state = $(json(state))
+		const new_state = $(state)
 
 		if(this == null){
 
@@ -961,6 +989,90 @@ $(embed_display(rand(4)))
 You can [learn more](https://github.com/fonsp/Pluto.jl/pull/1126) about how this feature works, or how to use it inside packages.
 """
 
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+
+[compat]
+HypertextLiteral = "^0.7.0"
+PlutoUI = "^0.7.9"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+[[Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[Dates]]
+deps = ["Printf"]
+uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[HypertextLiteral]]
+git-tree-sha1 = "3cd97ad41c50d81e698ec625d52753556cab994e"
+uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
+version = "0.7.0"
+
+[[InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "81690084b6198a2e1da36fcfda16eeca9f9f24e4"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.1"
+
+[[Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[Markdown]]
+deps = ["Base64"]
+uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[[Parsers]]
+deps = ["Dates"]
+git-tree-sha1 = "c8abc88faa3f7a3950832ac5d6e690881590d6dc"
+uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+version = "1.1.0"
+
+[[PlutoUI]]
+deps = ["Base64", "Dates", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
+git-tree-sha1 = "44e225d5837e2a2345e69a1d1e01ac2443ff9fcb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.9"
+
+[[Printf]]
+deps = ["Unicode"]
+uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[Random]]
+deps = ["Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[Reexport]]
+git-tree-sha1 = "5f6c21241f0f655da3952fd60aa18477cf96c220"
+uuid = "189a3867-3050-52da-a836-e630ba90ab69"
+version = "1.1.0"
+
+[[Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[Suppressor]]
+git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
+uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+version = "0.2.0"
+
+[[Unicode]]
+uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+"""
+
 # ╔═╡ Cell order:
 # ╟─97914842-76d2-11eb-0c48-a7eedca870fb
 # ╠═571613a1-6b4b-496d-9a68-aac3f6a83a4b
@@ -998,13 +1110,16 @@ You can [learn more](https://github.com/fonsp/Pluto.jl/pull/1126) about how this
 # ╠═1ba370cc-3631-47ea-9db5-75587e8e4ff3
 # ╠═7fcf2f3f-d902-4338-adf0-8ef181e79420
 # ╟─7afbf8ef-e91c-45b9-bf22-24201cbb4828
+# ╠═b226da72-9512-4d14-8582-2f7787c25028
+# ╠═a6fd1f7b-a8fc-420d-a8bb-9f549842ad3e
+# ╟─d12b98df-8c3f-4620-ba3c-2f3dadac521b
+# ╟─965f3660-6ec4-4a86-a2a2-c167dbe9315f
 # ╠═01ce31a9-6856-4ee7-8bce-7ce635167457
 # ╠═00d97588-d591-4dad-9f7d-223c237deefd
 # ╠═21f57310-9ceb-423c-a9ce-5beb1060a5a3
 # ╟─94561cb1-2325-49b6-8b22-943923fdd91b
 # ╟─7d9d6c28-131a-4b2a-84f8-5c085f387e85
 # ╟─d83d57e2-4787-4b8d-8669-64ed73d79e73
-# ╠═27e4604c-5954-44b7-a348-1650dbc6d8a9
 # ╟─077c95cf-2a1b-459f-830e-c29c11a2c5cc
 # ╟─8388a833-d535-4cbd-a27b-de323cea60e8
 # ╟─4cf27df3-6a69-402e-a71c-26538b2a52e7
@@ -1034,3 +1149,5 @@ You can [learn more](https://github.com/fonsp/Pluto.jl/pull/1126) about how this
 # ╠═64cbf19c-a4e3-4cdb-b4ec-1fbe24be55ad
 # ╟─cc318a19-316f-4fd9-8436-fb1d42f888a3
 # ╟─7aacdd8c-1571-4461-ba6e-0fd65dd8d788
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

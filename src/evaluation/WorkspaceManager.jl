@@ -1,18 +1,22 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Distributed
 
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
-mutable struct Workspace
+Base.@kwdef mutable struct Workspace
     pid::Integer
-    discarded::Bool
+    discarded::Bool=false
     log_channel::Distributed.RemoteChannel
     module_name::Symbol
-    dowork_token::Token
+    dowork_token::Token=Token()
+    nbpkg_was_active::Bool=false
+    original_LOAD_PATH::Vector{String}=String[]
+    original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
 end
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
@@ -55,14 +59,48 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
-    workspace = Workspace(pid, false, log_channel, module_name, Token())
+    
+    original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
+    
+    workspace = Workspace(;
+        pid=pid,
+        log_channel=log_channel, 
+        module_name=module_name,
+        original_LOAD_PATH=original_LOAD_PATH,
+        original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
+    )
 
     @async start_relaying_logs((session, notebook), log_channel)
     cd_workspace(workspace, notebook.path)
+    use_nbpkg_environment((session, notebook), workspace)
 
     force_offline || (notebook.process_status = ProcessStatus.ready)
-
     return workspace
+end
+
+function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
+    enabled = notebook.nbpkg_ctx !== nothing
+    if workspace.nbpkg_was_active == enabled
+        return
+    end
+    
+    workspace = workspace !== nothing ? workspace : get_workspace((session, notebook))
+    if workspace.discarded
+        return
+    end
+    
+    workspace.nbpkg_was_active = enabled
+    if workspace.pid != Distributed.myid()
+        new_LP = enabled ? ["@", "@stdlib"] : workspace.original_LOAD_PATH
+        new_AP = enabled ? PkgCompat.env_dir(notebook.nbpkg_ctx) : workspace.original_ACTIVE_PROJECT
+        
+        Distributed.remotecall_eval(Main, [workspace.pid], quote
+            copy!(LOAD_PATH, $(new_LP))
+            Base.ACTIVE_PROJECT[] = $(new_AP)
+        end)
+    else
+        # uhmmmmmm TODO
+    end
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
@@ -193,8 +231,11 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
-    if workspace.pid == Distributed.myid() && session_notebook isa Tuple
-        cd_workspace(workspace, session_notebook[2].path)
+    if session_notebook isa Tuple
+        if workspace.pid == Distributed.myid()
+            cd_workspace(workspace, session_notebook[2].path)
+        end
+        use_nbpkg_environment(session_notebook, workspace)
     end
     
     # run the code 🏃‍♀️

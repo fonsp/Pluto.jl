@@ -109,9 +109,11 @@ export const TreeView = ({ mime, body, cell_id, persist_js_state }) => {
                 >`
             break
         case "NamedTuple":
-            inner = html`<pluto-tree-items class=${body.type}
-                >${body.elements.map((r) => (r === "more" ? more : html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`))}</pluto-tree-items
-            >`
+            inner = html`${prefix(body)}<pluto-tree-items class=${body.type}
+                    >${body.elements.map((r) =>
+                        r === "more" ? more : html`<p-r><p-k>${r[0]}</p-k><p-v>${mimepair_output(r[1])}</p-v></p-r>`
+                    )}</pluto-tree-items
+                >`
             break
         case "struct":
             inner = html`${prefix(body)}<pluto-tree-items class=${body.type}

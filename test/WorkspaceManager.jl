@@ -81,7 +81,7 @@ import Distributed
             project_relative_path("Project.toml")
     end
 
-    @testset "Pluto inside Pluto" begin
+    Sys.iswindows() || (VERSION < v"1.6.0-a") || @testset "Pluto inside Pluto" begin
 
         client = ClientSession(:fakeA, nothing)
         🍭 = ServerSession()
