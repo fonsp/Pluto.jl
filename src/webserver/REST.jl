@@ -102,13 +102,12 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
     end
     output_cell = output_cell[1]
 
-
     intersection_path = upstream_recursive(notebook, topology, Cell[output_cell]) ∩ downstream_recursive(notebook, topology, input_cells)
 
-
-    to_reeval = Cell[(intersection_path)...]
-
-    println((x->x.cell_id).(to_reeval))
+    to_reeval = Cell[
+        # Re-evaluate all cells that reference the modified input parameters
+        where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
+    ]
 
     function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         to_delete_vars = Set{Symbol}([to_delete_vars..., to_set...]) # also delete the bound symbols
@@ -117,14 +116,10 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
             WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
         end
     end
-    function custom_deletion_hook2((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set{Symbol}([to_delete_vars...])
-        WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-    end
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, run_async=false, save=false)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=[intersection_path...], run_async=false, save=false)
     out = Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in outputs)
-    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); deletion_hook=custom_deletion_hook2)
+    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); dependency_mod=[intersection_path...])
 
     out
 end
