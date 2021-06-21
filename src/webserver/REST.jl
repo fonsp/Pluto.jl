@@ -117,9 +117,9 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         end
     end
 
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=[intersection_path...], run_async=false, save=false)
+    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, dependency_mod=Cell[intersection_path...], run_async=false, save=false)
     out = Dict(out_symbol => WorkspaceManager.eval_fetch_in_workspace((session, notebook), out_symbol) for out_symbol in outputs)
-    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); dependency_mod=[intersection_path...])
+    update_save_run!(session, notebook, where_assigned(notebook, notebook.topology, Set{Symbol}(to_set)); dependency_mod=Cell[intersection_path...])
 
     out
 end
