@@ -840,6 +840,9 @@ patch: ${JSON.stringify(
         document.addEventListener("keyup", (e) => {
             document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
         })
+        document.addEventListener("visibilitychange", (e) => {
+            document.body.classList.toggle("ctrl_down", false)
+        })
 
         document.addEventListener("keydown", (e) => {
             document.body.classList.toggle("ctrl_down", has_ctrl_or_cmd_pressed(e))
