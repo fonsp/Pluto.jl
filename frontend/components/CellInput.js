@@ -476,7 +476,7 @@ export const CellInput = ({
             const topaste = e.clipboardData.getData("text/plain")
             const deserializer = detect_deserializer(topaste, false)
             if (deserializer != null) {
-                pluto_actions.add_deserialized_cells(topaste, -1, deserializer)
+                pluto_actions.add_deserialized_cells(topaste, editor_state.notebook.cell_order.indexOf(cell_id)+1, deserializer)
                 e.stopImmediatePropagation()
                 e.preventDefault()
                 e.codemirrorIgnore = true
