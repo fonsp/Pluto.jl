@@ -349,7 +349,7 @@ pluto-output div.footnote p:last-child {
 
 pluto-output.scroll_y {
     max-height: 80vh;
-    max-height: 400px;
+    max-height: 502px;
     overflow: auto;
 }
 
