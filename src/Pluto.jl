@@ -46,6 +46,7 @@ include("./evaluation/WorkspaceManager.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
+include("./evaluation/RunBonds.jl")
 
 include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
