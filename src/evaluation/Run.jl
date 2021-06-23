@@ -6,7 +6,7 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
@@ -76,7 +76,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
 	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.delete_vars`
+	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
 	delete!.([notebook.bonds], to_delete_vars)
 
@@ -258,7 +258,7 @@ end
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
-	old_workspace_name = WorkspaceManager.bump_workspace_module_name((session, notebook))
+	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module_name((session, notebook))
 
 	unresolved_topology = updated_topology(old, notebook, cells)
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
@@ -267,7 +267,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	deletion_hook = function(sn, to_delete_vars, to_delete_funcs, to_reimport; to_run)
-		WorkspaceManager.move_vars(sn, old_workspace_name, to_delete_vars, to_delete_funcs, to_reimport)
+		WorkspaceManager.move_vars(sn, old_workspace_name, new_workspace_name, to_delete_vars, to_delete_funcs, to_reimport)
 	end
 
 	# _assume `prerender_text == false` if you want to skip some details_

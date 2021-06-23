@@ -366,7 +366,7 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
@@ -377,7 +377,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
 
     old_names = names(old_workspace, all=true, imported=true)
 
-    funcs_with_no_methods_left = filter(funcs_to_delete) do f
+    funcs_with_no_methods_left = filter(methods_to_delete) do f
         !try_delete_toplevel_methods(old_workspace, f)
     end
     name_symbols_of_funcs_with_no_methods_left = last.(last.(funcs_with_no_methods_left))

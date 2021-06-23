@@ -124,13 +124,13 @@ function cd_workspace(workspace, path::AbstractString)
     end)
 end
 
-"Create a new empty workspace and return the *OLD* workspace name"
+"Create a new empty workspace. Return the `(old, new)` workspace names as a tuple of `Symbol`s."
 function bump_workspace_module_name(session_notebook::SN)
     workspace = get_workspace(session_notebook)
     old_name = workspace.module_name
-    workspace.module_name = create_emptyworkspacemodule(workspace.pid)
+    new_name = workspace.module_name = create_emptyworkspacemodule(workspace.pid)
 
-    old_name
+    old_name, new_name
 end
 
 function create_emptyworkspacemodule(pid::Integer)::Symbol
@@ -325,23 +325,21 @@ function do_reimports(session_notebook::Union{SN,Workspace}, module_imports_to_m
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.do_reimports($(workspace_name), $module_imports_to_move)))
 end
 
-function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
+"Move variables to a new module. A given set of variables to be 'deleted' will not be moved to the new module, making them unavailable. "
+function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Symbol, new_workspace_name::Symbol, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
     workspace = get_workspace(session_notebook)
-    new_workspace_name = workspace.module_name
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
+    
+    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $methods_to_delete, $module_imports_to_move)))
 end
 
-"Fake deleting variables by moving to a new module without re-importing them."
-function delete_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...)
-    workspace = get_workspace(session_notebook)
+move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...) =
+move_vars(session_notebook, bump_workspace_module_name(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move; kwargs...)
 
-    old_workspace_name = workspace.module_name
-    new_workspace_name = create_emptyworkspacemodule(workspace.pid)
-
-    workspace.module_name = new_workspace_name
-
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
-end
+# TODO: delete me
+@deprecate(
+    delete_vars(args...; kwargs...),
+    move_vars(args...; kwargs...)
+)
 
 function poll(query::Function, timeout::Real=Inf64, interval::Real=1/20)
     start = time()
