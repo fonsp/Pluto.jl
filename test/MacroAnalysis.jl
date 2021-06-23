@@ -33,10 +33,10 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @testset "User defined macro" begin
         notebook = Notebook([
-            Cell("""macro my_macro(sym, val)
+            Cell("""macro my_assign(sym, val)
               :(\$(esc(sym)) = \$(val))
             end"""),
-            Cell("@my_macro x 1+1"),
+            Cell("@my_assign x 1+1"),
         ])
         cell(idx) = notebook.cells[idx]
 
@@ -45,13 +45,13 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         # Does not work on first try because it would require executing a partial
         # dependency graph. See strategy #2 in `resolve_topology`
         @test_broken :x ∈ notebook.topology.nodes[cell(2)].definitions
-        @test Symbol("@my_macro") ∈ notebook.topology.nodes[cell(2)].references
+        @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
 
         update_run!(🍭, notebook, notebook.cells)
 
         # Works on second time because of old workspace
         @test :x ∈ notebook.topology.nodes[cell(2)].definitions
-        @test Symbol("@my_macro") ∈ notebook.topology.nodes[cell(2)].references
+        @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
     end
 
     @testset "Package macro" begin
@@ -74,10 +74,10 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @testset "Previous workspace for unknowns" begin
         notebook = Notebook([
-            Cell("""macro my_macro(expr)
+            Cell("""macro my_identity(expr)
               expr
             end"""),
-            Cell("(@__MODULE__, (@my_macro 1 + 1))"),
+            Cell("(@__MODULE__, (@my_identity 1 + 1))"),
             Cell("@__MODULE__"),
         ])
         cell(idx) = notebook.cells[idx]
@@ -99,11 +99,11 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
     @testset "Definitions" begin
         notebook = Notebook([
-            Cell("""macro my_macro(sym, val)
+            Cell("""macro my_assign(sym, val)
                 :(\$(esc(sym)) = \$(val))
             end"""),
             Cell("c = :hello"),
-            Cell("@my_macro b c"),
+            Cell("@my_assign b c"),
             Cell("b"),
         ])
         cell(idx) = notebook.cells[idx]
@@ -114,7 +114,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         @test ":hello" == cell(3).output.body
         @test ":hello" == cell(4).output.body
         @test :b ∈ notebook.topology.nodes[cell(3)].definitions
-        @test [:c, Symbol("@my_macro")] ⊆ notebook.topology.nodes[cell(3)].references
+        @test [:c, Symbol("@my_assign")] ⊆ notebook.topology.nodes[cell(3)].references
         @test cell(3).cell_dependencies.contains_user_defined_macros == true
 
         setcode(notebook.cells[2], "c = :world")

@@ -408,7 +408,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_nowarn testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
         # @enum is tested in test/React.jl instead
         @test testee(:(@gensym a b c), [], [:a, :b, :c], [:gensym], [], [Symbol("@gensym")])
-        @test testee(:(Base.@gensym a b c), [], [], [], [], [[:Base, Symbol("@gensym")]])
+        @test testee(:(Base.@gensym a b c), [], [:a, :b, :c], [:gensym], [], [[:Base, Symbol("@gensym")]])
         @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [
             :A => ([:two], [], [], [])
         ], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]])

@@ -172,10 +172,6 @@ end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
-###
-# CONVENIENCE FUNCTIONS
-###
-
 "We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
 	sn = (session, notebook)
@@ -252,6 +248,11 @@ function static_resolve_topology(topology::NotebookTopology)
 
 	NotebookTopology(nodes=all_nodes, codes=topology.codes)
 end
+
+###
+# CONVENIENCE FUNCTIONS
+###
+
 
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
