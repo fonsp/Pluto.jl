@@ -125,7 +125,7 @@ function cd_workspace(workspace, path::AbstractString)
 end
 
 "Create a new empty workspace. Return the `(old, new)` workspace names as a tuple of `Symbol`s."
-function bump_workspace_module_name(session_notebook::SN)
+function bump_workspace_module(session_notebook::SN)
     workspace = get_workspace(session_notebook)
     old_name = workspace.module_name
     new_name = workspace.module_name = create_emptyworkspacemodule(workspace.pid)
@@ -333,7 +333,7 @@ function move_vars(session_notebook::Union{SN,Workspace}, old_workspace_name::Sy
 end
 
 move_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,FunctionName}}, module_imports_to_move::Set{Expr}; kwargs...) =
-move_vars(session_notebook, bump_workspace_module_name(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move; kwargs...)
+move_vars(session_notebook, bump_workspace_module(session_notebook)..., to_delete, methods_to_delete, module_imports_to_move; kwargs...)
 
 # TODO: delete me
 @deprecate(

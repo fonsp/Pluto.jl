@@ -258,7 +258,7 @@ end
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
 
-	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module_name((session, notebook))
+	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
 
 	unresolved_topology = updated_topology(old, notebook, cells)
 	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
