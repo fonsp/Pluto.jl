@@ -35,6 +35,11 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, st
         Cell("""quote end"""),
         Cell("""quote x = 21 end"""),
         Cell("""quote \$(x = 22) end"""),
+        Cell("""asdf"23" """),
+        Cell("""@asdf("24") """),
+        Cell("""@x"""),
+        Cell("""@y z 26"""),
+        Cell("""f(g"27")"""),
     ])
 
     old = notebook.topology
@@ -64,5 +69,10 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, st
         @test !is_just_text(new, notebook.cells[20])
         @test !is_just_text(new, notebook.cells[21])
         @test !is_just_text(new, notebook.cells[22])
+        @test !is_just_text(new, notebook.cells[23])
+        @test !is_just_text(new, notebook.cells[24])
+        @test !is_just_text(new, notebook.cells[25])
+        @test !is_just_text(new, notebook.cells[26])
+        @test !is_just_text(new, notebook.cells[27])
     end
 end

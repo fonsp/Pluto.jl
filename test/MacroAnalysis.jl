@@ -70,6 +70,16 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
         @test cell(1).errored == false
         @test cell(2).errored == false
+        
+        
+        notebook = Notebook([
+            Cell("using Dates"),
+            Cell("df = dateformat\"Y-m-d\""),
+        ])
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1).errored == false
+        @test cell(2).errored == false
     end
 
     @testset "Previous workspace for unknowns" begin

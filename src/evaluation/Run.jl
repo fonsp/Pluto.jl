@@ -259,7 +259,7 @@ function static_resolve_topology(topology::NotebookTopology)
 	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell, symstate) for (cell, symstate) in topology.unresolved_cells)
 	all_nodes = merge(topology.nodes, new_nodes)
 
-	NotebookTopology(nodes=all_nodes, codes=topology.codes)
+	NotebookTopology(nodes=all_nodes, codes=topology.codes, unresolved_cells=topology.unresolved_cells)
 end
 
 ###
@@ -291,6 +291,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 			force_offline=true,
 		)
 
+		new = notebook.topology = static_resolve_topology(new)
+		
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
