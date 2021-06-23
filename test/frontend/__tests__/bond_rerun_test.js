@@ -1,6 +1,7 @@
 import { saveScreenshot, getTestScreenshotPath, setupPage, paste } from "../helpers/common"
 import { createNewNotebook, getPlutoUrl, waitForNoUpdateOngoing } from "../helpers/pluto"
 
+// https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
     beforeAll(async () => {
         setupPage(page)
