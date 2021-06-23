@@ -267,7 +267,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 	deletion_hook = function(sn, to_delete_vars, to_delete_funcs, to_reimport; to_run)
-		WorkspaceManager.move_vars(sn, old_workspace_name, new_workspace_name, to_delete_vars, to_delete_funcs, to_reimport)
+		WorkspaceManager.move_vars(sn, old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport)
 	end
 
 	# _assume `prerender_text == false` if you want to skip some details_
