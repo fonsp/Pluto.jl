@@ -9,6 +9,19 @@ Base.push!(x::Set{Cell}) = x
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
+	
+	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
+	
+	if !isempty(new_topology.unresolved_cells)
+
+		unresolved_topology = new_topology
+		new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+
+		# update cache and save notebook because the dependencies might have changed after expanding macros
+		update_dependency_cache!(notebook)
+		session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+	end
+	
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
 	roots = Cell[roots..., removed_cells...]
@@ -75,8 +88,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
 	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-	deletion_hook((session, notebook), to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+	to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+	deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
 	delete!.([notebook.bonds], to_delete_vars)
 
@@ -175,7 +188,7 @@ will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_
 "We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
 	sn = (session, notebook)
-	to_reimport = union(Set{Expr}(), map(c -> unresolved_topology.codes[c].module_usings_imports.usings, notebook.cells)...)
+	to_reimport = union!(Set{Expr}(), map(c -> unresolved_topology.codes[c].module_usings_imports.usings, notebook.cells)...)
 	WorkspaceManager.do_reimports(sn, to_reimport)
 
 	function macroexpand_cell(cell)
@@ -257,21 +270,12 @@ end
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
 	old = notebook.topology
-
-	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
-
-	unresolved_topology = updated_topology(old, notebook, cells)
-	new = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
 	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
-	deletion_hook = function(sn, to_delete_vars, to_delete_funcs, to_reimport; to_run)
-		WorkspaceManager.move_vars(sn, old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport)
-	end
-
 	# _assume `prerender_text == false` if you want to skip some details_
-
 	to_run_online = if !prerender_text
 		cells
 	else
@@ -302,7 +306,8 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		wait(pkg_task)
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
-			run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
+			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
+			# run_reactive_async!(session, notebook, old, new, to_run_online; deletion_hook=deletion_hook, run_async=false, kwargs...)
 		end
 	end
 end
