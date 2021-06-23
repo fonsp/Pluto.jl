@@ -252,7 +252,7 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
+            add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
@@ -262,6 +262,15 @@ export class Editor extends Component {
                     code_folded: false,
                     running_disabled: false,
                 }))
+                /* Try parsing the input as a number */
+                let index = Number(index_or_id)
+                
+                /* if the input is not an integer, try interpreting it as a cell id */
+                /* This defaults to -1 in case the cell_id is not found, reverting to the original behavior */
+                if (isNaN(index)) {
+                    index = this.state.notebook.cell_order.indexOf(index_or_id)
+                }
+
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
