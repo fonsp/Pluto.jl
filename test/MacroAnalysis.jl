@@ -115,7 +115,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         @test ":hello" == cell(4).output.body
         @test :b ∈ notebook.topology.nodes[cell(3)].definitions
         @test [:c, Symbol("@my_assign")] ⊆ notebook.topology.nodes[cell(3)].references
-        @test cell(3).cell_dependencies.contains_user_defined_macros == true
+        @test cell(3).cell_dependencies.contains_user_defined_macrocalls == true
 
         setcode(notebook.cells[2], "c = :world")
         update_run!(🍭, notebook, cell(2))

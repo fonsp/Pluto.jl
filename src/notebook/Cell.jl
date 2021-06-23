@@ -17,7 +17,7 @@ struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a
     downstream_cells_map::Dict{Symbol,Vector{T}}
     upstream_cells_map::Dict{Symbol,Vector{T}}
     precedence_heuristic::Int
-    contains_user_defined_macros::Bool
+    contains_user_defined_macrocalls::Bool
 end
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."

@@ -285,7 +285,7 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macros::Bool=false)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
@@ -294,7 +294,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         proof = ReturnProof()
 
         # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
-        if contains_user_defined_macros
+        if contains_user_defined_macrocalls
             try
                 expr = visit_expand(m, expr)
                 wrapped = timed_expr(expr, proof)
