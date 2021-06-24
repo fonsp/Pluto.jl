@@ -200,14 +200,14 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 		# 3. Move imports and re-try in the new module
 		# 4. *NotImplemented*. Would be to run imports and execute only a part of the graph
 		res = try_macroexpand() # 1.
-		if res isa LoadError && res.error isa UndefVarError
+		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
 			# We have not found the macro in the new workspace after reimports
 			# this most likely means that the macro is user defined, we try to expand it
 			# in the old workspace to see whether or not it is defined there
 
 			res = try_macroexpand(old_workspace_name) # 2.
 			# It was not defined previously, we try searching modules in our own batch
-			if res isa LoadError && res.error isa UndefVarError
+			if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
 				to_import_from_batch = mapreduce(union, unresolved_topology.codes) do (_, cache)
 				    union(cache.module_usings_imports.imports,
 					  cache.module_usings_imports.usings)
@@ -225,7 +225,7 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 			return current_symstate
 		else
 			result = macroexpand_cell(cell)
-			if typeof(result) <: Exception
+			if result isa Exception
 				# if expansion failed, we use the "shallow" symbols state
 				# we could also use ExpressionExplorer.maybe_macroexpand
 				current_symstate
