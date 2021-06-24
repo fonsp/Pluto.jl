@@ -778,49 +778,7 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
         args = ex.args[3:end]
         
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
-            return macroexpand(PlutoRunner, ex; recursive=false)
-
-        elseif !isempty(args) && Meta.isexpr(args[1], :(:=))
-            ex = macro_kwargs_as_kw(ex)
-            # macros like @einsum C[i] := A[i,j] are assignment to C, illegal syntax without macro
-            ein = args[1]
-            left = if Meta.isexpr(ein.args[1], :ref)
-                # assign to the symbol, and save LHS indices as fake RHS argument
-                ex = Expr(ex.head, ex.args..., Expr(:ref, :Float64, ein.args[1].args[2:end]...))
-                ein.args[1].args[1]
-            else
-                ein.args[1]  # scalar case `c := A[i,j]`
-            end
-            ein_done = Expr(:(=), left, strip_indexing.(ein.args[2:end])...)  # i,j etc. are local
-            Expr(:call, ex.args[1:2]..., ein_done, strip_indexing.(ex.args[4:end])...)
-            
-        elseif !isempty(args) && funcname_joined === Symbol("@ode_def")
-            if args[1] isa Symbol
-                :($(args[1]) = @ode_def 123)
-            else
-                :(@ode_def)
-            end
-        elseif !isempty(args) && (funcname_joined === Symbol("@functor") || funcname_joined === Symbol("Flux.@functor"))
-            Expr(:macrocall, ex.args[1:2]..., :($(args[1]) = 123), ex.args[4:end]...)
-        elseif !isempty(args) && (funcname_joined === Symbol("@variables") || funcname_joined === Symbol("Symbolics.@variables")) && all(is_symbolics_arg, maybe_untuple(args))
-            Expr(:macrocall, ex.args[1:2]..., symbolics_mockexpand.(maybe_untuple(args))...)
-        # elseif length(ex.args) >= 4 && (funcname_joined === Symbol("@variable") || funcname_joined === Symbol("JuMP.@variable"))
-        #     if Meta.isexpr(ex.args[4], :comparison)
-        #         parts = ex.args[4].args[1:2:end]
-        #         if length(parts) == 2
-        #         foldl(parts) do (e,next)
-        #             :($(e) = $(next))
-        #         end
-        #     elseif Meta.isexpr(ex.args[4], :block)
-
-        #     end
-
-
-        #     Expr(:macrocall, ex.args[1:3]..., )
-            # add more macros here
-        elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
-            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
-            macro_kwargs_as_kw(ex)
+            macroexpand(PlutoRunner, ex; recursive=false)
         else
             ex
         end
