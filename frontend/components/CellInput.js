@@ -1,3 +1,5 @@
+import _ from "../imports/lodash.js"
+
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 
@@ -5,6 +7,7 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
+import { dog, slider } from "./CoolWidgets.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -68,6 +71,7 @@ export const CellInput = ({
     cm_forced_focus,
     set_cm_forced_focus,
     show_input,
+    queued_or_running,
     on_submit,
     on_delete,
     on_add_after,
@@ -93,6 +97,17 @@ export const CellInput = ({
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
 
+    const [want_to_submit, set_want_to_submit] = useState(false)
+
+    useEffect(() => {
+        if (want_to_submit && !queued_or_running) {
+            // setTimeout(() => {
+            on_submit()
+            set_want_to_submit(false)
+            // }, 100)
+        }
+    }, [want_to_submit, queued_or_running])
+
     const pkg_bubbles = useRef(new Map())
 
     const nbpkg_ref = useRef(nbpkg)
@@ -114,7 +129,7 @@ export const CellInput = ({
             // dunno
             // const re = /(using|import)\s*(\w+(?:\,\s*\w+)*)/g
 
-            // import A: b. c
+            // import A: b, c
             // const re = /(using|import)(\s*\w+(\.\w+)*(\s*\:(\s*\w+\,)*(\s*\w+)?))/g
 
             // import A, B, C
@@ -156,6 +171,106 @@ export const CellInput = ({
                         }
                     }
                 }
+            }
+
+            const widget_re = /\@widget\(/g
+            for (const widget_match of line.matchAll(widget_re)) {
+                // console.log(widget_match)
+                const start = widget_match.index
+                const end = widget_match.index + widget_match[0].length
+
+                const bracket_match = cm.findMatchingBracket({ line: line_i, ch: end - 1 }, { strict: true, afterCursor: true, highlightNonMatching: false })
+
+                if (bracket_match.match) {
+                    // console.log(bracket_match)
+
+                    const found_marks = cm.findMarks({ line: line_i, ch: start }, { line: line_i, ch: bracket_match.to.ch + 1 })
+
+                    console.log("foudn marks", found_marks)
+                    console.log("all marks", cm.getAllMarks())
+
+                    if (found_marks.length === 0) {
+                        const code = line.substring(end, bracket_match.to.ch)
+
+                        const marker_ref = {
+                            current: null,
+                        }
+
+                        let set_code = (newcode, options = {}) => {
+                            const { submit = true } = options
+                            const { from, to } = marker_ref.current.find()
+
+                            cm.replaceRange(
+                                newcode,
+                                {
+                                    line: from.line,
+                                    ch: from.ch + widget_match[0].length,
+                                },
+                                {
+                                    line: to.line,
+                                    ch: to.ch - 1,
+                                }
+                            )
+
+                            if (submit) {
+                                set_want_to_submit(true)
+                            }
+
+                            marker_ref.current.changed()
+                        }
+
+                        set_code = _.throttle(set_code, 100)
+
+                        const node = slider({ code, set_code })
+
+                        marker_ref.current = cm.markText(
+                            { line: line_i, ch: start },
+                            { line: line_i, ch: bracket_match.to.ch + 1 },
+                            {
+                                // clearOnEnter: true,
+                                // clearWhenEmpty: false,
+                                replacedWith: node,
+                            }
+                        )
+
+                        console.log(node)
+                        console.log(marker_ref.current)
+                    }
+                }
+
+                // // ask codemirror what its parser found for the "import" or "using" word. If it is not a "keyword", then this is part of a comment or a string.
+                // const import_token = cm.getTokenAt({ line: line_i, ch: start }, true)
+
+                // if (import_token.type === "keyword") {
+                //     const inner = import_match[0].substr(import_match[1].length)
+
+                //     // find the package name, e.g. `Plot` for `Plot.Extras.coolplot`
+                //     const inner_re = /(\w+)(\.\w+)*/g
+                //     for (const package_match of inner.matchAll(inner_re)) {
+                //         const package_name = package_match[1]
+
+                //         if (package_name !== "Base" && package_name !== "Core") {
+                //             // if the widget already exists, keep it, if not, create a new one
+                //             const widget = get(pkg_bubbles.current, package_name, () => {
+                //                 const b = PkgStatusMark({
+                //                     pluto_actions: pluto_actions,
+                //                     package_name: package_name,
+                //                     refresh_cm: () => cm.refresh(),
+                //                     notebook_id: notebook_id,
+                //                 })
+                //                 b.on_nbpkg(nbpkg_ref.current)
+                //                 return b
+                //             })
+
+                //             cm.setBookmark(
+                //                 { line: line_i, ch: start + package_match.index + package_match[0].length },
+                //                 {
+                //                     widget: widget,
+                //                 }
+                //             )
+                //         }
+                //     }
+                // }
             }
         }
     }

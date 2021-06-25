@@ -157,6 +157,7 @@ export const Cell = ({
                 set_cm_forced_focus=${set_cm_forced_focus}
                 show_input=${show_input}
                 on_drag_drop_events=${handler}
+                queued_or_running=${queued || (waiting_to_run && is_process_ready) || running}
                 on_submit=${() => {
                     if (!disable_input_ref.current) {
                         set_waiting_to_run_smart(true)
