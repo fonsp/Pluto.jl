@@ -75,8 +75,12 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         @test cell(1) |> noerror
         @test cell(2) |> noerror
         @test cell(3) |> noerror
-        
         @test cell(1).output.body == "123"
+        
+        update_run!(🍭, notebook, cell(1))
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
     end
 
     @testset "Package macro 1" begin
