@@ -65,7 +65,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         update_run!(🍭, notebook, notebook.cells)
         
         setcode(cell(2), """macro my_identity(expr)
-            expr
+            esc(expr)
         end""")
         update_run!(🍭, notebook, cell(2))
         
