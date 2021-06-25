@@ -1407,6 +1407,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
 .disable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
     background-size: 15px;
+    background-repeat: no-repeat;
 }
 .delete_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
