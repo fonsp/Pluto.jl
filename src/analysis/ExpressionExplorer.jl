@@ -766,9 +766,7 @@ else
 end
 
 """
-If the macro is known to Pluto, expand or 'mock expand' it, if not, return the expression.
-
-Macros can transform the expression into anything - the best way to treat them is to `macroexpand`. The problem is that the macro is only available on the worker process, see https://github.com/fonsp/Pluto.jl/issues/196
+If the macro is **known to Pluto**, expand or 'mock expand' it, if not, return the expression. Macros from external packages are not expanded, this is done later in the pipeline. See https://github.com/fonsp/Pluto.jl/pull/1032
 """
 function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
     result = if ex.head === :macrocall
@@ -779,6 +777,9 @@ function maybe_macroexpand(ex::Expr; recursive=false, expand_bind=true)
         
         if funcname_joined ∈ (expand_bind ? can_macroexpand : can_macroexpand_no_bind)
             macroexpand(PlutoRunner, ex; recursive=false)
+	elseif length(args) ≥ 2 && ex.args[1] != GlobalRef(Core, Symbol("@doc"))
+            # for macros like @test a ≈ b atol=1e-6, read assignment in 2nd & later arg as keywords
+            macro_kwargs_as_kw(ex)
         else
             ex
         end
