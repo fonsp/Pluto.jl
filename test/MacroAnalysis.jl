@@ -31,7 +31,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         @test :Fruit ∈ notebook.topology.nodes[cell(3)].references
     end
 
-    @testset "User defined macro" begin
+    @testset "User defined macro 1" begin
         notebook = Notebook([
             Cell("""macro my_assign(sym, val)
               :(\$(esc(sym)) = \$(val))
@@ -52,6 +52,31 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         # Works on second time because of old workspace
         @test :x ∈ notebook.topology.nodes[cell(2)].definitions
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+    end
+    
+    @testset "User defined macro 2" begin
+        notebook = Notebook([
+            Cell("@my_identity(f(123))"),
+            Cell(""),
+            Cell(""),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+        
+        setcode(cell(2), """macro my_identity(expr)
+            expr
+        end""")
+        update_run!(🍭, notebook, cell(2))
+        
+        setcode(cell(3), "f(x) = x")
+        update_run!(🍭, notebook, cell(3))
+        
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        
+        @test cell(1).output.body == "123"
     end
 
     @testset "Package macro 1" begin
