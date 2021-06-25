@@ -6,6 +6,7 @@ include("./packages/Basic.jl")
 VERSION > v"1.6.99" || include("./RichOutput.jl")
 include("./React.jl")
 include("./Dynamic.jl")
+include("./MacroAnalysis.jl")
 
 # for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
 include("./Notebook.jl")
@@ -20,7 +21,6 @@ include("./Firebasey.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
 include("./cell_disabling.jl")
-include("./MacroAnalysis.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook

@@ -19,15 +19,15 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test cell(1).errored == false
+        @test cell(1) |> noerror
         @test [:🍎, :🍐] ⊆ notebook.topology.nodes[cell(1)].definitions
         @test :Fruit ∈ notebook.topology.nodes[cell(1)].funcdefs_without_signatures
         @test Symbol("@enum") ∈ notebook.topology.nodes[cell(1)].references
 
-        @test cell(2).errored == false
+        @test cell(2) |> noerror
         @test :🍎 ∈ notebook.topology.nodes[cell(2)].references
 
-        @test cell(3).errored == false
+        @test cell(3) |> noerror
         @test :Fruit ∈ notebook.topology.nodes[cell(3)].references
     end
 
@@ -54,7 +54,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
     end
 
-    @testset "Package macro" begin
+    @testset "Package macro 1" begin
         notebook = Notebook([
             Cell("using Dates"),
             Cell("df = dateformat\"Y-m-d\""),
@@ -68,8 +68,8 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
         update_run!(🍭, notebook, notebook.cells)
 
-        @test cell(1).errored == false
-        @test cell(2).errored == false
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
         
         
         notebook = Notebook([
@@ -78,8 +78,54 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         ])
         update_run!(🍭, notebook, notebook.cells)
 
-        @test cell(1).errored == false
-        @test cell(2).errored == false
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+    end
+
+    @testset "Package macro 2" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+        
+        notebook = Notebook([
+            Cell("z = x^2 + y"),
+            Cell("@variables x y"),
+            Cell("""
+            begin
+                import Pkg
+                Pkg.activate(mktempdir())
+                Pkg.add(Pkg.PackageSpec(name="Symbolics", version="1"))
+                using Symbolics
+            end
+            """),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+
+        update_run!(🍭, notebook, cell(2))
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        
+        setcode(cell(2), "@variables 🐰 y")
+        update_run!(🍭, notebook, cell(2))
+        
+        @test cell(1).errored
+        @test cell(2) |> noerror
+        
+        
+        setcode(cell(1), "z = 🐰^2 + y")
+        update_run!(🍭, notebook, cell(1))
+        
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        
+        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     @testset "Previous workspace for unknowns" begin
@@ -95,9 +141,9 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         update_run!(🍭, notebook, cell(1))
         update_run!(🍭, notebook, notebook.cells[2:end])
 
-        @test cell(1).errored == false
-        @test cell(2).errored == false
-        @test cell(3).errored == false
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
 
         module_from_cell2 = cell(2).output.body[:elements][1][2][1]
         module_from_cell3 = cell(3).output.body
@@ -149,6 +195,6 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
         update_run!(🍭, notebook, notebook.cells)
 
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
-        @test cell(1).errored == false
+        @test cell(1) |> noerror
     end
 end
