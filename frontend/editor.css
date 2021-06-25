@@ -1332,7 +1332,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 @media screen and (min-width: 921px) {
 
-    pluto-input > button.delete_cell .input_context_menu {
+    pluto-input > button.delete_cell ul.input_context_menu {
         left: calc(100% - 3px);
     }
 }
@@ -1340,7 +1340,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
     pluto-input > button.delete_cell  {
         z-index: 31;
     }
-    pluto-input > button.delete_cell .input_context_menu {
+    pluto-input > button.delete_cell ul.input_context_menu {
         left: calc(100% - var(--width) - 36px);
     }
 }
