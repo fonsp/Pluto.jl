@@ -262,13 +262,18 @@ export class Editor extends Component {
                     code_folded: false,
                     running_disabled: false,
                 }))
-                /* Try parsing the input as a number */
-                let index = Number(index_or_id)
+
+                let index
                 
-                /* if the input is not an integer, try interpreting it as a cell id */
-                /* This defaults to -1 in case the cell_id is not found, reverting to the original behavior */
-                if (isNaN(index)) {
+                if (typeof(index_or_id) === 'number') {
+                    index = index_or_id
+                } else {
+                    /* if the input is not an integer, try interpreting it as a cell id */
                     index = this.state.notebook.cell_order.indexOf(index_or_id)
+                    if (index !== -1) {
+                        /* Make sure that the cells are pasted after the current cell */
+                        index += 1
+                    }
                 }
 
                 if (index === -1) {
