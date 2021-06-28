@@ -49,7 +49,7 @@ end
 
 function direct_parents(notebook::Notebook, topology::NotebookTopology, node::Cell)
     filter(notebook.cells) do cell
-        any(x ∈ topology[node].references for x ∈ topology[cell].definitions)
+        any(x ∈ topology.nodes[node].references for x ∈ topology.nodes[cell].definitions)
     end
 end
 
@@ -89,20 +89,16 @@ function upstream_roots(notebook::Notebook, topology::NotebookTopology, from::Un
 end
 
 function get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Set{Symbol})
-    assigned = where_assigned(notebook, topology, outputs)
-    provided_set = keys(inputs)
-    to_set = provided_set
-
-    new_values = values(inputs)
+    to_set, new_values = keys(inputs), values(inputs)
     output_cell = where_assigned(notebook, topology, outputs)
-    input_cells = where_assigned(notebook, topology, Set{Symbol}(to_set))
 
     if length(output_cell) < length(outputs)
         throw(ErrorException("A requested output does not exist"))
     end
+    # For now only one output cell is supported
     output_cell = output_cell[1]
 
-    intersection_path = upstream_recursive(notebook, topology, Cell[output_cell]) ∩ downstream_recursive(notebook, topology, input_cells)
+    intersection_path = upstream_recursive(notebook, topology, Cell[output_cell])
 
     to_reeval = Cell[
         # Re-evaluate all cells that reference the modified input parameters
@@ -125,13 +121,17 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
 end
 get_notebook_output(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Dict{Symbol, Any}, outputs::Vector{Symbol}) = get_notebook_output(session, notebook, topology, inputs, Set(outputs))
 
+#fn_result = REST.get_notebook_call(session, notebook, fn_name, args, kwargs)
+function get_notebook_call(session::ServerSession, notebook::Notebook, name::Symbol, args, kwargs)
+    fn_symbol = :($(name)($(args...); $([:($k=$v) for (k, v) ∈ kwargs]...)))
+    return WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+end
+
 function get_notebook_static_function(session::ServerSession, notebook::Notebook, topology::NotebookTopology, inputs::Vector{Symbol}, outputs::Vector{Symbol})
     output_cells = where_assigned(notebook, topology, Set(outputs))
     output_cell = output_cells[1]
     
     input_cells = (input -> where_assigned(notebook, topology, Set([input]))[1]).(inputs)
-
-    to_set = upstream_roots(notebook, topology, output_cell)
 
     function_name = Symbol("eval_" * string(outputs[1]))
     function_params = (x -> Expr(:kw, :($x), WorkspaceManager.eval_fetch_in_workspace((session, notebook), x))).(inputs)
@@ -139,7 +139,6 @@ function get_notebook_static_function(session::ServerSession, notebook::Notebook
     necessary_cells = recursive_parents(notebook, topology, output_cell)
 
     cell_ordering = topological_order(notebook, topology, [necessary_cells..., output_cell])
-    # cell_ordering = topological_order(notebook, topology, [output_cell])
 
     cell_expressions = (cell -> Meta.parse(cell.code)).(filter(cell_ordering.runnable) do cell
         (cell ∈ necessary_cells && cell ∉ input_cells) || cell ∈ output_cells
@@ -191,7 +190,6 @@ function evaluate(output::Symbol, filename::AbstractString, host::AbstractString
     ], serialized_body; status_exception=false)
 
     if response.status >= 300
-        @error "Bad response" response.status
         throw(ErrorException(String(response.body)))
     end
 

@@ -259,7 +259,6 @@ function http_router_for(session::ServerSession)
         notebook
     end
     function rest_parse(body::Vector{UInt8}, mime_type::AbstractString)
-        # TODO: either fix or remove json support
         if mime_type == "application/x-msgpack"
             return MsgPack.unpack(body)
         elseif mime_type == "application/x-julia"
@@ -302,20 +301,15 @@ function http_router_for(session::ServerSession)
     end
 
     function serve_notebook_eval(request::HTTP.Request)
-        uri = HTTP.URI(request.target)
-        query = HTTP.queryparams(uri)
-
-        parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(rest_parameter(request, "outputs"))
 
         # Get notebook from request parameters
         notebook = get_notebook_from_api_request(request)
-        topology = notebook.topology
 
         inputs = rest_parameter(request, "inputs")
         outputs = nothing
         try
-            outputs = REST.get_notebook_output(session, notebook, topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+            outputs = REST.get_notebook_output(session, notebook, notebook.topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
         catch e
             if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
                 return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
@@ -333,17 +327,12 @@ function http_router_for(session::ServerSession)
     function serve_notebook_call(request::HTTP.Request)
         # Get notebook from request parameters
         notebook = get_notebook_from_api_request(request)
-        topology = notebook.topology
-
-        uri = HTTP.URI(request.target)
-        query = HTTP.queryparams(uri)
 
         fn_name = Symbol(rest_parameter(request, "function"))
         args = rest_parameter(request, "args")
         kwargs = rest_parameter(request, "kwargs")
 
-        fn_symbol = :($(fn_name)($(args...); $([:($k=$v) for (k, v) ∈ kwargs]...)))
-        fn_result = WorkspaceManager.eval_fetch_in_workspace((session, notebook), fn_symbol)
+        fn_result = REST.get_notebook_call(session, notebook, fn_name, args, kwargs)
 
         rest_serialize(request, fn_result)
     end
@@ -354,14 +343,12 @@ function http_router_for(session::ServerSession)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
 
-        parts = HTTP.URIs.splitpath(uri.path)
         out_symbols = Symbol.(split(query["outputs"], ","))
 
         notebook = get_notebook_from_api_request(request)
-        topology = notebook.topology
 
         input_symbols = Symbol.(split(query["inputs"], ","))
-        out_fn = REST.get_notebook_static_function(session, notebook, topology, input_symbols, out_symbols)
+        out_fn = REST.get_notebook_static_function(session, notebook, notebook.topology, input_symbols, out_symbols)
 
         res = HTTP.Response(200, string(out_fn))
         push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
