@@ -321,8 +321,8 @@ function http_router_for(session::ServerSession)
 
         rest_serialize(request, outputs)
     end
-    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/eval", serve_notebook_eval)
-    HTTP.@register(router, "POST", "/$(REST.VERSION)/notebook/*/eval", serve_notebook_eval)
+    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
+    HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
 
     function serve_notebook_call(request::HTTP.Request)
         # Get notebook from request parameters
@@ -336,8 +336,8 @@ function http_router_for(session::ServerSession)
 
         rest_serialize(request, fn_result)
     end
-    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/call", serve_notebook_call)
-    HTTP.@register(router, "POST", "/$(REST.VERSION)/notebook/*/call", serve_notebook_call)
+    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
+    HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
 
     function serve_notebook_static_fn(request::HTTP.Request)
         uri = HTTP.URI(request.target)
@@ -354,7 +354,7 @@ function http_router_for(session::ServerSession)
         push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
         res
     end
-    HTTP.@register(router, "GET", "/$(REST.VERSION)/notebook/*/static", serve_notebook_static_fn)
+    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/static", serve_notebook_static_fn)
 
     notebook_from_uri(request) = let
         uri = HTTP.URI(request.target)        
