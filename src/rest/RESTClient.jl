@@ -169,14 +169,14 @@ function (nb::PlutoNotebook)(; kwargs...)
 end
 # Looks like notebook_instance(a=3, b=4).c ⟹ 5
 function Base.getproperty(with_args::PlutoNotebookWithArgs, symbol::Symbol)
-    # try
+    try
         return REST.evaluate(symbol, Base.getfield(Base.getfield(with_args, :notebook), :filename), Base.getfield(Base.getfield(with_args, :notebook), :host); Base.getfield(with_args, :kwargs)...)
-    # catch e
-    #     if hasfield(typeof(e), :msg) && contains(e.msg, "function") # See if the function error was thrown, and return a PlutoCallable struct
-    #         return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
-    #     end
-    #     throw(e)
-    # end
+    catch e
+        if hasfield(typeof(e), :msg) && contains(e.msg, "function") # See if the function error was thrown, and return a PlutoCallable struct
+            return PlutoCallable(Base.getfield(with_args, :notebook), symbol)
+        end
+        throw(e)
+    end
 end
 # Looks like notebook_instance(a=3, b=4)[:c, :m] ⟹ 5
 function Base.getindex(with_args::PlutoNotebookWithArgs, symbols::Symbol...)
