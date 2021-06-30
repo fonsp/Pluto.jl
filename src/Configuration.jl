@@ -21,6 +21,7 @@ Base.@kwdef mutable struct ServerOptions
     disable_writing_notebook_files::Bool = false
     notebook::Union{Nothing,String} = nothing
     simulated_lag::Real=0.0
+    enable_rest::Bool = false
 end
 
 """

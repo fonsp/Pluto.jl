@@ -300,61 +300,63 @@ function http_router_for(session::ServerSession)
         end
     end
 
-    function serve_notebook_eval(request::HTTP.Request)
-        out_symbols = Symbol.(rest_parameter(request, "outputs"))
+    if session.options.server.enable_rest
+        function serve_notebook_eval(request::HTTP.Request)
+            out_symbols = Symbol.(rest_parameter(request, "outputs"))
 
-        # Get notebook from request parameters
-        notebook = get_notebook_from_api_request(request)
+            # Get notebook from request parameters
+            notebook = get_notebook_from_api_request(request)
 
-        inputs = rest_parameter(request, "inputs")
-        outputs = nothing
-        try
-            outputs = REST.get_notebook_output(session, notebook, notebook.topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
-        catch e
-            if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
-                return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
-            else
-                showerror(stdout, e) # TODO: This line is for debug. Remove later
-                return HTTP.Response(400, e.msg)
+            inputs = rest_parameter(request, "inputs")
+            outputs = nothing
+            try
+                outputs = REST.get_notebook_output(session, notebook, notebook.topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
+            catch e
+                if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
+                    return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
+                else
+                    showerror(stdout, e) # TODO: This line is for debug. Remove later
+                    return HTTP.Response(400, e.msg)
+                end
             end
+
+            rest_serialize(request, outputs)
         end
+        HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
+        HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
 
-        rest_serialize(request, outputs)
+        function serve_notebook_call(request::HTTP.Request)
+            # Get notebook from request parameters
+            notebook = get_notebook_from_api_request(request)
+
+            fn_name = Symbol(rest_parameter(request, "function"))
+            args = rest_parameter(request, "args")
+            kwargs = rest_parameter(request, "kwargs")
+
+            fn_result = REST.get_notebook_call(session, notebook, fn_name, args, kwargs)
+
+            rest_serialize(request, fn_result)
+        end
+        HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
+        HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
+
+        function serve_notebook_static_fn(request::HTTP.Request)
+            uri = HTTP.URI(request.target)
+            query = HTTP.queryparams(uri)
+
+            out_symbols = Symbol.(split(query["outputs"], ","))
+
+            notebook = get_notebook_from_api_request(request)
+
+            input_symbols = Symbol.(split(query["inputs"], ","))
+            out_fn = REST.get_notebook_static_function(session, notebook, notebook.topology, input_symbols, out_symbols)
+
+            res = HTTP.Response(200, string(out_fn))
+            push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
+            res
+        end
+        HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/static", serve_notebook_static_fn)
     end
-    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
-    HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/eval", serve_notebook_eval)
-
-    function serve_notebook_call(request::HTTP.Request)
-        # Get notebook from request parameters
-        notebook = get_notebook_from_api_request(request)
-
-        fn_name = Symbol(rest_parameter(request, "function"))
-        args = rest_parameter(request, "args")
-        kwargs = rest_parameter(request, "kwargs")
-
-        fn_result = REST.get_notebook_call(session, notebook, fn_name, args, kwargs)
-
-        rest_serialize(request, fn_result)
-    end
-    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
-    HTTP.@register(router, "POST", "/$(REST.WYSIWYR_VERSION)/notebook/*/call", serve_notebook_call)
-
-    function serve_notebook_static_fn(request::HTTP.Request)
-        uri = HTTP.URI(request.target)
-        query = HTTP.queryparams(uri)
-
-        out_symbols = Symbol.(split(query["outputs"], ","))
-
-        notebook = get_notebook_from_api_request(request)
-
-        input_symbols = Symbol.(split(query["inputs"], ","))
-        out_fn = REST.get_notebook_static_function(session, notebook, notebook.topology, input_symbols, out_symbols)
-
-        res = HTTP.Response(200, string(out_fn))
-        push!(res.headers, "Content-Type" => "text/plain; charset=utf-8")
-        res
-    end
-    HTTP.@register(router, "GET", "/$(REST.WYSIWYR_VERSION)/notebook/*/static", serve_notebook_static_fn)
 
     notebook_from_uri(request) = let
         uri = HTTP.URI(request.target)        
