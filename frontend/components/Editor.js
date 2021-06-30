@@ -254,6 +254,28 @@ export class Editor extends Component {
             },
             add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
+
+                let index
+                /* Check if the function was called from a cell, and if it is an empty cell put the first deserialized cell inside it rather than adding a new one */
+                if (typeof(index_or_id) === 'string') {
+                    /* Try to interpret the string as a cell id and look for it among the currently existing cells */
+                    index = this.state.notebook.cell_order.indexOf(index_or_id)
+                    if (index !== -1) {
+
+                        const cell_id = index_or_id
+
+                        /* Make sure that the cells are pasted after the current cell */
+                        index += 1
+                            
+                        /* Check if content of current cell is empty, and skip the rest otherwise */
+                        const cm = document.querySelector(`[id="${cell_id}"] .CodeMirror`).CodeMirror
+
+                        if (cm.getValue() === "") {
+                            cm.setValue(new_codes.shift())
+                        }
+                    }
+                }
+                
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
                 let new_cells = new_codes.map((code) => ({
@@ -262,20 +284,10 @@ export class Editor extends Component {
                     code_folded: false,
                     running_disabled: false,
                 }))
-
-                let index
                 
                 if (typeof(index_or_id) === 'number') {
                     index = index_or_id
-                } else {
-                    /* if the input is not an integer, try interpreting it as a cell id */
-                    index = this.state.notebook.cell_order.indexOf(index_or_id)
-                    if (index !== -1) {
-                        /* Make sure that the cells are pasted after the current cell */
-                        index += 1
-                    }
-                }
-
+                } 
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }
