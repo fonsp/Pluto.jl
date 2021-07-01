@@ -122,6 +122,10 @@ function sanitize_expr(func::Function)
     GlobalRef(mt.module, mt.name) |> sanitize_expr
 end
 
+function sanitize_expr(union_all::UnionAll)
+    sanitize_expr(union_all.body)
+end
+
 # An instanciation of a struct as part of an Expr
 # will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
 function sanitize_expr(other)
