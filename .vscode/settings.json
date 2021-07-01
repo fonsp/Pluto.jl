@@ -8,5 +8,8 @@
     "julia.format.curly": false,
     "julia.format.docs": false,
     "julia.format.indents": false,
-    "julia.format.iterOps": false
+    "julia.format.iterOps": false,
+    "julia.format.ops": false,
+    "julia.format.tuples": false,
+    "julia.format.kwarg": "off"
 }

@@ -1,24 +1,28 @@
 include("./helpers.jl")
+
+# tests that start new processes:
 include("./WorkspaceManager.jl")
-include("./RichOutput.jl")
+include("./packages/Basic.jl")
+VERSION > v"1.6.99" || include("./RichOutput.jl")
 include("./React.jl")
-include("./ExpressionExplorer.jl")
 include("./Dynamic.jl")
-include("./MethodSignatures.jl")
+
+# for SOME reason 😞 the Notebook.jl tests need to run AFTER all the tests above, or the Github Actions runner on Windows gets internal julia errors.
 include("./Notebook.jl")
-include("./Configuration.jl")
+
+# tests that don't start new processes:
+include("./packages/PkgCompat.jl")
+include("./ExpressionExplorer.jl")
+include("./MethodSignatures.jl")
+VERSION > v"1.6.99" || include("./Configuration.jl")
 include("./Analysis.jl")
 include("./Firebasey.jl")
 include("./DependencyCache.jl")
 include("./Throttled.jl")
+include("./cell_disabling.jl")
 
 # TODO: test PlutoRunner functions like:
 # - from_this_notebook
-# - tree viewer
-
-# TODO: test HTTP
-# We could use NodeJS.jl to run these tests without a browser
-# We could also do real browser testing, but that seems difficult
 
 # TODO: test include() inside notebooks
 

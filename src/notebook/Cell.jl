@@ -1,5 +1,5 @@
 import UUIDs: UUID, uuid1
-import .ExpressionExplorer: SymbolsState
+import .ExpressionExplorer: SymbolsState, UsingsImports
 
 Base.@kwdef struct CellOutput
     body::Union{Nothing,String,Vector{UInt8},Dict}=nothing
@@ -30,12 +30,17 @@ Base.@kwdef mutable struct Cell
     output::CellOutput=CellOutput()
     queued::Bool=false
     running::Bool=false
+
+    published_objects::Dict{String,Any}=Dict{String,Any}()
     
     errored::Bool=false
     runtime::Union{Nothing,UInt64}=nothing
 
     # note that this field might be moved somewhere else later. If you are interested in visualizing the cell dependencies, take a look at the cell_dependencies field in the frontend instead.
     cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99)
+
+    running_disabled::Bool=false
+    depends_on_disabled_cells::Bool=false
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
@@ -48,6 +53,7 @@ function Base.convert(::Type{Cell}, cell::Dict)
         cell_id=UUID(cell["cell_id"]),
         code=cell["code"],
         code_folded=cell["code_folded"],
+        running_disabled=cell["running_disabled"],
     )
 end
 function Base.convert(::Type{UUID}, string::String)

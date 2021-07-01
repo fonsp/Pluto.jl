@@ -1,3 +1,5 @@
+import Base64: base64decode
+
 const adjectives = [
 	"groundbreaking"
 	"revolutionary"
@@ -76,6 +78,19 @@ const pluto_file_extensions = [
 
 endswith_pluto_file_extension(s) = any(endswith(s, e) for e in pluto_file_extensions)
 
+function embedded_notebookfile(html_contents::AbstractString)::String
+	if !occursin("</html>", html_contents)
+		throw(ArgumentError("Pass the contents of a Pluto-exported HTML file as argument."))
+	end
+
+	m = match(r"pluto_notebookfile.*\"data\:.*base64\,(.*)\"", html_contents)
+	if m === nothing
+		throw(ArgumentError("Notebook does not have an embedded notebook file."))
+	else
+		String(base64decode(m.captures[1]))
+	end
+end
+
 """
 Does the path end with a pluto file extension (like `.jl` or `.pluto.jl`) and does the first line say `### A Pluto.jl notebook ###`? 
 """
@@ -95,7 +110,7 @@ Return `base` * `suffix` if the file does not exist yet.
 
 If it does, return `base * sep * string(n) * suffix`, where `n` is the smallest natural number such that the file is new. (no 0 is not a natural number you snake)
 """
-function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffix::AbstractString=".pluto.jl", create_file::Bool=true, skip_original::Bool=false)
+function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffix::AbstractString=".jl", create_file::Bool=true, skip_original::Bool=false)
     chosen = base * suffix
     n = 1
     while (n == 1 && skip_original) || isfile(chosen)
@@ -107,6 +122,8 @@ function numbered_until_new(base::AbstractString; sep::AbstractString=" ", suffi
 	end
     chosen
 end
+
+backup_filename(path) = numbered_until_new(without_pluto_file_extension(path); sep=" backup ", suffix=".jl", create_file=false, skip_original=true)
 
 "Like `cp` except we create the file manually (to fix permission issues). (It's not plagiarism if you use this function to copy homework.)"
 function readwrite(from::AbstractString, to::AbstractString)

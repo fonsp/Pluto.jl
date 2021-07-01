@@ -17,8 +17,6 @@ function withtoken(f::Function, token::Token)
     take!(token)
     result = try
         f()
-    catch e
-        rethrow(e)
     finally
         put!(token)
     end

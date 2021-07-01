@@ -15,7 +15,10 @@ export declare class Component<State = {}> {
 
 export declare function html(strings: TemplateStringsArray, ...interpolations: Array<any>): ReactElement
 
-export declare function render(jsx: ValidRenderResult, element: HTMLElement)
+export declare function render(vnode: ValidRenderResult, parent: Element | Document | ShadowRoot | DocumentFragment, replaceNode?: Element | Text): void
+export declare function hydrate(vnode: ValidRenderResult, parent: Element | Document | ShadowRoot | DocumentFragment): void
+export declare function cloneElement(vnode: ReactElement, props?: any, ...children: ValidRenderResult[]): ReactElement
+export declare function h(type: string, props: any, ...children: any[]): ReactElement
 
 declare function SetState<T>(value: T): void
 declare function SetState<T>(mutator: (value: T) => T): void

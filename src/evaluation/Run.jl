@@ -5,12 +5,12 @@ import .ExpressionExplorer: FunctionNameSignaturePair, is_joined_funcname, Using
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, cells::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false, dependency_mod::Union{Vector{Cell}, Nothing}=nothing)::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.delete_vars, persist_js_state::Bool=false, dependency_mod::Union{Vector{Cell}, Nothing}=nothing)::TopologicalOrder
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
-	cells = Cell[cells..., removed_cells...]
+	roots = Cell[roots..., removed_cells...]
 
 	# by setting the reactive node and expression caches of deleted cells to "empty", we are essentially pretending that those cells still exist, but now have empty code. this makes our algorithm simpler.
 	new_topology = NotebookTopology(
@@ -25,15 +25,25 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
-	old_order = topological_order(notebook, old_topology, cells)
+	old_order = topological_order(notebook, old_topology, roots)
 
 	old_runnable = old_order.runnable
 	to_delete_vars = union!(Set{Symbol}(), defined_variables(old_topology, old_runnable)...)
 	to_delete_funcs = union!(Set{Tuple{UUID,FunctionName}}(), defined_functions(old_topology, old_runnable)...)
 
 	# get the new topological order
-	new_order = topological_order(notebook, new_topology, union(cells, keys(old_order.errable)))
-	to_run = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+	new_order = topological_order(notebook, new_topology, union(roots, keys(old_order.errable)))
+	to_run_raw = setdiff(union(new_order.runnable, old_order.runnable), keys(new_order.errable))::Vector{Cell} # TODO: think if old error cell order matters
+
+	# find (indirectly) deactivated cells and update their status
+	deactivated = filter(c -> c.running_disabled, notebook.cells)
+	indirectly_deactivated = collect(topological_order(notebook, new_topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.depends_on_disabled_cells = true
+	end
+    to_run = setdiff(to_run_raw, indirectly_deactivated)
 
 	# custom dependency to_run modification through a set intersection
 	#   can "trim" down the amount of code execution necessary in cases such as treating notebooks as functions
@@ -44,6 +54,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
 		cell.queued = true
+		cell.depends_on_disabled_cells = false
 	end
 	for (cell, error) in new_order.errable
 		cell.running = false
@@ -87,7 +98,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			run = run_single!(
 				(session, notebook), cell, 
 				new_topology.nodes[cell], new_topology.codes[cell]; 
-				persist_js_state=(persist_js_state || cell ∉ cells)
+				persist_js_state=(persist_js_state || cell ∉ roots)
 			)
 			any_interrupted |= run.interrupted
 		end
@@ -100,6 +111,23 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
+end
+
+run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
+
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+	maybe_async(run_async) do 
+		run_reactive!(session, notebook, old, new, to_run; kwargs...)
+	end
+end
+
+function maybe_async(f::Function, async::Bool)
+	run_task = @asynclog f()
+	if async
+		run_task
+	else
+		fetch(run_task)
+	end
 end
 
 const lazymap = Base.Generator
@@ -140,8 +168,10 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
 	)
+	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime
 	cell.errored = run.errored
+	cell.running = cell.queued = false
 end
 
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
@@ -185,14 +215,13 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
-	if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
-		run_task = @async begin
-			run_reactive!(session, notebook, old, new, to_run_online; kwargs...)
-		end
-		if run_async
-			run_task
-		else
-			fetch(run_task)
+	pkg_task = @async sync_nbpkg(session, notebook; save=save)
+
+	maybe_async(run_async) do
+		wait(pkg_task)
+		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
+			# not async because that would be double async
+			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
 		end
 	end
 end
@@ -201,12 +230,46 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 
-function rest_evaluate(session::ServerSession, notebook::Notebook, topology::NotebookTopology, reeval::Vector{Cell})
-	for cell ∈ reeval
-        run_single!((session, notebook), cell, topology.nodes[cell], topology.codes[cell])
-    end
-end
+function update_from_file(session::ServerSession, notebook::Notebook)
+	just_loaded = try
+		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
+		load_notebook_nobackup(notebook.path)
+	catch e
+		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
+		return
+	end
 
+	old_codes = Dict(
+		id => c.code
+		for (id,c) in notebook.cells_dict
+	)
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in just_loaded.cells_dict
+	)
+
+	added = setdiff(keys(new_codes), keys(old_codes))
+	removed = setdiff(keys(old_codes), keys(new_codes))
+	changed = let
+		remained = keys(old_codes) ∩ keys(new_codes)
+		filter(id -> old_codes[id] != new_codes[id], remained)
+	end
+
+	# @show added removed changed
+
+	for c in added
+		notebook.cells_dict[c] = just_loaded.cells_dict[c]
+	end
+	for c in removed
+		delete!(notebook.cells_dict, c)
+	end
+	for c in changed
+		notebook.cells_dict[c].code = new_codes[c]
+	end
+
+	notebook.cell_order = just_loaded.cell_order
+	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
+end
 
 
 """

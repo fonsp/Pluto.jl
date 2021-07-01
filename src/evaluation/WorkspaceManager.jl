@@ -1,25 +1,23 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
+import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
 import Distributed
 
 "Contains the Julia process (in the sense of `Distributed.addprocs`) to evaluate code in. Each notebook gets at most one `Workspace` at any time, but it can also have no `Workspace` (it cannot `eval` code in this case)."
-mutable struct Workspace
+Base.@kwdef mutable struct Workspace
     pid::Integer
-    discarded::Bool
+    discarded::Bool=false
     log_channel::Distributed.RemoteChannel
     module_name::Symbol
-    dowork_token::Token
+    dowork_token::Token=Token()
+    nbpkg_was_active::Bool=false
+    original_LOAD_PATH::Vector{String}=String[]
+    original_ACTIVE_PROJECT::Union{Nothing,String}=nothing
 end
-
-"These expressions get evaluated inside every newly create module inside a `Workspace`."
-const workspace_preamble = [
-    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
-    :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
-]
 
 "These expressions get evaluated whenever a new `Workspace` process is created."
 const process_preamble = [
@@ -29,7 +27,6 @@ const process_preamble = [
     :(ENV["JULIA_REVISE_WORKER_ONLY"] = "1"), 
 ]
 
-const moduleworkspace_count = Ref(0)
 const workspaces = Dict{UUID,Promise{Workspace}}()
 
 const SN = Tuple{ServerSession,Notebook}
@@ -57,18 +54,53 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
         pid
     end
 
+    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.notebook_id[] = $(notebook.notebook_id)))
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
     module_name = create_emptyworkspacemodule(pid)
-    workspace = Workspace(pid, false, log_channel, module_name, Token())
+    
+    original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
+    
+    workspace = Workspace(;
+        pid=pid,
+        log_channel=log_channel, 
+        module_name=module_name,
+        original_LOAD_PATH=original_LOAD_PATH,
+        original_ACTIVE_PROJECT=original_ACTIVE_PROJECT,
+    )
 
     @async start_relaying_logs((session, notebook), log_channel)
     cd_workspace(workspace, notebook.path)
+    use_nbpkg_environment((session, notebook), workspace)
 
     force_offline || (notebook.process_status = ProcessStatus.ready)
-
     return workspace
+end
+
+function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
+    enabled = notebook.nbpkg_ctx !== nothing
+    if workspace.nbpkg_was_active == enabled
+        return
+    end
+    
+    workspace = workspace !== nothing ? workspace : get_workspace((session, notebook))
+    if workspace.discarded
+        return
+    end
+    
+    workspace.nbpkg_was_active = enabled
+    if workspace.pid != Distributed.myid()
+        new_LP = enabled ? ["@", "@stdlib"] : workspace.original_LOAD_PATH
+        new_AP = enabled ? PkgCompat.env_dir(notebook.nbpkg_ctx) : workspace.original_ACTIVE_PROJECT
+        
+        Distributed.remotecall_eval(Main, [workspace.pid], quote
+            copy!(LOAD_PATH, $(new_LP))
+            Base.ACTIVE_PROJECT[] = $(new_AP)
+        end)
+    else
+        # uhmmmmmm TODO
+    end
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
@@ -92,28 +124,23 @@ function cd_workspace(workspace, path::AbstractString)
     end)
 end
 
-# TODO: move to PlutoRunner
 function create_emptyworkspacemodule(pid::Integer)::Symbol
-    id = (moduleworkspace_count[] += 1)
-    
-    new_workspace_name = if Distributed.myid() == 1
-        Symbol("workspace", id)
-    else
-        Symbol("workspace", id, "_", Distributed.myid())
-    end
-    workspace_creation = :(module $(new_workspace_name) $(workspace_preamble...) end)
-    
-    Distributed.remotecall_eval(Main, [pid], workspace_creation)
-    Distributed.remotecall_eval(Main, [pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
-    
-    new_workspace_name
+    Distributed.remotecall_eval(Main, pid, :(PlutoRunner.increment_current_module()))
 end
+
+const Distributed_expr = :(
+    Base.loaded_modules[Base.PkgId(Base.UUID("8ba89e20-285c-5b6f-9357-94700520ee1b"), "Distributed")]
+)
 
 # NOTE: this function only start a worker process using given
 # compiler options, it does not resolve paths for notebooks
 # compiler configurations passed to it should be resolved before this
 function create_workspaceprocess(;compiler_options=CompilerOptions())::Integer
-    pid = Distributed.addprocs(1; exeflags=_convert_to_flags(compiler_options)) |> first
+    # run on proc 1 in case Pluto is being used inside a notebook process
+    # Workaround for "only process 1 can add/remove workers"
+    pid = Distributed.remotecall_eval(Main, 1, quote
+        $(Distributed_expr).addprocs(1; exeflags=$(_convert_to_flags(compiler_options))) |> first
+    end)
 
     for expr in process_preamble
         Distributed.remotecall_eval(Main, [pid], expr)
@@ -149,7 +176,11 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
         filter!(p -> fetch(p.second).pid != workspace.pid, workspaces)
         t = @async begin
             interrupt_workspace(workspace; verbose=false)
-            Distributed.rmprocs(workspace.pid)
+            # run on proc 1 in case Pluto is being used inside a notebook process
+            # Workaround for "only process 1 can add/remove workers"
+            Distributed.remotecall_eval(Main, 1, quote
+                $(Distributed_expr).rmprocs($(workspace.pid))
+            end)
         end
         async || wait(t)
     end
@@ -168,6 +199,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             interrupted=true,
             process_exited=false,
             runtime=nothing,
+            published_objects=Dict{String,Any}(),
         )
     elseif ex isa Distributed.ProcessExitedException
         (
@@ -176,6 +208,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             interrupted=true,
             process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
             runtime=nothing,
+            published_objects=Dict{String,Any}(),
         )
     else
         @error "Unkown error during eval_format_fetch_in_workspace" ex
@@ -185,6 +218,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             interrupted=true,
             process_exited=false,
             runtime=nothing,
+            published_objects=Dict{String,Any}(),
         )
     end
 end
@@ -193,12 +227,15 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
+function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
-    if workspace.pid == Distributed.myid() && session_notebook isa Tuple
-        cd_workspace(workspace, session_notebook[2].path)
+    if session_notebook isa Tuple
+        if workspace.pid == Distributed.myid()
+            cd_workspace(workspace, session_notebook[2].path)
+        end
+        use_nbpkg_environment(session_notebook, workspace)
     end
     
     # run the code 🏃‍♀️
@@ -207,7 +244,12 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
     take!(workspace.dowork_token)
     early_result = try
         # we use [pid] instead of pid to prevent fetching output
-        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression($(QuoteNode(expr)), $cell_id, $function_wrapped_info)))
+        Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.run_expression(
+            getfield(Main, $(QuoteNode(workspace.module_name))), 
+            $(QuoteNode(expr)), 
+            $cell_id, 
+            $function_wrapped_info
+        )))
         put!(workspace.dowork_token)
         nothing
     catch exs
@@ -229,13 +271,16 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing}}}
+function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
     withtoken(workspace.dowork_token) do
         try
-            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of($cell_id, $ends_with_semicolon, $showmore_id)))
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.formatted_result_of(
+                $cell_id, $ends_with_semicolon, $showmore_id,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+                )))
         catch ex
             distributed_exception_result(CompositeException([ex]), workspace)
         end
@@ -257,7 +302,6 @@ function delete_vars(session_notebook::Union{SN,Workspace}, to_delete::Set{Symbo
     new_workspace_name = create_emptyworkspacemodule(workspace.pid)
 
     workspace.module_name = new_workspace_name
-    Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.set_current_module($(new_workspace_name |> QuoteNode))))
 
     Distributed.remotecall_eval(Main, [workspace.pid], :(PlutoRunner.move_vars($(old_workspace_name |> QuoteNode), $(new_workspace_name |> QuoteNode), $to_delete, $funcs_to_delete, $module_imports_to_move)))
 end

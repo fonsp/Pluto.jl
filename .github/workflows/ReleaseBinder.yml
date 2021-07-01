@@ -2,6 +2,7 @@ name: Trigger release on https://github.com/fonsp/pluto-on-binder
 
 on:
   release:
+    types: [published]
   workflow_dispatch:
 
 jobs:

@@ -27,6 +27,7 @@ include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
 include("./analysis/ReactiveNode.jl")
+include("./packages/PkgCompat.jl")
 
 include("./notebook/Cell.jl")
 include("./analysis/Topology.jl")
@@ -43,7 +44,10 @@ include("./analysis/TopologyUpdate.jl")
 include("./analysis/DependencyCache.jl")
 
 include("./evaluation/WorkspaceManager.jl")
+include("./packages/Packages.jl")
+include("./packages/PkgUtils.jl")
 include("./evaluation/Run.jl")
+include("./evaluation/RunBonds.jl")
 
 include("./webserver/MsgPack.jl")
 include("./webserver/SessionActions.jl")
@@ -52,6 +56,13 @@ include("./webserver/Dynamic.jl")
 include("./webserver/REPLTools.jl")
 include("./webserver/WebServer.jl")
 include("./rest/REST.jl")
+
+const reset_notebook_environment = PkgUtils.reset_notebook_environment
+const update_notebook_environment = PkgUtils.update_notebook_environment
+const activate_notebook_environment = PkgUtils.activate_notebook_environment
+export reset_notebook_environment
+export update_notebook_environment
+export activate_notebook_environment
 
 if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 @info """\n
