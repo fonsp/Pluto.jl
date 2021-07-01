@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.0
+# v0.15.0
 
 using Markdown
 using InteractiveUtils
@@ -94,6 +94,21 @@ const NoChanges = Patches()
 
 # ╔═╡ aad7ab32-eecf-4aad-883d-1c802cad6c0c
 md"### =="
+
+# ╔═╡ 732fd744-acdb-4507-b1de-6866ec5563dd
+Base.hash(a::AddPatch) = hash([AddPatch, a.value, a.path])
+
+# ╔═╡ 17606cf6-2d0f-4245-89a3-746ad818a664
+Base.hash(a::RemovePatch) = hash([RemovePatch, a.path])
+
+# ╔═╡ c7ac7d27-7bf9-4209-8f3c-e4d52c543e29
+Base.hash(a::ReplacePatch) = hash([ReplacePatch, a.value, a.path])
+
+# ╔═╡ 042f7788-e996-430e-886d-ffb4f70dea9e
+Base.hash(a::CopyPatch) = hash([CopyPatch, a.from, a.path])
+
+# ╔═╡ 9d2dde5c-d404-4fbc-b8e0-5024303c8052
+Base.hash(a::MovePatch) = hash([MovePatch, a.from, a.path])
 
 # ╔═╡ f649f67c-aab0-4d35-a799-f398e5f3ecc4
 function Base.:(==)(a::AddPatch, b::AddPatch)
@@ -401,7 +416,7 @@ end
 diff(many_items_1, many_items_2)
 
 # ╔═╡ b8061c1b-dd03-4cd1-b275-90359ae2bb39
-fairly_equal(a,b) = all(x -> x in b, a) && all(y -> y in a, b)
+fairly_equal(a,b) = Set(a) == Set(b)
 
 # ╔═╡ aeab3363-08ba-47c2-bd33-04a004ed72c4
 diff(many_items_1, many_items_1)
@@ -582,143 +597,13 @@ md"*Should throw in strict mode:*"
 # ╔═╡ e55d1cea-2de1-11eb-0d0e-c95009eedc34
 md"## Testing"
 
-# ╔═╡ e598832a-2de1-11eb-3831-371aa2e54828
-abstract type TestResult end
-
-# ╔═╡ e5b46afe-2de1-11eb-0de5-6d571c0fbbcf
-const Code = Any
-
-# ╔═╡ e5dbaf38-2de1-11eb-13a9-a994ac40bf9f
-struct Pass <: TestResult
-	expr::Code
-end
-
-# ╔═╡ e616c708-2de1-11eb-2e66-f972030a7ec5
-abstract type Fail <: TestResult end
-
-# ╔═╡ e6501fda-2de1-11eb-33ba-4bb34dc13d00
-struct Wrong <: Fail
-	expr::Code
-	result
-end
-
-# ╔═╡ e66c8454-2de1-11eb-1d79-499e6873d0d2
-struct Error <: Fail
-	expr::Code
-	error
-end
-
-# ╔═╡ e699ae9a-2de1-11eb-3ff0-c31222ac399e
-function Base.show(io::IO, mime::MIME"text/html", value::Pass)
-	show(io, mime, HTML("""
-		<div
-			style="
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				/*background-color: rgb(208, 255, 209)*/
-			"
-		>
-			<div
-				style="
-					width: 12px;
-					height: 12px;
-					border-radius: 50%;
-					background-color: green;
-				"
-			></div>
-			<div style="min-width: 12px"></div>
-			<code
-				class="language-julia"
-				style="
-					flex: 1;
-					background-color: transparent;
-					filter: grayscale(1) brightness(0.8);
-				"
-			>$(value.expr)</code>
-		</div>
-	"""))
-end
-
-# ╔═╡ e6c17fae-2de1-11eb-1397-1b1cdfcc387c
-function Base.show(io::IO, mime::MIME"text/html", value::Wrong)
-	show(io, mime, HTML("""
-		<div
-			style="
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				/*background-color: rgb(208, 255, 209)*/
-			"
-		>
-			<div
-				style="
-					width: 12px;
-					height: 12px;
-					border-radius: 50%;
-					background-color: red;
-				"
-			></div>
-			<div style="min-width: 12px"></div>
-			<code
-				class="language-julia"
-				style="
-					flex: 1;
-					background-color: transparent;
-					filter: grayscale(1) brightness(0.8);
-				"
-			>$(value.expr)</code>
-		</div>
-	"""))
-end
-
-# ╔═╡ e705bd90-2de1-11eb-3759-3d59a90e6e44
-function Base.show(io::IO, mime::MIME"text/html", value::Error)
-	show(io, mime, HTML("""
-		<div
-			style="
-				display: flex;
-				flex-direction: row;
-				align-items: center;
-				/*background-color: rgb(208, 255, 209)*/
-			"
-		>
-			<div
-				style="
-					width: 12px;
-					height: 12px;
-					border-radius: 50%;
-					background-color: red;
-				"
-			></div>
-			<div style="width: 12px"></div>
-			<div>
-				<code
-					class="language-julia"
-					style="
-						background-color: transparent;
-						filter: grayscale(1) brightness(0.8);
-					"
-				>$(value.expr)</code>
-				<div style="
-					font-family: monospace;
-					font-size: 12px;
-					color: red;
-					padding-left: 8px;
-				">Error: $(sprint(showerror, value.error))</div>
-			</div>
-			
-		</div>
-	"""))
-end
-
 # ╔═╡ b05fcb88-3781-45d0-9f24-e88c339a72e5
 macro test2(expr)
 	quote nothing end
 end
 
 # ╔═╡ e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
-md"## DisplayOnly"
+md"## `@skip_as_script`"
 
 # ╔═╡ e907d862-2de1-11eb-11a9-4b3ac37cb0f3
 function skip_as_script(m::Module)
@@ -744,27 +629,37 @@ macro only_as_script(ex) skip_as_script(__module__) ? nothing : esc(ex) end
 # ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # Only define this in Pluto - assume we are `using Test` otherwise
 begin
-	@skip_as_script macro test(expr)
-		quote				
-			expr_raw = $(expr |> QuoteNode)
-			try
-				result = $(esc(expr))
-				if result == true
-					Pass(expr_raw)
-    				else
-					Wrong(expr_raw, result)
-				end
-			catch e
-				Error(expr_raw, e)
-			end
-			
-			# Base.@locals()
-		end
+	@skip_as_script begin
+		import Pkg
+		Pkg.activate(mktempdir())
+		Pkg.add(Pkg.PackageSpec(name="PlutoTest"))
+		using PlutoTest
 	end
 	# Do nothing inside pluto (so we don't need to have Test as dependency)
 	# test/Firebasey is `using Test` before including this file
 	@only_as_script ((@isdefined Test) ? nothing : macro test(expr) quote nothing end end)
 end
+
+# ╔═╡ 5ddfd616-db20-451b-bc1e-2ad52e0e2777
+@test Base.hash(ReplacePatch(["asd"], Dict("a" => 2))) == 
+		Base.hash(ReplacePatch(["asd"], Dict("a" => 2)))
+
+# ╔═╡ 24e93923-eab9-4a7b-9bc7-8d8a1209a78f
+@test ReplacePatch(["asd"], Dict("a" => 2)) == 
+		ReplacePatch(["asd"], Dict("a" => 2))
+
+# ╔═╡ 09ddf4d9-5ccb-4530-bfab-d11b864e872a
+@test Base.hash(RemovePatch(["asd"])) == Base.hash(RemovePatch(["asd"]))
+
+# ╔═╡ d9e764db-94fc-44f7-8c2e-3d63f4809617
+@test RemovePatch(["asd"]) == RemovePatch(["asd"])
+
+# ╔═╡ 99df99ad-aad5-4275-97d4-d1ceeb2f8d15
+@test Base.hash(RemovePatch(["aasd"])) != Base.hash(RemovePatch(["asd"]))
+
+# ╔═╡ 2d665639-7274-495a-ae9d-f358a8219bb7
+@test Base.hash(ReplacePatch(["asd"], Dict("a" => 2))) != 
+		Base.hash(AddPatch(["asd"], Dict("a" => 2)))
 
 # ╔═╡ 595fdfd4-3960-4fbd-956c-509c4cf03473
 @test applypatch!(deepcopy(notebook1), notebook1_to_notebook2) == notebook2
@@ -1041,11 +936,22 @@ end
 # ╠═73631aea-5e93-4da2-a32d-649029660d4e
 # ╠═0fd3e910-abcc-4421-9d0b-5cfb90034338
 # ╟─aad7ab32-eecf-4aad-883d-1c802cad6c0c
+# ╠═732fd744-acdb-4507-b1de-6866ec5563dd
+# ╠═17606cf6-2d0f-4245-89a3-746ad818a664
+# ╠═c7ac7d27-7bf9-4209-8f3c-e4d52c543e29
+# ╠═042f7788-e996-430e-886d-ffb4f70dea9e
+# ╠═9d2dde5c-d404-4fbc-b8e0-5024303c8052
 # ╠═f649f67c-aab0-4d35-a799-f398e5f3ecc4
 # ╠═63087738-d70c-46f5-b072-21cd8953df35
 # ╠═aa81974a-7254-45e0-9bfe-840c4793147f
 # ╠═31188a03-76ba-40cf-a333-4d339ce37711
 # ╠═7524a9e8-1a6d-4851-b50e-19415f25a84b
+# ╟─5ddfd616-db20-451b-bc1e-2ad52e0e2777
+# ╟─24e93923-eab9-4a7b-9bc7-8d8a1209a78f
+# ╟─09ddf4d9-5ccb-4530-bfab-d11b864e872a
+# ╟─d9e764db-94fc-44f7-8c2e-3d63f4809617
+# ╟─99df99ad-aad5-4275-97d4-d1ceeb2f8d15
+# ╟─2d665639-7274-495a-ae9d-f358a8219bb7
 # ╟─f658a72d-871d-49b3-9b73-7efedafbd7a6
 # ╠═230bafe2-aaa7-48f0-9fd1-b53956281684
 # ╟─07eeb122-6706-4544-a007-1c8d6581eec8
@@ -1081,7 +987,7 @@ end
 # ╟─59b46bfe-da74-43af-9c11-cb0bdb2c13a2
 # ╟─200516da-8cfb-42fe-a6b9-cb4730168923
 # ╟─76326e6c-b95a-4b2d-a78c-e283e5fadbe2
-# ╠═95ff676d-73c8-44cb-ac35-af94418737e9
+# ╟─95ff676d-73c8-44cb-ac35-af94418737e9
 # ╠═664cd334-91c7-40dd-a2bf-0da720307cfc
 # ╠═b7fa5625-6178-4da8-a889-cd4f014f43ba
 # ╠═dbdd1df0-2de1-11eb-152f-8d1af1ad02fe
@@ -1115,8 +1021,8 @@ end
 # ╠═02585c72-1d92-4526-98c2-1ca07aad87a3
 # ╟─2d084dd1-240d-4443-a8a2-82ae6e0b8900
 # ╟─3e05200f-071a-4ebe-b685-ff980f07cde7
-# ╠═fa959806-3264-4dd5-9f94-ba369697689b
-# ╠═a9088341-647c-4fe1-ab85-d7da049513ae
+# ╟─fa959806-3264-4dd5-9f94-ba369697689b
+# ╟─a9088341-647c-4fe1-ab85-d7da049513ae
 # ╟─dd312598-2de1-11eb-144c-f92ed6484f5d
 # ╠═d2af2a4b-8982-4e43-9fd7-0ecfdfb70511
 # ╠═640663fc-06ba-491e-bd85-299514237651
@@ -1138,28 +1044,19 @@ end
 # ╟─df41caa7-f0fc-4b0d-ab3d-ebdab4804040
 # ╟─fac65755-2a2a-4a3c-b5a8-fc4f6d256754
 # ╟─e55d1cea-2de1-11eb-0d0e-c95009eedc34
-# ╠═e598832a-2de1-11eb-3831-371aa2e54828
-# ╠═e5b46afe-2de1-11eb-0de5-6d571c0fbbcf
-# ╠═e5dbaf38-2de1-11eb-13a9-a994ac40bf9f
-# ╠═e616c708-2de1-11eb-2e66-f972030a7ec5
-# ╠═e6501fda-2de1-11eb-33ba-4bb34dc13d00
-# ╠═e66c8454-2de1-11eb-1d79-499e6873d0d2
-# ╠═e699ae9a-2de1-11eb-3ff0-c31222ac399e
-# ╟─e6c17fae-2de1-11eb-1397-1b1cdfcc387c
-# ╠═e705bd90-2de1-11eb-3759-3d59a90e6e44
 # ╠═e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # ╠═b05fcb88-3781-45d0-9f24-e88c339a72e5
 # ╠═e7e8d076-2de1-11eb-0214-8160bb81370a
 # ╟─e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
-# ╠═e907d862-2de1-11eb-11a9-4b3ac37cb0f3
-# ╠═e924a0be-2de1-11eb-2170-71d56e117af2
-# ╠═c2c2b057-a88f-4cc6-ada4-fc55ac29931e
+# ╟─e907d862-2de1-11eb-11a9-4b3ac37cb0f3
+# ╟─e924a0be-2de1-11eb-2170-71d56e117af2
+# ╟─c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 # ╠═e9d2eba8-2de1-11eb-16bf-bd2a16537a97
 # ╠═ea45104e-2de1-11eb-3248-5dd833d350e4
 # ╠═ea6650bc-2de1-11eb-3016-4542c5c333a5
 # ╠═ea934d9c-2de1-11eb-3f1d-3b60465decde
 # ╟─ee70e282-36d5-4772-8585-f50b9a67ca54
-# ╠═1a26eed8-670c-43bf-9726-2db84b1afdab
-# ╠═0e1c6442-9040-49d9-b754-173583db7ba2
-# ╠═7618aef7-1884-4e32-992d-0fd988e1ab20
-# ╠═a3e8fe70-cbf5-4758-a0f2-d329d138728c
+# ╟─1a26eed8-670c-43bf-9726-2db84b1afdab
+# ╟─0e1c6442-9040-49d9-b754-173583db7ba2
+# ╟─7618aef7-1884-4e32-992d-0fd988e1ab20
+# ╟─a3e8fe70-cbf5-4758-a0f2-d329d138728c
