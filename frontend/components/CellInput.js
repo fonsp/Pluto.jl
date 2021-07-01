@@ -7,7 +7,7 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
-import { dog, slider } from "./CoolWidgets.js"
+import { get_widget } from "./CoolWidgets.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -179,15 +179,24 @@ export const CellInput = ({
                 const start = widget_match.index
                 const end = widget_match.index + widget_match[0].length
 
-                const bracket_match = cm.findMatchingBracket({ line: line_i, ch: end - 1 }, { strict: true, afterCursor: true, highlightNonMatching: false })
+                const bracket_match = cm.findMatchingBracket(
+                    { line: line_i, ch: end - 1 },
+                    {
+                        // strict: true,
+                        // afterCursor: true,
+                        highlightNonMatching: false,
+                    }
+                )
 
                 if (bracket_match.match) {
                     // console.log(bracket_match)
 
-                    const found_marks = cm.findMarks({ line: line_i, ch: start }, { line: line_i, ch: bracket_match.to.ch + 1 })
+                    const found_marks = cm
+                        .findMarks({ line: line_i, ch: start }, { line: line_i, ch: bracket_match.to.ch + 1 })
+                        .filter((m) => m.is_widget ?? false)
 
-                    console.log("foudn marks", found_marks)
-                    console.log("all marks", cm.getAllMarks())
+                    console.log("found marks", found_marks)
+                    // console.log("all marks", cm.getAllMarks())
 
                     if (found_marks.length === 0) {
                         const code = line.substring(end, bracket_match.to.ch)
@@ -221,7 +230,7 @@ export const CellInput = ({
 
                         set_code = _.throttle(set_code, 100)
 
-                        const node = slider({ code, set_code })
+                        const node = get_widget(code)({ code, set_code })
 
                         marker_ref.current = cm.markText(
                             { line: line_i, ch: start },
@@ -232,6 +241,8 @@ export const CellInput = ({
                                 replacedWith: node,
                             }
                         )
+
+                        marker_ref.current.is_widget = true
 
                         console.log(node)
                         console.log(marker_ref.current)

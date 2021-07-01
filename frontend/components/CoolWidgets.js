@@ -9,7 +9,7 @@ export const dog = ({ code, set_code }) => {
     console.log(code)
 
     const node = document.createElement("img")
-    node.style.height = "1em"
+    node.style.height = "3em"
     node.style.display = "inline-block"
     node.src = `https://user-images.githubusercontent.com/6933510/116753174-fa40ab80-aa06-11eb-94d7-88f4171970b2.jpeg`
 
@@ -18,8 +18,6 @@ export const dog = ({ code, set_code }) => {
 
 export const slider = ({ code, set_code }) => {
     console.log(code)
-
-    Number(code.match(/\d+/)[0])
 
     const node = document.createElement("input")
     node.type = "range"
@@ -37,4 +35,30 @@ export const slider = ({ code, set_code }) => {
     })
 
     return node
+}
+
+export const checkbox = ({ code, set_code }) => {
+    console.log(code)
+
+    const node = document.createElement("input")
+    node.type = "checkbox"
+
+    node.checked = code.includes("true")
+
+    console.log(node)
+
+    node.addEventListener("input", () => {
+        set_code(`checkbox(${node.checked})`, {
+            submit: true,
+        })
+    })
+
+    return node
+}
+
+const widgets = { checkbox, slider }
+
+export const get_widget = (/** @type {string} */ code) => {
+    const name = code.trim().split("(")[0]
+    return widgets[name] ?? dog
 }
