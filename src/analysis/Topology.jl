@@ -34,6 +34,7 @@ Base.@kwdef struct NotebookTopology
 end
 
 
+is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
 
 DefaultDict{K,V}(default::Union{Function,DataType}) where {K,V} = DefaultDict{K,V}(default, Dict{K,V}())
 
