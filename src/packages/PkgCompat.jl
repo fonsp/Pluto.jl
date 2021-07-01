@@ -42,13 +42,9 @@ I tried to only use public API, except:
 =#
 
 
-
-
-
 ###
-# CONTEXT
+# TYPES
 ###
-
 
 const PkgContext = if isdefined(Pkg, :Context)
 	Pkg.Context
@@ -59,6 +55,38 @@ elseif isdefined(Pkg, :API) && isdefined(Pkg.API, :Context)
 else
 	Pkg.Types.Context
 end
+
+
+abstract type AbstractPackageManagement end
+
+struct FullyManaged <: AbstractPackageManagement
+    ctx::PkgContext
+end
+FullyManaged() = FullyManaged(create_empty_ctx())
+
+struct ParentProject <: AbstractPackageManagement
+    dir::String
+end
+
+struct NotManaged <: AbstractPackageManagement
+end
+
+
+function find_parent_project(start_dir::String)
+	found = start_dir |> Pluto.tamepath |> current_project
+	if found === nothing
+		found
+	else
+		dirname(found)
+	end
+end
+
+
+
+###
+# CONTEXT
+###
+
 
 # 🐸 "Public API", but using PkgContext
 load_ctx(env_dir)::PkgContext = PkgContext(env=Pkg.Types.EnvCache(joinpath(env_dir, "Project.toml")))
@@ -89,6 +117,7 @@ function mark_original!(ctx::PkgContext)
 		@warn "Pkg compat: failed to set original_project" exception=(e,catch_backtrace())
 	end
 end
+mark_original!(ctx::FullyManaged) = mark_original!(ctx.ctx)
 
 # ⚠️ Internal API with fallback
 function is_original(ctx::PkgContext)::Bool
@@ -100,6 +129,7 @@ function is_original(ctx::PkgContext)::Bool
 		false
 	end
 end
+is_original(ctx::FullyManaged) = is_original(ctx.ctx)
 
 
 
@@ -110,6 +140,13 @@ project_file(x::AbstractString) = joinpath(x, "Project.toml")
 manifest_file(x::AbstractString) = joinpath(x, "Manifest.toml")
 project_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Project.toml")
 manifest_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Manifest.toml")
+
+
+env_dir(ctx::FullyManaged) = env_dir(ctx.ctx)
+dependencies(ctx::FullyManaged) = dependencies(ctx.ctx)
+project(ctx::FullyManaged) = project(ctx.ctx)
+project_file(ctx::FullyManaged) = project_file(ctx.ctx)
+manifest_file(ctx::FullyManaged) = manifest_file(ctx.ctx)
 
 
 # ⚠️ Internal API with fallback
@@ -128,6 +165,8 @@ function withio(f::Function, ctx::PkgContext, io::IO)
         f()
     end
 end
+
+withio(f::Function, ctx::FullyManaged, io::IO) = withio(f, ctx.ctx, io)
 
 
 ###
@@ -180,6 +219,8 @@ function update_registries(ctx)
 		end
 	end
 end
+update_registries(ctx::FullyManaged; kwargs...) = update_registries(ctx.ctx; kwargs...)
+
 
 # ⚠️✅ Internal API with fallback
 function instantiate(ctx; update_registry::Bool)
@@ -189,6 +230,7 @@ function instantiate(ctx; update_registry::Bool)
 		Pkg.instantiate(ctx)
 	end
 end
+instantiate(ctx::FullyManaged; kwargs...) = instantiate(ctx.ctx; kwargs...)
 
 
 
@@ -363,6 +405,7 @@ function get_manifest_version(ctx::PkgContext, package_name::AbstractString)
 		entry === nothing ? nothing : entry.version
     end
 end
+get_manifest_version(ctx::FullyManaged, package_name::AbstractString) = get_manifest_version(ctx.ctx, package_name)
 
 ###
 # WRITING COMPAT ENTRIES
@@ -444,6 +487,43 @@ function clear_stdlib_compat_entries(ctx::PkgContext)::PkgContext
 		ctx
 	end
 end
+
+write_auto_compat_entries(ctx::FullyManaged) = FullyManaged(write_auto_compat_entries(ctx.ctx))
+clear_auto_compat_entries(ctx::FullyManaged) = FullyManaged(clear_auto_compat_entries(ctx.ctx))
+clear_stdlib_compat_entries(ctx::FullyManaged) = FullyManaged(clear_stdlib_compat_entries(ctx.ctx))
+
+
+## some Base compat
+
+
+
+# copied from julia/base/initdefs.jl with some changes:
+const project_names = ("JuliaProject.toml", "Project.toml")
+
+function current_project(dir::AbstractString)
+    # look for project file in current dir and parents
+    home = homedir()
+    while true
+        for proj in project_names
+            file = joinpath(dir, proj)
+            isfile(file) && return file
+        end
+        # bail at home directory
+        (dir == home || Pluto.tamepath(dir) ∈ Pluto.default_notebook_dirs) && break
+        old, dir = dir, dirname(dir)
+        dir == old && break
+    end
+end
+
+# compat
+function isfile_casesensitive(path)
+	@static if isdefined(Base, :isfile_casesensitive) && hasmethod(Base.isfile_casesensitive, (String,))
+		Base.isfile_casesensitive(path)
+	else
+		isfile(path)
+	end
+end
+
 
 
 end

@@ -10,7 +10,7 @@ using Markdown
 
 export activate_notebook
 
-ensure_has_nbpkg(notebook::Notebook) = if notebook.nbpkg_ctx === nothing
+ensure_has_nbpkg(notebook::Notebook) = if (notebook.nbpkg_ctx isa FullyManaged)
 
     # TODO: update_save the notebook to init packages and stuff?
     error("""
@@ -63,7 +63,7 @@ end
 function write_dir_to_nb(dir::String, notebook::Notebook)
     assert_has_manifest(dir)
 
-    notebook.nbpkg_ctx = Pluto.PkgCompat.create_empty_ctx()
+    notebook.nbpkg_ctx = Pluto.PkgCompat.FullyManaged()
 
     readwrite(dir |> project_file, notebook |> project_file)
     readwrite(dir |> manifest_file, notebook |> manifest_file)

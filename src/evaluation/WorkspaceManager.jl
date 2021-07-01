@@ -1,7 +1,7 @@
 module WorkspaceManager
 import UUIDs: UUID
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
-import ..Pluto.PkgCompat
+import ..Pluto.PkgCompat: PkgCompat, AbstractPackageManagement, FullyManaged, ParentProject, NotManaged
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _resolve_notebook_project_path, _convert_to_flags
 import ..Pluto.ExpressionExplorer: FunctionName
 import ..PlutoRunner
@@ -79,7 +79,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
 end
 
 function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
-    enabled = notebook.nbpkg_ctx !== nothing
+    enabled = (notebook.nbpkg_ctx isa FullyManaged)
     if workspace.nbpkg_was_active == enabled
         return
     end

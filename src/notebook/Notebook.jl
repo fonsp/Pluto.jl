@@ -1,8 +1,7 @@
 import UUIDs: UUID, uuid1
 import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionName
 import .Configuration
-import .PkgCompat: PkgCompat, PkgContext
-import Pkg
+import .PkgCompat: PkgCompat, PkgContext, AbstractPackageManagement, FullyManaged, ParentProject, NotManaged
 
 mutable struct BondValue
     value::Any
@@ -42,7 +41,7 @@ Base.@kwdef mutable struct Notebook
     # nothing means to use global session compiler options
     compiler_options::Union{Nothing,Configuration.CompilerOptions}=nothing
     # nbpkg_ctx::Union{Nothing,PkgContext}=nothing
-    nbpkg_ctx::Union{Nothing,PkgContext}=PkgCompat.create_empty_ctx()
+    nbpkg_ctx::AbstractPackageManagement=FullyManaged()
     nbpkg_ctx_instantiated::Bool=false
     nbpkg_restart_recommended_msg::Union{Nothing,String}=nothing
     nbpkg_restart_required_msg::Union{Nothing,String}=nothing
@@ -126,7 +125,7 @@ function save_notebook(io, notebook::Notebook)
     end
 
     
-    using_plutopkg = notebook.nbpkg_ctx !== nothing
+    using_plutopkg = notebook.nbpkg_ctx isa FullyManaged
     
     write_package = if using_plutopkg
         ptoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
@@ -267,7 +266,7 @@ function load_notebook_nobackup(io, path)::Notebook
         end
     else
         PkgCompat.create_empty_ctx()
-    end
+    end |> FullyManaged
 
     appeared_order = setdiff(cell_order ∩ keys(collected_cells), [_ptoml_cell_id, _mtoml_cell_id])
     appeared_cells_dict = filter(collected_cells) do (k, v)
@@ -350,7 +349,9 @@ function move_notebook!(notebook::Notebook, newpath::String; disable_writing_not
     if isdir("$oldpath_tame.assets")
         mv("$oldpath_tame.assets", "$newpath_tame.assets")
     end
-    notebook
+    return (
+        dir_changed=(dirname(oldpath_tame) == dirnmae(newpath_tame)),
+    )
 end
 
 function sample_notebook(name::String)

@@ -5,7 +5,7 @@ using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
 import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
 import Pluto.PkgUtils
-import Pluto.PkgCompat
+import Pluto.PkgCompat: PkgCompat, AbstractPackageManagement, FullyManaged, ParentProject, NotManaged
 import Distributed
 
 const pluto_test_registry_spec = Pkg.RegistrySpec(;
@@ -50,7 +50,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[7].errored == false
         @test notebook.cells[8].errored == false
 
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
         @test notebook.nbpkg_ctx_instantiated
@@ -79,7 +79,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[3].errored == false
         @test notebook.cells[4].errored == false
 
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -97,7 +97,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[5].errored == false
         @test notebook.cells[6].errored == false
         
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test (
             notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
         )
@@ -125,7 +125,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[7].errored == false
         @test notebook.cells[8].errored == false
 
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -139,7 +139,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         update_save_run!(🍭, notebook, notebook.cells[9])
 
         @test notebook.cells[9].errored == false
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -188,7 +188,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         # removing a stdlib does not require a restart
         @test notebook.cells[9].errored == false
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -200,7 +200,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         update_save_run!(🍭, notebook, notebook.cells[7])
 
         @test notebook.cells[7].errored == false
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -228,7 +228,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test num_backups_in(dir) == 0
 
 
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -269,7 +269,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         @test notebook.cells[1].errored == false
         @test notebook.cells[2].errored == false
-        @test notebook.nbpkg_ctx === nothing
+        @test notebook.nbpkg_ctx isa NotManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
         @test !has_embedded_pkgfiles(notebook)
@@ -291,7 +291,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         setcode(notebook.cells[3], "3")
         update_save_run!(🍭, notebook, notebook.cells[2:3])
         
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_required_msg !== nothing
         @test has_embedded_pkgfiles(notebook)
 
@@ -326,7 +326,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test length(post_pkg_notebook) > length(pre_pkg_notebook) + 50
         @test has_embedded_pkgfiles(notebook)
 
-        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_ctx isa FullyManaged
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
@@ -461,7 +461,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
             @test !Pluto.only_versions_differ(notebook.path, original_path)
     
-            @test notebook.nbpkg_ctx !== nothing
+            @test notebook.nbpkg_ctx isa FullyManaged
             @test notebook.nbpkg_restart_recommended_msg === nothing
             @test notebook.nbpkg_restart_required_msg === nothing
 

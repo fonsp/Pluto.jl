@@ -1,7 +1,7 @@
 
 import .ExpressionExplorer: external_package_names
 import .PkgCompat
-import .PkgCompat: select, is_stdlib
+import .PkgCompat: select, is_stdlib, AbstractPackageManagement, FullyManaged, ParentProject, NotManaged
 
 const tiers = [
 	Pkg.PRESERVE_ALL,
@@ -45,15 +45,19 @@ Update the notebook package environment to match the notebook's code. This will:
 function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args...) -> nothing))
     
     👺 = false
+    
+    new_parent_dir = PkgCompat.find_parent_project(notebook.path)
+    use_parent_project_old = notebook.nbpkg_ctx isa ParentProject
+    use_parent_project_new = new_parent_dir !== nothing
 
-    use_plutopkg_old = notebook.nbpkg_ctx !== nothing
-    use_plutopkg_new = use_plutopkg(notebook.topology)
+    use_plutopkg_old = notebook.nbpkg_ctx isa FullyManaged
+    use_plutopkg_new = !use_parent_project_new && use_plutopkg(notebook.topology)
     
     if !use_plutopkg_old && use_plutopkg_new
         @info "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
-        notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
+        notebook.nbpkg_ctx = FullyManaged()
     end
     if use_plutopkg_old && !use_plutopkg_new
         @info "Stopped using PlutoPkg 💔😟😢"
@@ -64,11 +68,29 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
             all(PkgCompat.is_stdlib, keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
-        notebook.nbpkg_ctx = nothing
+        notebook.nbpkg_ctx = NotManaged()
+    end
+    if !use_plutopkg_old && !use_plutopkg_new
+        if use_parent_project_new
+            if use_parent_project_old
+                if notebook.nbpkg_ctx.dir != new_parent_dir
+                    👺 = true
+                    notebook.nbpkg_ctx = ParentProject(new_parent_dir)
+                end
+            else
+                👺 = true
+                notebook.nbpkg_ctx = ParentProject(new_parent_dir)
+            end
+        else
+            if use_parent_project_old
+                👺 = true
+                notebook.nbpkg_ctx = NotManaged()
+            end
+        end
     end
     
 
-    if notebook.nbpkg_ctx !== nothing
+    if notebook.nbpkg_ctx isa FullyManaged
         PkgCompat.mark_original!(notebook.nbpkg_ctx)
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
@@ -101,11 +123,11 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                         withinteractive(false) do
                             try
-                                Pkg.resolve(notebook.nbpkg_ctx)
+                                Pkg.resolve(notebook.nbpkg_ctx.ctx)
                             catch e
                                 @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                                 reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                                Pkg.resolve(notebook.nbpkg_ctx)
+                                Pkg.resolve(notebook.nbpkg_ctx.ctx)
                             end
                         end
                     end
@@ -120,7 +142,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                     mkeys() = Set(filter(!is_stdlib, [m.name for m in values(PkgCompat.dependencies(notebook.nbpkg_ctx))]))
                     old_manifest_keys = mkeys()
 
-                    Pkg.rm(notebook.nbpkg_ctx, [
+                    Pkg.rm(notebook.nbpkg_ctx.ctx, [
                         Pkg.PackageSpec(name=p)
                         for p in to_remove
                     ])
@@ -156,7 +178,7 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
                                     used_tier = tier
 
                                     try
-                                        Pkg.add(notebook.nbpkg_ctx, [
+                                        Pkg.add(notebook.nbpkg_ctx.ctx, [
                                             Pkg.PackageSpec(name=p)
                                             for p in to_add
                                         ]; preserve=used_tier)
@@ -313,23 +335,28 @@ end
 function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=true, save::Bool=true)
     backup && save && writebackup(notebook)
 
-    if notebook.nbpkg_ctx !== nothing
+    if notebook.nbpkg_ctx isa FullyManaged
         p = PkgCompat.project_file(notebook)
         m = PkgCompat.manifest_file(notebook)
         keep_project || (isfile(p) && rm(p))
         isfile(m) && rm(m)
 
-        notebook.nbpkg_ctx = PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx))
+        notebook.nbpkg_ctx = FullyManaged(PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx)))
     else
-        notebook.nbpkg_ctx = use_plutopkg(notebook.topology) ? PkgCompat.create_empty_ctx() : nothing
+        new_parent_dir = PkgCompat.find_parent_project(notebook.path)
+        use_parent_project_new = new_parent_dir !== nothing
+
+        notebook.nbpkg_ctx = use_parent_project_new ? 
+            ParentProject(new_parent_dir) : 
+            use_plutopkg(notebook.topology) ? FullyManaged() : NotManaged()
     end
 
     save && save_notebook(notebook)
 end
 
 function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEVEL_MAJOR, on_terminal_output::Function=((args...) -> nothing))
-    if notebook.nbpkg_ctx !== nothing
-        PkgCompat.mark_original!(notebook.nbpkg_ctx)
+    if notebook.nbpkg_ctx isa FullyManaged
+        PkgCompat.mark_original!(notebook.nbpkg_ctx.ctx)
 
         old_packages = String.(keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
 
@@ -354,11 +381,11 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
                 PkgCompat.withio(notebook.nbpkg_ctx, IOContext(iolistener.buffer, :color => true)) do
                     withinteractive(false) do
                         try
-                            Pkg.resolve(notebook.nbpkg_ctx)
+                            Pkg.resolve(notebook.nbpkg_ctx.ctx)
                         catch e
                             @warn "Failed to resolve Pkg environment. Removing Manifest and trying again..." exception=e
                             reset_nbpkg(notebook; keep_project=true, save=false, backup=false)
-                            Pkg.resolve(notebook.nbpkg_ctx)
+                            Pkg.resolve(notebook.nbpkg_ctx.ctx)
                         end
                     end
                 end
@@ -372,7 +399,7 @@ function update_nbpkg_core(notebook::Notebook; level::Pkg.UpgradeLevel=Pkg.UPLEV
 
                 try
                     ###
-                    Pkg.update(notebook.nbpkg_ctx; level=level)
+                    Pkg.update(notebook.nbpkg_ctx.ctx; level=level)
                     ###
                 finally
                     notebook.nbpkg_ctx = PkgCompat.write_auto_compat_entries(notebook.nbpkg_ctx)
@@ -440,6 +467,8 @@ end
 nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,String}() : Dict{String,String}(
     x => string(PkgCompat.get_manifest_version(ctx, x)) for x in keys(PkgCompat.project(ctx).dependencies)
 )
+nbpkg_cache(ctx::FullyManaged) = nbpkg_cache(ctx.ctx)
+nbpkg_cache(ctx::AbstractPackageManagement) = nbpkg_cache(nothing)
 
 function update_nbpkg_cache!(notebook::Notebook)
     notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)

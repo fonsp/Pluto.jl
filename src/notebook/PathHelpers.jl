@@ -48,9 +48,14 @@ function cutename()
     titlecase(rand(adjectives)) * " " * rand(nouns)
 end
 
+const default_notebook_dir = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+const default_notebook_dirs = [
+	default_notebook_dir
+]
+
 function new_notebooks_directory()
     try
-        path = joinpath(first(DEPOT_PATH), "pluto_notebooks")
+        path = default_notebook_dir
         if !isdir(path)
             mkdir(path)
         end

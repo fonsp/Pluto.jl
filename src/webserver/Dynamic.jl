@@ -149,12 +149,14 @@ function notebook_to_js(notebook::Notebook)
         for (key, bondvalue) in notebook.bonds),
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx
+            enabled = ctx isa PkgCompat.FullyManaged
             Dict{String,Any}(
-                "enabled" => ctx !== nothing,
+                "enabled" => enabled,
+                "parent_project" => (ctx isa PkgCompat.ParentProject) ? ctx.dir : nothing,
                 "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
                 "restart_required_msg" => notebook.nbpkg_restart_required_msg,
                 # TODO: cache this
-                "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
+                "installed_versions" => enabled ? notebook.nbpkg_installed_versions_cache : Dict{String,String}(),
                 "terminal_outputs" => notebook.nbpkg_terminal_outputs,
                 "busy_packages" => notebook.nbpkg_busy_packages,
                 "instantiated" => notebook.nbpkg_ctx_instantiated,
@@ -230,9 +232,10 @@ const effects_of_changed_state = Dict(
         if isfile(newpath)
             error("File exists already - you need to delete the old file manually.")
         else
-            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
+            (dir_changed,) = move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
+            dir_changed && sync_nbpkg(request.session, request.notebook)
         end
         return no_changes
     end,
