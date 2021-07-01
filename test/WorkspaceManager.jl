@@ -64,23 +64,6 @@ import Distributed
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Notebook environment" begin
-        session_options = CompilerOptions()
-        notebook = Notebook([Cell("x")])
-        notebook.compiler_options = CompilerOptions(;project="test")
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            joinpath(dirname(notebook.path), "test")
-
-        notebook.compiler_options = CompilerOptions(;project=project_relative_path("test"))
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            project_relative_path("test")
-        
-        session_options = CompilerOptions(;project=project_relative_path("test"))
-        notebook.compiler_options = CompilerOptions(;project=project_relative_path("Project.toml"))
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            project_relative_path("Project.toml")
-    end
-
     Sys.iswindows() || (VERSION < v"1.6.0-a") || @testset "Pluto inside Pluto" begin
 
         client = ClientSession(:fakeA, nothing)
