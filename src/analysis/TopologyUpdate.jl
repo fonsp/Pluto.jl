@@ -25,16 +25,18 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 		else
 			# The unresolved cells are the cells for wich we cannot create
 			# a ReactiveNode yet, because they contains macrocalls.
+			updated_nodes[cell] = ReactiveNode(new_symstate)
 			unresolved_cells[cell] = new_symstate
 		end
 	end
 	new_codes = merge(old_topology.codes, updated_codes)
 	new_nodes = merge(old_topology.nodes, updated_nodes)
+	new_unresolved_cells = merge(old_topology.unresolved_cells, unresolved_cells)
 
 	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
 		delete!(new_nodes, removed_cell)
 		delete!(new_codes, removed_cell)
 	end
 
-	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=unresolved_cells)
+	NotebookTopology(nodes=new_nodes, codes=new_codes, unresolved_cells=new_unresolved_cells)
 end

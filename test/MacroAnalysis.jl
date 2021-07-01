@@ -1,6 +1,6 @@
 using Test
 import UUIDs
-import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
+import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
 
 @testset "Macro analysis" begin
     🍭 = ServerSession()
@@ -42,9 +42,7 @@ import Pluto: Notebook, Cell, ServerSession, ClientSession, update_run!
 
         update_run!(🍭, notebook, notebook.cells)
 
-        # Does not work on first try because it would require executing a partial
-        # dependency graph. See strategy #2 in `resolve_topology`
-        @test_broken :x ∈ notebook.topology.nodes[cell(2)].definitions
+        @test :x ∈ notebook.topology.nodes[cell(2)].definitions
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
 
         update_run!(🍭, notebook, notebook.cells)

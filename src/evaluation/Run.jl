@@ -10,18 +10,23 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# make sure that we're the only `run_reactive!` being executed - like a semaphor
 	take!(notebook.executetoken)
 	
-	old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
-	
-	if !isempty(new_topology.unresolved_cells)
+	# trick to detect if we are already in a reactive run
+	if old_topology != new_topology
+		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
+		
+		if !isempty(new_topology.unresolved_cells)
 
-		unresolved_topology = new_topology
-		new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+			unresolved_topology = new_topology
+			new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
 
-		# update cache and save notebook because the dependencies might have changed after expanding macros
-		update_dependency_cache!(notebook)
-		session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+		end
+	else
+		workspace = WorkspaceManager.get_workspace((session, notebook))
+		old_workspace_name = new_workspace_name = workspace.module_name
 	end
-	
 
 	removed_cells = setdiff(keys(old_topology.nodes), keys(new_topology.nodes))
 	roots = Cell[roots..., removed_cells...]
@@ -35,7 +40,8 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		codes=merge(
 			new_topology.codes,
 			Dict(cell => ExprAnalysisCache() for cell in removed_cells)
-		)
+		),
+		unresolved_cells=new_topology.unresolved_cells,
 	)
 
 	# save the old topological order - we'll delete variables assigned from it and re-evalutate its cells
@@ -111,7 +117,21 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			any_interrupted |= run.interrupted
 		end
 		
+
 		cell.running = false
+
+		cell_code = new_topology.codes[cell]
+		cell_node = new_topology.nodes[cell]
+
+		ismacro(sym::Symbol) = startswith(string(sym), "@")
+		if !isempty(new_topology.unresolved_cells) && (!isempty(cell_code.module_usings_imports.imports) || !isempty(cell_code.module_usings_imports.usings) || any(ismacro, cell_node.funcdefs_without_signatures))
+			# TODO: skip directly to step 2
+			notebook.topology = new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
+
+			# TODO use flag instead of putting the token back
+			put!(notebook.executetoken)
+			return run_reactive!(session, notebook, new_topology, new_topology, to_run[i+1:end]; deletion_hook=deletion_hook, persist_js_state=persist_js_state)
+		end
 	end
 	
 	notebook.wants_to_interrupt = false
@@ -222,28 +242,41 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
 	function analyze_macrocell(cell::Cell, current_symstate)
 		if ExpressionExplorer.join_funcname_parts.(current_symstate.macrocalls) ⊆ ExpressionExplorer.can_macroexpand
-			return current_symstate
+			return current_symstate, true
 		else
 			result = macroexpand_cell(cell)
 			if result isa Exception
 				# if expansion failed, we use the "shallow" symbols state
 				# we could also use ExpressionExplorer.maybe_macroexpand
-				current_symstate
+				current_symstate, false
 			else # otherwise, we use the expanded expression + the list of macrocalls
 				expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
 				union!(expanded_symbols_state.macrocalls, current_symstate.macrocalls)
-				expanded_symbols_state
+				expanded_symbols_state, true
 			end
 		end
 	end
 
 	# create new node & new codes for macrocalled cells
-	new_nodes = Dict{Cell,ReactiveNode}(
+	new_nodes = Dict{Cell,ReactiveNode}()
+	still_unresolved_nodes = Dict{Cell,SymbolsState}()
+	for (cell, current_symstate) in unresolved_topology.unresolved_cells
+			(new_symstate, succeeded) = analyze_macrocell(cell, current_symstate)
+			if succeeded
+				new_nodes[cell] = ReactiveNode(new_symstate)
+			else
+				still_unresolved_nodes[cell] = current_symstate
+			end
+	end
+
+#=	new_nodes = Dict{Cell,ReactiveNode}(
 		cell => analyze_macrocell(cell, current_symstate) |> ReactiveNode
 		for (cell, current_symstate) in unresolved_topology.unresolved_cells)
+=#	
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
+	all_unresolved_nodes = merge(unresolved_topology.unresolved_cells, still_unresolved_nodes)
 
-	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes)
+	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes, unresolved_cells=all_unresolved_nodes)
 end
 
 function static_macroexpand(topology::NotebookTopology, cell::Cell, old_symstate)
