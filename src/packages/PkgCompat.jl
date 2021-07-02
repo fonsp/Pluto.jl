@@ -326,7 +326,7 @@ function dependencies(ctx)
 			@error """
 			Pkg error: you might need to use
 
-			Pluto.PkgUtils.reset_notebook_environment(notebook_path)
+			Pluto.reset_notebook_environment(notebook_path)
 
 			to reset this notebook's environment.
 
