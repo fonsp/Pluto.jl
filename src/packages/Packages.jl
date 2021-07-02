@@ -13,14 +13,28 @@ const tiers = [
 const pkg_token = Token()
 
 
-function use_plutopkg(topology::NotebookTopology)
-    !any(values(topology.nodes)) do node
+function is_manually_activated(topology::NotebookTopology)
+    any(values(topology.nodes)) do node
         Symbol("Pkg.activate") ∈ node.references ||
         Symbol("Pkg.API.activate") ∈ node.references ||
         Symbol("Pkg.add") ∈ node.references ||
         Symbol("Pkg.API.add") ∈ node.references
     end
 end
+
+function which_management(topology::NotebookTopology, path::String)
+    if is_manually_activated(topology)
+        NotManaged, nothing
+    else
+        new_parent_dir = PkgCompat.find_parent_project(path)
+        if new_parent_dir !== nothing
+            ParentProject, new_parent_dir
+        else
+            FullyManaged, nothing
+        end
+    end
+end
+which_management(notebook::Notebook) = which_management(notebook.topology, notebook.path)
 
 function external_package_names(topology::NotebookTopology)::Set{Symbol}
     union!(Set{Symbol}(), external_package_names.(c.module_usings_imports for c in values(topology.codes))...)
@@ -46,20 +60,20 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
     
     👺 = false
     
-    new_parent_dir = PkgCompat.find_parent_project(notebook.path)
+    new_management_type, new_parent_dir = which_management(notebook)
+    
     use_parent_project_old = notebook.nbpkg_ctx isa ParentProject
-    use_parent_project_new = new_parent_dir !== nothing
+    use_parent_project_new = new_management_type === ParentProject
 
     use_plutopkg_old = notebook.nbpkg_ctx isa FullyManaged
-    use_plutopkg_new = !use_parent_project_new && use_plutopkg(notebook.topology)
+    use_plutopkg_new = new_management_type === FullyManaged
     
     if !use_plutopkg_old && use_plutopkg_new
         @info "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
         notebook.nbpkg_ctx = FullyManaged()
-    end
-    if use_plutopkg_old && !use_plutopkg_new
+    elseif use_plutopkg_old && !use_plutopkg_new
         @info "Stopped using PlutoPkg 💔😟😢"
 
         no_packages_loaded_yet = (
@@ -68,9 +82,12 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
             all(PkgCompat.is_stdlib, keys(PkgCompat.project(notebook.nbpkg_ctx).dependencies))
         )
         👺 = !no_packages_loaded_yet
-        notebook.nbpkg_ctx = NotManaged()
-    end
-    if !use_plutopkg_old && !use_plutopkg_new
+        notebook.nbpkg_ctx = if use_parent_project_new
+            ParentProject(new_parent_dir)
+        else
+            NotManaged()
+        end
+    elseif !use_plutopkg_old && !use_plutopkg_new
         if use_parent_project_new
             if use_parent_project_old
                 if notebook.nbpkg_ctx.dir != new_parent_dir
@@ -343,12 +360,13 @@ function reset_nbpkg(notebook::Notebook; keep_project::Bool=false, backup::Bool=
 
         notebook.nbpkg_ctx = FullyManaged(PkgCompat.load_ctx(PkgCompat.env_dir(notebook.nbpkg_ctx)))
     else
+        new_management_type, new_parent_dir = which_management(notebook)
         new_parent_dir = PkgCompat.find_parent_project(notebook.path)
         use_parent_project_new = new_parent_dir !== nothing
 
-        notebook.nbpkg_ctx = use_parent_project_new ? 
+        notebook.nbpkg_ctx = new_management_type === ParentProject ? 
             ParentProject(new_parent_dir) : 
-            use_plutopkg(notebook.topology) ? FullyManaged() : NotManaged()
+            new_management_type()
     end
 
     save && save_notebook(notebook)
