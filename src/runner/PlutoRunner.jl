@@ -86,16 +86,17 @@ end
 Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
 """
 no_workspace_ref(other, _=nothing) = other
-no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, no_workspace_ref.(expr.args, mod_name)...)
+no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
 function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
     test_mod_name = nameof(ref.mod) |> string
     if startswith(test_mod_name, "workspace") &&
         (mod_name === nothing ||
+            startswith(string(ref.name), ".") ||  # workaround for https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
             string(mod_name)[9:end] !== test_mod_name[9:end])
         ref.name
     else
-        mod_name = fullname(ref.mod) |> wrap_dot
-        Expr(:(.), mod_name, QuoteNode(ref.name))
+        complete_mod_name = fullname(ref.mod) |> wrap_dot
+        Expr(:(.), complete_mod_name, QuoteNode(ref.name))
     end
 end
 

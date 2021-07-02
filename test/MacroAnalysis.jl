@@ -81,6 +81,29 @@ import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, up
         @test cell(3) |> noerror
     end
 
+    @testset "User defined macro 3" begin
+        notebook = Notebook([
+            Cell("""
+            macro mymap()
+                quote
+                    [1, 2, 3] .|> sqrt
+                end
+            end
+            """),
+            Cell("@mymap")
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(2) |> noerror
+    end
+
     @testset "Package macro 1" begin
         notebook = Notebook([
             Cell("using Dates"),
