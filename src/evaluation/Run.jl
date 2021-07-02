@@ -127,7 +127,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	notebook.wants_to_interrupt = false
 	flush_notebook_changes()
 	# allow other `run_reactive!` calls to be executed
-	already_in_run || put!(notebook.executetoken)
+	put!(notebook.executetoken)
 	return new_order
 end
 
