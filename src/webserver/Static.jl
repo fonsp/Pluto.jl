@@ -53,7 +53,12 @@ function notebook_response(notebook; home_url="./", as_redirect=true)
 end
 
 function get_header(request::HTTP.Request, key::AbstractString)
-    val = request.headers[findfirst(x -> (lowercase(x.first) == lowercase(key)), request.headers)]
+    validx = findfirst(x -> (lowercase(x.first) == lowercase(key)), request.headers)
+    if isnothing(validx)
+        return nothing
+    end
+
+    val = request.headers[validx]
     if !isnothing(val)
         return val.second
     end
@@ -258,19 +263,21 @@ function http_router_for(session::ServerSession)
 
         notebook
     end
-    function rest_parse(body::Vector{UInt8}, mime_type::AbstractString)
+    function rest_parse(body::Vector{UInt8}, mime_type::Union{AbstractString, Nothing})
         if mime_type == "application/x-msgpack"
             return MsgPack.unpack(body)
         elseif mime_type == "application/x-julia"
             return Serialization.deserialize(IOBuffer(body))
         else
-            @error "Unrecognized MIME type for REST request body"
+            # For some reason JSON.parse mutates body
+            # so we need to make a copy of it
+            jsonstr = String(copy(body))
+            return JSON.parse(jsonstr)
         end
     end
     function rest_parameter(request::HTTP.Request, key::AbstractString, default=nothing)
         uri = HTTP.URI(request.target)
         query = HTTP.queryparams(uri)
-        parts = HTTP.URIs.splitpath(uri.path)
 
         content_type = get_header(request, "Content-Type")
         if haskey(query, key)
@@ -283,15 +290,15 @@ function http_router_for(session::ServerSession)
     function rest_serialize(request::HTTP.Request, body)
         accept_type = get_header(request, "Accept")
         try
-            if accept_type == "application/json"
-                return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
+            if accept_type == "application/x-msgpack"
+                return HTTP.Response(200, Pluto.pack(body)) |> with_msgpack! |> with_cors!
             elseif accept_type == "application/x-julia"
                 out_io = IOBuffer()
                 Serialization.serialize(out_io, body)
                 serialized_msg = take!(out_io)
                 return HTTP.Response(200, serialized_msg) |> with_julia! |> with_cors!
             else 
-                return HTTP.Response(200, Pluto.pack(body)) |> with_msgpack! |> with_cors!
+                return HTTP.Response(200, JSON.json(body)) |> with_json! |> with_cors!
             end
         catch e
             # Likely an error serializing the object
