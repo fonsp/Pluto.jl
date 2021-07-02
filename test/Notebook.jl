@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
 import Random
 import Pkg
 
@@ -286,6 +286,11 @@ end
             @test all(!isfile, [numbered_until_new(joinpath(trash, cutename()); create_file=false) for _ in 1:200])
         end
     end
+    
+    @test without_pluto_file_extension("julia编程.jl") == "julia编程"
+    @test without_pluto_file_extension("julia编程.jl🐼") == "julia编程.jl🐼"
+    @test without_pluto_file_extension("asdf.pluto.jl") == "asdf"
+    @test without_pluto_file_extension("asdf.jl") == "asdf"
 
     # TODO: test bad dirs, filenames, permissions
 end

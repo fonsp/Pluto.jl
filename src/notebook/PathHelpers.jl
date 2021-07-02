@@ -99,7 +99,7 @@ is_pluto_notebook(path::String) = endswith_pluto_file_extension(path) && readlin
 function without_pluto_file_extension(s)
     for e in pluto_file_extensions
         if endswith(s, e)
-            return s[1:end-length(e)]
+            return s[1:prevind(s, ncodeunits(s), ncodeunits(e))]
         end
     end
     s

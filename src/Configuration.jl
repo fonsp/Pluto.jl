@@ -105,7 +105,6 @@ These options will be passed as command line argument to newly launched processe
 - `banner::Union{Nothing,String} = nothing`
 - `optimize::Union{Nothing,Int} = nothing`
 - `math_mode::Union{Nothing,String} = nothing`
-- `project::Union{Nothing,String} = "@."`
 - `startup_file::Union{Nothing,String} = "no"`
 - `history_file::Union{Nothing,String} = "no"`
 - `threads::Union{Nothing,String,Int} = default_number_of_threads()`
@@ -121,8 +120,6 @@ These options will be passed as command line argument to newly launched processe
     # the followings are different from
     # the default julia compiler options
 
-    # we use nothing to represent "@v#.#"
-    project::Union{Nothing,String} = "@."
     # we don't load startup file in notebook
     startup_file::Union{Nothing,String} = "no"
     # we don't load history file in notebook
@@ -169,33 +166,14 @@ function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::C
     kwargs = Dict{Symbol,Any}()
     for each in fieldnames(CompilerOptions)
         # 1. not specified by notebook options
-        # 2. notebook specified project options
-        # 3. general notebook specified options
+        # 2. general notebook specified options
         if getfield(notebook.compiler_options, each) === nothing
             kwargs[each] = getfield(options, each)
-        elseif each === :project
-            # some specified processing for notebook project
-            # paths
-            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
         else
             kwargs[each] = getfield(notebook.compiler_options, each)
         end
     end
     return CompilerOptions(;kwargs...)
-end
-
-function _resolve_notebook_project_path(notebook_path::String, path::String)::String
-    # 1. notebook project specified as abspath, return
-    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
-    # 3. notebook project specified as relative path, always assume it's relative to
-    #    the notebook.
-    if isabspath(path)
-        return tamepath(path)
-    elseif startswith(path, "@")
-        return Base.load_path_expand(path)
-    else
-        return tamepath(joinpath(dirname(notebook_path), path))
-    end
 end
 
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
