@@ -74,6 +74,10 @@ function increment_current_module()::Symbol
     new_workspace_name
 end
 
+function wrap_dot(ref::GlobalRef)
+    complete_mod_name = fullname(ref.mod) |> wrap_dot
+    Expr(:(.), complete_mod_name, QuoteNode(ref.name))
+end
 function wrap_dot(name)
     if length(name) == 1
         name[1]
@@ -95,8 +99,7 @@ function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
             string(mod_name)[9:end] !== test_mod_name[9:end])
         ref.name
     else
-        complete_mod_name = fullname(ref.mod) |> wrap_dot
-        Expr(:(.), complete_mod_name, QuoteNode(ref.name))
+        ref
     end
 end
 
@@ -109,7 +112,12 @@ function sanitize_expr(dt::Union{DataType,Enum})
 end
 
 function sanitize_expr(ref::GlobalRef)
-    no_workspace_ref(ref)
+    test_mod_name = nameof(ref.mod) |> string
+    if startswith(test_mod_name, "workspace")
+        ref.name
+    else
+        wrap_dot(ref)
+    end
 end
 
 function sanitize_expr(expr::Expr)
