@@ -64,10 +64,10 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 end
 
 if VERSION <= v"1.5.0-"
-    @warn """
+    @warn """\n
     This is Pluto v$(PLUTO_VERSION), the last Pluto version supported on Julia v$(VERSION). 
     
-    Pluto v0.15 is available. We recommend updating Julia 1.6 or higher to be able to update Pluto.
+    Pluto v0.15 is available. We recommend updating Julia to 1.6 or higher to be able to update Pluto.
     """
 end
 
