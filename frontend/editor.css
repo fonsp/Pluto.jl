@@ -1426,8 +1426,7 @@ pluto-input > button.delete_cell > span.icon::after {
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark,
-body.nbpkg_disabled pkg-popup {
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
     display: none;
 }
 
@@ -1477,6 +1476,10 @@ pkg-status-mark.not_found > button > span::after {
 }
 pkg-status-mark.will_be_installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
+    opacity: 0.6;
+}
+pkg-status-mark.disable_pkg > button > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg);
     opacity: 0.6;
 }
 pkg-status-mark select {

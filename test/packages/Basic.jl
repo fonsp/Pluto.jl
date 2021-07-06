@@ -386,7 +386,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         write(f, simple_import_notebook)
         
         @test num_backups_in(dir) == 0
-        Pluto.PkgUtils.reset_notebook_environment(f)
+        Pluto.reset_notebook_environment(f)
 
         @test num_backups_in(dir) == 1
         @test !has_embedded_pkgfiles(read(f, String))
@@ -400,14 +400,14 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test !occursin("0.3.1", read(f, String))
         
         @test num_backups_in(dir) == 0
-        Pluto.PkgUtils.update_notebook_environment(f)
+        Pluto.update_notebook_environment(f)
 
         @test num_backups_in(dir) == 1
         @test has_embedded_pkgfiles(read(f, String))
         @test !Pluto.only_versions_differ(f, simple_import_path)
         @test occursin("0.3.1", read(f, String))
 
-        Pluto.PkgUtils.update_notebook_environment(f)
+        Pluto.update_notebook_environment(f)
         @test_skip num_backups_in(dir) == 1
     end
 
