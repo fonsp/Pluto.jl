@@ -55,7 +55,14 @@ export const PkgPopup = ({ notebook }) => {
             ;(pluto_actions.get_avaible_versions({ package_name: recent_event.package_name, notebook_id: notebook.notebook_id }) ?? Promise.resolve([])).then(
                 (versions) => {
                     if (still_valid) {
-                        set_pkg_status(package_status({ nbpkg: notebook.nbpkg, package_name: recent_event.package_name, available_versions: versions }))
+                        set_pkg_status(
+                            package_status({
+                                nbpkg: notebook.nbpkg,
+                                package_name: recent_event.package_name,
+                                is_disable_pkg: recent_event.is_disable_pkg,
+                                available_versions: versions,
+                            })
+                        )
                     }
                 }
             )
@@ -64,6 +71,11 @@ export const PkgPopup = ({ notebook }) => {
             still_valid = false
         }
     }, [recent_event, ...nbpkg_fingerprint_without_terminal(notebook.nbpkg)])
+
+    // hide popup when nbpkg is switched on/off
+    useEffect(() => {
+        set_recent_event(null)
+    }, [notebook.nbpkg?.enabled ?? true])
 
     const [showterminal, set_showterminal] = useState(false)
 
@@ -94,7 +106,7 @@ export const PkgPopup = ({ notebook }) => {
                 class="pkg-update"
                 target="_blank"
                 title="Update packages"
-                style=${!!showupdate ? "" : "opacity: .4;"}
+                style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg ? "display: none;" : "")}
                 href="#"
                 onClick=${(e) => {
                     if (busy) {
