@@ -157,3 +157,16 @@ export const PkgActivateMark = ({ package_name, refresh_cm }) => {
 
     return node
 }
+
+// This list appears multiple times in our codebase. Be sure to match edits everywhere.
+export const pkg_disablers = [
+    "Pkg.activate(",
+    "Pkg.API.activate(",
+    "Pkg.develop(",
+    "Pkg.API.develop(",
+    "Pkg.add(",
+    "Pkg.API.add(",
+    // https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
+    "quickactivate(",
+    "@quickactivate",
+]

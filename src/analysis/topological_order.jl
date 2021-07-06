@@ -125,7 +125,10 @@ function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 		1
 	elseif Symbol("Pkg.API.activate") ∈ top.references || 
 		Symbol("Pkg.activate") ∈ top.references ||
-		Symbol("@pkg_str") ∈ top.references
+		Symbol("@pkg_str") ∈ top.references ||
+		# https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
+		Symbol("quickactivate") ∈ top.references ||
+		Symbol("@quickactivate") ∈ top.references
 		2
 	elseif Symbol("Pkg.API.add") ∈ top.references ||
 		Symbol("Pkg.add") ∈ top.references ||
