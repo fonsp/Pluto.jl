@@ -1,10 +1,10 @@
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
-import observablehq_for_myself from "../common/SetupCellEnvironment.js"
+import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { nbpkg_fingerprint, PkgStatusMark } from "./PkgStatusMark.js"
+import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark } from "./PkgStatusMark.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -156,6 +156,26 @@ export const CellInput = ({
                         }
                     }
                 }
+            }
+
+            const disablers = ["Pkg.activate(", "Pkg.API.activate(", "Pkg.develop(", "Pkg.API.develop(", "Pkg.add(", "Pkg.API.add("]
+
+            const match = _.find(disablers, (f_name) => line.includes(f_name))
+            if (match != null) {
+                // if the widget already exists, keep it, if not, create a new one
+                const widget = get(pkg_bubbles.current, `disable-pkg-${match}-${line_i}`, () =>
+                    PkgActivateMark({
+                        package_name: match,
+                        refresh_cm: () => cm.refresh(),
+                    })
+                )
+
+                cm.setBookmark(
+                    { line: line_i, ch: 999 },
+                    {
+                        widget: widget,
+                    }
+                )
             }
         }
     }
