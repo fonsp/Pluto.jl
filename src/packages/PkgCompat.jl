@@ -370,6 +370,11 @@ end
 # WRITING COMPAT ENTRIES
 ###
 
+
+_project_key_order = ["name", "uuid", "keywords", "license", "desc", "deps", "compat"]
+project_key_order(key::String) =
+    something(findfirst(x -> x == key, _project_key_order), length(_project_key_order) + 1)
+
 # ✅ Public API
 function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 	toml = Pkg.TOML.parsefile(project_file(ctx))
@@ -380,7 +385,7 @@ function _modify_compat(f!::Function, ctx::PkgContext)::PkgContext
 	isempty(compat) && delete!(toml, "compat")
 
 	write(project_file(ctx), sprint() do io
-		Pkg.TOML.print(io, toml; sorted=true)
+		Pkg.TOML.print(io, toml; sorted=true, by=(key -> (project_key_order(key), key)))
 	end)
 	
 	return load_ctx(ctx)
