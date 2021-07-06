@@ -323,15 +323,17 @@ function dependencies(ctx)
 				Pkg.dependencies(ctx.env)
 			end
 		catch e
-			@error """
-			Pkg error: you might need to use
+			if !occursin(r"expected.*exist.*manifest", sprint(showerror, e))
+				@error """
+				Pkg error: you might need to use
 
-			Pluto.reset_notebook_environment(notebook_path)
+				Pluto.reset_notebook_environment(notebook_path)
 
-			to reset this notebook's environment.
+				to reset this notebook's environment.
 
-			Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
-			""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+				Before doing so, consider sending your notebook file to https://github.com/fonsp/Pluto.jl/issues together with the following info:
+				""" Pluto.PLUTO_VERSION VERSION exception=(e,catch_backtrace())
+			end
 
 			Dict()
 		end
