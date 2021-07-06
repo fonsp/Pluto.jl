@@ -188,7 +188,7 @@ export class Welcome extends Component {
                                     local +
                                     ", the latest is " +
                                     latest +
-                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.\n\nPluto 0.15, Pluto will only support Julia 1.5 and up. You might need to upgrade Julia.'
                             )
 
                         }
