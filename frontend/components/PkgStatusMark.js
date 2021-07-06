@@ -19,7 +19,7 @@ const can_update = (installed, available) => {
     }
 }
 
-export const package_status = ({ nbpkg, package_name, available_versions }) => {
+export const package_status = ({ nbpkg, package_name, available_versions, is_disable_pkg }) => {
     let status = null
     let hint_raw = null
     let hint = null
@@ -27,7 +27,12 @@ export const package_status = ({ nbpkg, package_name, available_versions }) => {
     const chosen_version = nbpkg?.installed_versions[package_name]
     const busy = (nbpkg?.busy_packages ?? []).includes(package_name) || nbpkg?.instantiating
 
-    if (chosen_version != null || _.isEqual(available_versions, ["stdlib"])) {
+    if (is_disable_pkg) {
+        const f_name = package_name.substring(0, package_name.length - 1)
+        status = "disable_pkg"
+        hint_raw = `${f_name} disables Pluto's built-in package manager.`
+        hint = phtml`<b>${f_name}</b> disables Pluto's built-in package manager.`
+    } else if (chosen_version != null || _.isEqual(available_versions, ["stdlib"])) {
         if (chosen_version == null || chosen_version === "stdlib") {
             status = "installed"
             hint_raw = `${package_name} is part of Julia's pre-installed 'standard library'.`
@@ -74,6 +79,7 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
         const { status, hint_raw } = package_status({
             nbpkg: nbpkg_ref.current,
             package_name: package_name,
+            is_disable_pkg: false,
             available_versions: available_versions_ref.current,
         })
 
@@ -89,7 +95,7 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
     }
 
     node.on_nbpkg = (p) => {
-        // if nbpkg is switch on/off
+        // if nbpkg is switched on/off
         if ((nbpkg_ref.current == null) !== (p == null)) {
             // refresh codemirror because the mark will appear/disappear
             refresh_cm()
@@ -109,6 +115,41 @@ export const PkgStatusMark = ({ package_name, refresh_cm, pluto_actions, noteboo
                 detail: {
                     status_mark_element: node,
                     package_name: package_name,
+                    is_disable_pkg: false,
+                },
+            })
+        )
+    }
+
+    return node
+}
+
+// not preact because we're too cool
+export const PkgActivateMark = ({ package_name, refresh_cm }) => {
+    const button = html`<button><span></span></button>`
+    const node = html`<pkg-status-mark>${button}</pkg-status-mark>`
+
+    const render = () => {
+        const { hint_raw } = package_status({
+            nbpkg: null,
+            package_name: package_name,
+            is_disable_pkg: true,
+            available_versions: null,
+        })
+        node.title = hint_raw
+        node.classList.toggle("disable_pkg", true)
+    }
+    render()
+
+    node.on_nbpkg = (p) => {}
+
+    button.onclick = () => {
+        window.dispatchEvent(
+            new CustomEvent("open nbpkg popup", {
+                detail: {
+                    status_mark_element: node,
+                    package_name: package_name,
+                    is_disable_pkg: true,
                 },
             })
         )
