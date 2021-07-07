@@ -211,7 +211,7 @@ function run(session::ServerSession)
     address = pretty_address(session, hostIP, port)
 
     println()
-    browser_cmd = session.options.server.browser(address)
+    browser_cmd = session.options.server.on_url(address)
     if session.options.server.launch_browser & !(browser_cmd === nothing)
         Base.run(browser_cmd)
         println("Opening $address in your browser... ~ have fun!")
