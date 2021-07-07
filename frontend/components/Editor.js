@@ -259,7 +259,7 @@ export class Editor extends Component {
                     )
                 }
             },
-            add_deserialized_cells: async (data, index, deserializer = deserialize_cells) => {
+            add_deserialized_cells: async (data, index_or_id, deserializer = deserialize_cells) => {
                 let new_codes = deserializer(data)
                 /** @type {Array<CellInputData>} */
                 /** Create copies of the cells with fresh ids */
@@ -269,6 +269,20 @@ export class Editor extends Component {
                     code_folded: false,
                     running_disabled: false,
                 }))
+
+                let index
+                
+                if (typeof(index_or_id) === 'number') {
+                    index = index_or_id
+                } else {
+                    /* if the input is not an integer, try interpreting it as a cell id */
+                    index = this.state.notebook.cell_order.indexOf(index_or_id)
+                    if (index !== -1) {
+                        /* Make sure that the cells are pasted after the current cell */
+                        index += 1
+                    }
+                }
+
                 if (index === -1) {
                     index = this.state.notebook.cell_order.length
                 }

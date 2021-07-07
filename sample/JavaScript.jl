@@ -996,8 +996,8 @@ HypertextLiteral = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
 [compat]
-HypertextLiteral = "^0.7.0"
-PlutoUI = "^0.7.9"
+HypertextLiteral = "~0.8.0"
+PlutoUI = "~0.7.9"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -1012,9 +1012,9 @@ deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 
 [[HypertextLiteral]]
-git-tree-sha1 = "3cd97ad41c50d81e698ec625d52753556cab994e"
+git-tree-sha1 = "1e3ccdc7a6f7b577623028e0095479f4727d8ec1"
 uuid = "ac1192a8-f4b3-4bfe-ba22-af5b92cd3ab2"
-version = "0.7.0"
+version = "0.8.0"
 
 [[InteractiveUtils]]
 deps = ["Markdown"]
