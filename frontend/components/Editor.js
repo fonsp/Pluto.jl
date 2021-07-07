@@ -733,7 +733,7 @@ patch: ${JSON.stringify(
                 // view stats on https://stats.plutojl.org/
                 fetch(`https://stats.plutojl.org/count?p=/editing/${window?.version_info?.pluto ?? "unknown"}#skip_sw`, { cache: "no-cache" }).catch(() => {})
             }
-        }, 1000 * 10)
+        }, 1000 * 15 * 60)
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
