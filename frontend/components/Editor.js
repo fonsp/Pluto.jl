@@ -271,8 +271,8 @@ export class Editor extends Component {
                 }))
 
                 let index
-                
-                if (typeof(index_or_id) === 'number') {
+
+                if (typeof index_or_id === "number") {
                     index = index_or_id
                 } else {
                     /* if the input is not an integer, try interpreting it as a cell id */
@@ -722,10 +722,18 @@ patch: ${JSON.stringify(
                     binder_phase: this.state.offer_binder ? BinderPhase.wait_for_user : null,
                 })
             })()
-            fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/article-view.txt?skip_sw`).catch(() => {})
+            // view stats on https://stats.plutojl.org/
+            fetch(`https://stats.plutojl.org/count?p=/article-view#skip_sw`, { cache: "no-cache" }).catch(() => {})
         } else {
             this.connect()
         }
+
+        setInterval(() => {
+            if (!this.state.static_preview && document.visibilityState === "visible") {
+                // view stats on https://stats.plutojl.org/
+                fetch(`https://stats.plutojl.org/count?p=/editing/${window?.version_info?.pluto ?? "unknown"}#skip_sw`, { cache: "no-cache" }).catch(() => {})
+            }
+        }, 1000 * 10)
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
