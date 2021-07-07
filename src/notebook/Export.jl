@@ -3,8 +3,8 @@ using Base64
 
 const default_binder_url = "https://mybinder.org/v2/gh/fonsp/pluto-on-binder/v$(string(PLUTO_VERSION))"
 
-# const cdn_version_override = nothing
-const cdn_version_override = "2a48ae2"
+const cdn_version_override = nothing
+# const cdn_version_override = "2a48ae2"
 
 if cdn_version_override !== nothing
     @warn "Reminder to fonsi: Using a development version of Pluto for CDN assets. The binder button might not work. You should not see this on a released version of Pluto." cdn_version_override
