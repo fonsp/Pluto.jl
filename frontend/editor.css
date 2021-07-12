@@ -1332,7 +1332,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 @media screen and (min-width: 921px) {
 
-    pluto-input > button.delete_cell .input_context_menu {
+    pluto-input > button.delete_cell ul.input_context_menu {
         left: calc(100% - 3px);
     }
 }
@@ -1340,7 +1340,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
     pluto-input > button.delete_cell  {
         z-index: 31;
     }
-    pluto-input > button.delete_cell .input_context_menu {
+    pluto-input > button.delete_cell ul.input_context_menu {
         left: calc(100% - var(--width) - 36px);
     }
 }
@@ -1407,6 +1407,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
 .disable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
     background-size: 15px;
+    background-repeat: no-repeat;
 }
 .delete_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
@@ -1425,8 +1426,7 @@ pluto-input > button.delete_cell > span.icon::after {
 
 /* PKG UI */
 
-body.nbpkg_disabled pkg-status-mark,
-body.nbpkg_disabled pkg-popup {
+body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
     display: none;
 }
 
@@ -1476,6 +1476,10 @@ pkg-status-mark.not_found > button > span::after {
 }
 pkg-status-mark.will_be_installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
+    opacity: 0.6;
+}
+pkg-status-mark.disable_pkg > button > span::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg);
     opacity: 0.6;
 }
 pkg-status-mark select {

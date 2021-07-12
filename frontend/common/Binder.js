@@ -80,7 +80,8 @@ export const request_binder = (build_url) =>
 
 export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
     try {
-        fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
+        // view stats on https://stats.plutojl.org/
+        fetch(`https://stats.plutojl.org/count?p=/binder-start#skip_sw`, { cache: "no-cache" }).catch(() => {})
         await setStatePromise(
             immer((state) => {
                 state.binder_phase = BinderPhase.requesting

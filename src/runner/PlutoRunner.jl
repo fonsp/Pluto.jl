@@ -1264,12 +1264,17 @@ function binding_from(x::Expr, workspace::Module)
             error("Couldn't infer `$x` for Live Docs.")
         end
     elseif is_pure_expression(x)
+        if x.head == :.
+            # Simply calling Core.eval on `a.b` will retrieve the value instead of the binding
+            m = Core.eval(workspace, x.args[1])
+            isa(m, Module) && return Docs.Binding(m, x.args[2].value)
+        end
         Core.eval(workspace, x)
     else
         error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module) = Core.eval(workspace, s)
+binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
 binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
 binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 

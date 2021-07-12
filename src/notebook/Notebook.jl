@@ -135,7 +135,7 @@ function save_notebook(io, notebook::Notebook)
         ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
         mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
         
-        !isempty(ptoml_contents) || !isempty(mtoml_contents)
+        !isempty(strip(ptoml_contents))
     else
         false
     end

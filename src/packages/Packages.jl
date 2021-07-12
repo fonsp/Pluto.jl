@@ -12,13 +12,18 @@ const tiers = [
 
 const pkg_token = Token()
 
-
+# This list appears multiple times in our codebase. Be sure to match edits everywhere.
 function use_plutopkg(topology::NotebookTopology)
     !any(values(topology.nodes)) do node
         Symbol("Pkg.activate") ∈ node.references ||
         Symbol("Pkg.API.activate") ∈ node.references ||
+        Symbol("Pkg.develop") ∈ node.references ||
+        Symbol("Pkg.API.develop") ∈ node.references ||
         Symbol("Pkg.add") ∈ node.references ||
-        Symbol("Pkg.API.add") ∈ node.references
+        Symbol("Pkg.API.add") ∈ node.references ||
+        # https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
+        Symbol("quickactivate") ∈ node.references ||
+        Symbol("@quickactivate") ∈ node.references
     end
 end
 
