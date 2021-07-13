@@ -47,8 +47,8 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
         @test is_just_text(new, notebook.cells[4])
         @test is_just_text(new, notebook.cells[5])
         @test is_just_text(new, notebook.cells[6])
+        @test is_just_text(new, notebook.cells[7])
 
-        @test !is_just_text(new, notebook.cells[7])
         @test !is_just_text(new, notebook.cells[8])
         @test !is_just_text(new, notebook.cells[9])
         @test !is_just_text(new, notebook.cells[10])
