@@ -7,6 +7,7 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
         Cell("md\"a\""),
         Cell("html\"a\""),
         Cell("md\"a \$b\$\""),
+        Cell("md\"a ``b``\""),
         Cell("""
         let
             x = md"a"
@@ -57,5 +58,11 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, is
         @test !is_just_text(new, notebook.cells[14])
         @test !is_just_text(new, notebook.cells[15])
         @test !is_just_text(new, notebook.cells[16])
+        @test !is_just_text(new, notebook.cells[17])
+        @test !is_just_text(new, notebook.cells[18])
+        @test !is_just_text(new, notebook.cells[19])
+        @test !is_just_text(new, notebook.cells[20])
+        @test !is_just_text(new, notebook.cells[21])
+        @test !is_just_text(new, notebook.cells[22])
     end
 end
