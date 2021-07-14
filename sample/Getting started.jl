@@ -28,13 +28,13 @@ cm"## Cats
 Let's say you're like my grandma, and you have a lot of cats. Our story will be about them."
 
 # ╔═╡ 3e8e381e-953f-11ea-3d3e-71d0fea52560
-cat = "Ks*;lj1"
+cat = "Ks*;lj"
 
 # ╔═╡ aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 if cat == "Ks*;lj"
 	cm"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	HTML("""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>""")
+	cm"""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>"""
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
