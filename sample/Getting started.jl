@@ -27,6 +27,9 @@ In this introduction, we will go through the basics of using Pluto. To make it i
 cm"## Cats
 Let's say you're like my grandma, and you have a lot of cats. Our story will be about them."
 
+# ╔═╡ 3e8e381e-953f-11ea-3d3e-71d0fea52560
+cat = "Ks*;lj1"
+
 # ╔═╡ aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 if cat == "Ks*;lj"
 	cm"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
@@ -218,7 +221,8 @@ uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 # ╠═9b62f2c6-8037-486f-b8ec-a95b577b8d74
 # ╟─b129ba7c-953a-11ea-3379-17adae34924c
 # ╟─4d88b926-9543-11ea-293a-1379b1b5ae64
-# ╟─aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
+# ╠═3e8e381e-953f-11ea-3d3e-71d0fea52560
+# ╠═aeb3a6bc-9540-11ea-0b8f-6d37412bfe68
 # ╟─611c28fa-9542-11ea-1751-fbdedcfb7690
 # ╠═6f7eecec-9543-11ea-1284-dd52fce3ecca
 # ╟─a1a20314-9543-11ea-17de-0b658da18992
