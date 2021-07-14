@@ -34,7 +34,7 @@ cat = "Ks*;lj"
 if cat == "Ks*;lj"
 	cm"Oh no! Someone messed with my pretty introduction. Change the code above to give our cat a proper name!"
 else
-	cm"""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>"""
+	HTML("""<p><b>Well done, your cat is called $cat now.</b> This text gets updated every time you change the name. To see how the magic works, click on the <img src="https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg" style="width: 1em; height: 1em; margin-bottom: -.2em;"> to the left of this text.</p>""")
 end
 
 # ╔═╡ 611c28fa-9542-11ea-1751-fbdedcfb7690
