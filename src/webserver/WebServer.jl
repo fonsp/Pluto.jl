@@ -74,6 +74,12 @@ end
 
 function run(options::Configuration.Options)
     session = ServerSession(;options=options)
+
+    notebook_to_start = options.server.notebook
+    if notebook_to_start !== nothing
+        SessionActions.open(session, notebook_to_start; compiler_options=options.compiler)
+    end
+
     run(session)
 end
 
