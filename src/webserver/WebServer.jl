@@ -68,18 +68,32 @@ This will start the static HTTP server and a WebSocket server. The server runs _
 Pluto notebooks can be started from the main menu in the web browser.
 """
 function run(; kwargs...)
-    options = Configuration.from_flat_kwargs(; kwargs...)
-    run(options)
+    notebook = get(kwargs, :notebook, nothing)
+
+    # for backward compatibility - Configuation can only contain a single notebook for startup
+    notebook_for_config = notebook isa AbstractVector ? first(notebook) : notebook
+
+    options = Configuration.from_flat_kwargs(; kwargs..., notebook=notebook_for_config)
+    run(options, notebook)
 end
 
-function run(options::Configuration.Options)
+# open notebook(s) on startup
+function run(options::Configuration.Options, notebook:: Nothing = nothing)
     session = ServerSession(;options=options)
+    run(session)
+end
 
-    notebook_to_start = options.server.notebook
-    if notebook_to_start !== nothing
-        SessionActions.open(session, notebook_to_start; compiler_options=options.compiler)
+function run(options::Configuration.Options, notebook:: AbstractString)
+    session = ServerSession(;options=options)
+    SessionActions.open(session, notebook; compiler_options=options.compiler)
+    run(session)
+end
+
+function run(options::Configuration.Options, notebook:: AbstractVector{<: AbstractString})
+    session = ServerSession(;options=options)
+    for nb in notebook
+        SessionActions.open(session, nb; compiler_options=options.compiler)
     end
-
     run(session)
 end
 
