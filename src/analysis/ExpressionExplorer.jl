@@ -140,7 +140,7 @@ end
 
 function get_assignees(ex::Expr)::FunctionName
     if ex.head == :tuple
-        if first(ex.args) isa Expr
+        if length(ex.args) == 1 && first(ex.args) isa Expr && (first(ex.args).head == :parameters)
             # e.g. (x, y) in the ex (; x, y) = (x = 5, y = 6, z = 7)
             args = only(ex.args).args
         else
