@@ -115,6 +115,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:((x, y), a, (b, c) = z, e, (f, g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
         @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
         @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
+        @test testee(:((; a, b) = x), [:x], [:a, :b], [], [])
     end
     @testset "Broadcasting" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
