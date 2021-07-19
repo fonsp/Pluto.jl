@@ -130,7 +130,7 @@ function save_notebook(io, notebook::Notebook)
             print(io, _running_disabled_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
             print(io, _running_disabled_suffix)
-        elseif c.depends_on_disabled_cells
+        elseif c.cell_dependencies.depends_on_disabled_cells[]
             # if a cell is both disabled directly and indirectly, the first has higher priority
             print(io, _depends_on_disabled_cells_prefix)
             print(io, replace(c.code, _cell_id_delimiter => "# "))
@@ -232,7 +232,6 @@ function load_notebook_nobackup(io, path)::Notebook
             
             # get the information if a cell is disabled
             running_disabled = startswith(code_normalised, _running_disabled_prefix)
-            depends_on_disabled_cells = startswith(code_normalised, _depends_on_disabled_cells_prefix)
 
             # remove the disabled on startup comments for further processing in Julia
             code_normalised = replace(replace(code_normalised, _running_disabled_prefix => ""), _running_disabled_suffix => "")
@@ -243,7 +242,6 @@ function load_notebook_nobackup(io, path)::Notebook
 
             read_cell = Cell(cell_id, code)
             read_cell.running_disabled = running_disabled
-            read_cell.depends_on_disabled_cells = depends_on_disabled_cells || running_disabled
             collected_cells[cell_id] = read_cell
         end
     end
@@ -328,7 +326,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
     loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
-    update_dependency_cache!(loaded)
+    update_dependency_cache!(loaded, loaded.topology)
 
     disable_writing_notebook_files || save_notebook(loaded)
     loaded.topology = NotebookTopology()

@@ -24,10 +24,10 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
 
     # helper functions
     id(i) = notebook.cells[i].cell_id
-    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.depends_on_disabled_cells]
+    get_disabled_cells(notebook) = [i for (i, c) in pairs(notebook.cells) if c.cell_dependencies.depends_on_disabled_cells[]]
 
     @test !any(c.running_disabled for c in notebook.cells)
-    @test !any(c.depends_on_disabled_cells for c in notebook.cells)
+    @test !any(c.cell_dependencies.depends_on_disabled_cells[] for c in notebook.cells)
 
     # disable first cell
     notebook.cells[1].running_disabled = true
@@ -63,7 +63,7 @@ using Pluto: update_run!, ServerSession, ClientSession, Cell, Notebook
     original_6_output = notebook.cells[6].output.body
     setcode(notebook.cells[6], "x + 6")
     update_run!(🍭, notebook, notebook.cells[6])
-    @test notebook.cells[6].depends_on_disabled_cells
+    @test notebook.cells[6].cell_dependencies.depends_on_disabled_cells[]
     @test notebook.cells[6].errored === false
     @test notebook.cells[6].output.body == original_6_output
 
