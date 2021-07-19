@@ -392,6 +392,17 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
             else
                 SymbolsState(references=Set{Symbol}([funcname[1]]), funccalls=Set{FunctionName}([funcname]))
             end
+
+            # Make `@macroexpand` and `Base.macroexpand` reactive by referencing the first macro in the second
+            # argument to the call.
+            if ([:Base, :macroexpand] == funcname || [:macroexpand] == funcname) &&
+                    length(ex.args) >= 3 &&
+                    ex.args[3] isa QuoteNode &&
+                    Meta.isexpr(ex.args[3].value, :macrocall)
+                expanded_macro = split_funcname(ex.args[3].value.args[1])
+                union!(symstate, SymbolsState(macrocalls=Set{FunctionName}([expanded_macro])))
+            end
+
             # Explore code inside function arguments:
             union!(symstate, explore!(Expr(:block, ex.args[2:end]...), scopestate))
             return symstate

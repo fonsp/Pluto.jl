@@ -104,6 +104,20 @@ import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, up
         @test cell(2) |> noerror
     end
 
+    @testset "User defined macro 4" begin
+        notebook = Notebook([
+            Cell("""macro my_assign(ex)
+                esc(ex)
+            end"""),
+            Cell("@macroexpand @my_assign 1+1"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+    end
+
     @testset "Package macro 1" begin
         notebook = Notebook([
             Cell("using Dates"),
