@@ -33,13 +33,29 @@ function update_dependency_cache!(cell::Cell, notebook::Notebook)
     cell.cell_dependencies = CellDependencies(
         downstream_cells_map(cell, notebook), 
         upstream_cells_map(cell, notebook), 
-        cell_precedence_heuristic(notebook.topology, cell))
+        cell_precedence_heuristic(notebook.topology, cell),
+        Ref(cell.running_disabled))
 end
 
 "Fills dependency information on notebook and cell level."
-function update_dependency_cache!(notebook::Notebook)
+function update_dependency_cache!(notebook::Notebook, topology:: NotebookTopology)
     notebook._cached_topological_order = topological_order(notebook)
     for cell in values(notebook.cells_dict)
         update_dependency_cache!(cell, notebook)
     end
+    disable_dependent_cells!(notebook, topology)
+end
+
+"""
+find (indirectly) deactivated cells and update their status
+"""
+function disable_dependent_cells!(notebook:: Notebook, topology:: NotebookTopology):: Vector{Cell}
+	deactivated = filter(c -> c.running_disabled, notebook.cells)
+	indirectly_deactivated = collect(topological_order(notebook, topology, deactivated))
+	for cell in indirectly_deactivated
+		cell.running = false
+		cell.queued = false
+		cell.cell_dependencies.depends_on_disabled_cells[] = true
+	end
+	return indirectly_deactivated
 end
