@@ -121,21 +121,19 @@ end
 
     # without notebook at startup
     server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(2)
+    sleep(1)
     @test HTTP.get(local_url("favicon.ico")).status == 200
     @async schedule(server_task, InterruptException(); error=true)
-    sleep(2)
 
     # with a single notebook at startup
     server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(2)
+    sleep(1)
     @test HTTP.get(local_url("favicon.ico")).status == 200
     @async schedule(server_task, InterruptException(); error=true)
-    sleep(2)
 
     # with a multiple notebook at startup
     server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(2)
+    sleep(1)
     @test HTTP.get(local_url("favicon.ico")).status == 200
     @async schedule(server_task, InterruptException(); error=true)
 
