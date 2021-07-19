@@ -98,12 +98,29 @@ function run(port::Integer; kwargs...)
     "
 end
 
+# open notebook(s) on startup
+
+open_notebook!(session:: ServerSession, notebook:: Nothing) = Nothing
+
+open_notebook!(session:: ServerSession, notebook:: AbstractString) = SessionActions.open(session, notebook)
+
+function open_notebook!(session:: ServerSession, notebook:: AbstractVector{<: AbstractString})
+    for nb in notebook
+        SessionActions.open(session, nb)
+    end
+end
+
+
 """
     run(session::ServerSession)
 
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+
+    notebook_at_startup = session.options.server.notebook
+    open_notebook!(session, notebook_at_startup)
+
     pluto_router = http_router_for(session)
     host = session.options.server.host
     port = session.options.server.port
@@ -267,6 +284,10 @@ function run(session::ServerSession)
     end
 end
 
+get_favorite_notebook(notebook:: Nothing) = nothing
+get_favorite_notebook(notebook:: String) = notebook
+get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
+
 function pretty_address(session::ServerSession, hostIP, port)
     root = if session.options.server.root_url === nothing
         host_str = string(hostIP)
@@ -293,7 +314,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     if session.options.security.require_secret_for_access
         url_params["secret"] = session.secret
     end
-    fav_notebook = session.options.server.notebook
+    fav_notebook = get_favorite_notebook(session.options.server.notebook)
     new_root = if fav_notebook !== nothing
         key = isurl(fav_notebook) ? "url" : "path"
         url_params[key] = string(fav_notebook)
