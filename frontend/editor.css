@@ -398,6 +398,11 @@ kbd {
     border-radius: 3px;
 }
 
+/* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
+pluto-output mjx-assistive-mml {
+	height: 1px;
+}
+
 /* HEADER */
 
 body > header {
