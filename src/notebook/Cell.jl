@@ -18,6 +18,7 @@ struct CellDependencies{T} # T == Cell, but this has to be parametric to avoid a
     upstream_cells_map::Dict{Symbol,Vector{T}}
     precedence_heuristic::Int
     depends_on_disabled_cells:: Base.RefValue{Bool} # mutable value in immutable struct
+    contains_user_defined_macrocalls::Bool
 end
 
 "The building block of a `Notebook`. Contains code, output, reactivity data, mitochondria and ribosomes."
@@ -38,7 +39,7 @@ Base.@kwdef mutable struct Cell
     runtime::Union{Nothing,UInt64}=nothing
 
     # note that this field might be moved somewhere else later. If you are interested in visualizing the cell dependencies, take a look at the cell_dependencies field in the frontend instead.
-    cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99, Ref(false))
+    cell_dependencies::CellDependencies{Cell}=CellDependencies{Cell}(Dict{Symbol,Vector{Cell}}(), Dict{Symbol,Vector{Cell}}(), 99, Ref(false), false)
 
     running_disabled::Bool=false
 end
