@@ -4,6 +4,7 @@ using Pluto
 using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
+using Pluto.WorkspaceManager: poll
 
 @testset "Configurations" begin
 
@@ -121,20 +122,23 @@ end
 
     # without notebook at startup
     server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(1)
-    @test HTTP.get(local_url("favicon.ico")).status == 200
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
     @async schedule(server_task, InterruptException(); error=true)
 
     # with a single notebook at startup
     server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(1)
-    @test HTTP.get(local_url("favicon.ico")).status == 200
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
     @async schedule(server_task, InterruptException(); error=true)
 
-    # with a multiple notebook at startup
+    # with multiple notebooks at startup
     server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
-    sleep(1)
-    @test HTTP.get(local_url("favicon.ico")).status == 200
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
     @async schedule(server_task, InterruptException(); error=true)
 
 end
