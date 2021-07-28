@@ -319,6 +319,7 @@ function http_router_for(session::ServerSession)
             try
                 outputs = REST.get_notebook_output(session, notebook, notebook.topology, Dict{Symbol, Any}(Symbol(k) => v for (k, v) ∈ inputs), out_symbols)
             catch e
+                # println(e)
                 if isa(e, RemoteException) # Happens when Julia can't send an object (ex. a function)
                     return HTTP.Response(400, "Distributed serialization error. Is the requested variable a function?")
                 else

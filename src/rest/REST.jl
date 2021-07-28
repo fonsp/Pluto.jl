@@ -2,6 +2,7 @@ module REST
 import ..Pluto: ServerSession, Notebook, NotebookTopology, Cell, FunctionName, WorkspaceManager, where_assigned, where_referenced, update_save_run!, topological_order
 import Pluto.PlutoRunner
 import UUIDs: UUID
+import Distributed
 
 WYSIWYR_VERSION = "v1"
 
@@ -102,11 +103,16 @@ function get_notebook_output(session::ServerSession, notebook::Notebook, topolog
         where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))...,
     ]
 
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
+    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, old_workspace_name::Symbol, new_workspace_name::Union{Nothing,Symbol}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
         to_delete_vars = Set{Symbol}([to_delete_vars..., to_set...]) # also delete the bound symbols
-        WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
+        WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, funcs_to_delete, to_reimport)
+
+        workspace = WorkspaceManager.get_workspace((session, notebook))
+        eval_workspace = workspace.module_name
+
         for (sym, new_value) in zip(to_set, new_values)
-            WorkspaceManager.eval_in_workspace((session, notebook), :($(sym) = $(new_value)))
+            expr = :($(sym) = $(new_value))
+            Distributed.remotecall_eval(Main, [workspace.pid], :(Core.eval($(eval_workspace), $(expr |> QuoteNode))))
         end
     end
 
