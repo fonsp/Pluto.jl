@@ -12,32 +12,29 @@ cd(Pluto.project_relative_path("test")) do
 end
 
 @testset "from_flat_kwargs" begin
-    opt = from_flat_kwargs(;compile="min", project="test")
+    opt = from_flat_kwargs(;compile="min", launch_browser=false)
     @test opt.compiler.compile == "min"
-    @test opt.compiler.project == "test"
+    @test opt.server.launch_browser == false
 
-    @test_throws ArgumentError from_flat_kwargs(;fake_project="test")    
+    @test_throws ArgumentError from_flat_kwargs(;asdfasdf="test")    
 end
 
 @testset "flag conversion" begin
     if VERSION > v"1.5.0-"
         @test _convert_to_flags(Configuration.CompilerOptions(threads="123")) ==
-            ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
+            ["--startup-file=no", "--history-file=no", "--threads=123"]
 
         @test _convert_to_flags(Configuration.CompilerOptions(threads=123)) ==
-            ["--project=@.", "--startup-file=no", "--history-file=no", "--threads=123"]
+            ["--startup-file=no", "--history-file=no", "--threads=123"]
 
         @test _convert_to_flags(Configuration.CompilerOptions()) ⊇
-            ["--project=@.", "--startup-file=no", "--history-file=no"]
+            ["--startup-file=no", "--history-file=no"]
     else
         @test _convert_to_flags(Configuration.CompilerOptions()) ==
-            ["--project=@.", "--startup-file=no", "--history-file=no"]
+            ["--startup-file=no", "--history-file=no"]
     end
     @test _convert_to_flags(Configuration.CompilerOptions(compile="min")) ⊇
-    ["--compile=min", "--project=@.", "--startup-file=no", "--history-file=no"]
-
-    @test _convert_to_flags(Configuration.CompilerOptions(compile="min", project="test")) ⊇
-    ["--compile=min", "--project=test", "--startup-file=no", "--history-file=no"]
+    ["--compile=min", "--startup-file=no", "--history-file=no"]
 end
 
 @testset "authentication" begin

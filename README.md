@@ -85,8 +85,8 @@ https://user-images.githubusercontent.com/6933510/118800499-45c8d580-b8a0-11eb-8
 
 For one tasty notebook 🥞 you will need:
 
--   **Julia** v1.0 or above, _v1.6 or above is recommended_
--   **Linux**, **macOS** or **Windows**, _Linux and macOS will work best_
+-   **Julia** v1.5 or above
+-   **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
 -   Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
 
 ### Installation

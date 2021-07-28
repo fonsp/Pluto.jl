@@ -135,7 +135,7 @@ function save_notebook(io, notebook::Notebook)
         ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
         mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
         
-        !isempty(ptoml_contents) || !isempty(mtoml_contents)
+        !isempty(strip(ptoml_contents))
     else
         false
     end
@@ -298,7 +298,7 @@ function load_notebook(path::String; disable_writing_notebook_files::Bool=false)
 
     loaded = load_notebook_nobackup(path)
     # Analyze cells so that the initial save is in topological order
-    loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells)
+    loaded.topology = updated_topology(loaded.topology, loaded, loaded.cells) |> static_resolve_topology
     update_dependency_cache!(loaded)
 
     disable_writing_notebook_files || save_notebook(loaded)
