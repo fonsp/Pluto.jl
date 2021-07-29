@@ -28,6 +28,9 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
         }
     }, [popupOpen])
     const show = binder_phase === BinderPhase.wait_for_user
+    //@ts-ignore
+    // allow user-written JS to start the binder
+    window.start_binder = show ? start_binder : () => {}
     if (!show) return null
     const show_binder = binder_phase != null
     const recommend_download = notebookfile_ref.current.startsWith("data:")
