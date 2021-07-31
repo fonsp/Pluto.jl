@@ -21,14 +21,36 @@
         navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/display/placeholder.min.js" defer></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.css">
+    <script
+        src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js"
+        integrity="sha384-puTWMrPXLOGQnFXpGilbRDiGIrohFMYhoqp9Ot/ZuJpZyZ23hA0ozqEqs75pycVy"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.js"
+        integrity="sha384-I8qTInxGuHBUTrKwAEe7f6unZk1duygLU7YXXtvbu+vC2fB/PqW2C2AzCoMHs6LL"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.js"
+        integrity="sha384-gXh5i/qGQ88Z/N+gwafvmLemUpr3sXJ46iGm8MKniJLFFerIuM0e6PZv54WRPBfb"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/display/placeholder.min.js"
+        integrity="sha384-GyXVU5fiyIzLZ1f5Rzq5tk+U59yNYKVD9o8rMORSCTYmpZDG321uQ/rT41pKH19O"
+        crossorigin="anonymous" defer></script>
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.css"
+        integrity="sha384-p4ahNf4SDO1NqgFLODUmBh63S/DacV24rfO5DvFXJaaMfo5sXiKAgLz1fjlG0JwN">
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.css"
+        integrity="sha384-NSxX+j3ACfCgvo2IAYEsdWkrhZoHLiLgZxcvll+xk3CwS7TpyGAnDZhpTmu6oyJs">
 
 
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css"
+        integrity="sha384-ZpKuP2A+8dwzKEfU1XI4lXgNWHtytDlGkioZbykruMG82txIX9MO5Jsc9VsPQNIb">
+    <link rel="stylesheet" crossorigin="anonymous" 
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css"
+        integrity="sha384-sGams23i6sA+1TM7CqA/LYM02hkGUvAKBuz1G03xiGcE+/8vA9bq5w00GfOGpRqf">
     <link rel="stylesheet" href="index.css">
 
     <script src="index.js" type="module" defer></script>

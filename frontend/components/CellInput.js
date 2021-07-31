@@ -6,6 +6,8 @@ import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/Keybo
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
 
+import checkScriptIntegrity from '../imports/check-integrity.js'
+await checkScriptIntegrity('https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js', 'sha384-JzDVZfAaGyBRnuY46iF2UrycaQug3aRlBiR9B0exCr6GrYrOpdBk0MjqfrVj9SOT');
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
 import { detect_deserializer } from "../common/Serialization.js"

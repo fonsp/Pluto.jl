@@ -401,7 +401,10 @@ export let highlight = (code_element, language) => {
                 code_element.classList.add("cm-s-default")
             },
             {
-                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
+                // Commented out since 
+                // 1) not needed since this is manually loaded in editor.html already
+                // 2) it is loaded w/o integrity verification which we don't want
+                // path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
             }
         )
     }

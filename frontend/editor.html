@@ -23,24 +23,118 @@
         navigator.serviceWorker?.register(document.head.querySelector("link[rel='pluto-sw']").getAttribute("href"), { scope: "./" }).catch(console.warn)
     </script>
 
-    <script src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/julia/julia.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/mode/loadmode.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/meta.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/display/placeholder.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/edit/matchbrackets.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/runmode/runmode.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/comment/comment.min.js" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/lodash@4.17.20/lodash.min.js"
+        integrity="sha384-EnW5v27oxpPV45dNJxtnA2OWfHpDTXuO/EzFl+c1vzZcB1aWeANNH0pFZLJ6Gsbr"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/@observablehq/stdlib@3.3.1/dist/stdlib.js"
+        integrity="sha384-puTWMrPXLOGQnFXpGilbRDiGIrohFMYhoqp9Ot/ZuJpZyZ23hA0ozqEqs75pycVy"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/iframe-resizer@4.2.11/js/iframeResizer.min.js"
+        integrity="sha384-fTp2I0abasco+1TIQhjTbS/v5ihiE09Kbng/klOF2y/DtZCcieGzK+ierZKtNBBx"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.js"
+        integrity="sha384-I8qTInxGuHBUTrKwAEe7f6unZk1duygLU7YXXtvbu+vC2fB/PqW2C2AzCoMHs6LL"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/julia/julia.min.js"
+        integrity="sha384-M/B56c5LYW5xoyMZ+7I5uTwn+Omzu8P9fKhc/YQ3ENM7pLOSt1ClLBRcC6iC7AGG"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/mode/loadmode.min.js"
+        integrity="sha384-JlYZNznAJ6kt/dSMcu9XovRQJpbHp+UEerNnQ71mQ0UOuLHuuqfQ+XlGBf/FoQyT"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/meta.min.js"
+        integrity="sha384-LQSN6mnF5HuaNhLWCsTD7rPsHBOxXOTbbdfRz+ON9sw5DL2sbbE3Dkg6maYgqlgd"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.js"
+        integrity="sha384-gXh5i/qGQ88Z/N+gwafvmLemUpr3sXJ46iGm8MKniJLFFerIuM0e6PZv54WRPBfb"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/display/placeholder.min.js"
+        integrity="sha384-GyXVU5fiyIzLZ1f5Rzq5tk+U59yNYKVD9o8rMORSCTYmpZDG321uQ/rT41pKH19O"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/edit/matchbrackets.min.js"
+        integrity="sha384-KN+Sh64Liagu/TFikVZmTuhVs/49Sp6taW1o8+D0xQEVOGI7/EejVQYETgZyay8o"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/runmode/runmode.min.js"
+        integrity="sha384-QuTPRaeZkxOvr+c7n9CUd+KRl1u/KQWO1BUC86SA8TpV1YjKLdwFW5UcHDxP6FvL"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/comment/comment.min.js"
+        integrity="sha384-o0r7YIj3qWZpYsk7KnivDj6MiC9Jrjk5HmJUTBzyD26O6eJDHBoqsIWRCdFiUPXJ"
+        crossorigin="anonymous" defer></script>
     <!-- <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/edit/closebrackets.min.js" defer></script> -->
     <!-- <script src="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/search/searchcursor.min.js" defer></script> -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.css" />
-    <script src="https://cdn.jsdelivr.net/npm/ansi_up@5.0.1/ansi_up.min.js" defer></script>
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/lib/codemirror.min.css"
+        integrity="sha384-p4ahNf4SDO1NqgFLODUmBh63S/DacV24rfO5DvFXJaaMfo5sXiKAgLz1fjlG0JwN"/>
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/codemirror@5.60.0/addon/hint/show-hint.min.css"
+        integrity="sha384-NSxX+j3ACfCgvo2IAYEsdWkrhZoHLiLgZxcvll+xk3CwS7TpyGAnDZhpTmu6oyJs"/>
+    <script
+        src="https://cdn.jsdelivr.net/npm/ansi_up@5.0.1/ansi_up.min.js"
+        integrity="sha384-rLn2uCv2YtVem7eZjB5k0z57HTdm68f/EWc2LOyxjdu8UjOL4KwTFyfBuLvgnx1U"
+        crossorigin="anonymous" defer></script>
 
+    <!-- @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i,500,700&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); -->
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css"
+        integrity="sha384-ZpKuP2A+8dwzKEfU1XI4lXgNWHtytDlGkioZbykruMG82txIX9MO5Jsc9VsPQNIb"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css"
+        integrity="sha384-sGams23i6sA+1TM7CqA/LYM02hkGUvAKBuz1G03xiGcE+/8vA9bq5w00GfOGpRqf"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/500.css"
+        integrity="sha384-lBN/G1nOOJVce0NSNmSUfNJfAU6f+D0Q9VbDIChE8ms3OgstVSr00nUAdaIkDsjG"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/700.css"
+        integrity="sha384-d5oqwTd+nrMwk+nl72phHl5JxZNLAnPXO7nEdBqde83qTnkVrT3pmZOQG+5IirnF"
+        type="text/css" />
+    <!-- @import url("https://fonts.googleapis.com/css?family=Alegreya+Sans:400,400i,500,500i,700,700i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext,vietnamese"); -->
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400.css"
+        integrity="sha384-/6fGKMeg1gVdRo28/BUC41BbaOD+1m0fauTewPxtRvZtybGcX0P+vlXTxtzLKj9/"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500.css"
+        integrity="sha384-ZYLD/1zjvcKlntg6d9WLwReYvagQ+kUNCL+mKp/uucP3KDUtunfq+U5F5sSxR2w9"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700.css"
+        integrity="sha384-Wcn8gnShBrjFCHXpHlvLWnwzyfWVxLNlRNVfcgkY7l2PtyMw/Q52SwYobW7kKQCr"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/400-italic.css"
+        integrity="sha384-fD10NvWOYkVn9DGNjA+vBjtLLk1hJbxwt+gl9Mqlu65g3lQb14Yq0IpJKq1r3D0b"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/500-italic.css"
+        integrity="sha384-PPUXSzVnT3q8HSk425ZcxZaphfqwwaeR3oCb+LpKwE1ggmoMIAMXNWdSWzEC0V5r"
+        type="text/css" />
+    <link rel="stylesheet" crossorigin="anonymous"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/alegreya-sans@4.4.5/700-italic.css"
+        integrity="sha384-Ag4Ld5KvO5rrKeRl+abEPEbUPmr2KNBf4cHAIc/NoBbNgnigzn9ZLk3aHd4h+WLh"
+        type="text/css" />
+    <!-- @import url("https://fonts.googleapis.com/css2?family=Lato&display=swap"); -->
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400.css"
+        integrity="sha384-kEpd/ybRZe3VGN5WkgfWVJFB4U/089JwQlXl+kzcsOjzKKS9dw7lSsCFzVbZjEin"
+        crossorigin="anonymous" type="text/css" />
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/@fontsource/lato@4.4.5/400-italic.css"
+        integrity="sha384-6LsNclGATGjM0Si7NnlTJawgX7HB5Qe7mncLV+ven3Y5pz37BJt5pJiJZv0zDgzm"
+        crossorigin="anonymous" type="text/css" />
     <link rel="stylesheet" href="./editor.css" type="text/css" />
     <link rel="stylesheet" href="./hide-ui.css" type="text/css" media="all" data-pluto-file="hide-ui">
     <link rel="stylesheet" href="./binder.css" type="text/css" />
@@ -49,8 +143,14 @@
     <link rel="preload" href="./vollkorn.css" as="style">
 
     <!-- The instant feedback form at the bottom of the page uses Google Firestore to save feedback. -->
-    <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-app.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-firestore.js" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-app.js"
+        integrity="sha384-Q4E1UXigqkyjIO3F08vSWRbT0b+oTUY1GwLa5BuoAZkCcxzitThNAKOleFuVCXMG"
+        crossorigin="anonymous" defer></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/firebase@7.13.1/firebase-firestore.js"
+        integrity="sha384-BSp85R+4PVtghs8vQSnx1VGWATFBYtWiEVyEM96tiZWa0NlY/oDztjaWrBEKFD9K"
+        crossorigin="anonymous" defer></script>
 
     <!-- [automatically generated launch parameters can be inserted here] -->
 
@@ -58,7 +158,10 @@
     <script src="./warn_old_browsers.js"></script>
 
     <script src="./common/SetupMathJax.js"></script>
-    <script type="text/javascript" id="MathJax-script" src="https://cdn.jsdelivr.net/npm/mathjax@3.1.2/es5/tex-svg-full.js" async></script>
+    <script type="text/javascript" id="MathJax-script"
+        src="https://cdn.jsdelivr.net/npm/mathjax@3.1.2/es5/tex-svg-full.js"
+        integrity="sha384-VNy4JkI16R9GCNiJUCI27sGNe0Sw8gv1ichFHkTMKChXK32eYSMtzAkhFunKJ/fb"
+        crossorigin="anonymous" async></script>
 
 </head>
 

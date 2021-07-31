@@ -1,3 +1,5 @@
+import checkScriptIntegrity from './check-integrity.js'
+await checkScriptIntegrity('https://cdn.jsdelivr.net/npm/immer@8.0.0/dist/immer.esm.js', 'sha384-GkoRy8Rv07826TejLI7RKpqqGD0sJDHPd2bJaN0Zyx1v/WtnsDO3OBNeB60ffFbB');
 // @ts-nocheck
 import immer, { produceWithPatches, applyPatches, enablePatches, setAutoFreeze } from "https://cdn.jsdelivr.net/npm/immer@8.0.0/dist/immer.esm.js"
 
