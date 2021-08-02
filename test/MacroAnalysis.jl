@@ -134,6 +134,10 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         # Checks that no fancy type is part of the serialized expression
         @test Set([Symbol, QuoteNode]) == types
+
+        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
+        @test sanitized_expr.args[2] == :A
+        @test sanitized_expr.args[1] == :(Main.f)
     end
 
     @testset "Package macro 1" begin
