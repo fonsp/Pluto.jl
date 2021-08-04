@@ -1,6 +1,6 @@
 using Test
 import UUIDs
-import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
+import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
 
 @testset "Macro analysis" begin
     🍭 = ServerSession()
@@ -116,6 +116,28 @@ import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, up
         update_run!(🍭, notebook, notebook.cells)
 
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+    end
+
+    @testset "Expr sanitization" begin
+        struct A; end
+        f(x) = x
+        unserializable_expr = Expr(:call, f, A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr)
+
+        get_expr_types(other) = typeof(other)
+        get_expr_types(ex::Expr) = get_expr_types.(ex.args)
+
+        flatten(x, acc=[]) = push!(acc, x)
+        function flatten(arr::AbstractVector, acc=[]) foreach(x -> flatten(x, acc), arr); acc end
+
+        sanitized_expr = PlutoRunner.sanitize_expr(unserializable_expr)
+        types = sanitized_expr |> get_expr_types |> flatten |> Set
+
+        # Checks that no fancy type is part of the serialized expression
+        @test Set([Symbol, QuoteNode]) == types
+
+        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
+        @test sanitized_expr.args[2] == :A
+        @test sanitized_expr.args[1] == :(Main.f)
     end
 
     @testset "Package macro 1" begin

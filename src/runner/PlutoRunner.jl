@@ -135,6 +135,10 @@ function sanitize_expr(union_all::UnionAll)
     sanitize_expr(union_all.body)
 end
 
+function sanitize_expr(vec::AbstractVector)
+    Expr(:vect, sanitize_expr.(vec)...)
+end
+
 function sanitize_expr(mod::Module)
     fullname(mod) |> wrap_dot
 end
