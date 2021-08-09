@@ -3,10 +3,11 @@ import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
-export const Preamble = ({ any_code_differs, last_update_time }) => {
+export const Preamble = ({ any_code_differs, last_update_time, last_file_modified }) => {
     let pluto_actions = useContext(PlutoContext)
 
     const [state, set_state] = useState("")
+    const [filestate, set_filestate] = useState("")
     const timeout_ref = useRef(null)
 
     useEffect(() => {
@@ -25,6 +26,14 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
         }
         return () => clearTimeout(timeout_ref?.current)
     }, [any_code_differs])
+
+    useEffect(() => {
+        if (last_file_modified - last_update_time > 1000) {
+            set_filestate("ask_to_load")
+        } else {
+            set_filestate("")
+        }
+    },[last_file_modified])
 
     return html`<preamble>
         ${state === "ask_to_save"
@@ -53,5 +62,21 @@ export const Preamble = ({ any_code_differs, last_update_time }) => {
                   </div>
               `
             : null}
+            ${filestate === "ask_to_load"
+            ? html`
+                  <div id="loadnotebook-container" class=${filestate}>
+                      <button
+                          onClick=${() => {
+                              set_state("loading")
+                              pluto_actions.reload_from_file()
+                          }}
+                          title="Load notebook from file"
+                      >
+                          <span class="only-on-hover"><b>Notebook file has changed, </b> </span><span>Click to Reload</span>
+                      </button>
+                  </div>
+              `
+            : null
+                }
     </preamble>`
 }

@@ -201,6 +201,7 @@ export class Editor extends Component {
             desired_doc_query: null,
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
+            last_file_modified: 0,
 
             disable_ui: this.launch_params.disable_ui,
             static_preview: this.launch_params.statefile != null,
@@ -542,6 +543,13 @@ export class Editor extends Component {
                 const { message } = await this.client.send("nbpkg_available_versions", { package_name: package_name }, { notebook_id: notebook_id })
                 return message.versions
             },
+            reload_from_file: () => {
+                return this.client.send(
+                    "reload_from_file",
+                    {},
+                    {notebook_id: this.state.notebook.notebook_id}
+                )
+            }
         }
 
         const apply_notebook_patches = (patches, old_state = undefined) =>
@@ -633,6 +641,14 @@ patch: ${JSON.stringify(
                         break
                     case "log":
                         handle_log(message, this.state.notebook.path)
+                        break
+                    case "update_notebook_filetime":
+                        console.log(message)
+                        this.setState({last_file_modified: message.timestamp})
+                        console.log('last_update_time:',this.state.last_update_time)
+                        console.log('now:',Date.now())
+                        console.log('received_timestamp:',message.timestamp)
+                        console.log(this.state.last_update_time - message.timestamp)
                         break
                     default:
                         console.error("Received unknown update type!", update)
@@ -1044,6 +1060,14 @@ patch: ${JSON.stringify(
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
         }
+
+        if (old_state.last_update_time !== this.state.last_update_time) {
+            console.log('last_update_time changed from',old_state.last_update_time,'to',this.state.last_update_time)
+        }
+
+        if (old_state.last_file_modified !== this.state.last_file_modified) {
+            console.log('last_file_modified changed from',old_state.last_file_modified,'to',this.state.last_file_modified)
+        }
     }
 
     componentWillUpdate(new_props, new_state) {
@@ -1152,6 +1176,7 @@ patch: ${JSON.stringify(
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
+                            last_file_modified=${this.state.last_file_modified}
                         />
                         <${Notebook}
                             notebook=${this.state.notebook}

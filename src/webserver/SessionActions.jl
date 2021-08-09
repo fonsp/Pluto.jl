@@ -1,6 +1,8 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog, UpdateMessage
+import FileWatching: watch_file
+import Dates: now, datetime2unix, UTC
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -53,6 +55,15 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     else
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
+    end
+
+    @asynclog while true
+        watch_file(nb.path)
+        # When the file changes, send the message to the editor to update the last change last_run_timestamp
+        timestamp = now(UTC)
+        unix_timestamp = round(Int,datetime2unix(timestamp)*1000) # Keep it in milliseconds as in js
+        println("File updated at $(now()), (UTC Date: $timestamp, unixtime: $unix_timestamp)")
+        putplutoupdates!(session, UpdateMessage(:update_notebook_filetime, Dict(:timestamp => unix_timestamp), nb, nothing, nothing))
     end
 
     nb
