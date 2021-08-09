@@ -549,6 +549,5 @@ responses[:reload_from_file] = function reload_from_file(🙋::ClientRequest)
     require_notebook(🙋)
     println("Reloading notebook from file")
     update_from_file(🙋.session,🙋.notebook)
-    # update_nbpkg(🙋.session, 🙋.notebook)
-    # putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:notebook_reloaded, Dict(:update_status => "complete"), 🙋.notebook, nothing, 🙋.initiator))
 end

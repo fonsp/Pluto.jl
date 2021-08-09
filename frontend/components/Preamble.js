@@ -3,7 +3,7 @@ import { cl } from "../common/ClassTable.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { is_mac_keyboard } from "../common/KeyboardShortcuts.js"
 
-export const Preamble = ({ any_code_differs, last_update_time, last_file_modified }) => {
+export const Preamble = ({ any_code_differs, last_update_time, notebook_file_newer }) => {
     let pluto_actions = useContext(PlutoContext)
 
     const [state, set_state] = useState("")
@@ -28,12 +28,12 @@ export const Preamble = ({ any_code_differs, last_update_time, last_file_modifie
     }, [any_code_differs])
 
     useEffect(() => {
-        if (last_file_modified - last_update_time > 1000) {
+        if (notebook_file_newer) {
             set_filestate("ask_to_load")
         } else {
             set_filestate("")
         }
-    },[last_file_modified])
+    },[notebook_file_newer])
 
     return html`<preamble>
         ${state === "ask_to_save"
@@ -66,9 +66,12 @@ export const Preamble = ({ any_code_differs, last_update_time, last_file_modifie
             ? html`
                   <div id="loadnotebook-container" class=${filestate}>
                       <button
-                          onClick=${() => {
-                              set_state("loading")
-                              pluto_actions.reload_from_file()
+                          onClick=${async () => {
+                              console.log("loading")
+                              set_filestate("loading")
+                              await pluto_actions.reload_from_file()
+                              console.log("reloaded")
+                              set_filestate("")
                           }}
                           title="Load notebook from file"
                       >
