@@ -746,7 +746,8 @@ main > preamble {
     pointer-events: none;
 }
 
-main > preamble #saveall-container {
+main > preamble #saveall-container,
+main > preamble #loadnotebook-container {
     margin-left: auto;
     pointer-events: all;
     right: min(0px, 700px + 25px - 100vw);
@@ -760,8 +761,13 @@ main > preamble #saveall-container {
     font-size: 0.75rem;
 }
 
+main > preamble #saveall-container + #loadnotebook-container {
+    margin-left: 0;
+}
+
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
-    main > preamble #saveall-container {
+    main > preamble #saveall-container,
+    main > preamble #loadnotebook-container {
         right: -500px;
     }
 }
@@ -798,10 +804,12 @@ main > preamble button {
     position: relative;
 }
 
-#saveall-container .only-on-hover {
+#saveall-container .only-on-hover,
+#loadnotebook-container .only-on-hover {
     display: none;
 }
-#saveall-container:hover .only-on-hover {
+#saveall-container:hover .only-on-hover,
+#loadnotebook-container:hover .only-on-hover {
     display: inline;
 }
 
