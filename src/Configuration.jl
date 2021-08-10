@@ -36,6 +36,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
 - `disable_writing_notebook_files::Bool = false`
 - `notebook::Union{Nothing,String} = nothing`
 - `simulated_lag::Real=0.0`
+- `auto_reload_notebook_from_file::Bool = false`
 """
 @option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
@@ -49,6 +50,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook::Union{Nothing,String} = nothing
     init_with_file_viewer::Bool=false
     simulated_lag::Real=0.0
+    auto_reload_notebook_from_file::Bool = false
 end
 
 """

@@ -88,7 +88,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     end
 
-    notebook_file_watch(session,nb)
+    notebook_file_watch(session,nb;ask_before_reload = !session.options.server.auto_reload_notebook_from_file)
 
     nb
 end
@@ -143,7 +143,7 @@ function new(session::ServerSession; run_async=true)
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     end
 
-    notebook_file_watch(session,nb)
+    notebook_file_watch(session,nb;ask_before_reload = !session.options.server.auto_reload_notebook_from_file)
 
     nb
 end
