@@ -549,7 +549,6 @@ export class Editor extends Component {
                     {},
                     {notebook_id: this.state.notebook.notebook_id}
                 )
-                console.log('message',message)
                 this.setState({last_update_time: Date.now()})
                 this.setState({notebook_file_newer: false})
                 return
@@ -647,9 +646,6 @@ patch: ${JSON.stringify(
                         handle_log(message, this.state.notebook.path)
                         break
                     case "update_notebook_filetime":
-                        console.log(message)
-                        console.log(this.state.last_update_time)
-                        console.log(this.state.notebook_file_newer)
                         /* Only update the state here if the notebook_file_newer is false */
                         if (message.timestamp - this.state.last_update_time > 1000 && !this.state.notebook_file_newer) {
                             this.setState({notebook_file_newer: true})
@@ -1064,10 +1060,6 @@ patch: ${JSON.stringify(
 
         if (old_state.disable_ui !== this.state.disable_ui) {
             this.on_disable_ui()
-        }
-
-        if (old_state.last_update_time !== this.state.last_update_time) {
-            console.log('last_update_time changed from',old_state.last_update_time,'to',this.state.last_update_time)
         }
     }
 
