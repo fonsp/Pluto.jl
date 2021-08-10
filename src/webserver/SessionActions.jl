@@ -37,7 +37,6 @@ function notebook_file_watch(session::ServerSession,nb::Notebook;ask_before_relo
             # When the file changes, send the timestamp to the editor which assess if the file was modified later than the frontend
             timestamp = now(UTC)
             if (timestamp - last_timestamp) > min_time_between_changes
-                println("Valid timing: $(timestamp - last_timestamp)")
                 if ask_before_reload
                     unix_timestamp = round(Int,datetime2unix(timestamp)*1000) # Keep it in milliseconds as in js
                     putplutoupdates!(session, UpdateMessage(:update_notebook_filetime, Dict(:timestamp => unix_timestamp), nb, nothing, nothing))
