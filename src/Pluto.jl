@@ -74,4 +74,6 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 \n"""
 end
 
+include("./precompile_module.jl")
+
 end
