@@ -25,6 +25,6 @@ let
     new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 	update_dependency_cache!(notebook)
 
-    # run_reactive!(session, notebook, old, new, cells) # crashes
+    notebook_to_js(notebook) # export to JS
 
 end
