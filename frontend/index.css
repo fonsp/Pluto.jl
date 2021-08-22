@@ -1,9 +1,7 @@
-/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 
-/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
-
+@import url("vollkorn.css");
 @import url("juliamono.css");
 
 * {
@@ -205,15 +203,15 @@ body.nosessions ul#new ~ * {
 }
 
 #recent li.running button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg);
 }
 
 #recent li.recent button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
 #recent li.transitioning button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg);
 }
 
 loading-bar {

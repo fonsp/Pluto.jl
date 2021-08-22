@@ -78,9 +78,14 @@ export const request_binder = (build_url) =>
         }
     })
 
+// view stats on https://stats.plutojl.org/
+export const count_stat = (page) =>
+    fetch(`https://stats.plutojl.org/count?p=/${page}&s=${screen.width},${screen.height},${devicePixelRatio}#skip_sw`, { cache: "no-cache" }).catch(() => {})
+
 export const start_binder = async ({ setStatePromise, connect, launch_params }) => {
     try {
-        fetch(`https://cdn.jsdelivr.net/gh/fonsp/pluto-usage-counter@1/binder-start.txt?skip_sw`).catch(() => {})
+        // view stats on https://stats.plutojl.org/
+        count_stat(`binder-start`)
         await setStatePromise(
             immer((state) => {
                 state.binder_phase = BinderPhase.requesting
@@ -114,19 +119,26 @@ export const start_binder = async ({ setStatePromise, connect, launch_params }) 
 
         let open_response
 
-        for (const [p1, p2] of [
-            ["path", launch_params.notebookfile],
-            ["url", new URL(launch_params.notebookfile, window.location.href).href],
-        ]) {
-            const open_url = new URL("open", binder_session_url)
-            open_url.searchParams.set(p1, p2)
-
-            console.log(`open ${p1}:`, String(open_url))
-            open_response = await fetch(with_token(open_url), {
+        if (launch_params.notebookfile.startsWith("data:")) {
+            open_response = await fetch(with_token(new URL("notebookupload", binder_session_url)), {
                 method: "POST",
+                body: await (await fetch(launch_params.notebookfile)).arrayBuffer(),
             })
-            if (open_response.ok) {
-                break
+        } else {
+            for (const [p1, p2] of [
+                ["path", launch_params.notebookfile],
+                ["url", new URL(launch_params.notebookfile, window.location.href).href],
+            ]) {
+                const open_url = new URL("open", binder_session_url)
+                open_url.searchParams.set(p1, p2)
+
+                console.log(`open ${p1}:`, String(open_url))
+                open_response = await fetch(with_token(open_url), {
+                    method: "POST",
+                })
+                if (open_response.ok) {
+                    break
+                }
             }
         }
 

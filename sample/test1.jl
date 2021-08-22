@@ -412,7 +412,7 @@ ra = 1:100
 1:13
 
 # ╔═╡ 23f41dd2-b15c-11ea-17d2-45b3e83093ba
-Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => :b))
+Ref(Dict(:a => [1,md"![](https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/PDS_70.jpg/567px-PDS_70.jpg)", md"# Hello"], [3,4] => (:b, (x=3, y=2))))
 
 # ╔═╡ 4d452956-d682-11ea-3aeb-cd7d1b2f67dc
 s="12345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678012345678056780123456780123456780123456780123456780123456780123456780123456780123456780120123456780\n\n\"\"\n\n5678012345678012

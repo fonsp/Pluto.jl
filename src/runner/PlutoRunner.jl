@@ -26,6 +26,7 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
+ExpandedCallCells = Dict{UUID,Expr}()
 
 
 
@@ -38,29 +39,130 @@ const ObjectDimPair = Tuple{ObjectID,Int64}
 # WORKSPACE MANAGER
 ###
 
-# Will be set to the latest workspace module
-"The current workspace where your variables live. See [`move_vars`](@ref)."
-current_module = Main
-
 """
 `PlutoRunner.notebook_id[]` gives you the notebook ID used to identify a session.
 """
 const notebook_id = Ref{UUID}(uuid4())
 
-function set_current_module(newname)
+function revise_if_possible(m::Module)
     # Revise.jl support
-    if isdefined(current_module, :Revise) &&
-        isdefined(current_module.Revise, :revise) && current_module.Revise.revise isa Function &&
-        isdefined(current_module.Revise, :revision_queue) && current_module.Revise.revision_queue isa AbstractSet
+    if isdefined(m, :Revise) &&
+        isdefined(m.Revise, :revise) && m.Revise.revise isa Function &&
+        isdefined(m.Revise, :revision_queue) && m.Revise.revision_queue isa AbstractSet
 
-        if !isempty(current_module.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
-            current_module.Revise.revise()
+        if !isempty(m.Revise.revision_queue) # to avoid the sleep(0.01) in revise()
+            m.Revise.revise()
         end
     end
-
-    global default_iocontext = IOContext(default_iocontext, :module => current_module)
-    global current_module = getfield(Main, newname)
 end
+
+"These expressions get evaluated inside every newly create module inside a `Workspace`."
+const workspace_preamble = [
+    :(using Main.PlutoRunner, Main.PlutoRunner.Markdown, Main.PlutoRunner.InteractiveUtils),
+    :(show, showable, showerror, repr, string, print, println), # https://github.com/JuliaLang/julia/issues/18181
+]
+
+const moduleworkspace_count = Ref(0)
+function increment_current_module()::Symbol
+    id = (moduleworkspace_count[] += 1)
+    new_workspace_name = Symbol("workspace", id)
+
+    new_module = Core.eval(Main, :(
+        module $(new_workspace_name) $(workspace_preamble...) end
+    ))
+
+    new_workspace_name
+end
+
+function wrap_dot(ref::GlobalRef)
+    complete_mod_name = fullname(ref.mod) |> wrap_dot
+    Expr(:(.), complete_mod_name, QuoteNode(ref.name))
+end
+function wrap_dot(name)
+    if length(name) == 1
+        name[1]
+    else
+        Expr(:(.), wrap_dot(name[1:end-1]), QuoteNode(name[end]))
+    end
+end
+
+"""
+Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
+"""
+no_workspace_ref(other, _=nothing) = other
+no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
+function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
+    test_mod_name = nameof(ref.mod) |> string
+    if startswith(test_mod_name, "workspace") &&
+        (mod_name === nothing ||
+            startswith(string(ref.name), ".") ||  # workaround for https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
+            string(mod_name)[9:end] !== test_mod_name[9:end])
+        ref.name
+    else
+        ref
+    end
+end
+
+function sanitize_expr(symbol::Symbol)
+    symbol
+end
+
+function sanitize_expr(dt::Union{DataType,Enum})
+    Symbol(dt)
+end
+
+function sanitize_expr(ref::GlobalRef)
+    test_mod_name = nameof(ref.mod) |> string
+    if startswith(test_mod_name, "workspace")
+        ref.name
+    else
+        wrap_dot(ref)
+    end
+end
+
+function sanitize_expr(expr::Expr)
+    Expr(expr.head, sanitize_expr.(expr.args)...)
+end
+
+# a function as part of an Expr is most likely a closure
+# returned from a macro
+function sanitize_expr(func::Function)
+    mt = typeof(func).name.mt
+    GlobalRef(mt.module, mt.name) |> sanitize_expr
+end
+
+function sanitize_expr(union_all::UnionAll)
+    sanitize_expr(union_all.body)
+end
+
+function sanitize_expr(vec::AbstractVector)
+    Expr(:vect, sanitize_expr.(vec)...)
+end
+
+function sanitize_expr(mod::Module)
+    fullname(mod) |> wrap_dot
+end
+
+# An instanciation of a struct as part of an Expr
+# will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
+function sanitize_expr(other)
+    typename = other |> typeof
+    typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
+        other :
+        Symbol(typename)
+end
+
+function try_macroexpand(mod, cell_uuid, expr)
+    try
+        expanded_expr = macroexpand(mod, expr)
+        ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
+
+        return sanitize_expr(expanded_expr)
+    catch e
+        return e
+    end
+end
+
 
 
 
@@ -117,10 +219,10 @@ end
 quote_if_needed(x) = x
 quote_if_needed(x::Union{Expr, Symbol, QuoteNode}) = QuoteNode(x)
 
-function compute(computer::Computer)
+function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
-    input_global_values = getfield.([current_module], computer.input_globals)
+    input_global_values = getfield.([m], computer.input_globals)
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
@@ -128,7 +230,7 @@ function compute(computer::Computer)
         result, output_global_values = out
 
         for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(current_module, Expr(:(=), name, quote_if_needed(val)))
+            Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
         end
 
         result
@@ -159,7 +261,7 @@ end
 """
 Run the expression or function inside a try ... catch block, and verify its "return proof".
 """
-function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proof::ReturnProof)
+function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::ReturnProof)
     # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
     # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
 
@@ -169,7 +271,7 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
     ans, runtime = try
         local invocation = if f isa Expr
             # We eval `f` in the global scope of the workspace module:
-            Core.eval(current_module, f)
+            Core.eval(m, f)
         else
             # f is a function
             f()
@@ -188,6 +290,15 @@ function run_inside_trycatch(f::Union{Expr,Function}, cell_id::UUID, return_proo
 end
 
 
+visit_expand(_, other) = other
+function visit_expand(current_module::Module, expr::Expr)
+    if expr.head == :macrocall
+        no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
+    else
+        Expr(expr.head, map(arg -> visit_expand(current_module, arg), expr.args)...)
+    end
+end
+
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
 
@@ -195,14 +306,28 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     result, runtime = if function_wrapped_info === nothing
+        expr = pop!(ExpandedCallCells, cell_id, expr)
         proof = ReturnProof()
-        wrapped = timed_expr(expr, proof)
-        run_inside_trycatch(wrapped, cell_id, proof)
+
+        # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
+        if contains_user_defined_macrocalls
+            try
+                expr = visit_expand(m, expr)
+                wrapped = timed_expr(expr, proof)
+                run_inside_trycatch(m, wrapped, proof)
+            catch ex
+                bt = stacktrace(catch_backtrace())
+                (CapturedException(ex, bt), nothing)
+            end
+        else
+            wrapped = timed_expr(expr, proof)
+            run_inside_trycatch(m, wrapped, proof)
+        end
     else
         key = expr_hash(expr)
         local computer = get(computers, key, nothing)
@@ -211,17 +336,15 @@ function run_expression(expr::Any, cell_id::UUID, function_wrapped_info::Union{N
                 computer = register_computer(expr, key, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(expr, cell_id, nothing)
+                return run_expression(m, expr, cell_id, nothing)
             end
         end
-        ans, runtime = run_inside_trycatch(cell_id, computer.return_proof) do
-            compute(computer)
-        end
+        ans, runtime = run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
         # The fix is to detect this situation and run the expression in the classical way.
         if (ans isa CapturedException) && (ans.ex isa UndefVarError)
-            run_expression(expr, cell_id, nothing)
+            run_expression(m, expr, cell_id, nothing)
         else
             ans, runtime
         end
@@ -247,6 +370,14 @@ end
 ###
 
 
+function do_reimports(workspace_name, module_imports_to_move::Set{Expr})
+    for expr in module_imports_to_move
+        try
+            Core.eval(workspace_name, expr)
+        catch e end # TODO catch specificallly
+    end
+end
+
 """
 Move some of the globals over from one workspace to another. This is how Pluto "deletes" globals - it doesn't, it just executes your new code in a new module where those globals are not defined.
 
@@ -256,22 +387,18 @@ The trick boils down to two things:
 1. When we create a new workspace module, we move over some of the global from the old workspace. (But not the ones that we want to 'delete'!)
 2. If a function used to be defined, but now we want to delete it, then we go through the method table of that function and snoop out all methods that we defined by us, and not by another package. This is how we reverse extending external functions. For example, if you run a cell with `Base.sqrt(s::String) = "the square root of" * s`, and then delete that cell, then you can still call `sqrt(1)` but `sqrt("one")` will err. Cool right!
 """
-function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
+function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_to_delete::Set{Symbol}, methods_to_delete::Set{Tuple{UUID,Vector{Symbol}}}, module_imports_to_move::Set{Expr})
     old_workspace = getfield(Main, old_workspace_name)
     new_workspace = getfield(Main, new_workspace_name)
 
-    for expr in module_imports_to_move
-        try
-            Core.eval(new_workspace, expr)
-        catch; end # TODO catch specificallly
-    end
+    do_reimports(new_workspace, module_imports_to_move)
 
     # TODO: delete
     Core.eval(new_workspace, :(import ..($(old_workspace_name))))
 
     old_names = names(old_workspace, all=true, imported=true)
 
-    funcs_with_no_methods_left = filter(funcs_to_delete) do f
+    funcs_with_no_methods_left = filter(methods_to_delete) do f
         !try_delete_toplevel_methods(old_workspace, f)
     end
     name_symbols_of_funcs_with_no_methods_left = last.(last.(funcs_with_no_methods_left))
@@ -312,6 +439,8 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             end
         end
     end
+
+    revise_if_possible(new_workspace)
 end
 
 "Return whether the `method` was defined inside this notebook, and not in external code."
@@ -417,22 +546,23 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
+    currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
-        tree_display_extra_items[id] = Dict{ObjectDimPair,Int64}()
+        tree_display_extra_items[cell_id] = Dict{ObjectDimPair,Int64}()
     else
-        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, id)
+        old = get!(() -> Dict{ObjectDimPair,Int64}(), tree_display_extra_items, cell_id)
         old[showmore] = get(old, showmore, 0) + 1
         old
     end
 
-    ans = cell_results[id]
+    ans = cell_results[cell_id]
     errored = ans isa CapturedException
 
     output_formatted = if (!ends_with_semicolon || errored)
-        format_output(ans; context=:extra_items=>extra_items)
+        format_output(ans; context=IOContext(default_iocontext, :extra_items=>extra_items, :module => workspace))
     else
         ("", MIME"text/plain"())
     end
@@ -441,8 +571,8 @@ function formatted_result_of(id::UUID, ends_with_semicolon::Bool, showmore::Unio
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
-        runtime = get(cell_runtimes, id, nothing),
-        published_objects = get(cell_published_objects, id, Dict{String,Any}()),
+        runtime = get(cell_runtimes, cell_id, nothing),
+        published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
     )
 end
 
@@ -479,7 +609,7 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88))
+const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -497,10 +627,9 @@ Format `val` using the richest possible output, return formatted string and used
 
 See [`allmimes`](@ref) for the ordered list of supported MIME types.
 """
-function format_output_default(@nospecialize(val), @nospecialize(context=nothing))::MimedOutput
+function format_output_default(@nospecialize(val), @nospecialize(context=default_iocontext))::MimedOutput
     try
-        new_iocontext = IOContext(default_iocontext, context)
-        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=new_iocontext)
+        io_sprinted, (value, mime) = sprint_withreturned(show_richest, val; context=context)
         if value === nothing
             if mime ∈ imagemimes
                 (io_sprinted, mime)
@@ -517,11 +646,11 @@ function format_output_default(@nospecialize(val), @nospecialize(context=nothing
     end
 end
 
-format_output(@nospecialize(x); context=nothing) = format_output_default(x, context)
+format_output(@nospecialize(x); context=default_iocontext) = format_output_default(x, context)
 
-format_output(::Nothing; context=nothing) = ("", MIME"text/plain"())
+format_output(::Nothing; context=default_iocontext) = ("", MIME"text/plain"())
 
-function format_output(val::CapturedException; context=nothing)
+function format_output(val::CapturedException; context=default_iocontext)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s, _) in val.processed_bt]
 
@@ -631,9 +760,11 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         show(io, mime, x)
         nothing, mime
     elseif mime isa MIME"text/latex"
-        # Wrapping with `\text{}` allows for LaTeXStrings with mixed text/math
+        # Some reprs include $ at the start and end.
+        # We strip those, since Markdown.LaTeX should contain the math content.
+        # (It will be rendered by MathJax, which is math-first, not text-first.)
         texed = repr(mime, x)
-        html(io, Markdown.LaTeX("\\text{$texed}"))
+        Markdown.html(io, Markdown.LaTeX(strip(texed, ('$', '\n', ' '))))
         nothing, MIME"text/html"()
     else
         # the classic:
@@ -690,8 +821,14 @@ function array_prefix(@nospecialize(x))::String
     lstrip(original, ':') * ": "
 end
 
-function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
-    a + let
+function get_my_display_limit(@nospecialize(x), dim::Integer, depth::Integer, context::IOContext, a::Integer, b::Integer)::Int # needs to be system-dependent Int because it is used as array index
+    let
+        if depth < 3
+            a ÷ (1 + 2 * depth)
+        else
+            0
+        end
+    end + let
         d = get(context, :extra_items, nothing)
         if d === nothing
             0
@@ -702,85 +839,121 @@ function get_my_display_limit(@nospecialize(x), dim::Integer, context::IOContext
 end
 
 function tree_data(@nospecialize(x::AbstractSet{<:Any}), context::IOContext)
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
+    else
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-    L = min(my_limit+1, length(x))
-    elements = Vector{Any}(undef, L)
-    for (index, value) in enumerate(x)
-        if index <= my_limit
-            elements[index] = (index, format_output_default(value, context))
-        else
-            elements[index] = "more"
-            break
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
+
+        L = min(my_limit+1, length(x))
+        elements = Vector{Any}(undef, L)
+        index = 1
+        for value in x
+            if index <= my_limit
+                elements[index] = (index, format_output_default(value, recur_io))
+            else
+                elements[index] = "more"
+                break
+            end
+            index += 1
         end
-    end
 
-    Dict{Symbol,Any}(
-        :prefix => string(typeof(x)),
-        :prefix_short => string(typeof(x) |> trynameof),
-        :objectid => string(objectid(x), base=16),
-        :type => :Set,
-        :elements => elements
-    )
+        Dict{Symbol,Any}(
+            :prefix => string(typeof(x)),
+            :prefix_short => string(typeof(x) |> trynameof),
+            :objectid => string(objectid(x), base=16),
+            :type => :Set,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data(@nospecialize(x::AbstractArray{<:Any,1}), context::IOContext)
-    indices = eachindex(x)
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
-
-    # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
-    elements = if length(x) <= my_limit + 5
-        tree_data_array_elements(x, indices, context)
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
     else
-        firsti = firstindex(x)
-        from_end = my_limit > 20 ? 10 : 1
-        Any[
-            tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], context)...,
-            "more",
-            tree_data_array_elements(x, indices[end+1-from_end:end], context)...,
-        ]
-    end
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-    prefix = array_prefix(x)
-    Dict{Symbol,Any}(
-        :prefix => prefix,
-        :prefix_short => x isa Vector ? "" : prefix, # if not abstract
-        :objectid => string(objectid(x), base=16),
-        :type => :Array,
-        :elements => elements
-    )
+        indices = eachindex(x)
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
+
+        # additional couple of elements so that we don't cut off 1 or 2 itmes - that's silly
+        elements = if length(x) <= ((my_limit * 6) ÷ 5)
+            tree_data_array_elements(x, indices, recur_io)
+        else
+            firsti = firstindex(x)
+            from_end = my_limit > 20 ? 10 : my_limit > 1 ? 1 : 0
+            Any[
+                tree_data_array_elements(x, indices[firsti:firsti-1+my_limit-from_end], recur_io)...,
+                "more",
+                tree_data_array_elements(x, indices[end+1-from_end:end], recur_io)...,
+            ]
+        end
+
+        prefix = array_prefix(x)
+        Dict{Symbol,Any}(
+            :prefix => prefix,
+            :prefix_short => x isa Vector ? "" : prefix, # if not abstract
+            :objectid => string(objectid(x), base=16),
+            :type => :Array,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data(@nospecialize(x::Tuple), context::IOContext)
+    depth = get(context, :tree_viewer_depth, 0)
+    recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
+
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :Tuple,
-        :elements => collect(enumerate(format_output_default.(x, [context]))),
+        :elements => collect(enumerate(format_output_default.(x, [recur_io]))),
     )
 end
 
 function tree_data(@nospecialize(x::AbstractDict{<:Any,<:Any}), context::IOContext)
-    elements = []
+    if Base.show_circular(context, x)
+        Dict{Symbol,Any}(
+            :objectid => string(objectid(x), base=16),
+            :type => :circular,
+        )
+    else
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x), Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
 
-    my_limit = get_my_display_limit(x, 1, context, tree_display_limit, tree_display_limit_increase)
-    row_index = 1
-    for pair in x
-        k, v = pair
-        push!(elements, (format_output_default(k, context), format_output_default(v, context)))
-        if row_index == my_limit
-            push!(elements, "more")
-            break
+        elements = []
+
+        my_limit = get_my_display_limit(x, 1, depth, context, tree_display_limit, tree_display_limit_increase)
+        row_index = 1
+        for pair in x
+            k, v = pair
+            if row_index <= my_limit
+                push!(elements, (format_output_default(k, recur_io), format_output_default(v, recur_io)))
+            else
+                push!(elements, "more")
+                break
+            end
+            row_index += 1
         end
-        row_index += 1
-    end
 
-    Dict{Symbol,Any}(
-        :prefix => string(typeof(x)),
-        :prefix_short => string(typeof(x) |> trynameof),
-        :objectid => string(objectid(x), base=16),
-        :type => :Dict,
-        :elements => elements
-    )
+        Dict{Symbol,Any}(
+            :prefix => string(typeof(x)),
+            :prefix_short => string(typeof(x) |> trynameof),
+            :objectid => string(objectid(x), base=16),
+            :type => :Dict,
+            :elements => elements
+        )
+    end
 end
 
 function tree_data_nt_row(pair::Tuple, context::IOContext)
@@ -791,10 +964,13 @@ end
 
 
 function tree_data(@nospecialize(x::NamedTuple), context::IOContext)
+    depth = get(context, :tree_viewer_depth, 0)
+    recur_io = IOContext(context, Pair{Symbol,Any}(:tree_viewer_depth, depth + 1))
+
     Dict{Symbol,Any}(
         :objectid => string(objectid(x), base=16),
         :type => :NamedTuple,
-        :elements => tree_data_nt_row.(zip(eachindex(x), x), (context,))
+        :elements => tree_data_nt_row.(zip(eachindex(x), x), (recur_io,))
     )
 end
 
@@ -809,19 +985,23 @@ end
 
 # Based on Julia source code but without writing to IO
 function tree_data(@nospecialize(x::Any), context::IOContext)
-    t = typeof(x)
-    nf = nfields(x)
-    nb = sizeof(x)
-
     if Base.show_circular(context, x)
         Dict{Symbol,Any}(
             :objectid => string(objectid(x), base=16),
             :type => :circular,
         )
     else
-        recur_io = IOContext(context, Pair{Symbol,Any}(:SHOWN_SET, x),
-                                Pair{Symbol,Any}(:typeinfo, Any))
+        depth = get(context, :tree_viewer_depth, 0)
+        recur_io = IOContext(context, 
+            Pair{Symbol,Any}(:SHOWN_SET, x),
+            Pair{Symbol,Any}(:typeinfo, Any),
+            Pair{Symbol,Any}(:tree_viewer_depth, depth + 1),
+            )
 
+        t = typeof(x)
+        nf = nfields(x)
+        nb = sizeof(x)
+        
         elements = Any[
             let
                 f = fieldname(t, i)
@@ -889,11 +1069,11 @@ const integrations = Integration[
             function table_data(x::Any, io::IOContext)
                 rows = Tables.rows(x)
 
-                my_row_limit = get_my_display_limit(x, 1, io, table_row_display_limit, table_row_display_limit_increase)
+                my_row_limit = get_my_display_limit(x, 1, 0, io, table_row_display_limit, table_row_display_limit_increase)
 
                 # TODO: the commented line adds support for lazy loading columns, but it uses the same extra_items counter as the rows. So clicking More Rows will also give more columns, and vice versa, which isn't ideal. To fix, maybe use (objectid,dimension) as index instead of (objectid)?
 
-                my_column_limit = get_my_display_limit(x, 2, io, table_column_display_limit, table_column_display_limit_increase)
+                my_column_limit = get_my_display_limit(x, 2, 0, io, table_column_display_limit, table_column_display_limit_increase)
                 # my_column_limit = table_column_display_limit
 
                 # additional 5 so that we don't cut off 1 or 2 itmes - that's silly
@@ -1030,7 +1210,7 @@ function completions_exported(cs::Vector{<:Completion})
 end
 
 "You say Linear, I say Algebra!"
-function completion_fetcher(query, pos, workspace::Module=current_module)
+function completion_fetcher(query, pos, workspace::Module)
     results, loc, found = completions(query, pos, workspace)
     if endswith(query, '.')
         filter!(is_dot_completion, results)
@@ -1083,7 +1263,7 @@ is_pure_expression(q::String) = true
 is_pure_expression(x) = false # Better safe than sorry I guess
 
 # Based on /base/docs/bindings.jl from Julia source code
-function binding_from(x::Expr, workspace::Module=current_module)
+function binding_from(x::Expr, workspace::Module)
     if x.head == :macrocall
         macro_name = x.args[1]
         if is_pure_expression(macro_name)
@@ -1092,17 +1272,22 @@ function binding_from(x::Expr, workspace::Module=current_module)
             error("Couldn't infer `$x` for Live Docs.")
         end
     elseif is_pure_expression(x)
+        if x.head == :.
+            # Simply calling Core.eval on `a.b` will retrieve the value instead of the binding
+            m = Core.eval(workspace, x.args[1])
+            isa(m, Module) && return Docs.Binding(m, x.args[2].value)
+        end
         Core.eval(workspace, x)
     else
         error("Couldn't infer `$x` for Live Docs.")
     end
 end
-binding_from(s::Symbol, workspace::Module=current_module) = Core.eval(workspace, s)
-binding_from(r::GlobalRef, workspace::Module=current_module) = Docs.Binding(r.mod, r.name)
-binding_from(other, workspace::Module=current_module) = error("Invalid @var syntax `$other`.")
+binding_from(s::Symbol, workspace::Module) = Docs.Binding(workspace, s)
+binding_from(r::GlobalRef, workspace::Module) = Docs.Binding(r.mod, r.name)
+binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 
-"You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say You say doc_fetch, I say ...!!!!"
-function doc_fetcher(query, workspace::Module=current_module)
+"You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say You say doc_fetcher, I say ...!!!!"
+function doc_fetcher(query, workspace::Module)
     try
         value = binding_from(Meta.parse(query), workspace)
         (repr(MIME"text/html"(), Docs.doc(value)), :👍)
@@ -1226,15 +1411,16 @@ end"""
 
 const currently_running_cell_id = Ref{UUID}(uuid4())
 
-function publish(x)::String
-    if !packable(x)
-        throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries."))
-    end
+function publish(x, id_start)::String
+    assertpackable(x)
+    
+    id = string(notebook_id[], "/", currently_running_cell_id[], "/", id_start)
     d = get!(Dict{String,Any}, cell_published_objects, currently_running_cell_id[])
-    id = string(notebook_id[], "/", currently_running_cell_id[], "/", string(objectid(x), base=16))
     d[id] = x
     return id
 end
+
+publish(x) = publish(x, string(objectid(x), base=16))
 
 """
     publish_to_js(x)
@@ -1264,20 +1450,99 @@ let
 end
 ```
 """
-function publish_to_js(x)::String
-    id = publish(x)
+function publish_to_js(args...)::String
+    id = publish(args...)
     return "/* See the documentation for PlutoRunner.publish_to_js */ getPublishedObject(\"$(id)\")"
 end
 
-const Packable = Union{Nothing,Missing,String,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
-packable(::Packable) = true
-packable(::Any) = false
-packable(::Vector{<:Packable}) = true
-packable(::Dict{<:Packable,<:Packable}) = true
-packable(x::Vector) = all(packable, x)
-packable(d::Dict) = all(packable, keys(d)) && all(packable, values(d))
-packable(t::Tuple) = all(packable, t)
-packable(t::NamedTuple) = all(packable, t)
+const Packable = Union{Nothing,Missing,String,Symbol,Int64,Int32,Int16,Int8,UInt64,UInt32,UInt16,UInt8,Float32,Float64,Bool,MIME,UUID,DateTime}
+assertpackable(::Packable) = true
+assertpackable(t::Any) = throw(ArgumentError("Only simple objects can be shared with JS, like vectors and dictionaries. $(string(typeof(t))) is not compatible."))
+assertpackable(::Vector{<:Packable}) = true
+assertpackable(::Dict{<:Packable,<:Packable}) = true
+assertpackable(x::Vector) = foreach(assertpackable, x)
+assertpackable(d::Dict) = let
+    foreach(assertpackable, keys(d))
+    foreach(assertpackable, values(d))
+end
+assertpackable(t::Tuple) = foreach(assertpackable, t)
+assertpackable(t::NamedTuple) = foreach(assertpackable, t)
+
+struct EmbeddableDisplay
+    x
+    script_id
+end
+
+function Base.show(io::IO, m::MIME"text/html", e::EmbeddableDisplay)
+    body, mime = format_output_default(e.x, io)
+	
+    write(io, """
+    <pluto-display></pluto-display>
+    <script id=$(e.script_id)>
+
+        // see https://plutocon2021-demos.netlify.app/fonsp%20%E2%80%94%20javascript%20inside%20pluto to learn about the techniques used in this script
+        
+        const body = $(publish_to_js(body, e.script_id))
+        const mime = "$(string(mime))"
+        
+        const create_new = this == null || this._mime !== mime
+        
+        const display = create_new ? currentScript.previousElementSibling : this
+        
+        display.persist_js_state = true
+        display.body = body
+        if(create_new) {
+            // only set the mime if necessary, it triggers a second preact update
+            display.mime = mime
+            // add it also as unwatched property to prevent interference from Preact
+            display._mime = mime
+        }
+        return display
+
+    </script>
+	""")
+end
+
+export embed_display
+
+"""
+    embed_display(x)
+
+A wrapper around any object that will display it using Pluto's interactive multimedia viewer (images, arrays, tables, etc.), the same system used to display cell output. The returned object can be **embedded in HTML output** (we recommend [HypertextLiteral.jl](https://github.com/MechanicalRabbit/HypertextLiteral.jl) or [HyperScript.jl](https://github.com/yurivish/Hyperscript.jl)), which means that you can use it to create things like _"table viewer left, plot right"_. 
+
+# Example
+
+Markdown can interpolate HTML-showable objects, including the embedded display:
+
+```julia
+md"\""
+# Cool data
+
+\$(embed_display(rand(10)))
+
+Wow!
+"\""
+```
+
+You can use HTML templating packages to create cool layouts, like two arrays side-by-side:
+
+```julia
+using HypertextLiteral
+```
+
+```julia
+@htl("\""
+
+<div style="display: flex;">
+\$(embed_display(rand(4)))
+\$(embed_display(rand(4)))
+</div>
+
+"\"")
+```
+
+"""
+embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
 
 
@@ -1297,7 +1562,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    _module === current_module || convert(Logging.LogLevel, level) >= Logging.Info
+    startswith(String(nameof(_module)), "workspace") || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false

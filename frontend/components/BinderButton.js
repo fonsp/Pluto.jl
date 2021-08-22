@@ -28,8 +28,12 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
         }
     }, [popupOpen])
     const show = binder_phase === BinderPhase.wait_for_user
+    //@ts-ignore
+    // allow user-written JS to start the binder
+    window.start_binder = show ? start_binder : () => {}
     if (!show) return null
     const show_binder = binder_phase != null
+    const recommend_download = notebookfile_ref.current.startsWith("data:")
     return html` <div id="launch_binder">
         <span
             id="binder_launch_help"
@@ -67,18 +71,33 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
             <ol style="padding: 0 2rem;">
                 <li>
                     <div>
-                        <div class="command">Copy the notebook URL:</div>
-                        <div class="copy_div">
-                            <input onClick=${(e) => e.target.select()} value=${notebookfile_ref.current} readonly />
-                            <span
-                                class=${`copy_icon ${showCopyPopup ? "success_copy" : ""}`}
-                                onClick=${async () => {
-                                    await navigator.clipboard.writeText(notebookfile_ref.current)
-                                    setShowCopyPopup(true)
-                                    setTimeout(() => setShowCopyPopup(false), 3000)
-                                }}
-                            />
-                        </div>
+                        ${recommend_download
+                            ? html`
+                                  <div class="command">Download the notebook:</div>
+                                  <div
+                                      onClick=${(e) => {
+                                          e.target.tagName === "A" || e.target.closest("div").firstElementChild.click()
+                                      }}
+                                      class="download_div"
+                                  >
+                                      <a href=${notebookfile_ref.current} target="_blank" download="notebook.jl">notebook.jl</a>
+                                      <span class="download_icon"></span>
+                                  </div>
+                              `
+                            : html`
+                                  <div class="command">Copy the notebook URL:</div>
+                                  <div class="copy_div">
+                                      <input onClick=${(e) => e.target.select()} value=${notebookfile_ref.current} readonly />
+                                      <span
+                                          class=${`copy_icon ${showCopyPopup ? "success_copy" : ""}`}
+                                          onClick=${async () => {
+                                              await navigator.clipboard.writeText(notebookfile_ref.current)
+                                              setShowCopyPopup(true)
+                                              setTimeout(() => setShowCopyPopup(false), 3000)
+                                          }}
+                                      />
+                                  </div>
+                              `}
                     </div>
                 </li>
                 <li>
@@ -90,8 +109,16 @@ export const BinderButton = ({ binder_phase, start_binder, notebookfile }) => {
                     <img src="https://user-images.githubusercontent.com/6933510/107865594-60864b00-6e68-11eb-9625-2d11fd608e7b.png" />
                 </li>
                 <li>
-                    <div class="command">Paste URL in the <em>Open</em> box</div>
-                    <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />
+                    ${recommend_download
+                        ? html`
+                              <div class="command">Open the notebook file</div>
+                              <p>Type the saved filename in the <em>open</em> box.</p>
+                              <img src="https://user-images.githubusercontent.com/6933510/119374043-65556900-bcb9-11eb-9026-149c1ba2d05b.png" />
+                          `
+                        : html`
+                              <div class="command">Paste URL in the <em>Open</em> box</div>
+                              <video playsinline autoplay loop src="https://i.imgur.com/wf60p5c.mp4" />
+                          `}
                 </li>
             </ol>
         </div>`}

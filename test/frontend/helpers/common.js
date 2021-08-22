@@ -1,7 +1,8 @@
 import path from "path"
 
 export const getTextContent = (selector) => {
-    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+    return page.evaluate((selector) => document.querySelector(selector).innerText, selector)
 }
 export const countCells = async () =>
     await page.evaluate(() => {
@@ -60,7 +61,8 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
     await page.waitForFunction(
         (selector, targetContent) => {
             const element = document.querySelector(selector)
-            return element !== null && element.textContent === targetContent
+            // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+            return element !== null && element.innerText === targetContent
         },
         { polling: 100 },
         selector,
@@ -102,6 +104,8 @@ export const setupPage = (page) => {
     dismissVersionDialogs(page)
 }
 
+let testname = () => expect.getState().currentTestName.replace(/ /g, "_")
+
 export const lastElement = (arr) => arr[arr.length - 1]
 
 const getFixturesDir = () => path.join(__dirname, "..", "fixtures")
@@ -110,8 +114,10 @@ const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
 export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
-export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".jl")
+export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), `temporary_notebook_${testname()}_${Date.now()}.jl`)
 
-export const getTestScreenshotPath = () => path.join(getArtifactsDir(), "test_screenshot_" + Date.now() + ".png")
+export const getTestScreenshotPath = () => {
+    path.join(getArtifactsDir(), `screenshot_${testname()}_${Date.now()}.png`)
+}
 
 export const saveScreenshot = (page, path) => page.screenshot({ path: path })

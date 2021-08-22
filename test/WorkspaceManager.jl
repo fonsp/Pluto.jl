@@ -1,7 +1,8 @@
 using Test
 using Pluto.Configuration: CompilerOptions
 using Pluto.WorkspaceManager: _merge_notebook_compiler_options
-import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path
+import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path
+import Distributed
 
 @testset "Workspace manager" begin
 # basic functionality is already tested by the reactivity tests
@@ -63,20 +64,54 @@ import Pluto: update_save_run!, WorkspaceManager, ClientSession, ServerSession, 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "notebook environment" begin
-        session_options = CompilerOptions()
-        notebook = Notebook([Cell("x")])
-        notebook.compiler_options = CompilerOptions(;project="test")
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            joinpath(dirname(notebook.path), "test")
+    Sys.iswindows() || (VERSION < v"1.6.0-a") || @testset "Pluto inside Pluto" begin
 
-        notebook.compiler_options = CompilerOptions(;project=project_relative_path("test"))
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            project_relative_path("test")
-        
-        session_options = CompilerOptions(;project=project_relative_path("test"))
-        notebook.compiler_options = CompilerOptions(;project=project_relative_path("Project.toml"))
-        @test _merge_notebook_compiler_options(notebook, session_options).project ==
-            project_relative_path("Project.toml")
+        client = ClientSession(:fakeA, nothing)
+        🍭 = ServerSession()
+        🍭.options.evaluation.workspace_use_distributed = true
+        🍭.connected_clients[client.id] = client
+
+        notebook = Notebook([
+            Cell("""begin
+                import Pkg
+                Pkg.activate()
+                empty!(LOAD_PATH)
+                push!(LOAD_PATH, $(repr(Base.load_path()))...)
+                import Pluto
+            end"""),
+            Cell("""
+            s = Pluto.ServerSession()
+            """),
+            Cell("""
+            nb = Pluto.SessionActions.open(s, Pluto.project_relative_path("sample", "Tower of Hanoi.jl"); run_async=false, as_sample=true)"""),
+            Cell("length(nb.cells)"),
+            Cell(""),
+        ])
+        client.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+
+        setcode(notebook.cells[5], "length(nb.cells)")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test notebook.cells[5].errored == false
+
+
+        desired_nprocs = Distributed.nprocs() - 1
+        setcode(notebook.cells[5], "Pluto.SessionActions.shutdown(s, nb)")
+        update_run!(🍭, notebook, notebook.cells[5])
+        @test noerror(notebook.cells[5])
+
+        while Distributed.nprocs() != desired_nprocs
+            sleep(.1)
+        end
+        sleep(.1)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 end
