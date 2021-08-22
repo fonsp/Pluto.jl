@@ -10,6 +10,8 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
+import checkScriptIntegrity from '../imports/check-integrity.js'
+
 //@ts-ignore
 const CodeMirror = window.CodeMirror
 
@@ -379,8 +381,14 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
     return html`<div class="raw-html-wrapper" ref=${container}></div>`
 }
 
+const modeSRIHashes = {
+    'julia': 'sha384-dDyOA8BSiBRH42Ba2yJjj2j5eS8IiLUZfKmb1ZIFQOrthebHHYr2M8RXTeMk7ibZ',
+    'python': 'sha384-BbNKqfbjrUCjqp31ddcnhy4I0iLdCYELtYKiHaLNTdtlR3Y0uAKqUZHTxssmXMAq',
+    // Add more hashes here...
+};
+
 /** @param {HTMLElement} code_element */
-export let highlight = (code_element, language) => {
+export let highlight = async (code_element, language) => {
     if (code_element.children.length === 0) {
         let mode = language // fallback
 
@@ -394,18 +402,25 @@ export let highlight = (code_element, language) => {
             mode = "julia"
         }
 
-        CodeMirror.requireMode(
-            mode,
-            () => {
-                CodeMirror.runMode(code_element.innerText, mode, code_element)
-                code_element.classList.add("cm-s-default")
-            },
-            {
-                // Commented out since 
-                // 1) not needed since this is manually loaded in editor.html already
-                // 2) it is loaded w/o integrity verification which we don't want
-                // path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
-            }
-        )
+        // If we don't know the SRI hash, do not load any external .js mode file
+        if(!(mode in modeSRIHashes))
+            return;
+
+        // If we do, first verify integrity before continuing
+        const url = `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.js`;
+        checkScriptIntegrity(url, modeSRIHashes[mode]).then(() => {
+
+            CodeMirror.requireMode(
+                mode,
+                () => {
+                    CodeMirror.runMode(code_element.innerText, mode, code_element)
+                    code_element.classList.add("cm-s-default")
+                },
+                {
+                    path: (mode) => url,
+                }
+            )
+
+        });
     }
 }
