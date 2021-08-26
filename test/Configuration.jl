@@ -17,7 +17,13 @@ end
     @test opt.compiler.compile == "min"
     @test opt.server.launch_browser == false
 
-    @test_throws ArgumentError from_flat_kwargs(;asdfasdf="test")    
+    et = @static if isdefined(Pluto.Configuration.Configurations, :InvalidKeyError)
+        Pluto.Configuration.Configurations.InvalidKeyError
+    else
+        ArgumentError
+    end
+
+    @test_throws et from_flat_kwargs(;asdfasdf="test")    
 end
 
 @testset "flag conversion" begin
