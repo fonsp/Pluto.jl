@@ -4,6 +4,7 @@ using Pluto
 using Pluto: ServerSession, ClientSession, SessionActions
 using Pluto.Configuration
 using Pluto.Configuration: notebook_path_suggestion, from_flat_kwargs, _convert_to_flags
+using Pluto.WorkspaceManager: poll
 
 @testset "Configurations" begin
 
@@ -106,6 +107,40 @@ end
     end
 
     @async schedule(server_task, InterruptException(); error=true)
+end
+
+@testset "Open Notebooks at Startup" begin
+    port = 1338
+    host = "localhost"
+    local_url(suffix) = "http://$host:$port/$suffix"
+
+    urls = [
+    "https://raw.githubusercontent.com/fonsp/Pluto.jl/v0.12.16/sample/Basic.jl",
+    "https://gist.githubusercontent.com/fonsp/4e164a262a60fc4bdd638e124e629d64/raw/8ffe93c680e539056068456a62dea7bf6b8eb622/basic_pkg_notebook.jl",
+    ]
+    nbnames = download.(urls)
+
+    # without notebook at startup
+    server_task = @async Pluto.run(port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
+    @async schedule(server_task, InterruptException(); error=true)
+
+    # with a single notebook at startup
+    server_task = @async Pluto.run(notebook=first(nbnames), port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
+    @async schedule(server_task, InterruptException(); error=true)
+
+    # with multiple notebooks at startup
+    server_task = @async Pluto.run(notebook=nbnames, port=port, launch_browser=false, workspace_use_distributed=false, require_secret_for_access=false)
+    @test poll(5) do
+        HTTP.get(local_url("favicon.ico")).status == 200
+    end
+    @async schedule(server_task, InterruptException(); error=true)
+
 end
 
 end # testset
