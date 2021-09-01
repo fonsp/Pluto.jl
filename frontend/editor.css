@@ -888,6 +888,11 @@ pluto-output:not(.rich_output) > div > pre {
     display: flex;
 }
 
+/* https://github.com/fonsp/Pluto.jl/issues/1435 */
+mjx-container[jax="SVG"] {
+    display: inline-block;
+}
+
 /* as embedded display: */
 
 pluto-display > div {
