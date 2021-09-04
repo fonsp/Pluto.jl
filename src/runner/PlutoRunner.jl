@@ -1568,7 +1568,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    startswith(String(nameof(_module)), "workspace") || convert(Logging.LogLevel, level) >= Logging.Info
+    (_module isa Module && startswith(String(nameof(_module)), "workspace")) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
