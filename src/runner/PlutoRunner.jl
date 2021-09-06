@@ -139,8 +139,16 @@ function sanitize_expr(vec::AbstractVector)
     Expr(:vect, sanitize_expr.(vec)...)
 end
 
+function sanitize_expr(tuple::Tuple)
+    Expr(:tuple, sanitize_expr.(tuple)...)
+end
+
 function sanitize_expr(mod::Module)
     fullname(mod) |> wrap_dot
+end
+
+function sanitize_expr(pair::Pair)
+    sanitize_expr(pair.first) => sanitize_expr(pair.second)
 end
 
 # An instanciation of a struct as part of an Expr

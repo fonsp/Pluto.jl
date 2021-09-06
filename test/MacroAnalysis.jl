@@ -118,6 +118,22 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
     end
 
+    @testset "Function docs" begin
+        notebook = Notebook([
+            Cell("""
+                "my function doc"
+                f(x) = 2x
+            """),
+            Cell("f"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :f ∈ notebook.topology.nodes[cell(1)].funcdefs_without_signatures
+        @test :f ∈ notebook.topology.nodes[cell(2)].references
+    end
+
     @testset "Expr sanitization" begin
         struct A; end
         f(x) = x
