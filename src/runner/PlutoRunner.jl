@@ -143,12 +143,16 @@ function sanitize_expr(tuple::Tuple)
     Expr(:tuple, sanitize_expr.(tuple)...)
 end
 
-function sanitize_expr(mod::Module)
-    fullname(mod) |> wrap_dot
+function sanitize_expr(dict::Dict)
+    Expr(:call, :Dict, (sanitize_expr(pair) for pair in dict)...)
 end
 
 function sanitize_expr(pair::Pair)
-    sanitize_expr(pair.first) => sanitize_expr(pair.second)
+    Expr(:call, :(=>), sanitize_expr(pair.first), sanitize_expr(pair.second))
+end
+
+function sanitize_expr(mod::Module)
+    fullname(mod) |> wrap_dot
 end
 
 # An instanciation of a struct as part of an Expr
