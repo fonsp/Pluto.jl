@@ -430,6 +430,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         globalscopestate.inglobalscope = true
 
         # we register struct definitions as both a variable and a function. This is because deleting a struct is trickier than just deleting its methods.
+	# Due to this, outer constructors have to be defined in the same cell where the struct is defined.
+	# See https://github.com/fonsp/Pluto.jl/issues/732 for more details
         inner_symstate = explore!(equiv_func, globalscopestate)
 
         structname = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
