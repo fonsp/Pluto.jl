@@ -25,7 +25,7 @@ import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../
 import { unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
-import { start_binder, BinderPhase } from "../common/Binder.js"
+import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
@@ -740,7 +740,7 @@ patch: ${JSON.stringify(
                 })
             })()
             // view stats on https://stats.plutojl.org/
-            fetch(`https://stats.plutojl.org/count?p=/article-view#skip_sw`, { cache: "no-cache" }).catch(() => {})
+            count_stat(`article-view`)
         } else {
             this.connect()
         }
@@ -748,7 +748,8 @@ patch: ${JSON.stringify(
         setInterval(() => {
             if (!this.state.static_preview && document.visibilityState === "visible") {
                 // view stats on https://stats.plutojl.org/
-                fetch(`https://stats.plutojl.org/count?p=/editing/${window?.version_info?.pluto ?? "unknown"}#skip_sw`, { cache: "no-cache" }).catch(() => {})
+                //@ts-ignore
+                count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
             }
         }, 1000 * 15 * 60)
 

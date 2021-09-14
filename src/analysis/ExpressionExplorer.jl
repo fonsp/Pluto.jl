@@ -430,6 +430,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         globalscopestate.inglobalscope = true
 
         # we register struct definitions as both a variable and a function. This is because deleting a struct is trickier than just deleting its methods.
+	# Due to this, outer constructors have to be defined in the same cell where the struct is defined.
+	# See https://github.com/fonsp/Pluto.jl/issues/732 for more details
         inner_symstate = explore!(equiv_func, globalscopestate)
 
         structname = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
@@ -755,7 +757,7 @@ end
 
 
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@assert", "Base.@assert", "@enum", "Base.@enum", "@cmd"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)

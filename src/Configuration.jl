@@ -47,7 +47,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = false
-    notebook::Union{Nothing,String} = nothing
+    notebook::Union{Nothing,String, Vector{<: String}} = nothing
     init_with_file_viewer::Bool=false
     simulated_lag::Real=0.0
     auto_reload_notebook_from_file::Bool = false

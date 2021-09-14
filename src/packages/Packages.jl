@@ -55,13 +55,13 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
     use_plutopkg_new = use_plutopkg(notebook.topology)
     
     if !use_plutopkg_old && use_plutopkg_new
-        @info "Started using PlutoPkg!! HELLO reproducibility!"
+        @debug "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
         notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
     end
     if use_plutopkg_old && !use_plutopkg_new
-        @info "Stopped using PlutoPkg 💔😟😢"
+        @debug "Stopped using PlutoPkg 💔😟😢"
 
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
