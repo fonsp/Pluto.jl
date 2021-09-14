@@ -303,7 +303,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -333,7 +333,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	maybe_async(run_async) do
-		sync_nbpkg(session, notebook; save=save)
+		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
 			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
