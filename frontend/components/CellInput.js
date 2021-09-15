@@ -22,7 +22,9 @@ import {
     defaultKeymap,
     indentMore,
     indentLess,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@8697d451b4d1bb25bb0d772e857f8a3802cdc279/dist/index.es.min.js"
+    tags,
+    HighlightStyle,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@48409f6/dist/index.es.min.js"
 
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
@@ -400,19 +402,66 @@ export const CellInput = ({
                 on_change_ref.current(new_value)
             }
         }
+
+        const myHighlightStyle = HighlightStyle.define([
+            { tag: tags.keyword, color: "#fc6" },
+            { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
+            { tag: tags.atom, color: "#815ba4" },
+            { tag: tags.number, color: "#815ba4" },
+            // { tag: tags.property, color: "#48b685" },
+            // { tag: tags.attribute, color: "#48b685" },
+            { tag: tags.keyword, color: "#ef6155" },
+            { tag: tags.string, color: "#da5616" },
+            //// { tag: tags.variable, color: "#5668a4", fontWeight: 700 },
+            { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+            // { tag: tags.variable2, color: "#06b6ef" },
+            // { tag: tags.builtin, color: "#5e7ad3" },
+            // { tag: tags.def, color: "#f99b15" },
+            { tag: tags.function, color: "#f99b15" },
+            { tag: tags.bracket, color: "#41323f" },
+            { tag: tags.brace, color: "#41323f" },
+            // { tag: tags.tag, color: "#ef6155" },
+            { tag: tags.tagName, color: "#ef6155" },
+            { tag: tags.link, color: "#815ba4" },
+            // { tag: tags.error, color: "#f7f7f7", background: "#ef6155" },
+            { tag: tags.invalid, color: "#000", background: "#ef6155" },
+            // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+        ])
+        window.tags = tags
+        window.cool = {
+            keyword: tags.keyword,
+            comment: tags.comment,
+            atom: tags.atom,
+            number: tags.number,
+            property: tags.property,
+            attribute: tags.attribute,
+            keyword: tags.keyword,
+            string: tags.string,
+            variable: tags.variable,
+            builtin: tags.builtin,
+            variable2: tags.variable2,
+            def: tags.def,
+            bracket: tags.bracket,
+            tag: tags.tag,
+            link: tags.link,
+            error: tags.error,
+        }
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
                 doc: local_code,
 
                 extensions: [
-                    EditorState.tabSize.of(4),
+                    myHighlightStyle,
                     basicSetup,
+                    StreamLanguage.define(julia),
+                    EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
+                    EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
                     keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
-                    StreamLanguage.define(julia),
+                    // julia,
                 ],
             }),
             parent: dom_node_ref.current,
