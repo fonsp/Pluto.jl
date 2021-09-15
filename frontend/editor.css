@@ -2277,6 +2277,7 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
     border-radius: 2px;
 }
 
+.cm-editor .cm-placeholder,
 .cm-s-default.CodeMirror-empty {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;

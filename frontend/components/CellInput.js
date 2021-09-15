@@ -11,6 +11,7 @@ import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror
 import {
     EditorState,
     EditorView,
+    placeholder,
     Compartment,
     EditorSelection,
     basicSetup,
@@ -24,7 +25,7 @@ import {
     indentLess,
     tags,
     HighlightStyle,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@48409f6/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@f21f861/dist/index.es.min.js"
 
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
@@ -412,7 +413,7 @@ export const CellInput = ({
             // { tag: tags.attribute, color: "#48b685" },
             { tag: tags.keyword, color: "#ef6155" },
             { tag: tags.string, color: "#da5616" },
-            //// { tag: tags.variable, color: "#5668a4", fontWeight: 700 },
+            ////// { tag: tags.variable, color: "#5668a4", fontWeight: 700 },
             { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
             // { tag: tags.variable2, color: "#06b6ef" },
             // { tag: tags.builtin, color: "#5e7ad3" },
@@ -423,7 +424,7 @@ export const CellInput = ({
             // { tag: tags.tag, color: "#ef6155" },
             { tag: tags.tagName, color: "#ef6155" },
             { tag: tags.link, color: "#815ba4" },
-            // { tag: tags.error, color: "#f7f7f7", background: "#ef6155" },
+            ////// { tag: tags.error, color: "#f7f7f7", background: "#ef6155" },
             { tag: tags.invalid, color: "#000", background: "#ef6155" },
             // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
         ])
@@ -461,6 +462,7 @@ export const CellInput = ({
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
                     keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
+                    placeholder("Enter cell code..."),
                     // julia,
                 ],
             }),
