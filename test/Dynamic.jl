@@ -144,9 +144,32 @@ end
     end
 
     @testset "Docs" begin
-        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt")[1])
-        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt")[1])
-        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta")[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("sqrt", Main)[1])
+        @test occursin("square root", Pluto.PlutoRunner.doc_fetcher("Base.sqrt", Main)[1])
+        @test occursin("No documentation found", Pluto.PlutoRunner.doc_fetcher("Base.findmeta", Main)[1])
+        
+        # Issue #1128
+        # Ref https://docs.julialang.org/en/v1/manual/documentation/#Dynamic-documentation
+        m = Module()
+        Core.eval(m, :(
+            module DocTest
+            "Normal docstring"
+            struct MyType
+                value::String
+            end
+            Docs.getdoc(t::MyType) = "Documentation for MyType with value $(t.value)"
+            const x = MyType("x")
+            "A global variable"
+            global y
+            end
+        ))
+        
+        @test occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("MyType", m.DocTest)[1])
+        @test occursin("Normal docstring", Pluto.PlutoRunner.doc_fetcher("DocTest.MyType", m)[1])
+        @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("x", m.DocTest)[1])
+        @test occursin("Documentation for MyType with value", Pluto.PlutoRunner.doc_fetcher("DocTest.x", m)[1])
+        @test occursin("A global variable", Pluto.PlutoRunner.doc_fetcher("y", m.DocTest)[1])
+        @test occursin("A global variable", Pluto.PlutoRunner.doc_fetcher("DocTest.y", m)[1])
     end
 
     @testset "PlutoRunner API" begin

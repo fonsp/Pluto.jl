@@ -1,4 +1,5 @@
 import fs from "fs"
+import { Page } from "puppeteer"
 import {
     clickAndWaitForNavigation,
     getFixtureNotebookPath,
@@ -9,8 +10,14 @@ import {
     lastElement,
 } from "./common"
 
+if (!process.env.PLUTO_PORT) {
+    throw new Error("You didn't set the PLUTO_PORT environment variable")
+}
 export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
+/**
+ * @param {Page} page
+ */
 export const prewarmPluto = async (page) => {
     await browser.defaultBrowserContext().overridePermissions(getPlutoUrl(), ["clipboard-read", "clipboard-write"])
     await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
@@ -26,13 +33,21 @@ export const prewarmPluto = async (page) => {
     await page.evaluate(() => shutdownNotebook())
 }
 
+/**
+ * @param {Page} page
+ */
 export const createNewNotebook = async (page) => {
     const newNotebookSelector = 'a[href="new"]'
     await page.waitForSelector(newNotebookSelector)
     await clickAndWaitForNavigation(page, newNotebookSelector)
+    await waitForPlutoToCalmDown(page)
 }
 
-export const importNotebook = async (notebookName) => {
+/**
+ * @param {Page} page
+ * @param {string} notebookName`
+ */
+export const importNotebook = async (page, notebookName) => {
     // Copy notebook before using it, so we don't mess it up with test changes
     const notebookPath = getFixtureNotebookPath(notebookName)
     const artifactsPath = getTemporaryNotebookPath()
@@ -41,23 +56,52 @@ export const importNotebook = async (notebookName) => {
     const openFileInputSelector = "pluto-filepicker textarea"
     await page.type(openFileInputSelector, artifactsPath)
     const openFileButton = "pluto-filepicker button"
-    return clickAndWaitForNavigation(page, openFileButton)
+    await clickAndWaitForNavigation(page, openFileButton)
+    await waitForPlutoToCalmDown(page)
 }
 
+/**
+ * @param {Page} page
+ */
 export const getCellIds = (page) => page.evaluate(() => Array.from(document.querySelectorAll("pluto-cell")).map((cell) => cell.id))
 
+/**
+ * @param {Page} page
+ */
+export const waitForPlutoToCalmDown = async (page) => {
+    await page.waitForTimeout(1000)
+    await page.waitForFunction(() => document.body._update_is_ongoing === false && document.querySelector(`pluto-cell.running, pluto-cell.queued`) === null)
+}
+
+/**
+ * @param {Page} page
+ * @param {string} cellId
+ */
 export const waitForCellOutput = (page, cellId) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContent(page, cellOutputSelector)
 }
 
+/**
+ * @param {Page} page
+ * @param {string} cellId
+ * @param {string} currentOutput
+ */
 export const waitForCellOutputToChange = (page, cellId, currentOutput) => {
     const cellOutputSelector = `pluto-cell[id="${cellId}"] pluto-output`
     return waitForContentToChange(page, cellOutputSelector, currentOutput)
 }
 
-export const waitForNoUpdateOngoing = (page, options = {}) => page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+export const waitForNoUpdateOngoing = async (page, options = {}) => {
+    await page.waitForTimeout(1000)
+    return await page.waitForFunction(() => document.body._update_is_ongoing === false, options)
+}
 
+/**
+ * @param {Page} page
+ * @param {string} plutoInputSelector
+ * @param {string} text
+ */
 export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text) => {
     await page.type(`${plutoInputSelector} .CodeMirror textarea`, text)
     // Wait for CodeMirror to process the input and display the text
@@ -72,6 +116,11 @@ export const writeSingleLineInPlutoInput = async (page, plutoInputSelector, text
     )
 }
 
+/**
+ * @param {Page} page
+ * @param {string} plutoInputSelector
+ * @param {string} key
+ */
 export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) => {
     const currentLineText = await getTextContent(`${plutoInputSelector} .CodeMirror-line`)
     await page.focus(`${plutoInputSelector} .CodeMirror  textarea`)
@@ -82,6 +131,10 @@ export const keyboardPressInPlutoInput = async (page, plutoInputSelector, key) =
     return waitForContentToChange(page, `${plutoInputSelector} .CodeMirror-line`, currentLineText)
 }
 
+/**
+ * @param {Page} page
+ * @param {string[]} cells
+ */
 export const manuallyEnterCells = async (page, cells) => {
     const plutoCellIds = []
     for (const cell of cells) {

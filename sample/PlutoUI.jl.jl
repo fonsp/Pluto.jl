@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.3
+# v0.15.0
 
 using Markdown
 using InteractiveUtils
@@ -13,17 +13,8 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ ae0936ee-c767-11ea-0cbc-3f58779113da
-begin
-	let
-		env = mktempdir()
-		import Pkg
-		Pkg.activate(env)
-		Pkg.Registry.update()
-		Pkg.add(Pkg.PackageSpec(;name="PlutoUI", version="0.6.7-0.6"))
-	end
-	using PlutoUI
-end
+# ╔═╡ 071d9ca5-9b42-4583-ad96-a48f93453a0e
+using PlutoUI
 
 # ╔═╡ bc532cd2-c75b-11ea-313f-8b5e771c9227
 md"""# PlutoUI.jl
@@ -47,15 +38,7 @@ is hard to memorize, so `PlutoUI` makes it more _Julian_:
 # ╔═╡ 051f31fc-cc63-11ea-1e2c-0704285ea6a9
 md"""
 #### To use it in other notebooks
-First, add the `PlutoUI` package. The easiest way is to open a new Julia terminal, and type:
-```
-julia> ]
-(@v1.5) pkg> add PlutoUI
-```
-Next, add this cell to your notebook:
-```julia
-using PlutoUI
-```
+Simply import the `PlutoUI` package, and Pluto's built-in package manager takes care of the rest!
 """
 
 # ╔═╡ fddb794c-c75c-11ea-1f55-eb9c178424cd
@@ -478,20 +461,88 @@ space
 # ╔═╡ d163f434-cc5a-11ea-19e9-9319ba994efa
 space
 
-# ╔═╡ 7242e236-cc4c-11ea-06d9-c1825cfe1fea
-md"#### Footnote about package environments
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 
-`PlutoUI` needs to be installed for this sample notebook, but we don't want to add it to your global package environment. (Although you should install PlutoUI if you find it useful! It's a tiny package.) 
+[compat]
+PlutoUI = "~0.7.9"
+"""
 
-The solution is to add it into a _temporary environment_, which only exists inside this notebook. If you already had PlutoUI installed, Julia will re-use that installation from the global package cache."
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
 
-# ╔═╡ 7aabca4a-cc4d-11ea-1f7d-e9e2fd901b81
-md"In the future, Pluto might do this automatically for all packages. The goal is for **each notebook to contain its own package information**, but we are still thinking about the best approach. If you are interested, have a look at the [GitHub issue](https://github.com/fonsp/Pluto.jl/issues/142), our [design doc](https://www.notion.so/Self-contained-reproducibility-995ffa5174894c26b897827bd2ce4990), or contact us using the suggestion box below!"
+[[Base64]]
+uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
+
+[[Dates]]
+deps = ["Printf"]
+uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
+
+[[InteractiveUtils]]
+deps = ["Markdown"]
+uuid = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+
+[[JSON]]
+deps = ["Dates", "Mmap", "Parsers", "Unicode"]
+git-tree-sha1 = "81690084b6198a2e1da36fcfda16eeca9f9f24e4"
+uuid = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+version = "0.21.1"
+
+[[Logging]]
+uuid = "56ddb016-857b-54e1-b83d-db4d58db5568"
+
+[[Markdown]]
+deps = ["Base64"]
+uuid = "d6f4376e-aef5-505a-96c1-9c027394607a"
+
+[[Mmap]]
+uuid = "a63ad114-7e13-5084-954f-fe012c677804"
+
+[[Parsers]]
+deps = ["Dates"]
+git-tree-sha1 = "c8abc88faa3f7a3950832ac5d6e690881590d6dc"
+uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
+version = "1.1.0"
+
+[[PlutoUI]]
+deps = ["Base64", "Dates", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "Suppressor"]
+git-tree-sha1 = "44e225d5837e2a2345e69a1d1e01ac2443ff9fcb"
+uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
+version = "0.7.9"
+
+[[Printf]]
+deps = ["Unicode"]
+uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+
+[[Random]]
+deps = ["Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[Reexport]]
+git-tree-sha1 = "5f6c21241f0f655da3952fd60aa18477cf96c220"
+uuid = "189a3867-3050-52da-a836-e630ba90ab69"
+version = "1.1.0"
+
+[[Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[Suppressor]]
+git-tree-sha1 = "a819d77f31f83e5792a76081eee1ea6342ab8787"
+uuid = "fd094767-a336-5f1f-9728-57cf17d0bbfb"
+version = "0.2.0"
+
+[[Unicode]]
+uuid = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
+"""
 
 # ╔═╡ Cell order:
 # ╟─bc532cd2-c75b-11ea-313f-8b5e771c9227
 # ╟─3eff9592-cc63-11ea-2b61-4170d1a7656a
 # ╟─051f31fc-cc63-11ea-1e2c-0704285ea6a9
+# ╠═071d9ca5-9b42-4583-ad96-a48f93453a0e
 # ╟─fb6142f6-c765-11ea-29fd-7ff4e823c02b
 # ╟─fddb794c-c75c-11ea-1f55-eb9c178424cd
 # ╟─1e10d82a-c766-11ea-0c4b-3bd77f62759d
@@ -598,6 +649,5 @@ md"In the future, Pluto might do this automatically for all packages. The goal i
 # ╟─d163f434-cc5a-11ea-19e9-9319ba994efa
 # ╟─512fe760-cc4c-11ea-1c5b-2b32da035aad
 # ╠═55bcdbf8-cc4c-11ea-1549-87c076a59ff4
-# ╟─7242e236-cc4c-11ea-06d9-c1825cfe1fea
-# ╠═ae0936ee-c767-11ea-0cbc-3f58779113da
-# ╟─7aabca4a-cc4d-11ea-1f7d-e9e2fd901b81
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002

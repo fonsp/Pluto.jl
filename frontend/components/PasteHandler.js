@@ -75,8 +75,6 @@ const processFile = async (ev) => {
     const reply = await fetch("./notebookupload", {
         method: "POST",
         body: notebook,
-        cache: "no-cache",
-        credentials: "same-origin",
     }).then((res) => res.text())
     window.location.href = link_edit(reply)
 }

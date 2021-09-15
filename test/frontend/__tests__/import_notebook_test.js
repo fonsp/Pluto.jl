@@ -20,14 +20,14 @@ describe("PlutoImportNotebook", () => {
         ["function_sum_notebook.jl", "3"],
         ["simple_sum_notebook.jl", "6"],
     ])("should import notebook %s with last cell output %s", async (notebookName, expectedLastCellOutput) => {
-        await importNotebook(notebookName)
+        await importNotebook(page, notebookName)
         const cellIds = await getCellIds(page)
         const outputs = await Promise.all(cellIds.map((cellId) => waitForCellOutput(page, cellId)))
         expect(lastElement(outputs)).toBe(expectedLastCellOutput)
     })
 
     it("should add a new cell and re-evaluate the notebook", async () => {
-        await importNotebook("function_sum_notebook.jl")
+        await importNotebook(page, "function_sum_notebook.jl")
         // Add a new cell
         let lastPlutoCellId = lastElement(await getCellIds(page))
         await waitForCellOutput(page, lastPlutoCellId)
@@ -40,6 +40,8 @@ describe("PlutoImportNotebook", () => {
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${lastPlutoCellId}"] pluto-input`, "sum(2, 3)")
 
         // Run cells
+
+        await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(".runallchanged")
         const lastCellContent = await waitForCellOutput(page, lastPlutoCellId)
         expect(lastCellContent).toBe("5")

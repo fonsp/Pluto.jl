@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 
 struct NotebookIsRunningException <: Exception
     notebook::Notebook
@@ -43,8 +43,10 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
 
     session.notebooks[nb.notebook_id] = nb
     if session.options.evaluation.run_notebook_on_load
+        for c in nb.cells
+            c.queued = true
+        end
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
-        # TODO: send message when initial run completed
     end
 
     if run_async
@@ -66,7 +68,37 @@ function save_upload(content::Vector{UInt8})
 end
 
 function new(session::ServerSession; run_async=true)
-    nb = emptynotebook()
+    nb = if session.options.server.init_with_file_viewer
+        
+        file_viewer_code = """html\"\"\"
+
+        <script>
+
+        const nbfile_url = window.location.href.replace("edit", "notebookfile")
+
+
+        const pre = html`<pre style="font-size: .6rem;">Loading...</pre>`
+
+        const handle = setInterval(async () => {
+
+        pre.innerText = await (await fetch(nbfile_url)).text()
+        }, 500)
+
+        invalidation.then(() => {
+        clearInterval(handle)
+        })
+
+        return pre
+
+        </script>
+
+        \"\"\"
+        """
+        Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)])
+
+    else
+        emptynotebook()
+    end
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     session.notebooks[nb.notebook_id] = nb
 
@@ -80,6 +112,9 @@ function new(session::ServerSession; run_async=true)
 end
 
 function shutdown(session::ServerSession, notebook::Notebook; keep_in_session=false, async=false)
+    notebook.nbpkg_restart_recommended_msg = nothing
+    notebook.nbpkg_restart_required_msg = nothing
+
     if !keep_in_session
         listeners = putnotebookupdates!(session, notebook) # TODO: shutdown message
         delete!(session.notebooks, notebook.notebook_id)

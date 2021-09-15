@@ -213,7 +213,7 @@ function http_router_for(session::ServerSession)
         try
             notebook = notebook_from_uri(request)
             response = HTTP.Response(200, sprint(save_notebook, notebook))
-            push!(response.headers, "Content-Type" => "text/plain; charset=utf-8")
+            push!(response.headers, "Content-Type" => "text/julia; charset=utf-8")
             push!(response.headers, "Content-Disposition" => "inline; filename=\"$(basename(notebook.path))\"")
             response
         catch e
