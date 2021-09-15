@@ -19,7 +19,7 @@ on:
 jobs:
     test:
         runs-on: ${{ matrix.os }}
-        timeout-minutes: 20
+        timeout-minutes: 30
         # Uncomment if you want to see all results for all OSses. Otherwise, the first failed test cancels all others
         # continue-on-error: true
         strategy:

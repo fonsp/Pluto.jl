@@ -8,10 +8,14 @@
 
 <br>
 <br>
-<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto presentation (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
+
+<p align="center"><a href="https://www.youtube.com/watch?v=IAF8DjrQSSk">🎈 Pluto – introduction (20 min) at <b>Juliacon 2020</b> 🎈</a></p>
 
 <br>
+<p align="center"><a href="https://www.youtube.com/watch?v=HiI4jgDyDhY">🌐 Pluto – one year later (25 min) at <b>Juliacon 2021</b> 🌐</a></p>
+
 <br>
+
 
 <h1><img alt="Pluto.jl" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/dd0ead4caa2d29a3a2cfa1196d31e3114782d363/frontend/img/logo_white_contour.svg" width=300 height=74 ></h1>
 
@@ -19,9 +23,9 @@ _Writing a notebook is not just about writing the final document — Pluto empow
 
 **Explore models and share results** in a notebook that is
 
--   **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
--   **_lightweight_** - Pluto is written in pure Julia and is easy to install.
--   **_simple_** - no hidden workspace state; friendly UI.
+- **_reactive_** - when changing a function or variable, Pluto automatically updates all affected cells.
+- **_lightweight_** - Pluto is written in pure Julia and is easy to install.
+- **_simple_** - no hidden workspace state; friendly UI.
 
 <img alt="reactivity screencap" src="https://raw.githubusercontent.com/fonsp/Pluto.jl/580ab811f13d565cc81ebfa70ed36c84b125f55d/demo/plutodemo.gif" >
 <p align="center"><a href="https://binder.plutojl.org/">🎈 <b>Pluto demo</b> inside your browser 🎈</a></p>
@@ -85,15 +89,16 @@ https://user-images.githubusercontent.com/6933510/118800499-45c8d580-b8a0-11eb-8
 
 For one tasty notebook 🥞 you will need:
 
--   **Julia** v1.5 or above
--   **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
--   Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
+- **Julia** v1.5 or above
+- **Linux**, **MacOS** or **Windows**, _Linux and MacOS will work best_
+- Mozilla **Firefox** or Google **Chrome**, be sure to get the latest version
 
 ### Installation
 
 <p align="center"><a href="https://www.youtube.com/watch?v=OOjKEgbt8AI">🎈 How to install <b>Julia & Pluto</b> (6 min) 🎈</a></p>
 
-Run Julia and add the package:
+Run Julia, enter `]` to bring up Julia's [package manager](https://docs.julialang.org/en/v1/stdlib/Pkg/),
+and add the Pluto package:
 
 ```julia
 julia> ]
@@ -102,7 +107,12 @@ julia> ]
 
 _Using the package manager for the first time after installing Julia can take up to 15 minutes - hang in there!_
 
-To run the notebook server:
+_Tip for new Julia users: To return to the `julia>` prompt from the Pkg REPL,
+either press backspace when the input line is empty or press Ctrl+C._
+
+### Usage
+
+To run Pluto, run the following commands in your Julia REPL:
 
 ```julia
 julia> import Pluto
@@ -110,6 +120,8 @@ julia> Pluto.run()
 ```
 
 Pluto will open in your browser, and you can get started!
+
+## Questions and Help
 
 Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 <br>
@@ -122,7 +134,7 @@ Questions? Have a look at the [FAQ](https://github.com/fonsp/Pluto.jl/wiki).
 </blockquote>
 <br>
 
-### To developers
+## Contribute to Pluto
 
 Follow [these instructions](https://github.com/fonsp/Pluto.jl/blob/main/CONTRIBUTING.md) to start working on the package.
 
