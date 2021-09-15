@@ -10,22 +10,64 @@ import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
 import {
     EditorState,
+    EditorSelection,
+    Compartment,
     EditorView,
     placeholder,
-    Compartment,
-    EditorSelection,
-    basicSetup,
-    StreamLanguage,
     julia,
     keymap,
     history,
     historyKeymap,
     defaultKeymap,
+    StreamLanguage,
     indentMore,
     indentLess,
     tags,
     HighlightStyle,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@f21f861/dist/index.es.min.js"
+    autocompletion,
+    lineNumbers,
+    highlightSpecialChars,
+    foldGutter,
+    drawSelection,
+    indentOnInput,
+    defaultHighlightStyle,
+    bracketMatching,
+    closeBrackets,
+    rectangularSelection,
+    highlightSelectionMatches,
+    closeBracketsKeymap,
+    searchKeymap,
+    foldKeymap,
+    commentKeymap,
+    completionKeymap,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@83bf699/dist/index.es.min.js"
+
+const basicSetup = [
+    lineNumbers(),
+    highlightSpecialChars(),
+    history(),
+    foldGutter(),
+    drawSelection(),
+    EditorState.allowMultipleSelections.of(true),
+    indentOnInput(),
+    defaultHighlightStyle.fallback,
+    bracketMatching(),
+    closeBrackets(),
+    // autocompletion(),
+    rectangularSelection(),
+    // highlightActiveLine(),
+    highlightSelectionMatches(),
+    keymap.of([
+        ...closeBracketsKeymap,
+        ...defaultKeymap,
+        ...searchKeymap,
+        ...historyKeymap,
+        ...foldKeymap,
+        ...commentKeymap,
+        ...completionKeymap,
+        //    ...lint.lintKeymap,
+    ]),
+]
 
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
@@ -428,25 +470,7 @@ export const CellInput = ({
             { tag: tags.invalid, color: "#000", background: "#ef6155" },
             // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
         ])
-        window.tags = tags
-        window.cool = {
-            keyword: tags.keyword,
-            comment: tags.comment,
-            atom: tags.atom,
-            number: tags.number,
-            property: tags.property,
-            attribute: tags.attribute,
-            keyword: tags.keyword,
-            string: tags.string,
-            variable: tags.variable,
-            builtin: tags.builtin,
-            variable2: tags.variable2,
-            def: tags.def,
-            bracket: tags.bracket,
-            tag: tags.tag,
-            link: tags.link,
-            error: tags.error,
-        }
+
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
             state: EditorState.create({
@@ -463,6 +487,30 @@ export const CellInput = ({
                     history(),
                     keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
                     placeholder("Enter cell code..."),
+                    autocompletion({
+                        override: [
+                            juliahints_cool_generator({
+                                pluto_actions: pluto_actions,
+                                notebook_id: notebook_id,
+                                on_update_doc_query: on_update_doc_query,
+                            }),
+                            // (ctx) => {
+                            //     console.log(ctx)
+                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
+                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
+
+                            //     console.log(current_line)
+                            //     return {
+                            //         from: current_line_info.from,
+                            //         options: [
+                            //             {
+                            //                 label: current_line + "asdf",
+                            //             },
+                            //         ],
+                            //     }
+                            // },
+                        ],
+                    }),
                     // julia,
                 ],
             }),
@@ -998,7 +1046,7 @@ const on_tab_key = (cm) => {
     }
 }
 
-// TODO
+// MIGRATED
 const juliahints = (cm, options) => {
     const cursor = cm.getCursor()
     const old_line = cm.getLine(cursor.line)
@@ -1026,6 +1074,43 @@ const juliahints = (cm, options) => {
             options.on_update_doc_query(doc_query)
         })
         return completions
+    })
+}
+
+const juliahints_cool_generator = (options) => (ctx) => {
+    // const cursor = cm.getCursor()
+
+    console.log(ctx)
+
+    const old_line_info = ctx.state.doc.lineAt(ctx.pos)
+    const old_line = old_line_info.text
+    const old_line_sliced = old_line.substring(0, ctx.pos - old_line_info.from)
+    console.log(old_line_info)
+
+    return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
+        // TODO
+        // CodeMirror.on(completions, "select", (val) => {
+        //     let text = typeof val === "string" ? val : val.text
+        //     let doc_query = module_expanded_selection({
+        //         tokens_before_cursor: [
+        //             { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
+        //             { type: "variable", string: text },
+        //         ],
+        //         tokens_after_cursor: [],
+        //     })
+        //     options.on_update_doc_query(doc_query)
+        // })
+
+        return {
+            from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
+            to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
+            options: message.results.map(([text, type_description, is_exported]) => ({
+                label: text,
+                detail: type_description,
+                type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+            })),
+        }
     })
 }
 
