@@ -1,4 +1,4 @@
-function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value=nothing, kwargs...)
+function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, bound_sym_names::AbstractVector{Symbol}, is_first_value=nothing, kwargs...)::Union{Task,TopologicalOrder}
     if is_first_value !== nothing
         @warn "is_first_value is deprecated, you don't need to set it anymore: https://github.com/fonsp/Pluto.jl/pull/975"
     end
@@ -29,7 +29,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end
 
     if isempty(to_set)
-        return
+        return TopologicalOrder(notebook.topology, Cell[], Dict{Cell, ReactivityError}())
     end
 
     new_values = [notebook.bonds[bound_sym].value for bound_sym in to_set]
