@@ -14,7 +14,8 @@ import {
     Compartment,
     EditorView,
     placeholder,
-    julia,
+    julia_legacy,
+    julia_andrey,
     keymap,
     history,
     historyKeymap,
@@ -45,7 +46,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@7cad516/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32a3eb9/dist/index.es.min.js"
 
 class CheckboxWidget extends WidgetType {
     constructor(checked) {
@@ -646,7 +647,8 @@ export const CellInput = ({
                     checkboxPlugin,
                     myHighlightStyle,
                     basicSetup,
-                    StreamLanguage.define(julia),
+                    // StreamLanguage.define(julia_legacy),
+                    julia_andrey(),
                     EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
                     EditorView.lineWrapping,
