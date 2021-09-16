@@ -73,44 +73,49 @@ class CheckboxWidget extends WidgetType {
     }
 }
 
-const collect = (iterator_ish) => {
-    const result = []
-    let last = iterator_ish.next()
-    while (!last.done) {
-        result.push(last.value)
-        last = iterator_ish.next()
+class PkgStatusMarkWidget extends WidgetType {
+    constructor(package_name, props) {
+        super()
+        this.package_name = package_name
+        this.props = props
     }
-    return result
-}
-/**
- * @param {EditorView} view
- *
- */
-function pkg_decorations(view) {
-    let widgets = []
-    for (let { from, to } of view.visibleRanges) {
-        console.log(syntaxTree(view.state).topNode)
 
-        console.log("Visible range", from, to, view.state.doc.slice(from, to))
-        console.log("Visible range", from, to, [...view.state.doc.slice(from, to)])
-
-        // syntaxTree(view.state).iterate({
-        //     from,
-        //     to,
-        //     enter: (type, from, to, get) => {
-        //         // console.log("Entering", type.name, get())
-        //         if (type.name === "variableName.standard") {
-        //             let isTrue = view.state.doc.sliceString(from, to) == "true"
-        //             let deco = Decoration.widget({
-        //                 widget: new CheckboxWidget(isTrue),
-        //                 side: 1,
-        //             })
-        //             widgets.push(deco.range(to))
-        //         }
-        //     },
-        // })
+    eq(other) {
+        return other.package_name == this.package_name
     }
-    return Decoration.set(widgets)
+
+    toDOM() {
+        const b = PkgStatusMark({
+            pluto_actions: this.props.pluto_actions,
+            package_name: this.package_name,
+            // refresh_cm: () => cm.refresh(),
+            refresh_cm: () => {},
+            notebook_id: this.props.notebook_id,
+        })
+
+        // TOOD remove event listener
+        b.on_nbpkg(this.props.nbpkg_ref.current)
+        this.props.nbpkg_change.addEventListener("change", (e) => {
+            console.error(e.detail)
+            if (b.closest("body") !== document.body) {
+                console.warn("no longer attached", this.package_name)
+            }
+            b.on_nbpkg(e.detail)
+        })
+
+        return b
+        let wrap = document.createElement("span")
+        wrap.setAttribute("aria-hidden", "true")
+        wrap.className = "cm-boolean-toggle"
+        let box = wrap.appendChild(document.createElement("input"))
+        box.type = "checkbox"
+        box.checked = this.package_name
+        return wrap
+    }
+
+    ignoreEvent() {
+        return false
+    }
 }
 
 /**
@@ -121,11 +126,15 @@ function checkboxes(view) {
     let widgets = []
     for (let { from, to } of view.visibleRanges) {
         console.log(syntaxTree(view.state).topNode)
+
+        console.log("Visible range", from, to, view.state.doc.slice(from, to))
+        console.log("Visible range", from, to, [...view.state.doc.slice(from, to)])
+
         syntaxTree(view.state).iterate({
             from,
             to,
-            enter: (type, from, to) => {
-                console.log(type.name)
+            enter: (type, from, to, get) => {
+                // console.log("Entering", type.name, get())
                 if (type.name === "variableName.standard") {
                     let isTrue = view.state.doc.sliceString(from, to) == "true"
                     let deco = Decoration.widget({
@@ -133,6 +142,58 @@ function checkboxes(view) {
                         side: 1,
                     })
                     widgets.push(deco.range(to))
+                }
+            },
+        })
+    }
+    return Decoration.set(widgets)
+}
+
+/**
+ * @param {EditorView} view
+ *
+ */
+function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }) {
+    let widgets = []
+    for (let { from, to } of view.visibleRanges) {
+        console.log(syntaxTree(view.state).topNode)
+        let in_import = false
+        let in_selected_import = false
+        syntaxTree(view.state).iterate({
+            from,
+            to,
+            enter: (type, from, to) => {
+                // console.log("Enter", type.name)
+                if (type.name === "ImportStatement") {
+                    in_import = true
+                }
+                if (type.name === "SelectedImport") {
+                    in_selected_import = true
+                }
+                if (in_import && type.name === "Identifier") {
+                    let package_name = view.state.doc.sliceString(from, to)
+                    // console.warn(type)
+                    // console.warn("Found", package_name)
+                    if (package_name !== "Base" && package_name !== "Core") {
+                        let deco = Decoration.widget({
+                            widget: new PkgStatusMarkWidget(package_name, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }),
+                            side: 1,
+                        })
+                        widgets.push(deco.range(to))
+                    }
+
+                    if (in_selected_import) {
+                        in_import = false
+                    }
+                }
+            },
+            leave: (type, from, to) => {
+                // console.log("Leave", type.name)
+                if (type.name === "ImportStatement") {
+                    in_import = false
+                }
+                if (type.name === "SelectedImport") {
+                    in_selected_import = false
                 }
             },
         })
@@ -183,34 +244,36 @@ const checkboxPlugin = ViewPlugin.fromClass(
     }
 )
 
-const pkgBubblePlugin = ViewPlugin.fromClass(
-    class {
-        /**
-         * @param {EditorView} view
-         */
-        constructor(view) {
-            this.decorations = checkboxes(view)
-        }
+const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }) =>
+    ViewPlugin.fromClass(
+        class {
+            /**
+             * @param {EditorView} view
+             */
+            constructor(view) {
+                this.decorations = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change })
+            }
 
-        /**
-         * @param {ViewUpdate} update
-         */
-        update(update) {
-            if (update.docChanged || update.viewportChanged) this.decorations = checkboxes(update.view)
-        }
-    },
-    {
-        decorations: (v) => v.decorations,
-
-        eventHandlers: {
-            mousedown: (e, view) => {
-                let target = e.target
-                if (target.nodeName == "INPUT" && target.parentElement?.classList.contains("cm-boolean-toggle"))
-                    return toggleBoolean(view, view.posAtDOM(target))
-            },
+            /**
+             * @param {ViewUpdate} update
+             */
+            update(update) {
+                if (update.docChanged || update.viewportChanged)
+                    this.decorations = pkg_decorations(update.view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change })
+            }
         },
-    }
-)
+        {
+            decorations: (v) => v.decorations,
+
+            eventHandlers: {
+                mousedown: (e, view) => {
+                    let target = e.target
+                    if (target.nodeName == "INPUT" && target.parentElement?.classList.contains("cm-boolean-toggle"))
+                        return toggleBoolean(view, view.posAtDOM(target))
+                },
+            },
+        }
+    )
 
 const basicSetup = [
     lineNumbers(),
@@ -345,8 +408,13 @@ export const CellInput = ({
     const pkg_bubbles = useRef(new Map())
 
     const nbpkg_ref = useRef(nbpkg)
+    const nbpkg_change = new EventTarget()
+    nbpkg_change.addEventListener("change", console.warn)
     useEffect(() => {
         nbpkg_ref.current = nbpkg
+        console.info("dispatching", nbpkg_fingerprint(nbpkg))
+        nbpkg_change.dispatchEvent(new CustomEvent("change", { detail: nbpkg }))
+
         pkg_bubbles.current.forEach((b) => {
             b.on_nbpkg(nbpkg)
         })
@@ -637,6 +705,8 @@ export const CellInput = ({
             // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
         ])
 
+        // TODO remove me
+        //@ts-ignore
         window.tags = tags
         const newcm = (newcm_ref.current = new EditorView({
             /** Migration #0: New */
@@ -645,6 +715,7 @@ export const CellInput = ({
 
                 extensions: [
                     checkboxPlugin,
+                    pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }),
                     myHighlightStyle,
                     basicSetup,
                     // StreamLanguage.define(julia_legacy),
