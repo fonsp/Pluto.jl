@@ -118,6 +118,42 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
     end
 
+    @testset "User defined macro 5" begin
+        notebook = Notebook([
+            Cell("""macro dynamic_values(ex)
+                [:a, :b, :c]
+            end"""),
+            Cell("myarray = @dynamic_values()"),
+        ])
+        references(idx) = notebook.topology.nodes[notebook.cells[idx]].references
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :a ∉ references(2)
+        @test :b ∉ references(2)
+        @test :c ∉ references(2)
+    end
+
+    @testset "User defined macro 6" begin
+        notebook = Notebook([
+            Cell("""macro my_macro()
+                esc(:(y + x))
+            end"""),
+            Cell("""function my_function()
+                @my_macro()
+            end"""),
+            Cell("my_function()"),
+            Cell("x = 1"),
+            Cell("y = 2"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test [Symbol("@my_macro"), :x, :y] ⊆ notebook.topology.nodes[cell(2)].references
+        @test cell(3).output.body == "3"
+    end
+
     @testset "Function docs" begin
         notebook = Notebook([
             Cell("""

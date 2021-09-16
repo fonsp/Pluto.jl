@@ -244,7 +244,7 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
-		if ExpressionExplorer.join_funcname_parts.(current_symstate.macrocalls) ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
 			return current_symstate, true
 		end
 
@@ -256,7 +256,6 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 		    current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
 		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    union!(expanded_symbols_state.macrocalls, current_symstate.macrocalls)
 		    expanded_symbols_state, true
 		end
 	end
@@ -267,7 +266,10 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	for (cell, current_symstate) in unresolved_topology.unresolved_cells
 			(new_symstate, succeeded) = analyze_macrocell(cell, current_symstate)
 			if succeeded
-				new_nodes[cell] = ReactiveNode(new_symstate)
+				new_node = ReactiveNode(new_symstate)
+				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
+				union!(new_node.references, new_node.macrocalls)
+				new_nodes[cell] = new_node
 			else
 				still_unresolved_nodes[cell] = current_symstate
 			end
