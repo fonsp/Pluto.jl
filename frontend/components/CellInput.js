@@ -559,6 +559,36 @@ export const CellInput = ({
             }
             return CodeMirror.Pass
         }
+        
+        const keyMapBackspace = () => {
+            const cm = newcm_ref.current
+            if (disable_input_ref.current) {
+                return
+            }
+            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
+            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
+
+            if (cm.state.doc.lines === 1 && getValue6(cm) === "") {
+                // I wanted to write comments, but I think my variable names are documentation enough
+                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
+                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
+                    on_focus_neighbor(cell_id, -1)
+                    on_delete()
+                }
+            }
+
+            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+            if (enough_time_passed_since_force_focus) {
+                time_last_genuine_backspace.current = Date.now()
+                return
+            } else {
+                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
+                time_last_being_force_focussed_ref.current = Date.now()
+            }
+        }
+
+        // HERE
         const plutoKeyMaps = [
             /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
             { key: "Ctrl-Enter", run: keyMapRun, preventDefault: true },
@@ -573,6 +603,7 @@ export const CellInput = ({
             { key: "Ctrl-D", run: keyMapD, preventDefault: true },
             { key: "Delete", run: keyMapDelete, preventDefault: true },
             { key: "Ctrl-Delete", run: keyMapDelete, preventDefault: true },
+            { key: "Backspace", run: keyMapBackspace, preventDefault: false },
         ]
         const onCM6Update = (update) => {
             if (update.docChanged) {
@@ -794,7 +825,7 @@ export const CellInput = ({
         // Default
         keys["Alt-Down"] = () => alt_move(+1)
 
-        // TODO
+        // DOING
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
             if (disable_input_ref.current) {
                 return
