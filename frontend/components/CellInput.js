@@ -48,31 +48,6 @@ import {
     WidgetType,
 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32a3eb9/dist/index.es.min.js"
 
-class CheckboxWidget extends WidgetType {
-    constructor(checked) {
-        super()
-        this.checked = checked
-    }
-
-    eq(other) {
-        return other.checked == this.checked
-    }
-
-    toDOM() {
-        let wrap = document.createElement("span")
-        wrap.setAttribute("aria-hidden", "true")
-        wrap.className = "cm-boolean-toggle"
-        let box = wrap.appendChild(document.createElement("input"))
-        box.type = "checkbox"
-        box.checked = this.checked
-        return wrap
-    }
-
-    ignoreEvent() {
-        return false
-    }
-}
-
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
         super()
@@ -103,37 +78,6 @@ class PkgStatusMarkWidget extends WidgetType {
     ignoreEvent() {
         return false
     }
-}
-
-/**
- * @param {EditorView} view
- *
- */
-function checkboxes(view) {
-    let widgets = []
-    for (let { from, to } of view.visibleRanges) {
-        console.log(syntaxTree(view.state).topNode)
-
-        console.log("Visible range", from, to, view.state.doc.slice(from, to))
-        console.log("Visible range", from, to, [...view.state.doc.slice(from, to)])
-
-        syntaxTree(view.state).iterate({
-            from,
-            to,
-            enter: (type, from, to, get) => {
-                // console.log("Entering", type.name, get())
-                if (type.name === "variableName.standard") {
-                    let isTrue = view.state.doc.sliceString(from, to) == "true"
-                    let deco = Decoration.widget({
-                        widget: new CheckboxWidget(isTrue),
-                        side: 1,
-                    })
-                    widgets.push(deco.range(to))
-                }
-            },
-        })
-    }
-    return Decoration.set(widgets)
 }
 
 /**
@@ -188,49 +132,6 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref }) {
     return Decoration.set(widgets)
 }
 
-/**
- * @param {EditorView} view
- * @param {number} pos
- */
-function toggleBoolean(view, pos) {
-    let before = view.state.doc.sliceString(Math.max(0, pos - 5), pos)
-    let change
-    if (before == "false") change = { from: pos - 5, to: pos, insert: "true" }
-    else if (before.endsWith("true")) change = { from: pos - 4, to: pos, insert: "false" }
-    else return false
-    view.dispatch({ changes: change })
-    return true
-}
-
-const checkboxPlugin = ViewPlugin.fromClass(
-    class {
-        /**
-         * @param {EditorView} view
-         */
-        constructor(view) {
-            this.decorations = checkboxes(view)
-        }
-
-        /**
-         * @param {ViewUpdate} update
-         */
-        update(update) {
-            if (update.docChanged || update.viewportChanged) this.decorations = checkboxes(update.view)
-        }
-    },
-    {
-        decorations: (v) => v.decorations,
-
-        eventHandlers: {
-            mousedown: (e, view) => {
-                let target = e.target
-                if (target.nodeName == "INPUT" && target.parentElement?.classList.contains("cm-boolean-toggle"))
-                    return toggleBoolean(view, view.posAtDOM(target))
-            },
-        },
-    }
-)
-
 // https://codemirror.net/6/docs/ref/#rangeset.RangeCursor
 const collect_RangeCursor = (rc) => {
     let output = []
@@ -271,8 +172,6 @@ const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, decorations_re
             eventHandlers: {
                 mousedown: (e, view) => {
                     let target = e.target
-                    if (target.nodeName == "INPUT" && target.parentElement?.classList.contains("cm-boolean-toggle"))
-                        return toggleBoolean(view, view.posAtDOM(target))
                 },
             },
         }
@@ -714,57 +613,53 @@ export const CellInput = ({
         // TODO remove me
         //@ts-ignore
         window.tags = tags
-        const newcm =
-            (window.newcm =
-            newcm_ref.current =
-                new EditorView({
-                    /** Migration #0: New */
-                    state: EditorState.create({
-                        doc: local_code,
+        const newcm = (newcm_ref.current = new EditorView({
+            /** Migration #0: New */
+            state: EditorState.create({
+                doc: local_code,
 
-                        extensions: [
-                            checkboxPlugin,
-                            pbk,
-                            myHighlightStyle,
-                            basicSetup,
-                            // StreamLanguage.define(julia_legacy),
-                            julia_andrey(),
-                            EditorState.tabSize.of(4),
-                            EditorView.updateListener.of(onCM6Update),
-                            EditorView.lineWrapping,
-                            editable.of(EditorView.editable.of(!disable_input_ref.current)),
-                            history(),
-                            keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
-                            placeholder("Enter cell code..."),
-                            autocompletion({
-                                override: [
-                                    juliahints_cool_generator({
-                                        pluto_actions: pluto_actions,
-                                        notebook_id: notebook_id,
-                                        on_update_doc_query: on_update_doc_query,
-                                    }),
-                                    // (ctx) => {
-                                    //     console.log(ctx)
-                                    //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
-                                    //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
-
-                                    //     console.log(current_line)
-                                    //     return {
-                                    //         from: current_line_info.from,
-                                    //         options: [
-                                    //             {
-                                    //                 label: current_line + "asdf",
-                                    //             },
-                                    //         ],
-                                    //     }
-                                    // },
-                                ],
+                extensions: [
+                    pbk,
+                    myHighlightStyle,
+                    basicSetup,
+                    // StreamLanguage.define(julia_legacy),
+                    julia_andrey(),
+                    EditorState.tabSize.of(4),
+                    EditorView.updateListener.of(onCM6Update),
+                    EditorView.lineWrapping,
+                    editable.of(EditorView.editable.of(!disable_input_ref.current)),
+                    history(),
+                    keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
+                    placeholder("Enter cell code..."),
+                    autocompletion({
+                        override: [
+                            juliahints_cool_generator({
+                                pluto_actions: pluto_actions,
+                                notebook_id: notebook_id,
+                                on_update_doc_query: on_update_doc_query,
                             }),
-                            // julia,
+                            // (ctx) => {
+                            //     console.log(ctx)
+                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
+                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
+
+                            //     console.log(current_line)
+                            //     return {
+                            //         from: current_line_info.from,
+                            //         options: [
+                            //             {
+                            //                 label: current_line + "asdf",
+                            //             },
+                            //         ],
+                            //     }
+                            // },
                         ],
                     }),
-                    parent: dom_node_ref.current,
-                }))
+                    // julia,
+                ],
+            }),
+            parent: dom_node_ref.current,
+        }))
         /** Migration #3: Old code */
         const keys = {}
         // Migrated
