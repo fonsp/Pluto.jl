@@ -78,6 +78,7 @@ class PkgStatusMarkWidget extends WidgetType {
         super()
         this.package_name = package_name
         this.props = props
+        this.on_nbpkg = console.error
     }
 
     eq(other) {
@@ -93,24 +94,10 @@ class PkgStatusMarkWidget extends WidgetType {
             notebook_id: this.props.notebook_id,
         })
 
-        // TOOD remove event listener
         b.on_nbpkg(this.props.nbpkg_ref.current)
-        this.props.nbpkg_change.addEventListener("change", (e) => {
-            console.error(e.detail)
-            if (b.closest("body") !== document.body) {
-                console.warn("no longer attached", this.package_name)
-            }
-            b.on_nbpkg(e.detail)
-        })
+        this.on_nbpkg = b.on_nbpkg
 
         return b
-        let wrap = document.createElement("span")
-        wrap.setAttribute("aria-hidden", "true")
-        wrap.className = "cm-boolean-toggle"
-        let box = wrap.appendChild(document.createElement("input"))
-        box.type = "checkbox"
-        box.checked = this.package_name
-        return wrap
     }
 
     ignoreEvent() {
@@ -153,7 +140,7 @@ function checkboxes(view) {
  * @param {EditorView} view
  *
  */
-function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }) {
+function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref }) {
     let widgets = []
     for (let { from, to } of view.visibleRanges) {
         console.log(syntaxTree(view.state).topNode)
@@ -176,7 +163,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_ch
                     // console.warn("Found", package_name)
                     if (package_name !== "Base" && package_name !== "Core") {
                         let deco = Decoration.widget({
-                            widget: new PkgStatusMarkWidget(package_name, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }),
+                            widget: new PkgStatusMarkWidget(package_name, { pluto_actions, notebook_id, nbpkg_ref }),
                             side: 1,
                         })
                         widgets.push(deco.range(to))
@@ -244,22 +231,38 @@ const checkboxPlugin = ViewPlugin.fromClass(
     }
 )
 
-const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }) =>
+// https://codemirror.net/6/docs/ref/#rangeset.RangeCursor
+const collect_RangeCursor = (rc) => {
+    let output = []
+    while (rc.value != null) {
+        output.push(rc.value)
+        rc.next()
+    }
+    return output
+}
+
+const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref }) =>
     ViewPlugin.fromClass(
         class {
+            update_decos(view) {
+                const ds = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref })
+
+                decorations_ref.current = ds
+                this.decorations = ds
+            }
+
             /**
              * @param {EditorView} view
              */
             constructor(view) {
-                this.decorations = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change })
+                this.update_decos(view)
             }
 
             /**
              * @param {ViewUpdate} update
              */
             update(update) {
-                if (update.docChanged || update.viewportChanged)
-                    this.decorations = pkg_decorations(update.view, { pluto_actions, notebook_id, nbpkg_ref, nbpkg_change })
+                if (update.docChanged || update.viewportChanged) this.update_decos(update.view)
             }
         },
         {
@@ -408,17 +411,18 @@ export const CellInput = ({
     const pkg_bubbles = useRef(new Map())
 
     const nbpkg_ref = useRef(nbpkg)
-    const nbpkg_change = new EventTarget()
-    nbpkg_change.addEventListener("change", console.warn)
+    const decorations_ref = useRef(null)
     useEffect(() => {
         nbpkg_ref.current = nbpkg
-        console.info("dispatching", nbpkg_fingerprint(nbpkg))
-        nbpkg_change.dispatchEvent(new CustomEvent("change", { detail: nbpkg }))
+        // console.log("Decorations", collect_RangeCursor(decorations_ref.current.iter()))
 
+        collect_RangeCursor(decorations_ref.current.iter()).forEach((pd) => {
+            pd.widget.on_nbpkg(nbpkg)
+        })
         pkg_bubbles.current.forEach((b) => {
             b.on_nbpkg(nbpkg)
         })
-        // console.log("nbpkg effect!", nbpkg_fingerprint(nbpkg))
+        // console.log("nbpkg effect!", nbpkg, nbpkg_fingerprint(nbpkg))
     }, nbpkg_fingerprint(nbpkg))
 
     const update_line_bubbles = (line_i) => {
@@ -705,57 +709,62 @@ export const CellInput = ({
             // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
         ])
 
+        const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
-        const newcm = (newcm_ref.current = new EditorView({
-            /** Migration #0: New */
-            state: EditorState.create({
-                doc: local_code,
+        const newcm =
+            (window.newcm =
+            newcm_ref.current =
+                new EditorView({
+                    /** Migration #0: New */
+                    state: EditorState.create({
+                        doc: local_code,
 
-                extensions: [
-                    checkboxPlugin,
-                    pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, nbpkg_change }),
-                    myHighlightStyle,
-                    basicSetup,
-                    // StreamLanguage.define(julia_legacy),
-                    julia_andrey(),
-                    EditorState.tabSize.of(4),
-                    EditorView.updateListener.of(onCM6Update),
-                    EditorView.lineWrapping,
-                    editable.of(EditorView.editable.of(!disable_input_ref.current)),
-                    history(),
-                    keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
-                    placeholder("Enter cell code..."),
-                    autocompletion({
-                        override: [
-                            juliahints_cool_generator({
-                                pluto_actions: pluto_actions,
-                                notebook_id: notebook_id,
-                                on_update_doc_query: on_update_doc_query,
+                        extensions: [
+                            checkboxPlugin,
+                            pbk,
+                            myHighlightStyle,
+                            basicSetup,
+                            // StreamLanguage.define(julia_legacy),
+                            julia_andrey(),
+                            EditorState.tabSize.of(4),
+                            EditorView.updateListener.of(onCM6Update),
+                            EditorView.lineWrapping,
+                            editable.of(EditorView.editable.of(!disable_input_ref.current)),
+                            history(),
+                            keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
+                            placeholder("Enter cell code..."),
+                            autocompletion({
+                                override: [
+                                    juliahints_cool_generator({
+                                        pluto_actions: pluto_actions,
+                                        notebook_id: notebook_id,
+                                        on_update_doc_query: on_update_doc_query,
+                                    }),
+                                    // (ctx) => {
+                                    //     console.log(ctx)
+                                    //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
+                                    //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
+
+                                    //     console.log(current_line)
+                                    //     return {
+                                    //         from: current_line_info.from,
+                                    //         options: [
+                                    //             {
+                                    //                 label: current_line + "asdf",
+                                    //             },
+                                    //         ],
+                                    //     }
+                                    // },
+                                ],
                             }),
-                            // (ctx) => {
-                            //     console.log(ctx)
-                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
-                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
-
-                            //     console.log(current_line)
-                            //     return {
-                            //         from: current_line_info.from,
-                            //         options: [
-                            //             {
-                            //                 label: current_line + "asdf",
-                            //             },
-                            //         ],
-                            //     }
-                            // },
+                            // julia,
                         ],
                     }),
-                    // julia,
-                ],
-            }),
-            parent: dom_node_ref.current,
-        }))
+                    parent: dom_node_ref.current,
+                }))
         /** Migration #3: Old code */
         const keys = {}
         // Migrated
