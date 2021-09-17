@@ -640,6 +640,7 @@ export const CellInput = ({
                             }),
                         ],
                         maxRenderedOptions: 512, // fons's magic number
+                        optionClass: ((c) => c.is_exported ? "" : "c_notexported"),
                     }),
                     // julia,
                 ],
@@ -1218,28 +1219,36 @@ const juliahints_cool_generator = (options) => (ctx) => {
     console.log(old_line_info)
 
     return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        // TODO
-        // CodeMirror.on(completions, "select", (val) => {
-        //     let text = typeof val === "string" ? val : val.text
-        //     let doc_query = module_expanded_selection({
-        //         tokens_before_cursor: [
-        //             { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-        //             { type: "variable", string: text },
-        //         ],
-        //         tokens_after_cursor: [],
-        //     })
-        //     options.on_update_doc_query(doc_query)
-        // })
-
         return {
             from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
             to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
             options: message.results.map(([text, type_description, is_exported], i) => ({
                 label: text,
+                is_exported,
                 // detail: type_description,
                 type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
                 boost: 99 - (i / message.results.length),
-                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+                info: () => {
+                    
+                    //// TODO @ DRALLETJE
+                    // the user just scrolled through the autocompletion with value ${text}
+                    // the contents of the line before it is: ${old_line_sliced}                    
+                    // and we want to show docs for the current object
+                    
+                    // This code currently works, but if you changed/removed the `module_expanded_selection` function then this needs to be fixed.
+                    
+                    let doc_query = module_expanded_selection({
+                        tokens_before_cursor: [
+                            { type: "variable", string: old_line_sliced.slice(0, utf8index_to_ut16index(old_line, message.start)) },
+                            { type: "variable", string: text },
+                        ],
+                        tokens_after_cursor: [],
+                    })
+                    options.on_update_doc_query(doc_query)
+                    
+                    
+                    return new Promise(() => {})
+                },
             })),
         }
     })

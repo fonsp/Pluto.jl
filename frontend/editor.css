@@ -2057,6 +2057,11 @@ body > nav#slide_controls > button.next > span::after {
     z-index: 100;
 }
 
+.cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
+    /* https://github.com/codemirror/codemirror.next/issues/574 */
+    display: none;
+}
+
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li,
 li.CodeMirror-hint {
     /* this is the line height rounded to an integer to prevent jiggle */
@@ -2071,6 +2076,7 @@ li.CodeMirror-hint {
     background: #16659d;
 }
 
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported,
 li.CodeMirror-hint.c_notexported {
     color: rgba(0, 0, 0, 0.5);
 }
