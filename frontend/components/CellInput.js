@@ -547,6 +547,7 @@ export const CellInput = ({
         }
         const keyMapD = () => {
             const cm = newcm_ref.current
+            // This is the default already
         }
         const keyMapDelete = () => {
             const cm = newcm_ref.current
@@ -557,9 +558,9 @@ export const CellInput = ({
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
             }
-            return CodeMirror.Pass
+            return
         }
-        
+
         const keyMapBackspace = () => {
             const cm = newcm_ref.current
             if (disable_input_ref.current) {
@@ -588,6 +589,35 @@ export const CellInput = ({
             }
         }
 
+        const with_time_since_last = (fn) => {
+            let last_invoke_time = -Infinity // This infinity is for you, Fons
+            return () => {
+                let result = fn(Date.now() - last_invoke_time)
+                last_invoke_time = Date.now()
+                return result
+            }
+        }
+
+        // TODO: on_focus_neighbor()
+        // CM6 handles at_first_position: emits this function only at the edges.
+        // TODO: Test possible shortcomings 
+        const at_first_position6 = () => true
+        const keyMapLeft = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_first_position6()) {
+                    on_focus_neighbor(cell_id, -1, Infinity, Infinity)
+                } else {
+                    console.log("returns")
+                    return 
+                }
+            })
+        const keyMapRight = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_first_position6()) {
+                on_focus_neighbor(cell_id, 1, 0, 0)
+            } else {
+                return 
+            }
+        })
+ 
         // HERE
         const plutoKeyMaps = [
             /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
@@ -604,6 +634,11 @@ export const CellInput = ({
             { key: "Delete", run: keyMapDelete, preventDefault: true },
             { key: "Ctrl-Delete", run: keyMapDelete, preventDefault: true },
             { key: "Backspace", run: keyMapBackspace, preventDefault: false },
+            { key: "Ctrl-Backspace", run: keyMapBackspace, preventDefault: false },
+            { key: "ArrowLeft", run: keyMapLeft, preventDefault: false },
+            { key: "ArrowUp", run: keyMapLeft, preventDefault: false },
+            { key: "ArrowRight", run: keyMapRight, preventDefault: false },
+            { key: "ArrowDown", run: keyMapRight, preventDefault: false },
         ]
         const onCM6Update = (update) => {
             if (update.docChanged) {
@@ -825,7 +860,7 @@ export const CellInput = ({
         // Default
         keys["Alt-Down"] = () => alt_move(+1)
 
-        // DOING
+        // Migrated
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
             if (disable_input_ref.current) {
                 return
@@ -868,16 +903,9 @@ export const CellInput = ({
          * so I'll just roll with this abstraction
          * @param {(time_since: Number) => any} fn
          */
-        let with_time_since_last = (fn) => {
-            let last_invoke_time = -Infinity // This infinity is for you, Fons
-            return () => {
-                let result = fn(Date.now() - last_invoke_time)
-                last_invoke_time = Date.now()
-                return result
-            }
-        }
         const isapprox = (a, b) => Math.abs(a - b) < 3.0
         const at_first_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, 0.0)
+        // Doing
         keys["Up"] = with_time_since_last((elapsed) => {
             // TODO
             if (elapsed > 300 && at_first_line_visually()) {
@@ -891,8 +919,11 @@ export const CellInput = ({
             }
         })
         const at_first_position = () => cm.findPosH(cm.getCursor(), -1, "char")?.hitSide === true
+
+
+        // Doing
         keys["Left"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_first_position()) {
                 on_focus_neighbor(cell_id, -1, Infinity, Infinity)
             } else {
@@ -901,7 +932,7 @@ export const CellInput = ({
         })
         const at_last_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, cm.cursorCoords({ line: Infinity, ch: Infinity }, "div").top)
         keys["Down"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_last_line_visually()) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
                 // todo:
@@ -913,13 +944,15 @@ export const CellInput = ({
         })
         const at_last_position = () => cm.findPosH(cm.getCursor(), 1, "char")?.hitSide === true
         keys["Right"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_last_position()) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
             } else {
                 return CodeMirror.Pass
             }
         })
+
+        // Default
         const open_close_selection = (opening_char, closing_char) => () => {
             // Default
             if (cm.somethingSelected()) {
