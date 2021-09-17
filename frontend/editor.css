@@ -956,6 +956,10 @@ pluto-input .CodeMirror {
     border-left: none;
     transition: border 0.15s ease-in-out;
 }
+pluto-input:focus-within .cm-editor {
+    /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
+    z-index: 21;
+}
 
 pluto-input .CodeMirror-scroll {
     min-height: 0px;
@@ -2040,19 +2044,39 @@ body > nav#slide_controls > button.next > span::after {
 
 /* CODEMIRROR HINTS */
 
+.cm-editor .cm-tooltip {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
+    border-radius: 4px;
+}
+
+.cm-tooltip-autocomplete,
 .CodeMirror-hints {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
     z-index: 100;
 }
 
+.cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
+    /* https://github.com/codemirror/codemirror.next/issues/574 */
+    display: none;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li,
 li.CodeMirror-hint {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
     /* font-size: 16px; */
     line-height: 16px;
+    border-radius: 3px;
 }
 
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+    color: white;
+    background: #16659d;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported,
 li.CodeMirror-hint.c_notexported {
     color: rgba(0, 0, 0, 0.5);
 }
@@ -2060,6 +2084,13 @@ li.CodeMirror-hint-active.c_notexported {
     color: white;
 }
 
+.cm-editor .cm-completionIcon {
+    opacity: 1;
+    width: 1em;
+    transform: translateY(-1.5px);
+}
+
+.cm-completionIcon::before,
 li.CodeMirror-hint::before {
     content: "⚫";
     color: transparent;
@@ -2080,14 +2111,17 @@ body.ctrl_down .cm-variable:hover {
     cursor: pointer;
 }
 
+.cm-tooltip.cm-tooltip-autocomplete,
 ul.CodeMirror-hints {
     padding: 0;
     margin-left: -1.5em;
+    background: white;
 }
 
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
-pluto-input .cm-editor,
+pluto-input .cm-editor .cm-scroller,
+pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul ,
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
@@ -2193,6 +2227,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #815ba4;
 }
 
+.cm-completionIcon-c_Number::before,
 li.CodeMirror-hint.c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
@@ -2207,6 +2242,7 @@ li.CodeMirror-hint.c_Number::before,
     color: #ef6155;
 }
 
+.cm-completionIcon-c_String::before,
 li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
     color: #da5616;
@@ -2216,6 +2252,7 @@ li.CodeMirror-hint.c_String::before,
     font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
+.cm-completionIcon-c_Any::before,
 li.CodeMirror-hint.c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
@@ -2232,11 +2269,13 @@ pluto-output > assignee,
     color: #06b6ef;
 }
 
+.cm-completionIcon-c_Function::before,
 li.CodeMirror-hint.c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
+.cm-completionIcon-c_Array::before,
 li.CodeMirror-hint.c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
@@ -2246,6 +2285,8 @@ li.CodeMirror-hint.c_Array::before,
     color: #ef6155;
 }
 
+.cm-completionIcon-c_package::before,
+.cm-completionIcon-c_Module::before,
 li.CodeMirror-hint.c_package::before,
 li.CodeMirror-hint.c_Module::before,
 .cm-s-default span.cm-link {
