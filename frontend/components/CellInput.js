@@ -638,22 +638,8 @@ export const CellInput = ({
                                 notebook_id: notebook_id,
                                 on_update_doc_query: on_update_doc_query,
                             }),
-                            // (ctx) => {
-                            //     console.log(ctx)
-                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
-                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
-
-                            //     console.log(current_line)
-                            //     return {
-                            //         from: current_line_info.from,
-                            //         options: [
-                            //             {
-                            //                 label: current_line + "asdf",
-                            //             },
-                            //         ],
-                            //     }
-                            // },
                         ],
+                        maxRenderedOptions: 512, // fons's magic number
                     }),
                     // julia,
                 ],
@@ -1248,10 +1234,11 @@ const juliahints_cool_generator = (options) => (ctx) => {
         return {
             from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
             to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
-            options: message.results.map(([text, type_description, is_exported]) => ({
+            options: message.results.map(([text, type_description, is_exported], i) => ({
                 label: text,
-                detail: type_description,
+                // detail: type_description,
                 type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                boost: 99 - (i / message.results.length),
                 // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
             })),
         }
