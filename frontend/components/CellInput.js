@@ -963,7 +963,7 @@ export const CellInput = ({
                 return CodeMirror.Pass
             }
         }
-
+        // Default + works with all '', "", ``, [], {}, ()!
         ;["()", "{}", "[]"].forEach((pair) => {
             const [opening_char, closing_char] = pair.split("")
             keys[`'${opening_char}'`] = open_close_selection(opening_char, closing_char)
