@@ -5,6 +5,7 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
+import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -46,7 +47,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32a3eb9/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@cca05ca/dist/index.es.min.js"
 
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
@@ -676,6 +677,22 @@ export const CellInput = ({
 
         const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
 
+        const docs_updater = EditorView.updateListener.of((update) => {
+            if (!newcm.hasFocus) {
+                return
+            }
+
+            let state = update.state
+            console.group("Selection")
+            let result = get_selected_doc_from_state(state)
+            console.log("Result:", result)
+            console.groupEnd()
+
+            if (result != null) {
+                on_update_doc_query(result)
+            }
+        })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -692,6 +709,7 @@ export const CellInput = ({
                     julia_andrey(),
                     EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
+                    docs_updater,
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
@@ -704,22 +722,9 @@ export const CellInput = ({
                                 notebook_id: notebook_id,
                                 on_update_doc_query: on_update_doc_query,
                             }),
-                            // (ctx) => {
-                            //     console.log(ctx)
-                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
-                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
-
-                            //     console.log(current_line)
-                            //     return {
-                            //         from: current_line_info.from,
-                            //         options: [
-                            //             {
-                            //                 label: current_line + "asdf",
-                            //             },
-                            //         ],
-                            //     }
-                            // },
                         ],
+                        maxRenderedOptions: 512, // fons's magic number
+                        optionClass: ((c) => c.is_exported ? "" : "c_notexported"),
                     }),
                     // julia,
                 ],
@@ -1020,6 +1025,7 @@ export const CellInput = ({
         })
 
         // TODO
+        newcm.on
         cm.on("cursorActivity", () => {
             setTimeout(() => {
                 if (!cm.hasFocus()) return
@@ -1296,27 +1302,36 @@ const juliahints_cool_generator = (options) => (ctx) => {
     console.log(old_line_info)
 
     return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        // TODO
-        // CodeMirror.on(completions, "select", (val) => {
-        //     let text = typeof val === "string" ? val : val.text
-        //     let doc_query = module_expanded_selection({
-        //         tokens_before_cursor: [
-        //             { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-        //             { type: "variable", string: text },
-        //         ],
-        //         tokens_after_cursor: [],
-        //     })
-        //     options.on_update_doc_query(doc_query)
-        // })
-
         return {
             from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
             to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
-            options: message.results.map(([text, type_description, is_exported]) => ({
+            options: message.results.map(([text, type_description, is_exported], i) => ({
                 label: text,
-                detail: type_description,
+                is_exported,
+                // detail: type_description,
                 type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+                boost: 99 - (i / message.results.length),
+                info: () => {
+                    
+                    //// TODO @ DRALLETJE
+                    // the user just scrolled through the autocompletion with value ${text}
+                    // the contents of the line before it is: ${old_line_sliced}                    
+                    // and we want to show docs for the current object
+                    
+                    // This code currently works, but if you changed/removed the `module_expanded_selection` function then this needs to be fixed.
+                    
+                    let doc_query = module_expanded_selection({
+                        tokens_before_cursor: [
+                            { type: "variable", string: old_line_sliced.slice(0, utf8index_to_ut16index(old_line, message.start)) },
+                            { type: "variable", string: text },
+                        ],
+                        tokens_after_cursor: [],
+                    })
+                    options.on_update_doc_query(doc_query)
+                    
+                    
+                    return new Promise(() => {})
+                },
             })),
         }
     })
