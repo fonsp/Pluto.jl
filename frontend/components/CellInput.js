@@ -5,6 +5,7 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
+import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -46,7 +47,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32a3eb9/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@cca05ca/dist/index.es.min.js"
 
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
@@ -610,6 +611,22 @@ export const CellInput = ({
 
         const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
 
+        const docs_updater = EditorView.updateListener.of((update) => {
+            if (!newcm.hasFocus) {
+                return
+            }
+
+            let state = update.state
+            console.group("Selection")
+            let result = get_selected_doc_from_state(state)
+            console.log("Result:", result)
+            console.groupEnd()
+
+            if (result != null) {
+                on_update_doc_query(result)
+            }
+        })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -626,6 +643,7 @@ export const CellInput = ({
                     julia_andrey(),
                     EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
+                    docs_updater,
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
@@ -943,6 +961,7 @@ export const CellInput = ({
         })
 
         // TODO
+        newcm.on
         cm.on("cursorActivity", () => {
             setTimeout(() => {
                 if (!cm.hasFocus()) return
