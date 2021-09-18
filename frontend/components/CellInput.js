@@ -611,16 +611,19 @@ export const CellInput = ({
 
         const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
 
+        let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
-            if (!newcm.hasFocus) {
+            // This reference to `newcm` feels ugly (This isn't an independent extension now)
+            // But I don't know how to make an extension that has a reference to the view.
+            if (!update.view.hasFocus) {
                 return
             }
 
             let state = update.state
-            console.group("Selection")
-            let result = get_selected_doc_from_state(state)
-            console.log("Result:", result)
-            console.groupEnd()
+            DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
+            let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
+            DOCS_UPDATER_VERBOSE && console.log("Result:", result)
+            DOCS_UPDATER_VERBOSE && console.groupEnd()
 
             if (result != null) {
                 on_update_doc_query(result)
