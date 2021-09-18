@@ -12,6 +12,7 @@ import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror
 import {
     EditorState,
     EditorSelection,
+    SelectionRange,
     Compartment,
     EditorView,
     placeholder,
@@ -47,7 +48,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@cca05ca/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@ff6431c/dist/index.es.min.js"
 
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
@@ -607,7 +608,6 @@ export const CellInput = ({
             if (elapsed > 300 && at_first_position6()) {
                     on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 } else {
-                    console.log("returns")
                     return 
                 }
             })
@@ -1175,7 +1175,8 @@ export const CellInput = ({
         })
     }, [disable_input])
 
-    useEffect(() => {
+    // Migrating
+    /*useEffect(() => {
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
         } else {
@@ -1183,6 +1184,56 @@ export const CellInput = ({
             let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line === Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
             cm_ref.current.focus()
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
+        }
+    }, [cm_forced_focus]) */
+
+    const posToOffset = (doc, pos) => {
+        if(pos.line === Infinity)
+            return doc.toString().length - 1
+        return doc.line(pos.line + 1).from + pos.ch
+    }
+
+    /**
+     * 
+     * @param {cm6 document} doc: Usually cm.state.doc 
+     * @param {cm5} pos
+     * 
+     * returns https://codemirror.net/6/docs/ref/#rangeset (Range: {from, to, value}) 
+     */
+    const toRanges = (cm, cm5_sel) =>{
+        const line_from = cm5_sel?.[0]?.line
+        const line_to = cm5_sel?.[1]?.line
+        const ch_from =  cm5_sel?.[0]?.ch
+        const ch_to =  cm5_sel?.[1]?.ch
+        if(line_from === Infinity){
+            const anchor = cm.state.doc.length;
+            const head = anchor;
+            return [new SelectionRange(anchor, head)]
+        }
+        if (ch_from === 0 && ch_to === Infinity){
+            const line = cm.state.doc.line(line_from + 1)
+            const anchor = line.from
+            const head = line.to
+            return [new SelectionRange(anchor, head)]
+        }
+        if (ch_to === ch_from){
+            const line = cm.state.doc.line(line_from + 1)
+            const anchor = line.from
+            const head = ch_to
+            return [new SelectionRange(anchor, head)]
+        }
+    }
+    useEffect(() => {
+        const cm = newcm_ref.current
+        if (cm_forced_focus == null) {
+            cm.dispatch({selection: null})
+        } else {
+            time_last_being_force_focussed_ref.current = Date.now()
+            console.log(cm_forced_focus)
+            let ranges = toRanges(cm, cm_forced_focus)
+            cm.focus()
+            if (ranges.length > 0)
+                cm.dispatch({selection: EditorSelection.create(ranges)})
         }
     }, [cm_forced_focus])
 
