@@ -910,7 +910,7 @@ export const CellInput = ({
          */
         const isapprox = (a, b) => Math.abs(a - b) < 3.0
         const at_first_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, 0.0)
-        // Doing
+        // Migrated
         keys["Up"] = with_time_since_last((elapsed) => {
             // TODO
             if (elapsed > 300 && at_first_line_visually()) {
@@ -1175,7 +1175,7 @@ export const CellInput = ({
         })
     }, [disable_input])
 
-    // Migrating
+    // Migrated
     /*useEffect(() => {
         if (cm_forced_focus == null) {
             clear_selection(cm_ref.current)
@@ -1186,12 +1186,6 @@ export const CellInput = ({
             cm_ref.current.setSelection(...cm_forced_focus_mapped)
         }
     }, [cm_forced_focus]) */
-
-    const posToOffset = (doc, pos) => {
-        if(pos.line === Infinity)
-            return doc.toString().length - 1
-        return doc.line(pos.line + 1).from + pos.ch
-    }
 
     /**
      * 
