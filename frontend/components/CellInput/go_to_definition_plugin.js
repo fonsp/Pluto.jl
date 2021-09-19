@@ -132,15 +132,19 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
                     // const notebook = pluto_actions.get_notebook()
                     // const mycell = notebook?.cell_dependencies?.[cell_id]
                     // console.log(`mycell.upstream_cells_map:`, mycell.upstream_cells_map)
+                    let used_variables = view.state.facet(UsedVariablesFacet)
+                    console.log(`used_variables:`, used_variables)
 
-                    // window.dispatchEvent(
-                    //     new CustomEvent("cell_focus", {
-                    //         detail: {
-                    //             cell_id: upstream_cells_map[variable][0],
-                    //             line: 0, // 1-based to 0-based index
-                    //         },
-                    //     })
-                    // )
+                    if (used_variables[variable].length > 0) {
+                        window.dispatchEvent(
+                            new CustomEvent("cell_focus", {
+                                detail: {
+                                    cell_id: used_variables[variable][0],
+                                    line: 0, // 1-based to 0-based index
+                                },
+                            })
+                        )
+                    }
                 }
             },
         },

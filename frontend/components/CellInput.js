@@ -1164,9 +1164,21 @@ export const CellInput = ({
             clear_selection(cm_ref.current)
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
-            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line === Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
-            cm_ref.current.focus()
-            cm_ref.current.setSelection(...cm_forced_focus_mapped)
+            let doc = newcm_ref.current.state.doc
+
+            let new_selection = {
+                anchor: doc.line(cm_forced_focus[0].line + 1).from + cm_forced_focus[0].ch,
+                head:
+                    cm_forced_focus[1].line === Infinity || cm_forced_focus[1].ch === Infinity
+                        ? doc.length
+                        : doc.line(cm_forced_focus[1].line + 1).from + cm_forced_focus[1].ch,
+            }
+            console.log(`new_selection:`, new_selection)
+
+            newcm_ref.current.focus()
+            newcm_ref.current.dispatch({
+                selection: new_selection,
+            })
         }
     }, [cm_forced_focus])
 
