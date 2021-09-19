@@ -683,6 +683,17 @@ export const CellInput = ({
                             set_cm_forced_focus(null)
                         },
                     }),
+                    EditorView.domEventHandlers({
+                        paste: (event, view) => {
+                            const topaste = event.clipboardData.getData("text/plain")
+                            const deserializer = detect_deserializer(topaste, false)
+                            if (deserializer != null) {
+                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
+                                event.preventDefault() // Prevents codemirror from pasting
+                            }
+                            event.stopPropagation() // Prevents the "add cell" past behavior
+                        },
+                    }),
                     // StreamLanguage.define(julia_legacy),
                     julia_andrey(),
                     EditorState.tabSize.of(4),
