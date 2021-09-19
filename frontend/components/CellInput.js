@@ -1026,7 +1026,7 @@ export const CellInput = ({
             }
             return true
         }
-        // TODO
+        // MIGRATED
         cm.on("dragover", (cm_, e) => {
             if (e.dataTransfer.types[0] !== "text/plain") {
                 on_drag_drop_events(e)
@@ -1034,7 +1034,7 @@ export const CellInput = ({
             }
         })
 
-        // TODO
+        // MIGRATED
         cm.on("drop", (cm_, e) => {
             if (e.dataTransfer.types[0] !== "text/plain") {
                 on_drag_drop_events(e)
@@ -1043,7 +1043,7 @@ export const CellInput = ({
             }
         })
 
-        // TODO
+        // MIGRATED
         cm.on("dragenter", (cm_, e) => {
             if (e.dataTransfer.types[0] !== "text/plain") {
                 on_drag_drop_events(e)
@@ -1051,7 +1051,7 @@ export const CellInput = ({
             }
         })
 
-        // TODO
+        // MIGRATED
         cm.on("dragleave", (cm_, e) => {
             if (e.dataTransfer.types[0] !== "text/plain") {
                 on_drag_drop_events(e)
@@ -1059,8 +1059,7 @@ export const CellInput = ({
             }
         })
 
-        // TODO
-        newcm.on
+        // MIGRATED
         cm.on("cursorActivity", () => {
             setTimeout(() => {
                 if (!cm.hasFocus()) return
@@ -1107,7 +1106,7 @@ export const CellInput = ({
             }, 0)
         })
 
-        // Migrated (cm6 uses an observer) TODO Live docs
+        // Migrated (cm6 uses an observer)
         cm.on("change", (cm, e) => {
             // console.log("cm changed event ", e)
             const new_value = cm.getValue()
