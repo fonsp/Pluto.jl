@@ -307,12 +307,12 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 if (cursor.name === "FunctionDefinition") {
                     cursor.firstChild() // "function"
                     cursor.nextSibling() // Identifier
-                    return return_if_valid_docs_type(state, cursor)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
                 // `X() = ...` should yield `X`
                 if (cursor.name === "FunctionAssignmentExpression") {
                     cursor.firstChild() // Identifier
-                    return return_if_valid_docs_type(state, cursor)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
 
                 if (cursor.name === "Identifier" && parent.name === "MacroIdentifier") {
@@ -345,7 +345,7 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 // Sure these keywords could be useful, but I think it's a bit much to show docs for everyone
                 let keywords_that_have_docs = ["function", "macro", "end", "begin", "let", "if", "else", "try", "catch", "finally"]
                 // These keywords however are a bit more useful to show docs for
-                let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally"]
+                let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote"]
                 if (
                     VALID_DOCS_TYPES.includes(cursor.name) ||
                     keywords_that_have_docs_and_are_cool.includes(cursor.name)
