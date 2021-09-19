@@ -1130,7 +1130,7 @@ export const CellInput = ({
             e.stopPropagation()
         })
 
-        //TODO
+        // MIGRATED
         cm.on("mousedown", (cm, e) => {
             const notebook = pluto_actions.get_notebook()
             const mycell = notebook?.cell_dependencies?.[cell_id]
