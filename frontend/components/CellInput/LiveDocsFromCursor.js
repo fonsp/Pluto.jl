@@ -94,8 +94,12 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 }
 
                 // If we are an identifier inside a NamedField, we want to show whatever we are a named part of
-                if (cursor.name === "Identifier" && parents[0] === "NamedField") {
-                    continue
+                // EXEPT, when we are in the last part (the value) of a NamedField, because then we can show
+                // the value.
+                if (cursor.name === "Identifier" && parent.name === "NamedField") {
+                    if (parent.lastChild.from != cursor.from && parent.lastChild.to != cursor.to) {
+                        continue
+                    }
                 }
 
                 // `a = 1` would yield `=`, `a += 1` would yield `+=`
