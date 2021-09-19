@@ -1,5 +1,173 @@
 import { EditorState, syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
 
+let get_variables_from_assignment = (cursor) => {
+    if (cursor.name === "Identifier") {
+        return [cursor.node]
+    }
+    // `function f(x...)` => ["x"]
+    // `x... = 10` => ["x"]
+    if (cursor.name === "SpreadExpression") {
+        if (cursor.firstChild()) {
+            try {
+                return get_variables_from_assignment(cursor)
+            } finally {
+                cursor.parent()
+            }
+        }
+    }
+    // `function f(x = 10)` => ["x"]
+    // First need to go into NamedArgument, then need to go into NamedField.
+    if (cursor.name === "NamedArgument" || cursor.name === "NamedField") {
+        if (cursor.firstChild()) {
+            try {
+                return get_variables_from_assignment(cursor)
+            } finally {
+                cursor.parent()
+            }
+        }
+    }
+    // `function f(x::Any)` => ["x"]
+    // `x::Any = 10` => ["x"]
+    if (cursor.name === "TypedExpression") {
+        if (cursor.firstChild()) {
+            try {
+                return get_variables_from_assignment(cursor)
+            } finally {
+                cursor.parent()
+            }
+        }
+    }
+    // `function f( (x,y) )` => ["x", "y"]
+    // `(x, y) = arr` => ["x", "y"]
+    // `x,y = arr` => ["x", "y"]
+    if (cursor.name === "TupleExpression" || cursor.name === "BareTupleExpression") {
+        let variables = []
+        if (cursor.firstChild()) {
+            do {
+                variables.push(...get_variables_from_assignment(cursor))
+            } while (cursor.nextSibling())
+            cursor.parent()
+        }
+        return variables
+    }
+    return []
+}
+
+let get_local_variables = (cursor) => {
+    let local_variables = []
+    do {
+        if (cursor.name === "FunctionDefinition" && cursor.firstChild()) {
+            // Find ArgumentList
+            do {
+                if (cursor.name !== "ArgumentList") continue
+                // Cycle through arguments
+                if (cursor.firstChild()) {
+                    do {
+                        local_variables.push(...get_variables_from_assignment(cursor))
+                    } while (cursor.nextSibling())
+                    cursor.parent()
+                }
+            } while (cursor.nextSibling())
+            cursor.parent()
+        }
+
+        if (cursor.name === "LetStatement" && cursor.firstChild()) {
+            do {
+                if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
+                    local_variables.push(...get_variables_from_assignment(cursor))
+                    cursor.parent()
+                }
+            } while (cursor.nextSibling())
+            cursor.parent()
+        }
+
+        // When in a block-ish node (FunctionDefinition, but later also begin, let, if, etc)
+        // we go backwards from where we are, collecting any assignment-like nodes.
+        // Later we could even go into begin blocks, but that would be a bit more complicated.
+        let parent = cursor.node.parent
+        do {
+            if (cursor.name === "LocalStatement" || cursor.name === "ConstStatement" || cursor.name === "GlobalStatement") {
+                if (cursor.firstChild()) {
+                    do {
+                        if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
+                            local_variables.push(...get_variables_from_assignment(cursor))
+                            cursor.parent()
+                        }
+                    } while (cursor.nextSibling())
+                    cursor.parent()
+                }
+            }
+
+            if (cursor.name === "AssignmentExpression" && cursor.firstChild()) {
+                local_variables.push(...get_variables_from_assignment(cursor))
+                cursor.parent()
+            }
+            if (cursor.name === "ForBinding" && cursor.firstChild()) {
+                local_variables.push(...get_variables_from_assignment(cursor))
+                cursor.parent()
+            }
+            if (cursor.name === "ArrayComprehensionExpression" && cursor.firstChild()) {
+                cursor.nextSibling()
+                if (cursor.name === "ForClause" && cursor.firstChild()) {
+                    do {
+                        if (cursor.name === "ForBinding" && cursor.firstChild()) {
+                            local_variables.push(...get_variables_from_assignment(cursor))
+                            cursor.parent()
+                        }
+                    } while (cursor.nextSibling())
+                    cursor.parent()
+                }
+                cursor.parent()
+            }
+        } while (cursor.prevSibling())
+    } while (cursor.parent())
+    return local_variables
+}
+
+let get_root_variable_from_expression = (cursor) => {
+    if (cursor.name === "SubscriptExpression") {
+        cursor.firstChild()
+        return get_root_variable_from_expression(cursor)
+    }
+    if (cursor.name === "FieldExpression") {
+        cursor.firstChild()
+        return get_root_variable_from_expression(cursor)
+    }
+    if (cursor.name === "Identifier") {
+        cursor.firstChild()
+        return cursor.node
+    }
+    return null
+}
+
+let VALID_DOCS_TYPES = ["Identifier", "FieldExpression", "SubscriptExpression", "MacroFieldExpression", "Operator", "ParameterizedIdentifier"]
+
+let is_docs_searchable = (cursor) => {
+    if (VALID_DOCS_TYPES.includes(cursor.name)) {
+        if (cursor.firstChild()) {
+            do {
+                // Numbers themselves can't be docs searched, but using numbers inside SubscriptExpression can be.
+                if (cursor.name === "Number") {
+                    continue
+                }
+                // This is for the VERY specific case like `Vector{Int}(1,2,3,4) which I want to yield `Vector{Int}`
+                if (cursor.name === "TypeArgumentList") {
+                    continue
+                }
+                if (!is_docs_searchable(cursor)) {
+                    return false
+                }
+            } while (cursor.nextSibling())
+            cursor.parent()
+            return true
+        } else {
+            return true
+        }
+    } else {
+        return false
+    }
+}
+
 /** @param {EditorState} state */
 export let get_selected_doc_from_state = (state, verbose = false) => {
     let selection = state.selection.main
@@ -14,7 +182,11 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
 
         let tree = syntaxTree(state)
         let cursor = tree.cursor()
+        verbose && console.log(`Full tree:`, cursor.toString())
         cursor.moveTo(selection.to, -1)
+
+        let local_variables = get_local_variables(cursor.node.cursor).map((node) => state.doc.sliceString(node.from, node.to))
+        verbose && console.log(`local_variables:`, local_variables)
 
         let iterations = 0
 
@@ -41,6 +213,9 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 }
                 // Also just have the first parent as a node
                 let parent = cursor.node.parent
+                if (parent == null) {
+                    break
+                }
 
                 verbose && console.log(`parents:`, parents)
 
@@ -49,16 +224,16 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 //    not on arguments (those are handle later))
                 if (cursor.name === "CallExpression") {
                     cursor.firstChild() // Move to callee
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
 
                 if (cursor.name === "ParameterizedIdentifier") {
                     cursor.firstChild() // Move to callee
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
 
                 // `html"asd"` should yield "html"
-                if (cursor.name === "Identifier" && parents[0] === "PrefixedString") {
+                if (cursor.name === "Identifier" && parent.name === "PrefixedString") {
                     continue
                 }
                 if (cursor.name === "PrefixedString") {
@@ -68,15 +243,15 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 }
 
                 // For identifiers in typed expressions e.g. `a::Number` always show the type
-                if (cursor.name === "Identifier" && parents[0] === "TypedExpression") {
+                if (cursor.name === "Identifier" && parent.name === "TypedExpression") {
                     cursor.parent() // Move to TypedExpression
                     cursor.lastChild() // Move to type Identifier
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
                 // For the :: inside a typed expression, show the type
                 if (cursor.name === "TypedExpression") {
                     cursor.lastChild() // Move to callee
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
 
                 // Docs for spread operator when you're in a SpreadExpression
@@ -86,9 +261,8 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
 
                 // For Identifiers, we expand them in the hopes of finding preceding (left side) parts.
                 // So we make sure we don't move to the left (`to` stays the same) and then possibly expand
-                let identifier_parts = ["Identifier", "FieldExpression", "SubscriptExpression", "MacroFieldExpression"]
-                if (parent != null && parent.to === cursor.to) {
-                    if (identifier_parts.includes(cursor.name) && identifier_parts.includes(parent.name)) {
+                if (parent.to === cursor.to) {
+                    if (VALID_DOCS_TYPES.includes(cursor.name) && VALID_DOCS_TYPES.includes(parent.name)) {
                         continue
                     }
                 }
@@ -117,14 +291,14 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 // we should go to the parent.
                 if (
                     cursor.name === "Identifier" &&
-                    parents[0] === "ArgumentList" &&
-                    (parents[1] === "FunctionAssignmentExpression" || parents[1] === "FunctionDefinition")
+                    parent.name === "ArgumentList" &&
+                    (parent.parent.name === "FunctionAssignmentExpression" || parent.parent.name === "FunctionDefinition")
                 ) {
                     continue
                 }
 
                 // Identifier that's actually a symbol? Not useful at all!
-                if (cursor.name === "Identifier" && parents[0] === "Symbol") {
+                if (cursor.name === "Identifier" && parent.name === "Symbol") {
                     continue
                 }
 
@@ -132,13 +306,13 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 // `function X() ... end` should yield `X`
                 if (cursor.name === "FunctionDefinition") {
                     cursor.firstChild() // "function"
-                    cursor.next(false) // Identifier
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    cursor.nextSibling() // Identifier
+                    return return_if_valid_docs_type(state, cursor)
                 }
                 // `X() = ...` should yield `X`
                 if (cursor.name === "FunctionAssignmentExpression") {
                     cursor.firstChild() // Identifier
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    return return_if_valid_docs_type(state, cursor)
                 }
 
                 if (cursor.name === "Identifier" && parent.name === "MacroIdentifier") {
@@ -173,17 +347,33 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                 // These keywords however are a bit more useful to show docs for
                 let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally"]
                 if (
-                    cursor.name === "Operator" ||
-                    identifier_parts.includes(cursor.name) ||
+                    VALID_DOCS_TYPES.includes(cursor.name) ||
                     keywords_that_have_docs_and_are_cool.includes(cursor.name)
                     // keywords_that_have_docs.includes(cursor.name)
                 ) {
-                    return state.doc.sliceString(cursor.from, cursor.to)
+                    if (!is_docs_searchable(cursor)) {
+                        return undefined
+                    }
+
+                    // When we can already see that a variable is local, we don't want to show docs for it
+                    // because we won't be able to load it in anyway.
+                    let root_variable_node = get_root_variable_from_expression(cursor.node.cursor)
+                    if (root_variable_node == null) {
+                        return state.doc.sliceString(cursor.from, cursor.to)
+                    }
+                    let root_variable_name = state.doc.sliceString(root_variable_node.from, root_variable_node.to)
+                    if (!local_variables.includes(root_variable_name)) {
+                        return state.doc.sliceString(cursor.from, cursor.to)
+                    }
                 }
 
                 // If you get here (so you have no cool other matches) and your parent is a FunctionDefinition,
                 // I don't want to show you the function name, so imma head out.
-                if (parents[0] === "FunctionDefinition") {
+                if (parent.name === "FunctionDefinition") {
+                    return undefined
+                }
+                // If we are expanding to an AssigmentExpression, we DONT want to show `=`
+                if (parent.name === "AssignmentExpression") {
                     return undefined
                 }
             } finally {
