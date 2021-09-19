@@ -972,8 +972,6 @@ patch: ${JSON.stringify(
         })
 
         document.addEventListener("paste", async (e) => {
-            if (e.defaultPrevented) return
-
             const topaste = e.clipboardData.getData("text/plain")
             const deserializer = detect_deserializer(topaste)
             if (deserializer != null) {

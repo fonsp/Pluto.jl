@@ -124,17 +124,20 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
 
                     event.preventDefault()
                     let scrollto_selector = `[id='${encodeURI(variable)}']`
-                    document.querySelector(scrollto_selector).scrollIntoView()
+                    document.querySelector(scrollto_selector).scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                    })
 
+                    // TODO Something fancy where it counts going to definition as a page in history,
+                    // .... so pressing/swiping back will go back to where you clicked on the definition.
                     // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
                     // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                    // const notebook = pluto_actions.get_notebook()
-                    // const mycell = notebook?.cell_dependencies?.[cell_id]
-                    // console.log(`mycell.upstream_cells_map:`, mycell.upstream_cells_map)
                     let used_variables = view.state.facet(UsedVariablesFacet)
-                    console.log(`used_variables:`, used_variables)
 
+                    // TODO Something fancy where we actually emit the identifier we are looking for,
+                    // .... and the cell then selects exactly that definition (using lezer and cool stuff)
                     if (used_variables[variable].length > 0) {
                         window.dispatchEvent(
                             new CustomEvent("cell_focus", {

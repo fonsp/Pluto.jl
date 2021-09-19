@@ -686,13 +686,21 @@ export const CellInput = ({
                     }),
                     EditorView.domEventHandlers({
                         paste: (event, view) => {
+                            console.log(`view.hasFocus:`, view.hasFocus)
+                            if (!view.hasFocus) {
+                                // Tell codemirror it doesn't have to handle this when it doesn't have focus
+                                return true
+                            }
+
+                            // Prevent this event from reaching the Editor-level paste handler
+                            event.stopPropagation()
+
                             const topaste = event.clipboardData.getData("text/plain")
                             const deserializer = detect_deserializer(topaste, false)
                             if (deserializer != null) {
                                 pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                                event.preventDefault() // Prevents codemirror from pasting
+                                return true // Prevents codemirror from pasting
                             }
-                            event.stopPropagation() // Prevents the "add cell" past behavior
                         },
                     }),
                     EditorView.domEventHandlers({
@@ -1170,6 +1178,7 @@ export const CellInput = ({
             if (has_ctrl_or_cmd_pressed(e) && which === 1 && isVariable && used_variables.includes(varName)) {
                 e.preventDefault()
                 document.querySelector(`[id='${encodeURI(varName)}']`).scrollIntoView()
+
                 window.dispatchEvent(
                     new CustomEvent("cell_focus", {
                         detail: {
@@ -1181,9 +1190,24 @@ export const CellInput = ({
             }
         })
         if (focus_after_creation) {
-            // TODO Smooth scroll into view?
-            cm.focus()
-            newcm_ref.current.focus()
+            // MIGRATED (and commented because it blocks the "smooth" scroll into view)
+            // cm.focus()
+            console.log("Is this happening?")
+
+            setTimeout(() => {
+                let view = newcm_ref.current
+                view.dom.scrollIntoView({
+                    behavior: "smooth",
+                    block: "center",
+                })
+                view.dispatch({
+                    selection: {
+                        anchor: view.state.doc.length,
+                        head: view.state.doc.length,
+                    },
+                })
+                view.focus()
+            })
         }
 
         // @ts-ignore
@@ -1211,21 +1235,27 @@ export const CellInput = ({
 
     useEffect(() => {
         if (cm_forced_focus == null) {
+            let view = newcm_ref.current
             newcm_ref.current.dispatch({
-                selection: null,
+                selection: {
+                    anchor: view.state.selection.main.head,
+                    head: view.state.selection.main.head,
+                },
             })
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
             let doc = newcm_ref.current.state.doc
 
             let new_selection = {
-                anchor: doc.line(cm_forced_focus[0].line + 1).from + cm_forced_focus[0].ch,
+                anchor:
+                    cm_forced_focus[0].line === Infinity || cm_forced_focus[0].ch === Infinity
+                        ? doc.length
+                        : doc.line(cm_forced_focus[0].line + 1).from + cm_forced_focus[0].ch,
                 head:
                     cm_forced_focus[1].line === Infinity || cm_forced_focus[1].ch === Infinity
                         ? doc.length
                         : doc.line(cm_forced_focus[1].line + 1).from + cm_forced_focus[1].ch,
             }
-            console.log(`new_selection:`, new_selection)
 
             newcm_ref.current.focus()
             newcm_ref.current.dispatch({
