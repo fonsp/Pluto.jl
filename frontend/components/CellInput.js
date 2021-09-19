@@ -1335,6 +1335,14 @@ export const CellInput = ({
                         : doc.line(cm_forced_focus[1].line + 1).from + cm_forced_focus[1].ch,
             }
 
+            let dom = /** @type {HTMLElement} */ (cm.dom)
+            dom.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                // UNCOMMENT THIS AND SEE, this feels amazing but I feel like people will not like it
+                // block: "center",
+            })
+
             newcm_ref.current.focus()
             newcm_ref.current.dispatch({
                 selection: new_selection,

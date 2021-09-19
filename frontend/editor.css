@@ -955,6 +955,9 @@ pluto-input .CodeMirror {
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
     transition: border 0.15s ease-in-out;
+
+    /* Make sure that scrolling an editor into view gives some breathing room */
+    scroll-margin-block: 20vh;
 }
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
@@ -2126,7 +2129,7 @@ ul.CodeMirror-hints {
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
 pluto-input .cm-editor .cm-scroller,
-pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul ,
+pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul,
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;
