@@ -695,6 +695,33 @@ export const CellInput = ({
                             event.stopPropagation() // Prevents the "add cell" past behavior
                         },
                     }),
+                    EditorView.domEventHandlers({
+                        dragover: (event, view) => {
+                            if (event.dataTransfer.types[0] !== "text/plain") {
+                                on_drag_drop_events(event)
+                                return true
+                            }
+                        },
+                        drop: (event, view) => {
+                            if (event.dataTransfer.types[0] !== "text/plain") {
+                                on_drag_drop_events(event)
+                                event.preventDefault()
+                                return true
+                            }
+                        },
+                        dragenter: (event, view) => {
+                            if (event.dataTransfer.types[0] !== "text/plain") {
+                                on_drag_drop_events(event)
+                                return true
+                            }
+                        },
+                        dragleave: (event, view) => {
+                            if (event.dataTransfer.types[0] !== "text/plain") {
+                                on_drag_drop_events(event)
+                                return true
+                            }
+                        },
+                    }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     // StreamLanguage.define(julia_legacy),
@@ -1185,7 +1212,6 @@ export const CellInput = ({
 
     useEffect(() => {
         if (cm_forced_focus == null) {
-            console.log("!!!")
             newcm_ref.current.dispatch({
                 selection: null,
             })
