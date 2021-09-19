@@ -36,7 +36,12 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@cca05ca/dist/index.es.min.js"
+    Facet,
+    StateField,
+    StateEffect,
+    Transaction,
+    indentUnit,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@9ebcc1a/dist/index.es.min.js"
 
 export {
     EditorState,
@@ -76,4 +81,9 @@ export {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
+    Facet,
+    StateField,
+    StateEffect,
+    Transaction,
+    indentUnit,
 }

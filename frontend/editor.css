@@ -2075,7 +2075,12 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
 */
 
-body.ctrl_down .cm-variable:hover {
+[data-pluto-variable] {
+    text-decoration: none;
+    font-weight: inherit;
+}
+body.ctrl_down .cm-variable:hover,
+body.ctrl_down [data-pluto-variable]:hover {
     text-decoration: underline;
     cursor: pointer;
 }

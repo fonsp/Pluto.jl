@@ -6,6 +6,7 @@ import { has_ctrl_or_cmd_pressed, map_cmd_to_ctrl_on_mac } from "../common/Keybo
 import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
+import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -47,7 +48,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@cca05ca/dist/index.es.min.js"
+} from "../imports/CodemirrorPlutoSetup.js"
 
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
@@ -178,6 +179,16 @@ const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, decorations_re
         }
     )
 
+let completionKeymap_with_tab = completionKeymap.map((keybinding) => {
+    if (keybinding.key === "Enter") {
+        return {
+            ...keybinding,
+            key: "Tab",
+        }
+    } else {
+        return keybinding
+    }
+})
 const basicSetup = [
     lineNumbers(),
     highlightSpecialChars(),
@@ -185,12 +196,13 @@ const basicSetup = [
     foldGutter(),
     drawSelection(),
     EditorState.allowMultipleSelections.of(true),
+    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
     indentOnInput(),
     defaultHighlightStyle.fallback,
     bracketMatching(),
     closeBrackets(),
     // autocompletion(),
-    rectangularSelection(),
+    // rectangularSelection(),
     // highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of([
@@ -200,7 +212,7 @@ const basicSetup = [
         ...historyKeymap,
         ...foldKeymap,
         ...commentKeymap,
-        ...completionKeymap,
+        ...completionKeymap_with_tab,
         //    ...lint.lintKeymap,
     ]),
 ]
@@ -266,11 +278,26 @@ var offsetFromViewport = function (elem) {
     }
 }
 
+let useCompartment = (codemirror_ref, value) => {
+    let compartment = useRef(new Compartment())
+    let initial_value = useRef(compartment.current.of(value))
+
+    compartment.current.of,
+        useLayoutEffect(() => {
+            codemirror_ref.current?.dispatch?.({
+                effects: compartment.current.reconfigure(value),
+            })
+        }, [value])
+
+    return initial_value.current
+}
+
 /**
  * @param {{
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
+ *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  [key: string]: any,
  * }} props
  */
@@ -293,6 +320,7 @@ export const CellInput = ({
     cell_id,
     notebook_id,
     running_disabled,
+    cell_dependencies,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -432,6 +460,8 @@ export const CellInput = ({
             setValue6(newcm_ref.current, remote_code)
         }
     }, [remote_code])
+
+    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
 
     useLayoutEffect(() => {
         /** Migration #0: OLD */
@@ -646,6 +676,8 @@ export const CellInput = ({
                     julia_andrey(),
                     EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
+                    used_variables_compartment,
+                    go_to_definition_plugin,
                     docs_updater,
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
@@ -1119,7 +1151,7 @@ export const CellInput = ({
     //     }
     // }, [remote_code.timestamp])
 
-    useEffect(() => {
+    useLayoutEffect(() => {
         disable_input_ref.current = disable_input
         cm_ref.current.options.disableInput = disable_input
         newcm_ref.current.dispatch({
