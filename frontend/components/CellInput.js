@@ -1117,7 +1117,7 @@ export const CellInput = ({
             }, 100)
         })
 
-        //TODO
+        // MIGRATED
         cm.on("paste", (cm, e) => {
             const topaste = e.clipboardData.getData("text/plain")
             const deserializer = detect_deserializer(topaste, false)
