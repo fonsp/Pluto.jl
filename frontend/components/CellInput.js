@@ -672,6 +672,17 @@ export const CellInput = ({
                     pbk,
                     myHighlightStyle,
                     basicSetup,
+                    EditorView.domEventHandlers({
+                        blur: (event, view) => {
+                            view.dispatch({
+                                selection: {
+                                    anchor: view.state.selection.main.head,
+                                    head: view.state.selection.main.head,
+                                },
+                            })
+                            set_cm_forced_focus(null)
+                        },
+                    }),
                     // StreamLanguage.define(julia_legacy),
                     julia_andrey(),
                     EditorState.tabSize.of(4),
@@ -1084,7 +1095,7 @@ export const CellInput = ({
             range(e.from.line, e.to.line).forEach(update_line_bubbles)
         })
 
-        //TODO
+        // MIGRATED
         cm.on("blur", () => {
             // NOT a debounce:
             setTimeout(() => {
@@ -1161,7 +1172,10 @@ export const CellInput = ({
 
     useEffect(() => {
         if (cm_forced_focus == null) {
-            clear_selection(cm_ref.current)
+            console.log("!!!")
+            newcm_ref.current.dispatch({
+                selection: null,
+            })
         } else {
             time_last_being_force_focussed_ref.current = Date.now()
             let doc = newcm_ref.current.state.doc
