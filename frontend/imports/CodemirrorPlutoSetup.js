@@ -40,6 +40,7 @@ import {
     StateField,
     StateEffect,
     Transaction,
+    SelectionRange,
     indentUnit,
 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@9ebcc1a/dist/index.es.min.js"
 
@@ -85,5 +86,6 @@ export {
     StateField,
     StateEffect,
     Transaction,
+    SelectionRange,
     indentUnit,
 }

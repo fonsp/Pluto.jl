@@ -13,6 +13,7 @@ import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror
 import {
     EditorState,
     EditorSelection,
+    SelectionRange,
     Compartment,
     EditorView,
     placeholder,
@@ -579,6 +580,7 @@ export const CellInput = ({
         }
         const keyMapD = () => {
             const cm = newcm_ref.current
+            // This is the default already
         }
         const keyMapDelete = () => {
             const cm = newcm_ref.current
@@ -589,8 +591,66 @@ export const CellInput = ({
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
             }
-            return CodeMirror.Pass
+            return
         }
+
+        const keyMapBackspace = () => {
+            const cm = newcm_ref.current
+            if (disable_input_ref.current) {
+                return
+            }
+            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
+            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
+
+            if (cm.state.doc.lines === 1 && getValue6(cm) === "") {
+                // I wanted to write comments, but I think my variable names are documentation enough
+                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
+                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
+                    on_focus_neighbor(cell_id, -1)
+                    on_delete()
+                }
+            }
+
+            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
+            if (enough_time_passed_since_force_focus) {
+                time_last_genuine_backspace.current = Date.now()
+                return
+            } else {
+                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
+                time_last_being_force_focussed_ref.current = Date.now()
+            }
+        }
+
+        const with_time_since_last = (fn) => {
+            let last_invoke_time = -Infinity // This infinity is for you, Fons
+            return () => {
+                let result = fn(Date.now() - last_invoke_time)
+                last_invoke_time = Date.now()
+                return result
+            }
+        }
+
+        // TODO: on_focus_neighbor()
+        // CM6 handles at_first_position: emits this function only at the edges.
+        // TODO: Test possible shortcomings
+        const at_first_position6 = () => true
+        const keyMapLeft = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_first_position6()) {
+                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
+            } else {
+                return
+            }
+        })
+        const keyMapRight = with_time_since_last((elapsed) => {
+            if (elapsed > 300 && at_first_position6()) {
+                on_focus_neighbor(cell_id, 1, 0, 0)
+            } else {
+                return
+            }
+        })
+
+        // HERE
         const plutoKeyMaps = [
             /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
             { key: "Ctrl-Enter", run: keyMapRun, preventDefault: true },
@@ -605,6 +665,12 @@ export const CellInput = ({
             { key: "Ctrl-D", run: keyMapD, preventDefault: true },
             { key: "Delete", run: keyMapDelete, preventDefault: true },
             { key: "Ctrl-Delete", run: keyMapDelete, preventDefault: true },
+            { key: "Backspace", run: keyMapBackspace, preventDefault: false },
+            { key: "Ctrl-Backspace", run: keyMapBackspace, preventDefault: false },
+            { key: "ArrowLeft", run: keyMapLeft, preventDefault: false },
+            { key: "ArrowUp", run: keyMapLeft, preventDefault: false },
+            { key: "ArrowRight", run: keyMapRight, preventDefault: false },
+            { key: "ArrowDown", run: keyMapRight, preventDefault: false },
         ]
         const onCM6Update = (update) => {
             if (update.docChanged) {
@@ -750,22 +816,9 @@ export const CellInput = ({
                                 notebook_id: notebook_id,
                                 on_update_doc_query: on_update_doc_query,
                             }),
-                            // (ctx) => {
-                            //     console.log(ctx)
-                            //     const current_line_info = ctx.state.doc.lineAt(ctx.pos)
-                            //     const current_line = current_line_info.text.substring(0, ctx.pos - current_line_info.from)
-
-                            //     console.log(current_line)
-                            //     return {
-                            //         from: current_line_info.from,
-                            //         options: [
-                            //             {
-                            //                 label: current_line + "asdf",
-                            //             },
-                            //         ],
-                            //     }
-                            // },
                         ],
+                        maxRenderedOptions: 512, // fons's magic number
+                        optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
                     }),
                     // julia,
                 ],
@@ -906,7 +959,7 @@ export const CellInput = ({
         // Default
         keys["Alt-Down"] = () => alt_move(+1)
 
-        // TODO
+        // Migrated
         keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
             if (disable_input_ref.current) {
                 return
@@ -945,20 +998,9 @@ export const CellInput = ({
             return CodeMirror.Pass
         }
 
-        /** Basically any variable inside an useEffect is already a ref
-         * so I'll just roll with this abstraction
-         * @param {(time_since: Number) => any} fn
-         */
-        let with_time_since_last = (fn) => {
-            let last_invoke_time = -Infinity // This infinity is for you, Fons
-            return () => {
-                let result = fn(Date.now() - last_invoke_time)
-                last_invoke_time = Date.now()
-                return result
-            }
-        }
         const isapprox = (a, b) => Math.abs(a - b) < 3.0
         const at_first_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, 0.0)
+        // Migrated
         keys["Up"] = with_time_since_last((elapsed) => {
             // TODO
             if (elapsed > 300 && at_first_line_visually()) {
@@ -972,8 +1014,10 @@ export const CellInput = ({
             }
         })
         const at_first_position = () => cm.findPosH(cm.getCursor(), -1, "char")?.hitSide === true
+
+        // Doing
         keys["Left"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_first_position()) {
                 on_focus_neighbor(cell_id, -1, Infinity, Infinity)
             } else {
@@ -982,7 +1026,7 @@ export const CellInput = ({
         })
         const at_last_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, cm.cursorCoords({ line: Infinity, ch: Infinity }, "div").top)
         keys["Down"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_last_line_visually()) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
                 // todo:
@@ -994,13 +1038,15 @@ export const CellInput = ({
         })
         const at_last_position = () => cm.findPosH(cm.getCursor(), 1, "char")?.hitSide === true
         keys["Right"] = with_time_since_last((elapsed) => {
-            // TODO
+            // Migrated
             if (elapsed > 300 && at_last_position()) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
             } else {
                 return CodeMirror.Pass
             }
         })
+
+        // Default
         const open_close_selection = (opening_char, closing_char) => () => {
             // Default
             if (cm.somethingSelected()) {
@@ -1011,7 +1057,7 @@ export const CellInput = ({
                 return CodeMirror.Pass
             }
         }
-
+        // Default + works with all '', "", ``, [], {}, ()!
         ;["()", "{}", "[]"].forEach((pair) => {
             const [opening_char, closing_char] = pair.split("")
             keys[`'${opening_char}'`] = open_close_selection(opening_char, closing_char)
@@ -1233,7 +1279,8 @@ export const CellInput = ({
         })
     }, [disable_input])
 
-    useEffect(() => {
+    // Migrated
+    /*useEffect(() => {
         if (cm_forced_focus == null) {
             let view = newcm_ref.current
             newcm_ref.current.dispatch({
@@ -1246,6 +1293,37 @@ export const CellInput = ({
             time_last_being_force_focussed_ref.current = Date.now()
             let doc = newcm_ref.current.state.doc
 
+            let new_selection = {
+                anchor:
+                    cm_forced_focus[0].line === Infinity || cm_forced_focus[0].ch === Infinity
+                        ? doc.length
+                        : doc.line(cm_forced_focus[0].line + 1).from + cm_forced_focus[0].ch,
+                head:
+                    cm_forced_focus[1].line === Infinity || cm_forced_focus[1].ch === Infinity
+                        ? doc.length
+                        : doc.line(cm_forced_focus[1].line + 1).from + cm_forced_focus[1].ch,
+            }
+
+            newcm_ref.current.focus()
+            newcm_ref.current.dispatch({
+                selection: new_selection,
+            })
+        }
+    }, [cm_forced_focus]) */
+
+    useEffect(() => {
+        const cm = newcm_ref.current
+        if (cm_forced_focus == null) {
+            cm.dispatch({
+                selection: {
+                    anchor: cm.state.selection.main.head,
+                    head: cm.state.selection.main.head,
+                },
+            })
+        } else {
+            time_last_being_force_focussed_ref.current = Date.now()
+
+            let doc = cm.state.doc
             let new_selection = {
                 anchor:
                     cm_forced_focus[0].line === Infinity || cm_forced_focus[0].ch === Infinity
@@ -1380,27 +1458,34 @@ const juliahints_cool_generator = (options) => (ctx) => {
     console.log(old_line_info)
 
     return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        // TODO
-        // CodeMirror.on(completions, "select", (val) => {
-        //     let text = typeof val === "string" ? val : val.text
-        //     let doc_query = module_expanded_selection({
-        //         tokens_before_cursor: [
-        //             { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-        //             { type: "variable", string: text },
-        //         ],
-        //         tokens_after_cursor: [],
-        //     })
-        //     options.on_update_doc_query(doc_query)
-        // })
-
         return {
             from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
             to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
-            options: message.results.map(([text, type_description, is_exported]) => ({
+            options: message.results.map(([text, type_description, is_exported], i) => ({
                 label: text,
-                detail: type_description,
+                is_exported,
+                // detail: type_description,
                 type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
+                boost: 99 - i / message.results.length,
+                info: () => {
+                    //// TODO @ DRALLETJE
+                    // the user just scrolled through the autocompletion with value ${text}
+                    // the contents of the line before it is: ${old_line_sliced}
+                    // and we want to show docs for the current object
+
+                    // This code currently works, but if you changed/removed the `module_expanded_selection` function then this needs to be fixed.
+
+                    let doc_query = module_expanded_selection({
+                        tokens_before_cursor: [
+                            { type: "variable", string: old_line_sliced.slice(0, utf8index_to_ut16index(old_line, message.start)) },
+                            { type: "variable", string: text },
+                        ],
+                        tokens_after_cursor: [],
+                    })
+                    options.on_update_doc_query(doc_query)
+
+                    return new Promise(() => {})
+                },
             })),
         }
     })
