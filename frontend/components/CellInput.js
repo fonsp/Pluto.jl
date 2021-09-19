@@ -48,6 +48,7 @@ import {
     ViewUpdate,
     ViewPlugin,
     WidgetType,
+    indentUnit,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 class PkgStatusMarkWidget extends WidgetType {
@@ -694,9 +695,10 @@ export const CellInput = ({
                             event.stopPropagation() // Prevents the "add cell" past behavior
                         },
                     }),
+                    EditorState.tabSize.of(4),
+                    indentUnit.of("\t"),
                     // StreamLanguage.define(julia_legacy),
                     julia_andrey(),
-                    EditorState.tabSize.of(4),
                     EditorView.updateListener.of(onCM6Update),
                     used_variables_compartment,
                     go_to_definition_plugin,
