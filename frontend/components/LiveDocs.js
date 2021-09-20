@@ -13,8 +13,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body:
-            "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
+        body: "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
         hidden: true,
         loading: false,
     })
@@ -99,7 +98,14 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
                         if (state.hidden) {
                             set_state((state) => ({ ...state, hidden: false }))
                             // wait for next event loop
-                            setTimeout(() => live_doc_search_ref.current && live_doc_search_ref.current.focus(), 0)
+                            setTimeout(
+                                () =>
+                                    live_doc_search_ref.current &&
+                                    live_doc_search_ref.current.focus({
+                                        preventScroll: true,
+                                    }),
+                                0
+                            )
                         }
                     }}
                 >
