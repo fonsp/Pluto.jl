@@ -21,12 +21,11 @@ function get_input_value(input) {
                 return input.checked
             case "file":
                 return input.multiple ? input.files : input.files[0]
-            case "select-multiple":
-                //@ts-ignore
-                return Array.from(input.selectedOptions, (o) => o.value)
             default:
                 return input.value
         }
+    } else if (input instanceof HTMLSelectElement && input.multiple) {
+        return Array.from(input.selectedOptions, (o) => o.value)
     } else {
         //@ts-ignore
         return input.value
@@ -68,14 +67,12 @@ const set_input_value = (input, new_value) => {
                 // Can't set files :(
                 return
             }
-            case "select-multiple": {
-                // @ts-ignore
-                for (let option of input.options) {
-                    option.selected = new_value.includes(option.value)
-                }
-                return
-            }
         }
+    } else if (input instanceof HTMLSelectElement && input.multiple) {
+        for (let option of Array.from(input.options)) {
+            option.selected = new_value.includes(option.value)
+        }
+        return
     }
     //@ts-ignore
     if (input.value !== new_value) {
