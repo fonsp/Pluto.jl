@@ -31,11 +31,11 @@ export const block_matcher_plugin = StateField.define({
 
                 let struct = node.parent.getChild("struct")
                 if (struct) {
-                    decorations.push(matchingMark.range(node.from, struct.to))
+                    decorations.push(mark.range(node.from, struct.to))
                 }
 
                 if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
+                    decorations.push(mark.range(possibly_end.from, possibly_end.to))
                 }
             }
             if (node.name === "struct") {
@@ -45,7 +45,7 @@ export const block_matcher_plugin = StateField.define({
                 decorations.push(mark.range(node.from, node.to))
 
                 if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
+                    decorations.push(mark.range(possibly_end.from, possibly_end.to))
                 }
             }
 
