@@ -3,6 +3,12 @@ import { syntaxTree, StateField, EditorView, Decoration } from "../../imports/Co
 const matchingMark = Decoration.mark({ class: "cm-matchingBracket" })
 const nonmatchingMark = Decoration.mark({ class: "cm-nonmatchingBracket" })
 
+/**
+ * A very, very, simple block matcher plugin.
+ * Block matcher meaning it will show the same overlay that we currently have on `( ... )`,
+ * but on julia blocks, e.g. `begin ... end`, `if ... else ... end`, etc.
+ * @type {StateField<ReturnType<Decoration.set>>}
+ */
 export const block_matcher_plugin = StateField.define({
     create() {
         return Decoration.none
@@ -16,7 +22,6 @@ export const block_matcher_plugin = StateField.define({
             if (!range.empty) continue
 
             let node = tree.resolve(range.head, -1)
-            console.log(`node:`, node.name)
 
             if (node.name === "end") {
                 node = node.parent.firstChild

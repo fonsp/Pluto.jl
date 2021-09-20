@@ -667,6 +667,15 @@ export const CellInput = ({
         }
 
         const myHighlightStyle = HighlightStyle.define([
+            /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
+            // Symbol
+            { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
+            { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+            // `nothing` I guess... Any others?
+            { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+
+            { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+
             { tag: tags.keyword, color: "#fc6" },
             { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
             { tag: tags.atom, color: "#815ba4" },
@@ -677,7 +686,6 @@ export const CellInput = ({
             { tag: tags.string, color: "#da5616" },
             { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
             // { tag: tags.variable2, color: "#06b6ef" },
-            { tag: tags.standard(tags.variableName), color: "#5e7ad3" },
             { tag: tags.definition(tags.variableName), color: "#f99b15" },
             { tag: tags.bracket, color: "#41323f" },
             { tag: tags.brace, color: "#41323f" },
@@ -695,7 +703,7 @@ export const CellInput = ({
                 return
             }
 
-            if (update.docChanged || update.selection != null) {
+            if (update.docChanged || update.selectionSet) {
                 let state = update.state
                 DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
                 let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
@@ -761,10 +769,13 @@ export const CellInput = ({
                                 }
                             }
 
-                            let selection = view.state.selection.main
-
+                            // Because of the "hacky" way this works, we need to check if autocompletion is open...
+                            // else we'll block the ability to press ArrowDown for autocomplete....
+                            // Adopted from https://github.com/codemirror/autocomplete/blob/a53f7ff19dc3a0412f3ce6e2751b08b610e1d762/src/view.ts#L15
                             let autocompletion_open = view.state.field(completionState, false)?.open ?? false
+
                             // If we have a cursor instead of a multicharacter selection:
+                            let selection = view.state.selection.main
                             if (selection.to === selection.from) {
                                 if (event.key === "ArrowLeft" && event.repeat) {
                                     if (selection.from === 0) {
