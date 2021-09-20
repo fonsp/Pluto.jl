@@ -694,16 +694,21 @@ export const CellInput = ({
                 return
             }
 
-            let state = update.state
-            DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
-            let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
-            DOCS_UPDATER_VERBOSE && console.log("Result:", result)
-            DOCS_UPDATER_VERBOSE && console.groupEnd()
+            if (update.docChanged || update.selection != null) {
+                let state = update.state
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
+                let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
+                DOCS_UPDATER_VERBOSE && console.log("Result:", result)
+                DOCS_UPDATER_VERBOSE && console.groupEnd()
 
-            if (result != null) {
-                on_update_doc_query(result)
+                if (result != null) {
+                    on_update_doc_query(result)
+                }
             }
         })
+
+        // Why am I like this?
+        let completionState = autocompletion()[0]
 
         // TODO remove me
         //@ts-ignore
@@ -755,6 +760,8 @@ export const CellInput = ({
                             }
 
                             let selection = view.state.selection.main
+
+                            let autocompletion_open = view.state.field(completionState, false)?.open ?? false
                             // If we have a cursor instead of a multicharacter selection:
                             if (selection.to === selection.from) {
                                 if (event.key === "ArrowLeft" && event.repeat) {
@@ -762,7 +769,7 @@ export const CellInput = ({
                                         return true
                                     }
                                 }
-                                if (event.key === "ArrowUp" && event.repeat) {
+                                if (event.key === "ArrowUp" && event.repeat && !autocompletion_open) {
                                     if (selection.from === 0) {
                                         return true
                                     }
@@ -772,7 +779,7 @@ export const CellInput = ({
                                         return true
                                     }
                                 }
-                                if (event.key === "ArrowDown" && event.repeat) {
+                                if (event.key === "ArrowDown" && event.repeat && !autocompletion_open) {
                                     if (selection.to === view.state.doc.length) {
                                         return true
                                     }
@@ -1511,19 +1518,47 @@ const juliahints = (cm, options) => {
 }
 
 const juliahints_cool_generator = (options) => (ctx) => {
-    // const cursor = cm.getCursor()
+    // BETTER MODULE_EXPANDED_SELECTION
+    let selection = ctx.state.selection.main
+    let tree = syntaxTree(ctx.state)
+    let node = tree.resolve(selection.from, -1)
 
-    console.log(ctx)
+    let to_complete_onto = null
+    if (ctx.state.sliceDoc(selection.from - 1, selection.from) === ".") {
+        if (node.name === "BinaryExpression") {
+            // This is the parser not getting that we're going for a FieldExpression
+            // But it's cool, because this is as expanded as it gets
+        }
 
-    const old_line_info = ctx.state.doc.lineAt(ctx.pos)
-    const old_line = old_line_info.text
-    const old_line_sliced = old_line.substring(0, ctx.pos - old_line_info.from)
-    console.log(old_line_info)
+        // This is what julia-lezer thinks the `.` is in `@Base.`
+        if (node.parent?.name === "MacroArgumentList") {
+            do {
+                node = node.parent
+            } while (node.name !== "MacroExpression")
+        }
+    } else {
+        while (node.parent?.name === "FieldExpression") {
+            node = node.parent
+        }
+        if (node.name === "FieldExpression") {
+            to_complete_onto = ctx.state.sliceDoc(node.firstChild.from, node.lastChild.from)
+        }
 
-    return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
+        if (node.parent?.name === "MacroIdentifier") {
+            while (node.name !== "MacroExpression") {
+                node = node.parent
+            }
+        }
+    }
+
+    let to_complete = ctx.state.sliceDoc(node.from, selection.to)
+    to_complete_onto = to_complete_onto ?? ctx.state.sliceDoc(node.from, node.to)
+    // END - BETTER MODULE_EXPANDED_SELECTION
+
+    return options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id }).then(({ message }) => {
         return {
-            from: old_line_info.from + utf8index_to_ut16index(old_line, message.start),
-            to: old_line_info.from + utf8index_to_ut16index(old_line, message.stop),
+            from: node.from + utf8index_to_ut16index(to_complete, message.start),
+            to: node.from + utf8index_to_ut16index(to_complete, message.stop),
             options: message.results.map(([text, type_description, is_exported], i) => ({
                 label: text,
                 is_exported,
@@ -1531,21 +1566,8 @@ const juliahints_cool_generator = (options) => (ctx) => {
                 type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
                 boost: 99 - i / message.results.length,
                 info: () => {
-                    //// TODO @ DRALLETJE
-                    // the user just scrolled through the autocompletion with value ${text}
-                    // the contents of the line before it is: ${old_line_sliced}
-                    // and we want to show docs for the current object
-
-                    // This code currently works, but if you changed/removed the `module_expanded_selection` function then this needs to be fixed.
-
-                    let doc_query = module_expanded_selection({
-                        tokens_before_cursor: [
-                            { type: "variable", string: old_line_sliced.slice(0, utf8index_to_ut16index(old_line, message.start)) },
-                            { type: "variable", string: text },
-                        ],
-                        tokens_after_cursor: [],
-                    })
-                    options.on_update_doc_query(doc_query)
+                    console.log(`line + text:`, to_complete_onto + text)
+                    options.on_update_doc_query(to_complete_onto + text)
 
                     return new Promise(() => {})
                 },
