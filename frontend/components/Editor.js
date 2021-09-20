@@ -244,7 +244,7 @@ export class Editor extends Component {
                     })
                 )
             },
-            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
+            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
                 if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {

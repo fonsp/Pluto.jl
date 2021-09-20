@@ -191,33 +191,6 @@ let completionKeymap_with_tab = completionKeymap.map((keybinding) => {
         return keybinding
     }
 })
-const basicSetup = [
-    lineNumbers(),
-    highlightSpecialChars(),
-    history(),
-    foldGutter(),
-    drawSelection(),
-    EditorState.allowMultipleSelections.of(true),
-    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
-    indentOnInput(),
-    defaultHighlightStyle.fallback,
-    bracketMatching(),
-    closeBrackets(),
-    // autocompletion(),
-    // rectangularSelection(),
-    // highlightActiveLine(),
-    highlightSelectionMatches(),
-    keymap.of([
-        ...closeBracketsKeymap,
-        ...defaultKeymap,
-        ...searchKeymap,
-        ...historyKeymap,
-        ...foldKeymap,
-        ...commentKeymap,
-        ...completionKeymap_with_tab,
-        //    ...lint.lintKeymap,
-    ]),
-]
 
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
@@ -335,6 +308,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
     const disable_input_ref = useRef(disable_input)
 
+    // MIGRATED and no longer necessary in new setup, so remove with cm5
     const time_last_being_force_focussed_ref = useRef(0)
     const time_last_genuine_backspace = useRef(0)
 
@@ -582,43 +556,29 @@ export const CellInput = ({
             const cm = newcm_ref.current
             // This is the default already
         }
-        const keyMapDelete = () => {
-            const cm = newcm_ref.current
-            if (disable_input_ref.current) {
+        const keyMapDelete = (cm) => {
+            if (!cm.state.facet(EditorView.editable)) {
                 return
             }
-            if (cm.state.doc.lines === 1 && getValue6(cm) === "") {
+            if (cm.state.doc.length === 0) {
                 on_focus_neighbor(cell_id, +1)
                 on_delete()
+                return true
             }
-            return
         }
 
-        const keyMapBackspace = () => {
-            const cm = newcm_ref.current
-            if (disable_input_ref.current) {
+        const keyMapBackspace = (cm) => {
+            if (!cm.state.facet(EditorView.editable)) {
                 return
             }
-            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
-            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
 
-            if (cm.state.doc.lines === 1 && getValue6(cm) === "") {
-                // I wanted to write comments, but I think my variable names are documentation enough
-                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
-                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
-                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
-                    on_focus_neighbor(cell_id, -1)
-                    on_delete()
-                }
-            }
-
-            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
-            if (enough_time_passed_since_force_focus) {
-                time_last_genuine_backspace.current = Date.now()
-                return
-            } else {
-                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
-                time_last_being_force_focussed_ref.current = Date.now()
+            // Previously this was a very elaborate timed implementation......
+            // But I found out that keyboard events have a `.repeated` property which is perfect for what we want...
+            // So now this is just the cell deleting logic (and the repeated stuff is in a separate plugin)
+            if (cm.state.doc.length === 0) {
+                on_focus_neighbor(cell_id, -1)
+                on_delete()
+                return true
             }
         }
 
@@ -631,27 +591,33 @@ export const CellInput = ({
             }
         }
 
-        // TODO: on_focus_neighbor()
-        // CM6 handles at_first_position: emits this function only at the edges.
-        // TODO: Test possible shortcomings
-        const at_first_position6 = () => true
-        const keyMapLeft = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_first_position6()) {
+        const keyMapLeft = (view) => {
+            let selection = view.state.selection.main
+            // We only do this on cursors, not when we have multiple characters selected
+            if (selection.from !== selection.to) return false
+
+            // Is the cursor at the start of the cell?
+            if (selection.from === 0) {
                 on_focus_neighbor(cell_id, -1, Infinity, Infinity)
-            } else {
-                return
+                return true
             }
-        })
-        const keyMapRight = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_first_position6()) {
+        }
+
+        const keyMapRight = (view) => {
+            let selection = view.state.selection.main
+            // We only do this on cursors, not when we have multiple characters selected
+            if (selection.from !== selection.to) return false
+
+            // Is the cursor at the end of the cell?
+            if (selection.to === view.state.doc.length) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
-            } else {
-                return
+                return true
             }
-        })
+        }
 
         // HERE
         const plutoKeyMaps = [
+            // What are all these preventDefault's for? - DRAL
             /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
             { key: "Ctrl-Enter", run: keyMapRun, preventDefault: true },
             { key: "PageUp", run: keyMapPageUp, preventDefault: true },
@@ -710,8 +676,6 @@ export const CellInput = ({
 
         let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
-            // This reference to `newcm` feels ugly (This isn't an independent extension now)
-            // But I don't know how to make an extension that has a reference to the view.
             if (!update.view.hasFocus) {
                 return
             }
@@ -738,7 +702,72 @@ export const CellInput = ({
                 extensions: [
                     pbk,
                     myHighlightStyle,
-                    basicSetup,
+                    lineNumbers(),
+                    highlightSpecialChars(),
+                    history(),
+                    foldGutter(),
+                    drawSelection(),
+                    EditorState.allowMultipleSelections.of(true),
+                    // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
+                    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
+                    indentOnInput(),
+                    defaultHighlightStyle.fallback,
+                    bracketMatching(),
+                    closeBrackets(),
+                    // autocompletion(),
+                    // rectangularSelection(),
+                    // highlightActiveLine(),
+                    highlightSelectionMatches(),
+
+                    // Don't-accidentally-remove-cells-plugin
+                    // Because we need some extra info about the key, namely if it is on repeat or not,
+                    // we can't use a keymap (keymaps don't give us the event)
+                    EditorView.domEventHandlers({
+                        keydown: (event, view) => {
+                            // TODO We could also require a re-press after a force focus, because
+                            // .... currently if you delete another cell, but keep holding down the backspace (or delete),
+                            // .... you'll still be deleting characters (because view.state.doc.length will be > 0)
+
+                            if (event.key === "Backspace" && event.repeat) {
+                                if (view.state.doc.length === 0) {
+                                    // Only if this would be a cell-deleting backspace, we jump in
+                                    return true
+                                }
+                            }
+                            if (event.key === "Delete" && event.repeat) {
+                                if (view.state.doc.length === 0) {
+                                    // Only if this would be a cell-deleting backspace, we jump in
+                                    return true
+                                }
+                            }
+
+                            let selection = view.state.selection.main
+                            // If we have a cursor instead of a multicharacter selection:
+                            if (selection.to === selection.from) {
+                                if (event.key === "ArrowLeft" && event.repeat) {
+                                    if (selection.from === 0) {
+                                        return true
+                                    }
+                                }
+                                if (event.key === "ArrowUp" && event.repeat) {
+                                    if (selection.from === 0) {
+                                        return true
+                                    }
+                                }
+                                if (event.key === "ArrowRight" && event.repeat) {
+                                    if (selection.to === view.state.doc.length) {
+                                        return true
+                                    }
+                                }
+                                if (event.key === "ArrowDown" && event.repeat) {
+                                    if (selection.to === view.state.doc.length) {
+                                        return true
+                                    }
+                                }
+                            }
+                        },
+                    }),
+                    // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
                             view.dispatch({
@@ -750,9 +779,9 @@ export const CellInput = ({
                             set_cm_forced_focus(null)
                         },
                     }),
+                    // Paste plugin
                     EditorView.domEventHandlers({
                         paste: (event, view) => {
-                            console.log(`view.hasFocus:`, view.hasFocus)
                             if (!view.hasFocus) {
                                 // Tell codemirror it doesn't have to handle this when it doesn't have focus
                                 return true
@@ -798,7 +827,6 @@ export const CellInput = ({
                     }),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
-                    // StreamLanguage.define(julia_legacy),
                     julia_andrey(),
                     EditorView.updateListener.of(onCM6Update),
                     used_variables_compartment,
@@ -807,7 +835,17 @@ export const CellInput = ({
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
-                    keymap.of([...defaultKeymap, ...historyKeymap, ...plutoKeyMaps]),
+                    keymap.of(plutoKeyMaps),
+                    keymap.of([
+                        ...closeBracketsKeymap,
+                        ...defaultKeymap,
+                        ...searchKeymap,
+                        ...historyKeymap,
+                        ...foldKeymap,
+                        ...commentKeymap,
+                        ...completionKeymap_with_tab,
+                        // ...lint.lintKeymap,
+                    ]),
                     placeholder("Enter cell code..."),
                     autocompletion({
                         override: [
@@ -1238,8 +1276,6 @@ export const CellInput = ({
         if (focus_after_creation) {
             // MIGRATED (and commented because it blocks the "smooth" scroll into view)
             // cm.focus()
-            console.log("Is this happening?")
-
             setTimeout(() => {
                 let view = newcm_ref.current
                 view.dom.scrollIntoView({
@@ -1311,6 +1347,12 @@ export const CellInput = ({
         }
     }, [cm_forced_focus]) */
 
+    let line_and_ch_to_cm6_position = (doc, { line, ch }) => {
+        let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
+        let ch_clamped = _.clamp(ch, 0, line_object.length)
+        return line_object.from + ch_clamped
+    }
+
     useEffect(() => {
         const cm = newcm_ref.current
         if (cm_forced_focus == null) {
@@ -1321,18 +1363,12 @@ export const CellInput = ({
                 },
             })
         } else {
+            // MIGRATED I think this no longer necessary with the .repeat keyboard stuff
             time_last_being_force_focussed_ref.current = Date.now()
 
-            let doc = cm.state.doc
             let new_selection = {
-                anchor:
-                    cm_forced_focus[0].line === Infinity || cm_forced_focus[0].ch === Infinity
-                        ? doc.length
-                        : doc.line(cm_forced_focus[0].line + 1).from + cm_forced_focus[0].ch,
-                head:
-                    cm_forced_focus[1].line === Infinity || cm_forced_focus[1].ch === Infinity
-                        ? doc.length
-                        : doc.line(cm_forced_focus[1].line + 1).from + cm_forced_focus[1].ch,
+                anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
+                head: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[1]),
             }
 
             let dom = /** @type {HTMLElement} */ (cm.dom)
