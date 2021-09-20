@@ -7,6 +7,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { block_matcher_plugin } from "./CellInput/block_matcher_plugin.js"
 
 //@ts-ignore
 import { mac, chromeOS } from "https://cdn.jsdelivr.net/gh/codemirror/CodeMirror@5.60.0/src/util/browser.js"
@@ -633,11 +634,11 @@ export const CellInput = ({
         const plutoKeyMaps = [
             // What are all these preventDefault's for? - DRAL
             /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
-            { key: "Ctrl-Enter", run: keyMapRun, preventDefault: true },
+            { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun, preventDefault: true },
             { key: "PageUp", run: keyMapPageUp, preventDefault: true },
             { key: "PageDown", run: keyMapPageDown, preventDefault: true },
             { key: "Tab", run: keyMapTab, shift: keyMapTabShift, preventDefault: true },
-            { key: "Ctrl-m", run: keyMapMD, preventDefault: true },
+            { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD, preventDefault: true },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD, preventDefault: true },
             { key: "Ctrl-d", run: keyMapD, preventDefault: true },
@@ -736,6 +737,7 @@ export const CellInput = ({
                     // rectangularSelection(),
                     // highlightActiveLine(),
                     highlightSelectionMatches(),
+                    block_matcher_plugin,
 
                     // Don't-accidentally-remove-cells-plugin
                     // Because we need some extra info about the key, namely if it is on repeat or not,
