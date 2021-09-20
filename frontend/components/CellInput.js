@@ -484,11 +484,11 @@ export const CellInput = ({
         setTimeout(update_all_line_bubbles, 300)
 
         const keyMapSubmit = () => on_submit()
-        const keyMapRun = async () => {
+        const keyMapRun = async (cm) => {
             // we await to prevent an out-of-sync issue
             await on_add_after()
 
-            const new_value = newcm_ref.current?.state.doc.toString() ?? ""
+            const new_value = cm.state.doc.toString()
             if (new_value !== remote_code_ref.current) {
                 on_submit()
             }
@@ -823,6 +823,7 @@ export const CellInput = ({
                             }
                         },
                     }),
+                    // Drag 'n drop plugin
                     EditorView.domEventHandlers({
                         dragover: (event, view) => {
                             if (event.dataTransfer.types[0] !== "text/plain") {
@@ -860,6 +861,8 @@ export const CellInput = ({
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
+                    // I put plutoKeyMaps separately because I want make sure we have
+                    // higher priority 😈
                     keymap.of(plutoKeyMaps),
                     keymap.of([
                         ...closeBracketsKeymap,
