@@ -181,17 +181,6 @@ const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, decorations_re
         }
     )
 
-let completionKeymap_with_tab = completionKeymap.map((keybinding) => {
-    if (keybinding.key === "Enter") {
-        return {
-            ...keybinding,
-            key: "Tab",
-        }
-    } else {
-        return keybinding
-    }
-})
-
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
 
@@ -494,17 +483,29 @@ export const CellInput = ({
             }
         }
 
+        let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
+        let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
         let keyMapTab = (cm) => {
+            // This will return true if the autocomplete select popup is open
+            if (select_autocomplete_command.run(cm)) {
+                return true
+            }
+
             // TODO Multicursor?
             let selection = cm.state.selection.main
+            let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
             if (selection.from != selection.to) {
                 return indentMore(cm)
             } else {
-                cm.dispatch({
-                    changes: { from: selection.from, to: selection.to, insert: "\t" },
-                    selection: EditorSelection.cursor(selection.from + 1),
-                })
-                return true
+                if (/^(\t| |\n|)$/.test(last_char)) {
+                    cm.dispatch({
+                        changes: { from: selection.from, to: selection.to, insert: "\t" },
+                        selection: EditorSelection.cursor(selection.from + 1),
+                    })
+                    return true
+                } else {
+                    return start_autocomplete_command.run(cm)
+                }
             }
         }
         const keyMapTabShift = (cm) => {
@@ -521,18 +522,6 @@ export const CellInput = ({
                 }
                 return true
             }
-
-            // const to = getCursor6(cm) // Do for whole selected line
-            // const from = cm.state.doc.lineAt(getCursor6(cm)).from
-            // const text = cm.state.sliceDoc(from, to)
-            // const lastChar = cm.state.sliceDoc(to - 1, to)
-            // console.table({ to, from, text })
-            // if (text?.trim()?.length === 0) {
-            //     ;(shift && indentLess(cm)) || indentMore(cm)
-            // } else {
-            //     if (shift && lastChar === `\t`) replaceRange6(cm, ``, to - 1, to)
-            //     if (!shift) replaceRange6(cm, `${lastChar}\t`, to - 1, to)
-            // }
         }
         const keyMapPageUp = () => on_focus_neighbor(cell_id, -1, 0, 0)
         const keyMapPageDown = () => on_focus_neighbor(cell_id, +1, 0, 0)
@@ -739,7 +728,6 @@ export const CellInput = ({
                     defaultHighlightStyle.fallback,
                     bracketMatching(),
                     closeBrackets(),
-                    // autocompletion(),
                     // rectangularSelection(),
                     // highlightActiveLine(),
                     highlightSelectionMatches(),
@@ -861,6 +849,20 @@ export const CellInput = ({
                     EditorView.lineWrapping,
                     editable.of(EditorView.editable.of(!disable_input_ref.current)),
                     history(),
+                    autocompletion({
+                        activateOnTyping: false,
+                        override: [
+                            juliahints_cool_generator({
+                                pluto_actions: pluto_actions,
+                                notebook_id: notebook_id,
+                                on_update_doc_query: on_update_doc_query,
+                            }),
+                            // TODO completion for local variables
+                        ],
+                        defaultKeyMap: false, // We add these manually later, so we can override them if necessary
+                        maxRenderedOptions: 512, // fons's magic number
+                        optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
+                    }),
                     // I put plutoKeyMaps separately because I want make sure we have
                     // higher priority 😈
                     keymap.of(plutoKeyMaps),
@@ -871,21 +873,10 @@ export const CellInput = ({
                         ...historyKeymap,
                         ...foldKeymap,
                         ...commentKeymap,
-                        ...completionKeymap_with_tab,
+                        ...completionKeymap,
                         // ...lint.lintKeymap,
                     ]),
                     placeholder("Enter cell code..."),
-                    autocompletion({
-                        override: [
-                            juliahints_cool_generator({
-                                pluto_actions: pluto_actions,
-                                notebook_id: notebook_id,
-                                on_update_doc_query: on_update_doc_query,
-                            }),
-                        ],
-                        maxRenderedOptions: 512, // fons's magic number
-                        optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
-                    }),
                     // julia,
                 ],
             }),
