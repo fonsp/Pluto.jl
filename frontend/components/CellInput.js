@@ -493,22 +493,47 @@ export const CellInput = ({
                 on_submit()
             }
         }
-        const keyMapTab =  // work todo
-            (shift) =>
-            (...args) => {
-                const cm = newcm_ref.current
-                const to = getCursor6(cm) // Do for whole selected line
-                const from = cm.state.doc.lineAt(getCursor6(cm)).from
-                const text = cm.state.sliceDoc(from, to)
-                const lastChar = cm.state.sliceDoc(to - 1, to)
-                console.table({ to, from, text })
-                if (text?.trim()?.length === 0) {
-                    ;(shift && indentLess(...args)) || indentMore(...args)
-                } else {
-                    if (shift && lastChar === `\t`) replaceRange6(cm, ``, to - 1, to)
-                    if (!shift) replaceRange6(cm, `${lastChar}\t`, to - 1, to)
-                }
+
+        let keyMapTab = (cm) => {
+            // TODO Multicursor?
+            let selection = cm.state.selection.main
+            if (selection.from != selection.to) {
+                return indentMore(cm)
+            } else {
+                cm.dispatch({
+                    changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    selection: EditorSelection.cursor(selection.from + 1),
+                })
+                return true
             }
+        }
+        const keyMapTabShift = (cm) => {
+            // TODO Multicursor?
+            let selection = cm.state.selection.main
+            if (selection.from != selection.to) {
+                return indentLess(cm)
+            } else {
+                const last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
+                if (last_char === "\t") {
+                    cm.dispatch({
+                        changes: { from: selection.from - 1, to: selection.to, insert: "" },
+                    })
+                }
+                return true
+            }
+
+            // const to = getCursor6(cm) // Do for whole selected line
+            // const from = cm.state.doc.lineAt(getCursor6(cm)).from
+            // const text = cm.state.sliceDoc(from, to)
+            // const lastChar = cm.state.sliceDoc(to - 1, to)
+            // console.table({ to, from, text })
+            // if (text?.trim()?.length === 0) {
+            //     ;(shift && indentLess(cm)) || indentMore(cm)
+            // } else {
+            //     if (shift && lastChar === `\t`) replaceRange6(cm, ``, to - 1, to)
+            //     if (!shift) replaceRange6(cm, `${lastChar}\t`, to - 1, to)
+            // }
+        }
         const keyMapPageUp = () => on_focus_neighbor(cell_id, -1, 0, 0)
         const keyMapPageDown = () => on_focus_neighbor(cell_id, +1, 0, 0)
         const keyMapMD = () => {
@@ -622,7 +647,7 @@ export const CellInput = ({
             { key: "Ctrl-Enter", run: keyMapRun, preventDefault: true },
             { key: "PageUp", run: keyMapPageUp, preventDefault: true },
             { key: "PageDown", run: keyMapPageDown, preventDefault: true },
-            { key: "Tab", run: keyMapTab(false), shift: keyMapTab(true), preventDefault: true },
+            { key: "Tab", run: keyMapTab, shift: keyMapTabShift, preventDefault: true },
             { key: "Ctrl-m", run: keyMapMD, preventDefault: true },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD, preventDefault: true },
