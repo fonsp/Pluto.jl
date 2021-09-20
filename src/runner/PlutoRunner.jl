@@ -136,19 +136,23 @@ function sanitize_expr(union_all::UnionAll)
 end
 
 function sanitize_expr(vec::AbstractVector)
-    Expr(:vect, sanitize_expr.(vec)...)
+    Expr(:vect, sanitize_value.(vec)...)
 end
 
 function sanitize_expr(tuple::Tuple)
-    Expr(:tuple, sanitize_expr.(tuple)...)
+    Expr(:tuple, sanitize_value.(tuple)...)
 end
 
 function sanitize_expr(dict::Dict)
-    Expr(:call, :Dict, (sanitize_expr(pair) for pair in dict)...)
+    Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
 end
 
 function sanitize_expr(pair::Pair)
-    Expr(:call, :(=>), sanitize_expr(pair.first), sanitize_expr(pair.second))
+    Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
+end
+
+function sanitize_expr(set::Set)
+    Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
 end
 
 function sanitize_expr(mod::Module)
@@ -163,6 +167,14 @@ function sanitize_expr(other)
         other :
         Symbol(typename)
 end
+
+# A vector of Symbols need to be serialized as QuoteNode(sym)
+sanitize_value(sym::Symbol) = QuoteNode(sym)
+
+sanitize_value(ex::Expr) = Expr(:quote, ex)
+
+sanitize_value(other) = sanitize_expr(other)
+
 
 function try_macroexpand(mod, cell_uuid, expr)
     try
