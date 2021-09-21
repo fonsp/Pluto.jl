@@ -84,10 +84,14 @@ export class FilePicker extends Component {
                             return true
                         },
                         blur: (event, cm) => {
-                            cm.dispatch({
-                                changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
-                                selection: EditorSelection.cursor(this.props.value.length),
-                            })
+                            setTimeout(() => {
+                                if (!cm.hasFocus) {
+                                    cm.dispatch({
+                                        changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
+                                        selection: EditorSelection.cursor(this.props.value.length),
+                                    })
+                                }
+                            }, 200)
                         },
                     }),
                     EditorView.theme({
