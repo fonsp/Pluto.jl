@@ -900,7 +900,7 @@ pluto-cell.selected {
     border-radius: 0 3px 3px 0;
 }
 
-pluto-cell.selected > pluto-input > div.CodeMirror,
+pluto-cell.selected > pluto-input > div.cm-editor,
 pluto-cell.selected > pluto-output {
     opacity: 0.7;
 }
