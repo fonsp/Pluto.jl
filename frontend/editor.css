@@ -579,26 +579,22 @@ nav#at_the_top > pluto-filepicker {
     flex-direction: row;
 }
 
-nav#at_the_top > pluto-filepicker .CodeMirror {
+nav#at_the_top > pluto-filepicker .cm-editor {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
-    opacity: 0.6;
     font-style: normal;
     font-weight: 500;
     font-family: inherit;
     font-size: 0.8rem;
     letter-spacing: 1px;
     background: none;
-    border: 2px solid #818181;
+    color: #6f6f6f;
+    border: 2px solid #b2b2b2;
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-}
-
-nav#at_the_top > pluto-filepicker .CodeMirror-scroll {
-    overflow: hidden !important;
 }
 
 nav#at_the_top > pluto-filepicker button {
@@ -631,23 +627,23 @@ nav#at_the_top:after {
     align-self: center;
 }
 
-li.file.new.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.file.new:before {
     content: "👉";
     color: black;
 }
 
-li.file.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.file:before {
     content: "📄";
     color: black;
 }
 
-li.dir.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.dir:before {
     content: "📁";
     color: black;
 }
 
 @media (any-pointer: fine) {
-    nav#at_the_top > pluto-filepicker .CodeMirror {
+    nav#at_the_top > pluto-filepicker .cm-editor {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
@@ -656,9 +652,9 @@ li.dir.CodeMirror-hint:before {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
-    header:hover > nav#at_the_top > pluto-filepicker .CodeMirror,
-    header:focus-within > nav#at_the_top > pluto-filepicker .CodeMirror {
-        border: 2px solid #818181;
+    header:hover > nav#at_the_top > pluto-filepicker .cm-editor,
+    header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor {
+        border: 2px solid #b2b2b2;
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
@@ -2335,4 +2331,8 @@ pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
 .cm-s-default.CodeMirror-empty {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
+}
+
+.cm-completionMatchedText {
+    text-decoration: unset !important;
 }
