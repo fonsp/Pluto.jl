@@ -944,12 +944,7 @@ pluto-cell:hover > pluto-output > div::-webkit-scrollbar-thumb {
 
 /* CELL INPUT */
 
-pluto-input .CodeMirror {
-    height: auto !important;
-    width: auto;
-}
-pluto-input .cm-editor,
-pluto-input .CodeMirror {
+pluto-input .cm-editor {
     z-index: 20;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
@@ -964,33 +959,21 @@ pluto-input:focus-within .cm-editor {
     z-index: 21;
 }
 
-pluto-input .CodeMirror-scroll {
-    min-height: 0px;
-}
-
-pluto-input .CodeMirror-empty {
-    color: rgba(0, 0, 0, 0.15);
-}
-
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
 }
 
-pluto-cell.code_differs > pluto-input > .cm-editor,
-pluto-cell.code_differs > pluto-input > .CodeMirror {
+pluto-cell.code_differs > pluto-input > .cm-editor {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
 }
 
 pluto-cell.depends_on_disabled_cells > pluto-input .cm-editor,
-pluto-cell.depends_on_disabled_cells > pluto-input .CodeMirror,
-pluto-cell.running_disabled > pluto-input .cm-editor,
-pluto-cell.running_disabled > pluto-input .CodeMirror {
+pluto-cell.running_disabled > pluto-input .cm-editor {
     opacity: 0.3;
 }
 
-pluto-cell.running_disabled > pluto-input .cm-editor,
-pluto-cell.running_disabled > pluto-input .CodeMirror {
+pluto-cell.running_disabled > pluto-input .cm-editor {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -2054,8 +2037,7 @@ body > nav#slide_controls > button.next > span::after {
     border-radius: 4px;
 }
 
-.cm-tooltip-autocomplete,
-.CodeMirror-hints {
+.cm-tooltip-autocomplete {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
     z-index: 100;
@@ -2066,8 +2048,7 @@ body > nav#slide_controls > button.next > span::after {
     display: none;
 }
 
-.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li,
-li.CodeMirror-hint {
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
     /* font-size: 16px; */
@@ -2080,12 +2061,8 @@ li.CodeMirror-hint {
     background: #16659d;
 }
 
-.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported,
-li.CodeMirror-hint.c_notexported {
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
-}
-li.CodeMirror-hint-active.c_notexported {
-    color: white;
 }
 
 .cm-editor .cm-completionIcon {
@@ -2094,10 +2071,12 @@ li.CodeMirror-hint-active.c_notexported {
     transform: translateY(-1.5px);
 }
 
-.cm-completionIcon::before,
-li.CodeMirror-hint::before {
+.cm-completionIcon::before {
+    /* TODO This loses all color when it's not font-family: JuliaMono, which can happen */
     content: "⚫";
+    font-family: JuliaMono, monospace !important;
     color: transparent;
+    font-size: 0.75rem;
     margin-right: 0.5em;
     opacity: 1;
 }
@@ -2114,14 +2093,12 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration: none;
     font-weight: inherit;
 }
-body.ctrl_down .cm-variable:hover,
 body.ctrl_down [data-pluto-variable]:hover {
     text-decoration: underline;
     cursor: pointer;
 }
 
-.cm-tooltip.cm-tooltip-autocomplete,
-ul.CodeMirror-hints {
+.cm-tooltip.cm-tooltip-autocomplete {
     padding: 0;
     margin-left: -1.5em;
     background: white;
@@ -2129,17 +2106,13 @@ ul.CodeMirror-hints {
 
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
-pluto-input .cm-editor .cm-scroller,
-.cm-editor .cm-tooltip-autocomplete .cm-completionLabel,
-pluto-input .CodeMirror,
-ul.CodeMirror-hints {
+.cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: JuliaMono, monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
 }
 
-.cm-editor,
-.cm-s-default.CodeMirror {
+.cm-editor {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
@@ -2147,84 +2120,40 @@ ul.CodeMirror-hints {
     outline: unset;
 }
 
-.cm-s-default.CodeMirror pre.CodeMirror-line,
-.cm-s-default.CodeMirror pre.CodeMirror-line-like {
-    font-variant-ligatures: none;
-}
-
-.cm-s-default div.CodeMirror-selected {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-line::selection,
-.cm-s-default .CodeMirror-line > span::selection,
-.cm-s-default .CodeMirror-line > span > span::selection {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-line::-moz-selection,
-.cm-s-default .CodeMirror-line > span::-moz-selection,
-.cm-s-default .CodeMirror-line > span > span::-moz-selection {
-    background: #d9dfef;
-}
-
-.cm-editor .cm-gutter.cm-foldGutter {
-    display: none !important;
-}
-
 .cm-editor .cm-gutter {
     min-width: 29px;
 }
 
-.cm-editor .cm-gutters,
-.cm-s-default .CodeMirror-gutters {
+.cm-editor .cm-gutters {
     /* background: hsla(46, 90%, 98%, 1); */
     background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
-pluto-cell.code_differs .cm-editor .cm-gutters,
-pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
+pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
     background-color: rgba(214, 172, 35, 0.2);
 }
 
-.cm-s-default .CodeMirror-guttermarker {
-    color: black;
-}
-
-.cm-s-default .CodeMirror-guttermarker-subtle {
-    color: #8d8687;
-}
-
-.cm-editor .cm-lineNumbers .cm-gutterElement,
-.cm-s-default .CodeMirror-linenumber {
+.cm-editor .cm-lineNumbers .cm-gutterElement {
     color: #8d86875e;
 }
 
-.cm-editor .cm-lineNumbers .cm-gutterElement::after,
-.cm-s-default .CodeMirror-linenumber::after {
+.cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
 }
 
-.cm-editor .cm-lineNumbers .cm-gutterElement,
-.cm-s-default .CodeMirror-linenumber {
+.cm-editor .cm-lineNumbers .cm-gutterElement {
     font-size: 0px;
 }
 
-.cm-editor .cm-lineNumbers .cm-gutterElement:hover,
-.cm-s-default .CodeMirror-linenumber:hover {
+.cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     font-size: 0.75rem;
 }
 
-.cm-editor .cm-lineNumbers .cm-gutterElement:hover::after,
-.cm-s-default .CodeMirror-linenumber:hover::after {
+.cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     font-size: 0px;
-}
-
-.cm-s-default .CodeMirror-cursor {
-    border-left: 1.5px solid #776e71;
 }
 
 .cm-s-default span.cm-comment {
@@ -2237,7 +2166,6 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
 }
 
 .cm-completionIcon-c_Number::before,
-li.CodeMirror-hint.c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
 }
@@ -2252,7 +2180,6 @@ li.CodeMirror-hint.c_Number::before,
 }
 
 .cm-completionIcon-c_String::before,
-li.CodeMirror-hint.c_String::before,
 .cm-s-default span.cm-string {
     color: #da5616;
 }
@@ -2262,7 +2189,6 @@ li.CodeMirror-hint.c_String::before,
 }
 
 .cm-completionIcon-c_Any::before,
-li.CodeMirror-hint.c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -2279,13 +2205,11 @@ pluto-output > assignee,
 }
 
 .cm-completionIcon-c_Function::before,
-li.CodeMirror-hint.c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
 .cm-completionIcon-c_Array::before,
-li.CodeMirror-hint.c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
 }
@@ -2296,8 +2220,6 @@ li.CodeMirror-hint.c_Array::before,
 
 .cm-completionIcon-c_package::before,
 .cm-completionIcon-c_Module::before,
-li.CodeMirror-hint.c_package::before,
-li.CodeMirror-hint.c_Module::before,
 .cm-s-default span.cm-link {
     color: #815ba4;
 }
@@ -2306,29 +2228,22 @@ li.CodeMirror-hint.c_Module::before,
     background: #ef6155;
     color: #f7f7f7;
 }
-
-.cm-s-default .CodeMirror-activeline-background {
-    background: #cfd1c4;
-}
 .cm-editor .cm-activeLine {
     background: unset;
 }
 
 .cm-editor .cm-matchingBracket,
-div.CodeMirror span.CodeMirror-matchingbracket {
+.cm-editor .cm-nonmatchingBracket {
     color: unset;
 }
-
-pluto-input:focus-within .cm-editor .cm-matchingBracket,
-pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
+pluto-input:focus-within .cm-editor .cm-matchingBracket {
     color: black !important;
     font-weight: 700;
     background-color: #1b4bbb21;
     border-radius: 2px;
 }
 
-.cm-editor .cm-placeholder,
-.cm-s-default.CodeMirror-empty {
+.cm-editor .cm-placeholder {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
 }

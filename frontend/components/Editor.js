@@ -321,16 +321,6 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
-                /** ** 1 **
-                 * Notify codemirrors that the code is updated
-                 *
-                 *  */
-
-                for (const cell of new_cells) {
-                    //@ts-ignore
-                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
-                    cm.setValue(cell.code) // Update codemirror synchronously
-                }
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
