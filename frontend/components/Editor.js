@@ -244,7 +244,7 @@ export class Editor extends Component {
                     })
                 )
             },
-            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
+            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
                 if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
@@ -321,16 +321,6 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
-                /** ** 1 **
-                 * Notify codemirrors that the code is updated
-                 *
-                 *  */
-
-                for (const cell of new_cells) {
-                    //@ts-ignore
-                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
-                    cm.setValue(cell.code) // Update codemirror synchronously
-                }
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]

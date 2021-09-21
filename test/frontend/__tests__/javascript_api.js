@@ -1,15 +1,5 @@
-import {
-    waitForContent,
-    lastElement,
-    dismissBeforeUnloadDialogs,
-    saveScreenshot,
-    getTestScreenshotPath,
-    waitForContentToBecome,
-    dismissVersionDialogs,
-    setupPage,
-    paste,
-    countCells,
-} from "../helpers/common"
+import puppeteer from "puppeteer"
+import { waitForContent, lastElement, saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage, paste, countCells } from "../helpers/common"
 import {
     createNewNotebook,
     getCellIds,
@@ -24,20 +14,44 @@ import {
 } from "../helpers/pluto"
 
 describe("JavaScript API", () => {
+    /**
+     * Launch a shared browser instance for all tests.
+     * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
+     * so I need to manually create the shared browser.
+     * @type {puppeteer.Browser}
+     */
+    let browser = null
+    /** @type {puppeteer.Page} */
+    let page = null
     beforeAll(async () => {
-        setupPage(page)
-        // await prewarmPluto(page)
-    })
+        browser = await puppeteer.launch({
+            headless: process.env.HEADLESS !== "false",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            devtools: false,
+        })
 
+        let page = await browser.newPage()
+        setupPage(page)
+        await prewarmPluto(browser, page)
+        await page.close()
+    })
     beforeEach(async () => {
+        page = await browser.newPage()
+        setupPage(page)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
         await page.waitForSelector("pluto-input", { visible: true })
     })
-
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
-        await page.evaluate(() => window.shutdownNotebook())
+        // @ts-ignore
+        await page.evaluate(() => window.shutdownNotebook?.())
+        await page.close()
+        page = null
+    })
+    afterAll(async () => {
+        await browser.close()
+        browser = null
     })
 
     it("⭐️ If you return an HTML node, it will be displayed.", async () => {

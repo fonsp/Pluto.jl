@@ -68,7 +68,7 @@ describe("Paste Functionality", () => {
         await paste(page, "some code", `pluto-cell[id="${plutoCellIds[1]}"] pluto-input .CodeMirror .CodeMirror-line`)
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(5)
+        expect(await countCells(page)).toBe(5)
     })
 
     it("should create new cell when you paste cell into page", async () => {
@@ -99,7 +99,7 @@ describe("Paste Functionality", () => {
         await paste(page, "some code", `pluto-cell[id="${plutoCellIds[1]}"] pluto-input .CodeMirror .CodeMirror-line`)
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(5)
+        expect(await countCells(page)).toBe(5)
         // Pasting a cell into page should add a cell
         await paste(
             page,
@@ -110,7 +110,7 @@ describe("Paste Functionality", () => {
         )
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(6)
+        expect(await countCells(page)).toBe(6)
     })
 
     it("should create new cell when you paste cell into cell", async () => {
@@ -141,7 +141,7 @@ describe("Paste Functionality", () => {
         await paste(page, "some code", `pluto-cell[id="${plutoCellIds[1]}"] pluto-input .CodeMirror .CodeMirror-line`)
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(5)
+        expect(await countCells(page)).toBe(5)
         // Pasting a cell into page should add a cell
         await paste(
             page,
@@ -153,7 +153,7 @@ describe("Paste Functionality", () => {
 
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(6)
+        expect(await countCells(page)).toBe(6)
         // Paste a cell into Codemirror should add a cell
         await paste(
             page,
@@ -166,7 +166,7 @@ describe("Paste Functionality", () => {
 
         await page.waitForTimeout(500)
 
-        expect(await countCells()).toBe(7)
+        expect(await countCells(page)).toBe(7)
 
         await page.waitForTimeout(500)
         expect(reactiveLastCellContent).toBe("14")

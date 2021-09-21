@@ -147,7 +147,7 @@ Pluto.jl is open source! Specifically, it is [MIT Licensed](https://github.com/f
 Pluto.jl is built by gluing together open source software:
 
 -   `Julia` - [license](https://github.com/JuliaLang/julia/blob/master/LICENSE.md)
--   `CodeMirror` - [license](https://github.com/codemirror/CodeMirror/blob/master/LICENSE)
+-   `CodeMirror` - [license](https://github.com/codemirror/codemirror.next/blob/master/LICENSE-MIT)
 -   `HTTP.jl` - [license](https://github.com/JuliaWeb/HTTP.jl/blob/master/LICENSE.md)
 -   `MsgPack.jl` - [license](https://github.com/JuliaIO/MsgPack.jl)
 -   `msgpack-lite` - [license](https://github.com/kawanet/msgpack-lite/blob/master/LICENSE)
