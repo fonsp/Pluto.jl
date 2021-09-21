@@ -724,7 +724,7 @@ export const CellInput = ({
                     keymap.of([
                         ...closeBracketsKeymap,
                         ...defaultKeymap,
-                        ...searchKeymap,
+                        // ...searchKeymap,
                         ...historyKeymap,
                         ...foldKeymap,
                         ...commentKeymap,
