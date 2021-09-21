@@ -1347,7 +1347,15 @@ binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 function doc_fetcher(query, workspace::Module)
     try
         value = binding_from(Meta.parse(query), workspace)
-        (repr(MIME"text/html"(), Docs.doc(value)), :👍)
+        doc_md = Docs.doc(value)
+
+        if !showable(MIME("text/html"), doc_md)
+            # PyPlot returns `Text{String}` objects from their docs...
+            # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
+            doc_md = Markdown.parse(repr(doc_md))
+        end
+        
+        (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)
     end
