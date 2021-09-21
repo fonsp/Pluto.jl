@@ -2130,7 +2130,7 @@ ul.CodeMirror-hints {
 pluto-input .cm-editor .cm-content,
 pluto-input .cm-editor .cm-scroller,
 pluto-input .cm-editor .cm-scroller,
-pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul,
+.cm-editor .cm-tooltip-autocomplete .cm-completionLabel,
 pluto-input .CodeMirror,
 ul.CodeMirror-hints {
     font-family: JuliaMono, monospace !important;

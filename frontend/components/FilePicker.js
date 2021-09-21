@@ -83,6 +83,12 @@ export class FilePicker extends Component {
                             }, 0)
                             return true
                         },
+                        blur: (event, cm) => {
+                            cm.dispatch({
+                                changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
+                                selection: EditorSelection.cursor(this.props.value.length),
+                            })
+                        },
                     }),
                     EditorView.theme({
                         "&": {
@@ -144,17 +150,6 @@ export class FilePicker extends Component {
             }),
         })
         this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
-
-        // this.cm.on("blur", (cm, e) => {
-        //     // if the user clicks on an autocomplete option, this event is called, even though focus was not actually lost.
-        //     // NOT a debounce:
-        //     setTimeout(() => {
-        //         if (!cm.hasFocus()) {
-        //             cm.setValue(this.props.value)
-        //             deselect(cm)
-        //         }
-        //     }, 250)
-        // })
 
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
