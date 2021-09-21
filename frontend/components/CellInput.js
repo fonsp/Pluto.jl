@@ -502,15 +502,22 @@ export const CellInput = ({
 
         setTimeout(update_all_line_bubbles, 300)
 
-        const keyMapSubmit = () => on_submit()
+        const keyMapSubmit = () => {
+            on_submit()
+            return true
+        }
+        let run = async (fn) => await fn()
         const keyMapRun = async (cm) => {
-            // we await to prevent an out-of-sync issue
-            await on_add_after()
+            run(async () => {
+                // we await to prevent an out-of-sync issue
+                await on_add_after()
 
-            const new_value = cm.state.doc.toString()
-            if (new_value !== remote_code_ref.current) {
-                on_submit()
-            }
+                const new_value = cm.state.doc.toString()
+                if (new_value !== remote_code_ref.current) {
+                    on_submit()
+                }
+            })
+            return true
         }
 
         let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
@@ -553,8 +560,14 @@ export const CellInput = ({
                 return true
             }
         }
-        const keyMapPageUp = () => on_focus_neighbor(cell_id, -1, 0, 0)
-        const keyMapPageDown = () => on_focus_neighbor(cell_id, +1, 0, 0)
+        const keyMapPageUp = () => {
+            on_focus_neighbor(cell_id, -1, 0, 0)
+            return true
+        }
+        const keyMapPageDown = () => {
+            on_focus_neighbor(cell_id, +1, 0, 0)
+            return true
+        }
         const keyMapMD = () => {
             // Migrated
             const cm = newcm_ref.current
@@ -595,14 +608,12 @@ export const CellInput = ({
                 replaceRange6(cm, `md"""\n`, 0, 0)
                 replaceRange6(cm, `\n"""`, cm.state.doc.length, cm.state.doc.length)
             }
-        }
-        const keyMapD = () => {
-            const cm = newcm_ref.current
-            // This is the default already
+
+            return true
         }
         const keyMapDelete = (cm) => {
-            if (!cm.state.facet(EditorView.editable)) {
-                return
+            if (cm.state.facet(EditorState.readOnly)) {
+                return false
             }
             if (cm.state.doc.length === 0) {
                 on_focus_neighbor(cell_id, +1)
@@ -612,7 +623,7 @@ export const CellInput = ({
         }
 
         const keyMapBackspace = (cm) => {
-            if (!cm.state.facet(EditorView.editable)) {
+            if (cm.state.facet(EditorState.readOnly)) {
                 return
             }
 
@@ -659,36 +670,31 @@ export const CellInput = ({
             }
         }
 
-        // HERE
         const plutoKeyMaps = [
-            // What are all these preventDefault's for? - DRAL
-            /** Migration #3: New code */ { key: "Shift-Enter", run: keyMapSubmit, preventDefault: true },
-            { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun, preventDefault: true },
-            { key: "PageUp", run: keyMapPageUp, preventDefault: true },
-            { key: "PageDown", run: keyMapPageDown, preventDefault: true },
-            { key: "Tab", run: keyMapTab, shift: keyMapTabShift, preventDefault: true },
-            { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD, preventDefault: true },
+            { key: "Shift-Enter", run: keyMapSubmit },
+            { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
+            { key: "PageUp", run: keyMapPageUp },
+            { key: "PageDown", run: keyMapPageDown },
+            { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
+            { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
-            { key: "Ctrl-M", run: keyMapMD, preventDefault: true },
-            { key: "Ctrl-d", run: keyMapD, preventDefault: true },
-            { key: "Ctrl-D", run: keyMapD, preventDefault: true },
-            { key: "Ctrl-D", run: keyMapD, preventDefault: true },
-            { key: "Delete", run: keyMapDelete, preventDefault: true },
-            { key: "Ctrl-Delete", run: keyMapDelete, preventDefault: true },
-            { key: "Backspace", run: keyMapBackspace, preventDefault: false },
-            { key: "Ctrl-Backspace", run: keyMapBackspace, preventDefault: false },
-            { key: "ArrowLeft", run: keyMapLeft, preventDefault: false },
-            { key: "ArrowUp", run: keyMapLeft, preventDefault: false },
-            { key: "ArrowRight", run: keyMapRight, preventDefault: false },
-            { key: "ArrowDown", run: keyMapRight, preventDefault: false },
+            { key: "Ctrl-M", run: keyMapMD },
+            { key: "Delete", run: keyMapDelete },
+            { key: "Ctrl-Delete", run: keyMapDelete },
+            { key: "Backspace", run: keyMapBackspace },
+            { key: "Ctrl-Backspace", run: keyMapBackspace },
+            { key: "ArrowLeft", run: keyMapLeft },
+            { key: "ArrowUp", run: keyMapLeft },
+            { key: "ArrowRight", run: keyMapRight },
+            { key: "ArrowDown", run: keyMapRight },
         ]
         const onCM6Update = (update) => {
             if (update.docChanged) {
                 const cm = newcm_ref.current
                 const new_value = getValue6(cm)
-                console.log(new_value)
+
+                // TODO Move to own plugin
                 if (new_value.length > 1 && new_value[0] === "?") {
-                    console.log("yeap")
                     window.dispatchEvent(new CustomEvent("open_live_docs"))
                 }
                 on_change_ref.current(new_value)
@@ -867,7 +873,7 @@ export const CellInput = ({
                     go_to_definition_plugin,
                     docs_updater,
                     EditorView.lineWrapping,
-                    editable.of(EditorView.editable.of(!disable_input_ref.current)),
+                    editable.of(EditorState.readOnly.of(disable_input_ref.current)),
                     history(),
                     autocompletion({
                         activateOnTyping: false,
@@ -879,8 +885,9 @@ export const CellInput = ({
                             }),
                             // TODO completion for local variables
                         ],
-                        defaultKeyMap: false, // We add these manually later, so we can override them if necessary
+                        defaultKeymap: false, // We add these manually later, so we can override them if necessary
                         maxRenderedOptions: 512, // fons's magic number
+                        // @ts-ignore
                         optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
                     }),
                     // I put plutoKeyMaps separately because I want make sure we have
@@ -1350,7 +1357,7 @@ export const CellInput = ({
         disable_input_ref.current = disable_input
         cm_ref.current.options.disableInput = disable_input
         newcm_ref.current.dispatch({
-            effects: editable.reconfigure(EditorView.editable.of(!disable_input)),
+            effects: editable.reconfigure(EditorState.readOnly.of(disable_input)),
         })
     }, [disable_input])
 
