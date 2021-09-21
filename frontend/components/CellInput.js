@@ -849,15 +849,18 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
 // TODO Maybe use this again later?
 // const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
 
-const juliahints_cool_generator = (options) => (ctx) => {
-    // BETTER MODULE_EXPANDED_SELECTION
-    let selection = ctx.state.selection.main
-    let tree = syntaxTree(ctx.state)
+/**
+ * @param {EditorState} state
+ * @param {number} pos
+ */
+let expand_expression_to_completion_stuff = (state, pos) => {
+    let selection = state.selection.main
+    let tree = syntaxTree(state)
     let node = tree.resolve(selection.from, -1)
 
     let to_complete_onto = null
     let to_complete = null
-    if (ctx.state.sliceDoc(selection.from - 1, selection.from) === ".") {
+    if (state.sliceDoc(selection.from - 1, selection.from) === ".") {
         if (node.name === "BinaryExpression") {
             // This is the parser not getting that we're going for a FieldExpression
             // But it's cool, because this is as expanded as it gets
@@ -880,7 +883,7 @@ const juliahints_cool_generator = (options) => (ctx) => {
         }
         if (node.name === "FieldExpression") {
             // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
-            to_complete_onto = ctx.state.sliceDoc(node.firstChild.from, node.lastChild.from)
+            to_complete_onto = state.sliceDoc(node.firstChild.from, node.lastChild.from)
         }
 
         if (node.parent?.name === "MacroIdentifier") {
@@ -890,29 +893,53 @@ const juliahints_cool_generator = (options) => (ctx) => {
         }
     }
 
-    to_complete = to_complete ?? ctx.state.sliceDoc(node.from, selection.to)
-    to_complete_onto = to_complete_onto ?? ctx.state.sliceDoc(node.from, node.to)
-    // END - BETTER MODULE_EXPANDED_SELECTION
+    to_complete = to_complete ?? state.sliceDoc(node.from, selection.to)
+    to_complete_onto = to_complete_onto ?? state.sliceDoc(node.from, node.to)
+    return { to_complete, to_complete_onto, from: node.from }
+}
+
+let match_unicode_complete = (ctx) => {
+    let match = ctx.matchBefore(/\\[^\s"'`]*/)
+
+    if (match) {
+        return { to_complete: match.text, to_complete_onto: match.text, from: match.from }
+    } else {
+        return null
+    }
+}
+
+const juliahints_cool_generator = (options) => (ctx) => {
+    let unicode_match = match_unicode_complete(ctx)
+    console.log(`unicode_match:`, unicode_match)
+    let { to_complete, to_complete_onto, from } = unicode_match ?? expand_expression_to_completion_stuff(ctx.state, ctx.pos)
 
     console.log(`to_complete:`, to_complete)
-
     return options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id }).then(({ message }) => {
+        console.log(`message:`, message)
+        console.log(`from:`, from)
+        console.log(`utf8index_to_ut16index(to_complete, message.start):`, utf8index_to_ut16index(to_complete, message.start))
+        console.log(`utf8index_to_ut16index(to_complete, message.stop):`, utf8index_to_ut16index(to_complete, message.stop))
         return {
-            from: node.from + utf8index_to_ut16index(to_complete, message.start),
-            to: node.from + utf8index_to_ut16index(to_complete, message.stop),
-            options: message.results.map(([text, type_description, is_exported], i) => ({
-                label: text,
-                is_exported,
-                // detail: type_description,
-                type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                boost: 99 - i / message.results.length,
-                info: () => {
-                    console.log(`line + text:`, to_complete_onto + text)
-                    options.on_update_doc_query(to_complete_onto + text)
+            from: from + utf8index_to_ut16index(to_complete, message.start),
+            to: from + utf8index_to_ut16index(to_complete, message.stop),
+            // from: 1,
+            // to: 2,
+            options: [
+                ...message.results.map(([text, type_description, is_exported], i) => ({
+                    label: text,
+                    // apply: () => {},
+                    is_exported,
+                    // apply: "hi",
+                    // detail: type_description,
+                    type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                    boost: 99 - i / message.results.length,
+                    info: () => {
+                        options.on_update_doc_query(to_complete_onto + text)
 
-                    return new Promise(() => {})
-                },
-            })),
+                        return new Promise(() => {})
+                    },
+                })),
+            ],
         }
     })
 }
