@@ -34,8 +34,6 @@ export const waitForContent = async (page, selector) => {
     await page.waitForFunction(
         (selector) => {
             const element = document.querySelector(selector)
-            console.log(`selector:`, selector)
-            console.log(`element:`, element)
             return element !== null && element.textContent.length > 0
         },
         { polling: 100 },
@@ -115,8 +113,7 @@ const getFixturesDir = () => path.join(__dirname, "..", "fixtures")
 
 const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
-// export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
-export const getFixtureNotebookPath = (name) => path.join("/workspaces/Pluto.jl/test/frontend/fixtures", name)
+export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
 export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), `temporary_notebook_${testname()}_${Date.now()}.jl`)
 
