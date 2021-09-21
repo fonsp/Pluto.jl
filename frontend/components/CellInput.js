@@ -856,6 +856,7 @@ const juliahints_cool_generator = (options) => (ctx) => {
     let node = tree.resolve(selection.from, -1)
 
     let to_complete_onto = null
+    let to_complete = null
     if (ctx.state.sliceDoc(selection.from - 1, selection.from) === ".") {
         if (node.name === "BinaryExpression") {
             // This is the parser not getting that we're going for a FieldExpression
@@ -869,10 +870,16 @@ const juliahints_cool_generator = (options) => (ctx) => {
             } while (node.name !== "MacroExpression")
         }
     } else {
+        // Make sure that `import XX` and `using XX` are handled awesomely
+        if (node.parent?.name === "Import") {
+            node = node.parent.parent
+        }
+
         while (node.parent?.name === "FieldExpression") {
             node = node.parent
         }
         if (node.name === "FieldExpression") {
+            // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
             to_complete_onto = ctx.state.sliceDoc(node.firstChild.from, node.lastChild.from)
         }
 
@@ -883,9 +890,11 @@ const juliahints_cool_generator = (options) => (ctx) => {
         }
     }
 
-    let to_complete = ctx.state.sliceDoc(node.from, selection.to)
+    to_complete = to_complete ?? ctx.state.sliceDoc(node.from, selection.to)
     to_complete_onto = to_complete_onto ?? ctx.state.sliceDoc(node.from, node.to)
     // END - BETTER MODULE_EXPANDED_SELECTION
+
+    console.log(`to_complete:`, to_complete)
 
     return options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id }).then(({ message }) => {
         return {
