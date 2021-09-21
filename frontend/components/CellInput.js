@@ -271,7 +271,7 @@ export const CellInput = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
-    const newcm_ref = useRef(null)
+    const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
@@ -407,6 +407,7 @@ export const CellInput = ({
                     while (/\s/.test(trimmed[end - 1])) {
                         --end
                     }
+
                     // Keep the selection from [start, end) while maintaining cursor position
                     replaceRange6(cm, "", end + offset, cm.state.doc.length)
                     // cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
@@ -415,8 +416,23 @@ export const CellInput = ({
                 }
             } else {
                 // Replacing ranges will maintain both the focus, the selections and the cursor
-                replaceRange6(cm, `md"""\n`, 0, 0)
-                replaceRange6(cm, `\n"""`, cm.state.doc.length, cm.state.doc.length)
+                let prefix = `md"""\n`
+                let suffix = `\n"""`
+                // TODO Multicursor?
+                let selection = cm.state.selection.main
+                cm.dispatch({
+                    changes: [
+                        { from: 0, to: 0, insert: prefix },
+                        { from: cm.state.doc.length, to: cm.state.doc.length, insert: suffix },
+                    ],
+                    selection:
+                        selection.from === 0
+                            ? {
+                                  anchor: selection.from + prefix.length,
+                                  head: selection.to + prefix.length,
+                              }
+                            : undefined,
+                })
             }
 
             return true
