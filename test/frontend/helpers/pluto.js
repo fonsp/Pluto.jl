@@ -14,8 +14,7 @@ import {
 // if (!process.env.PLUTO_PORT) {
 //     throw new Error("You didn't set the PLUTO_PORT environment variable")
 // }
-// export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
-export const getPlutoUrl = () => `https://8ae7-51-137-56-73.ngrok.io/`
+export const getPlutoUrl = () => `http://localhost:${process.env.PLUTO_PORT}`
 
 /**
  * @param {Page} page
