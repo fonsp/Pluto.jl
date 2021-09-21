@@ -53,6 +53,35 @@ import {
     indentUnit,
 } from "../imports/CodemirrorPlutoSetup.js"
 
+export const pluto_syntax_colors = HighlightStyle.define([
+    /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
+    // Symbol
+    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+    // `nothing` I guess... Any others?
+    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+
+    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+
+    { tag: tags.keyword, color: "#fc6" },
+    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
+    { tag: tags.atom, color: "#815ba4" },
+    { tag: tags.number, color: "#815ba4" },
+    // { tag: tags.property, color: "#48b685" },
+    // { tag: tags.attribute, color: "#48b685" },
+    { tag: tags.keyword, color: "#ef6155" },
+    { tag: tags.string, color: "#da5616" },
+    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+    // { tag: tags.variable2, color: "#06b6ef" },
+    { tag: tags.definition(tags.variableName), color: "#f99b15" },
+    { tag: tags.bracket, color: "#41323f" },
+    { tag: tags.brace, color: "#41323f" },
+    { tag: tags.tagName, color: "#ef6155" },
+    { tag: tags.link, color: "#815ba4" },
+    { tag: tags.invalid, color: "#000", background: "#ef6155" },
+    // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+])
+
 class PkgStatusMarkWidget extends WidgetType {
     constructor(package_name, props) {
         super()
@@ -666,35 +695,6 @@ export const CellInput = ({
             }
         }
 
-        const myHighlightStyle = HighlightStyle.define([
-            /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
-            // Symbol
-            { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
-            { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
-            // `nothing` I guess... Any others?
-            { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
-
-            { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
-
-            { tag: tags.keyword, color: "#fc6" },
-            { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
-            { tag: tags.atom, color: "#815ba4" },
-            { tag: tags.number, color: "#815ba4" },
-            // { tag: tags.property, color: "#48b685" },
-            // { tag: tags.attribute, color: "#48b685" },
-            { tag: tags.keyword, color: "#ef6155" },
-            { tag: tags.string, color: "#da5616" },
-            { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
-            // { tag: tags.variable2, color: "#06b6ef" },
-            { tag: tags.definition(tags.variableName), color: "#f99b15" },
-            { tag: tags.bracket, color: "#41323f" },
-            { tag: tags.brace, color: "#41323f" },
-            { tag: tags.tagName, color: "#ef6155" },
-            { tag: tags.link, color: "#815ba4" },
-            { tag: tags.invalid, color: "#000", background: "#ef6155" },
-            // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
-        ])
-
         const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
 
         let DOCS_UPDATER_VERBOSE = true
@@ -729,7 +729,7 @@ export const CellInput = ({
 
                 extensions: [
                     pbk,
-                    myHighlightStyle,
+                    pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),
                     history(),

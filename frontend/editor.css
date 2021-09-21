@@ -199,6 +199,10 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
+pluto-output code .cm-editor .cm-line {
+    font-family: JuliaMono, monospace;
+}
+
 pluto-output pre > code {
     font-size: inherit;
 }
@@ -1837,7 +1841,8 @@ pluto-helpbox {
     line-height: 1.5;
 }
 pluto-helpbox pre,
-pluto-helpbox code {
+pluto-helpbox code,
+pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.875em;
