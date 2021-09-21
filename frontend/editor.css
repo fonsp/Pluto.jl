@@ -252,6 +252,9 @@ pluto-output blockquote {
     background-color: #f2f2f2;
     color: #555;
 }
+pluto-output.rich_output pre:not(.no-block):last-child, pluto-output blockquote:last-child {
+    margin-block-end: 0px;
+}
 
 pluto-output div.admonition {
     border-radius: 8px;
