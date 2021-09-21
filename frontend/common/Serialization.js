@@ -54,7 +54,7 @@ export function deserialize_repl(repl_session) {
 }
 
 export const detect_deserializer = (topaste, check_in_textarea_or_input = true) =>
-    topaste.trim().startsWith(JULIA_REPL_PROMPT) != null
+    topaste.trim().startsWith(JULIA_REPL_PROMPT)
         ? deserialize_repl
         : (check_in_textarea_or_input && !in_textarea_or_input()) || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
         ? deserialize_cells
