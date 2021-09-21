@@ -16,21 +16,60 @@ function get_input_value(input) {
             case "number":
                 return input.valueAsNumber
             case "date":
+                // "time" uses .value, which is a string. This matches observable.
                 return input.valueAsDate
             case "checkbox":
                 return input.checked
             case "file":
                 return input.multiple ? input.files : input.files[0]
-            case "select-multiple":
-                //@ts-ignore
-                return Array.from(input.selectedOptions, (o) => o.value)
             default:
                 return input.value
         }
+    } else if (input instanceof HTMLSelectElement && input.multiple) {
+        return Array.from(input.selectedOptions, (o) => o.value)
     } else {
         //@ts-ignore
         return input.value
     }
+}
+
+/**
+ * Copied from the observable stdlib source (https://github.com/observablehq/stdlib/blob/170f137ac266b397446320e959c36dd21888357b/src/generators/input.js) without modifications.
+ * @param {Element} input 
+ * @returns {string}
+ */
+function eventof(input) {
+    //@ts-ignore
+    switch (input.type) {
+        case "button":
+        case "submit":
+        case "checkbox":
+            return "click"
+        case "file":
+            return "change"
+        default:
+            return "input"
+    }
+}
+
+/**
+ * Copied from the observable stdlib source (https://github.com/observablehq/stdlib/blob/170f137ac266b397446320e959c36dd21888357b/src/generators/input.js) but using our own `get_input_value` for consistency.
+ * @param {Element} input 
+ * @returns 
+ */
+function input_generator(input) {
+    return observablehq.Generators.observe(function (change) {
+        var event = eventof(input),
+            value = get_input_value(input)
+        function inputted() {
+            change(get_input_value(input))
+        }
+        input.addEventListener(event, inputted)
+        if (value !== undefined) change(value)
+        return function () {
+            input.removeEventListener(event, inputted)
+        }
+    })
 }
 
 /**
@@ -68,14 +107,12 @@ const set_input_value = (input, new_value) => {
                 // Can't set files :(
                 return
             }
-            case "select-multiple": {
-                // @ts-ignore
-                for (let option of input.options) {
-                    option.selected = new_value.includes(option.value)
-                }
-                return
-            }
         }
+    } else if (input instanceof HTMLSelectElement && input.multiple) {
+        for (let option of Array.from(input.options)) {
+            option.selected = new_value.includes(option.value)
+        }
+        return
     }
     //@ts-ignore
     if (input.value !== new_value) {
@@ -113,7 +150,7 @@ export const add_bonds_listener = (node, on_bond_change) => {
 
         // see the docs on Generators.input from observablehq/stdlib
         let skippped_first = false
-        for (let val of observablehq.Generators.input(bond_node.firstElementChild)) {
+        for (let val of input_generator(bond_node.firstElementChild)) {
             if (node_is_invalidated) break
 
             if (skippped_first === false) {
