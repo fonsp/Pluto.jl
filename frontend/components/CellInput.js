@@ -341,7 +341,7 @@ export const CellInput = ({
             // TODO Multicursor?
             let selection = cm.state.selection.main
             let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
-            if (selection.from != selection.to) {
+            if (!selection.empty) {
                 return indentMore(cm)
             } else {
                 if (/^(\t| |\n|)$/.test(last_char)) {
@@ -358,7 +358,7 @@ export const CellInput = ({
         const keyMapTabShift = (cm) => {
             // TODO Multicursor?
             let selection = cm.state.selection.main
-            if (selection.from != selection.to) {
+            if (!selection.empty) {
                 return indentLess(cm)
             } else {
                 const last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
@@ -463,19 +463,10 @@ export const CellInput = ({
             }
         }
 
-        const with_time_since_last = (fn) => {
-            let last_invoke_time = -Infinity // This infinity is for you, Fons
-            return () => {
-                let result = fn(Date.now() - last_invoke_time)
-                last_invoke_time = Date.now()
-                return result
-            }
-        }
-
         const keyMapLeft = (view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
-            if (selection.from !== selection.to) return false
+            if (!selection.empty) return false
 
             // Is the cursor at the start of the cell?
             if (selection.from === 0) {
@@ -487,7 +478,7 @@ export const CellInput = ({
         const keyMapRight = (view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
-            if (selection.from !== selection.to) return false
+            if (!selection.empty) return false
 
             // Is the cursor at the end of the cell?
             if (selection.to === view.state.doc.length) {
@@ -648,6 +639,7 @@ export const CellInput = ({
                         paste: (event, view) => {
                             if (!view.hasFocus) {
                                 // Tell codemirror it doesn't have to handle this when it doesn't have focus
+                                console.log("CodeMirror, why are you registring this paste? You aren't focused!")
                                 return true
                             }
 
@@ -656,10 +648,32 @@ export const CellInput = ({
 
                             const topaste = event.clipboardData.getData("text/plain")
                             const deserializer = detect_deserializer(topaste, false)
-                            if (deserializer != null) {
-                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                                return true // Prevents codemirror from pasting
+                            if (deserializer == null) {
+                                return false
                             }
+
+                            // If we have the whole cell selected, the user doesn't want their current code to survive...
+                            // So we paste the cells, but then remove the original cell! (Ideally I want to keep that cell and fill it with the first deserialized one)
+                            // (This also applies to pasting in an empty cell)
+                            if (view.state.selection.main.from === 0 && view.state.selection.main.to === view.state.doc.length) {
+                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
+                                pluto_actions.confirm_delete_multiple("This Should Never Be Visible", [cell_id])
+                                return true
+                            }
+
+                            // End of cell, add new cells below
+                            if (view.state.selection.main.to === view.state.doc.length) {
+                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
+                                return true
+                            }
+
+                            // Start of cell, ideally we'd add new cells above, but we don't have that yet
+                            if (view.state.selection.main.from === 0) {
+                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
+                                return true
+                            }
+
+                            return false
                         },
                     }),
                     // Drag 'n drop plugin

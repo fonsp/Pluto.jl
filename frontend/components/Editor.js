@@ -291,7 +291,7 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await this.setStatePromise(
+                this.setState(
                     immer((state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
