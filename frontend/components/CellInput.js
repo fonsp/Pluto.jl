@@ -45,7 +45,10 @@ import {
     ViewPlugin,
     WidgetType,
     indentUnit,
+    StateField,
+    StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
+import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -115,7 +118,6 @@ class PkgStatusMarkWidget extends WidgetType {
 function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref }) {
     let widgets = []
     for (let { from, to } of view.visibleRanges) {
-        console.log(syntaxTree(view.state).topNode)
         let in_import = false
         let in_selected_import = false
         syntaxTree(view.state).iterate({
@@ -331,7 +333,6 @@ export const CellInput = ({
         }
 
         let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
-        let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
         let keyMapTab = (cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
@@ -344,15 +345,11 @@ export const CellInput = ({
             if (!selection.empty) {
                 return indentMore(cm)
             } else {
-                if (/^(\t| |\n|)$/.test(last_char)) {
-                    cm.dispatch({
-                        changes: { from: selection.from, to: selection.to, insert: "\t" },
-                        selection: EditorSelection.cursor(selection.from + 1),
-                    })
-                    return true
-                } else {
-                    return start_autocomplete_command.run(cm)
-                }
+                cm.dispatch({
+                    changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    selection: EditorSelection.cursor(selection.from + 1),
+                })
+                return true
             }
         }
         const keyMapTabShift = (cm) => {
@@ -564,10 +561,9 @@ export const CellInput = ({
                     defaultHighlightStyle.fallback,
                     bracketMatching(),
                     closeBrackets(),
-                    // rectangularSelection(),
-                    // highlightActiveLine(),
                     highlightSelectionMatches(),
                     block_matcher_plugin,
+                    docs_updater,
 
                     // Don't-accidentally-remove-cells-plugin
                     // Because we need some extra info about the key, namely if it is on repeat or not,
@@ -710,42 +706,26 @@ export const CellInput = ({
                     EditorView.updateListener.of(onCM6Update),
                     used_variables_compartment,
                     go_to_definition_plugin,
-                    docs_updater,
                     EditorView.lineWrapping,
                     editable.of(EditorState.readOnly.of(disable_input_ref.current)),
                     history(),
-                    autocompletion({
-                        activateOnTyping: false,
-                        override: [
-                            juliahints_cool_generator({
-                                pluto_actions: pluto_actions,
-                                notebook_id: notebook_id,
-                                on_update_doc_query: on_update_doc_query,
-                            }),
-                            // TODO completion for local variables
-                        ],
-                        defaultKeymap: false, // We add these manually later, so we can override them if necessary
-                        maxRenderedOptions: 512, // fons's magic number
-                        // @ts-ignore
-                        optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
+                    pluto_autocomplete({
+                        request_autocomplete: async ({ text }) => {
+                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            return {
+                                start: utf8index_to_ut16index(text, message.start),
+                                stop: utf8index_to_ut16index(text, message.stop),
+                                results: message.results,
+                            }
+                        },
+                        on_update_doc_query: on_update_doc_query,
                     }),
-                    // Putting the keymap here explicitly, so it's clear this keymap is in front
-                    // of Pluto's keymap...
-                    keymap.of(completionKeymap),
+
                     // I put plutoKeyMaps separately because I want make sure we have
                     // higher priority 😈
                     keymap.of(plutoKeyMaps),
-                    keymap.of([
-                        ...closeBracketsKeymap,
-                        ...defaultKeymap,
-                        // ...searchKeymap,
-                        ...historyKeymap,
-                        ...foldKeymap,
-                        ...commentKeymap,
-                        // ...lint.lintKeymap,
-                    ]),
+                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
-                    // julia,
                 ],
             }),
             parent: dom_node_ref.current,
@@ -858,75 +838,4 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
               </ul>`
             : html``}
     </button>`
-}
-
-// TODO Maybe use this again later?
-// const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
-
-const juliahints_cool_generator = (options) => (ctx) => {
-    // BETTER MODULE_EXPANDED_SELECTION
-    let selection = ctx.state.selection.main
-    let tree = syntaxTree(ctx.state)
-    let node = tree.resolve(selection.from, -1)
-
-    let to_complete_onto = null
-    let to_complete = null
-    if (ctx.state.sliceDoc(selection.from - 1, selection.from) === ".") {
-        if (node.name === "BinaryExpression") {
-            // This is the parser not getting that we're going for a FieldExpression
-            // But it's cool, because this is as expanded as it gets
-        }
-
-        // This is what julia-lezer thinks the `.` is in `@Base.`
-        if (node.parent?.name === "MacroArgumentList") {
-            do {
-                node = node.parent
-            } while (node.name !== "MacroExpression")
-        }
-    } else {
-        // Make sure that `import XX` and `using XX` are handled awesomely
-        if (node.parent?.name === "Import") {
-            node = node.parent.parent
-        }
-
-        while (node.parent?.name === "FieldExpression") {
-            node = node.parent
-        }
-        if (node.name === "FieldExpression") {
-            // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
-            to_complete_onto = ctx.state.sliceDoc(node.firstChild.from, node.lastChild.from)
-        }
-
-        if (node.parent?.name === "MacroIdentifier") {
-            while (node.name !== "MacroExpression") {
-                node = node.parent
-            }
-        }
-    }
-
-    to_complete = to_complete ?? ctx.state.sliceDoc(node.from, selection.to)
-    to_complete_onto = to_complete_onto ?? ctx.state.sliceDoc(node.from, node.to)
-    // END - BETTER MODULE_EXPANDED_SELECTION
-
-    console.log(`to_complete:`, to_complete)
-
-    return options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        return {
-            from: node.from + utf8index_to_ut16index(to_complete, message.start),
-            to: node.from + utf8index_to_ut16index(to_complete, message.stop),
-            options: message.results.map(([text, type_description, is_exported], i) => ({
-                label: text,
-                is_exported,
-                // detail: type_description,
-                type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                boost: 99 - i / message.results.length,
-                info: () => {
-                    console.log(`line + text:`, to_complete_onto + text)
-                    options.on_update_doc_query(to_complete_onto + text)
-
-                    return new Promise(() => {})
-                },
-            })),
-        }
-    })
 }
