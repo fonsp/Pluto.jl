@@ -174,7 +174,11 @@ fruit
 
 
 # ╔═╡ 62c6f866-f0fe-11ea-0961-319f28d040d4
-md"## MultiSelect"
+md"""
+## MultiSelect
+
+This widget allows the user to select multiple element by holding `Ctrl` / `Cmd` while clicking a more items.
+"""
 
 # ╔═╡ a01c8096-f0fe-11ea-3e78-ad8551e84fa1
 @bind vegetable_basket MultiSelect(["potato", "carrot", "boerenkool"])
