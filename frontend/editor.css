@@ -256,7 +256,8 @@ pluto-output blockquote {
     background-color: #f2f2f2;
     color: #555;
 }
-pluto-output.rich_output pre:not(.no-block):last-child, pluto-output blockquote:last-child {
+pluto-output.rich_output pre:not(.no-block):last-child,
+pluto-output blockquote:last-child {
     margin-block-end: 0px;
 }
 
@@ -2057,6 +2058,9 @@ body > nav#slide_controls > button.next > span::after {
     /* font-size: 16px; */
     line-height: 16px;
     border-radius: 3px;
+}
+pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    height: unset;
 }
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
