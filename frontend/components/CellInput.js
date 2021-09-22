@@ -45,6 +45,8 @@ import {
     ViewPlugin,
     WidgetType,
     indentUnit,
+    StateField,
+    StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
@@ -330,8 +332,36 @@ export const CellInput = ({
             return true
         }
 
+        /** @type {any} */
+        const TabCompletionEffect = StateEffect.define()
+        const tabCompletionState = StateField.define({
+            create() {
+                return false
+            },
+
+            update(value, tr) {
+                for (let effect of tr.effects) {
+                    if (effect.is(TabCompletionEffect)) {
+                        return true
+                    }
+                }
+                if (tr.startState.field(completionState, false)?.open != null && tr.state.field(completionState, false)?.open == null) {
+                    return false
+                }
+                return value
+            },
+        })
+
+        let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space").run
+        /** @param {EditorView} cm */
+        const tab_completion_keymap = (cm) => {
+            cm.dispatch({
+                effects: TabCompletionEffect.of(10),
+            })
+            return start_autocomplete_command(cm)
+        }
+
         let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
-        let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space")
         let keyMapTab = (cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
@@ -351,7 +381,8 @@ export const CellInput = ({
                     })
                     return true
                 } else {
-                    return start_autocomplete_command.run(cm)
+                    return tab_completion_keymap(cm)
+                    // return start_autocomplete_command.run(cm)
                 }
             }
         }
@@ -496,12 +527,23 @@ export const CellInput = ({
             }
         }
 
+        // Remove this if we find that people actually need the `?` in their queries, but I very much doubt it.
+        // (Also because the ternary operator does require a space before the ?, thanks Julia!)
+        let open_docs_if_autocomplete_is_open = (cm) => {
+            let autocompletion_open = cm.state.field(completionState, false)?.open ?? false
+            if (autocompletion_open) {
+                window.dispatchEvent(new CustomEvent("open_live_docs"))
+                return true
+            }
+        }
+
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
             { key: "PageUp", run: keyMapPageUp },
             { key: "PageDown", run: keyMapPageDown },
             { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
+            { key: "?", run: open_docs_if_autocomplete_is_open },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD },
@@ -551,6 +593,21 @@ export const CellInput = ({
         // Why am I like this?
         let completionState = autocompletion()[0]
 
+        // Import this from @codemirror/autocomplete
+        let acceptCompletion = (view, option) => {
+            let apply = option.completion.apply || option.completion.label
+            let result = option.source
+            if (typeof apply == "string") {
+                view.dispatch({
+                    changes: { from: result.from, to: result.to, insert: apply },
+                    selection: { anchor: result.from + apply.length },
+                    userEvent: "input.complete",
+                })
+            } else {
+                apply(view, option.completion, result.from, result.to)
+            }
+        }
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -577,6 +634,7 @@ export const CellInput = ({
                     // highlightActiveLine(),
                     highlightSelectionMatches(),
                     block_matcher_plugin,
+                    tabCompletionState,
 
                     // Don't-accidentally-remove-cells-plugin
                     // Because we need some extra info about the key, namely if it is on repeat or not,
@@ -703,17 +761,46 @@ export const CellInput = ({
                     autocompletion({
                         activateOnTyping: false,
                         override: [
+                            unicode_hint_generator({
+                                pluto_actions: pluto_actions,
+                                notebook_id: notebook_id,
+                            }),
                             juliahints_cool_generator({
                                 pluto_actions: pluto_actions,
                                 notebook_id: notebook_id,
-                                on_update_doc_query: on_update_doc_query,
                             }),
                             // TODO completion for local variables
                         ],
                         defaultKeymap: false, // We add these manually later, so we can override them if necessary
                         maxRenderedOptions: 512, // fons's magic number
                         // @ts-ignore
-                        optionClass: (c) => (c.is_exported ? "" : "c_notexported"),
+                        optionClass: (c) => (c.is_not_exported ? "c_notexported" : ""),
+                    }),
+
+                    // If there is just one autocomplete result, apply it directly
+                    EditorView.updateListener.of((update) => {
+                        let autocompletion_state = update.state.field(completionState, false)
+                        let is_tab_completion = update.state.field(tabCompletionState, false)
+
+                        if (autocompletion_state?.open != null && autocompletion_state.options.length === 1 && is_tab_completion) {
+                            acceptCompletion(update.view, autocompletion_state.options[0])
+                        }
+                    }),
+
+                    // Doc updater
+                    EditorView.updateListener.of((update) => {
+                        let autocompletion_state = update.state.field(completionState, false)
+                        let open_autocomplete = autocompletion_state?.open
+                        if (open_autocomplete == null) return
+
+                        let selected_option = open_autocomplete.options[open_autocomplete.selected]
+                        // TODO Ideally I don't want the `doc_prefix` to be part of the completion,
+                        // .... and instead parse the tree properly again.. but I don't know how to do
+                        // .... that without actually updating the EditorView D:
+                        let docs_prefix = selected_option.source.result["docs_prefix"]
+                        if (docs_prefix != null && (selected_option.apply == null || typeof selected_option.completion.apply === "string")) {
+                            on_update_doc_query(docs_prefix + (selected_option.completion.apply ?? selected_option.completion.text))
+                        }
                     }),
                     // Putting the keymap here explicitly, so it's clear this keymap is in front
                     // of Pluto's keymap...
@@ -854,13 +941,11 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
  * @param {number} pos
  */
 let expand_expression_to_completion_stuff = (state, pos) => {
-    let selection = state.selection.main
     let tree = syntaxTree(state)
-    let node = tree.resolve(selection.from, -1)
+    let node = tree.resolve(pos, -1)
 
-    let to_complete_onto = null
     let to_complete = null
-    if (state.sliceDoc(selection.from - 1, selection.from) === ".") {
+    if (state.sliceDoc(pos - 1, pos) === ".") {
         if (node.name === "BinaryExpression") {
             // This is the parser not getting that we're going for a FieldExpression
             // But it's cool, because this is as expanded as it gets
@@ -873,6 +958,17 @@ let expand_expression_to_completion_stuff = (state, pos) => {
             } while (node.name !== "MacroExpression")
         }
     } else {
+        if (
+            (node.name === "Operator" || node.name === "⚠" || node.name === "Identifier") &&
+            node.parent.name === "QuoteExpression" &&
+            node.parent.parent.name === "FieldExpression"
+        ) {
+            node = node.parent
+        }
+        if (node.name === "QuoteExpression" && node.parent.name === "FieldExpression") {
+            node = node.parent
+        }
+
         // Make sure that `import XX` and `using XX` are handled awesomely
         if (node.parent?.name === "Import") {
             node = node.parent.parent
@@ -881,10 +977,10 @@ let expand_expression_to_completion_stuff = (state, pos) => {
         while (node.parent?.name === "FieldExpression") {
             node = node.parent
         }
-        if (node.name === "FieldExpression") {
-            // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
-            to_complete_onto = state.sliceDoc(node.firstChild.from, node.lastChild.from)
-        }
+        // if (node.name === "FieldExpression") {
+        //     // Not exactly sure why, but this makes `aaa.bbb.ccc` into `aaa.bbb.`
+        //     to_complete_onto = state.sliceDoc(node.firstChild.from, node.lastChild.from)
+        // }
 
         if (node.parent?.name === "MacroIdentifier") {
             while (node.name !== "MacroExpression") {
@@ -893,53 +989,114 @@ let expand_expression_to_completion_stuff = (state, pos) => {
         }
     }
 
-    to_complete = to_complete ?? state.sliceDoc(node.from, selection.to)
-    to_complete_onto = to_complete_onto ?? state.sliceDoc(node.from, node.to)
-    return { to_complete, to_complete_onto, from: node.from }
+    to_complete = to_complete ?? state.sliceDoc(node.from, pos)
+    return { to_complete, from: node.from }
 }
 
-let match_unicode_complete = (ctx) => {
-    let match = ctx.matchBefore(/\\[^\s"'`]*/)
+let match_unicode_complete = (ctx) => ctx.matchBefore(/\\[^\s"'`]*/)
+let match_symbol_complete = (ctx) => ctx.matchBefore(/\.\:[^\s"'`()\[\].]*/)
 
-    if (match) {
-        return { to_complete: match.text, to_complete_onto: match.text, from: match.from }
-    } else {
-        return null
+let unicode_hint_generator = (options) => async (ctx) => {
+    let unicode_match = match_unicode_complete(ctx)
+    if (unicode_match == null) return null
+
+    let { message } = await options.pluto_actions.send("complete", { query: unicode_match.text }, { notebook_id: options.notebook_id })
+
+    return {
+        from: unicode_match.from,
+        to: unicode_match.to,
+        // This is an important one when you not only complete, but also replace something.
+        // @codemirror/autocomplete automatically filters out results otherwise >:(
+        filter: false,
+        // TODO Add "detail" that shows the unicode character
+        // TODO Add "apply" with the unicode character so it autocompletes that immediately
+        options: message.results.map(([text, _, is_exported], i) => {
+            return {
+                label: text,
+            }
+        }),
+        // TODO Do something docs_prefix ish when we also have the apply text
     }
 }
 
-const juliahints_cool_generator = (options) => (ctx) => {
-    let unicode_match = match_unicode_complete(ctx)
-    console.log(`unicode_match:`, unicode_match)
-    let { to_complete, to_complete_onto, from } = unicode_match ?? expand_expression_to_completion_stuff(ctx.state, ctx.pos)
+let override_text_to_apply_in_field_expression = (text) => {
+    return !/^[@a-zA-Z_][a-zA-Z0-9!_]*\"?$/.test(text) ? (text === ":" ? `:(${text})` : `:${text}`) : null
+}
 
-    console.log(`to_complete:`, to_complete)
-    return options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        console.log(`message:`, message)
-        console.log(`from:`, from)
-        console.log(`utf8index_to_ut16index(to_complete, message.start):`, utf8index_to_ut16index(to_complete, message.start))
-        console.log(`utf8index_to_ut16index(to_complete, message.stop):`, utf8index_to_ut16index(to_complete, message.stop))
-        return {
-            from: from + utf8index_to_ut16index(to_complete, message.start),
-            to: from + utf8index_to_ut16index(to_complete, message.stop),
-            // from: 1,
-            // to: 2,
-            options: [
-                ...message.results.map(([text, type_description, is_exported], i) => ({
+const juliahints_cool_generator = (options) => async (ctx) => {
+    // Let the unicode source handle "\..." completions
+    // - Putting it in a separate function so to maybe optimise it with local options later (all unicode symbols could be loaded at startup)
+    //   And possibly we want to show unicode AND extra symbols later
+    if (match_unicode_complete(ctx)) return null
+
+    let { to_complete, from } = expand_expression_to_completion_stuff(ctx.state, ctx.pos)
+
+    // Another rough hack... If it detects a `.:`, we want to cut out the `:` so we get all results from julia,
+    // but then codemirror will put the `:` back in filtering
+    let is_symbol_completion = match_symbol_complete(ctx)
+    if (is_symbol_completion) {
+        to_complete = to_complete.slice(0, is_symbol_completion.from + 1) + to_complete.slice(is_symbol_completion.from + 2)
+    }
+
+    let { message } = await options.pluto_actions.send("complete", { query: to_complete }, { notebook_id: options.notebook_id })
+
+    let from_2 = from + utf8index_to_ut16index(to_complete, message.start)
+    let to_2 = from + utf8index_to_ut16index(to_complete, message.stop)
+
+    if (is_symbol_completion) {
+        // If this is a symbol completion thing, we need to add the `:` back in by moving the end a bit furher
+        to_2 = to_2 + 1
+    }
+
+    let to_complete_onto = to_complete.slice(0, from_2)
+    let is_field_expression = to_complete_onto.slice(-1) === "."
+    return {
+        from: from_2,
+        to: to_2,
+
+        // Non-standard, used for showing live docs for results
+        docs_prefix: to_complete_onto,
+
+        // This tells codemirror to not query this function again as long as the string
+        // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
+        // e.g. Base.ab<TAB>, will create a regex like /^ab[^weird]*$/, so when now typing `s`,
+        //      we'll get `Base.abs`, it finds the `abs` matching our span, and it will filter the existing results.
+        //      If we backspace however, to `Math.a`, `a` does no longer match! So it will re-query this function.
+        span: RegExp(`^${_.escapeRegExp(ctx.state.sliceDoc(from_2, to_2))}[^\\s"'()\\[\\].{}]*`),
+        options: [
+            ...message.results.map(([text, type_description, is_exported], i) => {
+                // (quick) fix for identifiers that need to be escaped
+                // Ideally this is done with Meta.isoperator on the julia side
+                let text_to_apply = is_field_expression ? override_text_to_apply_in_field_expression(text) ?? text : text
+
+                return {
                     label: text,
-                    // apply: () => {},
-                    is_exported,
-                    // apply: "hi",
-                    // detail: type_description,
+                    apply: text_to_apply,
                     type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
                     boost: 99 - i / message.results.length,
-                    info: () => {
-                        options.on_update_doc_query(to_complete_onto + text)
+                    // Non-standard
+                    is_not_exported: !is_exported,
+                }
+            }),
+            // This is a small thing that I really want:
+            // You want to see what fancy symbols a module has? Pluto will show these at the very end of the list,
+            // for Base there is no way you're going to find them! With this you can type `.:` and see all the fancy symbols.
+            // TODO This whole block shouldn't use `override_text_to_apply_in_field_expression` but the same
+            //      `Meta.isoperator` thing mentioned above
+            ...message.results
+                .filter(([text]) => is_field_expression && override_text_to_apply_in_field_expression(text) != null)
+                .map(([text, type_description, is_exported], i) => {
+                    let text_to_apply = override_text_to_apply_in_field_expression(text)
 
-                        return new Promise(() => {})
-                    },
-                })),
-            ],
-        }
-    })
+                    return {
+                        label: text_to_apply,
+                        apply: text_to_apply,
+                        type: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
+                        boost: -99 - i / message.results.length, // Display below all normal results
+                        // Non-standard
+                        is_not_exported: !is_exported,
+                    }
+                }),
+        ],
+    }
 }

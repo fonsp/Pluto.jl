@@ -2237,6 +2237,7 @@ pluto-output > assignee,
 
 .cm-editor .cm-matchingBracket,
 .cm-editor .cm-nonmatchingBracket {
+    background-color: unset;
     color: unset;
 }
 pluto-input:focus-within .cm-editor .cm-matchingBracket {

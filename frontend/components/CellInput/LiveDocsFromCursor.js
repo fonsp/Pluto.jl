@@ -227,6 +227,16 @@ export let get_selected_doc_from_state = (state, verbose = false) => {
                     return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
                 }
 
+                // `Base.:%` should yield... "Base.:%"
+                if (
+                    (cursor.name === "Operator" || cursor.name === "⚠" || cursor.name === "Identifier") &&
+                    parent.name === "QuoteExpression" &&
+                    parent.parent.name === "FieldExpression"
+                ) {
+                    // TODO Needs a fix added to is_docs_searchable, but this works fine for now
+                    return state.sliceDoc(parent.parent.from, parent.parent.to)
+                }
+
                 if (cursor.name === "ParameterizedIdentifier") {
                     cursor.firstChild() // Move to callee
                     return is_docs_searchable(cursor) ? state.doc.sliceString(cursor.from, cursor.to) : undefined
