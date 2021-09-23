@@ -1,21 +1,47 @@
+import puppeteer from "puppeteer"
 import { saveScreenshot, getTestScreenshotPath, setupPage, paste } from "../helpers/common"
-import { createNewNotebook, getPlutoUrl, waitForNoUpdateOngoing } from "../helpers/pluto"
+import { createNewNotebook, getPlutoUrl, prewarmPluto, waitForNoUpdateOngoing } from "../helpers/pluto"
 
 // https://github.com/fonsp/Pluto.jl/issues/928
 describe("Bonds should run once when refreshing page", () => {
+    /**
+     * Launch a shared browser instance for all tests.
+     * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
+     * so I need to manually create the shared browser.
+     * @type {puppeteer.Browser}
+     */
+    let browser = null
+    /** @type {puppeteer.Page} */
+    let page = null
     beforeAll(async () => {
-        setupPage(page)
-    })
+        browser = await puppeteer.launch({
+            headless: process.env.HEADLESS !== "false",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            devtools: false,
+        })
 
+        let page = await browser.newPage()
+        setupPage(page)
+        await prewarmPluto(browser, page)
+        await page.close()
+    })
     beforeEach(async () => {
+        page = await browser.newPage()
+        setupPage(page)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
         await page.waitForSelector("pluto-input", { visible: true })
     })
-
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
-        await page.evaluate(() => window.shutdownNotebook())
+        // @ts-ignore
+        await page.evaluate(() => window.shutdownNotebook?.())
+        await page.close()
+        page = null
+    })
+    afterAll(async () => {
+        await browser.close()
+        browser = null
     })
 
     it("should not rerun bond values when refreshing page", async () => {
@@ -51,20 +77,20 @@ numberoftimes = Ref(0)
 
         await page.waitForSelector(`.runallchanged`, { visible: true, polling: 200, timeout: 0 })
         await page.click(`.runallchanged`)
-        await page.waitForFunction(() => document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent !== "")
+        await page.waitForFunction(() => Boolean(document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent))
 
         await waitForNoUpdateOngoing(page)
         let output_after_running_bonds = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })
         expect(output_after_running_bonds).not.toBe("")
 
         // Let's refresh and see
         await page.reload({ waitUntil: ["networkidle0", "domcontentloaded"] })
-        await page.waitForFunction(() => document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent !== "")
+        await page.waitForFunction(() => Boolean(document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent))
         await waitForNoUpdateOngoing(page)
         let output_after_reload = await page.evaluate(() => {
-            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output").textContent
+            return document.querySelector("pluto-cell:nth-of-type(5) pluto-output")?.textContent
         })
         expect(output_after_reload).toBe(output_after_running_bonds)
     })

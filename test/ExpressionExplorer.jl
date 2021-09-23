@@ -410,9 +410,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @enum is tested in test/React.jl instead
         @test testee(:(@gensym a b c), [], [:a, :b, :c], [:gensym], [], [Symbol("@gensym")])
         @test testee(:(Base.@gensym a b c), [], [:a, :b, :c], [:gensym], [], [[:Base, Symbol("@gensym")]])
-        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [
-            :A => ([:two], [], [], [])
-        ], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]])
+        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [], [[:Base, Symbol("@kwdef")]])
         @test testee(quote "asdf" f(x) = x end, [], [], [], [], [Symbol("@doc")])
 
         @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
@@ -452,8 +450,23 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_broken testee(:(`a $b`), [:b], [], [], [])
         # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
-        @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
-        # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
+        @test testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [])
+        @test test_expression_explorer(
+            expr=:(quote $(x) end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(quote z = a + $(x) + b() end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:($(x))),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:(z = a + $(x) + b())),
+            references=[:x],
+        )
     end
     @testset "Extracting `using` and `import`" begin
         expr = quote

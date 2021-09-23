@@ -136,7 +136,23 @@ function sanitize_expr(union_all::UnionAll)
 end
 
 function sanitize_expr(vec::AbstractVector)
-    Expr(:vect, sanitize_expr.(vec)...)
+    Expr(:vect, sanitize_value.(vec)...)
+end
+
+function sanitize_expr(tuple::Tuple)
+    Expr(:tuple, sanitize_value.(tuple)...)
+end
+
+function sanitize_expr(dict::Dict)
+    Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
+end
+
+function sanitize_expr(pair::Pair)
+    Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
+end
+
+function sanitize_expr(set::Set)
+    Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
 end
 
 function sanitize_expr(mod::Module)
@@ -151,6 +167,14 @@ function sanitize_expr(other)
         other :
         Symbol(typename)
 end
+
+# A vector of Symbols need to be serialized as QuoteNode(sym)
+sanitize_value(sym::Symbol) = QuoteNode(sym)
+
+sanitize_value(ex::Expr) = Expr(:quote, ex)
+
+sanitize_value(other) = sanitize_expr(other)
+
 
 function try_macroexpand(mod, cell_uuid, expr)
     try
@@ -677,6 +701,33 @@ function format_output(val::CapturedException; context=default_iocontext)
     Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
 end
 
+function format_output(binding::Base.Docs.Binding; context=default_iocontext)
+    try
+        ("""
+        <div style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
+        <span style="
+            display: inline-block;
+            transform: translate(-19px, -16px);
+            font-family: 'JuliaMono', monospace;
+            font-size: .9rem;
+            font-weight: 700;
+            /* height: 1px; */
+            margin-top: -1em;
+            background: white;
+            padding: 4px;
+            border-radius: 7px;
+            /* color: #646464; */
+            /* border: 3px solid #f99b1536;
+        ">$(binding.var)</span>
+        $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
+        </div>
+        """, MIME"text/html"()) 
+    catch e
+        @warn "Failed to pretty-print binding" exception=(e, catch_backtrace())
+        repr(binding, MIME"text/plain"())
+    end
+end
+
 # from the Julia source code:
 function pretty_stackcall(frame::Base.StackFrame, linfo::Nothing)::String
     if frame.func isa Symbol
@@ -1051,6 +1102,12 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
+        id = Base.PkgId(UUID("0c5d862f-8b57-4792-8d23-62f2024744c7"), "Symbolics"),
+        code = quote
+            pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Symbolics.Arr) = false
+        end,
+    ),
+    Integration(
         id = Base.PkgId(UUID("bd369af6-aec1-5ad0-b16a-f7cc5008161c"), "Tables"),
         code = quote
             function maptruncated(f::Function, xs, filler, limit; truncate=true)
@@ -1290,7 +1347,15 @@ binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 function doc_fetcher(query, workspace::Module)
     try
         value = binding_from(Meta.parse(query), workspace)
-        (repr(MIME"text/html"(), Docs.doc(value)), :👍)
+        doc_md = Docs.doc(value)
+
+        if !showable(MIME("text/html"), doc_md)
+            # PyPlot returns `Text{String}` objects from their docs...
+            # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
+            doc_md = Markdown.parse(repr(doc_md))
+        end
+        
+        (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)
     end
@@ -1562,7 +1627,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    startswith(String(nameof(_module)), "workspace") || convert(Logging.LogLevel, level) >= Logging.Info
+    (_module isa Module && startswith(String(nameof(_module)), "workspace")) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false

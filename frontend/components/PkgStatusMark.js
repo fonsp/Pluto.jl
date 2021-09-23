@@ -5,7 +5,7 @@ import observablehq_for_myself from "../common/SetupCellEnvironment.js"
 // widgets inside codemirror need to be DOM elements, not Preact VDOM components. So in this code, we will use html from observablehq, which is just like html from Preact, except it creates DOM nodes directly, not Preact VDOM elements.
 const html = observablehq_for_myself.html
 
-export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg))
+export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
 export const nbpkg_fingerprint_without_terminal = (nbpkg) =>
     nbpkg == null ? [null] : Object.entries(nbpkg).flatMap(([k, v]) => (k === "terminal_outputs" ? [] : [v]))

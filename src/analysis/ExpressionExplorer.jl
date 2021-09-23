@@ -430,6 +430,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         globalscopestate.inglobalscope = true
 
         # we register struct definitions as both a variable and a function. This is because deleting a struct is trickier than just deleting its methods.
+	# Due to this, outer constructors have to be defined in the same cell where the struct is defined.
+	# See https://github.com/fonsp/Pluto.jl/issues/732 for more details
         inner_symstate = explore!(equiv_func, globalscopestate)
 
         structname = first(keys(inner_symstate.funcdefs)).name |> join_funcname_parts
@@ -639,9 +641,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
-        # We ignore contents
-
-        return SymbolsState()
+        # Look through the quote and only returns explore! deeper into :$'s
+        # I thought we need to handle strings in the same way,
+        #   but strings do just fine with the catch all at the end
+        #   and actually strings don't always have a :$ expression, sometimes just
+        #   plain Symbols (which we would than be interpreted as variables,
+        #     which is different to how we handle Symbols in quote'd expressions)
+        return explore_interpolations!(ex.args[1], scopestate)
     elseif ex.head == :module
         # We ignore contents; the module name is a definition
 
@@ -656,6 +662,18 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
+
+"Go through a quoted expression and use explore! for :\$ expressions"
+function explore_interpolations!(ex::Expr, scopestate)
+    if ex.head == :$
+        explore!(ex.args[1], scopestate)
+    else
+        # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
+        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init=SymbolsState())
+    end
+end
+explore_interpolations!(anything_else, scopestate) = SymbolsState()
+
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
@@ -755,7 +773,7 @@ end
 
 
 
-const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@kwdef", "Base.@kwdef", "@assert", "Base.@assert", "@enum", "Base.@enum", "@cmd"]))
+const can_macroexpand_no_bind = Set(Symbol.(["@md_str", "Markdown.@md_str", "@gensym", "Base.@gensym", "@enum", "Base.@enum", "@assert", "Base.@assert", "@cmd"]))
 const can_macroexpand = can_macroexpand_no_bind ∪ Set(Symbol.(["@bind", "PlutoRunner.@bind"]))
 
 macro_kwargs_as_kw(ex::Expr) = Expr(:macrocall, ex.args[1:3]..., assign_to_kw.(ex.args[4:end])...)

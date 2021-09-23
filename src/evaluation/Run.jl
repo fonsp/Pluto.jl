@@ -133,7 +133,7 @@ end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
 
-function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)::Union{Task,TopologicalOrder}
 	maybe_async(run_async) do 
 		run_reactive!(session, notebook, old, new, to_run; kwargs...)
 	end
@@ -244,17 +244,18 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
-		if ExpressionExplorer.join_funcname_parts.(current_symstate.macrocalls) ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
 			return current_symstate, true
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
 		    # if expansion failed, we use the "shallow" symbols state
+		    err = result
+		    @debug "Expansion failed" err
 		    current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
 		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    union!(expanded_symbols_state.macrocalls, current_symstate.macrocalls)
 		    expanded_symbols_state, true
 		end
 	end
@@ -265,7 +266,10 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	for (cell, current_symstate) in unresolved_topology.unresolved_cells
 			(new_symstate, succeeded) = analyze_macrocell(cell, current_symstate)
 			if succeeded
-				new_nodes[cell] = ReactiveNode(new_symstate)
+				new_node = ReactiveNode(new_symstate)
+				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
+				union!(new_node.references, new_node.macrocalls)
+				new_nodes[cell] = new_node
 			else
 				still_unresolved_nodes[cell] = current_symstate
 			end
@@ -303,7 +307,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -333,7 +337,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	maybe_async(run_async) do
-		sync_nbpkg(session, notebook; save=save)
+		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
 			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
