@@ -3,7 +3,6 @@ import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
-import { nbpkg_fingerprint, PkgStatusMark, PkgActivateMark, pkg_disablers } from "./PkgStatusMark.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
 import { block_matcher_plugin } from "./CellInput/block_matcher_plugin.js"
@@ -49,6 +48,7 @@ import {
     StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
+import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -79,137 +79,6 @@ export const pluto_syntax_colors = HighlightStyle.define([
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
 ])
 
-class PkgStatusMarkWidget extends WidgetType {
-    constructor(package_name, props) {
-        super()
-        this.package_name = package_name
-        this.props = props
-        this.on_nbpkg = console.error
-    }
-
-    eq(other) {
-        return other.package_name == this.package_name
-    }
-
-    toDOM() {
-        const b = PkgStatusMark({
-            pluto_actions: this.props.pluto_actions,
-            package_name: this.package_name,
-            // refresh_cm: () => cm.refresh(),
-            refresh_cm: () => {},
-            notebook_id: this.props.notebook_id,
-        })
-
-        b.on_nbpkg(this.props.nbpkg_ref.current)
-        this.on_nbpkg = b.on_nbpkg
-
-        return b
-    }
-
-    ignoreEvent() {
-        return false
-    }
-}
-
-/**
- * @param {EditorView} view
- *
- */
-function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref }) {
-    let widgets = []
-    for (let { from, to } of view.visibleRanges) {
-        let in_import = false
-        let in_selected_import = false
-        syntaxTree(view.state).iterate({
-            from,
-            to,
-            enter: (type, from, to) => {
-                // console.log("Enter", type.name)
-                if (type.name === "ImportStatement") {
-                    in_import = true
-                }
-                if (type.name === "SelectedImport") {
-                    in_selected_import = true
-                }
-                if (in_import && type.name === "Identifier") {
-                    let package_name = view.state.doc.sliceString(from, to)
-                    // console.warn(type)
-                    // console.warn("Found", package_name)
-                    if (package_name !== "Base" && package_name !== "Core") {
-                        let deco = Decoration.widget({
-                            widget: new PkgStatusMarkWidget(package_name, { pluto_actions, notebook_id, nbpkg_ref }),
-                            side: 1,
-                        })
-                        widgets.push(deco.range(to))
-                    }
-
-                    if (in_selected_import) {
-                        in_import = false
-                    }
-                }
-            },
-            leave: (type, from, to) => {
-                // console.log("Leave", type.name)
-                if (type.name === "ImportStatement") {
-                    in_import = false
-                }
-                if (type.name === "SelectedImport") {
-                    in_selected_import = false
-                }
-            },
-        })
-    }
-    return Decoration.set(widgets)
-}
-
-// https://codemirror.net/6/docs/ref/#rangeset.RangeCursor
-const collect_RangeCursor = (rc) => {
-    let output = []
-    while (rc.value != null) {
-        output.push(rc.value)
-        rc.next()
-    }
-    return output
-}
-
-const pkgBubblePlugin = ({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref }) =>
-    ViewPlugin.fromClass(
-        class {
-            update_decos(view) {
-                const ds = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg_ref })
-
-                decorations_ref.current = ds
-                this.decorations = ds
-            }
-
-            /**
-             * @param {EditorView} view
-             */
-            constructor(view) {
-                this.update_decos(view)
-            }
-
-            /**
-             * @param {ViewUpdate} update
-             */
-            update(update) {
-                if (update.docChanged || update.viewportChanged) this.update_decos(update.view)
-            }
-        },
-        {
-            decorations: (v) => v.decorations,
-
-            eventHandlers: {
-                mousedown: (e, view) => {
-                    let target = e.target
-                },
-            },
-        }
-    )
-
-// Compartments: https://codemirror.net/6/examples/config/
-let editable = new Compartment()
-
 const getValue6 = (cm) => cm.state.doc.toString()
 const setValue6 = (cm, value) =>
     cm.dispatch({
@@ -220,7 +89,9 @@ const replaceRange6 = (cm, text, from, to) =>
         changes: { from, to, insert: text },
     })
 
-// TODO Make useStateField intead? Feels like Facets are supposed to be more static
+// Compartments: https://codemirror.net/6/examples/config/
+let editable = new Compartment()
+
 let useCompartment = (codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
@@ -280,23 +151,6 @@ export const CellInput = ({
     on_change_ref.current = on_change
     const disable_input_ref = useRef(disable_input)
 
-    const pkg_bubbles = useRef(new Map())
-
-    const nbpkg_ref = useRef(nbpkg)
-    const decorations_ref = useRef(null)
-    useEffect(() => {
-        nbpkg_ref.current = nbpkg
-        // console.log("Decorations", collect_RangeCursor(decorations_ref.current.iter()))
-
-        collect_RangeCursor(decorations_ref.current.iter()).forEach((pd) => {
-            pd.widget.on_nbpkg(nbpkg)
-        })
-        pkg_bubbles.current.forEach((b) => {
-            b.on_nbpkg(nbpkg)
-        })
-        // console.log("nbpkg effect!", nbpkg, nbpkg_fingerprint(nbpkg))
-    }, nbpkg_fingerprint(nbpkg))
-
     useEffect(() => {
         /** Migration #1: New */
         const current_value = getValue6(newcm_ref.current) ?? ""
@@ -311,6 +165,7 @@ export const CellInput = ({
         }
     }, [remote_code])
 
+    let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
 
     useLayoutEffect(() => {
@@ -515,8 +370,6 @@ export const CellInput = ({
             }
         }
 
-        const pbk = pkgBubblePlugin({ pluto_actions, notebook_id, nbpkg_ref, decorations_ref })
-
         let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
@@ -548,7 +401,8 @@ export const CellInput = ({
                 doc: local_code,
 
                 extensions: [
-                    pbk,
+                    nbpkg_compartment,
+                    pkgBubblePlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),
