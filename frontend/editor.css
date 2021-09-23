@@ -39,6 +39,7 @@ html {
 
 body {
     margin: 0px;
+    padding: 0px;
     overflow-anchor: none;
     overflow-x: hidden;
     position: relative;
