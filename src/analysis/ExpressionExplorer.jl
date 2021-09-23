@@ -375,6 +375,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         macro_name = split_funcname(ex.args[1])
         symstate = SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
 
+        # Because it sure wouldn't break anything,
+        # I'm also going to blatantly assume that any macros referenced in here...
+        # will end up in the code after the macroexpansion 🤷‍♀️
+        # "You should make a new function for that" they said, knowing I would take the lazy route.
+        macro_symstate = explore!(ex.args[begin+1:end], ScopeState())
+        union!(symstate, SymbolsState(macrocalls=macro_symstate.macrocalls))
+
         # Some macros can be expanded on the server process
         if join_funcname_parts(macro_name) ∈ can_macroexpand
             new_ex = maybe_macroexpand(ex)
