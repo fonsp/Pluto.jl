@@ -40,8 +40,8 @@ html {
 body {
     margin: 0px;
     overflow-anchor: none;
+    overflow-x: hidden;
     position: relative;
-
     min-height: 100vh;
     display: flex;
     flex-direction: column;
