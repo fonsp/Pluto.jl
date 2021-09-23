@@ -1,6 +1,8 @@
 import { Promises } from "../common/SetupCellEnvironment.js"
 import { pack, unpack } from "./MsgPack.js"
+import { base64_arraybuffer, decode_base64_to_arraybuffer } from "./PlutoHash.js"
 import "./Polyfill.js"
+import { available as vscode_available, api as vscode_api } from "./VSCodeApi.js"
 
 // https://github.com/denysdovhan/wtfjs/issues/61
 const different_Infinity_because_js_is_yuck = 2147483646
@@ -179,6 +181,53 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
     })
 }
 
+const create_vscode_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
+    return new Promise((resolve, reject) => {
+        window.addEventListener("message", (event) => {
+            // we read and deserialize the incoming messages asynchronously
+            // they arrive in order (WS guarantees this), i.e. this socket.onmessage event gets fired with the message events in the right order
+            // but some message are read and deserialized much faster than others, because of varying sizes, so _after_ async read & deserialization, messages are no longer guaranteed to be in order
+            //
+            // the solution is a task queue, where each task includes the deserialization and the update handler
+            last_task = last_task.then(async () => {
+                try {
+                    const raw = event.data // The json-encoded data that the extension sent
+                    console.log("raw", raw)
+                    const buffer = await decode_base64_to_arraybuffer(raw.base64_encoded)
+                    const message = unpack(new Uint8Array(buffer))
+
+                    try {
+                        console.info("message received!", message)
+                        on_message(message)
+                    } catch (process_err) {
+                        console.error("Failed to process message from websocket", process_err, { message })
+                        // prettier-ignore
+                        alert(`Something went wrong! You might need to refresh the page.\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to process update\n${process_err.message}\n\n${JSON.stringify(event)}`)
+                    }
+                } catch (unpack_err) {
+                    console.error("Failed to unpack message from websocket", unpack_err, { event })
+
+                    // prettier-ignore
+                    alert(`Something went wrong! You might need to refresh the page.\n\nPlease open an issue on https://github.com/fonsp/Pluto.jl with this info:\n\nFailed to unpack message\n${unpack_err}\n\n${JSON.stringify(event)}`)
+                }
+            })
+        })
+
+        const send_encoded = async (message) => {
+            console.log("Sending message!", message)
+            const encoded = pack(message)
+            await vscode_api.postMessage({ base64_encoded: await base64_arraybuffer(encoded) })
+        }
+
+        let last_task = Promise.resolve()
+
+        resolve({
+            socket: {},
+            send: send_encoded,
+        })
+    })
+}
+
 let next_tick_promise = () => {
     return new Promise((resolve) => setTimeout(resolve, 0))
 }
@@ -275,7 +324,7 @@ export const create_pluto_connection = async ({
     connect_metadata = {},
     ws_address = default_ws_address(),
 }) => {
-    var ws_connection = null // will be defined later i promise
+    let ws_connection = null // will be defined later i promise
     const client = {
         send: null,
         session_options: null,
@@ -346,7 +395,7 @@ export const create_pluto_connection = async ({
         update_url_with_binder_token()
 
         try {
-            ws_connection = await create_ws_connection(String(ws_address), {
+            ws_connection = await (vscode_available ? create_vscode_connection : create_ws_connection)(String(ws_address), {
                 on_message: (update) => {
                     const by_me = update.initiator_id == client_id
                     const request_id = update.request_id

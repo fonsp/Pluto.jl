@@ -8,6 +8,11 @@ export const base64_arraybuffer = async (/** @type {BufferSource} */ data) => {
     return base64url.split(",", 2)[1]
 }
 
+export const decode_base64_to_arraybuffer = async (/** @type {string} */ data) => {
+    let r = await fetch(`data:;base64,${data}`)
+    return await r.arrayBuffer()
+}
+
 export const hash_arraybuffer = async (/** @type {BufferSource} */ data) => {
     // @ts-ignore
     const hashed_buffer = await window.crypto.subtle.digest("SHA-256", data)
