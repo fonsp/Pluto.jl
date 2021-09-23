@@ -443,6 +443,14 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(macro a(); b = c; return b end), [], [], [], [
             Symbol("@a") => ([:c], [], [], [])
         ])
+        @test test_expression_explorer(
+            expr=:(@parent @child 10),
+            macrocalls=[Symbol("@parent"), Symbol("@child")],
+        )
+        @test test_expression_explorer(
+            expr=:(@parent begin @child 1 + @grandchild 10 end),
+            macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
+        )
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
