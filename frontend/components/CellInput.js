@@ -315,25 +315,26 @@ export const CellInput = ({
             }
         }
 
-        const keyMapLeft = (view) => {
+        const keyMapLeftOrUp = (/** @type {any} */ up) => (view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
             if (!selection.empty) return false
 
             // Is the cursor at the start of the cell?
-            if (selection.from === 0) {
+            console.log("view: ", view)
+            if (up ? view.state.doc.lineAt(selection.from).number === 1 : selection.from === 0) {
                 on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 return true
             }
         }
 
-        const keyMapRight = (view) => {
+        const keyMapRightOrDown = (/** @type {boolean} */ down) => (view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
             if (!selection.empty) return false
 
             // Is the cursor at the end of the cell?
-            if (selection.to === view.state.doc.length) {
+            if (down ? view.state.doc.lineAt(selection.to).number === view.state.doc.lines : selection.to === view.state.doc.length) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
                 return true
             }
@@ -352,10 +353,10 @@ export const CellInput = ({
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
-            { key: "ArrowLeft", run: keyMapLeft },
-            { key: "ArrowUp", run: keyMapLeft },
-            { key: "ArrowRight", run: keyMapRight },
-            { key: "ArrowDown", run: keyMapRight },
+            { key: "ArrowLeft", run: keyMapLeftOrUp(false) },
+            { key: "ArrowUp", run: keyMapLeftOrUp(true) },
+            { key: "ArrowRight", run: keyMapRightOrDown(false) },
+            { key: "ArrowDown", run: keyMapRightOrDown(true) },
         ]
         const onCM6Update = (update) => {
             if (update.docChanged) {
@@ -597,7 +598,7 @@ export const CellInput = ({
                 let view = newcm_ref.current
                 view.dom.scrollIntoView({
                     behavior: "smooth",
-                    block: "center",
+                    block: "nearest",
                 })
                 view.dispatch({
                     selection: {
