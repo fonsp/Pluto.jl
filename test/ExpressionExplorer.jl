@@ -450,8 +450,23 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_broken testee(:(`a $b`), [:b], [], [], [])
         # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
-        @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
-        # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
+        @test testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [])
+        @test test_expression_explorer(
+            expr=:(quote $(x) end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(quote z = a + $(x) + b() end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:($(x))),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:(z = a + $(x) + b())),
+            references=[:x],
+        )
     end
     @testset "Extracting `using` and `import`" begin
         expr = quote

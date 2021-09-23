@@ -83,6 +83,13 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     return expected == result
 end
 
+"""
+Like `testee` but actually a convenient syntax
+"""
+function test_expression_explorer(; expr, references=[], definitions=[], funccalls=[], funcdefs=[], macrocalls=[])
+    testee(expr, references, definitions, funccalls, funcdefs, macrocalls)
+end
+
 function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = [])
     array_to_set(array) = map(array) do k
         new_k = k isa Symbol ? [k] : k

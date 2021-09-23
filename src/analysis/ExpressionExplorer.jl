@@ -641,9 +641,13 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
-        # We ignore contents
-
-        return SymbolsState()
+        # Look through the quote and only returns explore! deeper into :$'s
+        # I thought we need to handle strings in the same way,
+        #   but strings do just fine with the catch all at the end
+        #   and actually strings don't always have a :$ expression, sometimes just
+        #   plain Symbols (which we would than be interpreted as variables,
+        #     which is different to how we handle Symbols in quote'd expressions)
+        return explore_interpolations!(ex.args[1], scopestate)
     elseif ex.head == :module
         # We ignore contents; the module name is a definition
 
@@ -658,6 +662,18 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
+
+"Go through a quoted expression and use explore! for :\$ expressions"
+function explore_interpolations!(ex::Expr, scopestate)
+    if ex.head == :$
+        explore!(ex.args[1], scopestate)
+    else
+        # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
+        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init=SymbolsState())
+    end
+end
+explore_interpolations!(anything_else, scopestate) = SymbolsState()
+
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
