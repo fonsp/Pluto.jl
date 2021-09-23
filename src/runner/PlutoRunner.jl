@@ -241,7 +241,7 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
 end
 
 quote_if_needed(x) = x
-quote_if_needed(x::Union{Expr, Symbol, QuoteNode}) = QuoteNode(x)
+quote_if_needed(x::Union{Expr, Symbol, QuoteNode, LineNumberNode}) = QuoteNode(x)
 
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables

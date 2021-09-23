@@ -126,6 +126,13 @@ pluto-filepicker .cm-editor {
     border-bottom-right-radius: 0;
 }
 
+pluto-filepicker .cm-scroller {
+    scrollbar-width: none; /* Firefox */
+}
+pluto-filepicker .cm-scroller::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
+}
+
 pluto-filepicker button {
     margin: 0px;
     background: #6c8489;

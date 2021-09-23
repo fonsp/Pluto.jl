@@ -343,10 +343,12 @@ export const CellInput = ({
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
+            { key: "Ctrl-Enter", run: keyMapRun },
             { key: "PageUp", run: keyMapPageUp },
             { key: "PageDown", run: keyMapPageDown },
             { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
+            { key: "Ctrl-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD },
             { key: "Delete", run: keyMapDelete },
