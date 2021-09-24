@@ -115,7 +115,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
         decorations: (v) => v.decorations,
 
         eventHandlers: {
-            mousedown: (event, view) => {
+            pointerdown: (event, view) => {
                 if (has_ctrl_or_cmd_pressed(event) && event.which === 1) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
                     if (!pluto_variable) return

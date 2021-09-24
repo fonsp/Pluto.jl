@@ -111,17 +111,17 @@ function onmove(e){
 	ctx.fillRect(startX, startY, ...canvas.value)
 }
 
-canvas.onmousedown = e => {
+canvas.onpointerdown = e => {
 	startX = e.layerX
 	startY = e.layerY
-	canvas.onmousemove = onmove
+	canvas.onpointermove = onmove
 }
 
-canvas.onmouseup = e => {
-	canvas.onmousemove = null
+canvas.onpointerup = e => {
+	canvas.onpointermove = null
 }
 
-// Fire a fake mousemoveevent to show something
+// Fire a fake pointermoveevent to show something
 onmove({layerX: 130, layerY: 160})
 
 </script>

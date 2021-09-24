@@ -91,6 +91,10 @@ export class FilePicker extends Component {
                                         selection: EditorSelection.cursor(this.props.value.length),
                                     })
                                     cm.scrollPosIntoView(this.props.value.length)
+
+                                    setTimeout(() => {
+                                        this.cm.scrollPosIntoView(this.props.value.length)
+                                    }, 100)
                                 }
                             }, 200)
                         },
