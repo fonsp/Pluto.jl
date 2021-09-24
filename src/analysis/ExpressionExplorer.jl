@@ -266,6 +266,35 @@ function strip_indexing(x, inside::Bool=false)
     end
 end
 
+"Module so I don't pollute the whole ExpressionExplorer scope"
+module MacroHasSpecialHeuristicInside
+    import ...Pluto
+    import ..ExpressionExplorer, ..SymbolsState
+
+    """
+    Uses `cell_precedence_heuristic` to determine if we need to include the contents of this macro in the symstate.
+    This helps with things like a Pkg.activate() that's in a macro, so Pluto still understands to disable nbpkg.
+    """
+    function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr)::Bool
+        # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
+        # Sad part is, that this will also include other symbols used in this macro... but come'on
+        local fake_cell = Pluto.Cell()
+        local fake_reactive_node = Pluto.ReactiveNode(symstate)
+        local fake_expranalysiscache = Pluto.ExprAnalysisCache(
+            parsedcode=expr,
+            module_usings_imports=ExpressionExplorer.compute_usings_imports(expr),
+        )
+        local fake_topology = Pluto.NotebookTopology(
+            nodes=Pluto.DefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
+            codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
+        )
+
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+    end
+    # Having written this... I know I said I was lazy... I was wrong
+end
+
+
 ###
 # MAIN RECURSIVE FUNCTION
 ###
@@ -381,7 +410,16 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # "You should make a new function for that" they said, knowing I would take the lazy route.
         for arg in ex.args[begin+1:end]
             macro_symstate = explore!(arg, ScopeState())
-            union!(symstate, SymbolsState(macrocalls=macro_symstate.macrocalls))
+            
+            # Also, when this macro has something special inside like `Pkg.activate()`,
+            # we're going to treat it as normal code (so these heuristics trigger later)
+            # (Might want to also not let this to @eval macro, as an extra escape hatch if you
+            #    really don't want pluto to see your Pkg.activate() call)
+            if arg isa Expr && MacroHasSpecialHeuristicInside.macro_has_special_heuristic_inside(symstate=macro_symstate, expr=arg)
+                union!(symstate, macro_symstate)
+            else
+                union!(symstate, SymbolsState(macrocalls=macro_symstate.macrocalls))
+            end
         end
 
         # Some macros can be expanded on the server process
