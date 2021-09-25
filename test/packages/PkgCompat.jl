@@ -64,10 +64,8 @@ import Pkg
         write(path, old_contents)
         
         notebook = load_notebook(path)
-        ptoml_file() = PkgCompat.project_file(notebook)
-        mtoml_file() = PkgCompat.manifest_file(notebook)
-        ptoml_contents() = read(ptoml_file(), String)
-        mtoml_contents() = read(mtoml_file(), String)
+        ptoml_contents() = PkgCompat.read_project_file(notebook)
+        mtoml_contents() = PkgCompat.read_manifest_file(notebook)
         
         @test num_backups_in(dir) == 0
         
