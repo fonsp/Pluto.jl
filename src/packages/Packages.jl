@@ -457,14 +457,19 @@ function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContex
     elseif a isa Nothing
         true
     else
-        function tocompare(notebook)
-            ptoml_contents = PkgCompat.read_project_file(notebook)
-            mtoml_contents = PkgCompat.read_manifest_file(notebook)
-            
-            ptoml_contents, mtoml_contents
-        end
+        ptoml_contents_a = strip(PkgCompat.read_project_file(a))
+        ptoml_contents_b = strip(PkgCompat.read_project_file(b))
         
-        tocompare(a) == tocompare(b)
+        if ptoml_contents_a == ptoml_contents_b == ""
+            true
+        else
+            mtoml_contents_a = strip(PkgCompat.read_project_file(a))
+            mtoml_contents_b = strip(PkgCompat.read_project_file(b))
+            
+            @info "Read 4 files"
+            
+            (ptoml_contents_a == ptoml_contents_b) && (mtoml_contents_a == mtoml_contents_b)
+        end
     end
 end
 

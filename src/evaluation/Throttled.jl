@@ -56,7 +56,7 @@ function wait_until_file_unchanged(filename::String, timeout::Real, last_content
         ""
     end
     
-    @info "Checking file..." last_contents new_contents
+    @info "Waiting for file to stabilize..."# last_contents new_contents
 
 	if last_contents == new_contents
 		# yayyy

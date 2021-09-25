@@ -77,8 +77,13 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
 
     @asynclog while true
         watch_file(nb.path)
-        @info "File changed"
-        update_from_file_throttled()
+        current_time = time()
+        @info "File changed" (current_time - nb.last_save_time)
+        if current_time - nb.last_save_time < 1.0
+            @info "Notebook was saved by me very recently, not reloading from file."
+        else
+            update_from_file_throttled()
+        end
     end
 
     nb
