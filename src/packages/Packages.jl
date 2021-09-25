@@ -466,8 +466,6 @@ function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContex
             mtoml_contents_a = strip(PkgCompat.read_project_file(a))
             mtoml_contents_b = strip(PkgCompat.read_project_file(b))
             
-            @info "Read 4 files"
-            
             (ptoml_contents_a == ptoml_contents_b) && (mtoml_contents_a == mtoml_contents_b)
         end
     end

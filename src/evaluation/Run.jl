@@ -375,6 +375,17 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	end
 
 	# @show added removed changed
+	
+	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
+	order_changed = notebook.cell_order != just_loaded.cell_order
+	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+	
+	something_changed = cells_changed || order_changed || nbpkg_changed
+	
+	if something_changed
+		@info "Reloading notebook from file and applying changes!"
+		notebook.last_hot_reload_time = time()
+	end
 
 	for c in added
 		notebook.cells_dict[c] = just_loaded.cells_dict[c]
@@ -388,7 +399,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 
 	notebook.cell_order = just_loaded.cell_order
 	
-	if !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+	if nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
@@ -404,7 +415,9 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		notebook.nbpkg_restart_required_msg = "yes"
 	end
 	
-	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+	if something_changed
+		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+	end
 end
 
 
