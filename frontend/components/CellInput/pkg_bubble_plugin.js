@@ -53,17 +53,35 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
     for (let { from, to } of view.visibleRanges) {
         let in_import = false
         let in_selected_import = false
+        let is_inside_quote = false
         syntaxTree(view.state).iterate({
             from,
             to,
             enter: (type, from, to) => {
-                // console.log("Enter", type.name)
+                // `quote ... end` or `:(...)`
+                if (type.name === "QuoteExpression" || type.name === "QuoteStatement") {
+                    is_inside_quote = true
+                }
+                // `$(...)` when inside quote
+                if (type.name === "InterpolationExpression") {
+                    is_inside_quote = false
+                }
+                if (is_inside_quote) return
+
                 if (type.name === "ImportStatement") {
                     in_import = true
                 }
                 if (type.name === "SelectedImport") {
                     in_selected_import = true
                 }
+
+                // `import .X` or `import ..X`
+                if (type.name === "ScopedIdentifier") {
+                    in_import = false
+                    in_selected_import = false
+                    return false
+                }
+
                 if (in_import && type.name === "Identifier") {
                     let package_name = view.state.doc.sliceString(from, to)
                     // console.warn(type)
@@ -82,6 +100,14 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                 }
             },
             leave: (type, from, to) => {
+                if (type.name === "QuoteExpression" || type.name === "QuoteStatement") {
+                    is_inside_quote = false
+                }
+                if (type.name === "InterpolationExpression") {
+                    is_inside_quote = true
+                }
+                if (is_inside_quote) return
+
                 // console.log("Leave", type.name)
                 if (type.name === "ImportStatement") {
                     in_import = false

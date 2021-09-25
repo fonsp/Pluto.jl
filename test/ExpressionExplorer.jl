@@ -476,6 +476,41 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             funccalls=[[:include]],
         )
     end
+    @testset "Module imports" begin
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                    import Y
+                    import ...where_would_this_even_come_from
+                    import .not_defined_but_sure
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        # More advanced, might not be possible easily
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    module Y
+                        import ...imported_from_outside
+                    end
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X]
+        )
+    end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
         @test testee(:("a $(b = c)"), [:c], [:b], [], [])
