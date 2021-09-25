@@ -451,6 +451,23 @@ function update_nbpkg_cache!(notebook::Notebook)
     notebook
 end
 
+function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContext})::Bool
+    if (a isa Nothing) != (b isa Nothing)
+        false
+    elseif a isa Nothing
+        true
+    else
+        function tocompare(notebook)
+            ptoml_contents = PkgCompat.read_project_file(notebook)
+            mtoml_contents = PkgCompat.read_manifest_file(notebook)
+            
+            ptoml_contents, mtoml_contents
+        end
+        
+        tocompare(a) == tocompare(b)
+    end
+end
+
 const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
 function withinteractive(f::Function, value::Bool)
     old_value = isinteractive()

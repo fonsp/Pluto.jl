@@ -1,6 +1,6 @@
 module SessionActions
 
-import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
 using FileWatching
 
 struct NotebookIsRunningException <: Exception
@@ -55,10 +55,30 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     else
         putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     end
+    
+    
+    running = Ref(false)
+    function update_from_file_throttled()
+        if !running[]
+            running[] = true
+            
+            @info "Updating from file..."
+            
+            
+		    sleep(1.2 - .5) ## There seems to be a synchronization issue if your OS is VERYFAST
+            wait_until_file_unchanged(nb.path, .5)
+            update_from_file(session, nb)
+            
+            @info "Updating from file done!"
+            
+            running[] = false
+        end
+    end
 
     @asynclog while true
         watch_file(nb.path)
-        update_from_file(session, nb)
+        @info "File changed"
+        update_from_file_throttled()
     end
 
     nb

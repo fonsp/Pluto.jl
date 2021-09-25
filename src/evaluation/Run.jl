@@ -349,10 +349,8 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
-
 function update_from_file(session::ServerSession, notebook::Notebook)
 	just_loaded = try
-		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
@@ -388,55 +386,15 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	notebook.cell_order = just_loaded.cell_order
+	if !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg isa Nothing)
+			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+		else
+			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
+			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
+		end
+		notebook.nbpkg_restart_required_msg = "yes"
+	end
 	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
 end
-
-
-"""
-	throttled(f::Function, timeout::Real)
-
-Return a function that when invoked, will only be triggered at most once
-during `timeout` seconds.
-The throttled function will run as much as it can, without ever
-going more than once per `wait` duration.
-Inspired by FluxML
-See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
-"""
-function throttled(f::Function, timeout::Real)
-	tlock = ReentrantLock()
-	iscoolnow = false
-	run_later = false
-
-	function flush()
-		lock(tlock) do
-			run_later = false
-			f()
-		end
-	end
-
-	function schedule()
-		@async begin
-			sleep(timeout)
-			if run_later
-				flush()
-			end
-			iscoolnow = true
-		end
-	end
-	schedule()
-
-	function throttled_f()
-		if iscoolnow
-			iscoolnow = false
-			flush()
-			schedule()
-		else
-			run_later = true
-		end
-	end
-
-	return throttled_f, flush
-end
-
-
 

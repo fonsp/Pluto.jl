@@ -45,6 +45,7 @@ include("./analysis/DependencyCache.jl")
 include("./evaluation/WorkspaceManager.jl")
 include("./packages/Packages.jl")
 include("./packages/PkgUtils.jl")
+include("./evaluation/Throttled.jl")
 include("./evaluation/Run.jl")
 include("./evaluation/RunBonds.jl")
 
