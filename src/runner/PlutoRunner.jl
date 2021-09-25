@@ -1077,6 +1077,10 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
 
 end
 
+function trynameof(::Type{Union{T,Missing}}) where T
+    name = trynameof(T)
+    return name === Symbol() ? name : Symbol(name, "?")
+end
 trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
