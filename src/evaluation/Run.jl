@@ -350,14 +350,14 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 
-function update_from_file(session::ServerSession, notebook::Notebook)
+function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	just_loaded = try
 		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
 		return
-	end
+	end::Notebook
 
 	old_codes = Dict(
 		id => c.code
@@ -368,6 +368,7 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 		for (id,c) in just_loaded.cells_dict
 	)
 
+	# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
 	added = setdiff(keys(new_codes), keys(old_codes))
 	removed = setdiff(keys(old_codes), keys(new_codes))
 	changed = let
@@ -388,7 +389,24 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	notebook.cell_order = just_loaded.cell_order
-	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
+	
+	if !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
+		
+		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
+			@info "nbpkg status changed, overriding..."
+			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+		else
+			@info "Old new project" PkgCompat.read_project_file(notebook) PkgCompat.read_project_file(just_loaded)
+			@info "Old new manifest" PkgCompat.read_manifest_file(notebook) PkgCompat.read_manifest_file(just_loaded)
+			
+			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
+			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
+		end
+		notebook.nbpkg_restart_required_msg = "yes"
+	end
+	
+	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
 end
 
 
