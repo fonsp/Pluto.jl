@@ -49,6 +49,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
+import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -563,7 +564,6 @@ export const CellInput = ({
                     EditorView.updateListener.of(onCM6Update),
                     used_variables_compartment,
                     go_to_definition_plugin,
-                    EditorView.lineWrapping,
                     editable.of(EditorState.readOnly.of(disable_input_ref.current)),
                     history(),
                     pluto_autocomplete({
@@ -583,6 +583,9 @@ export const CellInput = ({
                     keymap.of(plutoKeyMaps),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
+
+                    EditorView.lineWrapping,
+                    awesome_line_wrapping,
                 ],
             }),
             parent: dom_node_ref.current,
