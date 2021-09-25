@@ -64,6 +64,10 @@ body:not(.disable_ui) main {
     padding-bottom: 16rem;
 }
 
+body:not(.disable_ui) {
+    overscroll-behavior-x: contain;
+}
+
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
 /* min-width: 731px+ */
 

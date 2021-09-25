@@ -151,11 +151,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[10].errored == true
 
 
-        ptoml_file() = PkgCompat.project_file(notebook)
-        mtoml_file() = PkgCompat.manifest_file(notebook)
-
-        ptoml_contents() = read(ptoml_file(), String)
-        mtoml_contents() = read(mtoml_file(), String)
+        ptoml_contents() = PkgCompat.read_project_file(notebook)
+        mtoml_contents() = PkgCompat.read_manifest_file(notebook)
 
         nb_contents() = read(notebook.path, String)
 

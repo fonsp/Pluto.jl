@@ -129,11 +129,8 @@ function save_notebook(io, notebook::Notebook)
     using_plutopkg = notebook.nbpkg_ctx !== nothing
     
     write_package = if using_plutopkg
-        ptoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
-        mtoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
-        
-        ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
-        mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
+        ptoml_contents = PkgCompat.read_project_file(notebook)
+        mtoml_contents = PkgCompat.read_manifest_file(notebook)
         
         !isempty(strip(ptoml_contents))
     else
