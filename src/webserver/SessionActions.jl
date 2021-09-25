@@ -75,7 +75,7 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         end
     end
 
-    @asynclog while true
+    session.options.server.auto_reload_from_file && @asynclog while true
         watch_file(nb.path)
         current_time = time()
         @info "File changed" (current_time - nb.last_save_time)
@@ -100,6 +100,8 @@ end
 
 function new(session::ServerSession; run_async=true)
     nb = if session.options.server.init_with_file_viewer
+        
+        @warn "DEPRECATED: init_with_file_viewer will be removed soon."
         
         file_viewer_code = """html\"\"\"
 
