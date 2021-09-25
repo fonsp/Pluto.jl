@@ -90,6 +90,11 @@ export class FilePicker extends Component {
                                         changes: { from: 0, to: cm.state.doc.length, insert: this.props.value },
                                         selection: EditorSelection.cursor(this.props.value.length),
                                     })
+                                    cm.scrollPosIntoView(this.props.value.length)
+
+                                    setTimeout(() => {
+                                        this.cm.scrollPosIntoView(this.props.value.length)
+                                    }, 100)
                                 }
                             }, 200)
                         },
@@ -119,6 +124,20 @@ export class FilePicker extends Component {
                         optionClass: (c) => c.type,
                     }),
                     keymap.of([
+                        {
+                            key: "Enter",
+                            run: (cm) => {
+                                // If there is autocomplete open, accept that
+                                if (accept_autocomplete_command.run(cm)) {
+                                    cm.scrollPosIntoView(cm.state.doc.length)
+                                    // and request the next ones
+                                    this.request_path_completions()
+                                    return true
+                                }
+                                // Else, fall down
+                                return false
+                            },
+                        },
                         { key: "Enter", run: this.on_submit },
                         { key: "Ctrl-Enter", mac: "Cmd-Enter", run: this.on_submit },
                         { key: "Ctrl-Shift-Enter", mac: "Cmd-Shift-Enter", run: this.on_submit },
@@ -141,6 +160,8 @@ export class FilePicker extends Component {
                             run: (cm) => {
                                 // If there is autocomplete open, accept that
                                 if (accept_autocomplete_command.run(cm)) {
+                                    // and request the next ones
+                                    this.request_path_completions()
                                     return true
                                 }
                                 // Else, activate it (possibly)
@@ -149,12 +170,16 @@ export class FilePicker extends Component {
                         },
                     ]),
                     keymap.of(completionKeymap),
+
                     placeholder(this.props.placeholder),
                 ],
             }),
         })
         this.base.insertBefore(this.cm.dom, this.base.firstElementChild)
 
+        setTimeout(() => {
+            this.cm.scrollPosIntoView(this.props.value.length)
+        }, 100)
         // window.addEventListener("resize", () => {
         //     if (!this.cm.hasFocus()) {
         //         deselect(this.cm)

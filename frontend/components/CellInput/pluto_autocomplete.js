@@ -19,7 +19,7 @@ import {
 let completionState = autocompletion()[0]
 let start_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Ctrl-Space").run
 let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
-let acceptCompletion = (view, option) => {
+let acceptCompletion = (/** @type {EditorView} */ view, option) => {
     let apply = option.completion.apply || option.completion.label
     let result = option.source
     if (typeof apply == "string") {

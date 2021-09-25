@@ -443,6 +443,73 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(macro a(); b = c; return b end), [], [], [], [
             Symbol("@a") => ([:c], [], [], [])
         ])
+        @test test_expression_explorer(
+            expr=:(@parent @child 10),
+            macrocalls=[Symbol("@parent"), Symbol("@child")],
+        )
+        @test test_expression_explorer(
+            expr=:(@parent begin @child 1 + @grandchild 10 end),
+            macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
+        )
+    end
+    @testset "Macros and heuristics" begin
+        @test test_expression_explorer(
+            expr=:(@macro import Pkg),
+            macrocalls=[Symbol("@macro")],
+            definitions=[:Pkg],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.activate("..")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :activate]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.add("Pluto.jl")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :add]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro include("Firebasey.jl")),
+            macrocalls=[Symbol("@macro")],
+            funccalls=[[:include]],
+        )
+    end
+    @testset "Module imports" begin
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                    import Y
+                    import ...where_would_this_even_come_from
+                    import .not_defined_but_sure
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        # More advanced, might not be possible easily
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    module Y
+                        import ...imported_from_outside
+                    end
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X]
+        )
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])

@@ -40,8 +40,8 @@ html {
 body {
     margin: 0px;
     overflow-anchor: none;
+    overflow-x: hidden;
     position: relative;
-
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -599,6 +599,13 @@ nav#at_the_top > pluto-filepicker .cm-editor {
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
+}
+
+pluto-filepicker .cm-scroller {
+    scrollbar-width: none; /* Firefox */
+}
+pluto-filepicker .cm-scroller::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
 }
 
 nav#at_the_top > pluto-filepicker button {

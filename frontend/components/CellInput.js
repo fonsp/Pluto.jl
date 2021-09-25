@@ -49,6 +49,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
+import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -79,12 +80,12 @@ export const pluto_syntax_colors = HighlightStyle.define([
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
 ])
 
-const getValue6 = (cm) => cm.state.doc.toString()
-const setValue6 = (cm, value) =>
+const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
+const setValue6 = (/** @type {EditorView} */ cm, value) =>
     cm.dispatch({
         changes: { from: 0, to: cm.state.doc.length, insert: value },
     })
-const replaceRange6 = (cm, text, from, to) =>
+const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     cm.dispatch({
         changes: { from, to, insert: text },
     })
@@ -92,7 +93,7 @@ const replaceRange6 = (cm, text, from, to) =>
 // Compartments: https://codemirror.net/6/examples/config/
 let editable = new Compartment()
 
-let useCompartment = (codemirror_ref, value) => {
+let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
     let compartment = useRef(new Compartment())
     let initial_value = useRef(compartment.current.of(value))
 
@@ -106,7 +107,7 @@ let useCompartment = (codemirror_ref, value) => {
     return initial_value.current
 }
 
-let line_and_ch_to_cm6_position = (doc, { line, ch }) => {
+let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPlutoSetup.js").Text} */ doc, { line, ch }) => {
     let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
     let ch_clamped = _.clamp(ch, 0, line_object.length)
     return line_object.from + ch_clamped
@@ -174,7 +175,7 @@ export const CellInput = ({
             return true
         }
         let run = async (fn) => await fn()
-        const keyMapRun = (cm) => {
+        const keyMapRun = (/** @type {EditorView} */ cm) => {
             run(async () => {
                 // we await to prevent an out-of-sync issue
                 await on_add_after()
@@ -188,7 +189,7 @@ export const CellInput = ({
         }
 
         let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
-        let keyMapTab = (cm) => {
+        let keyMapTab = (/** @type {EditorView} */ cm) => {
             // This will return true if the autocomplete select popup is open
             if (select_autocomplete_command.run(cm)) {
                 return true
@@ -207,7 +208,7 @@ export const CellInput = ({
                 return true
             }
         }
-        const keyMapTabShift = (cm) => {
+        const keyMapTabShift = (/** @type {EditorView} */ cm) => {
             // TODO Multicursor?
             let selection = cm.state.selection.main
             if (!selection.empty) {
@@ -289,7 +290,7 @@ export const CellInput = ({
 
             return true
         }
-        const keyMapDelete = (cm) => {
+        const keyMapDelete = (/** @type {EditorView} */ cm) => {
             if (cm.state.facet(EditorState.readOnly)) {
                 return false
             }
@@ -300,7 +301,7 @@ export const CellInput = ({
             }
         }
 
-        const keyMapBackspace = (cm) => {
+        const keyMapBackspace = (/** @type {EditorView} */ cm) => {
             if (cm.state.facet(EditorState.readOnly)) {
                 return
             }
@@ -315,25 +316,26 @@ export const CellInput = ({
             }
         }
 
-        const keyMapLeft = (view) => {
+        const keyMapLeftOrUp = (/** @type {boolean} */ up) => (/** @type {EditorView} */ view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
             if (!selection.empty) return false
 
             // Is the cursor at the start of the cell?
-            if (selection.from === 0) {
+            console.log("view: ", view)
+            if (up ? view.state.doc.lineAt(selection.from).number === 1 : selection.from === 0) {
                 on_focus_neighbor(cell_id, -1, Infinity, Infinity)
                 return true
             }
         }
 
-        const keyMapRight = (view) => {
+        const keyMapRightOrDown = (/** @type {boolean} */ down) => (/** @type {EditorView} */ view) => {
             let selection = view.state.selection.main
             // We only do this on cursors, not when we have multiple characters selected
             if (!selection.empty) return false
 
             // Is the cursor at the end of the cell?
-            if (selection.to === view.state.doc.length) {
+            if (down ? view.state.doc.lineAt(selection.to).number === view.state.doc.lines : selection.to === view.state.doc.length) {
                 on_focus_neighbor(cell_id, 1, 0, 0)
                 return true
             }
@@ -342,22 +344,24 @@ export const CellInput = ({
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
+            { key: "Ctrl-Enter", run: keyMapRun },
             { key: "PageUp", run: keyMapPageUp },
             { key: "PageDown", run: keyMapPageDown },
             { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
+            { key: "Ctrl-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD },
             { key: "Delete", run: keyMapDelete },
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
-            { key: "ArrowLeft", run: keyMapLeft },
-            { key: "ArrowUp", run: keyMapLeft },
-            { key: "ArrowRight", run: keyMapRight },
-            { key: "ArrowDown", run: keyMapRight },
+            { key: "ArrowLeft", run: keyMapLeftOrUp(false) },
+            { key: "ArrowUp", run: keyMapLeftOrUp(true) },
+            { key: "ArrowRight", run: keyMapRightOrDown(false) },
+            { key: "ArrowDown", run: keyMapRightOrDown(true) },
         ]
-        const onCM6Update = (update) => {
+        const onCM6Update = (/** @type {ViewUpdate} */ update) => {
             if (update.docChanged) {
                 const cm = newcm_ref.current
                 const new_value = getValue6(cm)
@@ -560,7 +564,6 @@ export const CellInput = ({
                     EditorView.updateListener.of(onCM6Update),
                     used_variables_compartment,
                     go_to_definition_plugin,
-                    EditorView.lineWrapping,
                     editable.of(EditorState.readOnly.of(disable_input_ref.current)),
                     history(),
                     pluto_autocomplete({
@@ -580,6 +583,9 @@ export const CellInput = ({
                     keymap.of(plutoKeyMaps),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
+
+                    EditorView.lineWrapping,
+                    awesome_line_wrapping,
                 ],
             }),
             parent: dom_node_ref.current,
@@ -597,7 +603,7 @@ export const CellInput = ({
                 let view = newcm_ref.current
                 view.dom.scrollIntoView({
                     behavior: "smooth",
-                    block: "center",
+                    block: "nearest",
                 })
                 view.dispatch({
                     selection: {

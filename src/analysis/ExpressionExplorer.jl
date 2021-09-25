@@ -266,6 +266,35 @@ function strip_indexing(x, inside::Bool=false)
     end
 end
 
+"Module so I don't pollute the whole ExpressionExplorer scope"
+module MacroHasSpecialHeuristicInside
+    import ...Pluto
+    import ..ExpressionExplorer, ..SymbolsState
+
+    """
+    Uses `cell_precedence_heuristic` to determine if we need to include the contents of this macro in the symstate.
+    This helps with things like a Pkg.activate() that's in a macro, so Pluto still understands to disable nbpkg.
+    """
+    function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr)::Bool
+        # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
+        # Sad part is, that this will also include other symbols used in this macro... but come'on
+        local fake_cell = Pluto.Cell()
+        local fake_reactive_node = Pluto.ReactiveNode(symstate)
+        local fake_expranalysiscache = Pluto.ExprAnalysisCache(
+            parsedcode=expr,
+            module_usings_imports=ExpressionExplorer.compute_usings_imports(expr),
+        )
+        local fake_topology = Pluto.NotebookTopology(
+            nodes=Pluto.DefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
+            codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
+        )
+
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+    end
+    # Having written this... I know I said I was lazy... I was wrong
+end
+
+
 ###
 # MAIN RECURSIVE FUNCTION
 ###
@@ -374,6 +403,24 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # the macro is expanded in the notebook process.
         macro_name = split_funcname(ex.args[1])
         symstate = SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
+
+        # Because it sure wouldn't break anything,
+        # I'm also going to blatantly assume that any macros referenced in here...
+        # will end up in the code after the macroexpansion 🤷‍♀️
+        # "You should make a new function for that" they said, knowing I would take the lazy route.
+        for arg in ex.args[begin+1:end]
+            macro_symstate = explore!(arg, ScopeState())
+            
+            # Also, when this macro has something special inside like `Pkg.activate()`,
+            # we're going to treat it as normal code (so these heuristics trigger later)
+            # (Might want to also not let this to @eval macro, as an extra escape hatch if you
+            #    really don't want pluto to see your Pkg.activate() call)
+            if arg isa Expr && MacroHasSpecialHeuristicInside.macro_has_special_heuristic_inside(symstate=macro_symstate, expr=arg)
+                union!(symstate, macro_symstate)
+            else
+                union!(symstate, SymbolsState(macrocalls=macro_symstate.macrocalls))
+            end
+        end
 
         # Some macros can be expanded on the server process
         if join_funcname_parts(macro_name) ∈ can_macroexpand
@@ -645,13 +692,14 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # I thought we need to handle strings in the same way,
         #   but strings do just fine with the catch all at the end
         #   and actually strings don't always have a :$ expression, sometimes just
-        #   plain Symbols (which we would than be interpreted as variables,
+        #   plain Symbols (which we should then be interpreted as variables,
         #     which is different to how we handle Symbols in quote'd expressions)
         return explore_interpolations!(ex.args[1], scopestate)
     elseif ex.head == :module
-        # We ignore contents; the module name is a definition
+        # Does create it's own scope, but can import from outer scope, that's what `explore_module_definition!` is for
+        symstate = explore_module_definition!(ex, scopestate)
 
-        return SymbolsState(assignments=Set{Symbol}([ex.args[2]]))
+        return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
@@ -662,6 +710,49 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
+
+"""
+Goes through a module definition, and picks out `import ..x`'s, which are references to the outer module.
+We need `module_depth + 1` dots before the specifier, so nested modules can still access Pluto.
+"""
+function explore_module_definition!(ex::Expr, scopestate; module_depth::Number=0)
+    if ex.head == :using || ex.head == :import
+        # We don't care about anything after the `:` here
+        import_names = if ex.args[1].head == :(:)
+            [ex.args[1].args[1]]
+        else
+            ex.args
+        end
+
+
+        symstate = SymbolsState()
+        for import_name_expr in import_names
+            if (
+                Meta.isexpr(import_name_expr, :., module_depth + 2) &&
+                all(x -> x == :., import_name_expr.args[begin:end-1]) &&
+                import_name_expr.args[end] isa Symbol
+            )
+                # Theoretically it could still use an assigment from the same cell, if it weren't
+                # for the fact that modules need to be top level, and we don't support multiple (toplevel) expressions in a cell yet :D
+                push!(symstate.references, import_name_expr.args[end])
+            end
+
+        end
+        
+        return symstate
+    elseif ex.head == :module
+        # Explorer the block inside with one more depth added
+        return explore_module_definition!(ex.args[3], scopestate, module_depth=module_depth+1)
+    elseif ex.head == :quote
+        # TODO? Explore interpolations, modules can't be in interpolations, but `import`'s can >_>
+        return SymbolsState()
+    else
+        # Go deeper
+        return mapfoldl(a -> explore_module_definition!(a, scopestate, module_depth=module_depth), union!, ex.args, init=SymbolsState())
+    end
+end
+explore_module_definition!(expr, scopestate; module_depth::Number=1) = SymbolsState()
+
 
 "Go through a quoted expression and use explore! for :\$ expressions"
 function explore_interpolations!(ex::Expr, scopestate)

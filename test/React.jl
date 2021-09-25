@@ -1008,7 +1008,10 @@ import Distributed
             Cell("""
                  named_tuple(obj::T) where {T} = NamedTuple{fieldnames(T),Tuple{fieldtypes(T)...}}(ntuple(i -> getfield(obj, i), fieldcount(T)))
             """),
-            Cell("named_tuple")
+            Cell("named_tuple"),
+            
+            Cell("ln = LineNumberNode(29, \"asdf\")"),
+            Cell("@assert ln isa LineNumberNode"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -1075,6 +1078,11 @@ import Distributed
         @test notebook.cells[27].errored == false
         @test notebook.topology.codes[notebook.cells[27]].function_wrapped == false
         @test notebook.cells[28].errored == false
+        
+        update_run!(🍭, notebook, notebook.cells[29:30])
+        @test notebook.cells[29].errored == false
+        @test notebook.cells[30].errored == false
+        
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 

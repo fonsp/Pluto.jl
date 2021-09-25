@@ -142,7 +142,7 @@ let get_root_variable_from_expression = (cursor) => {
 
 let VALID_DOCS_TYPES = ["Identifier", "FieldExpression", "SubscriptExpression", "MacroFieldExpression", "Operator", "ParameterizedIdentifier"]
 
-let is_docs_searchable = (cursor) => {
+let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
     if (VALID_DOCS_TYPES.includes(cursor.name)) {
         if (cursor.firstChild()) {
             do {
@@ -168,8 +168,7 @@ let is_docs_searchable = (cursor) => {
     }
 }
 
-/** @param {EditorState} state */
-export let get_selected_doc_from_state = (state, verbose = false) => {
+export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verbose = false) => {
     let selection = state.selection.main
 
     if (selection.from === selection.to) {
