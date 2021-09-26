@@ -139,3 +139,22 @@ function tryexpanduser(path)
 end
 
 tamepath = abspath ∘ tryexpanduser
+
+"Block until reading the file two times in a row gave the same result."
+function wait_until_file_unchanged(filename::String, timeout::Real, last_contents::String="")::Nothing
+	new_contents = try
+        read(filename, String)
+    catch
+        ""
+    end
+    
+    @info "Waiting for file to stabilize..."# last_contents new_contents
+
+	if last_contents == new_contents
+		# yayyy
+        return
+	else
+        sleep(timeout)
+		wait_until_file_unchanged(filename, timeout, new_contents)
+	end
+end

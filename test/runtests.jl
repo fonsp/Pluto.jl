@@ -12,6 +12,7 @@ include("./MacroAnalysis.jl")
 include("./Notebook.jl")
 
 # tests that don't start new processes:
+include("./ReloadFromFile.jl")
 include("./packages/PkgCompat.jl")
 include("./ExpressionExplorer.jl")
 include("./MethodSignatures.jl")
