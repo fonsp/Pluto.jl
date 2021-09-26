@@ -49,7 +49,15 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
         end
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     end
+    
+    add(session, nb; run_async=run_async)
 
+    nb
+end
+
+function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
+    session.notebooks[nb.notebook_id] = nb
+    
     if run_async
         @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
     else
@@ -76,16 +84,21 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     session.options.server.auto_reload_from_file && @asynclog while true
-        watch_file(nb.path)
-        current_time = time()
-        @info "File changed" (current_time - nb.last_save_time)
-        if current_time - nb.last_save_time < 2.0
-            @info "Notebook was saved by me very recently, not reloading from file."
+        if !isfile(nb.path)
+            # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
+            sleep(2)
         else
-            update_from_file_throttled()
+            watch_file(nb.path)
+            current_time = time()
+            @info "File changed" (current_time - nb.last_save_time)
+            if current_time - nb.last_save_time < 2.0
+                @info "Notebook was saved by me very recently, not reloading from file."
+            else
+                update_from_file_throttled()
+            end
         end
     end
-
+    
     nb
 end
 
@@ -133,13 +146,8 @@ function new(session::ServerSession; run_async=true)
         emptynotebook()
     end
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
-    session.notebooks[nb.notebook_id] = nb
-
-    if run_async
-        @asynclog putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-    else
-        putplutoupdates!(session, clientupdate_notebook_list(session.notebooks))
-    end
+    
+    add(session, nb; run_async=run_async)
 
     nb
 end
