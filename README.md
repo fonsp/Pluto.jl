@@ -77,7 +77,7 @@ But for those who want to dive deeper - you can use HTML, JavaScript and CSS to 
 
 ## Pluto for teaching
 
-Many of Pluto's features were designed for teaching! Pluto was developed alongside the free online course [Introduction to Computational Thinking](https://computationalthinking.mit.edu/) at MIT, with the goal of creating a programming environment that is powerful, helpful and interactive, without being too intimidating for students and teachers. 
+Pluto was developed alongside the free online course [Introduction to Computational Thinking](https://computationalthinking.mit.edu/) at MIT, with the goal of creating a programming environment that is powerful, helpful and interactive, without being too intimidating for students and teachers. 
 
 Are you interested in using Pluto for your class? Here are some presentations by people who are using it already: [the MIT team](https://www.youtube.com/watch?v=LFRI3s0DE-o), [Gerhard Dorn](https://www.youtube.com/watch?v=6Qs5EXDpZBI), [Daniel Molina](https://www.youtube.com/watch?v=NrIxgnFXslg), [Henki W. Ashadi](https://youtu.be/GnEKgW23PvY?t=586) and [Max Köhler](https://www.youtube.com/watch?v=8H5KgSIWsWQ).
 
