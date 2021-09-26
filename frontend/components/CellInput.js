@@ -383,7 +383,6 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     block_matcher_plugin,
                     docs_updater,
-                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
@@ -424,6 +423,9 @@ export const CellInput = ({
                     // I put plutoKeyMaps separately because I want make sure we have
                     // higher priority 😈
                     keymap.of(plutoKeyMaps),
+                    // Before default keymaps (because we override some of them)
+                    // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
+                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
 
