@@ -42,7 +42,7 @@ import {
     Transaction,
     SelectionRange,
     indentUnit,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@0.19.1/dist/index.es.min.js"
 
 export {
     EditorState,
