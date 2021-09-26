@@ -214,6 +214,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                 Cell("DataFrame"),
                 Cell("Tables.table(rand(11,11))"),
                 Cell("Tables.table(rand(120,120))"),
+                Cell("DataFrame(:a => [\"missing\", missing])"),
             ])
         fakeclient.connected_notebook = notebook
 
@@ -239,6 +240,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test notebook.cells[9].output.body isa Dict
         @test notebook.cells[11].output.body isa Dict
         @test notebook.cells[12].output.body isa Dict
+        @test occursin("String?", string(notebook.cells[13].output.body)) # Issue 1490.
 
         @test notebook.cells[10].output.mime isa MIME"text/plain"
         @test notebook.cells[10].errored == false
