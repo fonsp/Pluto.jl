@@ -50,6 +50,9 @@ import {
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { drag_n_drop_plugin } from "./useDropHandler.js"
+import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
+import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -223,16 +226,7 @@ export const CellInput = ({
                 return true
             }
         }
-        const keyMapPageUp = () => {
-            on_focus_neighbor(cell_id, -1, 0, 0)
-            return true
-        }
-        const keyMapPageDown = () => {
-            on_focus_neighbor(cell_id, +1, 0, 0)
-            return true
-        }
         const keyMapMD = () => {
-            // Migrated
             const cm = newcm_ref.current
             const value = getValue6(cm)
             const trimmed = value.trim()
@@ -316,50 +310,20 @@ export const CellInput = ({
             }
         }
 
-        const keyMapLeftOrUp = (/** @type {boolean} */ up) => (/** @type {EditorView} */ view) => {
-            let selection = view.state.selection.main
-            // We only do this on cursors, not when we have multiple characters selected
-            if (!selection.empty) return false
-
-            // Is the cursor at the start of the cell?
-            console.log("view: ", view)
-            if (up ? view.state.doc.lineAt(selection.from).number === 1 : selection.from === 0) {
-                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
-                return true
-            }
-        }
-
-        const keyMapRightOrDown = (/** @type {boolean} */ down) => (/** @type {EditorView} */ view) => {
-            let selection = view.state.selection.main
-            // We only do this on cursors, not when we have multiple characters selected
-            if (!selection.empty) return false
-
-            // Is the cursor at the end of the cell?
-            if (down ? view.state.doc.lineAt(selection.to).number === view.state.doc.lines : selection.to === view.state.doc.length) {
-                on_focus_neighbor(cell_id, 1, 0, 0)
-                return true
-            }
-        }
-
         const plutoKeyMaps = [
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
             { key: "Ctrl-Enter", run: keyMapRun },
-            { key: "PageUp", run: keyMapPageUp },
-            { key: "PageDown", run: keyMapPageDown },
             { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
             { key: "Ctrl-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
             { key: "Ctrl-M", run: keyMapMD },
+            // TODO Move Delete and backspace to cell movement plugin
             { key: "Delete", run: keyMapDelete },
             { key: "Ctrl-Delete", run: keyMapDelete },
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
-            { key: "ArrowLeft", run: keyMapLeftOrUp(false) },
-            { key: "ArrowUp", run: keyMapLeftOrUp(true) },
-            { key: "ArrowRight", run: keyMapRightOrDown(false) },
-            { key: "ArrowDown", run: keyMapRightOrDown(true) },
         ]
         const onCM6Update = (/** @type {ViewUpdate} */ update) => {
             if (update.docChanged) {
@@ -393,9 +357,6 @@ export const CellInput = ({
             }
         })
 
-        // Why am I like this?
-        let completionState = autocompletion()[0]
-
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -422,60 +383,7 @@ export const CellInput = ({
                     highlightSelectionMatches(),
                     block_matcher_plugin,
                     docs_updater,
-
-                    // Don't-accidentally-remove-cells-plugin
-                    // Because we need some extra info about the key, namely if it is on repeat or not,
-                    // we can't use a keymap (keymaps don't give us the event)
-                    EditorView.domEventHandlers({
-                        keydown: (event, view) => {
-                            // TODO We could also require a re-press after a force focus, because
-                            // .... currently if you delete another cell, but keep holding down the backspace (or delete),
-                            // .... you'll still be deleting characters (because view.state.doc.length will be > 0)
-
-                            if (event.key === "Backspace" && event.repeat) {
-                                if (view.state.doc.length === 0) {
-                                    // Only if this would be a cell-deleting backspace, we jump in
-                                    return true
-                                }
-                            }
-                            if (event.key === "Delete" && event.repeat) {
-                                if (view.state.doc.length === 0) {
-                                    // Only if this would be a cell-deleting backspace, we jump in
-                                    return true
-                                }
-                            }
-
-                            // Because of the "hacky" way this works, we need to check if autocompletion is open...
-                            // else we'll block the ability to press ArrowDown for autocomplete....
-                            // Adopted from https://github.com/codemirror/autocomplete/blob/a53f7ff19dc3a0412f3ce6e2751b08b610e1d762/src/view.ts#L15
-                            let autocompletion_open = view.state.field(completionState, false)?.open ?? false
-
-                            // If we have a cursor instead of a multicharacter selection:
-                            let selection = view.state.selection.main
-                            if (selection.to === selection.from) {
-                                if (event.key === "ArrowLeft" && event.repeat) {
-                                    if (selection.from === 0) {
-                                        return true
-                                    }
-                                }
-                                if (event.key === "ArrowUp" && event.repeat && !autocompletion_open) {
-                                    if (selection.from === 0) {
-                                        return true
-                                    }
-                                }
-                                if (event.key === "ArrowRight" && event.repeat) {
-                                    if (selection.to === view.state.doc.length) {
-                                        return true
-                                    }
-                                }
-                                if (event.key === "ArrowDown" && event.repeat && !autocompletion_open) {
-                                    if (selection.to === view.state.doc.length) {
-                                        return true
-                                    }
-                                }
-                            }
-                        },
-                    }),
+                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
                     // Remove selection on blur
                     EditorView.domEventHandlers({
                         blur: (event, view) => {
@@ -488,76 +396,11 @@ export const CellInput = ({
                             set_cm_forced_focus(null)
                         },
                     }),
-                    // Paste plugin
-                    EditorView.domEventHandlers({
-                        paste: (event, view) => {
-                            if (!view.hasFocus) {
-                                // Tell codemirror it doesn't have to handle this when it doesn't have focus
-                                console.log("CodeMirror, why are you registring this paste? You aren't focused!")
-                                return true
-                            }
-
-                            // Prevent this event from reaching the Editor-level paste handler
-                            event.stopPropagation()
-
-                            const topaste = event.clipboardData.getData("text/plain")
-                            const deserializer = detect_deserializer(topaste, false)
-                            if (deserializer == null) {
-                                return false
-                            }
-
-                            // If we have the whole cell selected, the user doesn't want their current code to survive...
-                            // So we paste the cells, but then remove the original cell! (Ideally I want to keep that cell and fill it with the first deserialized one)
-                            // (This also applies to pasting in an empty cell)
-                            if (view.state.selection.main.from === 0 && view.state.selection.main.to === view.state.doc.length) {
-                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                                pluto_actions.confirm_delete_multiple("This Should Never Be Visible", [cell_id])
-                                return true
-                            }
-
-                            // End of cell, add new cells below
-                            if (view.state.selection.main.to === view.state.doc.length) {
-                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                                return true
-                            }
-
-                            // Start of cell, ideally we'd add new cells above, but we don't have that yet
-                            if (view.state.selection.main.from === 0) {
-                                pluto_actions.add_deserialized_cells(topaste, cell_id, deserializer)
-                                return true
-                            }
-
-                            return false
-                        },
+                    pluto_paste_plugin({
+                        pluto_actions: pluto_actions,
+                        cell_id: cell_id,
                     }),
-                    // Drag 'n drop plugin
-                    EditorView.domEventHandlers({
-                        dragover: (event, view) => {
-                            if (event.dataTransfer.types[0] !== "text/plain") {
-                                on_drag_drop_events(event)
-                                return true
-                            }
-                        },
-                        drop: (event, view) => {
-                            if (event.dataTransfer.types[0] !== "text/plain") {
-                                on_drag_drop_events(event)
-                                event.preventDefault()
-                                return true
-                            }
-                        },
-                        dragenter: (event, view) => {
-                            if (event.dataTransfer.types[0] !== "text/plain") {
-                                on_drag_drop_events(event)
-                                return true
-                            }
-                        },
-                        dragleave: (event, view) => {
-                            if (event.dataTransfer.types[0] !== "text/plain") {
-                                on_drag_drop_events(event)
-                                return true
-                            }
-                        },
-                    }),
+                    drag_n_drop_plugin(on_drag_drop_events),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),

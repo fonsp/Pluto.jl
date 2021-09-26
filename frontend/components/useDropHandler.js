@@ -1,6 +1,7 @@
 import _ from "../imports/lodash.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { useState, useMemo, useContext } from "../imports/Preact.js"
+import { EditorView } from "../imports/CodemirrorPlutoSetup.js"
 
 const MAGIC_TIMEOUT = 500
 const DEBOUNCE_MAGIC_MS = 250
@@ -95,4 +96,34 @@ export const useDropHandler = () => {
         }
     }, [set_drag_active, set_drag_active_fast, set_saving_file, pluto_actions])
     return { saving_file, drag_active, handler }
+}
+
+export let drag_n_drop_plugin = (on_drag_drop_events) => {
+    return EditorView.domEventHandlers({
+        dragover: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+        drop: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                event.preventDefault()
+                return true
+            }
+        },
+        dragenter: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+        dragleave: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+    })
 }
