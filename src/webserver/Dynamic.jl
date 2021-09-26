@@ -99,6 +99,8 @@ function notebook_to_js(notebook::Notebook)
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
         "process_status" => notebook.process_status,
+        "last_save_time" => notebook.last_save_time,
+        "last_hot_reload_time" => notebook.last_hot_reload_time,
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,

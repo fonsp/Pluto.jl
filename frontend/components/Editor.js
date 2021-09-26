@@ -145,6 +145,8 @@ const first_true_key = (obj) => {
  *  shortpath: string,
  *  in_temp_dir: boolean,
  *  process_status: string,
+ *  last_save_time: number,
+ *  last_hot_reload_time: number,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
@@ -184,6 +186,8 @@ const initial_notebook = () => ({
     shortpath: "",
     in_temp_dir: true,
     process_status: "starting",
+    last_save_time: 0.0,
+    last_hot_reload_time: 0.0,
     cell_inputs: {},
     cell_results: {},
     cell_dependencies: {},
@@ -1144,6 +1148,8 @@ patch: ${JSON.stringify(
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
+                            last_hot_reload_time=${this.state.notebook.last_hot_reload_time}
+                            connected=${this.state.connected}
                         />
                         <${Notebook}
                             notebook=${this.state.notebook}

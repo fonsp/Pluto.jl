@@ -52,6 +52,8 @@ Base.@kwdef mutable struct Notebook
 
     process_status::String=ProcessStatus.starting
     wants_to_interrupt::Bool=false
+    last_save_time::typeof(time())=time()
+    last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -173,6 +175,7 @@ function open_safe_write(fn::Function, path, mode)
 end
     
 function save_notebook(notebook::Notebook, path::String)
+    notebook.last_save_time = time()
     open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end
