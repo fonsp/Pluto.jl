@@ -6,7 +6,7 @@ import { StateEffect, StateField, EditorView, Decoration } from "../../imports/C
  * It does this by adding a line decoration that adds padding-left (as much as there is indentation),
  * and adds the same amount as negative "text-indent". The nice thing about text-indent is that it
  * applies to the initial line of a wrapped line.
- * 
+ *
  * The identation decorations have to happen in a StateField (without access to the editor),
  * because they change the layout of the text :( The character width I need however, is in the editor...
  * So I do this ugly hack where I, in `character_width_listener`, I fire an effect that gets picked up
@@ -33,8 +33,6 @@ let character_width_listener = EditorView.updateListener.of((viewupdate) => {
     let current_width = viewupdate.view.state.field(extra_cycle_character_width, false)
 
     if (current_width !== width) {
-        console.log(`current_width:`, current_width)
-        console.log(`width:`, width)
         current_width = width
         viewupdate.view.dispatch({
             effects: [CharacterWidthEffect.of(current_width)],
@@ -49,10 +47,11 @@ let line_wrapping_decorations = StateField.define({
     },
     update(deco, tr) {
         let tabSize = tr.state.tabSize
+        let previous_charWidth = tr.startState.field(extra_cycle_character_width, false)
         let charWidth = tr.state.field(extra_cycle_character_width, false)
         if (charWidth == null) return Decoration.none
 
-        if (!tr.docChanged && deco !== Decoration.none) return deco
+        if (!tr.docChanged && deco !== Decoration.none && previous_charWidth === charWidth) return deco
 
         let decorations = []
 
