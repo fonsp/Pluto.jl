@@ -3,6 +3,7 @@ import .ExpressionExplorer: SymbolsState, FunctionNameSignaturePair, FunctionNam
 import .Configuration
 import .PkgCompat: PkgCompat, PkgContext
 import Pkg
+import TOML
 
 mutable struct BondValue
     value::Any
@@ -85,6 +86,7 @@ const _notebook_header = "### A Pluto.jl notebook ###"
 # We use a creative delimiter to avoid accidental use in code
 # so don't get inspired to suddenly use these in your code!
 const _cell_id_delimiter = "# ╔═╡ "
+const _cell_metadata_prefix = "# ╠═╡ "
 const _order_delimiter = "# ╠═"
 const _order_delimiter_folded = "# ╟─"
 const _cell_suffix = "\n\n"
@@ -120,6 +122,13 @@ function save_notebook(io, notebook::Notebook)
     
     for c in cells_ordered
         println(io, _cell_id_delimiter, string(c.cell_id))
+        metadata_toml = strip(sprint(TOML.print, get_cell_metadata(c)))
+        if metadata_toml != ""
+            for line in split(metadata_toml, "\n")
+                println(io, _cell_metadata_prefix, line)
+            end
+        end
+
         # write the cell code and prevent collisions with the cell delimiter
         print(io, replace(c.code, _cell_id_delimiter => "# "))
         print(io, _cell_suffix)
@@ -204,7 +213,21 @@ function load_notebook_nobackup(io, path)::Notebook
             break
         else
             cell_id = UUID(cell_id_str)
-            code_raw = String(readuntil(io, _cell_id_delimiter))
+            
+            metadata_toml_lines = String[]
+            initial_code_line = ""
+            while !eof(io)
+                line = String(readline(io))
+                if startswith(line, _cell_metadata_prefix)
+                    prefix_length = ncodeunits(_cell_metadata_prefix)
+                    push!(metadata_toml_lines, line[begin+prefix_length:end])
+                else
+                    initial_code_line = line
+                    break
+                end
+            end
+
+            code_raw = initial_code_line * "\n" * String(readuntil(io, _cell_id_delimiter))
             # change Windows line endings to Linux
             code_normalised = replace(code_raw, "\r\n" => "\n")
             # remove the cell suffix

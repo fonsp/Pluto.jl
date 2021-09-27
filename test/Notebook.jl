@@ -29,6 +29,22 @@ function basic_notebook()
     ]) |> init_packages!
 end
 
+function metadata_notebook()
+    Notebook([
+        Cell(
+            code="100*a + b",
+            running_disabled=true,
+            metadata=Dict(
+                "a metadata tag" => Dict(
+                    "boolean" => true,
+                    "string" => "String",
+                    "number" => 10000,
+                ),
+            ),
+        ),
+    ]) |> init_packages!
+end
+
 function shuffled_notebook()
     Notebook([
         Cell("z = y"),
@@ -139,6 +155,14 @@ end
             result = load_notebook_nobackup(nb.path)
             @test notebook_inputs_equal(nb, result)
         end
+    end
+
+    @testset "Metadata" begin
+        nb = metadata_notebook()
+        save_notebook(nb)
+        @info "File" Text(read(nb.path,String))
+        result = load_notebook_nobackup(nb.path)
+        @test notebook_inputs_equal(nb, result)
     end
 
     @testset "I/O overloaded" begin
