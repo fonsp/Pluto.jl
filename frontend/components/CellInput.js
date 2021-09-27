@@ -152,24 +152,10 @@ export const CellInput = ({
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
-    const disable_input_ref = useRef(disable_input)
-
-    useEffect(() => {
-        /** Migration #1: New */
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
+    let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     useLayoutEffect(() => {
         const keyMapSubmit = () => {
@@ -350,7 +336,11 @@ export const CellInput = ({
                 doc: local_code,
 
                 extensions: [
+                    // Compartments coming from react state/props
                     nbpkg_compartment,
+                    used_variables_compartment,
+                    editable_compartment,
+
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
@@ -365,7 +355,6 @@ export const CellInput = ({
                     closeBrackets(),
                     highlightSelectionMatches(),
                     bracketMatching(),
-                    // block_matcher_plugin,
                     docs_updater,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -387,10 +376,7 @@ export const CellInput = ({
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
-                    EditorView.updateListener.of(onCM6Update),
-                    used_variables_compartment,
                     go_to_definition_plugin,
-                    editable.of(EditorState.readOnly.of(disable_input_ref.current)),
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
                             let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
@@ -414,6 +400,8 @@ export const CellInput = ({
 
                     EditorView.lineWrapping,
                     awesome_line_wrapping,
+
+                    EditorView.updateListener.of(onCM6Update),
                 ],
             }),
             parent: dom_node_ref.current,
@@ -426,7 +414,6 @@ export const CellInput = ({
         }
 
         if (focus_after_creation) {
-            // MIGRATED (and commented because it blocks the "smooth" scroll into view)
             setTimeout(() => {
                 let view = newcm_ref.current
                 view.dom.scrollIntoView({
@@ -444,12 +431,23 @@ export const CellInput = ({
         }
     }, [])
 
-    useLayoutEffect(() => {
-        disable_input_ref.current = disable_input
-        newcm_ref.current.dispatch({
-            effects: editable.reconfigure(EditorState.readOnly.of(disable_input)),
-        })
-    }, [disable_input])
+    // Effect to apply "remote_code" to the cell when it changes...
+    // ideally this won't be necessary as we'll have actual multiplayer,
+    // or something to tell the user that the cell is out of sync.
+    useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
+        const current_value = getValue6(newcm_ref.current) ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
+        remote_code_ref.current = remote_code
+        if (current_value !== remote_code) {
+            setValue6(newcm_ref.current, remote_code)
+        }
+    }, [remote_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
@@ -481,7 +479,6 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
-    // TODO effect hook for disable_input?
     return html`
         <pluto-input ref=${dom_node_ref}>
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />

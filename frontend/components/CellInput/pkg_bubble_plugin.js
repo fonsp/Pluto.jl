@@ -92,7 +92,6 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                             `),
                             side: 1,
                         })
-                        console.log(`to:`, to)
                         widgets.push(deco.range(to))
                     }
 

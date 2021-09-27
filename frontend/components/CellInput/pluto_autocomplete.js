@@ -14,6 +14,7 @@ import {
     StateField,
     StateEffect,
 } from "../../imports/CodemirrorPlutoSetup.js"
+import { get_selected_doc_from_state } from "./LiveDocsFromCursor.js"
 
 // These should be imported from  @codemirror/autocomplete
 let completionState = autocompletion()[0]
@@ -107,12 +108,20 @@ let update_docs_from_autocomplete_selection = (on_update_doc_query) => {
         if (open_autocomplete == null) return
 
         let selected_option = open_autocomplete.options[open_autocomplete.selected]
-        // TODO Ideally I don't want the `doc_prefix` to be part of the completion,
-        // .... and instead parse the tree properly again.. but I don't know how to do
-        // .... that without actually updating the EditorView D:
-        let docs_prefix = selected_option.source.result["docs_prefix"]
-        if (docs_prefix != null && (selected_option.apply == null || typeof selected_option.completion.apply === "string")) {
-            on_update_doc_query(docs_prefix + (selected_option.completion.apply ?? selected_option.completion.text))
+        let text_to_apply = selected_option.completion.apply ?? selected_option.completion.label
+        if (typeof text_to_apply !== "string") return
+
+        // Apply completion to state, which will yield us a `Transaction`.
+        // The nice thing about this is that we can use the resulting state from the transaction,
+        // without updating the actual state of the editor.
+        let result_transaction = update.state.update({
+            changes: { from: selected_option.source.from, to: selected_option.source.to, insert: text_to_apply },
+        })
+
+        // So we can use `get_selected_doc_from_state` on our virtual state
+        let docs_string = get_selected_doc_from_state(result_transaction.state)
+        if (docs_string != null) {
+            on_update_doc_query(docs_string)
         }
     })
 }
@@ -234,9 +243,6 @@ const juliahints_cool_generator = (/** @type {PlutoRequestAutocomplete} */ reque
     return {
         from: from + start,
         to: from + stop,
-
-        // Non-standard, used for showing live docs for results
-        docs_prefix: to_complete_onto,
 
         // This tells codemirror to not query this function again as long as the string
         // we are completing has the same prefix as we complete now, and there is no weird characters (subjective)
