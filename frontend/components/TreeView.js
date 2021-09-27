@@ -1,6 +1,6 @@
 import { html, useRef, useState, useContext } from "../imports/Preact.js"
 
-import { PlutoImage, RawHTMLContainer, EmbeddedCellOutput } from "./CellOutput.js"
+import { PlutoImage, RawHTMLContainer, CellOutputMirror } from "./CellOutput.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
 // this is different from OutputBody because:
@@ -31,8 +31,8 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
-        case "application/vnd.pluto.celloutput+object":
-            return EmbeddedCellOutput({ cell_id: body.cell_id })
+        case "application/vnd.pluto.celloutputmirror+object":
+            return CellOutputMirror({ cell_id: body.cell_id })
             break
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`

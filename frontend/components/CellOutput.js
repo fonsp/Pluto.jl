@@ -143,8 +143,8 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
         case "application/vnd.pluto.divelement+object":
             return DivElement({ cell_id, ...body })
             break
-        case "application/vnd.pluto.celloutput+object":
-            return EmbeddedCellOutput({ cell_id: body.cell_id })
+        case "application/vnd.pluto.celloutputmirror+object":
+            return CellOutputMirror({ cell_id: body.cell_id })
             break
         case "text/plain":
             if (body) {
@@ -161,7 +161,7 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
     }
 }
 
-export let EmbeddedCellOutput = ({ cell_id }) => {
+export let CellOutputMirror = ({ cell_id }) => {
     let [captured_editor_state, set_captured_editor_state] = useState(null)
 
     useEffect(() => {
