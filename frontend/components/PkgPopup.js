@@ -86,7 +86,7 @@ export const PkgPopup = ({ notebook }) => {
         set_showterminal(debounced_busy)
     }, [debounced_busy])
 
-    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? null : notebook.nbpkg?.terminal_outputs[recent_event?.package_name]
+    const terminal_value = notebook.nbpkg?.terminal_outputs == null ? "Loading..." : notebook.nbpkg?.terminal_outputs[recent_event?.package_name] ?? ""
 
     const showupdate = pkg_status?.offer_update ?? false
 
