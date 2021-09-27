@@ -42,6 +42,8 @@ Base.@kwdef mutable struct Cell
 
     running_disabled::Bool=false
     depends_on_disabled_cells::Bool=false
+
+    metadata::Dict{String,Any}=Dict{String,Dict{String,Any}}()
 end
 
 Cell(cell_id, code) = Cell(cell_id=cell_id, code=code)
@@ -59,4 +61,17 @@ function Base.convert(::Type{Cell}, cell::Dict)
 end
 function Base.convert(::Type{UUID}, string::String)
     UUID(string)
+end
+
+function get_cell_metadata(cell::Cell)::Dict{String,Any}
+    Dict(
+        if cell.running_disabled
+            Dict("disabled" => "directly")
+        elseif cell.depends_on_disabled_cells
+            Dict("disabled" => "indirectly")
+        else
+            Dict()
+        end...,
+        cell.metadata...,
+    )
 end

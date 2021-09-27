@@ -127,7 +127,7 @@ end
 function notebook_inputs_equal(nbA, nbB; check_paths_equality=true)
     x = !check_paths_equality || (normpath(nbA.path) == normpath(nbB.path))
 
-    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code)
+    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code, cell.metadata)
     y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
     
     x && y
