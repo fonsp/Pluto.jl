@@ -1,206 +1,286 @@
-import { syntaxTree, StateField, EditorView, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
-
-const matchingMark = Decoration.mark({ class: "cm-matchingBracket" })
-const nonmatchingMark = Decoration.mark({ class: "cm-nonmatchingBracket" })
+import { combineConfig, Facet, StateField } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree } from "../../imports/CodemirrorPlutoSetup.js"
+import { EditorView } from "../../imports/CodemirrorPlutoSetup.js"
+import { Decoration } from "../../imports/CodemirrorPlutoSetup.js"
 
 /**
- * A very, very, simple block matcher plugin.
- * Block matcher meaning it will show the same overlay that we currently have on `( ... )`,
- * but on julia blocks, e.g. `begin ... end`, `if ... else ... end`, etc.
- * @type {StateField<ReturnType<Decoration.set>>}
+ * ADAPTED MATCH BRACKETS PLUGIN FROM CODEMIRROR
+ * Original: https://github.com/codemirror/matchbrackets/blob/99bf6b7e6891c09987269e370dc45ab1d588b875/src/matchbrackets.ts
+ *
+ * I changed it to ignore the closedBy and openBy properties provided by lezer, because these
+ * are all wrong for julia... Also, this supports returning multiple matches, like `if ... elseif ... end`, etc.
+ * On top of that I added `match_block` to match the block brackets, like `begin ... end` and all of those.
+ * Also it doesn't do non-matching now, there is just matching or nothing.
  */
-export const block_matcher_plugin = StateField.define({
+
+function match_block(node) {
+    if (node.name === "end") {
+        node = node.parent.firstChild
+    }
+
+    // if (node.name === "StructDefinition") node = node.firstChild
+    if (node.name === "mutable" || node.name === "struct") {
+        if (node.name === "struct") node = node.parent.firstChild
+
+        let struct_node = node.parent.getChild("struct")
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match || !struct_node) return null
+
+        return [
+            { from: node.from, to: struct_node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+    if (node.name === "struct") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "quote") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "begin") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "do") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "for") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "let") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "macro") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "function") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "while") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        return [
+            { from: node.from, to: node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "type") node = node.parent.firstChild
+    if (node.name === "abstract" || node.name === "primitive") {
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        let struct_node = node.parent.getChild("type")
+        if (!did_match || !struct_node) return null
+
+        return [
+            { from: node.from, to: struct_node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ]
+    }
+
+    if (node.name === "try" || node.name === "catch" || node.name === "finally") {
+        if (node.name === "catch") node = node.parent
+        if (node.name === "finally") node = node.parent
+
+        let try_node = node.parent.firstChild
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        let catch_node = node.parent.getChild("CatchClause")?.firstChild
+        let finally_node = node.parent.getChild("FinallyClause")?.firstChild
+
+        return [
+            { from: try_node.from, to: try_node.to },
+            catch_node && { from: catch_node.from, to: catch_node.to },
+            finally_node && { from: finally_node.from, to: finally_node.to },
+            { from: possibly_end.from, to: possibly_end.to },
+        ].filter((x) => x != null)
+    }
+
+    if (node.name === "if" || node.name === "else" || node.name === "elseif") {
+        if (node.name === "else") node = node.parent
+
+        let try_node = node.parent.firstChild
+        let possibly_end = node.parent.lastChild
+        let did_match = possibly_end.name === "end"
+        if (!did_match) return null
+
+        let decorations = []
+        decorations.push({ from: try_node.from, to: try_node.to })
+        for (let else_clause_node of node.parent.getChildren("ElseClause")) {
+            let else_node = else_clause_node.firstChild
+            decorations.push({ from: else_node.from, to: else_node.to })
+        }
+        for (let elseif_node of node.parent.getChildren("elseif")) {
+            decorations.push({ from: elseif_node.from, to: elseif_node.to })
+        }
+        decorations.push({ from: possibly_end.from, to: possibly_end.to })
+
+        return decorations
+    }
+
+    return null
+}
+
+const baseTheme = EditorView.baseTheme({
+    ".cm-matchingBracket": { backgroundColor: "#328c8252" },
+    ".cm-nonmatchingBracket": { backgroundColor: "#bb555544" },
+})
+const DefaultScanDist = 10000,
+    DefaultBrackets = "()[]{}"
+const bracketMatchingConfig = Facet.define({
+    combine(configs) {
+        return combineConfig(configs, {
+            afterCursor: true,
+            brackets: DefaultBrackets,
+            maxScanDistance: DefaultScanDist,
+        })
+    },
+})
+const matchingMark = Decoration.mark({ class: "cm-matchingBracket" }),
+    nonmatchingMark = Decoration.mark({ class: "cm-nonmatchingBracket" })
+const bracketMatchingState = StateField.define({
     create() {
         return Decoration.none
     },
     update(deco, tr) {
         if (!tr.docChanged && !tr.selection) return deco
         let decorations = []
-        let tree = syntaxTree(tr.state)
-
+        let config = tr.state.facet(bracketMatchingConfig)
         for (let range of tr.state.selection.ranges) {
             if (!range.empty) continue
-
-            let node = tree.resolve(range.head, -1)
-
-            if (node.name === "end") {
-                node = node.parent.firstChild
-            }
-
-            if (node.name === "struct") node = node.parent.firstChild
-            if (node.name === "StructDefinition") node = node.firstChild
-            if (node.name === "mutable") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-
-                let struct = node.parent.getChild("struct")
-                if (struct) {
-                    decorations.push(mark.range(node.from, struct.to))
-                }
-
-                if (did_match) {
-                    decorations.push(mark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-            if (node.name === "struct") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(mark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "quote") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "begin") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "do") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "for") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "let") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "macro") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "function") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "while") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(node.from, node.to))
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "type") node = node.parent.firstChild
-            if (node.name === "AbstractDefinition") node = node.firstChild
-            if (node.name === "PrimitiveDefinition") node = node.firstChild
-            if (node.name === "abstract" || node.name === "primitive") {
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-
-                let struct = node.parent.getChild("type")
-                if (struct) {
-                    decorations.push(matchingMark.range(node.from, struct.to))
-                }
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "catch") node = node.parent
-            if (node.name === "try" || node.name === "CatchClause") {
-                let try_node = node.parent.firstChild
-
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(try_node.from, try_node.to))
-
-                let catch_node = node.parent.getChild("CatchClause")
-                if (catch_node) {
-                    decorations.push(matchingMark.range(catch_node.from, catch_node.to))
-                }
-
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
-            }
-
-            if (node.name === "else") node = node.parent
-            if (node.name === "if" || node.name === "ElseClause" || node.name === "elseif") {
-                let try_node = node.parent.firstChild
-
-                let possibly_end = node.parent.lastChild
-                let did_match = possibly_end.name === "end"
-                let mark = did_match ? matchingMark : nonmatchingMark
-                decorations.push(mark.range(try_node.from, try_node.to))
-
-                for (let catch_clause_node of node.parent.getChildren("ElseClause")) {
-                    let catch_node = catch_clause_node.firstChild
-                    decorations.push(matchingMark.range(catch_node.from, catch_node.to))
-                }
-                for (let catch_node of node.parent.getChildren("elseif")) {
-                    decorations.push(matchingMark.range(catch_node.from, catch_node.to))
-                }
-                if (did_match) {
-                    decorations.push(matchingMark.range(possibly_end.from, possibly_end.to))
-                }
+            let match =
+                matchBrackets(tr.state, range.head, -1, config) ||
+                (range.head > 0 && matchBrackets(tr.state, range.head - 1, 1, config)) ||
+                (config.afterCursor &&
+                    (matchBrackets(tr.state, range.head, 1, config) ||
+                        (range.head < tr.state.doc.length && matchBrackets(tr.state, range.head + 1, -1, config))))
+            if (!match) continue
+            let mark = matchingMark
+            for (let pos of match) {
+                decorations.push(mark.range(pos.from, pos.to))
             }
         }
         return Decoration.set(decorations, true)
     },
     provide: (f) => EditorView.decorations.from(f),
 })
+const bracketMatchingUnique = [bracketMatchingState, baseTheme]
+/// Create an extension that enables bracket matching. Whenever the
+/// cursor is next to a bracket, that bracket and the one it matches
+/// are highlighted. Or, when no matching bracket is found, another
+/// highlighting style is used to indicate this.
+export function bracketMatching(config = {}) {
+    return [bracketMatchingConfig.of(config), bracketMatchingUnique]
+}
+/// Find the matching bracket for the token at `pos`, scanning
+/// direction `dir`. Only the `brackets` and `maxScanDistance`
+/// properties are used from `config`, if given. Returns null if no
+/// bracket was found at `pos`, or a match result otherwise.
+export function matchBrackets(state, pos, dir, config = {}) {
+    let maxScanDistance = config.maxScanDistance || DefaultScanDist,
+        brackets = config.brackets || DefaultBrackets
+    let tree = syntaxTree(state),
+        node = tree.resolveInner(pos, dir)
+
+    let result = match_block(node)
+    return result || matchPlainBrackets(state, pos, dir, tree, node.type, maxScanDistance, brackets)
+}
+function matchPlainBrackets(state, pos, dir, tree, tokenType, maxScanDistance, brackets) {
+    let startCh = dir < 0 ? state.sliceDoc(pos - 1, pos) : state.sliceDoc(pos, pos + 1)
+    let bracket = brackets.indexOf(startCh)
+    if (bracket < 0 || (bracket % 2 == 0) != dir > 0) return null
+    let startToken = { from: dir < 0 ? pos - 1 : pos, to: dir > 0 ? pos + 1 : pos }
+    let iter = state.doc.iterRange(pos, dir > 0 ? state.doc.length : 0),
+        depth = 0
+    for (let distance = 0; !iter.next().done && distance <= maxScanDistance; ) {
+        let text = iter.value
+        if (dir < 0) distance += text.length
+        let basePos = pos + distance * dir
+        for (let pos = dir > 0 ? 0 : text.length - 1, end = dir > 0 ? text.length : -1; pos != end; pos += dir) {
+            let found = brackets.indexOf(text[pos])
+            if (found < 0 || tree.resolve(basePos + pos, 1).type != tokenType) continue
+            if ((found % 2 == 0) == dir > 0) {
+                depth++
+            } else if (depth == 1) {
+                // Closing
+                if (found >> 1 == bracket >> 1) {
+                    return [startToken, { from: basePos + pos, to: basePos + pos + 1 }]
+                } else {
+                    return null
+                }
+            } else {
+                depth--
+            }
+        }
+        if (dir > 0) distance += text.length
+    }
+    return iter.done ? [startToken] : null
+}

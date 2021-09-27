@@ -5,7 +5,6 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
-import { block_matcher_plugin } from "./CellInput/block_matcher_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -30,7 +29,6 @@ import {
     drawSelection,
     indentOnInput,
     defaultHighlightStyle,
-    bracketMatching,
     closeBrackets,
     highlightSelectionMatches,
     closeBracketsKeymap,
@@ -53,6 +51,7 @@ import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
+import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -378,10 +377,10 @@ export const CellInput = ({
                     EditorView.clickAddsSelectionRange.of((event) => event.altKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
-                    bracketMatching(),
                     closeBrackets(),
                     highlightSelectionMatches(),
-                    block_matcher_plugin,
+                    bracketMatching(),
+                    // block_matcher_plugin,
                     docs_updater,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -407,7 +406,6 @@ export const CellInput = ({
                     used_variables_compartment,
                     go_to_definition_plugin,
                     editable.of(EditorState.readOnly.of(disable_input_ref.current)),
-                    history(),
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
                             let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
