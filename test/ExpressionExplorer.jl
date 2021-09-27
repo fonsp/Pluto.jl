@@ -318,6 +318,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:((::MyType)(x,y) = x + y), [], [], [], [
             :MyType => ([], [], [:+], [])
         ])
+        @test testee(:((obj::typeof(Int64[]))(x, y::Float64) = obj + x + y), [], [], [], [
+            :anon => ([:Int64, :Float64], [], [:+, :typeof], [])
+        ])
+        @test testee(:((::Get(MyType))(x, y::OtherType) = y * x + z), [], [], [], [
+            :anon => ([:MyType, :z, :OtherType], [], [:Get, :*, :+], [])
+        ])
     end
     @testset "Scope modifiers" begin
         @test testee(:(let global a, b = 1, 2 end), [], [:a, :b], [], [])
