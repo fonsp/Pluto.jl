@@ -210,21 +210,6 @@ export const CellInput = ({
                 return true
             }
         }
-        const keyMapTabShift = (/** @type {EditorView} */ cm) => {
-            // TODO Multicursor?
-            let selection = cm.state.selection.main
-            if (!selection.empty) {
-                return indentLess(cm)
-            } else {
-                const last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
-                if (last_char === "\t") {
-                    cm.dispatch({
-                        changes: { from: selection.from - 1, to: selection.to, insert: "" },
-                    })
-                }
-                return true
-            }
-        }
         const keyMapMD = () => {
             const cm = newcm_ref.current
             const value = getValue6(cm)
@@ -313,7 +298,7 @@ export const CellInput = ({
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
             { key: "Ctrl-Enter", run: keyMapRun },
-            { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
+            { key: "Tab", run: keyMapTab, shift: indentLess },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
             { key: "Ctrl-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
