@@ -76,13 +76,19 @@ let line_wrapping_decorations = StateField.define({
             const offset = Math.min(indented_chars, ARBITRARY_INDENT_LINE_WRAP_LIMIT) * charWidth
 
             // TODO? Cache the CSSStyleDeclaration?
-            const rules = document.createElement("span").style
-            rules.setProperty("--idented", `${offset}px`)
-            rules.setProperty("text-indent", "calc(-1 * var(--idented) - 1px)") // I have no idea why, but without the - 1px it behaves weirdly periodically
-            rules.setProperty("padding-left", "calc(var(--idented) + var(--cm-left-padding, 4px))")
+            // This is used when we don't use a css class, but we do need a css class because
+            // text-indent normally cascades, and we have to prevent that.
+            // const rules = document.createElement("span").style
+            // rules.setProperty("--idented", `${offset}px`)
+            // rules.setProperty("text-indent", "calc(-1 * var(--idented) - 1px)") // I have no idea why, but without the - 1px it behaves weirdly periodically
+            // rules.setProperty("padding-left", "calc(var(--idented) + var(--cm-left-padding, 4px))")
 
             const linerwapper = Decoration.line({
-                attributes: { style: rules.cssText },
+                attributes: {
+                    // style: rules.cssText,
+                    style: `--indented: ${offset}px;`,
+                    class: "awesome-wrapping-plugin-indent",
+                },
             })
 
             decorations.push(linerwapper.range(line.from, line.from))
