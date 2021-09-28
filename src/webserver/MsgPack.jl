@@ -5,12 +5,17 @@ import Dates
 import UUIDs: UUID
 import MsgPack
 import .Configuration
+import Pkg
 
 # MsgPack.jl doesn't define a serialization method for MIME and UUID objects, so we write these ourselves:
 MsgPack.msgpack_type(::Type{<:MIME}) = MsgPack.StringType()
 MsgPack.msgpack_type(::Type{UUID}) = MsgPack.StringType()
+MsgPack.msgpack_type(::Type{VersionNumber}) = MsgPack.StringType()
+MsgPack.msgpack_type(::Type{Pkg.Types.VersionRange}) = MsgPack.StringType()
 MsgPack.to_msgpack(::MsgPack.StringType, m::MIME) = string(m)
 MsgPack.to_msgpack(::MsgPack.StringType, u::UUID) = string(u)
+MsgPack.to_msgpack(::MsgPack.StringType, v::VersionNumber) = string(v)
+MsgPack.to_msgpack(::MsgPack.StringType, v::Pkg.Types.VersionRange) = string(v)
 
 # Support for sending Dates
 MsgPack.msgpack_type(::Type{Dates.DateTime}) = MsgPack.ExtensionType()

@@ -1,6 +1,8 @@
 import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
+import .PkgCompat: package_completions
 using Markdown
+import REPL
 
 ###
 # RESPONSES FOR AUTOCOMPLETE & DOCS
@@ -57,6 +59,11 @@ responses[:completepath] = function response_completepath(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
+function package_name_to_complete(str)
+	matches = match(r"(import|using) ([a-zA-Z0-9]+)$", str)
+	matches === nothing ? nothing : matches[2]
+end
+
 responses[:complete] = function response_complete(🙋::ClientRequest)
     try require_notebook(🙋) catch; return; end
     query = 🙋.body["query"]
@@ -64,13 +71,22 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
 
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-    results_text, loc, found = if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
-        # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
-        # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
-        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher($query, $pos)))
+    results_text, loc, found = if package_name_to_complete(query) !== nothing
+        p = package_name_to_complete(query)
+        cs = package_completions(p) |> sort
+        [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
     else
-        # We can at least autocomplete general julia things:
-        PlutoRunner.completion_fetcher(query, pos, Main)
+        if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
+            # we don't use eval_format_fetch_in_workspace because we don't want the output to be string-formatted.
+            # This works in this particular case, because the return object, a `Completion`, exists in this scope too.
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.completion_fetcher(
+                $query, $pos,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+                )))
+        else
+            # We can at least autocomplete general julia things:
+            PlutoRunner.completion_fetcher(query, pos, Main)
+        end
     end
 
     start_utf8 = loc.start
@@ -90,15 +106,25 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
     require_notebook(🙋)
     query = 🙋.body["query"]
 
-    doc_html, status = if haskey(Docs.keywords, query |> Symbol)
+    # Expand string macro calls to their macro form:
+    # `html"` should yield `@html_str` and
+    # `Markdown.md"` should yield `@Markdown.md_str`. (Ideally `Markdown.@md_str` but the former is easier)
+    if endswith(query, "\"") && query != "\""
+        query = "@$(query[begin:end-1])_str"
+    end
+
+    doc_html, status = if REPL.lookup_doc(Symbol(query)) isa Markdown.MD
         # available in Base, no need to ask worker
-        doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
+        doc_md = REPL.lookup_doc(Symbol(query))
         (repr(MIME("text/html"), doc_md), :👍)
     else
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
         if will_run_code(🙋.notebook) && isready(workspace.dowork_token)
-            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher($query)))
+            Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.doc_fetcher(
+                $query,
+                getfield(Main, $(QuoteNode(workspace.module_name))),
+            )))
         else
             (nothing, :⌛)
         end

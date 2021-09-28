@@ -1,6 +1,6 @@
 import Pluto
 import Pluto.ExpressionExplorer
-import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair
+import Pluto.ExpressionExplorer: SymbolsState, compute_symbolreferences, FunctionNameSignaturePair, UsingsImports, compute_usings_imports
 using Test
 
 function Base.show(io::IO, s::SymbolsState)
@@ -21,7 +21,13 @@ function Base.show(io::IO, s::SymbolsState)
         end
         print(io, "]")
     end
-    print(io, ")")
+    if !isempty(s.macrocalls)
+        print(io, "], [")
+        print(io, s.macrocalls)
+        print(io, "])")
+    else
+        print(io, ")")
+    end
 end
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.
@@ -43,8 +49,8 @@ julia> @test testee(:(
 true
 ```
 "
-function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs; verbose::Bool=true)
-    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
+function testee(expr, expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = []; verbose::Bool=true)
+    expected = easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls)
 
     original_hash = Pluto.PlutoRunner.expr_hash(expr)
     result = compute_symbolreferences(expr)
@@ -81,11 +87,19 @@ function testee(expr, expected_references, expected_definitions, expected_funcca
     return expected == result
 end
 
-function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs)
-    new_expected_funccalls = map(expected_funccalls) do k
+"""
+Like `testee` but actually a convenient syntax
+"""
+function test_expression_explorer(; expr, references=[], definitions=[], funccalls=[], funcdefs=[], macrocalls=[])
+    testee(expr, references, definitions, funccalls, funcdefs, macrocalls)
+end
+
+function easy_symstate(expected_references, expected_definitions, expected_funccalls, expected_funcdefs, expected_macrocalls = [])
+    array_to_set(array) = map(array) do k
         new_k = k isa Symbol ? [k] : k
         return new_k
     end |> Set
+    new_expected_funccalls = array_to_set(expected_funccalls)
     
     new_expected_funcdefs = map(expected_funcdefs) do (k, v)
         new_k = k isa Symbol ? [k] : k
@@ -93,11 +107,20 @@ function easy_symstate(expected_references, expected_definitions, expected_funcc
         return FunctionNameSignaturePair(new_k, "hello") => new_v
     end |> Dict
 
-    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs)
+    new_expected_macrocalls = array_to_set(expected_macrocalls)
+
+    SymbolsState(Set(expected_references), Set(expected_definitions), new_expected_funccalls, new_expected_funcdefs, new_expected_macrocalls)
 end
 
 function setcode(cell, newcode)
     cell.code = newcode
+end
+
+function noerror(cell)
+    if cell.errored
+        @show cell.output.body
+    end
+    !cell.errored
 end
 
 function occursinerror(needle, haystack::Pluto.Cell)
@@ -105,10 +128,10 @@ function occursinerror(needle, haystack::Pluto.Cell)
 end
 
 "Test notebook equality, ignoring cell UUIDs and such."
-function notebook_inputs_equal(nbA, nbB)
-    x = normpath(nbA.path) == normpath(nbB.path)
+function notebook_inputs_equal(nbA, nbB; check_paths_equality=true)
+    x = !check_paths_equality || (normpath(nbA.path) == normpath(nbB.path))
 
-    to_compare(cell) = (cell.cell_id, cell.code)
+    to_compare(cell) = (cell.cell_id, cell.code_folded, cell.code)
     y = to_compare.(nbA.cells) == to_compare.(nbB.cells)
     
     x && y
@@ -163,3 +186,9 @@ function num_backups_in(dir::AbstractString)
         occursin("backup", fn)
     end
 end
+
+has_embedded_pkgfiles(contents::AbstractString) = 
+    occursin("PROJECT", contents) && occursin("MANIFEST", contents)
+
+has_embedded_pkgfiles(nb::Pluto.Notebook) = 
+    read(nb.path, String) |> has_embedded_pkgfiles

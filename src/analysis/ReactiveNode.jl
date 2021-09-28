@@ -13,8 +13,9 @@ The name _without_ signature is most important: it is used to find the reactive 
 Base.@kwdef struct ReactiveNode
     references::Set{Symbol} = Set{Symbol}()
     definitions::Set{Symbol} = Set{Symbol}()
-	funcdefs_with_signatures::Set{FunctionNameSignaturePair} = Set{FunctionNameSignaturePair}()
+    funcdefs_with_signatures::Set{FunctionNameSignaturePair} = Set{FunctionNameSignaturePair}()
     funcdefs_without_signatures::Set{Symbol} = Set{Symbol}()
+    macrocalls::Set{Symbol} = Set{Symbol}()
 end
 
 function Base.union!(a::ReactiveNode, bs::ReactiveNode...)
@@ -22,6 +23,7 @@ function Base.union!(a::ReactiveNode, bs::ReactiveNode...)
 	union!(a.definitions, (b.definitions for b in bs)...)
 	union!(a.funcdefs_with_signatures, (b.funcdefs_with_signatures for b in bs)...)
 	union!(a.funcdefs_without_signatures, (b.funcdefs_without_signatures for b in bs)...)
+	union!(a.macrocalls, (b.macrocalls for b in bs)...)
 	return a
 end
 
@@ -29,16 +31,19 @@ end
 - A `SymbolsState` is a nested structure of function definitions inside function definitions inside... This conversion flattens this structure by merging `SymbolsState`s from defined functions.
 - `ReactiveNode` functions as a cache to improve efficienty, by turning the nested structures into multiple `Set{Symbol}`s with fast lookups."
 function ReactiveNode(symstate::SymbolsState)
+	macrocalls = join_funcname_parts.(symstate.macrocalls) |> Set{Symbol}
 	result = ReactiveNode(
 		references=Set{Symbol}(symstate.references), 
 		definitions=Set{Symbol}(symstate.assignments),
+		macrocalls=macrocalls,
 		)
-	
+
 	# defined functions are 'exploded' into the cell's reactive node
 	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
 
 	# now we will add the function names to our edges:
-	push!(result.references, (symstate.funccalls .|> join_funcname_parts)...)
+	union!(result.references, symstate.funccalls .|> join_funcname_parts)
+	union!(result.references, macrocalls)
 
 	for (namesig, body_symstate) in symstate.funcdefs
 		push!(result.funcdefs_with_signatures, namesig)

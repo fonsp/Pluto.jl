@@ -1,0 +1,524 @@
+# using LibGit2
+import Pkg
+using Test
+using Pluto.Configuration: CompilerOptions
+using Pluto.WorkspaceManager: _merge_notebook_compiler_options
+import Pluto: update_save_run!, update_run!, WorkspaceManager, ClientSession, ServerSession, Notebook, Cell, project_relative_path, SessionActions, load_notebook
+import Pluto.PkgUtils
+import Pluto.PkgCompat
+import Distributed
+
+const pluto_test_registry_spec = Pkg.RegistrySpec(;
+    url="https://github.com/JuliaPluto/PlutoPkgTestRegistry", 
+    uuid=Base.UUID("96d04d5f-8721-475f-89c4-5ee455d3eda0"),
+    name="PlutoPkgTestRegistry",
+)
+
+@testset "Built-in Pkg" begin
+    
+    # Pkg.Registry.rm("General")
+    Pkg.Registry.add(pluto_test_registry_spec)
+
+
+    @testset "Basic" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        # See https://github.com/JuliaPluto/PlutoPkgTestRegistry
+
+        notebook = Notebook([
+            Cell("import PlutoPkgTestA"), # cell 1
+            Cell("PlutoPkgTestA.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestB"), # cell 3
+            Cell("PlutoPkgTestB.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestC"), # cell 5
+            Cell("PlutoPkgTestC.MY_VERSION |> Text"),
+            Cell("import PlutoPkgTestD"), # cell 7
+            Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+            Cell("import Dates"),
+            # eval to hide the import from Pluto's analysis
+            Cell("eval(:(import DataFrames))"),
+            Cell("import HelloWorldC_jll"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        @test !notebook.nbpkg_ctx_instantiated
+        
+        update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[8].errored == false
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+        @test notebook.nbpkg_ctx_instantiated
+        @test notebook.nbpkg_busy_packages |> isempty
+
+        terminals = notebook.nbpkg_terminal_outputs
+
+        @test haskey(terminals, "PlutoPkgTestA")
+        @test haskey(terminals, "PlutoPkgTestD")
+        # they were installed in one batch, so their terminal outputs should be the same
+        @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"]
+
+
+        @test notebook.cells[2].output.body == "0.3.1" # A
+        @test notebook.cells[8].output.body == "0.1.0" # D
+        
+        @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestA") == v"0.3.1"
+        @test PkgCompat.get_manifest_version(notebook.nbpkg_ctx, "PlutoPkgTestD") == v"0.1.0"
+
+
+        old_A_terminal = deepcopy(terminals["PlutoPkgTestA"])
+        @show old_A_terminal
+
+        update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
+
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test haskey(terminals, "PlutoPkgTestB")
+        @test terminals["PlutoPkgTestA"] == terminals["PlutoPkgTestD"] == old_A_terminal
+
+        @test terminals["PlutoPkgTestA"] != terminals["PlutoPkgTestB"]
+
+
+        @test notebook.cells[4].output.body == "1.0.0" # B
+
+        # running the 5th cell will import PlutoPkgTestC, putting a 0.2 compatibility bound on PlutoPkgTestA. This means that a notebook restart is required, since PlutoPkgTestA was already loaded at version 0.3.1.
+        update_save_run!(🍭, notebook, notebook.cells[[5, 6]])
+
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        
+        @test notebook.nbpkg_ctx !== nothing
+        @test (
+            notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
+        )
+        @test notebook.nbpkg_restart_required_msg !== nothing
+
+        # running cells again should persist the restart message
+
+        update_save_run!(🍭, notebook, notebook.cells[1:8])
+        @test notebook.nbpkg_restart_required_msg !== nothing
+
+        Pluto.response_restrart_process(Pluto.ClientRequest(
+            session=🍭,
+            notebook=notebook,
+        ); run_async=false)
+
+        # @test_nowarn SessionActions.shutdown(🍭, notebook; keep_in_session=true, async=true)
+        # @test_nowarn update_save_run!(🍭, notebook, notebook.cells[1:8]; , save=true)
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[8].errored == false
+        @test notebook.cells[11].errored == false
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+
+        @test notebook.cells[2].output.body == "0.2.2"
+        @test notebook.cells[4].output.body == "1.0.0"
+        @test notebook.cells[6].output.body == "1.0.0"
+        @test notebook.cells[8].output.body == "0.1.0"
+
+
+        update_save_run!(🍭, notebook, notebook.cells[9])
+
+        @test notebook.cells[9].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+
+        # we should have an isolated environment, so importing DataFrames should not work, even though it is available in the parent process.
+        update_save_run!(🍭, notebook, notebook.cells[10])
+        @test notebook.cells[10].errored == true
+
+
+        ptoml_contents() = PkgCompat.read_project_file(notebook)
+        mtoml_contents() = PkgCompat.read_manifest_file(notebook)
+
+        nb_contents() = read(notebook.path, String)
+
+        @testset "Project & Manifest stored in notebook" begin
+            
+            @test occursin(ptoml_contents(), nb_contents())
+            @test occursin(mtoml_contents(), nb_contents())
+
+            @test occursin("PlutoPkgTestA", mtoml_contents())
+            @test occursin("PlutoPkgTestB", mtoml_contents())
+            @test occursin("PlutoPkgTestC", mtoml_contents())
+            @test occursin("PlutoPkgTestD", mtoml_contents())
+            @test occursin("Dates", mtoml_contents())
+            @test count("PlutoPkgTestA", ptoml_contents()) == 2 # once in [deps], once in [compat]
+            @test count("PlutoPkgTestB", ptoml_contents()) == 2
+            @test count("PlutoPkgTestC", ptoml_contents()) == 2
+            @test count("PlutoPkgTestD", ptoml_contents()) == 2
+            @test count("Dates", ptoml_contents()) == 1 # once in [deps], but not in [compat] because it is a stdlib
+
+            ptoml = Pkg.TOML.parse(ptoml_contents())
+
+            @test haskey(ptoml["compat"], "PlutoPkgTestA")
+            @test haskey(ptoml["compat"], "PlutoPkgTestB")
+            @test haskey(ptoml["compat"], "PlutoPkgTestC")
+            @test haskey(ptoml["compat"], "PlutoPkgTestD")
+            @test !haskey(ptoml["compat"], "Dates")
+        end
+
+        ## remove `import Dates`
+        setcode(notebook.cells[9], "")
+        update_save_run!(🍭, notebook, notebook.cells[9])
+
+        # removing a stdlib does not require a restart
+        @test notebook.cells[9].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test count("Dates", ptoml_contents()) == 0
+
+
+        ## remove `import PlutoPkgTestD`
+        setcode(notebook.cells[7], "")
+        update_save_run!(🍭, notebook, notebook.cells[7])
+
+        @test notebook.cells[7].errored == false
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test count("PlutoPkgTestD", ptoml_contents()) == 0
+
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    simple_import_path = joinpath(@__DIR__, "simple_import.jl")
+    simple_import_notebook = read(simple_import_path, String)
+
+    @testset "Manifest loading" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, simple_import_notebook)
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        fakeclient.connected_notebook = notebook
+        
+        @test num_backups_in(dir) == 0
+
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+
+        @test notebook.cells[2].output.body == "0.2.2"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+
+    @testset "Pkg cell" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        
+        notebook = Notebook([
+            Cell("1"),
+            Cell("2"),
+            Cell("3"),
+            Cell("4"),
+            Cell("5"),
+            Cell("6"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_save_run!(🍭, notebook, notebook.cells)
+
+        # not necessary since there are no packages:
+        # @test has_embedded_pkgfiles(notebook)
+
+        setcode(notebook.cells[1], "import Pkg")
+        update_save_run!(🍭, notebook, notebook.cells[1])
+        setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
+        update_save_run!(🍭, notebook, notebook.cells[2])
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.nbpkg_ctx === nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+        @test !has_embedded_pkgfiles(notebook)
+
+        setcode(notebook.cells[3], "Pkg.add(\"JSON\")")
+        update_save_run!(🍭, notebook, notebook.cells[3])
+        setcode(notebook.cells[4], "using JSON")
+        update_save_run!(🍭, notebook, notebook.cells[4])
+        setcode(notebook.cells[5], "using Dates")
+        update_save_run!(🍭, notebook, notebook.cells[5])
+
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+
+        @test !has_embedded_pkgfiles(notebook)
+
+        setcode(notebook.cells[2], "2")
+        setcode(notebook.cells[3], "3")
+        update_save_run!(🍭, notebook, notebook.cells[2:3])
+        
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_required_msg !== nothing
+        @test has_embedded_pkgfiles(notebook)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
+
+    local post_pkg_notebook = nothing
+
+    @testset "Backwards compat" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        dir = mktempdir()
+        path = joinpath(dir, "hello.jl")
+        write(path, pre_pkg_notebook)
+
+        @test num_backups_in(dir) == 0
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        fakeclient.connected_notebook = notebook
+        nb_contents() = read(notebook.path, String)
+        
+        @test num_backups_in(dir) == 0
+        # @test num_backups_in(dir) == 1
+
+        post_pkg_notebook = read(path, String)
+
+        # test that pkg cells got added
+        @test length(post_pkg_notebook) > length(pre_pkg_notebook) + 50
+        @test has_embedded_pkgfiles(notebook)
+
+        @test notebook.nbpkg_ctx !== nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
+
+    @testset "Forwards compat" begin
+        # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
+        p = Distributed.addprocs(1) |> first
+
+        @test post_pkg_notebook isa String
+
+        Distributed.remotecall_eval(Main, p, quote
+            path = tempname()
+            write(path, $(post_pkg_notebook))
+            import Pkg
+            # optimization:
+            if isdefined(Pkg, :UPDATED_REGISTRY_THIS_SESSION)
+                Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
+            end
+
+            Pkg.activate(mktempdir())
+            Pkg.add(Pkg.PackageSpec(;name="Pluto",version=v"0.14.7"))
+            import Pluto
+            @assert Pluto.PLUTO_VERSION == v"0.14.7"
+
+            s = Pluto.ServerSession()
+            s.options.evaluation.workspace_use_distributed = false
+
+            nb = Pluto.SessionActions.open(s, path; run_async=false)
+
+            nothing
+        end)
+
+        # Cells that use Example will error because the package is not installed.
+
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[1].errored == false
+        # end)
+        @test Distributed.remotecall_eval(Main, p, quote
+            nb.cells[2].errored == false
+        end)
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[3].errored == false
+        # end)
+        # @test Distributed.remotecall_eval(Main, p, quote
+        #     nb.cells[3].output.body == "25"
+        # end)
+
+        Distributed.rmprocs([p])
+    end
+
+    @testset "PkgUtils -- reset" begin
+        dir = mktempdir()
+        f = joinpath(dir, "hello.jl")
+
+        write(f, simple_import_notebook)
+        
+        @test num_backups_in(dir) == 0
+        Pluto.reset_notebook_environment(f)
+
+        @test num_backups_in(dir) == 1
+        @test !has_embedded_pkgfiles(read(f, String))
+    end
+
+    @testset "PkgUtils -- update" begin
+        dir = mktempdir()
+        f = joinpath(dir, "hello.jl")
+
+        write(f, simple_import_notebook)
+        @test !occursin("0.3.1", read(f, String))
+        
+        @test num_backups_in(dir) == 0
+        Pluto.update_notebook_environment(f)
+
+        @test num_backups_in(dir) == 1
+        @test has_embedded_pkgfiles(read(f, String))
+        @test !Pluto.only_versions_differ(f, simple_import_path)
+        @test occursin("0.3.1", read(f, String))
+
+        Pluto.update_notebook_environment(f)
+        @test_skip num_backups_in(dir) == 1
+    end
+
+    @testset "Bad files" begin
+        @testset "$(name)" for name in ["corrupted_manifest", "unregistered_import"]
+
+            original_path = joinpath(@__DIR__, "$(name).jl")
+            original_contents = read(original_path, String)
+
+            fakeclient = ClientSession(:fake, nothing)
+            🍭 = ServerSession()
+            🍭.connected_clients[fakeclient.id] = fakeclient
+    
+            dir = mktempdir()
+            path = joinpath(dir, "hello.jl")
+            write(path, original_contents)
+    
+            @test num_backups_in(dir) == 0
+    
+            notebook = SessionActions.open(🍭, path; run_async=false)
+            fakeclient.connected_notebook = notebook
+            nb_contents() = read(notebook.path, String)
+
+            should_restart = (
+                notebook.nbpkg_restart_recommended_msg !==  nothing || notebook.nbpkg_restart_required_msg !== nothing
+            )
+
+            # if name == "corrupted_manifest"
+            #     @test !should_restart
+            # end
+
+            # this breaks julia for somee reason:
+            #     # we don't want to recommend restart right after launch, but it's easier for us
+            #     @test_broken !should_restart
+            # end
+
+            if should_restart
+                Pluto.response_restrart_process(Pluto.ClientRequest(
+                    session=🍭,
+                    notebook=notebook,
+                ); run_async=false)
+            end
+
+            if name != "unregistered_import"
+                @test notebook.cells[1].errored == false
+                @test notebook.cells[2].errored == false
+                @test notebook.cells[2].output.body == "0.2.2" # the Project.toml remained, so we did not lose our compat bound.
+                @test has_embedded_pkgfiles(notebook)
+            end
+
+
+            @test !Pluto.only_versions_differ(notebook.path, original_path)
+    
+            @test notebook.nbpkg_ctx !== nothing
+            @test notebook.nbpkg_restart_recommended_msg === nothing
+            @test notebook.nbpkg_restart_required_msg === nothing
+
+            setcode(notebook.cells[2], "1 + 1")
+            update_save_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[2].output.body == "2"
+
+            
+            setcode(notebook.cells[2], """
+            begin
+                import PlutoPkgTestD
+                PlutoPkgTestD.MY_VERSION |> Text
+            end
+            """)
+            update_save_run!(🍭, notebook, notebook.cells[2])
+            @test notebook.cells[2].output.body == "0.1.0"
+
+            @test has_embedded_pkgfiles(notebook)
+
+            WorkspaceManager.unmake_workspace((🍭, notebook))
+        end
+
+    end
+
+    # @test false
+
+    # @testset "File format" begin
+    #     notebook = Notebook([
+    #         Cell("import PlutoPkgTestA"), # cell 1
+    #         Cell("PlutoPkgTestA.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestB"), # cell 3
+    #         Cell("PlutoPkgTestB.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestC"), # cell 5
+    #         Cell("PlutoPkgTestC.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestD"), # cell 7
+    #         Cell("PlutoPkgTestD.MY_VERSION |> Text"),
+    #         Cell("import PlutoPkgTestE"), # cell 9
+    #         Cell("PlutoPkgTestE.MY_VERSION |> Text"),
+    #         Cell("eval(:(import DataFrames))")
+    #     ])
+
+    #     file1 = tempname()
+    #     notebook.path = file1
+
+    #     save_notebook()
+
+
+    #     save_notebook
+    # end
+
+
+    Pkg.Registry.rm(pluto_test_registry_spec)
+    # Pkg.Registry.add("General")
+end
+
+# reg_path = mktempdir()
+# repo = LibGit2.clone("https://github.com/JuliaRegistries/General.git", reg_path)
+
+# LibGit2.checkout!(repo, "aef26d37e1d0e8f8387c011ccb7c4a38398a18f6")
+
+

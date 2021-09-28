@@ -1,9 +1,10 @@
 import path from "path"
 
-export const getTextContent = (selector) => {
-    return page.evaluate((selector) => document.querySelector(selector).textContent, selector)
+export const getTextContent = (page, selector) => {
+    // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+    return page.evaluate((selector) => document.querySelector(selector).innerText, selector)
 }
-export const countCells = async () =>
+export const countCells = async (page) =>
     await page.evaluate(() => {
         const a = Array.from(document.querySelectorAll("pluto-cell"))
         return a?.length
@@ -38,7 +39,7 @@ export const waitForContent = async (page, selector) => {
         { polling: 100 },
         selector
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const waitForContentToChange = async (page, selector, currentContent) => {
@@ -46,13 +47,14 @@ export const waitForContentToChange = async (page, selector, currentContent) => 
     await page.waitForFunction(
         (selector, currentContent) => {
             const element = document.querySelector(selector)
+            console.log(`element:`, element)
             return element !== null && element.textContent !== currentContent
         },
         { polling: 100 },
         selector,
         currentContent
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const waitForContentToBecome = async (page, selector, targetContent) => {
@@ -60,13 +62,14 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
     await page.waitForFunction(
         (selector, targetContent) => {
             const element = document.querySelector(selector)
-            return element !== null && element.textContent === targetContent
+            // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
+            return element !== null && element.innerText === targetContent
         },
         { polling: 100 },
         selector,
         targetContent
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(selector)])
@@ -102,6 +105,8 @@ export const setupPage = (page) => {
     dismissVersionDialogs(page)
 }
 
+let testname = () => expect.getState().currentTestName.replace(/ /g, "_")
+
 export const lastElement = (arr) => arr[arr.length - 1]
 
 const getFixturesDir = () => path.join(__dirname, "..", "fixtures")
@@ -110,8 +115,10 @@ const getArtifactsDir = () => path.join(__dirname, "..", "artifacts")
 
 export const getFixtureNotebookPath = (name) => path.join(getFixturesDir(), name)
 
-export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), "temporary_notebook_" + Date.now() + ".jl")
+export const getTemporaryNotebookPath = () => path.join(getArtifactsDir(), `temporary_notebook_${testname()}_${Date.now()}.jl`)
 
-export const getTestScreenshotPath = () => path.join(getArtifactsDir(), "test_screenshot_" + Date.now() + ".png")
+export const getTestScreenshotPath = () => {
+    path.join(getArtifactsDir(), `screenshot_${testname()}_${Date.now()}.png`)
+}
 
 export const saveScreenshot = (page, path) => page.screenshot({ path: path })

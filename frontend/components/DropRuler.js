@@ -6,7 +6,7 @@ export class DropRuler extends Component {
         this.dropee = null
         this.dropped = null
         this.cell_edges = []
-        this.mouse_position = {}
+        this.pointer_position = {}
         this.precompute_cell_edges = () => {
             /** @type {Array<HTMLElement>} */
             const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
@@ -64,7 +64,7 @@ export class DropRuler extends Component {
         document.addEventListener("dragover", (e) => {
             // Called continuously during drag
             if (e.dataTransfer.types[0] !== "text/pluto-cell") return
-            this.mouse_position = e
+            this.pointer_position = e
 
             this.setState({
                 drop_index: this.getDropIndexOf(e),
