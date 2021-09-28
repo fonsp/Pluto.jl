@@ -2273,8 +2273,11 @@ pluto-input:focus-within .cm-editor .cm-matchingBracket {
 
 /* Required for awesome-line-wrapping-plugin */
 .awesome-wrapping-plugin-indent {
-    text-indent: calc(-1 * var(--indented, 0px) - 1px) !important; /* I have no idea why, but without the - 1px it behaves weirdly periodically */
-    padding-left: calc(var(--indented, 0px) + var(--cm-left-padding, 4px)) !important;
+    /* Seems like tabs don't play too well with negative text-indent, and there seem to be some kind of cut-off point
+       before it even has any effect... Honestly need to look at this better because I can't figure it out yet */
+    --correction: 1px;
+    text-indent: calc(-1 * var(--indented, 0px) - var(--correction, 0px)) !important;
+    padding-left: calc(var(--indented, 0px) + var(--cm-left-padding, 4px)) + var(--correction, 0px) !important;
 }
 .awesome-wrapping-plugin-indent > * {
     /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */

@@ -157,6 +157,18 @@ export const CellInput = ({
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
+    let on_change_compartment = useCompartment(
+        newcm_ref,
+        // Functions are hard to compare, so I useMemo manually
+        useMemo(() => {
+            return EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                    on_change(update.state.doc.toString())
+                }
+            })
+        }, [on_change])
+    )
+
     useLayoutEffect(() => {
         const keyMapSubmit = () => {
             on_submit()
@@ -185,7 +197,6 @@ export const CellInput = ({
 
             // TODO Multicursor?
             let selection = cm.state.selection.main
-            let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
             if (!selection.empty) {
                 return indentMore(cm)
             } else {
@@ -295,18 +306,6 @@ export const CellInput = ({
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
-        const onCM6Update = (/** @type {ViewUpdate} */ update) => {
-            if (update.docChanged) {
-                const cm = newcm_ref.current
-                const new_value = getValue6(cm)
-
-                // TODO Move to own plugin
-                if (new_value.length > 1 && new_value[0] === "?") {
-                    window.dispatchEvent(new CustomEvent("open_live_docs"))
-                }
-                on_change_ref.current(new_value)
-            }
-        }
 
         let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
@@ -352,6 +351,11 @@ export const CellInput = ({
                     EditorView.clickAddsSelectionRange.of((event) => event.altKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
+                    // Experimental: Also add closing brackets for tripple string
+                    // TODO also add closing string when typing a string macro
+                    EditorState.languageData.of((state, pos, side) => {
+                        return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
+                    }),
                     closeBrackets(),
                     highlightSelectionMatches(),
                     bracketMatching(),
@@ -371,6 +375,13 @@ export const CellInput = ({
                     pluto_paste_plugin({
                         pluto_actions: pluto_actions,
                         cell_id: cell_id,
+                    }),
+                    // Update live docs when in a cell that starts with `?`
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
+                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                        }
                     }),
                     drag_n_drop_plugin(on_drag_drop_events),
                     EditorState.tabSize.of(4),
@@ -399,9 +410,10 @@ export const CellInput = ({
                     placeholder("Enter cell code..."),
 
                     EditorView.lineWrapping,
-                    awesome_line_wrapping,
+                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
+                    // awesome_line_wrapping,
 
-                    EditorView.updateListener.of(onCM6Update),
+                    on_change_compartment,
                 ],
             }),
             parent: dom_node_ref.current,
