@@ -445,8 +445,7 @@ export const CellInput = ({
         }
 
         // @ts-ignore
-        // TODO: Migrate this to codemirror6
-        const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.CodeMirror-code")
+        const lines_wrapper_dom_node = dom_node_ref.current.querySelector("div.cm-editor")
         const lines_wrapper_resize_observer = new ResizeObserver(() => {
             const line_nodes = lines_wrapper_dom_node.children
             const tops = _.map(line_nodes, (c) => c.offsetTop)
