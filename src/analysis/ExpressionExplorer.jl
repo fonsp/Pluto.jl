@@ -811,13 +811,24 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
 
             return Symbol[], symstate
         end
-        
-        # recurse
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
-        if length(ex.args) > 1
-            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+
+        # For a() = ... in a struct definition
+        if Meta.isexpr(ex,:(=), 2) && Meta.isexpr(ex.args[1], :call)
+            name, symstate = explore_funcdef!(ex.args[1], scopestate)
             union!(symstate, explore!(ex.args[2], scopestate))
+            return name, symstate
         end
+
+        # recurse by starting by the right hand side because f(x=x) references the global variable x
+        rhs_symstate = if length(ex.args) > 1
+            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+            explore!(ex.args[2], scopestate)
+        else
+            SymbolsState()
+        end
+        name, symstate = explore_funcdef!(ex.args[1], scopestate)
+        union!(symstate, rhs_symstate)
+
         return name, symstate
 
     elseif ex.head == :where
