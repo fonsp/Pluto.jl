@@ -172,9 +172,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
-        @test_broken testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+        @test testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
             :f => ([], [], [], [])
-        ]; verbose=false)
+        ])
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
@@ -260,6 +260,23 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
+
+        @test testee(:(function f()
+            function hello()
+            end
+            hello()
+        end), [], [], [], [:f => ([], [], [], [])])
+        @test testee(:(function a()
+            b() = Test()
+            b()
+        end), [], [], [], [:a => ([], [], [:Test], [])])
+        @test testee(:(begin
+            function f()
+                g() = z
+                g()
+            end
+            g()
+        end), [], [], [:g], [:f => ([:z], [], [], [])])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [

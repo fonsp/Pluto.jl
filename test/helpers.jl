@@ -21,9 +21,13 @@ function Base.show(io::IO, s::SymbolsState)
         end
         print(io, "]")
     end
-    print(io, "], [")
-    print(io, s.macrocalls)
-    print(io, "])")
+    if !isempty(s.macrocalls)
+        print(io, "], [")
+        print(io, s.macrocalls)
+        print(io, "])")
+    else
+        print(io, ")")
+    end
 end
 
 "Calls `ExpressionExplorer.compute_symbolreferences` on the given `expr` and test the found SymbolsState against a given one, with convient syntax.

@@ -516,14 +516,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
 
+        if length(funcname) == 1
+            push!(scopestate.definedfuncs, funcname[end])
+            push!(scopestate.hiddenglobals, funcname[end])
+        elseif length(funcname) > 1
+            push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
+        end
+
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcnamesig] = innersymstate
-            if length(funcname) == 1
-                push!(scopestate.definedfuncs, funcname[end])
-                push!(scopestate.hiddenglobals, funcname[end])
-            elseif length(funcname) > 1
-                push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
-            end
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
             
