@@ -2014,7 +2014,8 @@ nav#undo_delete.hidden {
 pluto-logs-container {
     display: block;
     width: max(100px, 100vw - (700px + 25px));
-    max-height: calc(100% - 2px);
+    /* Show logs up to the RunArea */
+    max-height: calc(100% + 14px);
     position: absolute;
     z-index: 3;
     right: min(-100px, -100vw + (700px + 25px));
