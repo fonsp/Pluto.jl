@@ -298,6 +298,20 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
     return results_map
 }
 
+const execute_scripttags_2 = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
+    console.log("execute_scripttags_2 v3")
+    let results_map = new Map()
+    for (let old_node of script_nodes) {
+        const new_node = document.createElement("script")
+        for (let attr of old_node.attributes) {
+            new_node.setAttribute(attr.name, attr.value)
+        }
+        new_node.text = old_node.text
+        old_node.parentNode.replaceChild(new_node, old_node)
+    }
+    return results_map
+}
+
 let run = (f) => f()
 
 export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timestamp }) => {
@@ -333,7 +347,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
         run(async () => {
             js_init_set?.add(container.current)
-            previous_results_map.current = await execute_scripttags({
+            previous_results_map.current = await execute_scripttags_2({
                 root_node: container.current,
                 script_nodes: new_scripts,
                 invalidation: invalidation,
