@@ -53,12 +53,30 @@ let get_variables_from_assignment = (cursor) => {
     return []
 }
 
+/**
+ * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
+ */
 let get_local_variables = (cursor) => {
     let local_variables = []
     do {
+        if (cursor.name === "DoClause" && cursor.firstChild()) {
+            // It's not yet possible to be SURE that we have the arguments, because of the way @lezer/julia works...
+            // But imma do my best, and soon contribute to @lezer/julia
+
+            cursor.nextSibling() // We are now supposed to be in the argumentlist..
+            // Problem is: we might also be in the first statement of the function...
+            // So we'll make sure that we have something that is valid as arguments,
+            // but then still someone MIGHT have a plain identifier in the first statement.
+            // @ts-ignore
+            local_variables.push(...get_variables_from_assignment(cursor))
+            cursor.parent()
+            continue
+        }
+
         if (cursor.name === "FunctionDefinition" && cursor.firstChild()) {
             // Find ArgumentList
             do {
+                // @ts-ignore
                 if (cursor.name !== "ArgumentList") continue
                 // Cycle through arguments
                 if (cursor.firstChild()) {
@@ -69,16 +87,19 @@ let get_local_variables = (cursor) => {
                 }
             } while (cursor.nextSibling())
             cursor.parent()
+            continue
         }
 
         if (cursor.name === "LetStatement" && cursor.firstChild()) {
             do {
+                // @ts-ignore
                 if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
                     local_variables.push(...get_variables_from_assignment(cursor))
                     cursor.parent()
                 }
             } while (cursor.nextSibling())
             cursor.parent()
+            continue
         }
 
         // When in a block-ish node (FunctionDefinition, but later also begin, let, if, etc)
@@ -89,6 +110,7 @@ let get_local_variables = (cursor) => {
             if (cursor.name === "LocalStatement" || cursor.name === "ConstStatement" || cursor.name === "GlobalStatement") {
                 if (cursor.firstChild()) {
                     do {
+                        // @ts-ignore
                         if (cursor.name === "VariableDeclaration" && cursor.firstChild()) {
                             local_variables.push(...get_variables_from_assignment(cursor))
                             cursor.parent()
@@ -108,6 +130,7 @@ let get_local_variables = (cursor) => {
             }
             if (cursor.name === "ArrayComprehensionExpression" && cursor.firstChild()) {
                 cursor.nextSibling()
+                // @ts-ignore
                 if (cursor.name === "ForClause" && cursor.firstChild()) {
                     do {
                         if (cursor.name === "ForBinding" && cursor.firstChild()) {
@@ -140,10 +163,21 @@ let get_root_variable_from_expression = (cursor) => {
     return null
 }
 
-let VALID_DOCS_TYPES = ["Identifier", "FieldExpression", "SubscriptExpression", "MacroFieldExpression", "Operator", "ParameterizedIdentifier"]
+let VALID_DOCS_TYPES = [
+    "Identifier",
+    "FieldExpression",
+    "SubscriptExpression",
+    "MacroFieldExpression",
+    "MacroIdentifier",
+    "Operator",
+    "ParameterizedIdentifier",
+]
+let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote", "do", "struct", "mutable"]
 
 let is_docs_searchable = (/** @type {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} */ cursor) => {
-    if (VALID_DOCS_TYPES.includes(cursor.name)) {
+    if (keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
+        return true
+    } else if (VALID_DOCS_TYPES.includes(cursor.name)) {
         if (cursor.firstChild()) {
             do {
                 // Numbers themselves can't be docs searched, but using numbers inside SubscriptExpression can be.
@@ -217,6 +251,31 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                 }
 
                 verbose && console.log(`parents:`, parents)
+
+                let index_of_struct_in_parents = parents.indexOf("StructDefinition")
+                if (index_of_struct_in_parents !== -1) {
+                    // If we're in a struct, we basically barely want to search the docs:
+                    // - Struct name is useless: you are looking at the definition
+                    // - Properties are just named, not in the workspace or anything
+                    // Only thing we do want, are types and the right hand side of `=`'s.
+                    if (parents.includes("AssignmentExpression") && parents.indexOf("AssignmentExpression") < index_of_struct_in_parents) {
+                        // We're inside a `... = ...` inside the struct
+                    } else if (parents.includes("TypedExpression") && parents.indexOf("TypedExpression") < index_of_struct_in_parents) {
+                        // We're inside a `x::X` inside the struct
+                    } else if (cursor.name === "struct" || cursor.name === "mutable") {
+                        cursor.parent()
+                        cursor.firstChild()
+                        if (cursor.name === "struct") return "struct"
+                        if (cursor.name === "mutable") {
+                            cursor.nextSibling()
+                            // @ts-ignore
+                            if (cursor.name === "struct") return "mutable struct"
+                        }
+                        return undefined
+                    } else {
+                        return undefined
+                    }
+                }
 
                 // `callee(...)` should yield "callee"
                 // (Only if it is on the `(` or `)`, or in like a space,
@@ -351,15 +410,7 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     return "??:"
                 }
 
-                // Sure these keywords could be useful, but I think it's a bit much to show docs for everyone
-                let keywords_that_have_docs = ["function", "macro", "end", "begin", "let", "if", "else", "try", "catch", "finally"]
-                // These keywords however are a bit more useful to show docs for
-                let keywords_that_have_docs_and_are_cool = ["import", "export", "try", "catch", "finally", "quote"]
-                if (
-                    VALID_DOCS_TYPES.includes(cursor.name) ||
-                    keywords_that_have_docs_and_are_cool.includes(cursor.name)
-                    // keywords_that_have_docs.includes(cursor.name)
-                ) {
+                if (VALID_DOCS_TYPES.includes(cursor.name) || keywords_that_have_docs_and_are_cool.includes(cursor.name)) {
                     if (!is_docs_searchable(cursor)) {
                         return undefined
                     }

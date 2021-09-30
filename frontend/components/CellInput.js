@@ -5,7 +5,6 @@ import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
 import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
-import { block_matcher_plugin } from "./CellInput/block_matcher_plugin.js"
 import { detect_deserializer } from "../common/Serialization.js"
 
 import {
@@ -30,7 +29,6 @@ import {
     drawSelection,
     indentOnInput,
     defaultHighlightStyle,
-    bracketMatching,
     closeBrackets,
     highlightSelectionMatches,
     closeBracketsKeymap,
@@ -53,6 +51,7 @@ import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
+import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -153,24 +152,22 @@ export const CellInput = ({
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
-    const disable_input_ref = useRef(disable_input)
-
-    useEffect(() => {
-        /** Migration #1: New */
-        const current_value = getValue6(newcm_ref.current) ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            setValue6(newcm_ref.current, remote_code)
-        }
-    }, [remote_code])
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
+    let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
+
+    let on_change_compartment = useCompartment(
+        newcm_ref,
+        // Functions are hard to compare, so I useMemo manually
+        useMemo(() => {
+            return EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                    on_change(update.state.doc.toString())
+                }
+            })
+        }, [on_change])
+    )
 
     useLayoutEffect(() => {
         const keyMapSubmit = () => {
@@ -200,7 +197,6 @@ export const CellInput = ({
 
             // TODO Multicursor?
             let selection = cm.state.selection.main
-            let last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
             if (!selection.empty) {
                 return indentMore(cm)
             } else {
@@ -208,21 +204,6 @@ export const CellInput = ({
                     changes: { from: selection.from, to: selection.to, insert: "\t" },
                     selection: EditorSelection.cursor(selection.from + 1),
                 })
-                return true
-            }
-        }
-        const keyMapTabShift = (/** @type {EditorView} */ cm) => {
-            // TODO Multicursor?
-            let selection = cm.state.selection.main
-            if (!selection.empty) {
-                return indentLess(cm)
-            } else {
-                const last_char = cm.state.sliceDoc(selection.from - 1, selection.from)
-                if (last_char === "\t") {
-                    cm.dispatch({
-                        changes: { from: selection.from - 1, to: selection.to, insert: "" },
-                    })
-                }
                 return true
             }
         }
@@ -314,7 +295,7 @@ export const CellInput = ({
             { key: "Shift-Enter", run: keyMapSubmit },
             { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
             { key: "Ctrl-Enter", run: keyMapRun },
-            { key: "Tab", run: keyMapTab, shift: keyMapTabShift },
+            { key: "Tab", run: keyMapTab, shift: indentLess },
             { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
             { key: "Ctrl-m", run: keyMapMD },
             // Codemirror6 doesn't like capslock
@@ -325,18 +306,6 @@ export const CellInput = ({
             { key: "Backspace", run: keyMapBackspace },
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
-        const onCM6Update = (/** @type {ViewUpdate} */ update) => {
-            if (update.docChanged) {
-                const cm = newcm_ref.current
-                const new_value = getValue6(cm)
-
-                // TODO Move to own plugin
-                if (new_value.length > 1 && new_value[0] === "?") {
-                    window.dispatchEvent(new CustomEvent("open_live_docs"))
-                }
-                on_change_ref.current(new_value)
-            }
-        }
 
         let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
@@ -366,7 +335,11 @@ export const CellInput = ({
                 doc: local_code,
 
                 extensions: [
+                    // Compartments coming from react state/props
                     nbpkg_compartment,
+                    used_variables_compartment,
+                    editable_compartment,
+
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
@@ -378,10 +351,14 @@ export const CellInput = ({
                     EditorView.clickAddsSelectionRange.of((event) => event.altKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
-                    bracketMatching(),
+                    // Experimental: Also add closing brackets for tripple string
+                    // TODO also add closing string when typing a string macro
+                    EditorState.languageData.of((state, pos, side) => {
+                        return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
+                    }),
                     closeBrackets(),
                     highlightSelectionMatches(),
-                    block_matcher_plugin,
+                    bracketMatching(),
                     docs_updater,
                     // Remove selection on blur
                     EditorView.domEventHandlers({
@@ -399,15 +376,18 @@ export const CellInput = ({
                         pluto_actions: pluto_actions,
                         cell_id: cell_id,
                     }),
+                    // Update live docs when in a cell that starts with `?`
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
+                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                        }
+                    }),
                     drag_n_drop_plugin(on_drag_drop_events),
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
-                    EditorView.updateListener.of(onCM6Update),
-                    used_variables_compartment,
                     go_to_definition_plugin,
-                    editable.of(EditorState.readOnly.of(disable_input_ref.current)),
-                    history(),
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
                             let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
@@ -430,7 +410,10 @@ export const CellInput = ({
                     placeholder("Enter cell code..."),
 
                     EditorView.lineWrapping,
-                    awesome_line_wrapping,
+                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
+                    // awesome_line_wrapping,
+
+                    on_change_compartment,
                 ],
             }),
             parent: dom_node_ref.current,
@@ -443,7 +426,6 @@ export const CellInput = ({
         }
 
         if (focus_after_creation) {
-            // MIGRATED (and commented because it blocks the "smooth" scroll into view)
             setTimeout(() => {
                 let view = newcm_ref.current
                 view.dom.scrollIntoView({
@@ -461,12 +443,23 @@ export const CellInput = ({
         }
     }, [])
 
-    useLayoutEffect(() => {
-        disable_input_ref.current = disable_input
-        newcm_ref.current.dispatch({
-            effects: editable.reconfigure(EditorState.readOnly.of(disable_input)),
-        })
-    }, [disable_input])
+    // Effect to apply "remote_code" to the cell when it changes...
+    // ideally this won't be necessary as we'll have actual multiplayer,
+    // or something to tell the user that the cell is out of sync.
+    useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
+        const current_value = getValue6(newcm_ref.current) ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
+        remote_code_ref.current = remote_code
+        if (current_value !== remote_code) {
+            setValue6(newcm_ref.current, remote_code)
+        }
+    }, [remote_code])
 
     useEffect(() => {
         const cm = newcm_ref.current
@@ -498,7 +491,6 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
-    // TODO effect hook for disable_input?
     return html`
         <pluto-input ref=${dom_node_ref}>
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />

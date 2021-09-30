@@ -172,9 +172,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
-        @test_broken testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+        @test testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
             :f => ([], [], [], [])
-        ]; verbose=false)
+        ])
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
@@ -247,6 +247,13 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
         @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
+        @test testee(:(g(; b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(g(b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(f(x = y) = x), [], [], [], [:f => ([:y], [], [], [])])
+        @test testee(:(f(x, g=function(y=x) x + y + z end) = x * g(x)), [], [], [], [
+            :f => ([:z], [], [:+, :*], [])
+        ])
+
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
         @test testee(:(func(a, b=c)), [:a, :c], [], [:func], [])
@@ -260,6 +267,23 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
+
+        @test testee(:(function f()
+            function hello()
+            end
+            hello()
+        end), [], [], [], [:f => ([], [], [], [])])
+        @test testee(:(function a()
+            b() = Test()
+            b()
+        end), [], [], [], [:a => ([], [], [:Test], [])])
+        @test testee(:(begin
+            function f()
+                g() = z
+                g()
+            end
+            g()
+        end), [], [], [:g], [:f => ([:z], [], [], [])])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
@@ -317,6 +341,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:((::MyType)(x,y) = x + y), [], [], [], [
             :MyType => ([], [], [:+], [])
+        ])
+        @test testee(:((obj::typeof(Int64[]))(x, y::Float64) = obj + x + y), [], [], [], [
+            :anon => ([:Int64, :Float64], [], [:+, :typeof], [])
+        ])
+        @test testee(:((::Get(MyType))(x, y::OtherType) = y * x + z), [], [], [], [
+            :anon => ([:MyType, :z, :OtherType], [], [:Get, :*, :+], [])
         ])
     end
     @testset "Scope modifiers" begin

@@ -1266,6 +1266,17 @@ declare type StateCommand = (target: {
     dispatch: (transaction: Transaction) => void;
 }) => boolean;
 
+/**
+Utility function for combining behaviors to fill in a config
+object from an array of provided configs. Will, by default, error
+when a field gets two values that aren't `===`-equal, but you can
+provide combine functions per field to do something else.
+*/
+declare function combineConfig<Config>(configs: readonly Partial<Config>[], defaults: Partial<Config>, // Should hold only the optional properties of Config, but I haven't managed to express that
+combine?: {
+    [P in keyof Config]?: (first: Config[P], second: Config[P]) => Config[P];
+}): Config;
+
 interface ChangedRange {
     fromA: number;
     toA: number;
@@ -2532,9 +2543,7 @@ declare class ViewUpdate {
     */
     readonly startState: EditorState;
     /**
-    Tells you whether the [viewport](https://codemirror.net/6/docs/ref/#view.EditorView.viewport) or
-    [visible ranges](https://codemirror.net/6/docs/ref/#view.EditorView.visibleRanges) changed in this
-    update.
+    Tells you whether the viewport changed in this update.
     */
     get viewportChanged(): boolean;
     /**
@@ -2770,7 +2779,6 @@ declare class EditorView {
     private contentAttrs;
     private styleModules;
     private bidiCache;
-    private destroyed;
     /**
     Construct a new view. You'll usually want to put `view.dom` into
     your document after creating a view, so that the user can see
@@ -3611,13 +3619,9 @@ declare const tags: {
     */
     tagName: Tag;
     /**
-    A property or field [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    A property, field, or attribute [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
     */
     propertyName: Tag;
-    /**
-    An attribute name (subtag of [`propertyName`](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName)).
-    */
-    attributeName: Tag;
     /**
     The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a class.
     */
@@ -3650,10 +3654,6 @@ declare const tags: {
     A character literal (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
     */
     character: Tag;
-    /**
-    An attribute value (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
-    */
-    attributeValue: Tag;
     /**
     A number [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
     */
@@ -4314,4 +4314,4 @@ Default key bindings for this package.
 */
 declare const commentKeymap: readonly KeyBinding[];
 
-export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, indentLess, indentMore, indentOnInput, indentUnit, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, placeholder, rectangularSelection, searchKeymap, syntaxTree, tags };
+export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, indentLess, indentMore, indentOnInput, indentUnit, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, placeholder, rectangularSelection, searchKeymap, syntaxTree, tags };

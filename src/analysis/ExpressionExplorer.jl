@@ -330,6 +330,8 @@ Returns whether or not an assignment Expr(:(=),...) is assigning to a new functi
 """
 is_function_assignment(ex::Expr) = ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
 
+anonymous_name() = Symbol("anon", rand(UInt64))
+
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
 function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
@@ -514,14 +516,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
 
+        if length(funcname) == 1
+            push!(scopestate.definedfuncs, funcname[end])
+            push!(scopestate.hiddenglobals, funcname[end])
+        elseif length(funcname) > 1
+            push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
+        end
+
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcnamesig] = innersymstate
-            if length(funcname) == 1
-                push!(scopestate.definedfuncs, funcname[end])
-                push!(scopestate.hiddenglobals, funcname[end])
-            elseif length(funcname) > 1
-                push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
-            end
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
             
@@ -561,7 +564,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :(->)
         # Creates local scope
 
-        tempname = Symbol("anon", rand(UInt64))
+        tempname = anonymous_name()
 
         # We will rewrite this to a normal function definition, with a temporary name
         funcroot = ex.args[1]
@@ -782,8 +785,19 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
         # function MyType(obj, a, b) ...; end
         funcroot = ex.args[1]
-        if funcroot isa Expr && funcroot.head == :(::)
-            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+        if Meta.isexpr(funcroot, :(::))
+            if last(funcroot.args) isa Symbol
+                return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+            else
+                # Function call as type: (obj::typeof(myotherobject))()
+                symstate = explore!(last(funcroot.args), scopestate)
+                name, declaration_symstate = if length(funcroot.args) == 1
+                    explore_funcdef!(Expr(:call, anonymous_name(), params_to_explore...), scopestate)
+                else
+                    explore_funcdef!(Expr(:call, anonymous_name(), first(funcroot.args), params_to_explore...), scopestate)
+                end
+                return name, union!(symstate, declaration_symstate)
+            end
         end
 
         # get the function name
@@ -797,13 +811,24 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
 
             return Symbol[], symstate
         end
-        
-        # recurse
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
-        if length(ex.args) > 1
-            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+
+        # For a() = ... in a struct definition
+        if Meta.isexpr(ex,:(=), 2) && Meta.isexpr(ex.args[1], :call)
+            name, symstate = explore_funcdef!(ex.args[1], scopestate)
             union!(symstate, explore!(ex.args[2], scopestate))
+            return name, symstate
         end
+
+        # recurse by starting by the right hand side because f(x=x) references the global variable x
+        rhs_symstate = if length(ex.args) > 1
+            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+            explore!(ex.args[2], scopestate)
+        else
+            SymbolsState()
+        end
+        name, symstate = explore_funcdef!(ex.args[1], scopestate)
+        union!(symstate, rhs_symstate)
+
         return name, symstate
 
     elseif ex.head == :where
