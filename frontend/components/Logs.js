@@ -35,13 +35,13 @@ export const Logs = ({ logs, line_heights }) => {
         () => `grid-template-rows: ${line_heights.map((y) => y + "px").join(" ")} repeat(auto-fill, 15px)}; width: ${logs.length * GRID_WIDTH}px;`,
         [logs.length, line_heights]
     )
-
+    const is_hidden_input = line_heights[0] === 0
     return html`
         <pluto-logs-container ref=${container}>
             <pluto-logs style="${logsStyle}">
                 <div style="grid-row: 1 / 20"></div>
                 ${[...logs.slice(from, to)].map((log, i) => {
-                    return html`<${Dot} level=${log.level} msg=${log.msg} kwargs=${log.kwargs} x=${from + i} y=${log.line - 1} /> `
+                    return html`<${Dot} level=${log.level} msg=${log.msg} kwargs=${log.kwargs} x=${from + i} y=${is_hidden_input ? 0 : log.line - 1} /> `
                 })}
             </pluto-logs>
         </pluto-logs-container>
@@ -56,13 +56,13 @@ const Dot = ({ msg, kwargs, x, y, level }) => {
     // useEffect(() => {
     //     label_ref.current.innerHTML = body
     // }, [body])
+    const [inspecting, set_inspecting] = useState(false)
 
     useLayoutEffect(() => {
         node_ref.current.style.gridColumn = `${x + 1}`
         node_ref.current.style.gridRow = `${y + 1}`
     }, [x, y])
 
-    const [inspecting, set_inspecting] = useState(false)
     useLayoutEffect(() => {
         if (inspecting) {
             const f = (e) => {
