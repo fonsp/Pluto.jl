@@ -43,6 +43,7 @@ export const Cell = ({
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [show_logs, set_show_logs] = useState(true) // Show logs to begin with
     const { saving_file, drag_active, handler } = useDropHandler()
     useEffect(() => {
         const focusListener = (e) => {
@@ -191,8 +192,10 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
             />
-            <${Logs} logs=${Object.values(logs)} line_heights=${line_heights} />
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} />` : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}

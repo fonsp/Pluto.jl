@@ -146,6 +146,8 @@ export const CellInput = ({
     notebook_id,
     running_disabled,
     cell_dependencies,
+    show_logs,
+    set_show_logs,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -510,12 +512,19 @@ export const CellInput = ({
 
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
+            <${InputContextMenu}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                run_cell=${on_submit}
+                running_disabled=${running_disabled}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
+            />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
@@ -535,6 +544,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
         await run_cell()
     }
+    const toggle_logs = () => set_show_logs(!show_logs)
 
     return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
         <span class="icon"></span>
@@ -547,6 +557,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
                   >
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                  </li>
+                  <li title="" onClick=${toggle_logs}>
+                      ${show_logs ? html`<span class="eye_closed_icon" /><span>Hide logs</span>` : html`<span class="eye_open_icon" /><span>Show logs</span>`}
                   </li>
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
