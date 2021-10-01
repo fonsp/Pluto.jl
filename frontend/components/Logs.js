@@ -1,14 +1,47 @@
 import { cl } from "../common/ClassTable.js"
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 
+// Defined in editor.css
+const GRID_WIDTH = 10
+const RESIZE_DEBOUNCE = 60
+
 export const Logs = ({ logs, line_heights }) => {
+    const container = useRef(null)
+    const [from, setFrom] = useState(0)
+    const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
+    const logsWidth = logs.length * GRID_WIDTH
+    useEffect(() => {
+        if (!container.current) return
+        const elem = container.current
+        const fn = () => {
+            const w = elem.clientWidth
+            const scrollY = elem.scrollLeft
+            const elements = Math.round(w / GRID_WIDTH + 0.5)
+            const hiddenElements = Math.round(elem.scrollLeft / GRID_WIDTH)
+            console.table({ w, elements, hiddenElements, scrollY })
+            setFrom(hiddenElements)
+            setTo(hiddenElements + elements)
+        }
+        const l = _.debounce(fn, RESIZE_DEBOUNCE)
+        document.addEventListener("resize", l)
+        elem.addEventListener("scroll", l)
+        return () => {
+            elem.removeEventListener("scroll", l)
+            document.removeEventListener("resize", l)
+        }
+    }, [container.current, logsWidth])
+    const logsStyle = useMemo(
+        () => `grid-template-rows: ${line_heights.map((y) => y + "px").join(" ")} repeat(auto-fill, 15px)}; width: ${logs.length * GRID_WIDTH}px;`,
+        [logs.length, line_heights]
+    )
+
     return html`
-        <pluto-logs-container>
-            <pluto-logs style="grid-template-rows: ${line_heights.map((y) => y + "px").join(" ") + " repeat(auto-fill, 15px)"};">
-                <div style="grid-row: 1 / 20 "></div>
-                ${logs.map((log, i) => {
-                    return html`<${Dot} level=${log.level} msg=${log.msg} kwargs=${log.kwargs} x=${i} y=${log.line - 1} /> `
+        <pluto-logs-container ref=${container}>
+            <pluto-logs style="${logsStyle}">
+                <div style="grid-row: 1 / 20"></div>
+                ${[...logs.slice(from, to)].map((log, i) => {
+                    return html`<${Dot} level=${log.level} msg=${log.msg} kwargs=${log.kwargs} x=${from + i} y=${log.line - 1} /> `
                 })}
             </pluto-logs>
         </pluto-logs-container>
