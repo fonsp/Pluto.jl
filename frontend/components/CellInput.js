@@ -45,6 +45,7 @@ import {
     StateField,
     StateEffect,
     html as htmlLang,
+    javascript,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -406,7 +407,8 @@ export const CellInput = ({
                     indentUnit.of("\t"),
                     julia_andrey(),
                     markdown(),
-                    htmlLang(), //Provides tag closing!
+                    htmlLang(), //Provides tag closing!,
+                    javascript(),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {

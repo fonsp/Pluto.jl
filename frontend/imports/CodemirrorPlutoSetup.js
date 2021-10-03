@@ -48,7 +48,9 @@ import {
     markdown,
     html,
     htmlLanguage,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@46408f1/dist/index.es.min.js"
+    javascript,
+    javascriptLanguage,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@e27d21e/dist/index.es.min.js"
 
 const htmlParser = html().language.parser
 console.log(html(), htmlParser, markdown, markdown())
@@ -142,4 +144,6 @@ export {
     NodeProp,
     markdown,
     html,
+    javascript,
+    javascriptLanguage,
 }
