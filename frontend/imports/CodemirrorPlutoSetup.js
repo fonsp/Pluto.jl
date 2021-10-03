@@ -61,17 +61,19 @@ const wrapper = parseMixed((node, input) => {
     }
     //Looking for tag OR MacroIdentifier 
     const tagNode = node.node.prevSibling || node.node.parent.prevSibling
-    console.log(input.read(tagNode.from, tagNode.to))
+    if (!tagNode){
+        // If you can't find a tag node, something is broken in the julia syntax,
+        // so parse it as Julia.
+        return null
+    }
     const tag = input.read(tagNode.from, tagNode.to)
     console.log({...node}, {...input}, node.type.name, node.type.id, node.from, node.to)
-    console.log(tag)
     let parser
 
     if (tag === "html" || tag === "@htl") {
         parser = htmlParser
     } else if (tag === "md") {
         parser = mdParser
-        console.log("going for markdown")
     } else {
         return null
     }
@@ -80,6 +82,7 @@ const wrapper = parseMixed((node, input) => {
     let from = node.from
     console.log(node.node.firstChild)
     for (let child = node.node.firstChild; child !== null; child = child?.nextSibling) {
+        console.log("Child: ",{... child})
         overlay.push({ from, to: child.from })
         from = child.to
     }
@@ -90,6 +93,17 @@ const wrapper = parseMixed((node, input) => {
 
     overlay.push({ from, to: node.to })
 
+    // TODO: replace $() from overlays - add placeholder??
+    // Remove quotes from strings
+    if(node.type.id === 69){ // Triple Quote String
+        overlay[0].from += 3
+        overlay[overlay.length - 1].to -= 3
+    }
+    if(node.type.id === 68){ // Single quote string
+        overlay[0].from += 1
+        overlay[overlay.length - 1].to -= 1
+    }
+    console.log(">>> ", overlay.map(({from, to}) => input.read(from, to)).join(""))
     console.log(overlay)
     return { parser, overlay: overlay }
 })
