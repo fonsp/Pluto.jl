@@ -79,7 +79,14 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.tagName, color: "#ef6155" },
     { tag: tags.link, color: "#815ba4" },
     { tag: tags.invalid, color: "#000", background: "#ef6155" },
-    // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+    // Object.keys(tags).map((x) => ({ tag: x, color: x })),
+    { tag: tags.heading, color: "#0e2bb9", fontWeight: 500 },
+    { tag: tags.heading1, color: "#0e2bb9", fontWeight: 500, fontSize: "1.5em" },
+    { tag: tags.heading2, color: "red", fontWeight: 400, fontSize: "1.4em" },
+    { tag: tags.heading3, color: "red", fontWeight: 400, fontSize: "1.25em" },
+    { tag: tags.heading4, color: "red", fontWeight: 400, fontSize: "1.1em" },
+    { tag: tags.heading5, color: "red", fontWeight: 400, fontSize: "1em" },
+    { tag: tags.heading6, color: "red", fontWeight: "bold", fontSize: "0.8em" },
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -339,7 +346,6 @@ export const CellInput = ({
                     nbpkg_compartment,
                     used_variables_compartment,
                     editable_compartment,
-
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
