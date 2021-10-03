@@ -51,11 +51,12 @@ import {
     markdownLanguage,
     javascript,
     javascriptLanguage,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@e27d21e/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@93bb0a8bda7ab2e0771b6e6a2a7225e37f30ea5a/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
-const wrapper = parseMixed((node, input) => {
+
+const juliaWrapper = parseMixed((node, input) => {
     if (node.type.id !== 69 && node.type.id !== 68 /* TemplateString */) {
         return null
     }
@@ -63,7 +64,7 @@ const wrapper = parseMixed((node, input) => {
     const tagNode = node.node.prevSibling || node.node.parent.prevSibling
     if (!tagNode){
         // If you can't find a tag node, something is broken in the julia syntax,
-        // so parse it as Julia.
+        // so parse it as Julia. Probably wrong interpolation!
         return null
     }
     const tag = input.read(tagNode.from, tagNode.to)
@@ -82,7 +83,6 @@ const wrapper = parseMixed((node, input) => {
     let from = node.from
     console.log(node.node.firstChild)
     for (let child = node.node.firstChild; child !== null; child = child?.nextSibling) {
-        console.log("Child: ",{... child})
         overlay.push({ from, to: child.from })
         from = child.to
     }
@@ -103,16 +103,13 @@ const wrapper = parseMixed((node, input) => {
         overlay[0].from += 1
         overlay[overlay.length - 1].to -= 1
     }
-    console.log(">>> ", overlay.map(({from, to}) => input.read(from, to)).join(""))
-    console.log(overlay)
+    // console.log(">>> ", overlay.map(({from, to}) => input.read(from, to)).join(""))
     return { parser, overlay: overlay }
 })
 
-const id = julia_andrey_original()
+const julia_andrey = julia_andrey_original()
 
-id.language.parser = id.language.parser.configure({ wrap: wrapper })
-const julia_andrey = () => id
-console.log(id)
+julia_andrey.language.parser = julia_andrey.language.parser.configure({ wrap: juliaWrapper })
 
 export {
     EditorState,
