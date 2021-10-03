@@ -46,11 +46,12 @@ import {
     NodeProp,
     parseMixed,
     markdown,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@1bd6504/dist/index.es.min.js"
+    html,
+    htmlLanguage,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@c31a14d/dist/index.es.min.js"
 
-import { parser as htmlParser } from "https://unpkg.com/@lezer/html@0.15.0?module"
-
-console.log(htmlParser, markdown, markdown())
+const htmlParser = html().language.parser
+console.log(html(), htmlParser, markdown, markdown())
 const mdParser = markdown().language.parser
 const wrapper = parseMixed((node, input) => {
     console.log(node, input)
@@ -140,4 +141,5 @@ export {
     combineConfig,
     NodeProp,
     markdown,
+    html,
 }

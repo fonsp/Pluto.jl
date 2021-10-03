@@ -44,6 +44,7 @@ import {
     indentUnit,
     StateField,
     StateEffect,
+    html as htmlLang,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -67,8 +68,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
     { tag: tags.atom, color: "#815ba4" },
     { tag: tags.number, color: "#815ba4" },
-    // { tag: tags.property, color: "#48b685" },
-    // { tag: tags.attribute, color: "#48b685" },
+    { tag: tags.bracket, color: "#48b685" },
     { tag: tags.keyword, color: "#ef6155" },
     { tag: tags.string, color: "#da5616" },
     { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
@@ -87,6 +87,9 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.heading4, color: "red", fontWeight: 400, fontSize: "1.1em" },
     { tag: tags.heading5, color: "red", fontWeight: 400, fontSize: "1em" },
     { tag: tags.heading6, color: "red", fontWeight: "bold", fontSize: "0.8em" },
+    { tag: tags.url, color: "#48b685", fontDecoration: "underline" },
+    { tag: tags.quote, color: "cyan", fontStyle: "italic" },
+    { tag: tags.literal, color: "grey", fontWeight: 700 },
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -393,6 +396,7 @@ export const CellInput = ({
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
+                    htmlLang(),
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
