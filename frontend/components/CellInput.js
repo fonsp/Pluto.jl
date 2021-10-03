@@ -491,14 +491,30 @@ export const CellInput = ({
         }
     }, [cm_forced_focus])
 
+    const on_format_cool = async () => {
+        const old_code = getValue6(newcm_ref.current) ?? ""
+
+        console.log("before: ", old_code)
+        let { message } = await pluto_actions.send("format", { query: old_code }, { notebook_id: notebook_id })
+        console.log("after: ", message.result)
+
+        setValue6(newcm_ref.current, message.result)
+    }
+
     return html`
         <pluto-input ref=${dom_node_ref}>
-            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
+            <${InputContextMenu}
+                on_delete=${on_delete}
+                cell_id=${cell_id}
+                run_cell=${on_submit}
+                on_format=${on_format_cool}
+                running_disabled=${running_disabled}
+            />
         </pluto-input>
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, on_format }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
@@ -531,6 +547,7 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
+                  <li onClick=${on_format} title="Format code"><span class="format_icon" />Format code</li>
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}
