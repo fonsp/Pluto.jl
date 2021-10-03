@@ -4,6 +4,8 @@ import .PkgCompat: package_completions
 using Markdown
 import REPL
 
+import JuliaFormatter: format_text
+
 ###
 # RESPONSES FOR AUTOCOMPLETE & DOCS
 ###
@@ -134,6 +136,17 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
         Dict(
             :status => status,
             :doc => doc_html,
+            ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
+
+responses[:format] = function response_format(🙋::ClientRequest)
+    query = 🙋.body["query"]
+
+    msg = UpdateMessage(:doc_result, 
+        Dict(
+            :result => format_text(query),
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
