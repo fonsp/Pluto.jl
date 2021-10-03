@@ -48,23 +48,26 @@ import {
     markdown,
     html,
     htmlLanguage,
+    markdownLanguage,
     javascript,
     javascriptLanguage,
 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@e27d21e/dist/index.es.min.js"
 
-const htmlParser = html().language.parser
-console.log(html(), htmlParser, markdown, markdown())
-const mdParser = markdown().language.parser
+const htmlParser = htmlLanguage.parser
+const mdParser = markdownLanguage.parser
 const wrapper = parseMixed((node, input) => {
-    console.log(node, input)
-    if (node.type.id !== 69 /* TemplateString */) {
+    if (node.type.id !== 69 && node.type.id !== 68 /* TemplateString */) {
         return null
     }
-    const tag = input.doc.text[0].replace(/\"/g, "")
+    //Looking for tag OR MacroIdentifier 
+    const tagNode = node.node.prevSibling || node.node.parent.prevSibling
+    console.log(input.read(tagNode.from, tagNode.to))
+    const tag = input.read(tagNode.from, tagNode.to)
+    console.log({...node}, {...input}, node.type.name, node.type.id, node.from, node.to)
     console.log(tag)
     let parser
 
-    if (tag === "html") {
+    if (tag === "html" || tag === "@htl") {
         parser = htmlParser
     } else if (tag === "md") {
         parser = mdParser
@@ -95,6 +98,7 @@ const id = julia_andrey_original()
 
 id.language.parser = id.language.parser.configure({ wrap: wrapper })
 const julia_andrey = () => id
+console.log(id)
 
 export {
     EditorState,

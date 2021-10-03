@@ -44,6 +44,7 @@ import {
     indentUnit,
     StateField,
     StateEffect,
+    markdown,
     html as htmlLang,
     javascript,
 } from "../imports/CodemirrorPlutoSetup.js"
@@ -54,7 +55,6 @@ import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
-import { markdown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -100,6 +100,9 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.angleBracket, color: "black", fontWeight: 700 },
     { tag: tags.content, color: "darkgrey", fontWeight: 400 },
     { tag: tags.documentMeta, color: "grey", fontStyle: "italic" },
+    // CSS
+    { tag: tags.className, color: "grey", fontWeight: "bold" },
+
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -443,8 +446,11 @@ export const CellInput = ({
 
         // For use from useDropHandler
         // @ts-ignore
-        newcm.dom.CodeMirror = {
+        dom_node_ref.current.CodeMirror = newcm.dom.CodeMirror = {
             getValue: () => newcm.state.doc.toString(),
+            setValue: (value) => newcm.dispatch({
+                changes: { from: 0, to: newcm.state.doc.length, insert: value },
+            })
         }
 
         if (focus_after_creation) {
@@ -514,7 +520,7 @@ export const CellInput = ({
     }, [cm_forced_focus])
 
     return html`
-        <pluto-input ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref} class="CodeMirror">
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
         </pluto-input>
     `
