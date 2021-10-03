@@ -53,6 +53,7 @@ import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
+import { markdown } from "../imports/CodemirrorPlutoSetup.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -80,6 +81,7 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.link, color: "#815ba4" },
     { tag: tags.invalid, color: "#000", background: "#ef6155" },
     // Object.keys(tags).map((x) => ({ tag: x, color: x })),
+    // Markdown
     { tag: tags.heading, color: "#0e2bb9", fontWeight: 500 },
     { tag: tags.heading1, color: "#0e2bb9", fontWeight: 500, fontSize: "1.5em" },
     { tag: tags.heading2, color: "red", fontWeight: 400, fontSize: "1.4em" },
@@ -87,9 +89,16 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.heading4, color: "red", fontWeight: 400, fontSize: "1.1em" },
     { tag: tags.heading5, color: "red", fontWeight: 400, fontSize: "1em" },
     { tag: tags.heading6, color: "red", fontWeight: "bold", fontSize: "0.8em" },
-    { tag: tags.url, color: "#48b685", fontDecoration: "underline" },
-    { tag: tags.quote, color: "cyan", fontStyle: "italic" },
+    { tag: tags.url, color: "#48b685", textDecoration: "underline" },
+    { tag: tags.quote, color: "#444", fontStyle: "italic" },
     { tag: tags.literal, color: "grey", fontWeight: 700 },
+    // HTML
+    { tag: tags.tagName, color: "darkblue", fontWeight: 700 },
+    { tag: tags.attributeName, color: "darkblue", fontWeight: 400 },
+    { tag: tags.attributeValue, color: "orange", fontWeight: 700 },
+    { tag: tags.angleBracket, color: "black", fontWeight: 700 },
+    { tag: tags.content, color: "darkgrey", fontWeight: 400 },
+    { tag: tags.documentMeta, color: "grey", fontStyle: "italic" },
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -396,7 +405,8 @@ export const CellInput = ({
                     EditorState.tabSize.of(4),
                     indentUnit.of("\t"),
                     julia_andrey(),
-                    htmlLang(),
+                    markdown(),
+                    htmlLang(), //Provides tag closing!
                     go_to_definition_plugin,
                     pluto_autocomplete({
                         request_autocomplete: async ({ text }) => {
