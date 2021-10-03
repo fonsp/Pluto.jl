@@ -421,8 +421,11 @@ export const CellInput = ({
 
         // For use from useDropHandler
         // @ts-ignore
-        newcm.dom.CodeMirror = {
+        dom_node_ref.current.CodeMirror = newcm.dom.CodeMirror = {
             getValue: () => newcm.state.doc.toString(),
+            setValue: (value) => newcm.dispatch({
+                changes: {from: 0, to: newcm.state.doc.length, insert: value}
+            })
         }
 
         if (focus_after_creation) {
@@ -492,7 +495,7 @@ export const CellInput = ({
     }, [cm_forced_focus])
 
     return html`
-        <pluto-input ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref} class="CodeMirror">
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
         </pluto-input>
     `
