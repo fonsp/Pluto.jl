@@ -29,6 +29,7 @@ import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { CellOutput } from "./CellOutput.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -170,6 +171,8 @@ const launch_params = {
     notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+    //@ts-ignore
+    isolated_cell_id: url_params.get("isolated_cell_id") ?? window.isolated_cell_id,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
@@ -1051,6 +1054,20 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
+
+        if(launch_params.isolated_cell_id) {
+            if(!this.state.notebook.cell_results[launch_params.isolated_cell_id]) return html``
+
+            return html`
+                <div style="width: 100%">
+                    ${this.state.notebook.cell_order.map((cell_id, i) => html`
+                        <div style="display: ${cell_id === launch_params.isolated_cell_id ? 'block' : 'none'}">
+                            <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
+                        </div>
+                    `)}
+                </div>
+            `
+        }
 
         const restart_button = (text) => html`<a
             href="#"
