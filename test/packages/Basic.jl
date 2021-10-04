@@ -38,7 +38,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             Cell("PlutoPkgTestD.MY_VERSION |> Text"),
             Cell("import Dates"),
             # eval to hide the import from Pluto's analysis
-            Cell("eval(:(import DataFrames))")
+            Cell("eval(:(import DataFrames))"),
+            Cell("import HelloWorldC_jll"),
         ])
         fakeclient.connected_notebook = notebook
 
@@ -124,6 +125,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[6].errored == false
         @test notebook.cells[7].errored == false
         @test notebook.cells[8].errored == false
+        @test notebook.cells[11].errored == false
 
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
@@ -149,11 +151,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.cells[10].errored == true
 
 
-        ptoml_file() = PkgCompat.project_file(notebook)
-        mtoml_file() = PkgCompat.manifest_file(notebook)
-
-        ptoml_contents() = read(ptoml_file(), String)
-        mtoml_contents() = read(mtoml_file(), String)
+        ptoml_contents() = PkgCompat.read_project_file(notebook)
+        mtoml_contents() = PkgCompat.read_manifest_file(notebook)
 
         nb_contents() = read(notebook.path, String)
 

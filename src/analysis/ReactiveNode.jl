@@ -23,6 +23,7 @@ function Base.union!(a::ReactiveNode, bs::ReactiveNode...)
 	union!(a.definitions, (b.definitions for b in bs)...)
 	union!(a.funcdefs_with_signatures, (b.funcdefs_with_signatures for b in bs)...)
 	union!(a.funcdefs_without_signatures, (b.funcdefs_without_signatures for b in bs)...)
+	union!(a.macrocalls, (b.macrocalls for b in bs)...)
 	return a
 end
 

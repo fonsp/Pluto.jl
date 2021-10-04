@@ -25,7 +25,7 @@
     /* use the value "contextual" to enable contextual ligatures `document.documentElement.style.setProperty('--pluto-operator-ligatures', 'contextual');`
         for julia mono see here: https://cormullion.github.io/pages/2020-07-26-JuliaMono/#contextual_and_stylistic_alternates_and_ligatures */
     --pluto-operator-ligatures: none;
-    --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --sans-serif-font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
 }
 
 /* GENERAL PAGE LAYOUT */
@@ -40,8 +40,8 @@ html {
 body {
     margin: 0px;
     overflow-anchor: none;
+    overflow-x: hidden;
     position: relative;
-
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -62,6 +62,10 @@ main {
 
 body:not(.disable_ui) main {
     padding-bottom: 16rem;
+}
+
+body:not(.disable_ui) {
+    overscroll-behavior-x: contain;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
@@ -199,6 +203,10 @@ pluto-output code {
     font-variant-ligatures: none;
 }
 
+pluto-output code .cm-editor .cm-line {
+    font-family: JuliaMono, monospace;
+}
+
 pluto-output pre > code {
     font-size: inherit;
 }
@@ -251,6 +259,10 @@ pluto-output blockquote {
     border-radius: 15px;
     background-color: #f2f2f2;
     color: #555;
+}
+pluto-output.rich_output pre:not(.no-block):last-child,
+pluto-output blockquote:last-child {
+    margin-block-end: 0px;
 }
 
 pluto-output div.admonition {
@@ -396,6 +408,11 @@ kbd {
     border: 1px solid #dfdfdf;
     padding: 0px 2px;
     border-radius: 3px;
+}
+
+/* Avoid scrollbar in in-line latex with markdown, see https://github.com/fonsp/Pluto.jl/issues/1309 */
+pluto-output mjx-assistive-mml {
+    height: 1px;
 }
 
 /* HEADER */
@@ -570,26 +587,29 @@ nav#at_the_top > pluto-filepicker {
     flex-direction: row;
 }
 
-nav#at_the_top > pluto-filepicker .CodeMirror {
+nav#at_the_top > pluto-filepicker .cm-editor {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     min-width: 10rem;
-    opacity: 0.6;
     font-style: normal;
     font-weight: 500;
     font-family: inherit;
     font-size: 0.8rem;
     letter-spacing: 1px;
     background: none;
-    border: 2px solid #818181;
+    color: #6f6f6f;
+    border: 2px solid #b2b2b2;
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-nav#at_the_top > pluto-filepicker .CodeMirror-scroll {
-    overflow: hidden !important;
+pluto-filepicker .cm-scroller {
+    scrollbar-width: none; /* Firefox */
+}
+pluto-filepicker .cm-scroller::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
 }
 
 nav#at_the_top > pluto-filepicker button {
@@ -622,23 +642,23 @@ nav#at_the_top:after {
     align-self: center;
 }
 
-li.file.new.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.file.new:before {
     content: "👉";
     color: black;
 }
 
-li.file.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.file:before {
     content: "📄";
     color: black;
 }
 
-li.dir.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.dir:before {
     content: "📁";
     color: black;
 }
 
 @media (any-pointer: fine) {
-    nav#at_the_top > pluto-filepicker .CodeMirror {
+    nav#at_the_top > pluto-filepicker .cm-editor {
         border: 2px solid transparent;
         border-right: none;
         transition: border 0.15s ease-in-out;
@@ -647,9 +667,9 @@ li.dir.CodeMirror-hint:before {
         opacity: 0;
         transition: opacity 0.15s ease-in-out;
     }
-    header:hover > nav#at_the_top > pluto-filepicker .CodeMirror,
-    header:focus-within > nav#at_the_top > pluto-filepicker .CodeMirror {
-        border: 2px solid #818181;
+    header:hover > nav#at_the_top > pluto-filepicker .cm-editor,
+    header:focus-within > nav#at_the_top > pluto-filepicker .cm-editor {
+        border: 2px solid #b2b2b2;
         border-right: none;
     }
     header:hover > nav#at_the_top > pluto-filepicker button,
@@ -895,7 +915,7 @@ pluto-cell.selected {
     border-radius: 0 3px 3px 0;
 }
 
-pluto-cell.selected > pluto-input > div.CodeMirror,
+pluto-cell.selected > pluto-input > div.cm-editor,
 pluto-cell.selected > pluto-output {
     opacity: 0.7;
 }
@@ -939,39 +959,36 @@ pluto-cell:hover > pluto-output > div::-webkit-scrollbar-thumb {
 
 /* CELL INPUT */
 
-pluto-input .CodeMirror {
-    height: auto !important;
-    width: auto;
+pluto-input .cm-editor {
     z-index: 20;
     border-bottom-right-radius: 4px;
     border: 1px solid rgba(0, 0, 0, 0.1);
     border-left: none;
     transition: border 0.15s ease-in-out;
-}
 
-pluto-input .CodeMirror-scroll {
-    min-height: 0px;
+    /* Make sure that scrolling an editor into view gives some breathing room */
+    scroll-margin-block: 20vh;
 }
-
-pluto-input .CodeMirror-empty {
-    color: rgba(0, 0, 0, 0.15);
+pluto-input:focus-within .cm-editor {
+    /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
+    z-index: 21;
 }
 
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
 }
 
-pluto-cell.code_differs > pluto-input > .CodeMirror {
+pluto-cell.code_differs > pluto-input > .cm-editor {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
 }
 
-pluto-cell.depends_on_disabled_cells > pluto-input .CodeMirror,
-pluto-cell.running_disabled > pluto-input .CodeMirror {
+pluto-cell.depends_on_disabled_cells > pluto-input .cm-editor,
+pluto-cell.running_disabled > pluto-input .cm-editor {
     opacity: 0.3;
 }
 
-pluto-cell.running_disabled > pluto-input .CodeMirror {
+pluto-cell.running_disabled > pluto-input .cm-editor {
     background-color: rgba(139, 139, 139, 0.25);
 }
 
@@ -1331,13 +1348,12 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-color: white;
 }
 @media screen and (min-width: 921px) {
-
     pluto-input > button.delete_cell ul.input_context_menu {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.delete_cell  {
+    pluto-input > button.delete_cell {
         z-index: 31;
     }
     pluto-input > button.delete_cell ul.input_context_menu {
@@ -1346,7 +1362,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 .input_context_menu li {
     font-family: "Roboto Mono", system-ui;
-    font-size: .8rem;
+    font-size: 0.8rem;
     margin-block-end: 0px;
     letter-spacing: -0.02em;
     color: #6b6a6a;
@@ -1374,22 +1390,22 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 .input_context_menu li.coming_soon:hover {
     cursor: not-allowed;
-    background-color:rgba(0, 0, 0, 0.1)
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .input_context_menu li:hover {
     transition-property: background-color;
-    transition-duration: 200ms; 
-    background-color:rgba(0, 0, 0, 0.1)
+    transition-duration: 200ms;
+    background-color: rgba(0, 0, 0, 0.1);
 }
 
 .disable_cell_icon,
-.delete_icon, 
+.delete_icon,
 .enable_cell_icon,
 .bandage_icon,
 .icon {
     --size: 17px;
-    width:  var(--size);
+    width: var(--size);
     height: var(--size);
     margin-top: 1px;
     background-size: var(--size) var(--size);
@@ -1433,7 +1449,7 @@ body.nbpkg_disabled pkg-status-mark:not(.disable_pkg) {
 pkg-status-mark {
     width: 1em;
     height: 1em;
-    margin: 0px .6em 0px 0.2em;
+    margin: 0px 0.6em 0px 0.2em;
     display: inline-block;
 }
 
@@ -1543,7 +1559,6 @@ pkg-version {
     opacity: 0.5;
 }
 
-
 pkg-popup .pkg-buttons {
     float: right;
     /* position: absolute; */
@@ -1621,7 +1636,6 @@ pkg-popup.showterminal pkg-terminal {
         transform: rotate(360deg);
     }
 }
-
 
 /* RUNAREA */
 
@@ -1821,7 +1835,8 @@ pluto-helpbox {
     line-height: 1.5;
 }
 pluto-helpbox pre,
-pluto-helpbox code {
+pluto-helpbox code,
+pluto-helpbox .cm-line {
     /* from https://docs.julialang.org/en/v1/assets/themes/documenter-light.css */
     font-family: "Roboto Mono", "SFMono-Regular", "Menlo", "Consolas", "Liberation Mono", "DejaVu Sans Mono", monospace;
     font-size: 0.875em;
@@ -2031,29 +2046,55 @@ body > nav#slide_controls > button.next > span::after {
 
 /* CODEMIRROR HINTS */
 
-.CodeMirror-hints {
+.cm-editor .cm-tooltip {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
+    border-radius: 4px;
+}
+
+.cm-tooltip-autocomplete {
     max-height: calc(20 * 16px);
     box-sizing: content-box;
     z-index: 100;
 }
 
-li.CodeMirror-hint {
+.cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
+    /* https://github.com/codemirror/codemirror.next/issues/574 */
+    display: none;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     /* this is the line height rounded to an integer to prevent jiggle */
     height: 16px;
     /* font-size: 16px; */
     line-height: 16px;
+    border-radius: 3px;
+}
+pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    height: unset;
 }
 
-li.CodeMirror-hint.c_notexported {
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+    color: white;
+    background: #16659d;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
 }
-li.CodeMirror-hint-active.c_notexported {
-    color: white;
+
+.cm-editor .cm-completionIcon {
+    opacity: 1;
+    width: 1em;
+    transform: translateY(-1.5px);
 }
 
-li.CodeMirror-hint::before {
+.cm-completionIcon::before {
+    /* TODO This loses all color when it's not font-family: JuliaMono, which can happen */
     content: "⚫";
+    font-family: JuliaMono, monospace !important;
     color: transparent;
+    font-size: 0.75rem;
     margin-right: 0.5em;
     opacity: 1;
 }
@@ -2066,91 +2107,71 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     Inspired by the art of Rubens LP (http://www.rubenslp.com.br)
 */
 
-body.ctrl_down .cm-variable:hover {
+[data-pluto-variable] {
+    text-decoration: none;
+    font-weight: inherit;
+}
+body.ctrl_down [data-pluto-variable]:hover {
     text-decoration: underline;
     cursor: pointer;
 }
 
-ul.CodeMirror-hints {
+.cm-tooltip.cm-tooltip-autocomplete {
     padding: 0;
     margin-left: -1.5em;
+    background: white;
 }
 
-pluto-input .CodeMirror,
-ul.CodeMirror-hints {
+pluto-input .cm-editor .cm-content,
+pluto-input .cm-editor .cm-scroller,
+.cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: JuliaMono, monospace !important;
     font-variant-ligatures: none;
-    font-size: 0.75em;
+    font-size: 0.75rem;
 }
 
-.cm-s-default.CodeMirror {
+.cm-editor {
     background: hsla(46, 90%, 98%, 1);
     color: #41323f;
 }
-
-.cm-s-default.CodeMirror pre.CodeMirror-line,
-.cm-s-default.CodeMirror pre.CodeMirror-line-like {
-    font-variant-ligatures: none;
+.cm-editor.cm-focused {
+    outline: unset;
 }
 
-.cm-s-default div.CodeMirror-selected {
-    background: #d9dfef;
+.cm-editor .cm-gutter {
+    min-width: 29px;
 }
 
-.cm-s-default .CodeMirror-line::selection,
-.cm-s-default .CodeMirror-line > span::selection,
-.cm-s-default .CodeMirror-line > span > span::selection {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-line::-moz-selection,
-.cm-s-default .CodeMirror-line > span::-moz-selection,
-.cm-s-default .CodeMirror-line > span > span::-moz-selection {
-    background: #d9dfef;
-}
-
-.cm-s-default .CodeMirror-gutters {
+.cm-editor .cm-gutters {
     /* background: hsla(46, 90%, 98%, 1); */
     background: transparent;
     border-right: solid 1px hsla(0, 0%, 0%, 0);
 }
 
-pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
+pluto-cell.code_differs .cm-editor .cm-gutters {
     /* background: hsla(46, 70%, 88%, 1); */
     background-color: rgba(214, 172, 35, 0.2);
 }
 
-.cm-s-default .CodeMirror-guttermarker {
-    color: black;
-}
-
-.cm-s-default .CodeMirror-guttermarker-subtle {
-    color: #8d8687;
-}
-
-.cm-s-default .CodeMirror-linenumber {
+.cm-editor .cm-lineNumbers .cm-gutterElement {
     color: #8d86875e;
 }
 
-.cm-s-default .CodeMirror-linenumber::after {
+.cm-editor .cm-lineNumbers .cm-gutterElement::after {
     content: "⋅";
     font-size: 0.75rem;
 }
 
-.cm-s-default .CodeMirror-linenumber {
+.cm-editor .cm-lineNumbers .cm-gutterElement {
     font-size: 0px;
 }
 
-.cm-s-default .CodeMirror-linenumber:hover {
+.cm-editor .cm-lineNumbers .cm-gutterElement:hover {
     font-size: 0.75rem;
 }
 
-.cm-s-default .CodeMirror-linenumber:hover::after {
+.cm-editor .cm-lineNumbers .cm-gutterElement:hover::after {
     font-size: 0px;
-}
-
-.cm-s-default .CodeMirror-cursor {
-    border-left: 1.5px solid #776e71;
 }
 
 .cm-s-default span.cm-comment {
@@ -2162,7 +2183,7 @@ pluto-cell.code_differs .cm-s-default .CodeMirror-gutters {
     color: #815ba4;
 }
 
-li.CodeMirror-hint.c_Number::before,
+.cm-completionIcon-c_Number::before,
 .cm-s-default span.cm-number {
     color: #815ba4;
 }
@@ -2176,7 +2197,7 @@ li.CodeMirror-hint.c_Number::before,
     color: #ef6155;
 }
 
-li.CodeMirror-hint.c_String::before,
+.cm-completionIcon-c_String::before,
 .cm-s-default span.cm-string {
     color: #da5616;
 }
@@ -2185,7 +2206,7 @@ li.CodeMirror-hint.c_String::before,
     font-variant-ligatures: var(--pluto-operator-ligatures);
 }
 
-li.CodeMirror-hint.c_Any::before,
+.cm-completionIcon-c_Any::before,
 pluto-output > assignee,
 .cm-s-default span.cm-variable {
     color: #5668a4;
@@ -2201,12 +2222,12 @@ pluto-output > assignee,
     color: #06b6ef;
 }
 
-li.CodeMirror-hint.c_Function::before,
+.cm-completionIcon-c_Function::before,
 .cm-s-default span.cm-def {
     color: #f99b15;
 }
 
-li.CodeMirror-hint.c_Array::before,
+.cm-completionIcon-c_Array::before,
 .cm-s-default span.cm-bracket {
     color: #41323f;
 }
@@ -2215,8 +2236,8 @@ li.CodeMirror-hint.c_Array::before,
     color: #ef6155;
 }
 
-li.CodeMirror-hint.c_package::before,
-li.CodeMirror-hint.c_Module::before,
+.cm-completionIcon-c_package::before,
+.cm-completionIcon-c_Module::before,
 .cm-s-default span.cm-link {
     color: #815ba4;
 }
@@ -2225,24 +2246,40 @@ li.CodeMirror-hint.c_Module::before,
     background: #ef6155;
     color: #f7f7f7;
 }
-
-.cm-s-default .CodeMirror-activeline-background {
-    background: #cfd1c4;
+.cm-editor .cm-activeLine {
+    background: unset;
 }
 
-div.CodeMirror span.CodeMirror-matchingbracket {
+.cm-editor .cm-matchingBracket,
+.cm-editor .cm-nonmatchingBracket {
+    background-color: unset;
     color: unset;
 }
-
-pluto-input:focus-within .cm-s-default .CodeMirror-matchingbracket {
+pluto-input:focus-within .cm-editor .cm-matchingBracket {
     color: black !important;
     font-weight: 700;
     background-color: #1b4bbb21;
     border-radius: 2px;
 }
 
-.cm-s-default.CodeMirror-empty {
+.cm-editor .cm-placeholder {
     color: rgba(0, 0, 0, 0.2);
     font-style: italic;
 }
+
+.cm-completionMatchedText {
+    text-decoration: unset !important;
+}
+
+/* Required for awesome-line-wrapping-plugin */
+.awesome-wrapping-plugin-indent {
+    /* Seems like tabs don't play too well with negative text-indent, and there seem to be some kind of cut-off point
+       before it even has any effect... Honestly need to look at this better because I can't figure it out yet */
+    --correction: 1px;
+    text-indent: calc(-1 * var(--indented, 0px) - var(--correction, 0px)) !important;
+    padding-left: calc(var(--indented, 0px) + var(--cm-left-padding, 4px)) + var(--correction, 0px) !important;
+}
+.awesome-wrapping-plugin-indent > * {
+    /* text-indent apparently cascades... which I think is pretty stupid but this is the fix */
+    text-indent: initial;
 }

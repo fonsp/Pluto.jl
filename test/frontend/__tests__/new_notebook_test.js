@@ -1,13 +1,5 @@
-import {
-    waitForContent,
-    lastElement,
-    dismissBeforeUnloadDialogs,
-    saveScreenshot,
-    getTestScreenshotPath,
-    waitForContentToBecome,
-    dismissVersionDialogs,
-    setupPage,
-} from "../helpers/common"
+import puppeteer from "puppeteer"
+import { waitForContent, lastElement, saveScreenshot, getTestScreenshotPath, waitForContentToBecome, setupPage } from "../helpers/common"
 import {
     createNewNotebook,
     getCellIds,
@@ -25,7 +17,7 @@ const manuallyEnterCells = async (page, cells) => {
     for (const cell of cells) {
         const plutoCellId = lastElement(await getCellIds(page))
         plutoCellIds.push(plutoCellId)
-        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input textarea`)
+        await page.waitForSelector(`pluto-cell[id="${plutoCellId}"] pluto-input .cm-content`)
         await writeSingleLineInPlutoInput(page, `pluto-cell[id="${plutoCellId}"] pluto-input`, cell)
 
         await page.click(`pluto-cell[id="${plutoCellId}"] .add_cell.after`)
@@ -35,20 +27,44 @@ const manuallyEnterCells = async (page, cells) => {
 }
 
 describe("PlutoNewNotebook", () => {
+    /**
+     * Launch a shared browser instance for all tests.
+     * I don't use jest-puppeteer because it takes away a lot of control and works buggy for me,
+     * so I need to manually create the shared browser.
+     * @type {puppeteer.Browser}
+     */
+    let browser = null
+    /** @type {puppeteer.Page} */
+    let page = null
     beforeAll(async () => {
-        setupPage(page)
-        await prewarmPluto(page)
-    })
+        browser = await puppeteer.launch({
+            headless: process.env.HEADLESS !== "false",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"],
+            devtools: false,
+        })
 
+        let page = await browser.newPage()
+        setupPage(page)
+        await prewarmPluto(browser, page)
+        await page.close()
+    })
     beforeEach(async () => {
+        page = await browser.newPage()
+        setupPage(page)
         await page.goto(getPlutoUrl(), { waitUntil: "networkidle0" })
         await createNewNotebook(page)
         await page.waitForSelector("pluto-input", { visible: true })
     })
-
     afterEach(async () => {
         await saveScreenshot(page, getTestScreenshotPath())
-        await page.evaluate(() => window.shutdownNotebook())
+        // @ts-ignore
+        await page.evaluate(() => window.shutdownNotebook?.())
+        await page.close()
+        page = null
+    })
+    afterAll(async () => {
+        await browser.close()
+        browser = null
     })
 
     it("should create new notebook", async () => {
@@ -58,7 +74,7 @@ describe("PlutoNewNotebook", () => {
     })
 
     it("should run a single cell", async () => {
-        const cellInputSelector = "pluto-input textarea"
+        const cellInputSelector = "pluto-input .cm-content"
         await page.waitForSelector(cellInputSelector)
         await writeSingleLineInPlutoInput(page, "pluto-input", "1+1")
 

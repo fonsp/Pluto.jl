@@ -44,7 +44,7 @@ const processFile = async (ev) => {
     let notebook
     console.log(ev)
     // Don't do anything if paste on CodeMirror
-    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.classList?.contains("CodeMirror"))?.length > 0) {
+    if ((ev?.path ?? ev?.composedPath()).filter((node) => node?.classList?.contains(".cm-editor"))?.length > 0) {
         return
     }
     switch (ev.type) {

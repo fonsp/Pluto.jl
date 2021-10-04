@@ -15,13 +15,14 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			new_code = updated_codes[cell] = ExprAnalysisCache(notebook, cell)
 			new_symstate = new_code.parsedcode |>
 				ExpressionExplorer.try_compute_symbolreferences
+			new_reactive_node = ReactiveNode(new_symstate)
 
-			if isempty(new_symstate.macrocalls)
-				updated_nodes[cell] = ReactiveNode(new_symstate)
+			if isempty(new_reactive_node.macrocalls)
+				updated_nodes[cell] = new_reactive_node
 			else
 				# The unresolved cells are the cells for wich we cannot create
 				# a ReactiveNode yet, because they contains macrocalls.
-				updated_nodes[cell] = ReactiveNode(new_symstate)
+				updated_nodes[cell] = new_reactive_node
 				unresolved_cells[cell] = new_symstate
 			end
 		end

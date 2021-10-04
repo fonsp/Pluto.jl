@@ -1,6 +1,6 @@
 using Test
 import UUIDs
-import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
+import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, update_run!
 
 @testset "Macro analysis" begin
     🍭 = ServerSession()
@@ -116,6 +116,80 @@ import Pluto: Notebook, WorkspaceManager, Cell, ServerSession, ClientSession, up
         update_run!(🍭, notebook, notebook.cells)
 
         @test Symbol("@my_assign") ∈ notebook.topology.nodes[cell(2)].references
+    end
+
+    @testset "User defined macro 5" begin
+        notebook = Notebook([
+            Cell("""macro dynamic_values(ex)
+                [:a, :b, :c]
+            end"""),
+            Cell("myarray = @dynamic_values()"),
+        ])
+        references(idx) = notebook.topology.nodes[notebook.cells[idx]].references
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :a ∉ references(2)
+        @test :b ∉ references(2)
+        @test :c ∉ references(2)
+    end
+
+    @testset "User defined macro 6" begin
+        notebook = Notebook([
+            Cell("""macro my_macro()
+                esc(:(y + x))
+            end"""),
+            Cell("""function my_function()
+                @my_macro()
+            end"""),
+            Cell("my_function()"),
+            Cell("x = 1"),
+            Cell("y = 2"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test [Symbol("@my_macro"), :x, :y] ⊆ notebook.topology.nodes[cell(2)].references
+        @test cell(3).output.body == "3"
+    end
+
+    @testset "Function docs" begin
+        notebook = Notebook([
+            Cell("""
+                "my function doc"
+                f(x) = 2x
+            """),
+            Cell("f"),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :f ∈ notebook.topology.nodes[cell(1)].funcdefs_without_signatures
+        @test :f ∈ notebook.topology.nodes[cell(2)].references
+    end
+
+    @testset "Expr sanitization" begin
+        struct A; end
+        f(x) = x
+        unserializable_expr = Expr(:call, f, A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr)
+
+        get_expr_types(other) = typeof(other)
+        get_expr_types(ex::Expr) = get_expr_types.(ex.args)
+
+        flatten(x, acc=[]) = push!(acc, x)
+        function flatten(arr::AbstractVector, acc=[]) foreach(x -> flatten(x, acc), arr); acc end
+
+        sanitized_expr = PlutoRunner.sanitize_expr(unserializable_expr)
+        types = sanitized_expr |> get_expr_types |> flatten |> Set
+
+        # Checks that no fancy type is part of the serialized expression
+        @test Set([Symbol, QuoteNode]) == types
+
+        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
+        @test sanitized_expr.args[2] == :A
+        @test sanitized_expr.args[1] == :(Main.f)
     end
 
     @testset "Package macro 1" begin

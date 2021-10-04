@@ -110,6 +110,14 @@ project_file(x::AbstractString) = joinpath(x, "Project.toml")
 manifest_file(x::AbstractString) = joinpath(x, "Manifest.toml")
 project_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Project.toml")
 manifest_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Manifest.toml")
+function read_project_file(x)
+	path = project_file(x)
+	isfile(path) ? read(path, String) : ""
+end
+function read_manifest_file(x)
+	path = manifest_file(x)
+	isfile(path) ? read(path, String) : ""
+end
 
 
 # ⚠️ Internal API with fallback
@@ -404,7 +412,7 @@ function write_auto_compat_entries(ctx::PkgContext)::PkgContext
 			if !haskey(compat, p)
 				m_version = get_manifest_version(ctx, p)
 				if m_version !== nothing && !is_stdlib(p)
-					compat[p] = "~" * string(m_version)
+					compat[p] = "~" * string(VersionNumber(m_version.major, m_version.minor, m_version.patch))  # drop build number
 				end
 			end
 		end

@@ -138,7 +138,7 @@ end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
 
-function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)
+function run_reactive_async!(session::ServerSession, notebook::Notebook, old::NotebookTopology, new::NotebookTopology, to_run::Vector{Cell}; run_async::Bool=true, kwargs...)::Union{Task,TopologicalOrder}
 	maybe_async(run_async) do 
 		run_reactive!(session, notebook, old, new, to_run; kwargs...)
 	end
@@ -249,17 +249,18 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
-		if ExpressionExplorer.join_funcname_parts.(current_symstate.macrocalls) ⊆ ExpressionExplorer.can_macroexpand
+		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
 			return current_symstate, true
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
 		    # if expansion failed, we use the "shallow" symbols state
+		    err = result
+		    @debug "Expansion failed" err
 		    current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
 		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    union!(expanded_symbols_state.macrocalls, current_symstate.macrocalls)
 		    expanded_symbols_state, true
 		end
 	end
@@ -270,7 +271,10 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	for (cell, current_symstate) in unresolved_topology.unresolved_cells
 			(new_symstate, succeeded) = analyze_macrocell(cell, current_symstate)
 			if succeeded
-				new_nodes[cell] = ReactiveNode(new_symstate)
+				new_node = ReactiveNode(new_symstate)
+				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
+				union!(new_node.references, new_node.macrocalls)
+				new_nodes[cell] = new_node
 			else
 				still_unresolved_nodes[cell] = current_symstate
 			end
@@ -308,7 +312,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
-	session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
 
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
@@ -338,7 +342,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	end
 
 	maybe_async(run_async) do
-		sync_nbpkg(session, notebook; save=save)
+		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
 			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)
@@ -350,15 +354,13 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
-
-function update_from_file(session::ServerSession, notebook::Notebook)
+function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	just_loaded = try
-		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
 		return
-	end
+	end::Notebook
 
 	old_codes = Dict(
 		id => c.code
@@ -369,6 +371,7 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 		for (id,c) in just_loaded.cells_dict
 	)
 
+	# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
 	added = setdiff(keys(new_codes), keys(old_codes))
 	removed = setdiff(keys(old_codes), keys(new_codes))
 	changed = let
@@ -377,6 +380,17 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	# @show added removed changed
+	
+	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
+	order_changed = notebook.cell_order != just_loaded.cell_order
+	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+	
+	something_changed = cells_changed || order_changed || nbpkg_changed
+	
+	if something_changed
+		@info "Reloading notebook from file and applying changes!"
+		notebook.last_hot_reload_time = time()
+	end
 
 	for c in added
 		notebook.cells_dict[c] = just_loaded.cells_dict[c]
@@ -389,55 +403,75 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	notebook.cell_order = just_loaded.cell_order
-	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
+	
+	if nbpkg_changed
+		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
+		
+		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
+			@info "nbpkg status changed, overriding..."
+			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+		else
+			@info "Old new project" PkgCompat.read_project_file(notebook) PkgCompat.read_project_file(just_loaded)
+			@info "Old new manifest" PkgCompat.read_manifest_file(notebook) PkgCompat.read_manifest_file(just_loaded)
+			
+			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
+			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
+		end
+		notebook.nbpkg_restart_required_msg = "yes"
+	end
+	
+	if something_changed
+		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+	end
 end
 
 
+
 """
-	throttled(f::Function, timeout::Real)
+throttled(f::Function, timeout::Real)
 
 Return a function that when invoked, will only be triggered at most once
 during `timeout` seconds.
 The throttled function will run as much as it can, without ever
 going more than once per `wait` duration.
+
+This throttle is 'leading' and has some other properties that are specifically designed for our use in Pluto, see the tests.
+
 Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
 """
 function throttled(f::Function, timeout::Real)
-	tlock = ReentrantLock()
-	iscoolnow = false
-	run_later = false
+    tlock = ReentrantLock()
+    iscoolnow = Ref(false)
+    run_later = Ref(false)
 
-	function flush()
-		lock(tlock) do
-			run_later = false
-			f()
-		end
-	end
+    function flush()
+        lock(tlock) do
+            run_later[] = false
+            f()
+        end
+    end
 
-	function schedule()
-		@async begin
-			sleep(timeout)
-			if run_later
-				flush()
-			end
-			iscoolnow = true
-		end
-	end
-	schedule()
+    function schedule()
+        @async begin
+            sleep(timeout)
+            if run_later[]
+                flush()
+            end
+            iscoolnow[] = true
+        end
+    end
+    schedule()
 
-	function throttled_f()
-		if iscoolnow
-			iscoolnow = false
-			flush()
-			schedule()
-		else
-			run_later = true
-		end
-	end
+    function throttled_f()
+        if iscoolnow[]
+            iscoolnow[] = false
+            flush()
+            schedule()
+        else
+            run_later[] = true
+        end
+    end
 
-	return throttled_f, flush
+    return throttled_f, flush
 end
-
-
-

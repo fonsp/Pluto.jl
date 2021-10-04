@@ -55,13 +55,13 @@ function sync_nbpkg_core(notebook::Notebook; on_terminal_output::Function=((args
     use_plutopkg_new = use_plutopkg(notebook.topology)
     
     if !use_plutopkg_old && use_plutopkg_new
-        @info "Started using PlutoPkg!! HELLO reproducibility!"
+        @debug "Started using PlutoPkg!! HELLO reproducibility!"
 
         👺 = true
         notebook.nbpkg_ctx = PkgCompat.create_empty_ctx()
     end
     if use_plutopkg_old && !use_plutopkg_new
-        @info "Stopped using PlutoPkg 💔😟😢"
+        @debug "Stopped using PlutoPkg 💔😟😢"
 
         no_packages_loaded_yet = (
             notebook.nbpkg_restart_required_msg === nothing &&
@@ -449,6 +449,26 @@ nbpkg_cache(ctx::Union{Nothing,PkgContext}) = ctx === nothing ? Dict{String,Stri
 function update_nbpkg_cache!(notebook::Notebook)
     notebook.nbpkg_installed_versions_cache = nbpkg_cache(notebook.nbpkg_ctx)
     notebook
+end
+
+function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContext})::Bool
+    if (a isa Nothing) != (b isa Nothing)
+        false
+    elseif a isa Nothing
+        true
+    else
+        ptoml_contents_a = strip(PkgCompat.read_project_file(a))
+        ptoml_contents_b = strip(PkgCompat.read_project_file(b))
+        
+        if ptoml_contents_a == ptoml_contents_b == ""
+            true
+        else
+            mtoml_contents_a = strip(PkgCompat.read_project_file(a))
+            mtoml_contents_b = strip(PkgCompat.read_project_file(b))
+            
+            (ptoml_contents_a == ptoml_contents_b) && (mtoml_contents_a == mtoml_contents_b)
+        end
+    end
 end
 
 const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
