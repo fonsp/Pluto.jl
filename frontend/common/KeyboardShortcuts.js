@@ -21,6 +21,6 @@ export let map_cmd_to_ctrl_on_mac = (keymap) => {
 }
 
 export let in_textarea_or_input = () => {
-    const { tagName } = document.activeElement
-    return tagName === "INPUT" || tagName === "TEXTAREA"
+    const { tagName, classList } = document.activeElement
+    return tagName === "INPUT" || tagName === "TEXTAREA" || classList.contains('cm-content')
 }
