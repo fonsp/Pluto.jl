@@ -51,30 +51,35 @@ import {
     markdownLanguage,
     javascript,
     javascriptLanguage,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@f9e13ec/dist/index.es.min.js"
+    sql,
+    PostgreSQL
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32e0fbb/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
+const postgresParser = PostgreSQL.language.parser
+const sqlLang = sql({config: {dialect: PostgreSQL}})
 
 const juliaWrapper = parseMixed((node, input) => {
-    if (node.type.id !== 69 && node.type.id !== 68 /* TemplateString */) {
+    if (node.type.id < 68 && node.type.id > 71 /* Strings */) {
         return null
     }
     //Looking for tag OR MacroIdentifier 
-    const tagNode = node.node.prevSibling || node.node.parent.prevSibling
+    const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
     if (!tagNode){
         // If you can't find a tag node, something is broken in the julia syntax,
         // so parse it as Julia. Probably wrong interpolation!
         return null
     }
     const tag = input.read(tagNode.from, tagNode.to)
-    console.log({...node}, {...input}, node.type.name, node.type.id, node.from, node.to)
     let parser
 
     if (tag === "html" || tag === "@htl") {
         parser = htmlParser
     } else if (tag === "md") {
         parser = mdParser
+    } else if (tag === "sql"){
+        parser = postgresParser
     } else {
         return null
     }
@@ -161,4 +166,5 @@ export {
     html,
     javascript,
     javascriptLanguage,
+    sqlLang
 }
