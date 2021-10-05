@@ -51,7 +51,7 @@ import {
     markdownLanguage,
     javascript,
     javascriptLanguage,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@93bb0a8bda7ab2e0771b6e6a2a7225e37f30ea5a/dist/index.es.min.js"
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@f9e13ec/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
