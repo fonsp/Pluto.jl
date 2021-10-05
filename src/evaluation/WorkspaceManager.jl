@@ -297,6 +297,18 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
     end
 end
 
+function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
+    workspace = get_workspace(session_notebook)
+    module_name = workspace.module_name
+
+    ex = quote
+        PlutoRunner.collect_soft_definitions($module_name, $modules)
+    end
+
+    Distributed.remotecall_eval(Main, workspace.pid, ex)
+end
+
+
 function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name

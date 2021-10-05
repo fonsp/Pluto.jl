@@ -235,7 +235,59 @@ import Distributed
         @test run_order == [3, 1, 2]
     end
 
-    
+    @testset "Reactive usings" begin
+        notebook = Notebook([
+            Cell("June"),
+            Cell("using Dates"),
+            Cell("July"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test notebook.cells[1].errored == true # this cell is before the using Dates and will error
+        @test notebook.cells[3].errored == false # using the position in the notebook this cell will not error
+
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[3].errored == false
+    end
+
+    @testset "Reactive usings 2" begin
+        notebook = Notebook([
+            Cell("October"),
+            Cell("using Dates"),
+            Cell("December"),
+            Cell(""),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[3].errored == false
+
+        setcode(notebook.cells[2], "")
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[3].errored == true
+
+        setcode(notebook.cells[4], "December = 13")
+        update_run!(🍭, notebook, notebook.cells[4:4])
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[3].errored == false
+
+        setcode(notebook.cells[2], "using Dates")
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[3].output.body == "13"
+    end
+
     @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),
