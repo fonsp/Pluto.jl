@@ -422,7 +422,8 @@ export const CellInput = ({
         // For use from useDropHandler
         // @ts-ignore
         newcm.dom.CodeMirror = {
-            getValue: () => newcm.state.doc.toString(),
+            getValue: () => getValue6(newcm),
+            setValue: (x) => setValue6(newcm, x),
         }
 
         if (focus_after_creation) {
