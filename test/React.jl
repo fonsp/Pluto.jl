@@ -307,6 +307,32 @@ import Distributed
         @test notebook.cells[2] |> noerror
     end
 
+    @testset "Reactive usings 4" begin
+        notebook = Notebook([
+            Cell("""@sprintf "double_december = %d" double_december""")
+            Cell("double_december = 2December"),
+            Cell(""),
+            Cell("archive_artifact")
+        ])
+
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+        @test notebook.cells[4].errored == true
+
+        setcode(notebook.cells[3], "using Dates, Printf, Pkg.Artifacts")
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
+        @test notebook.cells[1].output.body == "24"
+    end
+
     @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),
