@@ -704,7 +704,7 @@ end
 function format_output(binding::Base.Docs.Binding; context=default_iocontext)
     try
         ("""
-        <div style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
+        <div class="pluto-docs-binding" style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
         <span style="
             display: inline-block;
             transform: translate(-19px, -16px);
