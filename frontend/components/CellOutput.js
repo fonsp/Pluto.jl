@@ -253,8 +253,8 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 // @ts-ignore
                 script_el.pluto_is_loading_me = undefined
             }
-        } else {
-            // If there is no src="", we take the content and run it in an observablehq-like environment
+        } else if (node.type === "application/vnd.pluto.observable") {
+            // If the type is "application/vnd.pluto.observable", we take the content and run it in an observablehq-like environment
             try {
                 let script_id = node.id
                 let old_result = script_id ? previous_results_map.get(script_id) : null
@@ -293,21 +293,15 @@ const execute_scripttags = async ({ root_node, script_nodes, previous_results_ma
                 console.error(err)
                 // TODO: relay to user
             }
+        } else {
+            // Otherwise, we replace the node with a duplicate, which causes it to run
+            const new_node = document.createElement("script")
+            for (let attr of node.attributes) {
+                new_node.setAttribute(attr.name, attr.value)
+            }
+            new_node.text = node.text
+            node.parentNode.replaceChild(new_node, node)
         }
-    }
-    return results_map
-}
-
-const execute_scripttags_2 = async ({ root_node, script_nodes, previous_results_map, invalidation }) => {
-    console.log("execute_scripttags_2 v3")
-    let results_map = new Map()
-    for (let old_node of script_nodes) {
-        const new_node = document.createElement("script")
-        for (let attr of old_node.attributes) {
-            new_node.setAttribute(attr.name, attr.value)
-        }
-        new_node.text = old_node.text
-        old_node.parentNode.replaceChild(new_node, old_node)
     }
     return results_map
 }
@@ -347,7 +341,7 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
         run(async () => {
             js_init_set?.add(container.current)
-            previous_results_map.current = await execute_scripttags_2({
+            previous_results_map.current = await execute_scripttags({
                 root_node: container.current,
                 script_nodes: new_scripts,
                 invalidation: invalidation,
