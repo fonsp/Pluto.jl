@@ -30,6 +30,7 @@ import {
     indentOnInput,
     defaultHighlightStyle,
     closeBrackets,
+    rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
     searchKeymap,
@@ -357,6 +358,7 @@ export const CellInput = ({
                         return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
                     }),
                     closeBrackets(),
+                    rectangularSelection(),
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
