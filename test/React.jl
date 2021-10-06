@@ -309,10 +309,10 @@ import Distributed
 
     @testset "Reactive usings 4" begin
         notebook = Notebook([
-            Cell("""@sprintf "double_december = %d" double_december""")
+            Cell("""@sprintf "double_december = %d" double_december"""),
             Cell("double_december = 2December"),
             Cell(""),
-            Cell("archive_artifact")
+            Cell("archive_artifact"),
         ])
 
         fakeclient.connected_notebook = notebook
@@ -330,7 +330,7 @@ import Distributed
         @test notebook.cells[2] |> noerror
         @test notebook.cells[3] |> noerror
         @test notebook.cells[4] |> noerror
-        @test notebook.cells[1].output.body == "24"
+        @test notebook.cells[1].output.body == "double_december = 24"
     end
 
     @testset "Multiple methods across cells" begin
