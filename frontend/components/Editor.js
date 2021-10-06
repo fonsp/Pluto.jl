@@ -1059,13 +1059,19 @@ patch: ${JSON.stringify(
             if(!this.state.notebook.cell_results[launch_params.isolated_cell_id]) return html``
 
             return html`
-                <div style="width: 100%">
-                    ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                        <div class=${cell_id === launch_params.isolated_cell_id ? 'isolated-cell' : 'hidden-cell'}>
-                            <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
+            <${PlutoContext.Provider} value=${this.actions}>
+                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                    <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                        <div style="width: 100%">
+                            ${this.state.notebook.cell_order.map((cell_id, i) => html`
+                                <div class=${cell_id === launch_params.isolated_cell_id ? 'isolated-cell' : 'hidden-cell'}>
+                                    <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
+                                </div>
+                            `)}
                         </div>
-                    `)}
-                </div>
+                    </${PlutoJSInitializingContext.Provider}>
+                </${PlutoBondsContext.Provider}>
+            </${PlutoContext.Provider}>
             `
         }
 
