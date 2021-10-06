@@ -1114,10 +1114,8 @@ end
 
 is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
 function transform_dot_notation(ex::Expr)
-    if Meta.isexpr(ex, :(.), 2) && !(ex.args[2] isa QuoteNode)
-        Expr(:(.), ex.args[1], QuoteNode(ex.args[2])) : ex
-    elseif Meta.isexpr(ex, :(.), 1) && ex.args[1] isa Symbol
-        Expr(:block, ex.args[1])
+    if Meta.isexpr(ex, :(.))
+        Expr(:block, ex.args[end])
     else
         ex
     end

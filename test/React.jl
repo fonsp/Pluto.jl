@@ -278,14 +278,33 @@ import Distributed
         update_run!(🍭, notebook, notebook.cells[4:4])
 
         @test notebook.cells[1].errored == true
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[3] |> noerror
 
         setcode(notebook.cells[2], "using Dates")
         update_run!(🍭, notebook, notebook.cells[2:2])
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[3].errored == false
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[3] |> noerror
         @test notebook.cells[3].output.body == "13"
+    end
+
+    @testset "Reactive usings 3" begin
+        notebook = Notebook([
+            Cell("archive_artifact"),
+            Cell("using Unknown.Package"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+
+        setcode(notebook.cells[2], "using Pkg.Artifacts")
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
     end
 
     @testset "Multiple methods across cells" begin
