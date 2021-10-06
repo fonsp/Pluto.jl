@@ -1061,7 +1061,7 @@ patch: ${JSON.stringify(
             return html`
                 <div style="width: 100%">
                     ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                        <div style="display: ${cell_id === launch_params.isolated_cell_id ? 'block' : 'none'}">
+                        <div class=${cell_id === launch_params.isolated_cell_id ? 'isolated-cell' : 'hidden-cell'}>
                             <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
                         </div>
                     `)}

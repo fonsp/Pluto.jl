@@ -908,6 +908,15 @@ pluto-output:not(.rich_output) > div > pre {
 pluto-display > div {
     display: inline-block;
 }
+
+/* isolated cell view */
+.isolated-cell > pluto-output {
+    padding: 0;
+}
+.hidden-cell {
+    display: none;
+}
+
 /* SELECTION */
 
 pluto-cell.selected {
