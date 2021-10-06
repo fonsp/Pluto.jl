@@ -435,7 +435,7 @@ export let highlight = (code_element, language) => {
                     defaultHighlightStyle.fallback,
                     EditorState.tabSize.of(4),
                     // TODO Other languages possibly?
-                    language === "julia" ? julia_andrey() : null,
+                    language === "julia" ? julia_andrey : null,
                     EditorView.lineWrapping,
                     EditorView.editable.of(false),
                 ].filter((x) => x != null),
