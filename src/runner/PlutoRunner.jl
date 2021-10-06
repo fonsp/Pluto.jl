@@ -1634,7 +1634,7 @@ pluto_showable(::MIME"application/vnd.pluto.celloutputmirror+object", ::CellOutp
 
 
 Base.@kwdef struct DivElement
-    children::Vector{Any}
+    children::Vector
     style::String=""
 end
 
