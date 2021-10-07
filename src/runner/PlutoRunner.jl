@@ -1636,10 +1636,12 @@ pluto_showable(::MIME"application/vnd.pluto.celloutputmirror+object", ::CellOutp
 Base.@kwdef struct DivElement
     children::Vector
     style::String=""
+    class::Union{String,Nothing}=nothing
 end
 
 tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
     :style => e.style, 
+    :classname => e.class, 
     :children => Any[
         format_output_default(value, context) for value in e.children
     ],
