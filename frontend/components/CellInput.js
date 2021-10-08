@@ -327,6 +327,16 @@ export const CellInput = ({
             }
         })
 
+        const altClickOffset = StateField.define({
+            create() { return {offset: 0, selection: null} },
+            update(value, tr) {
+                return {
+                    offset: tr.altClickOffset,
+                    selection: tr.altClickSelection
+                }
+            }
+        })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -358,6 +368,40 @@ export const CellInput = ({
                         return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
                     }),
                     closeBrackets(),
+                    altClickOffset,
+                    // removes the leftover cursor
+                    EditorView.domEventHandlers({
+                        mousedown(event, view) {
+                            if(event.altKey && event.button == 0) {
+                                let offset = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
+                                const altClickSelection = view.state.selection;
+                                const tr = view.state.update({
+                                    selection: EditorSelection.create([
+                                        EditorSelection.cursor(offset)
+                                    ]),
+
+                                })
+                                tr.altClickOffset = offset;
+                                tr.altClickSelection = altClickSelection;
+                                view.update([tr])
+                            }
+                        },
+                        mouseup(event, view) {
+                            if(event.altKey && event.button == 0) {
+                                let offset = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
+                                let oldSelection = view.state.field(altClickOffset);
+                                if(oldSelection.offset === offset) {
+                                    const tr = view.state.update({
+                                        selection: EditorSelection.create([
+                                            ...oldSelection.selection.ranges,
+                                            EditorSelection.cursor(offset)
+                                        ])
+                                    })
+                                    view.update([tr])
+                                }
+                            }
+                        }
+                    }),
                     rectangularSelection(),
                     highlightSelectionMatches(),
                     bracketMatching(),
