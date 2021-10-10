@@ -1408,10 +1408,18 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-color: rgba(0, 0, 0, 0.1);
 }
 
+.input_context_menu a {
+    text-decoration: unset;
+    font-weight: unset;
+    color: unset;
+    display: inline;
+}
+
 .disable_cell_icon,
 .delete_icon,
 .enable_cell_icon,
 .bandage_icon,
+.isolate_icon,
 .icon {
     --size: 17px;
     width: var(--size);
@@ -1420,6 +1428,7 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-size: var(--size) var(--size);
     background-position: center;
     margin-right: calc(var(--size) / 3);
+    display: inline-block;
 }
 .bandage_icon {
     filter: opacity(0.3);
@@ -1427,6 +1436,9 @@ pluto-input > button.delete_cell ul.input_context_menu {
 }
 .enable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+}
+.isolate_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/tv-outline.svg);
 }
 
 .disable_cell_icon {

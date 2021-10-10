@@ -47,7 +47,7 @@ import {
     markdown,
     html as htmlLang,
     javascript,
-    sqlLang
+    sqlLang,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -103,7 +103,6 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.documentMeta, color: "#232227", fontStyle: "italic" },
     // CSS
     { tag: tags.className, color: "grey", fontWeight: "bold" },
-
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -450,9 +449,10 @@ export const CellInput = ({
         // @ts-ignore
         dom_node_ref.current.CodeMirror = newcm.dom.CodeMirror = {
             getValue: () => newcm.state.doc.toString(),
-            setValue: (value) => newcm.dispatch({
-                changes: { from: 0, to: newcm.state.doc.length, insert: value },
-            })
+            setValue: (value) =>
+                newcm.dispatch({
+                    changes: { from: 0, to: newcm.state.doc.length, insert: value },
+                }),
         }
 
         if (focus_after_creation) {
@@ -549,7 +549,20 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
         await run_cell()
     }
 
-    return html` <button onMouseleave=${mouseleave} onClick=${() => setOpen(!open)} onBlur=${() => setOpen(false)} class="delete_cell" title="Actions">
+    let isolate_url = new URL(window.location.href)
+    isolate_url.searchParams.set("isolated_cell_id", cell_id)
+
+    return html` <button
+        onMouseleave=${mouseleave}
+        onClick=${() => setOpen(!open)}
+        onBlur=${(e) => {
+            setTimeout(() => {
+                setOpen(false)
+            }, 500)
+        }}
+        class="delete_cell cell_context_menu"
+        title="Actions"
+    >
         <span class="icon"></span>
         ${open
             ? html`<ul onMouseenter=${mouseenter} class="input_context_menu">
@@ -560,6 +573,9 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) =>
                   >
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                  </li>
+                  <li>
+                      <a href=${isolate_url.href} target="_blank"><span class="isolate_icon" />Cell view</a>
                   </li>
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
