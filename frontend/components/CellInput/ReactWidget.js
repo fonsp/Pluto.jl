@@ -12,7 +12,7 @@ export class ReactWidget extends WidgetType {
     }
 
     eq(other) {
-        return false
+        return true
     }
 
     toDOM() {

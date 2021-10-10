@@ -83,12 +83,13 @@ export const pluto_syntax_colors = HighlightStyle.define([
     // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
 ])
 
-const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
-const setValue6 = (/** @type {EditorView} */ cm, value) =>
+export const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
+export const getRange6 = (/** @type {EditorView} */ cm, from, to) => cm.state.doc.sliceString(from, to)
+export const setValue6 = (/** @type {EditorView} */ cm, value) =>
     cm.dispatch({
         changes: { from: 0, to: cm.state.doc.length, insert: value },
     })
-const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
+export const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
     cm.dispatch({
         changes: { from, to, insert: text },
     })

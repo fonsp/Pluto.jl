@@ -142,7 +142,7 @@ end
 responses[:get_widget_code] = function response_get_widget_code(🙋::ClientRequest)
     require_notebook(🙋)
     query = 🙋.body["query"]
-
+    
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
     result = if will_run_code(🙋.notebook)# && isready(workspace.dowork_token)
@@ -154,6 +154,41 @@ responses[:get_widget_code] = function response_get_widget_code(🙋::ClientRequ
     msg = UpdateMessage(:doc_result, 
         Dict(
             :code => result,
+            ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
+
+responses[:to_julia_code] = function response_to_julia_code(🙋::ClientRequest)
+    require_notebook(🙋)
+    query = 🙋.body["query"]
+    
+    julia_code = string(query)
+
+    msg = UpdateMessage(:doc_result, 
+        Dict(
+            :julia_code => julia_code,
+            ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
+
+responses[:from_julia_code] = function response_from_julia_code(🙋::ClientRequest)
+    require_notebook(🙋)
+    query = 🙋.body["query"]
+    
+    ex = Meta.parse(query)
+    
+    first_arg = if Meta.isexpr(ex.args[2], :parameters)
+        ex.args[3]
+    else
+        ex.args[2]
+    end
+    
+    js_value = eval(first_arg)
+    msg = UpdateMessage(:doc_result, 
+        Dict(
+            :js_value => js_value,
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)

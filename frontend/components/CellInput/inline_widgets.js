@@ -4,6 +4,7 @@ import { html, useEffect, useLayoutEffect, useRef, useState } from "../../import
 import { ReactWidget } from "./ReactWidget.js"
 import { execute_dynamic_function } from "../CellOutput.js"
 import { observablehq_for_cells } from "../../common/SetupCellEnvironment.js"
+import { getRange6, replaceRange6 } from "../CellInput.js"
 
 const widgetRenderers = {
     Slider: function (state, setState, params) {
@@ -11,21 +12,42 @@ const widgetRenderers = {
     },
 }
 
-export const InlineWidget = ({ pluto_actions, notebook_id, identifier }) => {
+export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code }) => {
     const [widget_state, set_widget_state] = useState(null)
     let container = useRef(/** @type {HTMLElement} */ (null))
 
-    let [code, set_code] = useState(null)
+    let [js_code, set_js_code] = useState(null)
 
     pluto_actions.send("get_widget_code", { query: identifier }, { notebook_id: notebook_id }).then(({ message }) => {
         const { code } = message
-        set_code(code)
+        set_js_code(code)
     })
 
+    const to_julia_code = async (js_value) => {
+        const {
+            message: { julia_code },
+        } = await pluto_actions.send("to_julia_code", { query: js_value }, { notebook_id })
+        return julia_code
+    }
+
+    const from_julia_code = async (julia_code) => {
+        const {
+            message: { js_value },
+        } = await pluto_actions.send("from_julia_code", { query: julia_code }, { notebook_id })
+        return js_value
+    }
+
+    useEffect(() => {
+        from_julia_code(get_julia_code()).then((r) => {
+            console.log("INITIAL JS VALUE RECEIVED ", r)
+            set_widget_state(r)
+        })
+    }, [])
+
     useLayoutEffect(() => {
-        if (code != null) {
+        if (js_code != null && widget_state != null) {
             ;(async () => {
-                console.log("RENDERING ", code)
+                console.log("RENDERING ", js_code)
 
                 let result = await execute_dynamic_function({
                     environment: {
@@ -34,13 +56,14 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier }) => {
                         invalidation: new Promise(() => {}),
                         getPublishedObject: (id) => null,
                         state: widget_state,
-                        setState: (newstate) => {
+                        setState: async (newstate) => {
                             console.error("newstate ", newstate)
                             set_widget_state(newstate)
+                            set_julia_code(`${identifier}(${await to_julia_code(newstate)})`)
                         },
                         ...observablehq_for_cells,
                     },
-                    code: code,
+                    code: js_code,
                 })
 
                 // const dom_result = renderer({
@@ -51,7 +74,7 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier }) => {
                 container.current.appendChild(result)
             })()
         }
-    }, [code])
+    }, [js_code, widget_state != null])
 
     return html` <span ref=${container}></span> `
 }
@@ -67,7 +90,9 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
         let is_inside_coolbind_call = false
         let is_call_inside_coolbind = false
 
+        let macro_call_range = null
         let call_range = null
+        // let changed_offset = 0
         syntaxTree(view.state).iterate({
             from,
             to,
@@ -76,7 +101,7 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
 
                 if (type.name === "MacroExpression") {
                     is_inside_macro_expression = true
-                    call_range = { from, to }
+                    macro_call_range = { from, to }
                 }
 
                 if (type.name == "MacroIdentifier" && is_inside_macro_expression) {
@@ -89,6 +114,7 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
 
                 if (type.name === "CallExpression" && is_inside_coolbind_call) {
                     is_call_inside_coolbind = true
+                    call_range = { from, to }
                 }
 
                 if (type.name === "Identifier" && is_call_inside_coolbind) {
@@ -99,6 +125,17 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
                         identifier=${identifier}
                         notebook_id=${notebook_id}
                         pluto_actions=${pluto_actions}
+                        set_julia_code=${(newcode) => {
+                            replaceRange6(view, newcode, call_range.from, call_range.to)
+
+                            let old_length = call_range.to - call_range.from
+                            let new_length = newcode.length
+
+                            call_range.to += new_length - old_length
+                        }}
+                        get_julia_code=${() => {
+                            return getRange6(view, call_range.from, call_range.to)
+                        }}
                     />`)
                     let deco = Decoration.replace({
                         widget: widget,
@@ -108,7 +145,7 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
                         // point: true,
                     })
                     deco.point = true
-                    let therange = deco.range(call_range.from, call_range.to)
+                    let therange = deco.range(macro_call_range.from, macro_call_range.to)
                     // therange.point = true
 
                     is_call_inside_coolbind = false
