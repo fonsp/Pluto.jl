@@ -1615,6 +1615,9 @@ embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
 
 
+const inline_widgets = Dict{Symbol,String}()
+
+
 
 ###
 # LOGGING

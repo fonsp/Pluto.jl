@@ -53,9 +53,9 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     let callee_name = view.state.sliceDoc(callee.from, callee.to)
 
                     if (pkg_disablers.includes(callee_name)) {
-                        let deco = Decoration.widget({
+                        let deco = Decoration.replace({
                             widget: new ReactWidget(html` <${PkgActivateMark} package_name=${callee_name} /> `),
-                            side: 1,
+                            // side: 1,
                         })
                         widgets.push(deco.range(to))
                     }
@@ -80,7 +80,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     // console.warn(type)
                     // console.warn("Found", package_name)
                     if (package_name !== "Base" && package_name !== "Core") {
-                        let deco = Decoration.widget({
+                        let deco = Decoration.replace({
                             widget: new ReactWidget(html`
                                 <${PkgStatusMark}
                                     key=${package_name}
@@ -90,9 +90,9 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                                     nbpkg=${nbpkg}
                                 />
                             `),
-                            side: 1,
+                            // side: 1,
                         })
-                        widgets.push(deco.range(to))
+                        widgets.push(deco.range(from, to))
                     }
 
                     if (in_selected_import) {
@@ -134,6 +134,11 @@ export const pkgBubblePlugin = ({ pluto_actions, notebook_id }) =>
                 const ds = pkg_decorations(view, { pluto_actions, notebook_id, nbpkg: view.state.facet(NotebookpackagesFacet) })
                 this.decorations = ds
             }
+
+            // {
+            //     "installed_packages": ["PKg"],
+
+            // }
 
             /**
              * @param {EditorView} view

@@ -47,6 +47,7 @@ import {
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
+import { InlineWidgetsFacet, inlineWidgetsPlugin } from "./CellInput/inline_widgets.js"
 import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
 import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
@@ -154,6 +155,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
+    let inlinewidgets_compartment = useCompartment(newcm_ref, InlineWidgetsFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
@@ -337,10 +339,12 @@ export const CellInput = ({
                 extensions: [
                     // Compartments coming from react state/props
                     nbpkg_compartment,
+                    inlinewidgets_compartment,
                     used_variables_compartment,
                     editable_compartment,
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    inlineWidgetsPlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),

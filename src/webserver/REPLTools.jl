@@ -138,3 +138,23 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
+
+responses[:get_widget_code] = function response_get_widget_code(🙋::ClientRequest)
+    require_notebook(🙋)
+    query = 🙋.body["query"]
+
+    workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
+
+    result = if will_run_code(🙋.notebook)# && isready(workspace.dowork_token)
+        Distributed.remotecall_eval(Main, workspace.pid, :(PlutoRunner.inline_widgets[Symbol($(query))]))
+    else
+        nothing
+    end
+
+    msg = UpdateMessage(:doc_result, 
+        Dict(
+            :code => result,
+            ), 🙋.notebook, nothing, 🙋.initiator)
+
+    putclientupdates!(🙋.session, 🙋.initiator, msg)
+end
