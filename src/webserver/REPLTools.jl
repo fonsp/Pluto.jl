@@ -179,16 +179,20 @@ responses[:from_julia_code] = function response_from_julia_code(🙋::ClientRequ
     
     ex = Meta.parse(query)
     
-    first_arg = if Meta.isexpr(ex.args[2], :parameters)
-        ex.args[3]
+    first_arg, parameters_ex = if Meta.isexpr(ex.args[2], :parameters)
+        new_ex = Expr(:call, :Dict, map(kw -> Expr(:call, :(=>), QuoteNode(kw.args[1]), kw.args[2]), ex.args[2].args)...)
+        
+        ex.args[3], new_ex
     else
-        ex.args[2]
+        ex.args[2], Expr(:call, :Dict)
     end
     
-    js_value = eval(first_arg)
+    state = eval(first_arg)
+    parameters = eval(parameters_ex)
     msg = UpdateMessage(:doc_result, 
         Dict(
-            :js_value => js_value,
+            :state => state,
+            :parameters => parameters,
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)

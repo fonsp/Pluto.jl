@@ -13,6 +13,7 @@ const widgetRenderers = {
 }
 
 export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code }) => {
+    const [parameters, set_parameters] = useState(null)
     const [widget_state, set_widget_state] = useState(null)
     let container = useRef(/** @type {HTMLElement} */ (null))
 
@@ -31,16 +32,15 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
     }
 
     const from_julia_code = async (julia_code) => {
-        const {
-            message: { js_value },
-        } = await pluto_actions.send("from_julia_code", { query: julia_code }, { notebook_id })
-        return js_value
+        const { message } = await pluto_actions.send("from_julia_code", { query: julia_code }, { notebook_id })
+        return message
     }
 
     useEffect(() => {
-        from_julia_code(get_julia_code()).then((r) => {
-            console.log("INITIAL JS VALUE RECEIVED ", r)
-            set_widget_state(r)
+        from_julia_code(get_julia_code()).then(({ state, parameters }) => {
+            console.log("INITIAL JS VALUE RECEIVED ", state)
+            set_parameters(parameters)
+            set_widget_state({ current: state })
         })
     }, [])
 
@@ -55,11 +55,15 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
                         currentScript: null,
                         invalidation: new Promise(() => {}),
                         getPublishedObject: (id) => null,
-                        state: widget_state,
+                        props: parameters,
+                        getState: () => {
+                            // console.log(widget_state, widget_state.current)
+                            return widget_state.current
+                        },
                         setState: async (newstate) => {
                             console.error("newstate ", newstate)
-                            set_widget_state(newstate)
-                            set_julia_code(`${identifier}(${await to_julia_code(newstate)})`)
+                            widget_state.current = newstate
+                            set_julia_code(await to_julia_code(newstate))
                         },
                         ...observablehq_for_cells,
                     },
@@ -74,7 +78,7 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
                 container.current.appendChild(result)
             })()
         }
-    }, [js_code, widget_state != null])
+    }, [js_code, parameters != null, widget_state != null])
 
     return html` <span ref=${container}></span> `
 }
@@ -89,15 +93,32 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
         let is_inside_macro_expression = false
         let is_inside_coolbind_call = false
         let is_call_inside_coolbind = false
+        let is_first_after_call = false
 
         let macro_call_range = null
         let call_range = null
+        let first_argument_range = null
         // let changed_offset = 0
+
+        let identifier = null
+        let node = null
+        let param_range = null
         syntaxTree(view.state).iterate({
             from,
             to,
             enter: (type, from, to, getNode) => {
-                // console.log("enter", type.name)
+                console.log("enter", { name: type.name, content: view.state.doc.sliceString(from, to) })
+
+                if (is_first_after_call) {
+                    first_argument_range = { from, to }
+                    is_first_after_call = false
+                }
+
+                if (type.name === "ArgumentList" && is_call_inside_coolbind && is_inside_coolbind_call) {
+                    // const args = view.state.doc.sliceString(from, to)
+                    // console.log("args = ", args)
+                    is_first_after_call = true
+                }
 
                 if (type.name === "MacroExpression") {
                     is_inside_macro_expression = true
@@ -117,40 +138,8 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
                     call_range = { from, to }
                 }
 
-                if (type.name === "Identifier" && is_call_inside_coolbind) {
-                    let identifier = view.state.doc.sliceString(from, to)
-                    console.log("identiefniinef", identifier)
-                    let widget = new ReactWidget(html`<${InlineWidget}
-                        key=${identifier}
-                        identifier=${identifier}
-                        notebook_id=${notebook_id}
-                        pluto_actions=${pluto_actions}
-                        set_julia_code=${(newcode) => {
-                            replaceRange6(view, newcode, call_range.from, call_range.to)
-
-                            let old_length = call_range.to - call_range.from
-                            let new_length = newcode.length
-
-                            call_range.to += new_length - old_length
-                        }}
-                        get_julia_code=${() => {
-                            return getRange6(view, call_range.from, call_range.to)
-                        }}
-                    />`)
-                    let deco = Decoration.replace({
-                        widget: widget,
-                        // inclusive: true,
-                        // inclusiveStart: true,
-                        // inclusiveEnd: true,
-                        // point: true,
-                    })
-                    deco.point = true
-                    let therange = deco.range(macro_call_range.from, macro_call_range.to)
-                    // therange.point = true
-
-                    is_call_inside_coolbind = false
-
-                    widgets.push(therange)
+                if (type.name === "Identifier" && is_call_inside_coolbind && identifier == null) {
+                    identifier = view.state.doc.sliceString(from, to)
                 }
             },
             leave: (type, from, to) => {
@@ -172,9 +161,44 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
                     // is_inside_coolbind_call = false
                 }
 
+                // Slider(...)
                 if (type.name === "CallExpression" && is_inside_coolbind_call) {
+                    // Create the widget
+                    console.log("identiefniinef", identifier)
+                    console.log("node", node)
+                    let widget = new ReactWidget(html`<${InlineWidget}
+                        key=${identifier}
+                        identifier=${identifier}
+                        notebook_id=${notebook_id}
+                        pluto_actions=${pluto_actions}
+                        set_julia_code=${(new_state) => {
+                            // const newcode = `${identifier}(${new_state}${""})`
+                            replaceRange6(view, new_state, first_argument_range.from, first_argument_range.to)
+
+                            let old_length = first_argument_range.to - first_argument_range.from
+                            let new_length = new_state.length
+
+                            call_range.to += new_length - old_length
+                            first_argument_range.to += new_length - old_length
+                        }}
+                        get_julia_code=${() => {
+                            return getRange6(view, call_range.from, call_range.to)
+                        }}
+                    />`)
+                    let deco = Decoration.replace({
+                        widget: widget,
+                        // inclusive: true,
+                        // inclusiveStart: true,
+                        // inclusiveEnd: true,
+                        // point: true,
+                    })
+                    deco.point = true
+                    let therange = deco.range(macro_call_range.from, macro_call_range.to)
+                    // therange.point = true
+
+                    widgets.push(therange)
+
                     is_inside_coolbind_call = false
-                    // is_call_inside_coolbind = false
                 }
             },
         })
