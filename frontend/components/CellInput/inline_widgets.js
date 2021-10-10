@@ -12,7 +12,7 @@ const widgetRenderers = {
     },
 }
 
-export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code }) => {
+export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code, on_submit }) => {
     const [parameters, set_parameters] = useState(null)
     const [widget_state, set_widget_state] = useState(null)
     let container = useRef(/** @type {HTMLElement} */ (null))
@@ -87,7 +87,7 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
  * @param {EditorView} view
  * @param {PkgstatusmarkWidgetProps} props
  */
-function inline_decorations(view, { pluto_actions, notebook_id }) {
+function inline_decorations(view, { pluto_actions, notebook_id, on_submit_debounced, cell_id }) {
     let widgets = []
     for (let { from, to } of view.visibleRanges) {
         let is_inside_macro_expression = false
@@ -180,6 +180,8 @@ function inline_decorations(view, { pluto_actions, notebook_id }) {
 
                             call_range.to += new_length - old_length
                             first_argument_range.to += new_length - old_length
+
+                            on_submit_debounced()
                         }}
                         get_julia_code=${() => {
                             return getRange6(view, call_range.from, call_range.to)
@@ -213,11 +215,11 @@ export const InlineWidgetsFacet = Facet.define({
     compare: _.isEqual,
 })
 
-export const inlineWidgetsPlugin = ({ pluto_actions, notebook_id }) =>
+export const inlineWidgetsPlugin = ({ pluto_actions, notebook_id, on_submit_debounced }) =>
     ViewPlugin.fromClass(
         class {
             update_decos(view) {
-                const ds = inline_decorations(view, { pluto_actions, notebook_id, nbpkg: view.state.facet(InlineWidgetsFacet) })
+                const ds = inline_decorations(view, { pluto_actions, notebook_id, on_submit_debounced, nbpkg: view.state.facet(InlineWidgetsFacet) })
                 this.decorations = ds
             }
 

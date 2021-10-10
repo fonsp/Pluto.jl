@@ -329,6 +329,8 @@ export const CellInput = ({
             }
         })
 
+        const on_submit_debounced = _.throttle(on_submit, 1000, { leading: false })
+
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -345,7 +347,7 @@ export const CellInput = ({
                     editable_compartment,
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
-                    inlineWidgetsPlugin({ pluto_actions, notebook_id }),
+                    inlineWidgetsPlugin({ pluto_actions, on_submit_debounced, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),
