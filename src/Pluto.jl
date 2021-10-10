@@ -74,4 +74,18 @@ if get(ENV, "JULIA_PLUTO_SHOW_BANNER", "1") !== "0"
 \n"""
 end
 
+
+# code running in the notebook:
+
+# howmany = @coolbind(Counter(  PlutoRunner.inline_state[:uuid + idx]   ))  + @coolbind(Counter(  PlutoRunner.inline_state[:asd98cn9s8ljsadf8h]   ))
+
+
+# @coolbind(Slider())
+
+# when saved to file:
+
+# howmany = @coolbind(Counter(124))  + @coolbind(Counter(134))
+
+
+
 end
