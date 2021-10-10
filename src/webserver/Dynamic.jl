@@ -149,6 +149,10 @@ function notebook_to_js(notebook::Notebook)
                 "is_first_value" => bondvalue.is_first_value
             )
         for (key, bondvalue) in notebook.bonds),
+        "inline_widgets" => Dict{String,String}(
+            String(s) => r
+            for (s, r) in notebook.inline_widgets
+        ),
         "nbpkg" => let
             ctx = notebook.nbpkg_ctx
             Dict{String,Any}(

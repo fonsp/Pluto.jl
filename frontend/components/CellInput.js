@@ -142,6 +142,7 @@ export const CellInput = ({
     on_focus_neighbor,
     on_drag_drop_events,
     nbpkg,
+    inline_widgets,
     cell_id,
     notebook_id,
     running_disabled,
@@ -156,7 +157,7 @@ export const CellInput = ({
     on_change_ref.current = on_change
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
-    let inlinewidgets_compartment = useCompartment(newcm_ref, InlineWidgetsFacet.of(nbpkg))
+    let inlinewidgets_compartment = useCompartment(newcm_ref, InlineWidgetsFacet.of(inline_widgets))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 

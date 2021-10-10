@@ -236,7 +236,7 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing, contains_user_defined_macrocalls::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing, contains_user_defined_macrocalls::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :new_inline_widgets, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{Nothing,Dict},Union{UInt64,Nothing},Dict{String,Any}}}
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -281,7 +281,7 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :new_inline_widgets, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{Nothing,Dict},Union{UInt64,Nothing},Dict{String,Any}}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.

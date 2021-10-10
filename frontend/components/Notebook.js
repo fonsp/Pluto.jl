@@ -20,6 +20,7 @@ let CellMemo = ({
     is_process_ready,
     disable_input,
     nbpkg,
+    inline_widgets,
 }) => {
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
     const { body, last_run_timestamp, mime, persist_js_state, rootassignee } = cell_result?.output || {}
@@ -43,6 +44,7 @@ let CellMemo = ({
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
                 nbpkg=${nbpkg}
+                inline_widgets=${inline_widgets}
             />
         `
     }, [
@@ -73,6 +75,8 @@ let CellMemo = ({
         is_process_ready,
         disable_input,
         ...nbpkg_fingerprint(nbpkg),
+        ...Object.keys(inline_widgets),
+        ...Object.values(inline_widgets),
     ])
 }
 
@@ -173,6 +177,7 @@ export const Notebook = ({
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
                         nbpkg=${notebook.nbpkg}
+                        inline_widgets=${notebook.inline_widgets}
                     />`
                 )}
         </pluto-notebook>

@@ -12,17 +12,22 @@ const widgetRenderers = {
     },
 }
 
-export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code, on_submit }) => {
+export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia_code, get_julia_code, on_submit, inline_widgets_state }) => {
     const [parameters, set_parameters] = useState(null)
     const [widget_state, set_widget_state] = useState(null)
     let container = useRef(/** @type {HTMLElement} */ (null))
 
     let [js_code, set_js_code] = useState(null)
 
-    pluto_actions.send("get_widget_code", { query: identifier }, { notebook_id: notebook_id }).then(({ message }) => {
-        const { code } = message
-        set_js_code(code)
-    })
+    useEffect(() => {
+        set_js_code(inline_widgets_state[identifier])
+    }, [inline_widgets_state[identifier]])
+
+    console.log(inline_widgets_state)
+    // pluto_actions.send("get_widget_code", { query: identifier }, { notebook_id: notebook_id }).then(({ message }) => {
+    //     const { code } = message
+    //     set_js_code(code)
+    // })
 
     const to_julia_code = async (js_value) => {
         const {
@@ -45,7 +50,9 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
     }, [])
 
     useLayoutEffect(() => {
-        if (js_code != null && widget_state != null) {
+        if (js_code == null) {
+            container.current.innerHTML = "🍄"
+        } else if (widget_state != null) {
             ;(async () => {
                 console.log("RENDERING ", js_code)
 
@@ -75,6 +82,7 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
                 //     setState: set_widget_state,
                 //     props: {},
                 // })
+                container.current.innerHTML = ""
                 container.current.appendChild(result)
             })()
         }
@@ -85,9 +93,9 @@ export const InlineWidget = ({ pluto_actions, notebook_id, identifier, set_julia
 
 /**
  * @param {EditorView} view
- * @param {PkgstatusmarkWidgetProps} props
+ * @param {Object} props
  */
-function inline_decorations(view, { pluto_actions, notebook_id, on_submit_debounced, cell_id }) {
+function inline_decorations(view, { pluto_actions, notebook_id, on_submit_debounced, inline_widgets_state }) {
     let widgets = []
     for (let { from, to } of view.visibleRanges) {
         let is_inside_macro_expression = false
@@ -107,7 +115,7 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
             from,
             to,
             enter: (type, from, to, getNode) => {
-                console.log("enter", { name: type.name, content: view.state.doc.sliceString(from, to) })
+                // console.log("enter", { name: type.name, content: view.state.doc.sliceString(from, to) })
 
                 if (is_first_after_call) {
                     first_argument_range = { from, to }
@@ -164,29 +172,33 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
                 // Slider(...)
                 if (type.name === "CallExpression" && is_inside_coolbind_call) {
                     // Create the widget
-                    console.log("identiefniinef", identifier)
-                    console.log("node", node)
-                    let widget = new ReactWidget(html`<${InlineWidget}
-                        key=${identifier}
-                        identifier=${identifier}
-                        notebook_id=${notebook_id}
-                        pluto_actions=${pluto_actions}
-                        set_julia_code=${(new_state) => {
-                            // const newcode = `${identifier}(${new_state}${""})`
-                            replaceRange6(view, new_state, first_argument_range.from, first_argument_range.to)
+                    // console.log("identiefniinef", identifier)
+                    // console.log("node", node)
+                    let widget = new ReactWidget(
+                        html`<${InlineWidget}
+                            key=${identifier}
+                            identifier=${identifier}
+                            notebook_id=${notebook_id}
+                            pluto_actions=${pluto_actions}
+                            inline_widgets_state=${inline_widgets_state}
+                            set_julia_code=${(new_state) => {
+                                // const newcode = `${identifier}(${new_state}${""})`
+                                replaceRange6(view, new_state, first_argument_range.from, first_argument_range.to)
 
-                            let old_length = first_argument_range.to - first_argument_range.from
-                            let new_length = new_state.length
+                                let old_length = first_argument_range.to - first_argument_range.from
+                                let new_length = new_state.length
 
-                            call_range.to += new_length - old_length
-                            first_argument_range.to += new_length - old_length
+                                call_range.to += new_length - old_length
+                                first_argument_range.to += new_length - old_length
 
-                            on_submit_debounced()
-                        }}
-                        get_julia_code=${() => {
-                            return getRange6(view, call_range.from, call_range.to)
-                        }}
-                    />`)
+                                on_submit_debounced()
+                            }}
+                            get_julia_code=${() => {
+                                return getRange6(view, call_range.from, call_range.to)
+                            }}
+                        />`,
+                        [inline_widgets_state[identifier], identifier]
+                    )
                     let deco = Decoration.replace({
                         widget: widget,
                         // inclusive: true,
@@ -206,20 +218,28 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
         })
     }
 
-    console.error(widgets)
+    // console.error(widgets)
     return Decoration.set(widgets)
 }
 
 export const InlineWidgetsFacet = Facet.define({
     combine: (values) => values[0],
-    compare: _.isEqual,
+    compare: (a, b) => {
+        console.log("comparing ", a, b)
+        return _.isEqual(a, b)
+    },
 })
 
 export const inlineWidgetsPlugin = ({ pluto_actions, notebook_id, on_submit_debounced }) =>
     ViewPlugin.fromClass(
         class {
             update_decos(view) {
-                const ds = inline_decorations(view, { pluto_actions, notebook_id, on_submit_debounced, nbpkg: view.state.facet(InlineWidgetsFacet) })
+                const ds = inline_decorations(view, {
+                    pluto_actions,
+                    notebook_id,
+                    on_submit_debounced,
+                    inline_widgets_state: view.state.facet(InlineWidgetsFacet),
+                })
                 this.decorations = ds
             }
 
@@ -234,7 +254,10 @@ export const inlineWidgetsPlugin = ({ pluto_actions, notebook_id, on_submit_debo
              * @param {ViewUpdate} update
              */
             update(update) {
-                if (update.docChanged || update.viewportChanged || update.state.facet(InlineWidgetsFacet) !== update.startState.facet(InlineWidgetsFacet)) {
+                const will_update =
+                    update.docChanged || update.viewportChanged || update.state.facet(InlineWidgetsFacet) !== update.startState.facet(InlineWidgetsFacet)
+                console.log("updating plugin ", update.state.facet(InlineWidgetsFacet), update.startState.facet(InlineWidgetsFacet), will_update)
+                if (will_update) {
                     this.update_decos(update.view)
                     return
                 }

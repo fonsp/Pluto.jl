@@ -173,6 +173,9 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		cell.cell_dependencies.contains_user_defined_macrocalls,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
+	if session_notebook isa Tuple && run.new_inline_widgets !== nothing
+		session_notebook[2].inline_widgets = run.new_inline_widgets
+	end
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end

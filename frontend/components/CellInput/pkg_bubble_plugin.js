@@ -80,7 +80,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     // console.warn(type)
                     // console.warn("Found", package_name)
                     if (package_name !== "Base" && package_name !== "Core") {
-                        let deco = Decoration.replace({
+                        let deco = Decoration.widget({
                             widget: new ReactWidget(html`
                                 <${PkgStatusMark}
                                     key=${package_name}
@@ -90,9 +90,9 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                                     nbpkg=${nbpkg}
                                 />
                             `),
-                            // side: 1,
+                            side: 1,
                         })
-                        widgets.push(deco.range(from, to))
+                        widgets.push(deco.range(to))
                     }
 
                     if (in_selected_import) {

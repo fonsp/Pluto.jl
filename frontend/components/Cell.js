@@ -36,6 +36,7 @@ export const Cell = ({
     is_process_ready,
     disable_input,
     nbpkg,
+    inline_widgets,
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
@@ -184,6 +185,7 @@ export const Cell = ({
                 on_update_doc_query=${on_update_doc_query}
                 on_focus_neighbor=${on_focus_neighbor}
                 nbpkg=${nbpkg}
+                inline_widgets=${inline_widgets}
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}

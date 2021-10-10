@@ -154,6 +154,7 @@ const first_true_key = (obj) => {
  *  cell_execution_order: Array<string>,
  *  bonds: { [name: string]: any },
  *  nbpkg: Object,
+ *  inline_widgets: Object,
  * }}
  */
 

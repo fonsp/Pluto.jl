@@ -373,6 +373,10 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             ans, runtime
         end
     end
+    
+    if _inline_widgets_changed
+        
+    end
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
@@ -570,7 +574,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :new_inline_widgets, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{Nothing,Dict},Union{UInt64,Nothing},Dict{String,Any}}}
     load_integration_if_needed.(integrations)
     currently_running_cell_id[] = cell_id
 
@@ -590,11 +594,20 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
     else
         ("", MIME"text/plain"())
     end
+    
+    new_inline_widgets = if _inline_widgets_changed[]
+        _inline_widgets_changed[] = false
+        _inline_widgets
+    else
+        nothing
+    end
+    
     return (
         output_formatted = output_formatted,
         errored = errored, 
         interrupted = false, 
         process_exited = false, 
+        new_inline_widgets = new_inline_widgets,
         runtime = get(cell_runtimes, cell_id, nothing),
         published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
     )
@@ -1615,8 +1628,22 @@ embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
 
 
-const inline_widgets = Dict{Symbol,String}()
 
+
+const _inline_widgets_changed = Ref{Bool}(false)
+const _inline_widgets = Dict{Symbol,String}()
+
+
+function register_inline_widget(symbol::Symbol, js::String)
+    _inline_widgets[symbol] = js
+    _inline_widgets_changed[] = true
+end
+
+
+function _get_inline_widgets()
+    _inline_widgets_changed[] = false
+    _inline_widgets
+end
 
 
 ###

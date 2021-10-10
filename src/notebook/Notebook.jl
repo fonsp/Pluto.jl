@@ -56,6 +56,7 @@ Base.@kwdef mutable struct Notebook
     last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
+    inline_widgets::Dict{Symbol,String}=Dict{Symbol,String}()
 end
 
 Notebook(cells::Array{Cell,1}, path::AbstractString, notebook_id::UUID) = Notebook(
