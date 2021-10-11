@@ -1243,7 +1243,7 @@ patch: ${JSON.stringify(
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    if (recent_path != null) {
+    if (recent_path != null && recent_path !== default_path) {
         const stored_string = localStorage.getItem("recent notebooks")
         const stored_list = stored_string != null ? JSON.parse(stored_string) : []
         const oldpaths = stored_list
