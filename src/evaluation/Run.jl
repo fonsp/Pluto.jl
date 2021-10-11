@@ -372,6 +372,8 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
+	
 	just_loaded = try
 		load_notebook_nobackup(notebook.path)
 	catch e
@@ -401,8 +403,8 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
 	order_changed = notebook.cell_order != just_loaded.cell_order
 	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
-	
-	something_changed = cells_changed || order_changed || nbpkg_changed
+		
+	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
 	
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
@@ -421,7 +423,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 
 	notebook.cell_order = just_loaded.cell_order
 	
-	if nbpkg_changed
+	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
