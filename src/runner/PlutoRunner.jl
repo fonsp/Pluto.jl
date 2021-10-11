@@ -187,7 +187,17 @@ function try_macroexpand(mod, cell_uuid, expr)
     end
 end
 
+function get_module_names(workspace_module, module_ex::Expr)
+    try
+        Core.eval(workspace_module, Expr(:call, :names, module_ex)) |> Set{Symbol}
+    catch
+        Set{Symbol}()
+    end
+end
 
+function collect_soft_definitions(workspace_module, modules::Set{Expr})
+  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+end
 
 
 
