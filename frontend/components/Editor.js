@@ -1249,7 +1249,6 @@ export const update_stored_recent_notebooks = (recent_path, also_delete = undefi
         const oldpaths = stored_list
 
         const newpaths = [recent_path, ...oldpaths.filter((path) => path !== recent_path && path !== also_delete)]
-        console.log(newpaths)
         if (!_.isEqual(oldpaths, newpaths)) {
             localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
         }

@@ -167,8 +167,6 @@ export class Welcome extends Component {
                     ..._.differenceBy(recent_notebooks, running, (nb) => nb.path),
                 ]
 
-                console.log(combined_notebooks)
-
                 this.setState({ combined_notebooks: combined_notebooks })
 
                 document.body.classList.remove("loading")
@@ -282,7 +280,6 @@ export class Welcome extends Component {
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
-            console.log(this.state.combined_notebooks)
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
