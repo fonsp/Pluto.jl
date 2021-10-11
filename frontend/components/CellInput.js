@@ -327,16 +327,6 @@ export const CellInput = ({
             }
         })
 
-        const altClickOffset = StateField.define({
-            create() { return {offset: 0, selection: null} },
-            update(value, tr) {
-                return {
-                    offset: tr.altClickOffset,
-                    selection: tr.altClickSelection
-                }
-            }
-        })
-
         // TODO remove me
         //@ts-ignore
         window.tags = tags
@@ -359,7 +349,7 @@ export const CellInput = ({
                     drawSelection(),
                     EditorState.allowMultipleSelections.of(true),
                     // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
-                    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
+                    EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
                     // Experimental: Also add closing brackets for tripple string
@@ -368,41 +358,9 @@ export const CellInput = ({
                         return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
                     }),
                     closeBrackets(),
-                    altClickOffset,
-                    // removes the leftover cursor
-                    EditorView.domEventHandlers({
-                        mousedown(event, view) {
-                            if(event.altKey && event.button == 0) {
-                                let offset = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
-                                const altClickSelection = view.state.selection;
-                                const tr = view.state.update({
-                                    selection: EditorSelection.create([
-                                        EditorSelection.cursor(offset)
-                                    ]),
-
-                                })
-                                tr.altClickOffset = offset;
-                                tr.altClickSelection = altClickSelection;
-                                view.update([tr])
-                            }
-                        },
-                        mouseup(event, view) {
-                            if(event.altKey && event.button == 0) {
-                                let offset = view.posAtCoords({x: event.clientX, y: event.clientY}, false)
-                                let oldSelection = view.state.field(altClickOffset);
-                                if(oldSelection.offset === offset) {
-                                    const tr = view.state.update({
-                                        selection: EditorSelection.create([
-                                            ...oldSelection.selection.ranges,
-                                            EditorSelection.cursor(offset)
-                                        ])
-                                    })
-                                    view.update([tr])
-                                }
-                            }
-                        }
+                    rectangularSelection({
+                        eventFilter: e => e.altKey && e.shiftKey && e.button == 0
                     }),
-                    rectangularSelection(),
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
