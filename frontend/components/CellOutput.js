@@ -14,6 +14,8 @@ import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "..
 import { pluto_syntax_colors } from "./CellInput.js"
 import { useState } from "../imports/Preact.js"
 
+import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
+
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -426,25 +428,31 @@ export let highlight = (code_element, language) => {
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        const editorview = new EditorView({
-            state: EditorState.create({
-                doc: code_element.innerText.trim(),
+        if (language === "julia") {
+            const editorview = new EditorView({
+                state: EditorState.create({
+                    doc: code_element.innerText.trim(),
 
-                extensions: [
-                    pluto_syntax_colors,
-                    defaultHighlightStyle.fallback,
-                    EditorState.tabSize.of(4),
-                    // TODO Other languages possibly?
-                    language === "julia" ? julia_andrey() : null,
-                    EditorView.lineWrapping,
-                    EditorView.editable.of(false),
-                ].filter((x) => x != null),
-            }),
-        })
-        code_element.replaceChildren(editorview.dom)
-        // Weird hack to make it work inline 🤷‍♀️
-        // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
-        editorview.dom.style.setProperty("display", "inline-flex", "important")
-        editorview.dom.style.setProperty("background-color", "transparent", "important")
+                    extensions: [
+                        pluto_syntax_colors,
+                        defaultHighlightStyle.fallback,
+                        EditorState.tabSize.of(4),
+                        // TODO Other languages possibly?
+                        language === "julia" ? julia_andrey() : null,
+                        EditorView.lineWrapping,
+                        EditorView.editable.of(false),
+                    ].filter((x) => x != null),
+                }),
+            })
+            code_element.replaceChildren(editorview.dom)
+            // Weird hack to make it work inline 🤷‍♀️
+            // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
+            editorview.dom.style.setProperty("display", "inline-flex", "important")
+            editorview.dom.style.setProperty("background-color", "transparent", "important")
+        } else {
+            window.hljs = hljs
+            console.log(code_element)
+            hljs.highlightElement(code_element)
+        }
     }
 }

@@ -65,7 +65,7 @@ end
 
 "Return the cells that reference any of the symbols defined by the given cell. Non-recursive: only direct dependencies are found."
 function where_referenced(notebook::Notebook, topology::NotebookTopology, myself::Cell)::Array{Cell,1}
-	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].funcdefs_without_signatures)
+	to_compare = union(topology.nodes[myself].definitions, topology.nodes[myself].soft_definitions, topology.nodes[myself].funcdefs_without_signatures)
 	where_referenced(notebook, topology, to_compare)
 end
 "Return the cells that reference any of the given symbols. Non-recursive: only direct dependencies are found."
