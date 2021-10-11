@@ -22,28 +22,18 @@ import {
     indentLess,
     tags,
     HighlightStyle,
-    autocompletion,
     lineNumbers,
     highlightSpecialChars,
-    foldGutter,
     drawSelection,
     indentOnInput,
     defaultHighlightStyle,
     closeBrackets,
     highlightSelectionMatches,
     closeBracketsKeymap,
-    searchKeymap,
-    foldKeymap,
+        foldKeymap,
     commentKeymap,
     completionKeymap,
-    syntaxTree,
-    Decoration,
-    ViewUpdate,
-    ViewPlugin,
-    WidgetType,
     indentUnit,
-    StateField,
-    StateEffect,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -52,6 +42,7 @@ import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
+import { newlineAndIndent } from "./CellInput/pluto_newline_command.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -406,6 +397,7 @@ export const CellInput = ({
                     // Before default keymaps (because we override some of them)
                     // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
                     cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
+                    keymap.of([{ key: "Enter", run: newlineAndIndent(false) }]),
                     keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
                     placeholder("Enter cell code..."),
 

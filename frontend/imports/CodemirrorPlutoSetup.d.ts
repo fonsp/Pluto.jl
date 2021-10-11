@@ -1600,6 +1600,22 @@ entirely of tabs. When not set, this defaults to 2 spaces.
 */
 declare const indentUnit: Facet<string, string>;
 /**
+Create an indentation string that covers columns 0 to `cols`.
+Will use tabs for as much of the columns as possible when the
+[`indentUnit`](https://codemirror.net/6/docs/ref/#language.indentUnit) facet contains
+tabs.
+*/
+declare function indentString(state: EditorState, cols: number): string;
+/**
+Get the indentation at the given position. Will first consult any
+[indent services](https://codemirror.net/6/docs/ref/#language.indentService) that are registered,
+and if none of those return an indentation, this will check the
+syntax tree for the [indent node prop](https://codemirror.net/6/docs/ref/#language.indentNodeProp)
+and use that if found. Returns a number when an indentation could
+be determined, and null otherwise.
+*/
+declare function getIndentation(context: IndentContext | EditorState, pos: number): number | null;
+/**
 Indentation contexts are used when calling [indentation
 services](https://codemirror.net/6/docs/ref/#language.indentService). They provide helper utilities
 useful in indentation logic, and can selectively override the
@@ -3365,6 +3381,14 @@ Create a line number gutter extension.
 */
 declare function lineNumbers(config?: LineNumberConfig): Extension;
 
+/**
+Transaction annotation that will prevent that transaction from
+being combined with other transactions in the undo history. Given
+`"before"`, it'll prevent merging with previous transactions. With
+`"after"`, subsequent transactions won't be combined with this
+one. With `"full"`, the transaction is isolated on both sides.
+*/
+declare const isolateHistory: AnnotationType<"before" | "after" | "full">;
 interface HistoryConfig {
     /**
     The minimum depth (amount of events) to store. Defaults to 100.
@@ -4314,4 +4338,4 @@ Default key bindings for this package.
 */
 declare const commentKeymap: readonly KeyBinding[];
 
-export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, indentLess, indentMore, indentOnInput, indentUnit, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, placeholder, rectangularSelection, searchKeymap, syntaxTree, tags };
+export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, IndentContext, NodeProp, SelectionRange, StateCommand, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, getIndentation, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, indentLess, indentMore, indentOnInput, indentString, indentUnit, isolateHistory, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, placeholder, rectangularSelection, searchKeymap, syntaxTree, tags };
