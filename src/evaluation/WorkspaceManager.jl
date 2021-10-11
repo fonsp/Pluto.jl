@@ -207,6 +207,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             errored=true,
             interrupted=true,
             process_exited=false,
+            new_inline_widgets=nothing,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
         )
@@ -216,6 +217,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             errored=true,
             interrupted=true,
             process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+            new_inline_widgets=nothing,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
         )
@@ -226,6 +228,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             errored=true,
             interrupted=true,
             process_exited=false,
+            new_inline_widgets=nothing,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
         )
