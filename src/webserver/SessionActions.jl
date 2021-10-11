@@ -73,8 +73,8 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             @info "Updating from file..."
             
             
-		    sleep(1.2 - .5) ## There seems to be a synchronization issue if your OS is VERYFAST
-            wait_until_file_unchanged(nb.path, .5)
+		    sleep(0.8 - .3) ## There seems to be a synchronization issue if your OS is VERYFAST
+            wait_until_file_unchanged(nb.path, .3)
             update_from_file(session, nb)
             
             @info "Updating from file done!"
@@ -89,10 +89,16 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             sleep(2)
         else
             watch_file(nb.path)
+            # the above call is blocking until the file changes
+            
             current_time = time()
-            @info "File changed" (current_time - nb.last_save_time)
-            if current_time - nb.last_save_time < 2.0
-                @info "Notebook was saved by me very recently, not reloading from file."
+            modified_time = mtime(nb.path)
+            @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
+            
+            # if current_time - nb.last_save_time < 2.0
+            if modified_time - nb.last_save_time < session.options.server.auto_reload_from_file_cooldown
+                # @info "Notebook was saved by me very recently, not reloading from file."
+                @info "Modified time is very close to my last save time, not reloading from file."
             else
                 update_from_file_throttled()
             end
