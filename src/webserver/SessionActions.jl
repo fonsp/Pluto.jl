@@ -73,7 +73,7 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             @info "Updating from file..."
             
             
-		    sleep(0.8 - .3) ## There seems to be a synchronization issue if your OS is VERYFAST
+		    sleep(0.1) ## There seems to be a synchronization issue if your OS is VERYFAST
             wait_until_file_unchanged(nb.path, .3)
             update_from_file(session, nb)
             
