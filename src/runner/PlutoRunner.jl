@@ -1617,7 +1617,9 @@ using HypertextLiteral
 """
 embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
-
+# if an embedded display is being rendered _directly by Pluto's viewer_, then rendered the embedded object directly. When interpolating an embedded display into HTML, the user code will render the embedded display to HTML using the HTML show method above, and this shortcut is not called.
+# We add this short-circuit to increase performance for UI that uses an embedded display when it is not necessary.
+format_output_default(@nospecialize(val::EmbeddableDisplay), @nospecialize(context=default_iocontext)) = format_output_default(val.x, context)
 
 ###
 # EMBEDDED CELL OUTPUT
