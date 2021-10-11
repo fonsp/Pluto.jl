@@ -328,8 +328,6 @@ import Distributed
         setcode(notebook.cells[4], "import Pkg; using Dates, Printf, Pkg.Artifacts")
         update_run!(🍭, notebook, notebook.cells[4:4])
 
-        @show notebook.cells[4].output.body
-
         @test notebook.cells[1] |> noerror
         @test notebook.cells[2] |> noerror
         @test notebook.cells[3] |> noerror
@@ -435,7 +433,7 @@ import Distributed
         @test notebook.cells[10].errored == false
         @test notebook.cells[11].output.body == "9"
         @test notebook.cells[12].output.body == "10"
-        @test_broken notebook.cells[13].output.body == "10"
+        @test notebook.cells[13].output.body == "10"
         update_run!(🍭, notebook, notebook.cells[13])
         @test notebook.cells[13].output.body == "10"
 
@@ -864,7 +862,7 @@ import Distributed
         @test notebook.cells[29].output.body == "true"
         @test_nowarn update_run!(🍭, notebook, notebook.cells[27])
         @test notebook.cells[28].output.body == "\"🎈\""
-        @test_broken notebook.cells[29].output.body == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[29].output.body == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output.body == "\"🎈\""
         @test notebook.cells[29].output.body == "\"🎈\""
@@ -872,7 +870,7 @@ import Distributed
         setcode(notebook.cells[27], "")
         update_run!(🍭, notebook, notebook.cells[27])
         @test notebook.cells[28].output.body == "false"
-        @test_broken notebook.cells[29].output.body == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[29].output.body == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output.body == "false"
         @test notebook.cells[29].output.body == "true"

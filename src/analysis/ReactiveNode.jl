@@ -1,4 +1,4 @@
-import .ExpressionExplorer: SymbolsState, FunctionName, FunctionNameSignaturePair, try_compute_symbolreferences
+import .ExpressionExplorer: SymbolsState, FunctionName, FunctionNameSignaturePair, try_compute_symbolreferences, generate_funcnames
 
 "Every cell is a node in the reactive graph. The nodes/point/vertices are the _cells_, and the edges/lines/arrows are the _dependencies between cells_. In a reactive notebook, these dependencies are the **global variable references and definitions**. (For the mathies: a reactive notebook is represented by a _directed multigraph_. A notebook without reactivity errors is an _acyclic directed multigraph_.) This struct contains the back edges (`references`) and forward edges (`definitions`, `soft_definitions`, `funcdefs_with_signatures`, `funcdefs_without_signatures`) of a single node.
 
@@ -49,7 +49,7 @@ function ReactiveNode(symstate::SymbolsState)
 
 	for (namesig, body_symstate) in symstate.funcdefs
 		push!(result.funcdefs_with_signatures, namesig)
-		push!(result.funcdefs_without_signatures, join_funcname_parts(namesig.name))
+		union!(result.funcdefs_without_signatures, generate_funcnames(namesig.name))
 	end
 
 	return result
