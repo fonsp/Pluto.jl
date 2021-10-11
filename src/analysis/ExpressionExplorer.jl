@@ -236,6 +236,25 @@ function without_dotsuffix(funcname::Symbol)::Symbol
         funcname
     end
 end
+
+"""Generates a vector of all possible variants from a function name
+
+```
+julia> generate_funcnames([:Base, :Foo, :bar])
+3-element Vector{Symbol}:
+ Symbol("Base.Foo.bar")
+ Symbol("Foo.bar")
+ :bar
+```
+
+"""
+function generate_funcnames(funccall::FunctionName)
+      calls = Vector{Symbol}(undef, length(funccall))
+      for i in length(funccall):-1:1
+          calls[i] = join_funcname_parts(funccall[i:end])
+      end
+      calls
+end
         
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
