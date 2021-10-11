@@ -730,6 +730,11 @@ patch: ${JSON.stringify(
                 count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
             }
         }, 1000 * 15 * 60)
+        setInterval(() => {
+            if (!this.state.static_preview && document.visibilityState === "visible") {
+                update_stored_recent_notebooks(this.state.notebook.path)
+            }
+        }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
@@ -1238,13 +1243,15 @@ patch: ${JSON.stringify(
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    const storedString = localStorage.getItem("recent notebooks")
-    const storedList = storedString != null ? JSON.parse(storedString) : []
-    const oldpaths = storedList
-    const newpaths = [recent_path].concat(
-        oldpaths.filter((path) => {
-            return path !== recent_path && path !== also_delete
-        })
-    )
-    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+    if (recent_path != null) {
+        const stored_string = localStorage.getItem("recent notebooks")
+        const stored_list = stored_string != null ? JSON.parse(stored_string) : []
+        const oldpaths = stored_list
+
+        const newpaths = [recent_path, ...oldpaths.filter((path) => path !== recent_path && path !== also_delete)]
+        console.log(newpaths)
+        if (!_.isEqual(oldpaths, newpaths)) {
+            localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+        }
+    }
 }
