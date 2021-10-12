@@ -174,6 +174,13 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
                     // Create the widget
                     // console.log("identiefniinef", identifier)
                     // console.log("node", node)
+
+                    // This identifier is not registered inside PlutoRunner
+                    // Don't create a decoration
+                    if (!(identifier in inline_widgets_state)) {
+                        return;
+                    }
+
                     let current_call_range = {...call_range};
                     let widget = new ReactWidget(
                         html`<${InlineWidget}
