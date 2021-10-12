@@ -25,6 +25,7 @@ include("./Configuration.jl")
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")
 include("./analysis/ExpressionExplorer.jl")
+include("./analysis/FunctionDependencies.jl")
 include("./analysis/ReactiveNode.jl")
 include("./packages/PkgCompat.jl")
 

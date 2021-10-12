@@ -44,7 +44,10 @@ function ReactiveNode(symstate::SymbolsState)
 	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
 
 	# now we will add the function names to our edges:
-	union!(result.references, symstate.funccalls .|> join_funcname_parts)
+	funccalls = Set{Symbol}(symstate.funccalls .|> join_funcname_parts)
+	FunctionDependencies.maybe_add_dependent_funccalls!(funccalls)
+	union!(result.references, funccalls)
+
 	union!(result.references, macrocalls)
 
 	for (namesig, body_symstate) in symstate.funcdefs
