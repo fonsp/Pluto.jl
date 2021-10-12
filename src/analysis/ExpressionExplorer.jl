@@ -1134,6 +1134,8 @@ Base.@kwdef struct UsingsImports
     imports::Set{Expr}=Set{Expr}()
 end
 
+Base.isempty(ui::UsingsImports) = isempty(ui.usings) && isempty(ui.imports)
+
 is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
 function transform_dot_notation(ex::Expr)
     if Meta.isexpr(ex, :(.))

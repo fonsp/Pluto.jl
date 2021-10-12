@@ -79,6 +79,8 @@ const statusmap = (state) => ({
     nbpkg_restart_required: state.notebook.nbpkg?.restart_required_msg != null,
     nbpkg_restart_recommended: state.notebook.nbpkg?.restart_recommended_msg != null,
     nbpkg_disabled: state.notebook.nbpkg?.enabled === false,
+    nbpkg_instantiating: state.notebook.nbpkg?.instantiated === false,
+    nbpkg_busy: (state.notebook.nbpkg?.busy_packages ?? []).length > 0,
     static_preview: state.static_preview,
     binder: state.offer_binder || state.binder_phase != null,
     code_differs: state.notebook.cell_order.some(
@@ -1141,6 +1143,10 @@ patch: ${JSON.stringify(
                                     ? "Process exited — restarting..."
                                     : statusval === "process_dead"
                                     ? html`${"Process exited — "}${restart_button("restart")}`
+                                    : statusval === "nbpkg_instantiating"
+                                    ? "Initializing packages..."
+                                    : statusval === "nbpkg_busy"
+                                    ? "Installing packages..."
                                     : null
                             }</div>
                         </nav>

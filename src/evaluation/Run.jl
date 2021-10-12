@@ -7,12 +7,14 @@ Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
-  if !already_in_run && length(already_run) == 0
+	if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
 
+		@info "BEFORE BUMP"
 		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
 
+		@info "AFTER BUMP"
 		if !is_resolved(new_topology)
 			unresolved_topology = new_topology
 			new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
@@ -21,6 +23,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			update_dependency_cache!(notebook)
 			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 		end
+		@info "AFTER RESOLVE"
 	else
 		workspace = WorkspaceManager.get_workspace((session, notebook))
 		old_workspace_name = new_workspace_name = workspace.module_name
@@ -66,6 +69,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
+		cell.running = false
 		cell.queued = true
 		cell.depends_on_disabled_cells = false
 	end
@@ -95,11 +99,14 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
 		to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+		@info "BEFORE DELETION HOOK"
 		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+		@info "AFTER DELETION HOOK"
 
 		delete!.([notebook.bonds], to_delete_vars)
 	end
 
+	@info "RUNNING CELLS"
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
 
@@ -118,6 +125,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			any_interrupted |= run.interrupted
 		end
 		
+		@info "CELL RUN DONE" i
 		cell.running = false
 
 		implicit_usings = collect_implicit_usings(new_topology, cell)
@@ -325,12 +333,15 @@ end
 
 "Do all the things!"
 function update_save_run!(session::ServerSession, notebook::Notebook, cells::Array{Cell,1}; save::Bool=true, run_async::Bool=false, prerender_text::Bool=false, kwargs...)
+    @info "UPDATE SAVE RUN"
+	
 	old = notebook.topology
 	new = notebook.topology = updated_topology(old, notebook, cells) # macros are not yet resolved
 
 	update_dependency_cache!(notebook)
 	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
 
+    @info "CACHE UPDATED, SAVED"
 	# _assume `prerender_text == false` if you want to skip some details_
 	to_run_online = if !prerender_text
 		cells
@@ -358,8 +369,11 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		setdiff(cells, to_run_offline)
 	end
 
+    @info "OFFLINE RENDER DONE"
+	
 	maybe_async(run_async) do
 		sync_nbpkg(session, notebook; save=(save && !session.options.server.disable_writing_notebook_files))
+    	@info "NBPKG SYNCED"
 		if !(isempty(to_run_online) && session.options.evaluation.lazy_workspace_creation) && will_run_code(notebook)
 			# not async because that would be double async
 			run_reactive_async!(session, notebook, old, new, to_run_online; run_async=false, kwargs...)

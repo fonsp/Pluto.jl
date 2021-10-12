@@ -1,6 +1,7 @@
 module SessionActions
 
 import ..Pluto: ServerSession, Notebook, Cell, emptynotebook, tamepath, new_notebooks_directory, without_pluto_file_extension, numbered_until_new, readwrite, update_save_run!, update_from_file, wait_until_file_unchanged, putnotebookupdates!, putplutoupdates!, load_notebook, clientupdate_notebook_list, WorkspaceManager, @asynclog
+import ..Pluto: updated_topology, static_resolve_topology, update_dependency_cache!, NotebookTopology
 using FileWatching
 
 struct NotebookIsRunningException <: Exception
@@ -21,6 +22,7 @@ function open_url(session::ServerSession, url::AbstractString; kwargs...)
 end
 
 function open(session::ServerSession, path::AbstractString; run_async=true, compiler_options=nothing, as_sample=false)
+    @info "OPENING"
     if as_sample
         new_filename = "sample " * without_pluto_file_extension(basename(path))
         new_path = numbered_until_new(joinpath(new_notebooks_directory(), new_filename); suffix=".jl")
@@ -43,10 +45,27 @@ function open(session::ServerSession, path::AbstractString; run_async=true, comp
     end
 
     session.notebooks[nb.notebook_id] = nb
+    
+    # start launching a process for the notebook
+    @asynclog WorkspaceManager.get_workspace((session, nb))
+    sleep(.05)
+    
     if session.options.evaluation.run_notebook_on_load
         for c in nb.cells
             c.queued = true
         end
+        
+        # temporarily analyse notebook so that we can find usings
+        # since usings are executed as part of resolve_topology, we already show those cells as running
+        # otherwise it will look like nothing is running until all package usings are done
+        topology = updated_topology(nb.topology, nb, nb.cells)
+        for c in nb.cells
+            if !isempty(topology.codes[c].module_usings_imports.usings)
+                c.queued = false
+                c.running = true
+            end
+        end
+        
         update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     end
     
