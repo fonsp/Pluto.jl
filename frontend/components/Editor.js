@@ -1068,7 +1068,7 @@ patch: ${JSON.stringify(
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
                                 ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                                    <div class=${launch_params.isolated_cell_ids.includes(cell_id) ? 'isolated-cell' : 'hidden-cell'}>
+                                    <div id=${cell_id} class=${launch_params.isolated_cell_ids.includes(cell_id) ? 'isolated-cell' : 'hidden-cell'}>
                                         <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
                                     </div>
                                 `)}
