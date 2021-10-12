@@ -29,8 +29,8 @@ import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
-import { CellOutput } from "./CellOutput.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { IsolatedCell } from "./Cell.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1068,9 +1068,11 @@ patch: ${JSON.stringify(
                         <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                             <div style="width: 100%">
                                 ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                                    <div id=${cell_id} class=${launch_params.isolated_cell_ids.includes(cell_id) ? 'isolated-cell' : 'hidden-cell'}>
-                                        <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
-                                    </div>
+                                    <${IsolatedCell}
+                                        cell_id=${cell_id}
+                                        cell_results=${this.state.notebook.cell_results[cell_id]}
+                                        hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                    />
                                 `)}
                             </div>
                         </${PlutoJSInitializingContext.Provider}>
