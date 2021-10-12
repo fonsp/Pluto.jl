@@ -52,21 +52,21 @@ import {
     javascript,
     javascriptLanguage,
     sql,
-    PostgreSQL
+    PostgreSQL,
 } from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32e0fbb/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
 const postgresParser = PostgreSQL.language.parser
-const sqlLang = sql({config: {dialect: PostgreSQL}})
+const sqlLang = sql({ config: { dialect: PostgreSQL } })
 
 const juliaWrapper = parseMixed((node, input) => {
     if (node.type.id < 68 && node.type.id > 71 /* Strings */) {
         return null
     }
-    //Looking for tag OR MacroIdentifier 
+    //Looking for tag OR MacroIdentifier
     const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
-    if (!tagNode){
+    if (!tagNode) {
         // If you can't find a tag node, something is broken in the julia syntax,
         // so parse it as Julia. Probably wrong interpolation!
         return null
@@ -76,15 +76,15 @@ const juliaWrapper = parseMixed((node, input) => {
 
     if (tag === "@htl") {
         parser = htmlParser
-    } else if (tag === "html" ) {
+    } else if (tag === "html") {
         return {
-            parser: htmlParser
+            parser: htmlParser,
         }
     } else if (tag === "md") {
         return {
-            parser: mdParser
+            parser: mdParser,
         }
-    } else if (tag === "sql"){
+    } else if (tag === "sql") {
         parser = postgresParser
     } else {
         return null
@@ -92,29 +92,27 @@ const juliaWrapper = parseMixed((node, input) => {
 
     const overlay = [] //: { from: number, to: number }[] = [];
     let from = node.from
-    console.log(node.node.firstChild)
     for (let child = node.node.firstChild; child !== null; child = child?.nextSibling) {
-        overlay.push({ from, to: child.from })
+        overlay.push({ from, to: child.to })
         from = child.to
     }
 
-    if (overlay.length === 0) {
+    if (overlay.length === 0 || node.node.firstChild === null) {
         return { parser }
     }
 
-    overlay.push({ from, to: node.to })
-
     // TODO: replace $() from overlays - add placeholder??
     // Remove quotes from strings
-    if(node.type.id === 69){ // Triple Quote String
+    if (node.type.id === 69) {
+        // Triple Quote String
         overlay[0].from += 3
         overlay[overlay.length - 1].to -= 3
     }
-    if(node.type.id === 68){ // Single quote string
+    if (node.type.id === 68) {
+        // Single quote string
         overlay[0].from += 1
         overlay[overlay.length - 1].to -= 1
     }
-    // console.log(">>> ", overlay.map(({from, to}) => input.read(from, to)).join(""))
     return { parser, overlay: overlay }
 })
 
@@ -172,5 +170,5 @@ export {
     html,
     javascript,
     javascriptLanguage,
-    sqlLang
+    sqlLang,
 }

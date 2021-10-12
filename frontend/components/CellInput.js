@@ -331,7 +331,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
 
-        let DOCS_UPDATER_VERBOSE = true
+        let DOCS_UPDATER_VERBOSE = false
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return
