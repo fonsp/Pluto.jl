@@ -21,7 +21,7 @@ import UUIDs: UUID, uuid4
 import Dates: DateTime
 import Logging
 
-export @bind
+export @bind, @coolbind
 
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
@@ -374,10 +374,6 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         end
     end
     
-    if _inline_widgets_changed
-        
-    end
-
     if (result isa CapturedException) && (result.ex isa InterruptException)
         throw(result.ex)
     end
@@ -1461,6 +1457,13 @@ macro bind(def, element)
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
 	end
+end
+
+"""
+An identity macro used to trigger inline widgets
+"""
+macro coolbind(ex)
+    ex |> esc
 end
 
 """

@@ -173,18 +173,26 @@ responses[:to_julia_code] = function response_to_julia_code(🙋::ClientRequest)
     putclientupdates!(🙋.session, 🙋.initiator, msg)
 end
 
+function to_pair(ex::Expr)
+    @assert Meta.isexpr(ex, :kw, 2)
+
+    Expr(:call, :(=>), ex.args...)
+end
+
 responses[:from_julia_code] = function response_from_julia_code(🙋::ClientRequest)
     require_notebook(🙋)
     query = 🙋.body["query"]
     
     ex = Meta.parse(query)
     
-    first_arg, parameters_ex = if Meta.isexpr(ex.args[2], :parameters)
+    first_arg, parameters_ex = if length(ex.args) == 1
+        nothing, Dict()
+    elseif Meta.isexpr(ex.args[2], :parameters)
         new_ex = Expr(:call, :Dict, map(kw -> Expr(:call, :(=>), QuoteNode(kw.args[1]), kw.args[2]), ex.args[2].args)...)
         
         ex.args[3], new_ex
     else
-        ex.args[2], Expr(:call, :Dict)
+        ex.args[2], length(ex.args) > 2 ? Expr(:call, :Dict, to_pair.(ex.args[3:end])) : Dict()
     end
     
     state = eval(first_arg)

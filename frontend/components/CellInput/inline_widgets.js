@@ -174,6 +174,7 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
                     // Create the widget
                     // console.log("identiefniinef", identifier)
                     // console.log("node", node)
+                    let current_call_range = {...call_range};
                     let widget = new ReactWidget(
                         html`<${InlineWidget}
                             key=${identifier}
@@ -194,7 +195,7 @@ function inline_decorations(view, { pluto_actions, notebook_id, on_submit_deboun
                                 on_submit_debounced()
                             }}
                             get_julia_code=${() => {
-                                return getRange6(view, call_range.from, call_range.to)
+                                return getRange6(view, current_call_range.from, current_call_range.to)
                             }}
                         />`,
                         [inline_widgets_state[identifier], identifier]
