@@ -10,6 +10,10 @@ import Pkg
     🍭 = ServerSession()
     🍭.options.evaluation.workspace_use_distributed = false
     🍭.options.server.auto_reload_from_file = true
+    
+    
+    
+    timeout_between_tests = 🍭.options.server.auto_reload_from_file_cooldown * 1.5
 
     fakeclient = ClientSession(:fake, nothing)
     🍭.connected_clients[fakeclient.id] = fakeclient
@@ -18,7 +22,7 @@ import Pkg
     fakeclient.connected_notebook = notebook
     
     ### 
-    sleep(2)
+    sleep(timeout_between_tests)
     
     nb1 = Notebook([
         Cell("x = 123"),
@@ -46,7 +50,7 @@ import Pkg
     original_rand_output = notebook.cells[3].output.body
     
     ###
-    sleep(2)
+    sleep(timeout_between_tests)
     
     
     nb2 = Notebook(reverse(nb1.cells))
@@ -63,7 +67,7 @@ import Pkg
     
     
     ###
-    sleep(2)
+    sleep(timeout_between_tests)
     
     
     file3 = replace(file1, "123" => "6")
@@ -83,7 +87,7 @@ import Pkg
 
 
     ###
-    sleep(2)
+    sleep(timeout_between_tests)
     
     file4 = read(joinpath(@__DIR__, "packages", "simple_stdlib_import.jl"), String)
     write(notebook.path, file4)

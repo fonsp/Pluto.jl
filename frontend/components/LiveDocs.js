@@ -13,7 +13,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
     let [state, set_state] = useState({
         shown_query: null,
         searched_query: null,
-        body: "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/'>some tips</a>.</em></p>",
+        body: "<p>Welcome to the <b>Live docs</b>! Keep this little window open while you work on the notebook, and you will get documentation of everything you type!</p><p>You can also type a query above.</p><hr><p><em>Still stuck? Here are <a href='https://julialang.org/about/help/' target='_blank'>some tips</a>.</em></p>",
         hidden: true,
         loading: false,
     })

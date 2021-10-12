@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
@@ -158,14 +159,13 @@ export class Welcome extends Component {
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
-                // we are going to construct the combined list:
-                const combined_notebooks = [...running] // shallow copy but that's okay
-                get_stored_recent_notebooks().forEach((stored) => {
-                    if (!running.some((nb) => nb.path === stored.path)) {
-                        // if not already in the list...
-                        combined_notebooks.push(stored) // ...add it.
-                    }
-                })
+                const recent_notebooks = get_stored_recent_notebooks()
+
+                // show running notebooks first, in the order defined by the recent notebooks, then recent notebooks
+                const combined_notebooks = [
+                    ..._.sortBy(running, [(nb) => _.findIndex([...recent_notebooks, ...running], (r) => r.path === nb.path)]),
+                    ..._.differenceBy(recent_notebooks, running, (nb) => nb.path),
+                ]
 
                 this.setState({ combined_notebooks: combined_notebooks })
 
@@ -175,13 +175,13 @@ export class Welcome extends Component {
             fetch_pluto_releases()
                 .then((releases) => {
                     const local = this.client.version_info.pluto
-                    const latest = releases[releases.length-1].tag_name
+                    const latest = releases[releases.length - 1].tag_name
                     console.log(`Pluto version ${local}`)
-                    const local_index = releases.findIndex(r => r.tag_name === local)
-                    if(local_index !== -1) {
-                        const updates = releases.slice(local_index+1)
-                        const recommended_updates = updates.filter(r => r.body.toLowerCase().includes("recommended update"))
-                        if(recommended_updates.length > 0){
+                    const local_index = releases.findIndex((r) => r.tag_name === local)
+                    if (local_index !== -1) {
+                        const updates = releases.slice(local_index + 1)
+                        const recommended_updates = updates.filter((r) => r.body.toLowerCase().includes("recommended update"))
+                        if (recommended_updates.length > 0) {
                             console.log(`Newer version ${latest} is available`)
                             alert(
                                 "A new version of Pluto.jl is available! 🎉\n\n    You have " +
@@ -190,7 +190,6 @@ export class Welcome extends Component {
                                     latest +
                                     '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
                             )
-
                         }
                     }
                 })
@@ -281,7 +280,6 @@ export class Welcome extends Component {
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
-            console.log(this.state.combined_notebooks)
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
@@ -321,6 +319,6 @@ export class Welcome extends Component {
 
 const get_stored_recent_notebooks = () => {
     const storedString = localStorage.getItem("recent notebooks")
-    const storedList = !!storedString ? JSON.parse(storedString) : []
+    const storedList = storedString != null ? JSON.parse(storedString) : []
     return storedList.map((path) => create_empty_notebook(path))
 }
