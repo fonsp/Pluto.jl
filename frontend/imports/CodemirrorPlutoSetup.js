@@ -74,10 +74,16 @@ const juliaWrapper = parseMixed((node, input) => {
     const tag = input.read(tagNode.from, tagNode.to)
     let parser
 
-    if (tag === "html" || tag === "@htl") {
+    if (tag === "@htl") {
         parser = htmlParser
+    } else if (tag === "html" ) {
+        return {
+            parser: htmlParser
+        }
     } else if (tag === "md") {
-        parser = mdParser
+        return {
+            parser: mdParser
+        }
     } else if (tag === "sql"){
         parser = postgresParser
     } else {
