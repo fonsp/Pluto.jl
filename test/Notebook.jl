@@ -164,7 +164,7 @@ end
             readwrite(nb.path, new_path)
 
             # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
-            # laod_notebook is how they are normally loaded, load_notebook_nobackup
+            # load_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
 
             before_contents = read(new_path, String)
