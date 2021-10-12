@@ -722,6 +722,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         symstate = explore_module_definition!(ex, scopestate)
 
         return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
+    elseif Meta.isexpr(ex, Symbol("'"), 1)
+        # a' corresponds to adjoint(a)
+        return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
