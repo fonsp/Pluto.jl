@@ -172,7 +172,7 @@ const launch_params = {
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
     //@ts-ignore
-    isolated_cell_id: url_params.get("isolated_cell_id") ?? window.isolated_cell_id,
+    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.isolated_cell_id,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
@@ -1055,23 +1055,21 @@ patch: ${JSON.stringify(
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
 
-        if(launch_params.isolated_cell_id) {
-            if(!this.state.notebook.cell_results[launch_params.isolated_cell_id]) return html``
-
+        if(launch_params.isolated_cell_ids.length > 0) {
             return html`
-            <${PlutoContext.Provider} value=${this.actions}>
-                <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
-                    <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
-                        <div style="width: 100%">
-                            ${this.state.notebook.cell_order.map((cell_id, i) => html`
-                                <div class=${cell_id === launch_params.isolated_cell_id ? 'isolated-cell' : 'hidden-cell'}>
-                                    <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
-                                </div>
-                            `)}
-                        </div>
-                    </${PlutoJSInitializingContext.Provider}>
-                </${PlutoBondsContext.Provider}>
-            </${PlutoContext.Provider}>
+                <${PlutoContext.Provider} value=${this.actions}>
+                    <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                        <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                            <div style="width: 100%">
+                                ${this.state.notebook.cell_order.map((cell_id, i) => html`
+                                    <div class=${launch_params.isolated_cell_ids.includes(cell_id) ? 'isolated-cell' : 'hidden-cell'}>
+                                        <${CellOutput} ...${this.state.notebook.cell_results[cell_id].output}/>
+                                    </div>
+                                `)}
+                            </div>
+                        </${PlutoJSInitializingContext.Provider}>
+                    </${PlutoBondsContext.Provider}>
+                </${PlutoContext.Provider}>
             `
         }
 
