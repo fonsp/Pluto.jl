@@ -29,6 +29,7 @@ import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { ProgressBar } from "./ProgressBar.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -1080,6 +1081,7 @@ patch: ${JSON.stringify(
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
+                    <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}
@@ -1087,7 +1089,6 @@ patch: ${JSON.stringify(
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
-                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
                         ${
                             status.binder
                                 ? html`<div id="binder_spinners">
