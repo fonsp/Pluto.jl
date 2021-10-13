@@ -11,6 +11,6 @@
         "alwaysStrict": true,
         "esModuleInterop": true
     },
-    "include": ["frontend/**/*.js", "node_modules/**/*.js"],
+    "include": ["frontend/**/*.js", "node_modules/**/*.js", "frontend/parcel-plugins/https-resolver.js"],
     "exclude": []
 }

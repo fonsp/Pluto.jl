@@ -1,0 +1,10 @@
+{
+    "compilerOptions": {
+        "allowSyntheticDefaultImports": true,
+        "lib": ["ES2021"],
+        "module": "ES2020",
+        "moduleResolution": "node",
+        "target": "ES2021",
+        "noEmit": true
+    }
+}

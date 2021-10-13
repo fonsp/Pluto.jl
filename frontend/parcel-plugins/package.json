@@ -1,0 +1,16 @@
+{
+    "name": "parcel-resolver-http",
+    "version": "1.0.0",
+    "description": "",
+    "main": "https-resolver.js",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@parcel/node-resolver-core": "^2.0.0",
+        "@parcel/plugin": "^2.0.0",
+        "node-fetch": "^2.6.5"
+    }
+}

@@ -12,9 +12,9 @@ function mime_fromfilename(filename)
     MIME(mimepairs[file_extension])
 end
 
-function asset_response(path)
+function asset_response(path; target=nothing)
     if !isfile(path) && !endswith(path, ".html")
-        return asset_response(path * ".html")
+        return asset_response(path * ".html", target=target)
     end
     try
         @assert isfile(path)
@@ -24,7 +24,11 @@ function asset_response(path)
         push!(response.headers, "Access-Control-Allow-Origin" => "*")
         response
     catch e
-        HTTP.Response(404, "Not found!")
+        if target === nothing
+            HTTP.Response(404, "Not found!")
+        else
+            return HTTP.get("http://localhost:1234$(target)")
+        end
     end
 end
 
@@ -125,11 +129,11 @@ function http_router_for(session::ServerSession)
         create_serve_onefile(project_relative_path("frontend", "index.html"));
         required=security.require_secret_for_access
         ))
-    HTTP.@register(router, "GET", "/edit", with_authentication(
-        create_serve_onefile(project_relative_path("frontend", "editor.html"));
-        required=security.require_secret_for_access || 
-        security.require_secret_for_open_links,
-    ))
+    # HTTP.@register(router, "GET", "/edit", with_authentication(
+    #     create_serve_onefile(project_relative_path("frontend", "editor.html"));
+    #     required=security.require_secret_for_access || 
+    #     security.require_secret_for_open_links,
+    # ))
     # the /edit page also uses with_authentication, but this is not how access to notebooks is secured: this is done by requiring the WS connection to be authenticated.
     # we still use it for /edit to do the cookie stuff, and show a more helpful error, instead of the WS never connecting.
     
@@ -274,7 +278,7 @@ function http_router_for(session::ServerSession)
         uri = HTTP.URI(request.target)
         
         filepath = project_relative_path("frontend", relpath(HTTP.unescapeuri(uri.path), "/"))
-        asset_response(filepath)
+        asset_response(filepath, target=request.target)
     end
     HTTP.@register(router, "GET", "/*", serve_asset)
     HTTP.@register(router, "GET", "/favicon.ico", create_serve_onefile(project_relative_path("frontend", "img", "favicon.ico")))
