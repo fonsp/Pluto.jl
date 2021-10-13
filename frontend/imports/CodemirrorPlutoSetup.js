@@ -64,21 +64,16 @@ const sqlLang = sql({ config: { dialect: PostgreSQL } })
 const pythonParser = pythonLanguage.parser
 
 const juliaWrapper = parseMixed((node, input) => {
-    console.log(node.type.id, node.type.name, ["TripleString", "String", "CommandString"].includes(node.type.name))
     if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
-        console.log(node.name, "NOPE")
         return null
     }
     const offset = node.name === "TripleString" ? 3 : 1
     const defaultOverlay = [{ from: node.from + offset, to: node.to - offset }]
 
     if (defaultOverlay[0].from >= defaultOverlay[0].to) {
-        console.log(JSON.stringify(defaultOverlay), "returning")
         return null
     }
-    console.log("not returning")
 
-    console.log(JSON.stringify(defaultOverlay), input.read(defaultOverlay[0].from, defaultOverlay[0].to))
     //Looking for tag OR MacroIdentifier
     const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
     if (!tagNode) {
@@ -139,7 +134,6 @@ const juliaWrapper = parseMixed((node, input) => {
         overlay[0].from += 1
         overlay[overlay.length - 1].to -= 1
     }
-    console.log(JSON.stringify(overlay))
     return { parser, overlay: overlay }
 })
 
