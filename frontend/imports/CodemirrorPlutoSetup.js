@@ -120,26 +120,26 @@ const juliaWrapper = parseMixed((node, input) => {
     const overlay = [] //: { from: number, to: number }[] = [];
     let from = node.from
     for (let child = node.node.firstChild; child !== null; child = child?.nextSibling) {
-        overlay.push({ from, to: child.to })
+        overlay.push({ from, to: child.from })
         from = child.to
     }
 
     if (overlay.length === 0 || node.node.firstChild === null) {
         return { parser }
     }
-
+    overlay.push({ from, to: node.to })
     // TODO: replace $() from overlays - add placeholder??
     // Remove quotes from strings
-    if (node.type.id === 69) {
+    if (node.type.name === "TripleString") {
         // Triple Quote String
         overlay[0].from += 3
         overlay[overlay.length - 1].to -= 3
-    }
-    if (node.type.id === 68) {
+    } else {
         // Single quote string
         overlay[0].from += 1
         overlay[overlay.length - 1].to -= 1
     }
+    console.log(JSON.stringify(overlay))
     return { parser, overlay: overlay }
 })
 
