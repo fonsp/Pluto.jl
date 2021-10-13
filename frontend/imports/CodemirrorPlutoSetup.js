@@ -53,17 +53,32 @@ import {
     javascriptLanguage,
     sql,
     PostgreSQL,
-} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@32e0fbb/dist/index.es.min.js"
+    python,
+    pythonLanguage,
+} from "https://cdn.jsdelivr.net/gh/JuliaPluto/codemirror-pluto-setup@c241428/dist/index.es.min.js"
 
 const htmlParser = htmlLanguage.parser
 const mdParser = markdownLanguage.parser
 const postgresParser = PostgreSQL.language.parser
 const sqlLang = sql({ config: { dialect: PostgreSQL } })
+const pythonParser = pythonLanguage.parser
 
 const juliaWrapper = parseMixed((node, input) => {
-    if (node.type.id < 68 && node.type.id > 71 /* Strings */) {
+    console.log(node.type.id, node.type.name, ["TripleString", "String", "CommandString"].includes(node.type.name))
+    if (!["TripleString", "String", "CommandString"].includes(node.type.name)) {
+        console.log(node.name, "NOPE")
         return null
     }
+    const offset = node.name === "TripleString" ? 3 : 1
+    const defaultOverlay = [{ from: node.from + offset, to: node.to - offset }]
+
+    if (defaultOverlay[0].from >= defaultOverlay[0].to) {
+        console.log(JSON.stringify(defaultOverlay), "returning")
+        return null
+    }
+    console.log("not returning")
+
+    console.log(JSON.stringify(defaultOverlay), input.read(defaultOverlay[0].from, defaultOverlay[0].to))
     //Looking for tag OR MacroIdentifier
     const tagNode = node.node?.prevSibling || node.node?.parent?.prevSibling
     if (!tagNode) {
@@ -79,10 +94,22 @@ const juliaWrapper = parseMixed((node, input) => {
     } else if (tag === "html") {
         return {
             parser: htmlParser,
+            overlay: defaultOverlay,
         }
-    } else if (tag === "md") {
+    } else if (tag === "md" || tag === "mermaid") {
         return {
             parser: mdParser,
+            overlay: defaultOverlay,
+        }
+    } else if (tag === "@javascript") {
+        return {
+            parser: javascriptLanguage.parser,
+            overlay: defaultOverlay,
+        }
+    } else if (tag === "py") {
+        return {
+            parser: pythonParser,
+            overlay: defaultOverlay,
         }
     } else if (tag === "sql") {
         parser = postgresParser
@@ -171,4 +198,5 @@ export {
     javascript,
     javascriptLanguage,
     sqlLang,
+    python,
 }

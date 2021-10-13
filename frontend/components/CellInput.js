@@ -47,7 +47,8 @@ import {
     markdown,
     html as htmlLang,
     javascript,
-    sqlLang
+    sqlLang,
+    python,
 } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
 import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
@@ -103,7 +104,6 @@ export const pluto_syntax_colors = HighlightStyle.define([
     { tag: tags.documentMeta, color: "#232227", fontStyle: "italic" },
     // CSS
     { tag: tags.className, color: "grey", fontWeight: "bold" },
-
 ])
 
 const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
@@ -331,7 +331,7 @@ export const CellInput = ({
             { key: "Ctrl-Backspace", run: keyMapBackspace },
         ]
 
-        let DOCS_UPDATER_VERBOSE = false
+        let DOCS_UPDATER_VERBOSE = true
         const docs_updater = EditorView.updateListener.of((update) => {
             if (!update.view.hasFocus) {
                 return
@@ -413,6 +413,7 @@ export const CellInput = ({
                     markdown(),
                     htmlLang(), //Provides tag closing!,
                     javascript(),
+                    python(),
                     //sqlLang,
                     go_to_definition_plugin,
                     pluto_autocomplete({
@@ -450,9 +451,10 @@ export const CellInput = ({
         // @ts-ignore
         dom_node_ref.current.CodeMirror = newcm.dom.CodeMirror = {
             getValue: () => newcm.state.doc.toString(),
-            setValue: (value) => newcm.dispatch({
-                changes: { from: 0, to: newcm.state.doc.length, insert: value },
-            })
+            setValue: (value) =>
+                newcm.dispatch({
+                    changes: { from: 0, to: newcm.state.doc.length, insert: value },
+                }),
         }
 
         if (focus_after_creation) {
