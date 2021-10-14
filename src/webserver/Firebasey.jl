@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -617,13 +617,40 @@ function skip_as_script(m::Module)
 	end
 end
 
+# ╔═╡ 2ce43df3-b71f-4843-ad9b-044f90c5a029
+"""
+Explore an expression and returns the name of the called macros. This is used by  `@skip_as_script` to hint about which macros are used because Pluto does not know which macros are recursively called :((.
+"""
+function collect_macrocalls!(acc, ex::Expr)
+	if Meta.isexpr(ex, :macrocall) && ex.args[1] isa Symbol
+		push!(acc, ex.args[1])
+	else
+		for arg in ex.args
+			collect_macrocalls!(acc, arg)
+		end
+	end
+	acc
+end
+
+# ╔═╡ 0c33ab05-d99c-4680-8604-9e498175b66e
+collect_macrocalls!(acc, _) = acc
+
 # ╔═╡ e924a0be-2de1-11eb-2170-71d56e117af2
 """
-	@displayonly expression
+	@skip_as_script expression
 
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
-macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
+macro skip_as_script(ex)
+	if skip_as_script(__module__)
+		Expr(:block, Expr(:vect, filter(s -> isdefined(__module__, s), collect_macrocalls!([], ex))...), esc(ex))
+	else
+		nothing
+	end
+end
+
+# ╔═╡ 476e3444-e96f-4694-9847-a25face4b5a2
+@skip_as_script collect_macrocalls!(Set(), :(@cool))
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
@@ -632,6 +659,10 @@ macro only_as_script(ex) skip_as_script(__module__) ? nothing : esc(ex) end
 # ╔═╡ e748600a-2de1-11eb-24be-d5f0ecab8fa4
 # Only define this in Pluto - assume we are `using Test` otherwise
 begin
+	if false
+		Pkg = 1
+		var"@test" = 1
+	end
 	@skip_as_script begin
 		import Pkg
 		Pkg.activate(mktempdir())
@@ -1053,6 +1084,9 @@ end
 # ╠═e7e8d076-2de1-11eb-0214-8160bb81370a
 # ╟─e8d0c98a-2de1-11eb-37b9-e1df3f5cfa25
 # ╟─e907d862-2de1-11eb-11a9-4b3ac37cb0f3
+# ╠═476e3444-e96f-4694-9847-a25face4b5a2
+# ╟─2ce43df3-b71f-4843-ad9b-044f90c5a029
+# ╟─0c33ab05-d99c-4680-8604-9e498175b66e
 # ╟─e924a0be-2de1-11eb-2170-71d56e117af2
 # ╟─c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 # ╠═e9d2eba8-2de1-11eb-16bf-bd2a16537a97

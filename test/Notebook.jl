@@ -105,14 +105,8 @@ function project_notebook()
     ]) |> init_packages!
 end
 
-function firebasey_notebook()
-    file = tempname()
-    write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
-    Pluto.load_notebook_nobackup(file)
-end
-
 @testset "Notebook Files" begin
-    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook, project_notebook, firebasey_notebook]]
+    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook, project_notebook]]
 
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list

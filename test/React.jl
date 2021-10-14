@@ -159,6 +159,23 @@ import Distributed
         end
     end
 
+
+    @testset "Test Firebasey" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        file = tempname()
+        write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
+
+        notebook = Pluto.load_notebook_nobackup(file)
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test jl_is_runnable(file)
+
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     @testset "Pkg topology workarounds" begin
         notebook = Notebook([
             Cell("1 + 1"),
