@@ -98,6 +98,8 @@ export const Cell = ({
         set_cell_api_ready(true)
     })
 
+    const [extra_classes, set_extra_classes] = useState({})
+
     return html`
         <pluto-cell
             ref=${node_ref}
@@ -118,6 +120,7 @@ export const Cell = ({
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
+                ...extra_classes,
             })}
             id=${cell_id}
         >
@@ -187,6 +190,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}
+                toggleClass=${(name, val) => set_extra_classes({ ...extra_classes, [name]: val })}
             />
             <${RunArea}
                 cell_id=${cell_id}

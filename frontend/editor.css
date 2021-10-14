@@ -880,6 +880,10 @@ pluto-cell.running_disabled > pluto-output {
     max-height: 80vh;
 }
 
+pluto-cell.simple_expression:not(.errored) pluto-output {
+    display: none;
+}
+
 pluto-output:focus {
     outline: none;
 }
@@ -997,6 +1001,10 @@ pluto-cell:not(.show_input) > pluto-input {
 pluto-cell.code_differs > pluto-input > .cm-editor {
     border: 1px solid hsla(46, 70%, 37%, 0.68);
     border-left: none;
+}
+pluto-cell.simple_expression > pluto-input .cm-editor {
+    background-color: transparent;
+    border: 1px solid transparent;
 }
 
 pluto-cell.depends_on_disabled_cells > pluto-input .cm-editor,
@@ -1133,6 +1141,10 @@ body:not(.___) pluto-cell.code_folded > pluto-trafficlight {
         background: rgba(0, 0, 0, 0.1);
         transition: background 0.05s ease-in;
     }
+}
+
+body:not(.___) pluto-cell.simple_expression > pluto-trafficlight {
+    background-color: transparent;
 }
 
 body:not(.___) pluto-cell:focus-within > pluto-trafficlight {

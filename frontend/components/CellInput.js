@@ -53,6 +53,7 @@ import { drag_n_drop_plugin } from "./useDropHandler.js"
 import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
+import { ast_matched_classes_plugin } from "./CellInput/ast_matched_classes_plugin.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -145,6 +146,7 @@ export const CellInput = ({
     notebook_id,
     running_disabled,
     cell_dependencies,
+    toggleClass,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -342,6 +344,7 @@ export const CellInput = ({
                     editable_compartment,
 
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    ast_matched_classes_plugin({ toggleClass }),
                     pluto_syntax_colors,
                     lineNumbers(),
                     highlightSpecialChars(),
