@@ -355,11 +355,11 @@ export const CellInput = ({
                     // Experimental: Also add closing brackets for tripple string
                     // TODO also add closing string when typing a string macro
                     EditorState.languageData.of((state, pos, side) => {
-                        return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
+                        return [{ closeBrackets: { brackets: ["(", "[", "{"] } }]
                     }),
                     closeBrackets(),
                     rectangularSelection({
-                        eventFilter: e => e.altKey && e.shiftKey && e.button == 0
+                        eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
                     }),
                     highlightSelectionMatches(),
                     bracketMatching(),
