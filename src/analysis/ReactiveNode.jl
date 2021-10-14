@@ -61,7 +61,7 @@ function ReactiveNode(symstate::SymbolsState)
 
 		generated_names_syms = Set{Symbol}(join_funcname_parts.(generated_names))
 		union!(result.funcdefs_without_signatures, generated_names_syms)
-		filter!(∉(generated_names_syms), result.references) # don't reference defined functions (simulated recursive calls)
+		filter!(!∈(generated_names_syms), result.references) # don't reference defined functions (simulated recursive calls)
 	end
 
 	return result
