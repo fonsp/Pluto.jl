@@ -114,7 +114,7 @@ const juliaWrapper = parseMixed((node, input) => {
 
     const overlay = [] //: { from: number, to: number }[] = [];
     let from = node.from
-    for (let child = node.node.firstChild; child !== null; child = child?.nextSibling) {
+    for (let child = node.node.firstChild; child !== null && child.to <= node.to; child = child?.nextSibling) {
         overlay.push({ from, to: child.from })
         from = child.to
     }
