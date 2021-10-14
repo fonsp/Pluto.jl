@@ -486,7 +486,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
                                 } else {
                                     // nothing
                                 }
@@ -749,6 +749,8 @@ patch: ${JSON.stringify(
                 !_.isEmpty(this.js_init_set)
             )
         }
+        this.is_process_ready = () =>
+            this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -1167,9 +1169,7 @@ patch: ${JSON.stringify(
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
-                            is_process_ready=${
-                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
-                            }
+                            is_process_ready=${this.is_process_ready()}
                         />
                         <${DropRuler} 
                             actions=${this.actions}
