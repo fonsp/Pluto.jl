@@ -285,6 +285,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             g()
         end), [], [], [:g], [:f => ([:z], [], [], [])])
     end
+    @testset "Julia lowering" begin
+        @test test_expression_explorer(expr=:(a'b), references=[:a, :b], funccalls=[:*, :adjoint])
+    end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
             :f => ([:String, :Int64, :a], [], [:string], [])
