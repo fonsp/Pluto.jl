@@ -879,6 +879,9 @@ patch: ${JSON.stringify(
         })
         document.addEventListener("visibilitychange", (e) => {
             document.body.classList.toggle("ctrl_down", false)
+            setTimeout(() => {
+                document.body.classList.toggle("ctrl_down", false)
+            }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
