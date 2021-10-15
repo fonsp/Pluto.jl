@@ -2094,6 +2094,9 @@ pluto-input .cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
     color: white;
     background: #16659d;
 }
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] .cm-completionLabel {
+    border-color: transparent;
+}
 
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_notexported {
     color: rgba(0, 0, 0, 0.5);
@@ -2127,6 +2130,15 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     text-decoration: none;
     font-weight: inherit;
 }
+
+[data-pluto-variable],
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
+    border: 2px solid #193bf35e;
+    padding: 0px 2px;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
 body.ctrl_down [data-pluto-variable]:hover {
     text-decoration: underline;
     cursor: pointer;
