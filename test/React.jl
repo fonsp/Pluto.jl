@@ -160,7 +160,8 @@ import Distributed
     end
 
 
-    @testset "Test Firebasey" begin
+    # PlutoTest.jl is only working on Julia version >= 1.6
+    VERSION >= v"1.6" && @testset "Test Firebasey" begin
         🍭.options.evaluation.workspace_use_distributed = true
 
         file = tempname()
