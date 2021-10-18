@@ -55,20 +55,23 @@ export class CellOutput extends Component {
     }
 
     render() {
+        const rich_output =
+            this.props.errored ||
+            !this.props.body ||
+            (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                this.props.mime !== "application/vnd.pluto.table+object" &&
+                this.props.mime !== "text/plain")
+        const allow_translate = !this.props.errored && rich_output
         return html`
             <pluto-output
                 class=${cl({
-                    rich_output:
-                        this.props.errored ||
-                        !this.props.body ||
-                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
-                            this.props.mime !== "application/vnd.pluto.table+object" &&
-                            this.props.mime !== "text/plain"),
+                    rich_output,
                     scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
+                translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
@@ -393,7 +396,10 @@ export let highlight = (code_element, language) => {
         if (language === "julia") {
             const editorview = new EditorView({
                 state: EditorState.create({
-                    doc: code_element.innerText.trim(),
+                    // Remove references to `Main.workspace#xx.` in the docs since
+                    // its shows up as a comment and can be confusing
+                    doc: code_element.innerText.trim().replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, "Main.var\"workspace#$1\""),
 
                     extensions: [
                         pluto_syntax_colors,

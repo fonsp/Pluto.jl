@@ -195,6 +195,19 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
     end
 end
 
+function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
+    (
+        output_formatted=PlutoRunner.format_output(CapturedException(ex, [])),
+        errored=true,
+        interrupted=true,
+        process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+        runtime=nothing,
+        published_objects=Dict{String,Any}(),
+    )
+end
+
+
+
 function distributed_exception_result(exs::CompositeException, workspace::Workspace)
     ex = exs.exceptions |> first
 

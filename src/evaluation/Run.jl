@@ -129,10 +129,18 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 				notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
 			end
 
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
 			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
 			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		end
@@ -348,7 +356,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
-		
+
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
@@ -372,6 +380,8 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
+	
 	just_loaded = try
 		load_notebook_nobackup(notebook.path)
 	catch e
@@ -401,8 +411,8 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
 	order_changed = notebook.cell_order != just_loaded.cell_order
 	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
-	
-	something_changed = cells_changed || order_changed || nbpkg_changed
+		
+	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
 	
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
@@ -421,7 +431,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 
 	notebook.cell_order = just_loaded.cell_order
 	
-	if nbpkg_changed
+	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
