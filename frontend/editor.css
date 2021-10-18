@@ -986,6 +986,7 @@ pluto-input .cm-editor {
 
     /* Make sure that scrolling an editor into view gives some breathing room */
     scroll-margin-block: 20vh;
+    min-height: 25px;
 }
 pluto-input:focus-within .cm-editor {
     /* z-index increased by 1 to make sure that the autocomplete window shows above all other editors, see https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_Positioning/Understanding_z_index/The_stacking_context */
@@ -1141,31 +1142,31 @@ body:not(.___) pluto-cell:focus-within > pluto-trafficlight {
     border-left-width: 4px;
     border-left-style: solid;
     margin-left: -4px;
-    background-clip: content-box;
+    background-clip: padding-box;
     background-color: rgba(0, 0, 0, 0.1);
 }
 
 body:not(.___) pluto-cell.selected > pluto-trafficlight {
     background: rgba(40, 78, 189, 0.4);
     border-left-color: rgba(40, 78, 189, 0.4);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.code_differs > pluto-trafficlight {
     background: hsla(46, 70%, 37%, 0.68);
     border-left-color: hsla(46, 70%, 37%, 0.68);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.errored > pluto-trafficlight {
     background: hsla(0, 70%, 80%, 0.7);
     border-left-color: hsla(0, 70%, 80%, 0.7);
-    background-clip: content-box;
+    background-clip: padding-box;
 }
 
 body:not(.___) pluto-cell.queued > pluto-trafficlight::after {
     background: repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0) 8px, rgba(0, 0, 0, 0.1) 8px, rgba(0, 0, 0, 0.1) 16px);
-    background-clip: content-box;
+    background-clip: padding-box;
     /* [1]
     Queued, Running, Errored are really fast changing props.
     We make sure to on-off the gradients with opacity and not toggle the animation
@@ -2318,6 +2319,10 @@ pluto-input .cm-editor .cm-scroller,
     font-family: JuliaMono, monospace !important;
     font-variant-ligatures: none;
     font-size: 0.75rem;
+}
+
+pluto-input .cm-editor .cm-content {
+    padding: 2px 0px;
 }
 
 .cm-editor {
