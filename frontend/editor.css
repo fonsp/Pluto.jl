@@ -1353,7 +1353,7 @@ pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
 }
-pluto-input > button.delete_cell ul.input_context_menu {
+pluto-input > button.input_context_menu ul {
     --width: 156px;
     left: 100%;
     top: -8px;
@@ -1366,15 +1366,15 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-color: white;
 }
 @media screen and (min-width: 921px) {
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - 3px);
     }
 }
 @media screen and (max-width: 920px) {
-    pluto-input > button.delete_cell {
+    pluto-input > button.input_context_menu {
         z-index: 31;
     }
-    pluto-input > button.delete_cell ul.input_context_menu {
+    pluto-input > button.input_context_menu ul {
         left: calc(100% - var(--width) - 36px);
     }
 }
@@ -1457,14 +1457,18 @@ pluto-input > button.delete_cell ul.input_context_menu {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
 }
 
-pluto-input > button.delete_cell {
+pluto-input > button.input_context_menu {
     /* top: 3px; */
     /* left: -26px; */
     right: 0px;
     padding: 5px;
 }
 
-pluto-input > button.delete_cell > span.icon::after {
+pluto-input > button.input_context_menu.open {
+    opacity: 1;
+}
+
+pluto-input > button.input_context_menu > span.icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
 }
 
