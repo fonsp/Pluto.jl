@@ -993,6 +993,14 @@ pluto-input:focus-within .cm-editor {
     z-index: 21;
 }
 
+pluto-input .cm-editor .cm-line {
+    transition: background-color 0.15s ease-in-out;
+}
+
+pluto-input .cm-editor .cm-line.cm-highlighted-line {
+    background-color: #f8b9ce;
+}
+
 pluto-cell:not(.show_input) > pluto-input {
     display: none;
 }

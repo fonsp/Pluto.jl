@@ -95,9 +95,9 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               class=${cl({ inspecting })}
               onClick=${() => {
                   set_inspecting(true)
-                  set_cm_highlighted_line(y)
+                  set_cm_highlighted_line(y+1)
               }}
-              onMouseenter=${() => set_cm_highlighted_line(y)}
+              onMouseenter=${() => set_cm_highlighted_line(y+1)}
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
               <pluto-log-dot-sizer>

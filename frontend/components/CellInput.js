@@ -55,6 +55,7 @@ import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
 import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
 import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
 import { cl } from "../common/ClassTable.js"
+import { HighlightLineFacet, highlightLinePlugin } from "./CellInput/highlight_line.js"
 
 export const pluto_syntax_colors = HighlightStyle.define([
     /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
@@ -150,6 +151,7 @@ export const CellInput = ({
     cell_dependencies,
     show_logs,
     set_show_logs,
+    cm_highlighted_line,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -161,6 +163,7 @@ export const CellInput = ({
 
     let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
     let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
+    let highlighted_line_compartment = useCompartment(newcm_ref, HighlightLineFacet.of(cm_highlighted_line))
     let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
     let on_change_compartment = useCompartment(
@@ -343,9 +346,11 @@ export const CellInput = ({
                 extensions: [
                     // Compartments coming from react state/props
                     nbpkg_compartment,
+                    highlighted_line_compartment,
                     used_variables_compartment,
                     editable_compartment,
 
+                    highlightLinePlugin(),
                     pkgBubblePlugin({ pluto_actions, notebook_id }),
                     pluto_syntax_colors,
                     lineNumbers(),
