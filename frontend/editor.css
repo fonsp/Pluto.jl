@@ -998,7 +998,8 @@ pluto-input .cm-editor .cm-line {
 }
 
 pluto-input .cm-editor .cm-line.cm-highlighted-line {
-    background-color: #f8b9ce;
+    background-color: #bdbdbd68;
+    border-radius: 3px;
 }
 
 pluto-cell:not(.show_input) > pluto-input {
@@ -2155,6 +2156,8 @@ pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
 pluto-log-dot-sizer {
     display: block;
     width: 100px;
+    transform: translateZ(10px);
+    z-index: 300;
     pointer-events: none; /* part 1: because the hit box is larger than the action log dot */
 }
 pluto-log-dot {
