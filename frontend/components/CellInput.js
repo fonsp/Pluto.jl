@@ -497,7 +497,7 @@ export const CellInput = ({
     }, [cm_forced_focus])
 
     return html`
-        <pluto-input ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref} translate=${false}>
             <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
         </pluto-input>
     `
