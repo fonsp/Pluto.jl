@@ -36,6 +36,8 @@ export const Cell = ({
     focus_after_creation,
     is_process_ready,
     disable_input,
+    show_logs,
+    set_show_logs,
     nbpkg,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -43,7 +45,6 @@ export const Cell = ({
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
-    const [show_logs, set_show_logs] = useState(true) // Show logs to begin with
     const { saving_file, drag_active, handler } = useDropHandler()
     useEffect(() => {
         const focusListener = (e) => {

@@ -1,10 +1,11 @@
+import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
 import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
-const RESIZE_DEBOUNCE = 60
+const RESIZE_THROTTLE = 60
 
 export const Logs = ({ logs, line_heights }) => {
     const container = useRef(null)
@@ -16,14 +17,11 @@ export const Logs = ({ logs, line_heights }) => {
         const elem = container.current
         const fn = () => {
             const w = elem.clientWidth
-            const scrollY = elem.scrollLeft
-            const elements = Math.round(w / GRID_WIDTH + 0.5)
-            const hiddenElements = Math.round(elem.scrollLeft / GRID_WIDTH)
-            console.table({ w, elements, hiddenElements, scrollY })
-            setFrom(hiddenElements)
-            setTo(hiddenElements + elements)
+            const scroll_left = elem.scrollLeft
+            setFrom(Math.min(logs.length - 1, Math.round((scroll_left - w) / GRID_WIDTH)))
+            setTo(Math.round((scroll_left + 2 * w) / GRID_WIDTH))
         }
-        const l = _.debounce(fn, RESIZE_DEBOUNCE)
+        const l = _.throttle(fn, RESIZE_THROTTLE)
         document.addEventListener("resize", l)
         elem.addEventListener("scroll", l)
         return () => {
@@ -36,14 +34,21 @@ export const Logs = ({ logs, line_heights }) => {
         [logs.length, line_heights]
     )
     const is_hidden_input = line_heights[0] === 0
-    const toshow = useMemo(() => logs.slice(from, to), [logs, from, to])
-    if (!logs.length) return null
+    if (logs.length === 0) return null
     return html`
         <pluto-logs-container ref=${container}>
             <pluto-logs style="${logsStyle}">
-                <div style="grid-row: 1 / 20"></div>
-                ${toshow.map((log, i) => {
-                    return html`<${Dot} level=${log.level} msg=${log.msg} kwargs=${log.kwargs} x=${from + i} y=${is_hidden_input ? 0 : log.line - 1} /> `
+                ${logs.map((log, i) => {
+                    return html`<${Dot}
+                        show=${from <= i && i < to}
+                        level=${log.level}
+                        msg=${log.msg}
+                        kwargs=${log.kwargs}
+                        mykey=${`log${i}`}
+                        key=${`log${i}`}
+                        x=${i}
+                        y=${is_hidden_input ? 0 : log.line - 1}
+                    /> `
                 })}
             </pluto-logs>
         </pluto-logs-container>
@@ -52,7 +57,7 @@ export const Logs = ({ logs, line_heights }) => {
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
-const Dot = ({ msg, kwargs, x, y, level }) => {
+const Dot = ({ show, msg, kwargs, x, y, level }) => {
     const node_ref = useRef(null)
     // const label_ref = useRef(null)
     // useEffect(() => {
@@ -66,7 +71,7 @@ const Dot = ({ msg, kwargs, x, y, level }) => {
     }, [x, y])
 
     useLayoutEffect(() => {
-        if (inspecting) {
+        if (inspecting && show) {
             const f = (e) => {
                 if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
                     set_inspecting(false)
@@ -82,19 +87,22 @@ const Dot = ({ msg, kwargs, x, y, level }) => {
         }
     }, [inspecting])
 
-    return html` <pluto-log-dot-positioner
-        ref=${node_ref}
-        class=${cl({ inspecting })}
-        onClick=${() => {
-            set_inspecting(true)
-        }}
-    >
-        <pluto-log-dot-sizer>
-            <pluto-log-dot class=${level}
-                >${mimepair_output(msg)}${kwargs.map(
-                    ([k, v]) => html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
-                )}</pluto-log-dot
-            >
-        </pluto-log-dot-sizer>
-    </pluto-log-dot-positioner>`
+    return show
+        ? html` <pluto-log-dot-positioner
+              ref=${node_ref}
+              class=${cl({ inspecting })}
+              onClick=${() => {
+                  set_inspecting(true)
+              }}
+          >
+              <pluto-log-dot-sizer>
+                  <pluto-log-dot class=${level}
+                      >${mimepair_output(msg)}${kwargs.map(
+                          ([k, v]) =>
+                              html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
+                      )}</pluto-log-dot
+                  >
+              </pluto-log-dot-sizer>
+          </pluto-log-dot-positioner>`
+        : html`<pluto-log-dot-positioner ref=${node_ref}></pluto-log-dot-positioner>`
 }

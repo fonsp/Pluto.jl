@@ -19,6 +19,8 @@ let CellMemo = ({
     force_hide_input,
     is_process_ready,
     disable_input,
+    show_logs,
+    set_show_logs,
     nbpkg,
 }) => {
     const selected_cells_diffable_primitive = (selected_cells || []).join("")
@@ -43,6 +45,8 @@ let CellMemo = ({
                 focus_after_creation=${focus_after_creation}
                 is_process_ready=${is_process_ready}
                 disable_input=${disable_input}
+                show_logs=${show_logs}
+                set_show_logs=${set_show_logs}
                 nbpkg=${nbpkg}
             />
         `
@@ -74,6 +78,7 @@ let CellMemo = ({
         focus_after_creation,
         is_process_ready,
         disable_input,
+        show_logs,
         ...nbpkg_fingerprint(nbpkg),
     ])
 }
@@ -100,6 +105,8 @@ const render_cell_outputs_minimum = 20
  *  is_initializing: boolean,
  *  is_process_ready: boolean,
  *  disable_input: any,
+ *  show_logs: boolean,
+ *  set_show_logs: any,
  * }} props
  * */
 export const Notebook = ({
@@ -113,6 +120,8 @@ export const Notebook = ({
     is_initializing,
     is_process_ready,
     disable_input,
+    show_logs,
+    set_show_logs,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
@@ -165,6 +174,8 @@ export const Notebook = ({
                         force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
+                        show_logs=${show_logs}
+                        set_show_logs=${set_show_logs}
                         nbpkg=${notebook.nbpkg}
                     />`
                 )}

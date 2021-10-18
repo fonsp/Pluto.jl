@@ -2047,12 +2047,11 @@ pluto-logs-container {
     /* Show logs up to the RunArea */
     max-height: calc(100% + 14px);
     position: absolute;
-    z-index: 3;
+    z-index: 30;
     right: min(-100px, -100vw + (700px + 25px));
     top: 1px;
     overflow-x: auto;
     overflow-y: hidden;
-
     background: hsl(0deg 0% 100% / 81%);
 }
 
