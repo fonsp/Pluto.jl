@@ -40,7 +40,7 @@ export const Logs = ({ logs, line_heights }) => {
             <pluto-logs style="${logsStyle}">
                 ${logs.map((log, i) => {
                     return html`<${Dot}
-                        show=${from <= i && i < to}
+                        show=${logs.length < 50 || (from <= i && i < to)}
                         level=${log.level}
                         msg=${log.msg}
                         kwargs=${log.kwargs}
