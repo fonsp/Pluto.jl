@@ -13,6 +13,8 @@ import register from "../imports/PreactCustomElement.js"
 import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_syntax_colors } from "./CellInput.js"
 
+import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
+
 export class CellOutput extends Component {
     constructor() {
         super()
@@ -53,20 +55,23 @@ export class CellOutput extends Component {
     }
 
     render() {
+        const rich_output =
+            this.props.errored ||
+            !this.props.body ||
+            (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                this.props.mime !== "application/vnd.pluto.table+object" &&
+                this.props.mime !== "text/plain")
+        const allow_translate = !this.props.errored && rich_output
         return html`
             <pluto-output
                 class=${cl({
-                    rich_output:
-                        this.props.errored ||
-                        !this.props.body ||
-                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
-                            this.props.mime !== "application/vnd.pluto.table+object" &&
-                            this.props.mime !== "text/plain"),
+                    rich_output,
                     scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
+                translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
@@ -388,25 +393,34 @@ export let highlight = (code_element, language) => {
     language = language === "jl" ? "julia" : language
 
     if (code_element.children.length === 0) {
-        const editorview = new EditorView({
-            state: EditorState.create({
-                doc: code_element.innerText.trim(),
+        if (language === "julia") {
+            const editorview = new EditorView({
+                state: EditorState.create({
+                    // Remove references to `Main.workspace#xx.` in the docs since
+                    // its shows up as a comment and can be confusing
+                    doc: code_element.innerText.trim().replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, "Main.var\"workspace#$1\""),
 
-                extensions: [
-                    pluto_syntax_colors,
-                    defaultHighlightStyle.fallback,
-                    EditorState.tabSize.of(4),
-                    // TODO Other languages possibly?
-                    language === "julia" ? julia_andrey() : null,
-                    EditorView.lineWrapping,
-                    EditorView.editable.of(false),
-                ].filter((x) => x != null),
-            }),
-        })
-        code_element.replaceChildren(editorview.dom)
-        // Weird hack to make it work inline 🤷‍♀️
-        // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
-        editorview.dom.style.setProperty("display", "inline-flex", "important")
-        editorview.dom.style.setProperty("background-color", "transparent", "important")
+                    extensions: [
+                        pluto_syntax_colors,
+                        defaultHighlightStyle.fallback,
+                        EditorState.tabSize.of(4),
+                        // TODO Other languages possibly?
+                        language === "julia" ? julia_andrey() : null,
+                        EditorView.lineWrapping,
+                        EditorView.editable.of(false),
+                    ].filter((x) => x != null),
+                }),
+            })
+            code_element.replaceChildren(editorview.dom)
+            // Weird hack to make it work inline 🤷‍♀️
+            // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
+            editorview.dom.style.setProperty("display", "inline-flex", "important")
+            editorview.dom.style.setProperty("background-color", "transparent", "important")
+        } else {
+            window.hljs = hljs
+            console.log(code_element)
+            hljs.highlightElement(code_element)
+        }
     }
 }

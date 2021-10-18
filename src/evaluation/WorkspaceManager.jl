@@ -206,6 +206,19 @@ function unmake_workspace(session_notebook::Union{SN,Workspace}; async=false)
     end
 end
 
+function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
+    (
+        output_formatted=PlutoRunner.format_output(CapturedException(ex, [])),
+        errored=true,
+        interrupted=true,
+        process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
+        runtime=nothing,
+        published_objects=Dict{String,Any}(),
+    )
+end
+
+
+
 function distributed_exception_result(exs::CompositeException, workspace::Workspace)
     ex = exs.exceptions |> first
 
@@ -307,6 +320,18 @@ function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_i
         end
     end
 end
+
+function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
+    workspace = get_workspace(session_notebook)
+    module_name = workspace.module_name
+
+    ex = quote
+        PlutoRunner.collect_soft_definitions($module_name, $modules)
+    end
+
+    Distributed.remotecall_eval(Main, workspace.pid, ex)
+end
+
 
 function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)
     workspace = get_workspace(session_notebook)

@@ -424,13 +424,11 @@ body > header {
     top: 0px; */
     width: 100%;
     min-height: 60px;
-
     z-index: 50;
     background-color: white;
     transform: translateY(0px);
     transition: background-color 0.5s ease-in-out, transform 0.25s cubic-bezier(0.18, 0.89, 0.49, 1.13);
     border-bottom: solid 1px rgba(0, 0, 0, 0.1);
-
     font-family: "Roboto Mono", monospace;
     font-weight: 400;
     font-size: 0.75rem;
@@ -739,20 +737,38 @@ nav#at_the_top > #process_status:empty {
 loading-bar {
     height: 6px;
     width: 10vw;
-    background-color: #b1c9dd;
+    /* background-color: #b1c9dd; */
+    background: linear-gradient(90deg, #f1dba9, #d7d7d0, #f1dba9);
+    background-size: 100vw 100%;
     position: fixed;
     top: 0px;
+    left: 0px;
     display: block;
-    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
     opacity: 0;
-    pointer-events: none;
+    z-index: 9999;
+    animation: move-background 2s ease-in-out infinite;
+}
+loading-bar.slow {
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 10s, opacity linear 0.5s;
+}
+@media (prefers-reduced-motion) {
+    loading-bar {
+        transition: none;
+    }
 }
 
 body.binder.loading #binder_spinners {
     opacity: 0.25;
 }
-body.binder.loading loading-bar {
-    opacity: 1;
+
+@keyframes move-background {
+    0% {
+        background-position-x: 0vw;
+    }
+    100% {
+        background-position-x: 100vw;
+    }
 }
 
 /* PREAMBLE */

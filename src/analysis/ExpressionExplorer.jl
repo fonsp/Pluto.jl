@@ -236,6 +236,25 @@ function without_dotsuffix(funcname::Symbol)::Symbol
         funcname
     end
 end
+
+"""Generates a vector of all possible variants from a function name
+
+```
+julia> generate_funcnames([:Base, :Foo, :bar])
+3-element Vector{Symbol}:
+ Symbol("Base.Foo.bar")
+ Symbol("Foo.bar")
+ :bar
+```
+
+"""
+function generate_funcnames(funccall::FunctionName)
+      calls = Vector{FunctionName}(undef, length(funccall) - 1)
+      for i in length(funccall):-1:2
+          calls[i-1] = funccall[i:end]
+      end
+      calls
+end
         
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
@@ -703,6 +722,9 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         symstate = explore_module_definition!(ex, scopestate)
 
         return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
+    elseif Meta.isexpr(ex, Symbol("'"), 1)
+        # a' corresponds to adjoint(a)
+        return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
@@ -1111,6 +1133,26 @@ Base.@kwdef struct UsingsImports
     usings::Set{Expr}=Set{Expr}()
     imports::Set{Expr}=Set{Expr}()
 end
+
+is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
+function transform_dot_notation(ex::Expr)
+    if Meta.isexpr(ex, :(.))
+        Expr(:block, ex.args[end])
+    else
+        ex
+    end
+end
+
+function collect_implicit_usings(ex::Expr)
+    if is_implicit_using(ex)
+        Set{Expr}(transform_dot_notation.(ex.args))
+    else
+        return Set{Expr}()
+    end
+end
+
+collect_implicit_usings(usings::Set{Expr}) = mapreduce(collect_implicit_usings, union!, usings; init=Set{Expr}())
+collect_implicit_usings(usings_imports::UsingsImports) = collect_implicit_usings(usings_imports.usings)
 
 # Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
 "Preallocated version of [`compute_usings_imports`](@ref)."

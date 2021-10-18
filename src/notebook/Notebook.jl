@@ -175,6 +175,7 @@ function open_safe_write(fn::Function, path, mode)
 end
     
 function save_notebook(notebook::Notebook, path::String)
+    # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
     notebook.last_save_time = time()
     open_safe_write(path, "w") do io
         save_notebook(io, notebook)

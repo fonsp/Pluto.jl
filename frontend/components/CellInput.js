@@ -31,6 +31,7 @@ import {
     indentOnInput,
     defaultHighlightStyle,
     closeBrackets,
+    rectangularSelection,
     highlightSelectionMatches,
     closeBracketsKeymap,
     searchKeymap,
@@ -352,15 +353,18 @@ export const CellInput = ({
                     drawSelection(),
                     EditorState.allowMultipleSelections.of(true),
                     // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
-                    EditorView.clickAddsSelectionRange.of((event) => event.altKey),
+                    EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
                     indentOnInput(),
                     defaultHighlightStyle.fallback,
                     // Experimental: Also add closing brackets for tripple string
                     // TODO also add closing string when typing a string macro
                     EditorState.languageData.of((state, pos, side) => {
-                        return [{ closeBrackets: { brackets: ["(", "[", "{", "'", '"', '"""'] } }]
+                        return [{ closeBrackets: { brackets: ["(", "[", "{"] } }]
                     }),
                     closeBrackets(),
+                    rectangularSelection({
+                        eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
+                    }),
                     highlightSelectionMatches(),
                     bracketMatching(),
                     docs_updater,
@@ -426,7 +430,8 @@ export const CellInput = ({
         // For use from useDropHandler
         // @ts-ignore
         newcm.dom.CodeMirror = {
-            getValue: () => newcm.state.doc.toString(),
+            getValue: () => getValue6(newcm),
+            setValue: (x) => setValue6(newcm, x),
         }
 
         if (focus_after_creation) {
@@ -511,7 +516,7 @@ export const CellInput = ({
     }, [cm_forced_focus])
 
     return html`
-        <pluto-input ref=${dom_node_ref}>
+        <pluto-input ref=${dom_node_ref} translate=${false}>
             <${InputContextMenu}
                 on_delete=${on_delete}
                 cell_id=${cell_id}

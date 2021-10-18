@@ -6,13 +6,13 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false)::TopologicalOrder
-	if !already_in_run
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
+  if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
 
 		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
-		
+
 		if !is_resolved(new_topology)
 			unresolved_topology = new_topology
 			new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
@@ -62,7 +62,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.depends_on_disabled_cells = true
 	end
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+	to_run = setdiff(to_run_raw, indirectly_deactivated, already_run)
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
@@ -82,29 +82,32 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	send_notebook_changes_throttled()
 
-	# delete new variables that will be defined by a cell
-	new_runnable = new_order.runnable
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
+	# we do this only if we just switched to a new workspace
+	if !already_in_run
+		# delete new variables that will be defined by a cell
+		new_runnable = new_order.runnable
+		to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
+		to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
 
-	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-	new_errable = keys(new_order.errable)
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
+		# delete new variables in case a cell errors (then the later cells show an UndefVarError)
+		new_errable = keys(new_order.errable)
+		to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
+		to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-	deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+		to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
-	delete!.([notebook.bonds], to_delete_vars)
+		delete!.([notebook.bonds], to_delete_vars)
+	end
 
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
-		
+
 		cell.queued = false
 		cell.running = true
 		empty!(cell.logs)
 		send_notebook_changes_throttled()
-		
+
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
@@ -118,10 +121,29 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.running = false
 
+		implicit_usings = collect_implicit_usings(new_topology, cell)
 		if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
 			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name; skip_reimports=true)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run[i+1:end]; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true)
+			if !isempty(implicit_usings)
+				new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
+				notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
+			end
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
+		elseif !isempty(implicit_usings)
+			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
+			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		end
 	end
 
@@ -197,6 +219,14 @@ end
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
 is_macro_identifier(symbol::Symbol) = startswith(string(symbol), "@")
+
+function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_definitions)
+    old_node = topology.nodes[cell]
+    new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
+    NotebookTopology(codes=topology.codes, nodes=merge(topology.nodes, Dict(cell => new_node)), unresolved_cells=topology.unresolved_cells)
+end
+
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
@@ -327,7 +357,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
-		
+
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
@@ -351,6 +381,8 @@ update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs.
 update_run!(args...) = update_save_run!(args...; save=false)
 
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
+	
 	just_loaded = try
 		load_notebook_nobackup(notebook.path)
 	catch e
@@ -380,8 +412,8 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
 	order_changed = notebook.cell_order != just_loaded.cell_order
 	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
-	
-	something_changed = cells_changed || order_changed || nbpkg_changed
+		
+	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
 	
 	if something_changed
 		@info "Reloading notebook from file and applying changes!"
@@ -400,7 +432,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 
 	notebook.cell_order = just_loaded.cell_order
 	
-	if nbpkg_changed
+	if include_nbpg && nbpkg_changed
 		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
 		
 		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
