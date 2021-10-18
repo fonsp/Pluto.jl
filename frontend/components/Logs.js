@@ -7,7 +7,7 @@ import { SimpleOutputBody } from "./TreeView.js"
 const GRID_WIDTH = 10
 const RESIZE_THROTTLE = 60
 
-export const Logs = ({ logs, line_heights }) => {
+export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const container = useRef(null)
     const [from, setFrom] = useState(0)
     const [to, setTo] = useState(Math.round(1000 / GRID_WIDTH))
@@ -40,6 +40,7 @@ export const Logs = ({ logs, line_heights }) => {
             <pluto-logs style="${logsStyle}">
                 ${logs.map((log, i) => {
                     return html`<${Dot}
+                        set_cm_highlighted_line=${set_cm_highlighted_line}
                         show=${logs.length < 50 || (from <= i && i < to)}
                         level=${log.level}
                         msg=${log.msg}
@@ -57,7 +58,7 @@ export const Logs = ({ logs, line_heights }) => {
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
 
-const Dot = ({ show, msg, kwargs, x, y, level }) => {
+const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     const node_ref = useRef(null)
     // const label_ref = useRef(null)
     // useEffect(() => {
@@ -75,6 +76,7 @@ const Dot = ({ show, msg, kwargs, x, y, level }) => {
             const f = (e) => {
                 if (!e.target.closest || e.target.closest("pluto-log-dot-positioner") !== node_ref.current) {
                     set_inspecting(false)
+                    set_cm_highlighted_line(null)
                 }
             }
             window.addEventListener("click", f)
@@ -93,7 +95,10 @@ const Dot = ({ show, msg, kwargs, x, y, level }) => {
               class=${cl({ inspecting })}
               onClick=${() => {
                   set_inspecting(true)
+                  set_cm_highlighted_line(y)
               }}
+              onMouseenter=${() => set_cm_highlighted_line(y)}
+              onMouseleave=${() => set_cm_highlighted_line(null)}
           >
               <pluto-log-dot-sizer>
                   <pluto-log-dot class=${level}

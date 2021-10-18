@@ -45,6 +45,7 @@ export const Cell = ({
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
+    const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
     const { saving_file, drag_active, handler } = useDropHandler()
     useEffect(() => {
         const focusListener = (e) => {
@@ -195,8 +196,10 @@ export const Cell = ({
                 running_disabled=${running_disabled}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
+                cm_highlighted_line=${cm_highlighted_line}
+                set_cm_highlighted_line=${set_cm_highlighted_line}
             />
-            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} />` : null}
+            ${show_logs ? html`<${Logs} logs=${Object.values(logs)} line_heights=${line_heights} set_cm_highlighted_line=${set_cm_highlighted_line} />` : null}
             <${RunArea}
                 cell_id=${cell_id}
                 running_disabled=${running_disabled}
@@ -209,7 +212,7 @@ export const Cell = ({
                 on_interrupt=${() => {
                     pluto_actions.interrupt_remote(cell_id)
                 }}
-                runtime=${runtime}
+                runtime=${cm_highlighted_line}
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
