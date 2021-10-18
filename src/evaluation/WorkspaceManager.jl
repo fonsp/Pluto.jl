@@ -105,6 +105,10 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
 end
 
 function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.RemoteChannel)
+    update_throttled, flush_throttled = Pluto.throttled(0.1) do 
+        Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
+    end
+    
     while true
         try
             next_log::Dict{String,Any} = take!(log_channel)
@@ -116,8 +120,8 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
                 cell = notebook.cells_dict[cell_id]
                 push!(cell.logs, next_log)
+                Pluto.@asynclog update_throttled()
                 # putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
-                Pluto.send_notebook_changes!(Pluto.ClientRequest(session=session, notebook=notebook))
             end
         catch e
             if !isopen(log_channel)
