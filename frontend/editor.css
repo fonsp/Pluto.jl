@@ -2056,25 +2056,43 @@ pluto-logs-container {
 }
 
 @media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
-    pluto-logs-container {
-        right: min(-6px, 700px + 25px - 100vw);
-        width: 20px;
-        transition: width ease-in-out 100ms;
+    pluto-logs {
+        display: flex !important;
+    }
 
+    pluto-logs-container {
+        position: static;
+        /* right: min(-6px, 700px + 25px - 100vw); */
+        /* width: 20px; */
+        /* transition: width ease-in-out 100ms; */
         /* padding-left: 80px; */
+        width: 100%;
+    }
+
+    pluto-logs-container:not(:empty) {
+        background: #efeff3;
+        padding: 10px;
     }
 
     pluto-logs-container:focus-within,
     pluto-logs-container:hover {
-        width: 30vw;
+        /* width: 30vw; */
     }
 
     pluto-logs-container pluto-logs {
-        grid-template-columns: repeat(auto-fill, 0px);
+        /* grid-template-columns: repeat(auto-fill, 0px); */
     }
     pluto-logs-container:focus-within pluto-logs,
     pluto-logs-container:hover pluto-logs {
-        grid-template-columns: repeat(auto-fill, 10px);
+        /* grid-template-columns: repeat(auto-fill, 10px); */
+    }
+
+    pluto-log-dot-positioner {
+        flex: 0 0 auto;
+        width: auto;
+    }
+    pluto-log-dot-sizer {
+        width: auto;
     }
 }
 
@@ -2094,6 +2112,7 @@ pluto-logs-container {
 pluto-logs {
     display: grid;
     grid-auto-rows: 15px;
+    flex-direction: row;
     grid-template-rows: repeat(auto-fill, 15px);
     grid-template-columns: repeat(auto-fill, 10px);
     grid-auto-flow: column;
