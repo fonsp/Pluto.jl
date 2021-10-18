@@ -171,7 +171,10 @@ import Distributed
 
         update_run!(🍭, notebook, notebook.cells)
 
+        # Test that the resulting file is runnable
         @test jl_is_runnable(file)
+        # and also that Pluto can figure out the execution order on its own
+        @test all(noerror, notebook.cells)
 
         🍭.options.evaluation.workspace_use_distributed = false
     end
