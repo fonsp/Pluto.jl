@@ -149,6 +149,7 @@ export const CellInput = ({
     notebook_id,
     running_disabled,
     cell_dependencies,
+    any_logs,
     show_logs,
     set_show_logs,
     cm_highlighted_line,
@@ -528,6 +529,7 @@ export const CellInput = ({
                 cell_id=${cell_id}
                 run_cell=${on_submit}
                 running_disabled=${running_disabled}
+                any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
             />
@@ -535,7 +537,7 @@ export const CellInput = ({
     `
 }
 
-const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, show_logs, set_show_logs }) => {
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, any_logs, show_logs, set_show_logs }) => {
     const timeout = useRef(null)
     let pluto_actions = useContext(PlutoContext)
     const [open, setOpen] = useState(false)
@@ -574,9 +576,13 @@ const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled, show
                       ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
                       ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
                   </li>
-                  <li title="" onClick=${toggle_logs}>
-                      ${show_logs ? html`<span class="eye_closed_icon" /><span>Hide logs</span>` : html`<span class="eye_open_icon" /><span>Show logs</span>`}
-                  </li>
+                  ${any_logs
+                      ? html`<li title="" onClick=${toggle_logs}>
+                            ${show_logs
+                                ? html`<span class="hide_logs_icon" /><span>Hide logs</span>`
+                                : html`<span class="show_logs_icon" /><span>Show logs</span>`}
+                        </li>`
+                      : null}
                   <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
               </ul>`
             : html``}

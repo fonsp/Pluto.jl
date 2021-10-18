@@ -1430,8 +1430,8 @@ pluto-input > button.input_context_menu ul {
 .delete_icon,
 .enable_cell_icon,
 .bandage_icon,
-.eye_open_icon,
-.eye_closed_icon,
+.show_logs_icon,
+.hide_logs_icon,
 .icon {
     --size: 17px;
     width: var(--size);
@@ -1441,12 +1441,12 @@ pluto-input > button.input_context_menu ul {
     background-position: center;
     margin-right: calc(var(--size) / 3);
 }
-.eye_open_icon {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-outline.svg);
+.show_logs_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
 }
 
-.eye_closed_icon {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg);
+.hide_logs_icon {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/document-text-outline.svg);
 }
 
 .bandage_icon {
@@ -2064,7 +2064,7 @@ pluto-logs-container {
     background: hsl(0deg 0% 100% / 81%);
 }
 
-@media screen and (max-width: calc(700px + 25px + 6px + 100px)) {
+@media screen and (max-width: calc(700px + 25px + 6px + 150px)) {
     pluto-logs {
         display: flex !important;
     }
@@ -2138,6 +2138,20 @@ pluto-log-dot-positioner.inspecting {
     z-index: 5;
     /* transform: translate(0px, -5px); */
 }
+
+/* pluto-log-dot-positioner {
+    transform: translateX(0px);
+} */
+pluto-log-dot-positioner.inspecting {
+    transform: translateX(5px);
+}
+pluto-log-dot-positioner.inspecting pluto-log-dot {
+    box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+}
+pluto-log-dot-positioner.inspecting ~ pluto-log-dot-positioner {
+    transform: translateX(10px);
+}
+
 pluto-log-dot-sizer {
     display: block;
     width: 100px;

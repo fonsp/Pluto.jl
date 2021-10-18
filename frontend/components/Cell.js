@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { html, useState, useEffect, useMemo, useRef, useContext, useLayoutEffect } from "../imports/Preact.js"
 
 import { CellOutput } from "./CellOutput.js"
@@ -36,8 +37,6 @@ export const Cell = ({
     focus_after_creation,
     is_process_ready,
     disable_input,
-    show_logs,
-    set_show_logs,
     nbpkg,
 }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -46,6 +45,16 @@ export const Cell = ({
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
     const [cm_highlighted_line, set_cm_highlighted_line] = useState(null)
+    const [show_logs, set_show_logs] = useState(true)
+
+    const any_logs = useMemo(() => !_.isEmpty(logs), [logs])
+
+    useEffect(() => {
+        if (!any_logs) {
+            set_show_logs(true)
+        }
+    }, [any_logs])
+
     const { saving_file, drag_active, handler } = useDropHandler()
     useEffect(() => {
         const focusListener = (e) => {
@@ -194,6 +203,7 @@ export const Cell = ({
                 cell_id=${cell_id}
                 notebook_id=${notebook_id}
                 running_disabled=${running_disabled}
+                any_logs=${any_logs}
                 show_logs=${show_logs}
                 set_show_logs=${set_show_logs}
                 cm_highlighted_line=${cm_highlighted_line}
@@ -212,7 +222,7 @@ export const Cell = ({
                 on_interrupt=${() => {
                     pluto_actions.interrupt_remote(cell_id)
                 }}
-                runtime=${cm_highlighted_line}
+                runtime=${runtime}
                 running=${running}
                 code_differs=${class_code_differs}
                 queued=${queued}
