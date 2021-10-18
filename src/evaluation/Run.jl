@@ -129,10 +129,18 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 				notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
 			end
 
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
 			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
 			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
 			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		end
@@ -348,7 +356,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
-		
+
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
