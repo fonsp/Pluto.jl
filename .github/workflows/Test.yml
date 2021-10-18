@@ -39,4 +39,4 @@ jobs:
 
             # 🚗
             - uses: julia-actions/julia-runtest@v1
-              continue-on-error: ${{ matrix.julia-version == 'nightly' }}
+              continue-on-error: ${{ matrix.julia-version == 'nightly' || matrix.os == 'windows-latest' }}
