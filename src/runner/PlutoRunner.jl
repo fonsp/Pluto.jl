@@ -26,7 +26,7 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
-ExpandedCallCells = Dict{UUID,Expr}()
+const ExpandedCallCells = Dict{UUID,Expr}()
 
 
 
