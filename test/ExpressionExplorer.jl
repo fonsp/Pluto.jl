@@ -79,6 +79,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(struct a{T} <: b; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
         @test testee(:(struct a{T} <: b{T}; c; d::Foo; end), [], [:a], [], [:a => ([:b, :Foo], [], [], [])])
         @test testee(:(struct a; c; a(x=y) = new(x, z); end), [], [:a], [], [:a => ([:y, :z], [], [:new], [])])
+        @test testee(:(struct a{A,B<:C{A}}; i::A; j::B end), [], [:a], [], [:a => ([:C], [], [], [])])
+        @test testee(:(struct a{A,B<:C{<:A}} <: D{A,B}; i::A; j::B end), [], [:a], [], [:a => ([:C, :D], [], [], [])])
+        @test testee(:(struct a{A,DD<:B.C{D.E{A}}} <: K.A{A} i::A; j::DD; k::C end), [], [:a], [], [:a => ([:B, :C, :D, :K], [], [], [])])
         # @test_broken testee(:(struct a; c; a(x=y) = new(x,z); end), [], [:a], [], [:a => ([:y, :z], [], [], [])], verbose=false)
     end
     @testset "Assignment operator & modifiers" begin
