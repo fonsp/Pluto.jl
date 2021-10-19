@@ -243,7 +243,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     end
 
 
-    @testset "Pkg cell" begin
+    @testset "Pkg cell -- dynamically added" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.connected_clients[fakeclient.id] = fakeclient
@@ -299,12 +299,67 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
+    
+    pkg_cell_notebook = read(joinpath(@__DIR__, "pkg_cell.jl"), String)
+    
+    @testset "Pkg cell -- loaded from file" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        dir = mktempdir()
+        for n in ["Project.toml", "Manifest.toml"]
+            cp(joinpath(@__DIR__, "pkg_cell_env", n), joinpath(dir, n))
+        end
+        path = joinpath(dir, "hello.jl")
+        write(path, pkg_cell_notebook)
+        @test length(readdir(dir)) == 3
+
+        @test num_backups_in(dir) == 0
+
+        notebook = SessionActions.open(🍭, path; run_async=false)
+        fakeclient.connected_notebook = notebook
+        nb_contents() = read(notebook.path, String)
+        
+        @test num_backups_in(dir) == 0
+        # @test num_backups_in(dir) == 1
+        
+        
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[2].errored == false
+        @test notebook.cells[3].errored == false
+        @test notebook.cells[4].errored == false
+        @test notebook.cells[5].errored == false
+        @test notebook.cells[6].errored == false
+        @test notebook.cells[7].errored == false
+        @test notebook.cells[8].errored == false
+        @test notebook.cells[9].errored == false
+        @test notebook.cells[10].errored == false
+
+        @test notebook.cells[3].output.body == "0.2.0"
+
+        
+        
+
+        file_after_loading = read(path, String)
+
+        # test that no pkg cells got added
+        @test !has_embedded_pkgfiles(notebook)
+        # we can remove this test in the future if our file format changes
+        @test -10 < length(file_after_loading) - length(pkg_cell_notebook) < 10
+
+        @test notebook.nbpkg_ctx === nothing
+        @test notebook.nbpkg_restart_recommended_msg === nothing
+        @test notebook.nbpkg_restart_required_msg === nothing
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+    end
 
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
 
     local post_pkg_notebook = nothing
 
-    @testset "Backwards compat" begin
+    @testset "File format -- Backwards compat" begin
         fakeclient = ClientSession(:fake, nothing)
         🍭 = ServerSession()
         🍭.connected_clients[fakeclient.id] = fakeclient
@@ -335,7 +390,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
-    @testset "Forwards compat" begin
+    @testset "File format -- Forwards compat" begin
         # Using Distributed, we will create a new Julia process in which we install Pluto 0.14.7 (before PlutoPkg). We run the new notebook file on the old Pluto.
         p = Distributed.addprocs(1) |> first
 
@@ -514,6 +569,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
     #     save_notebook
     # end
 
+    
 
     Pkg.Registry.rm(pluto_test_registry_spec)
     # Pkg.Registry.add("General")
