@@ -46,10 +46,10 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test !notebook.nbpkg_ctx_instantiated
         
         update_save_run!(🍭, notebook, notebook.cells[[1, 2, 7, 8]]) # import A and D
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
-        @test notebook.cells[7].errored == false
-        @test notebook.cells[8].errored == false
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[7])
+        @test noerror(notebook.cells[8])
 
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
@@ -77,8 +77,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         update_save_run!(🍭, notebook, notebook.cells[[3, 4]]) # import B
 
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test noerror(notebook.cells[3])
+        @test noerror(notebook.cells[4])
 
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
@@ -95,8 +95,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # running the 5th cell will import PlutoPkgTestC, putting a 0.2 compatibility bound on PlutoPkgTestA. This means that a notebook restart is required, since PlutoPkgTestA was already loaded at version 0.3.1.
         update_save_run!(🍭, notebook, notebook.cells[[5, 6]])
 
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
+        @test noerror(notebook.cells[5])
+        @test noerror(notebook.cells[6])
         
         @test notebook.nbpkg_ctx !== nothing
         @test (
@@ -117,15 +117,15 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # @test_nowarn SessionActions.shutdown(🍭, notebook; keep_in_session=true, async=true)
         # @test_nowarn update_save_run!(🍭, notebook, notebook.cells[1:8]; , save=true)
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
-        @test notebook.cells[7].errored == false
-        @test notebook.cells[8].errored == false
-        @test notebook.cells[11].errored == false
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[3])
+        @test noerror(notebook.cells[4])
+        @test noerror(notebook.cells[5])
+        @test noerror(notebook.cells[6])
+        @test noerror(notebook.cells[7])
+        @test noerror(notebook.cells[8])
+        @test noerror(notebook.cells[11])
 
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
@@ -140,7 +140,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
 
         update_save_run!(🍭, notebook, notebook.cells[9])
 
-        @test notebook.cells[9].errored == false
+        @test noerror(notebook.cells[9])
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
@@ -189,7 +189,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         update_save_run!(🍭, notebook, notebook.cells[9])
 
         # removing a stdlib does not require a restart
-        @test notebook.cells[9].errored == false
+        @test noerror(notebook.cells[9])
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
@@ -201,7 +201,7 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         setcode(notebook.cells[7], "")
         update_save_run!(🍭, notebook, notebook.cells[7])
 
-        @test notebook.cells[7].errored == false
+        @test noerror(notebook.cells[7])
         @test notebook.nbpkg_ctx !== nothing
         @test notebook.nbpkg_restart_recommended_msg !== nothing # recommend restart
         @test notebook.nbpkg_restart_required_msg === nothing
@@ -234,8 +234,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
 
         @test notebook.cells[2].output.body == "0.2.2"
 
@@ -269,8 +269,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         setcode(notebook.cells[2], "Pkg.activate(mktempdir())")
         update_save_run!(🍭, notebook, notebook.cells[2])
 
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
         @test notebook.nbpkg_ctx === nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
         @test notebook.nbpkg_restart_required_msg === nothing
@@ -283,8 +283,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         setcode(notebook.cells[5], "using Dates")
         update_save_run!(🍭, notebook, notebook.cells[5])
 
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
+        @test noerror(notebook.cells[3])
+        @test noerror(notebook.cells[4])
         @test notebook.cells[5].errored == false
 
         @test !has_embedded_pkgfiles(notebook)
@@ -325,16 +325,16 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # @test num_backups_in(dir) == 1
         
         
-        @test notebook.cells[1].errored == false
-        @test notebook.cells[2].errored == false
-        @test notebook.cells[3].errored == false
-        @test notebook.cells[4].errored == false
-        @test notebook.cells[5].errored == false
-        @test notebook.cells[6].errored == false
-        @test notebook.cells[7].errored == false
-        @test notebook.cells[8].errored == false
-        @test notebook.cells[9].errored == false
-        @test notebook.cells[10].errored == false
+        @test noerror(notebook.cells[1])
+        @test noerror(notebook.cells[2])
+        @test noerror(notebook.cells[3])
+        @test noerror(notebook.cells[4])
+        @test noerror(notebook.cells[5])
+        @test noerror(notebook.cells[6])
+        @test noerror(notebook.cells[7])
+        @test noerror(notebook.cells[8])
+        @test noerror(notebook.cells[9])
+        @test noerror(notebook.cells[10])
 
         @test notebook.cells[3].output.body == "0.2.0"
 
@@ -509,8 +509,8 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
             end
 
             if name != "unregistered_import"
-                @test notebook.cells[1].errored == false
-                @test notebook.cells[2].errored == false
+                @test noerror(notebook.cells[1])
+                @test noerror(notebook.cells[2])
                 @test notebook.cells[2].output.body == "0.2.2" # the Project.toml remained, so we did not lose our compat bound.
                 @test has_embedded_pkgfiles(notebook)
             end
