@@ -453,7 +453,18 @@ end
 
 function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContext})::Bool
     if (a isa Nothing) != (b isa Nothing)
-        false
+        the_other = something(a, b)
+        
+        ptoml_contents = PkgCompat.read_project_file(the_other)
+        the_other_is_empty = isempty(strip(ptoml_contents))
+        
+        if the_other_is_empty
+            # then both are essentially 'empty' environments, i.e. equal
+            true
+        else
+            # they are different
+            false
+        end
     elseif a isa Nothing
         true
     else
