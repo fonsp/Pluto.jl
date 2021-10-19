@@ -168,7 +168,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
             style=${{
                 position: "absolute",
                 background: "rgba(40, 78, 189, 0.24)",
-                zIndex: 10,
+                zIndex: 1000000, // Yes, really
                 top: Math.min(selection_start.y, selection_end.y),
                 left: Math.min(selection_start.x, selection_end.x),
                 width: Math.abs(selection_start.x - selection_end.x),

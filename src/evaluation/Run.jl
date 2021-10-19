@@ -6,8 +6,8 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false)::TopologicalOrder
-	if !already_in_run
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
+  if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
 
@@ -62,7 +62,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		cell.depends_on_disabled_cells = true
 	end
 
-    to_run = setdiff(to_run_raw, indirectly_deactivated)
+	to_run = setdiff(to_run_raw, indirectly_deactivated, already_run)
 
 	# change the bar on the sides of cells to "queued"
 	for cell in to_run
@@ -82,28 +82,31 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	end
 	send_notebook_changes_throttled()
 
-	# delete new variables that will be defined by a cell
-	new_runnable = new_order.runnable
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
+	# we do this only if we just switched to a new workspace
+	if !already_in_run
+		# delete new variables that will be defined by a cell
+		new_runnable = new_order.runnable
+		to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_runnable)...)
+		to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_runnable)...)
 
-	# delete new variables in case a cell errors (then the later cells show an UndefVarError)
-	new_errable = keys(new_order.errable)
-	to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
-	to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
+		# delete new variables in case a cell errors (then the later cells show an UndefVarError)
+		new_errable = keys(new_order.errable)
+		to_delete_vars = union!(to_delete_vars, defined_variables(new_topology, new_errable)...)
+		to_delete_funcs = union!(to_delete_funcs, defined_functions(new_topology, new_errable)...)
 
-	to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
-	deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
+		to_reimport = union!(Set{Expr}(), map(c -> new_topology.codes[c].module_usings_imports.usings, setdiff(notebook.cells, to_run))...)
+		deletion_hook((session, notebook), old_workspace_name, nothing, to_delete_vars, to_delete_funcs, to_reimport; to_run=to_run) # `deletion_hook` defaults to `WorkspaceManager.move_vars`
 
-	delete!.([notebook.bonds], to_delete_vars)
+		delete!.([notebook.bonds], to_delete_vars)
+	end
 
 	local any_interrupted = false
 	for (i, cell) in enumerate(to_run)
-		
+
 		cell.queued = false
 		cell.running = true
 		send_notebook_changes_throttled()
-		
+
 		if any_interrupted || notebook.wants_to_interrupt
 			relay_reactivity_error!(cell, InterruptException())
 		else
@@ -117,10 +120,29 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.running = false
 
+		implicit_usings = collect_implicit_usings(new_topology, cell)
 		if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
 			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run[i+1:end]; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true)
+			if !isempty(implicit_usings)
+				new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
+				notebook.topology = new_new_topology = with_new_soft_definitions(new_new_topology, cell, new_soft_definitions)
+			end
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
+		elseif !isempty(implicit_usings)
+			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
+			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
+
+			# update cache and save notebook because the dependencies might have changed after expanding macros
+			update_dependency_cache!(notebook)
+			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		end
 	end
 
@@ -196,6 +218,14 @@ end
 will_run_code(notebook::Notebook) = notebook.process_status != ProcessStatus.no_process && notebook.process_status != ProcessStatus.waiting_to_restart
 
 is_macro_identifier(symbol::Symbol) = startswith(string(symbol), "@")
+
+function with_new_soft_definitions(topology::NotebookTopology, cell::Cell, soft_definitions)
+    old_node = topology.nodes[cell]
+    new_node = union!(ReactiveNode(), old_node, ReactiveNode(soft_definitions=soft_definitions))
+    NotebookTopology(codes=topology.codes, nodes=merge(topology.nodes, Dict(cell => new_node)), unresolved_cells=topology.unresolved_cells)
+end
+
+collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
@@ -295,7 +325,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 		)
 
 		new = notebook.topology = static_resolve_topology(new)
-		
+
 		to_run_offline = filter(c -> !c.running && is_just_text(new, c) && is_just_text(old, c), cells)
 		for cell in to_run_offline
 			run_single!(offline_workspace, cell, new.nodes[cell], new.codes[cell])
@@ -318,15 +348,15 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
-
-function update_from_file(session::ServerSession, notebook::Notebook)
+function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
+	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
+	
 	just_loaded = try
-		sleep(1.2) ## There seems to be a synchronization issue if your OS is VERYFAST
 		load_notebook_nobackup(notebook.path)
 	catch e
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
 		return
-	end
+	end::Notebook
 
 	old_codes = Dict(
 		id => c.code
@@ -337,6 +367,7 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 		for (id,c) in just_loaded.cells_dict
 	)
 
+	# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
 	added = setdiff(keys(new_codes), keys(old_codes))
 	removed = setdiff(keys(old_codes), keys(new_codes))
 	changed = let
@@ -345,6 +376,17 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	# @show added removed changed
+	
+	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
+	order_changed = notebook.cell_order != just_loaded.cell_order
+	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+		
+	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
+	
+	if something_changed
+		@info "Reloading notebook from file and applying changes!"
+		notebook.last_hot_reload_time = time()
+	end
 
 	for c in added
 		notebook.cells_dict[c] = just_loaded.cells_dict[c]
@@ -357,55 +399,75 @@ function update_from_file(session::ServerSession, notebook::Notebook)
 	end
 
 	notebook.cell_order = just_loaded.cell_order
-	update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)])
+	
+	if include_nbpg && nbpkg_changed
+		@info "nbpkgs not equal" (notebook.nbpkg_ctx isa Nothing) (just_loaded.nbpkg_ctx isa Nothing)
+		
+		if (notebook.nbpkg_ctx isa Nothing) != (just_loaded.nbpkg_ctx isa Nothing)
+			@info "nbpkg status changed, overriding..."
+			notebook.nbpkg_ctx = just_loaded.nbpkg_ctx
+		else
+			@info "Old new project" PkgCompat.read_project_file(notebook) PkgCompat.read_project_file(just_loaded)
+			@info "Old new manifest" PkgCompat.read_manifest_file(notebook) PkgCompat.read_manifest_file(just_loaded)
+			
+			write(PkgCompat.project_file(notebook), PkgCompat.read_project_file(just_loaded))
+			write(PkgCompat.manifest_file(notebook), PkgCompat.read_manifest_file(just_loaded))
+		end
+		notebook.nbpkg_restart_required_msg = "yes"
+	end
+	
+	if something_changed
+		update_save_run!(session, notebook, Cell[notebook.cells_dict[c] for c in union(added, changed)]; kwargs...) # this will also update nbpkg
+	end
 end
 
 
+
 """
-	throttled(f::Function, timeout::Real)
+throttled(f::Function, timeout::Real)
 
 Return a function that when invoked, will only be triggered at most once
 during `timeout` seconds.
 The throttled function will run as much as it can, without ever
 going more than once per `wait` duration.
+
+This throttle is 'leading' and has some other properties that are specifically designed for our use in Pluto, see the tests.
+
 Inspired by FluxML
 See: https://github.com/FluxML/Flux.jl/blob/8afedcd6723112ff611555e350a8c84f4e1ad686/src/utils.jl#L662
 """
 function throttled(f::Function, timeout::Real)
-	tlock = ReentrantLock()
-	iscoolnow = false
-	run_later = false
+    tlock = ReentrantLock()
+    iscoolnow = Ref(false)
+    run_later = Ref(false)
 
-	function flush()
-		lock(tlock) do
-			run_later = false
-			f()
-		end
-	end
+    function flush()
+        lock(tlock) do
+            run_later[] = false
+            f()
+        end
+    end
 
-	function schedule()
-		@async begin
-			sleep(timeout)
-			if run_later
-				flush()
-			end
-			iscoolnow = true
-		end
-	end
-	schedule()
+    function schedule()
+        @async begin
+            sleep(timeout)
+            if run_later[]
+                flush()
+            end
+            iscoolnow[] = true
+        end
+    end
+    schedule()
 
-	function throttled_f()
-		if iscoolnow
-			iscoolnow = false
-			flush()
-			schedule()
-		else
-			run_later = true
-		end
-	end
+    function throttled_f()
+        if iscoolnow[]
+            iscoolnow[] = false
+            flush()
+            schedule()
+        else
+            run_later[] = true
+        end
+    end
 
-	return throttled_f, flush
+    return throttled_f, flush
 end
-
-
-

@@ -65,7 +65,7 @@ const workspace_preamble = [
 const moduleworkspace_count = Ref(0)
 function increment_current_module()::Symbol
     id = (moduleworkspace_count[] += 1)
-    new_workspace_name = Symbol("workspace", id)
+    new_workspace_name = Symbol("workspace#", id)
 
     new_module = Core.eval(Main, :(
         module $(new_workspace_name) $(workspace_preamble...) end
@@ -93,7 +93,7 @@ no_workspace_ref(other, _=nothing) = other
 no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
 function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
     test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace") &&
+    if startswith(test_mod_name, "workspace#") &&
         (mod_name === nothing ||
             startswith(string(ref.name), ".") ||  # workaround for https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
             string(mod_name)[9:end] !== test_mod_name[9:end])
@@ -113,7 +113,7 @@ end
 
 function sanitize_expr(ref::GlobalRef)
     test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace")
+    if startswith(test_mod_name, "workspace#")
         ref.name
     else
         wrap_dot(ref)
@@ -187,7 +187,17 @@ function try_macroexpand(mod, cell_uuid, expr)
     end
 end
 
+function get_module_names(workspace_module, module_ex::Expr)
+    try
+        Core.eval(workspace_module, Expr(:call, :names, module_ex)) |> Set{Symbol}
+    catch
+        Set{Symbol}()
+    end
+end
 
+function collect_soft_definitions(workspace_module, modules::Set{Expr})
+  mapreduce(module_ex -> get_module_names(workspace_module, module_ex), union!, modules; init=Set{Symbol}())
+end
 
 
 
@@ -241,7 +251,7 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
 end
 
 quote_if_needed(x) = x
-quote_if_needed(x::Union{Expr, Symbol, QuoteNode}) = QuoteNode(x)
+quote_if_needed(x::Union{Expr, Symbol, QuoteNode, LineNumberNode}) = QuoteNode(x)
 
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
@@ -448,7 +458,7 @@ function move_vars(old_workspace_name::Symbol, new_workspace_name::Symbol, vars_
             end
         else
             # var will not be redefined in the new workspace, move it over
-            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace"))
+            if !(symbol == :eval || symbol == :include || string(symbol)[1] == '#' || startswith(string(symbol), "workspace#"))
                 try
                     val = getfield(old_workspace, symbol)
 
@@ -699,6 +709,33 @@ function format_output(val::CapturedException; context=default_iocontext)
         )
     end
     Dict{Symbol,Any}(:msg => sprint(try_showerror, val.ex), :stacktrace => pretty), MIME"application/vnd.pluto.stacktrace+object"()
+end
+
+function format_output(binding::Base.Docs.Binding; context=default_iocontext)
+    try
+        ("""
+        <div class="pluto-docs-binding" style="margin: .5em; padding: 1em; background: #8383830a; border-radius: 1em;">
+        <span style="
+            display: inline-block;
+            transform: translate(-19px, -16px);
+            font-family: 'JuliaMono', monospace;
+            font-size: .9rem;
+            font-weight: 700;
+            /* height: 1px; */
+            margin-top: -1em;
+            background: white;
+            padding: 4px;
+            border-radius: 7px;
+            /* color: #646464; */
+            /* border: 3px solid #f99b1536;
+        ">$(binding.var)</span>
+        $(repr(MIME"text/html"(), Base.Docs.doc(binding)))
+        </div>
+        """, MIME"text/html"()) 
+    catch e
+        @warn "Failed to pretty-print binding" exception=(e, catch_backtrace())
+        repr(binding, MIME"text/plain"())
+    end
 end
 
 # from the Julia source code:
@@ -1050,6 +1087,10 @@ function tree_data(@nospecialize(x::Any), context::IOContext)
 
 end
 
+function trynameof(::Type{Union{T,Missing}}) where T
+    name = trynameof(T)
+    return name === Symbol() ? name : Symbol(name, "?")
+end
 trynameof(x::DataType) = nameof(x)
 trynameof(x::Any) = Symbol()
 
@@ -1320,7 +1361,15 @@ binding_from(other, workspace::Module) = error("Invalid @var syntax `$other`.")
 function doc_fetcher(query, workspace::Module)
     try
         value = binding_from(Meta.parse(query), workspace)
-        (repr(MIME"text/html"(), Docs.doc(value)), :👍)
+        doc_md = Docs.doc(value)
+
+        if !showable(MIME("text/html"), doc_md)
+            # PyPlot returns `Text{String}` objects from their docs...
+            # which is a bit silly, but turns out it actuall is markdown if you look hard enough.
+            doc_md = Markdown.parse(repr(doc_md))
+        end
+        
+        (repr(MIME("text/html"), doc_md), :👍)
     catch ex
         (nothing, :👎)
     end
@@ -1592,7 +1641,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    (_module isa Module && startswith(String(nameof(_module)), "workspace")) || convert(Logging.LogLevel, level) >= Logging.Info
+    (_module isa Module && startswith(String(nameof(_module)), "workspace#")) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false

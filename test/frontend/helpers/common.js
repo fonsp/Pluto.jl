@@ -1,10 +1,10 @@
 import path from "path"
 
-export const getTextContent = (selector) => {
+export const getTextContent = (page, selector) => {
     // https://developer.mozilla.org/en-US/docs/Web/API/Node/textContent#differences_from_innertext
     return page.evaluate((selector) => document.querySelector(selector).innerText, selector)
 }
-export const countCells = async () =>
+export const countCells = async (page) =>
     await page.evaluate(() => {
         const a = Array.from(document.querySelectorAll("pluto-cell"))
         return a?.length
@@ -39,7 +39,7 @@ export const waitForContent = async (page, selector) => {
         { polling: 100 },
         selector
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const waitForContentToChange = async (page, selector, currentContent) => {
@@ -47,13 +47,14 @@ export const waitForContentToChange = async (page, selector, currentContent) => 
     await page.waitForFunction(
         (selector, currentContent) => {
             const element = document.querySelector(selector)
+            console.log(`element:`, element)
             return element !== null && element.textContent !== currentContent
         },
         { polling: 100 },
         selector,
         currentContent
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const waitForContentToBecome = async (page, selector, targetContent) => {
@@ -68,7 +69,7 @@ export const waitForContentToBecome = async (page, selector, targetContent) => {
         selector,
         targetContent
     )
-    return getTextContent(selector)
+    return getTextContent(page, selector)
 }
 
 export const clickAndWaitForNavigation = (page, selector) => Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.click(selector)])

@@ -27,6 +27,8 @@ export function deserialize_cells(serialized_cells) {
     return segments.map((s) => s.trim()).filter((s) => s !== "")
 }
 
+const JULIA_REPL_PROMPT = "julia> "
+
 /**
  * Deserialize a Julia REPL session.
  *
@@ -37,8 +39,7 @@ export function deserialize_cells(serialized_cells) {
  * @return {Array<String>}
  */
 export function deserialize_repl(repl_session) {
-    const prompt = "julia> "
-    const segments = repl_session.replace(/\r\n/g, "\n").split(prompt)
+    const segments = repl_session.replace(/\r\n/g, "\n").split(JULIA_REPL_PROMPT)
     const indent = " ".repeat(prompt.length)
     return segments
         .map(function (s) {
@@ -53,7 +54,7 @@ export function deserialize_repl(repl_session) {
 }
 
 export const detect_deserializer = (topaste, check_in_textarea_or_input = true) =>
-    topaste.match(/^julia> /m) != null
+    topaste.trim().startsWith(JULIA_REPL_PROMPT)
         ? deserialize_repl
         : (check_in_textarea_or_input && !in_textarea_or_input()) || topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length
         ? deserialize_cells

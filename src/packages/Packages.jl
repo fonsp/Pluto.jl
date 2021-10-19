@@ -451,6 +451,37 @@ function update_nbpkg_cache!(notebook::Notebook)
     notebook
 end
 
+function is_nbpkg_equal(a::Union{Nothing,PkgContext}, b::Union{Nothing,PkgContext})::Bool
+    if (a isa Nothing) != (b isa Nothing)
+        the_other = something(a, b)
+        
+        ptoml_contents = PkgCompat.read_project_file(the_other)
+        the_other_is_empty = isempty(strip(ptoml_contents))
+        
+        if the_other_is_empty
+            # then both are essentially 'empty' environments, i.e. equal
+            true
+        else
+            # they are different
+            false
+        end
+    elseif a isa Nothing
+        true
+    else
+        ptoml_contents_a = strip(PkgCompat.read_project_file(a))
+        ptoml_contents_b = strip(PkgCompat.read_project_file(b))
+        
+        if ptoml_contents_a == ptoml_contents_b == ""
+            true
+        else
+            mtoml_contents_a = strip(PkgCompat.read_project_file(a))
+            mtoml_contents_b = strip(PkgCompat.read_project_file(b))
+            
+            (ptoml_contents_a == ptoml_contents_b) && (mtoml_contents_a == mtoml_contents_b)
+        end
+    end
+end
+
 const is_interactive_defined = isdefined(Base, :is_interactive) && !Base.isconst(Base, :is_interactive)
 function withinteractive(f::Function, value::Bool)
     old_value = isinteractive()

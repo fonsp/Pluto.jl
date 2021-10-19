@@ -236,6 +236,25 @@ function without_dotsuffix(funcname::Symbol)::Symbol
         funcname
     end
 end
+
+"""Generates a vector of all possible variants from a function name
+
+```
+julia> generate_funcnames([:Base, :Foo, :bar])
+3-element Vector{Symbol}:
+ Symbol("Base.Foo.bar")
+ Symbol("Foo.bar")
+ :bar
+```
+
+"""
+function generate_funcnames(funccall::FunctionName)
+      calls = Vector{FunctionName}(undef, length(funccall) - 1)
+      for i in length(funccall):-1:2
+          calls[i-1] = funccall[i:end]
+      end
+      calls
+end
         
 """Turn `Symbol[:Module, :func]` into Symbol("Module.func").
 
@@ -265,6 +284,35 @@ function strip_indexing(x, inside::Bool=false)
         x
     end
 end
+
+"Module so I don't pollute the whole ExpressionExplorer scope"
+module MacroHasSpecialHeuristicInside
+    import ...Pluto
+    import ..ExpressionExplorer, ..SymbolsState
+
+    """
+    Uses `cell_precedence_heuristic` to determine if we need to include the contents of this macro in the symstate.
+    This helps with things like a Pkg.activate() that's in a macro, so Pluto still understands to disable nbpkg.
+    """
+    function macro_has_special_heuristic_inside(; symstate::SymbolsState, expr::Expr)::Bool
+        # Also, because I'm lazy and don't want to copy any code, imma use cell_precedence_heuristic here.
+        # Sad part is, that this will also include other symbols used in this macro... but come'on
+        local fake_cell = Pluto.Cell()
+        local fake_reactive_node = Pluto.ReactiveNode(symstate)
+        local fake_expranalysiscache = Pluto.ExprAnalysisCache(
+            parsedcode=expr,
+            module_usings_imports=ExpressionExplorer.compute_usings_imports(expr),
+        )
+        local fake_topology = Pluto.NotebookTopology(
+            nodes=Pluto.DefaultDict(Pluto.ReactiveNode, Dict(fake_cell => fake_reactive_node)),
+            codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
+        )
+
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+    end
+    # Having written this... I know I said I was lazy... I was wrong
+end
+
 
 ###
 # MAIN RECURSIVE FUNCTION
@@ -300,6 +348,8 @@ Returns whether or not an assignment Expr(:(=),...) is assigning to a new functi
   * f(::T) where {T} = ...
 """
 is_function_assignment(ex::Expr) = ex.args[1] isa Expr && (ex.args[1].head == :call || ex.args[1].head == :where || (ex.args[1].head == :(::) && ex.args[1].args[1] isa Expr && ex.args[1].args[1].head == :call))
+
+anonymous_name() = Symbol("anon", rand(UInt64))
 
 # General recursive method. Is never a leaf.
 # Modifies the `scopestate`.
@@ -374,6 +424,24 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         # the macro is expanded in the notebook process.
         macro_name = split_funcname(ex.args[1])
         symstate = SymbolsState(macrocalls=Set{FunctionName}([macro_name]))
+
+        # Because it sure wouldn't break anything,
+        # I'm also going to blatantly assume that any macros referenced in here...
+        # will end up in the code after the macroexpansion 🤷‍♀️
+        # "You should make a new function for that" they said, knowing I would take the lazy route.
+        for arg in ex.args[begin+1:end]
+            macro_symstate = explore!(arg, ScopeState())
+            
+            # Also, when this macro has something special inside like `Pkg.activate()`,
+            # we're going to treat it as normal code (so these heuristics trigger later)
+            # (Might want to also not let this to @eval macro, as an extra escape hatch if you
+            #    really don't want pluto to see your Pkg.activate() call)
+            if arg isa Expr && MacroHasSpecialHeuristicInside.macro_has_special_heuristic_inside(symstate=macro_symstate, expr=arg)
+                union!(symstate, macro_symstate)
+            else
+                union!(symstate, SymbolsState(macrocalls=macro_symstate.macrocalls))
+            end
+        end
 
         # Some macros can be expanded on the server process
         if join_funcname_parts(macro_name) ∈ can_macroexpand
@@ -467,14 +535,15 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         
         funcnamesig = FunctionNameSignaturePair(funcname, canonalize(funcroot))
 
+        if length(funcname) == 1
+            push!(scopestate.definedfuncs, funcname[end])
+            push!(scopestate.hiddenglobals, funcname[end])
+        elseif length(funcname) > 1
+            push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
+        end
+
         if will_assign_global(funcname, scopestate)
             symstate.funcdefs[funcnamesig] = innersymstate
-            if length(funcname) == 1
-                push!(scopestate.definedfuncs, funcname[end])
-                push!(scopestate.hiddenglobals, funcname[end])
-            elseif length(funcname) > 1
-                push!(symstate.references, funcname[end - 1]) # reference the module of the extended function
-            end
         else
             # The function is not defined globally. However, the function can still modify the global scope or reference globals, e.g.
             
@@ -514,7 +583,7 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :(->)
         # Creates local scope
 
-        tempname = Symbol("anon", rand(UInt64))
+        tempname = anonymous_name()
 
         # We will rewrite this to a normal function definition, with a temporary name
         funcroot = ex.args[1]
@@ -641,13 +710,21 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
 
         return SymbolsState(assignments=Set{Symbol}(packagenames))
     elseif ex.head == :quote
-        # We ignore contents
-
-        return SymbolsState()
+        # Look through the quote and only returns explore! deeper into :$'s
+        # I thought we need to handle strings in the same way,
+        #   but strings do just fine with the catch all at the end
+        #   and actually strings don't always have a :$ expression, sometimes just
+        #   plain Symbols (which we should then be interpreted as variables,
+        #     which is different to how we handle Symbols in quote'd expressions)
+        return explore_interpolations!(ex.args[1], scopestate)
     elseif ex.head == :module
-        # We ignore contents; the module name is a definition
+        # Does create it's own scope, but can import from outer scope, that's what `explore_module_definition!` is for
+        symstate = explore_module_definition!(ex, scopestate)
 
-        return SymbolsState(assignments=Set{Symbol}([ex.args[2]]))
+        return union(symstate, SymbolsState(assignments=Set{Symbol}([ex.args[2]])))
+    elseif Meta.isexpr(ex, Symbol("'"), 1)
+        # a' corresponds to adjoint(a)
+        return explore!(Expr(:call, :adjoint, ex.args[1]), scopestate)
     else
         # fallback, includes:
         # begin, block, do, toplevel, const
@@ -658,6 +735,61 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return mapfoldl(a -> explore!(a, scopestate), union!, ex.args, init=SymbolsState())
     end
 end
+
+"""
+Goes through a module definition, and picks out `import ..x`'s, which are references to the outer module.
+We need `module_depth + 1` dots before the specifier, so nested modules can still access Pluto.
+"""
+function explore_module_definition!(ex::Expr, scopestate; module_depth::Number=0)
+    if ex.head == :using || ex.head == :import
+        # We don't care about anything after the `:` here
+        import_names = if ex.args[1].head == :(:)
+            [ex.args[1].args[1]]
+        else
+            ex.args
+        end
+
+
+        symstate = SymbolsState()
+        for import_name_expr in import_names
+            if (
+                Meta.isexpr(import_name_expr, :., module_depth + 2) &&
+                all(x -> x == :., import_name_expr.args[begin:end-1]) &&
+                import_name_expr.args[end] isa Symbol
+            )
+                # Theoretically it could still use an assigment from the same cell, if it weren't
+                # for the fact that modules need to be top level, and we don't support multiple (toplevel) expressions in a cell yet :D
+                push!(symstate.references, import_name_expr.args[end])
+            end
+
+        end
+        
+        return symstate
+    elseif ex.head == :module
+        # Explorer the block inside with one more depth added
+        return explore_module_definition!(ex.args[3], scopestate, module_depth=module_depth+1)
+    elseif ex.head == :quote
+        # TODO? Explore interpolations, modules can't be in interpolations, but `import`'s can >_>
+        return SymbolsState()
+    else
+        # Go deeper
+        return mapfoldl(a -> explore_module_definition!(a, scopestate, module_depth=module_depth), union!, ex.args, init=SymbolsState())
+    end
+end
+explore_module_definition!(expr, scopestate; module_depth::Number=1) = SymbolsState()
+
+
+"Go through a quoted expression and use explore! for :\$ expressions"
+function explore_interpolations!(ex::Expr, scopestate)
+    if ex.head == :$
+        explore!(ex.args[1], scopestate)
+    else
+        # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
+        return mapfoldl(a -> explore_interpolations!(a, scopestate), union!, ex.args, init=SymbolsState())
+    end
+end
+explore_interpolations!(anything_else, scopestate) = SymbolsState()
+
 
 "Return the function name and the SymbolsState from argument defaults. Add arguments as hidden globals to the `scopestate`.
 
@@ -675,8 +807,19 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
         # or `function (obj::MyType)(a, b) ...; end` by rewriting it as:
         # function MyType(obj, a, b) ...; end
         funcroot = ex.args[1]
-        if funcroot isa Expr && funcroot.head == :(::)
-            return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+        if Meta.isexpr(funcroot, :(::))
+            if last(funcroot.args) isa Symbol
+                return explore_funcdef!(Expr(:call, reverse(funcroot.args)..., params_to_explore...), scopestate)
+            else
+                # Function call as type: (obj::typeof(myotherobject))()
+                symstate = explore!(last(funcroot.args), scopestate)
+                name, declaration_symstate = if length(funcroot.args) == 1
+                    explore_funcdef!(Expr(:call, anonymous_name(), params_to_explore...), scopestate)
+                else
+                    explore_funcdef!(Expr(:call, anonymous_name(), first(funcroot.args), params_to_explore...), scopestate)
+                end
+                return name, union!(symstate, declaration_symstate)
+            end
         end
 
         # get the function name
@@ -690,13 +833,24 @@ function explore_funcdef!(ex::Expr, scopestate::ScopeState)::Tuple{FunctionName,
 
             return Symbol[], symstate
         end
-        
-        # recurse
-        name, symstate = explore_funcdef!(ex.args[1], scopestate)
-        if length(ex.args) > 1
-            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+
+        # For a() = ... in a struct definition
+        if Meta.isexpr(ex,:(=), 2) && Meta.isexpr(ex.args[1], :call)
+            name, symstate = explore_funcdef!(ex.args[1], scopestate)
             union!(symstate, explore!(ex.args[2], scopestate))
+            return name, symstate
         end
+
+        # recurse by starting by the right hand side because f(x=x) references the global variable x
+        rhs_symstate = if length(ex.args) > 1
+            # use `explore!` (not `explore_funcdef!`) to explore the argument's default value - these can contain arbitrary expressions
+            explore!(ex.args[2], scopestate)
+        else
+            SymbolsState()
+        end
+        name, symstate = explore_funcdef!(ex.args[1], scopestate)
+        union!(symstate, rhs_symstate)
+
         return name, symstate
 
     elseif ex.head == :where
@@ -979,6 +1133,26 @@ Base.@kwdef struct UsingsImports
     usings::Set{Expr}=Set{Expr}()
     imports::Set{Expr}=Set{Expr}()
 end
+
+is_implicit_using(ex::Expr) = Meta.isexpr(ex, :using) && length(ex.args) >= 1 && !Meta.isexpr(ex.args[1], :(:))
+function transform_dot_notation(ex::Expr)
+    if Meta.isexpr(ex, :(.))
+        Expr(:block, ex.args[end])
+    else
+        ex
+    end
+end
+
+function collect_implicit_usings(ex::Expr)
+    if is_implicit_using(ex)
+        Set{Expr}(transform_dot_notation.(ex.args))
+    else
+        return Set{Expr}()
+    end
+end
+
+collect_implicit_usings(usings::Set{Expr}) = mapreduce(collect_implicit_usings, union!, usings; init=Set{Expr}())
+collect_implicit_usings(usings_imports::UsingsImports) = collect_implicit_usings(usings_imports.usings)
 
 # Performance analysis: https://gist.github.com/fonsp/280f6e883f419fb3a59231b2b1b95cab
 "Preallocated version of [`compute_usings_imports`](@ref)."

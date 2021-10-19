@@ -172,9 +172,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
         ])
-        @test_broken testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+        @test testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
             :f => ([], [], [], [])
-        ]; verbose=false)
+        ])
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
         ])
@@ -247,6 +247,13 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
         @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
+        @test testee(:(g(; b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(g(b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(f(x = y) = x), [], [], [], [:f => ([:y], [], [], [])])
+        @test testee(:(f(x, g=function(y=x) x + y + z end) = x * g(x)), [], [], [], [
+            :f => ([:z], [], [:+, :*], [])
+        ])
+
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
         @test testee(:(func(a, b=c)), [:a, :c], [], [:func], [])
@@ -260,6 +267,26 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
+
+        @test testee(:(function f()
+            function hello()
+            end
+            hello()
+        end), [], [], [], [:f => ([], [], [], [])])
+        @test testee(:(function a()
+            b() = Test()
+            b()
+        end), [], [], [], [:a => ([], [], [:Test], [])])
+        @test testee(:(begin
+            function f()
+                g() = z
+                g()
+            end
+            g()
+        end), [], [], [:g], [:f => ([:z], [], [], [])])
+    end
+    @testset "Julia lowering" begin
+        @test test_expression_explorer(expr=:(a'b), references=[:a, :b], funccalls=[:*, :adjoint])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
@@ -317,6 +344,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:((::MyType)(x,y) = x + y), [], [], [], [
             :MyType => ([], [], [:+], [])
+        ])
+        @test testee(:((obj::typeof(Int64[]))(x, y::Float64) = obj + x + y), [], [], [], [
+            :anon => ([:Int64, :Float64], [], [:+, :typeof], [])
+        ])
+        @test testee(:((::Get(MyType))(x, y::OtherType) = y * x + z), [], [], [], [
+            :anon => ([:MyType, :z, :OtherType], [], [:Get, :*, :+], [])
         ])
     end
     @testset "Scope modifiers" begin
@@ -443,6 +476,73 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(macro a(); b = c; return b end), [], [], [], [
             Symbol("@a") => ([:c], [], [], [])
         ])
+        @test test_expression_explorer(
+            expr=:(@parent @child 10),
+            macrocalls=[Symbol("@parent"), Symbol("@child")],
+        )
+        @test test_expression_explorer(
+            expr=:(@parent begin @child 1 + @grandchild 10 end),
+            macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
+        )
+    end
+    @testset "Macros and heuristics" begin
+        @test test_expression_explorer(
+            expr=:(@macro import Pkg),
+            macrocalls=[Symbol("@macro")],
+            definitions=[:Pkg],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.activate("..")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :activate]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.add("Pluto.jl")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :add]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro include("Firebasey.jl")),
+            macrocalls=[Symbol("@macro")],
+            funccalls=[[:include]],
+        )
+    end
+    @testset "Module imports" begin
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                    import Y
+                    import ...where_would_this_even_come_from
+                    import .not_defined_but_sure
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        # More advanced, might not be possible easily
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    module Y
+                        import ...imported_from_outside
+                    end
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X]
+        )
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
@@ -450,8 +550,23 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_broken testee(:(`a $b`), [:b], [], [], [])
         # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
-        @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
-        # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
+        @test testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [])
+        @test test_expression_explorer(
+            expr=:(quote $(x) end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(quote z = a + $(x) + b() end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:($(x))),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:(z = a + $(x) + b())),
+            references=[:x],
+        )
     end
     @testset "Extracting `using` and `import`" begin
         expr = quote

@@ -52,6 +52,8 @@ Base.@kwdef mutable struct Notebook
 
     process_status::String=ProcessStatus.starting
     wants_to_interrupt::Bool=false
+    last_save_time::typeof(time())=time()
+    last_hot_reload_time::typeof(time())=zero(time())
 
     bonds::Dict{Symbol,BondValue}=Dict{Symbol,BondValue}()
 end
@@ -129,11 +131,8 @@ function save_notebook(io, notebook::Notebook)
     using_plutopkg = notebook.nbpkg_ctx !== nothing
     
     write_package = if using_plutopkg
-        ptoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Project.toml")
-        mtoml_path = joinpath(PkgCompat.env_dir(notebook.nbpkg_ctx), "Manifest.toml")
-        
-        ptoml_contents = isfile(ptoml_path) ? read(ptoml_path, String) : ""
-        mtoml_contents = isfile(mtoml_path) ? read(mtoml_path, String) : ""
+        ptoml_contents = PkgCompat.read_project_file(notebook)
+        mtoml_contents = PkgCompat.read_manifest_file(notebook)
         
         !isempty(strip(ptoml_contents))
     else
@@ -176,6 +175,8 @@ function open_safe_write(fn::Function, path, mode)
 end
     
 function save_notebook(notebook::Notebook, path::String)
+    # @warn "Saving to file!!" exception=(ErrorException(""), backtrace())
+    notebook.last_save_time = time()
     open_safe_write(path, "w") do io
         save_notebook(io, notebook)
     end

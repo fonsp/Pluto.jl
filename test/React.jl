@@ -159,6 +159,27 @@ import Distributed
         end
     end
 
+
+    # PlutoTest.jl is only working on Julia version >= 1.6
+    VERSION >= v"1.6" && @testset "Test Firebasey" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        file = tempname()
+        write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
+
+        notebook = Pluto.load_notebook_nobackup(file)
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        # Test that the resulting file is runnable
+        @test jl_is_runnable(file)
+        # and also that Pluto can figure out the execution order on its own
+        @test all(noerror, notebook.cells)
+
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     @testset "Pkg topology workarounds" begin
         notebook = Notebook([
             Cell("1 + 1"),
@@ -235,7 +256,129 @@ import Distributed
         @test run_order == [3, 1, 2]
     end
 
-    
+    @testset "Reactive usings" begin
+        notebook = Notebook([
+            Cell("June"),
+            Cell("using Dates"),
+            Cell("July"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells[1:1])
+
+        @test notebook.cells[1].errored == true # this cell is before the using Dates and will error
+        @test notebook.cells[3].errored == false # using the position in the notebook this cell will not error
+
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[3].errored == false
+    end
+
+    @testset "Reactive usings 2" begin
+        notebook = Notebook([
+            Cell("October"),
+            Cell("using Dates"),
+            Cell("December"),
+            Cell(""),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == false
+        @test notebook.cells[3].errored == false
+
+        setcode(notebook.cells[2], "")
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[3].errored == true
+
+        setcode(notebook.cells[4], "December = 13")
+        update_run!(🍭, notebook, notebook.cells[4:4])
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[3] |> noerror
+
+        setcode(notebook.cells[2], "using Dates")
+        update_run!(🍭, notebook, notebook.cells[2:2])
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[3].output.body == "13"
+    end
+
+    @testset "Reactive usings 3" begin
+        notebook = Notebook([
+            Cell("archive_artifact"),
+            Cell("using Unknown.Package"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+
+        setcode(notebook.cells[2], "using Pkg.Artifacts")
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+    end
+
+    @testset "Reactive usings 4" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        notebook = Notebook([
+            Cell("@sprintf \"double_december = %d\" double_december"),
+            Cell("double_december = 2December"),
+            Cell("archive_artifact"),
+            Cell(""),
+        ])
+
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test notebook.cells[1].errored == true
+        @test notebook.cells[2].errored == true
+        @test notebook.cells[3].errored == true
+
+        setcode(notebook.cells[4], "import Pkg; using Dates, Printf, Pkg.Artifacts")
+        update_run!(🍭, notebook, notebook.cells[4:4])
+
+        @test notebook.cells[1] |> noerror
+        @test notebook.cells[2] |> noerror
+        @test notebook.cells[3] |> noerror
+        @test notebook.cells[4] |> noerror
+        @test notebook.cells[1].output.body == "\"double_december = 24\""
+
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
+    @testset "Function dependencies" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        notebook = Notebook(Cell.([
+            "a'b",
+            "import LinearAlgebra",
+            "LinearAlgebra.conj(b::Int) = 2b",
+            "a = 10",
+            "b = 10",
+        ]))
+
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].funcdefs_without_signatures
+        @test :conj ∈ notebook.topology.nodes[notebook.cells[1]].references
+        @test notebook.cells[1].output.body == "200"
+
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     @testset "Multiple methods across cells" begin
         notebook = Notebook([
             Cell("a(x) = 1"),
@@ -332,7 +475,7 @@ import Distributed
         @test notebook.cells[10].errored == false
         @test notebook.cells[11].output.body == "9"
         @test notebook.cells[12].output.body == "10"
-        @test_broken notebook.cells[13].output.body == "10"
+        @test notebook.cells[13].output.body == "10"
         update_run!(🍭, notebook, notebook.cells[13])
         @test notebook.cells[13].output.body == "10"
 
@@ -761,7 +904,7 @@ import Distributed
         @test notebook.cells[29].output.body == "true"
         @test_nowarn update_run!(🍭, notebook, notebook.cells[27])
         @test notebook.cells[28].output.body == "\"🎈\""
-        @test_broken notebook.cells[29].output.body == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[29].output.body == "\"🎈\"" # adding the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         @test_nowarn update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output.body == "\"🎈\""
         @test notebook.cells[29].output.body == "\"🎈\""
@@ -769,7 +912,7 @@ import Distributed
         setcode(notebook.cells[27], "")
         update_run!(🍭, notebook, notebook.cells[27])
         @test notebook.cells[28].output.body == "false"
-        @test_broken notebook.cells[29].output.body == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
+        @test notebook.cells[29].output.body == "true" # removing the overload doesn't trigger automatic re-eval because `isodd` doesn't match `Base.isodd`
         update_run!(🍭, notebook, notebook.cells[28:29])
         @test notebook.cells[28].output.body == "false"
         @test notebook.cells[29].output.body == "true"
@@ -1008,7 +1151,10 @@ import Distributed
             Cell("""
                  named_tuple(obj::T) where {T} = NamedTuple{fieldnames(T),Tuple{fieldtypes(T)...}}(ntuple(i -> getfield(obj, i), fieldcount(T)))
             """),
-            Cell("named_tuple")
+            Cell("named_tuple"),
+            
+            Cell("ln = LineNumberNode(29, \"asdf\")"),
+            Cell("@assert ln isa LineNumberNode"),
         ])
 
         update_run!(🍭, notebook, notebook.cells)
@@ -1075,6 +1221,11 @@ import Distributed
         @test notebook.cells[27].errored == false
         @test notebook.topology.codes[notebook.cells[27]].function_wrapped == false
         @test notebook.cells[28].errored == false
+        
+        update_run!(🍭, notebook, notebook.cells[29:30])
+        @test notebook.cells[29].errored == false
+        @test notebook.cells[30].errored == false
+        
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
 

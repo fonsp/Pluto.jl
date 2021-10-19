@@ -2,6 +2,7 @@ import FuzzyCompletions: complete_path, completion_text, score
 import Distributed
 import .PkgCompat: package_completions
 using Markdown
+import REPL
 
 ###
 # RESPONSES FOR AUTOCOMPLETE & DOCS
@@ -70,7 +71,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
 
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-    results_text, loc, found = if package_name_to_complete(query) !== nothing
+    results, loc, found = if package_name_to_complete(query) !== nothing
         p = package_name_to_complete(query)
         cs = package_completions(p) |> sort
         [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
@@ -95,7 +96,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => results_text
+            :results => results
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)
@@ -105,9 +106,16 @@ responses[:docs] = function response_docs(🙋::ClientRequest)
     require_notebook(🙋)
     query = 🙋.body["query"]
 
-    doc_html, status = if haskey(Docs.keywords, query |> Symbol)
+    # Expand string macro calls to their macro form:
+    # `html"` should yield `@html_str` and
+    # `Markdown.md"` should yield `@Markdown.md_str`. (Ideally `Markdown.@md_str` but the former is easier)
+    if endswith(query, "\"") && query != "\""
+        query = "@$(query[begin:end-1])_str"
+    end
+
+    doc_html, status = if REPL.lookup_doc(Symbol(query)) isa Markdown.MD
         # available in Base, no need to ask worker
-        doc_md = Docs.formatdoc(Docs.keywords[query |> Symbol])
+        doc_md = REPL.lookup_doc(Symbol(query))
         (repr(MIME("text/html"), doc_md), :👍)
     else
         workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))

@@ -12,6 +12,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
  *  cell_result: import("./Editor.js").CellResultData,
  *  cell_input: import("./Editor.js").CellInputData,
  *  cell_input_local: import("./Editor.js").CellInputData,
+ *  cell_dependencies: import("./Editor.js").CellDependencyData
  *  selected: boolean,
  *  selected_cells: Array<string>,
  *  force_hide_input: boolean,
@@ -22,7 +23,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 export const Cell = ({
     cell_input: { cell_id, code, code_folded, running_disabled },
     cell_result: { queued, running, runtime, errored, output, published_objects, depends_on_disabled_cells },
-    cell_dependencies: { downstream_cells_map, upstream_cells_map, precedence_heuristic },
+    cell_dependencies,
     cell_input_local,
     notebook_id,
     on_update_doc_query,
@@ -147,10 +148,11 @@ export const Cell = ({
             >
                 <span></span>
             </button>
-            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
+            ${cell_api_ready ? html`<${CellOutput} errored=${errored} ...${output} cell_id=${cell_id} />` : html``}
             <${CellInput}
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
+                cell_dependencies=${cell_dependencies}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}

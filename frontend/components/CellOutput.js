@@ -10,8 +10,10 @@ import { observablehq_for_cells } from "../common/SetupCellEnvironment.js"
 import { PlutoBondsContext, PlutoContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
 import register from "../imports/PreactCustomElement.js"
 
-//@ts-ignore
-const CodeMirror = window.CodeMirror
+import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
+import { pluto_syntax_colors } from "./CellInput.js"
+
+import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
 
 export class CellOutput extends Component {
     constructor() {
@@ -28,7 +30,10 @@ export class CellOutput extends Component {
             // Scroll the page to compensate for change in page height:
             if (document.body.querySelector("pluto-cell:focus-within")) {
                 const cell_outputs_after_focused = document.body.querySelectorAll("pluto-cell:focus-within ~ pluto-cell > pluto-output") // CSS wizardry ✨
-                if (!(document.activeElement.tagName == "SUMMARY") && (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base))) {
+                if (
+                    !(document.activeElement.tagName == "SUMMARY") &&
+                    (cell_outputs_after_focused.length == 0 || !Array.from(cell_outputs_after_focused).includes(this.base))
+                ) {
                     window.scrollBy(0, new_height - this.old_height)
                 }
             }
@@ -50,20 +55,23 @@ export class CellOutput extends Component {
     }
 
     render() {
+        const rich_output =
+            this.props.errored ||
+            !this.props.body ||
+            (this.props.mime !== "application/vnd.pluto.tree+object" &&
+                this.props.mime !== "application/vnd.pluto.table+object" &&
+                this.props.mime !== "text/plain")
+        const allow_translate = !this.props.errored && rich_output
         return html`
             <pluto-output
                 class=${cl({
-                    rich_output:
-                        this.props.errored ||
-                        !this.props.body ||
-                        (this.props.mime !== "application/vnd.pluto.tree+object" &&
-                            this.props.mime !== "application/vnd.pluto.table+object" &&
-                            this.props.mime !== "text/plain"),
+                    rich_output,
                     scroll_y: this.props.mime === "application/vnd.pluto.table+object" || this.props.mime === "text/plain",
                 })}
+                translate=${allow_translate}
                 mime=${this.props.mime}
             >
-                <assignee>${this.props.rootassignee}</assignee>
+                <assignee translate=${false}>${this.props.rootassignee}</assignee>
                 ${this.state.error ? html`<div>${this.state.error.message}</div>` : html`<${OutputBody} ...${this.props} />`}
             </pluto-output>
         `
@@ -381,28 +389,38 @@ export let RawHTMLContainer = ({ body, persist_js_state = false, last_run_timest
 
 /** @param {HTMLElement} code_element */
 export let highlight = (code_element, language) => {
+    language = language.toLowerCase()
+    language = language === "jl" ? "julia" : language
+
     if (code_element.children.length === 0) {
-        let mode = language // fallback
+        if (language === "julia") {
+            const editorview = new EditorView({
+                state: EditorState.create({
+                    // Remove references to `Main.workspace#xx.` in the docs since
+                    // its shows up as a comment and can be confusing
+                    doc: code_element.innerText.trim().replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, "Main.var\"workspace#$1\""),
 
-        let info = CodeMirror.findModeByName(language)
-        if (info) {
-            mode = info.mode
+                    extensions: [
+                        pluto_syntax_colors,
+                        defaultHighlightStyle.fallback,
+                        EditorState.tabSize.of(4),
+                        // TODO Other languages possibly?
+                        language === "julia" ? julia_andrey() : null,
+                        EditorView.lineWrapping,
+                        EditorView.editable.of(false),
+                    ].filter((x) => x != null),
+                }),
+            })
+            code_element.replaceChildren(editorview.dom)
+            // Weird hack to make it work inline 🤷‍♀️
+            // Probably should be using [HighlightTree](https://codemirror.net/6/docs/ref/#highlight.highlightTree)
+            editorview.dom.style.setProperty("display", "inline-flex", "important")
+            editorview.dom.style.setProperty("background-color", "transparent", "important")
+        } else {
+            window.hljs = hljs
+            console.log(code_element)
+            hljs.highlightElement(code_element)
         }
-
-        // Will not be required after release of https://github.com/codemirror/CodeMirror/commit/bd1b7d2976d768ae4e3b8cf209ec59ad73c0305a
-        if (mode == "jl") {
-            mode = "julia"
-        }
-
-        CodeMirror.requireMode(
-            mode,
-            () => {
-                CodeMirror.runMode(code_element.innerText, mode, code_element)
-                code_element.classList.add("cm-s-default")
-            },
-            {
-                path: (mode) => `https://cdn.jsdelivr.net/npm/codemirror@5.60.0/mode/${mode}/${mode}.min.js`,
-            }
-        )
     }
 }

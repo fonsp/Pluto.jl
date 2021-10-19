@@ -29,6 +29,7 @@ import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { ProgressBar } from "./ProgressBar.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -145,6 +146,8 @@ const first_true_key = (obj) => {
  *  shortpath: string,
  *  in_temp_dir: boolean,
  *  process_status: string,
+ *  last_save_time: number,
+ *  last_hot_reload_time: number,
  *  cell_inputs: { [uuid: string]: CellInputData },
  *  cell_results: { [uuid: string]: CellResultData },
  *  cell_dependencies: { [uuid: string]: CellDependencyData },
@@ -158,16 +161,34 @@ const first_true_key = (obj) => {
 const url_logo_big = document.head.querySelector("link[rel='pluto-logo-big']").getAttribute("href")
 const url_logo_small = document.head.querySelector("link[rel='pluto-logo-small']").getAttribute("href")
 
+const url_params = new URLSearchParams(window.location.search)
+const launch_params = {
+    //@ts-ignore
+    notebook_id: url_params.get("id") ?? window.pluto_notebook_id,
+    //@ts-ignore
+    statefile: url_params.get("statefile") ?? window.pluto_statefile,
+    //@ts-ignore
+    notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
+    //@ts-ignore
+    disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+    //@ts-ignore
+    binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
+    //@ts-ignore
+    slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
+}
+
 /**
  *
  * @returns {NotebookData}
  */
 const initial_notebook = () => ({
-    notebook_id: new URLSearchParams(window.location.search).get("id"),
+    notebook_id: launch_params.notebook_id,
     path: default_path,
     shortpath: "",
     in_temp_dir: true,
     process_status: "starting",
+    last_save_time: 0.0,
+    last_hot_reload_time: 0.0,
     cell_inputs: {},
     cell_results: {},
     cell_dependencies: {},
@@ -181,20 +202,6 @@ export class Editor extends Component {
     constructor() {
         super()
 
-        const url_params = new URLSearchParams(window.location.search)
-        this.launch_params = {
-            //@ts-ignore
-            statefile: url_params.get("statefile") ?? window.pluto_statefile,
-            //@ts-ignore
-            notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
-            //@ts-ignore
-            disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
-            //@ts-ignore
-            binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
-            //@ts-ignore
-            slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
-        }
-
         this.state = {
             notebook: /** @type {NotebookData} */ initial_notebook(),
             cell_inputs_local: /** @type {{ [id: string]: CellInputData }} */ ({}),
@@ -202,10 +209,10 @@ export class Editor extends Component {
             recently_deleted: /** @type {Array<{ index: number, cell: CellInputData }>} */ (null),
             last_update_time: 0,
 
-            disable_ui: this.launch_params.disable_ui,
-            static_preview: this.launch_params.statefile != null,
+            disable_ui: launch_params.disable_ui,
+            static_preview: launch_params.statefile != null,
             statefile_download_progress: null,
-            offer_binder: this.launch_params.notebookfile != null && this.launch_params.binder_url != null,
+            offer_binder: launch_params.notebookfile != null && launch_params.binder_url != null,
             binder_phase: null,
             binder_session_url: null,
             binder_session_token: null,
@@ -244,7 +251,7 @@ export class Editor extends Component {
                     })
                 )
             },
-            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch) => {
+            focus_on_neighbor: (cell_id, delta, line = delta === -1 ? Infinity : -1, ch = 0) => {
                 const i = this.state.notebook.cell_order.indexOf(cell_id)
                 const new_i = i + delta
                 if (new_i >= 0 && new_i < this.state.notebook.cell_order.length) {
@@ -291,7 +298,7 @@ export class Editor extends Component {
                  * (the usual flow is keyboard event -> cm -> local_code and not the opposite )
                  * See ** 1 **
                  */
-                await this.setStatePromise(
+                this.setState(
                     immer((state) => {
                         // Deselect everything first, to clean things up
                         state.selected_cells = []
@@ -321,16 +328,6 @@ export class Editor extends Component {
                         ...notebook.cell_order.slice(index, Infinity),
                     ]
                 })
-                /** ** 1 **
-                 * Notify codemirrors that the code is updated
-                 *
-                 *  */
-
-                for (const cell of new_cells) {
-                    //@ts-ignore
-                    const cm = document.querySelector(`[id="${cell.cell_id}"] .CodeMirror`).CodeMirror
-                    cm.setValue(cell.code) // Update codemirror synchronously
-                }
             },
             wrap_remote_cell: async (cell_id, block_start = "begin", block_end = "end") => {
                 const cell = this.state.notebook.cell_inputs[cell_id]
@@ -489,7 +486,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
                                 } else {
                                     // nothing
                                 }
@@ -683,11 +680,11 @@ patch: ${JSON.stringify(
 
         this.real_actions = this.actions
         this.fake_actions =
-            this.launch_params.slider_server_url != null
+            launch_params.slider_server_url != null
                 ? slider_server_actions({
                       setStatePromise: this.setStatePromise,
                       actions: this.actions,
-                      launch_params: this.launch_params,
+                      launch_params: launch_params,
                       apply_notebook_patches,
                       get_original_state: () => this.original_state,
                       get_current_state: () => this.state.notebook,
@@ -700,15 +697,14 @@ patch: ${JSON.stringify(
             document.body.classList.toggle("disable_ui", this.state.disable_ui)
             document.head.querySelector("link[data-pluto-file='hide-ui']").setAttribute("media", this.state.disable_ui ? "all" : "print")
             //@ts-ignore
-            this.actions =
-                this.state.disable_ui || (this.launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
+            this.actions = this.state.disable_ui || (launch_params.slider_server_url != null && !this.state.connected) ? this.fake_actions : this.real_actions //heyo
         }
         this.on_disable_ui()
 
         this.original_state = null
         if (this.state.static_preview) {
             ;(async () => {
-                const r = await fetch(this.launch_params.statefile)
+                const r = await fetch(launch_params.statefile)
                 const data = await read_Uint8Array_with_progress(r, (progress) => {
                     this.setState({
                         statefile_download_progress: progress,
@@ -735,6 +731,11 @@ patch: ${JSON.stringify(
                 count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
             }
         }, 1000 * 15 * 60)
+        setInterval(() => {
+            if (!this.state.static_preview && document.visibilityState === "visible") {
+                update_stored_recent_notebooks(this.state.notebook.path)
+            }
+        }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
@@ -748,6 +749,8 @@ patch: ${JSON.stringify(
                 !_.isEmpty(this.js_init_set)
             )
         }
+        this.is_process_ready = () =>
+            this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -1080,6 +1083,7 @@ patch: ${JSON.stringify(
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
+                    <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}
@@ -1087,7 +1091,6 @@ patch: ${JSON.stringify(
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
-                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
                         ${
                             status.binder
                                 ? html`<div id="binder_spinners">
@@ -1145,14 +1148,16 @@ patch: ${JSON.stringify(
                         </nav>
                     </header>
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
-            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: this.launch_params })} notebookfile=${
-            this.launch_params.notebookfile == null ? null : new URL(this.launch_params.notebookfile, window.location.href).href
+            start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
+            launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
         } />
                     <${FetchProgress} progress=${this.state.statefile_download_progress} />
                     <${Main}>
                         <${Preamble}
                             last_update_time=${this.state.last_update_time}
                             any_code_differs=${status.code_differs}
+                            last_hot_reload_time=${this.state.notebook.last_hot_reload_time}
+                            connected=${this.state.connected}
                         />
                         <${Notebook}
                             notebook=${this.state.notebook}
@@ -1164,9 +1169,7 @@ patch: ${JSON.stringify(
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
-                            is_process_ready=${
-                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
-                            }
+                            is_process_ready=${this.is_process_ready()}
                         />
                         <${DropRuler} 
                             actions=${this.actions}
@@ -1241,13 +1244,14 @@ patch: ${JSON.stringify(
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    const storedString = localStorage.getItem("recent notebooks")
-    const storedList = storedString != null ? JSON.parse(storedString) : []
-    const oldpaths = storedList
-    const newpaths = [recent_path].concat(
-        oldpaths.filter((path) => {
-            return path !== recent_path && path !== also_delete
-        })
-    )
-    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+    if (recent_path != null && recent_path !== default_path) {
+        const stored_string = localStorage.getItem("recent notebooks")
+        const stored_list = stored_string != null ? JSON.parse(stored_string) : []
+        const oldpaths = stored_list
+
+        const newpaths = [recent_path, ...oldpaths.filter((path) => path !== recent_path && path !== also_delete)]
+        if (!_.isEqual(oldpaths, newpaths)) {
+            localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+        }
+    }
 }
