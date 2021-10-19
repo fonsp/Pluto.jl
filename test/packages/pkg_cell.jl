@@ -7,7 +7,7 @@ using InteractiveUtils
 # ╔═╡ c02664e7-2046-4103-8a59-dca4998638df
 begin
 	import Pkg
-	Pkg.activate(joinpath(@__DIR__, ".."))
+	Pkg.activate(joinpath(@__DIR__))
 
 	# Pkg.status()
 end
