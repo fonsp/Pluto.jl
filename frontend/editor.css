@@ -2060,8 +2060,8 @@ pluto-logs-container {
     z-index: 25;
     right: min(-100px, -100vw + (700px + 25px));
     top: 1px;
-    overflow-x: auto;
-    overflow-y: hidden;
+    /* overflow-x: auto; */
+    /* overflow-y: hidden; */
     background: hsl(0deg 0% 100% / 81%);
 }
 
@@ -2119,6 +2119,31 @@ pluto-logs-container {
     }
 }
 
+pluto-logs-container pluto-progress-bars pluto-progress:not(:first-child) {
+    margin-top: 10px;
+}
+
+pluto-logs-container pluto-progress-bar {
+    top: 3px;
+    position: absolute;
+    left: 2px;
+    height: calc(100% - 6px);
+    max-width: calc(100% - 4px);
+    width: 0;
+    border-radius: 5px;
+    transition: width cubic-bezier(0.14, 0.71, 0, 0.99) 2s, opacity linear 0.2s;
+    background-color: salmon;
+}
+
+pluto-logs-container pluto-log-dot.Progress pre {
+    z-index: 1;
+    color: white;
+}
+
+pluto-logs-container pluto-progress-bar.collapsed {
+    height: 0;
+}
+
 pluto-logs {
     display: grid;
     grid-auto-rows: 15px;
@@ -2126,6 +2151,10 @@ pluto-logs {
     grid-template-rows: repeat(auto-fill, 15px);
     grid-template-columns: repeat(auto-fill, 10px);
     grid-auto-flow: column;
+}
+
+pluto-logs:not(:first-child):not(:empty) {
+    margin-top: 10px;
 }
 
 pluto-log-dot-positioner {
@@ -2189,6 +2218,10 @@ pluto-log-dot.Error {
 pluto-log-dot.Debug {
     background: hsl(273deg 49% 94%);
     border: 3px solid hsl(284deg 49% 79%);
+}
+pluto-log-dot.Progress {
+    background: pink;
+    border: 3px solid hsla(0, 100%, 80%, 1);
 }
 
 pluto-log-dot jltree,

@@ -115,14 +115,16 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             fn = next_log["file"]
             match = findfirst("#==#", fn)
-            if match !== nothing
-                cell_id = UUID(fn[findfirst("#==#", fn)[end]+1:end])
-
-                cell = notebook.cells_dict[cell_id]
-                push!(cell.logs, next_log)
-                Pluto.@asynclog update_throttled()
-                # putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
+            cell_id = if match !== nothing
+                UUID(fn[findfirst("#==#", fn)[end]+1:end])
+            else
+                next_log["cell_id"]
             end
+
+            cell = notebook.cells_dict[cell_id]
+            push!(cell.logs, next_log)
+            Pluto.@asynclog update_throttled()
+            # putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
         catch e
             if !isopen(log_channel)
                 break

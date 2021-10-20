@@ -1643,16 +1643,31 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # - Info level and above for other modules
     (_module isa Module && startswith(String(nameof(_module)), "workspace#")) || convert(Logging.LogLevel, level) >= Logging.Info
 end
+
+format_log(logmsg::String) = Text(logmsg)
+function format_log(logmsg)
+    try
+        # from https://github.com/JuliaLogging/ProgressLogging.jl/blob/4349269e9d930f49d8fff98fca3512c070ed3885/src/ProgressLogging.jl#L89
+        # we try to convert the ProgressString to an object.
+        sprint(print, logmsg.progress) |> Text
+    catch
+        logmsg
+    end
+end
+
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
+    println("receiving msg from ", _module, " ", group, " ", id, " ", msg, " ", level, " ", line, " ", file)
+
     try
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default((msg isa String) ? Text(msg) : msg),
+            "msg" => format_output_default(format_log(msg)),
             "group" => group,
-            # "id" => id,
+            "id" => id,
             "file" => file,
+            "cell_id" => currently_running_cell_id[],
             "line" => line,
             "kwargs" => Any[(string(k), format_output_default(v)) for (k, v) in kwargs],
             )

@@ -1,11 +1,15 @@
 import _ from "../imports/lodash.js"
 import { cl } from "../common/ClassTable.js"
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useMemo } from "../imports/Preact.js"
 import { SimpleOutputBody } from "./TreeView.js"
 
 // Defined in editor.css
 const GRID_WIDTH = 10
 const RESIZE_THROTTLE = 60
+
+const is_progress_log = (log) => {
+    return log.kwargs.find((kwarg) => kwarg[0] === "progress") !== undefined
+}
 
 export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
     const container = useRef(null)
@@ -21,7 +25,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
             setFrom(Math.min(logs.length - 1, Math.round((scroll_left - w) / GRID_WIDTH)))
             setTo(Math.round((scroll_left + 2 * w) / GRID_WIDTH))
         }
-        const l = _.throttle(fn, RESIZE_THROTTLE)
+        const l = fn // _.throttle(fn, RESIZE_THROTTLE)
         document.addEventListener("resize", l)
         elem.addEventListener("scroll", l)
         return () => {
@@ -34,11 +38,29 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
         [logs.length, line_heights]
     )
     const is_hidden_input = line_heights[0] === 0
-    if (logs.length === 0) return null
+    if (logs.length === 0) {
+        return null
+    }
+
+    const progress_logs = logs.filter(is_progress_log)
+    const latest_progress_logs = progress_logs.reduce((progress_logs, log) => ({ ...progress_logs, [log.id]: log }), {})
+    const [_, grouped_progress_and_logs] = logs.reduce(
+        ([seen, final_logs], log) => {
+            const ipl = is_progress_log(log)
+            if (ipl && !(log.id in seen)) {
+                return [{ ...seen, [log.id]: true }, [...final_logs, latest_progress_logs[log.id]]]
+            } else if (!ipl) {
+                return [seen, [...final_logs, log]]
+            }
+            return [seen, final_logs]
+        },
+        [{}, []]
+    )
+
     return html`
         <pluto-logs-container ref=${container}>
             <pluto-logs style="${logsStyle}">
-                ${logs.map((log, i) => {
+                ${grouped_progress_and_logs.map((log, i) => {
                     return html`<${Dot}
                         set_cm_highlighted_line=${set_cm_highlighted_line}
                         show=${logs.length < 50 || (from <= i && i < to)}
@@ -46,7 +68,7 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
                         msg=${log.msg}
                         kwargs=${log.kwargs}
                         mykey=${`log${i}`}
-                        key=${`log${i}`}
+                        key=${i}
                         x=${i}
                         y=${is_hidden_input ? 0 : log.line - 1}
                     /> `
@@ -54,6 +76,16 @@ export const Logs = ({ logs, line_heights, set_cm_highlighted_line }) => {
             </pluto-logs>
         </pluto-logs-container>
     `
+}
+
+const Progress = ({ progress }) => {
+    const bar_ref = useRef(null)
+
+    useLayoutEffect(() => {
+        bar_ref.current.style.width = `${progress * 100}%`
+    }, [progress])
+
+    return html`<pluto-progress-bar ref=${bar_ref}></pluto-progress-bar>`
 }
 
 const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${"adsf"} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
@@ -65,6 +97,23 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
     //     label_ref.current.innerHTML = body
     // }, [body])
     const [inspecting, set_inspecting] = useState(false)
+
+    const is_progress = is_progress_log({ kwargs })
+    let progress = null
+    if (is_progress) {
+        progress = kwargs.find((p) => p[0] === "progress")[1][0]
+        if (progress === "nothing") {
+            progress = 0
+        } else if (progress === '"done"') {
+            progress = 1
+        } else {
+            progress = parseFloat(progress)
+        }
+
+        level = "Progress"
+        y = 0
+        msg = [`${Math.ceil(100*progress)}%            `, "text/plain"]
+    }
 
     useLayoutEffect(() => {
         node_ref.current.style.gridColumn = `${x + 1}`
@@ -95,17 +144,17 @@ const Dot = ({ set_cm_highlighted_line, show, msg, kwargs, x, y, level }) => {
               class=${cl({ inspecting })}
               onClick=${() => {
                   set_inspecting(true)
-                  set_cm_highlighted_line(y+1)
+                  is_progress || set_cm_highlighted_line(y + 1)
               }}
-              onMouseenter=${() => set_cm_highlighted_line(y+1)}
+              onMouseenter=${() => is_progress || set_cm_highlighted_line(y + 1)}
               onMouseleave=${() => set_cm_highlighted_line(null)}
           >
               <pluto-log-dot-sizer>
                   <pluto-log-dot class=${level}
-                      >${mimepair_output(msg)}${kwargs.map(
+                      >${mimepair_output(msg)}${(!is_progress ? kwargs : []).map(
                           ([k, v]) =>
                               html` <pluto-log-dot-kwarg><pluto-key>${k}</pluto-key> <pluto-value>${mimepair_output(v)}</pluto-value></pluto-log-dot-kwarg> `
-                      )}</pluto-log-dot
+                      )}${is_progress ? html`<${Progress} progress=${progress} />` : null}</pluto-log-dot
                   >
               </pluto-log-dot-sizer>
           </pluto-log-dot-positioner>`
