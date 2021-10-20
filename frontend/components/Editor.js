@@ -435,7 +435,6 @@ export class Editor extends Component {
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
-                console.log(confirm)
                 if (cell_ids.length <= 1 || (await confirm(`${verb} ${cell_ids.length} cells?`))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
                         if (await confirm('This cell is still running - would you like to interrupt the notebook?')) {

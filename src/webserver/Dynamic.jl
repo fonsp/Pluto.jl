@@ -177,6 +177,7 @@ Update the local state of all clients connected to this notebook.
 """
 function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
     notebook_dict = notebook_to_js(🙋.notebook)
+    @info "Connected clients" length(🙋.session.connected_clients) Set(c -> c.stream for c in 🙋.session.connected_clients)
     for (_, client) in 🙋.session.connected_clients
         if client.connected_notebook !== nothing && client.connected_notebook.notebook_id == 🙋.notebook.notebook_id
             current_dict = get(current_state_for_clients, client, :empty)
@@ -186,6 +187,7 @@ function send_notebook_changes!(🙋::ClientRequest; commentary::Any=nothing)
 
             # Make sure we do send a confirmation to the client who made the request, even without changes
             is_response = 🙋.initiator !== nothing && client == 🙋.initiator.client
+            @info "Responding" is_response (🙋.initiator !== nothing) (commentary === nothing)
 
             if !isempty(patches) || is_response
                 response = Dict(
@@ -279,6 +281,7 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
         patches = (Base.convert(Firebasey.JSONPatch, update) for update in 🙋.body["updates"])
 
         if length(patches) == 0
+            @info "Empty patches"
             send_notebook_changes!(🙋)
             return nothing
         end

@@ -193,7 +193,6 @@ const create_vscode_connection = (address, { on_message, on_socket_close }, time
             last_task = last_task.then(async () => {
                 try {
                     const raw = event.data // The json-encoded data that the extension sent
-                    console.log("raw", raw)
                     if (raw.type === "ws_proxy") {
                         const buffer = await decode_base64_to_arraybuffer(raw.base64_encoded)
                         const message = unpack(new Uint8Array(buffer))
@@ -400,8 +399,13 @@ export const create_pluto_connection = async ({
         try {
             ws_connection = await (vscode_available ? create_vscode_connection : create_ws_connection)(String(ws_address), {
                 on_message: (update) => {
-                    const by_me = update.initiator_id == client_id
+                    const for_me = update.recipient_id === client_id
+                    const by_me = update.initiator_id === client_id
                     const request_id = update.request_id
+
+                    if (!for_me) {
+                        return
+                    }
 
                     if (by_me && request_id) {
                         const request = sent_requests.get(request_id)
