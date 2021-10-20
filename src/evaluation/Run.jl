@@ -240,7 +240,16 @@ end
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
 	sn = (session, notebook)
 
-	macroexpand_cell(cell) = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id)
+	function macroexpand_cell(cell)
+		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) =
+			macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
+
+		res = try_macroexpand()
+		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
+			res = try_macroexpand(old_workspace_name)
+		end
+		res
+	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
@@ -249,13 +258,12 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
-		    # if expansion failed, we use the "shallow" symbols state
-		    err = result
-		    @debug "Expansion failed" err
-		    current_symstate, false
+			# if expansion failed, we use the "shallow" symbols state
+			@debug "Expansion failed" err=result
+			current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
-		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    expanded_symbols_state, true
+			expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+			expanded_symbols_state, true
 		end
 	end
 
