@@ -343,7 +343,11 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         # test that no pkg cells got added
         @test !has_embedded_pkgfiles(notebook)
         # we can remove this test in the future if our file format changes
-        @test -10 < length(file_after_loading) - length(pkg_cell_notebook) < 10
+        same_num_chars = -10 < length(replace(file_after_loading, '\r' => "")) - length(replace(pkg_cell_notebook, '\r' => "")) < 10
+        if !same_num_chars
+            @show file_after_loading pkg_cell_notebook
+        end
+        @test same_num_chars
 
         @test notebook.nbpkg_ctx === nothing
         @test notebook.nbpkg_restart_recommended_msg === nothing
