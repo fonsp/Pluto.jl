@@ -192,6 +192,151 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test sanitized_expr.args[1] == :(Main.f)
     end
 
+    @testset "Macrodef cells not root of run" begin
+        notebook = Notebook([
+            Cell(""),
+            Cell(""),
+            Cell(""),
+        ])
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(noerror, notebook.cells)
+
+        setcode(cell(1), raw"""
+            macro test(sym)
+                esc(:($sym = true))
+            end
+        """)
+        update_run!(🍭, notebook, cell(1))
+
+        setcode(cell(2), "x")
+        setcode(cell(3), "@test x")
+        update_run!(🍭, notebook, notebook.cells[2:3])
+
+        @test cell(2).output.body == "true"
+        @test all(noerror, notebook.cells)
+    end
+
+    @testset "Reverse order" begin
+        notebook = Notebook([Cell() for _ in 1:3])
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        setcode(cell(1), "x")
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1).errored == true
+
+        setcode(cell(2), "@bar x")
+        update_run!(🍭, notebook, cell(2))
+
+        @test cell(1).errored == true
+        @test cell(2).errored == true
+
+        setcode(cell(3), raw"""macro bar(sym)
+            esc(:($sym = "yay"))
+        end""")
+        update_run!(🍭, notebook, cell(3))
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(1).output.body == "\"yay\""
+    end
+
+    @testset "@a defines @b" begin
+        notebook = Notebook([Cell() for _ in 1:4])
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        setcode(cell(1), "x")
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1).errored == true
+
+        setcode(cell(3), "@a()")
+        setcode(cell(2), raw"""macro a()
+            quote
+                macro b(sym)
+                    esc(:($sym = 42))
+                end
+            end |> esc
+        end""")
+        update_run!(🍭, notebook, notebook.cells[2:3])
+
+        @test cell(1).errored == true
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+
+        setcode(cell(4), "@b x")
+        update_run!(🍭, notebook, cell(4))
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        @test cell(1).output.body == "42"
+    end
+
+    @testset "@a defines @b initial loading" begin
+        notebook = Notebook(Cell.([
+            "x",
+            "@b x",
+            "@a",
+            raw"""macro a()
+                quote
+                    macro b(sym)
+                        esc(:($sym = 42))
+                    end
+                end |> esc
+            end"""
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        @test cell(1).output.body == "42"
+    end
+
+    @testset "Macro Prefix" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        notebook = Notebook(Cell.([
+            "@sprintf \"answer = %d\" x",
+            "x = y+1",
+            raw"""
+            macro def(sym)
+                esc(:($sym=41))
+            end
+            """,
+            "@def y",
+            "import Printf: @sprintf",
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1).errored == true
+
+        update_run!(🍭, notebook, cell(5))
+
+        @test occursin("UndefVarError: x", cell(1).output.body[:msg])
+
+        update_run!(🍭, notebook, cell(3))
+        update_run!(🍭, notebook, cell(2))
+        update_run!(🍭, notebook, cell(4))
+
+        @test cell(1) |> noerror
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     @testset "Package macro 1" begin
         notebook = Notebook([
             Cell("using Dates"),
@@ -208,7 +353,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        
         
         notebook = Notebook([
             Cell("using Dates"),
@@ -231,11 +375,22 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
                 import Pkg
                 Pkg.activate(mktempdir())
                 Pkg.add(Pkg.PackageSpec(name="Symbolics", version="1"))
-                using Symbolics
+                import Symbolics: @variables
             end
             """),
         ])
         cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells[1:2])
+
+        @test cell(1).errored == true
+        @test cell(2).errored == true
+
+        update_run!(🍭, notebook, cell(3))
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(2) |> noerror
 
         update_run!(🍭, notebook, notebook.cells)
 
@@ -247,20 +402,19 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
 
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        
+
         setcode(cell(2), "@variables 🐰 y")
         update_run!(🍭, notebook, cell(2))
-        
+
         @test cell(1).errored
         @test cell(2) |> noerror
-        
-        
+
         setcode(cell(1), "z = 🐰^2 + y")
         update_run!(🍭, notebook, cell(1))
-        
+
         @test cell(1) |> noerror
         @test cell(2) |> noerror
-        
+
         WorkspaceManager.unmake_workspace((🍭, notebook))
         
         🍭.options.evaluation.workspace_use_distributed = false
@@ -286,7 +440,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         module_from_cell2 = cell(2).output.body[:elements][1][2][1]
         module_from_cell3 = cell(3).output.body
 
-        @test module_from_cell2 == module_from_cell3
+        @test_broken module_from_cell2 == module_from_cell3
     end
 
     @testset "Definitions" begin
