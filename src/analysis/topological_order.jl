@@ -121,14 +121,16 @@ end
 This is used to treat reactive dependencies between cells that cannot be found using static code anylsis."""
 function cell_precedence_heuristic(topology::NotebookTopology, cell::Cell)::Real
 	top = topology.nodes[cell]
-	if :Pkg ∈ top.definitions
+	if :Pkg ∈ top.definitions || :DrWatson ∈ top.definitions
 		1
 	elseif Symbol("Pkg.API.activate") ∈ top.references || 
 		Symbol("Pkg.activate") ∈ top.references ||
 		Symbol("@pkg_str") ∈ top.references ||
 		# https://juliadynamics.github.io/DrWatson.jl/dev/project/#DrWatson.quickactivate
 		Symbol("quickactivate") ∈ top.references ||
-		Symbol("@quickactivate") ∈ top.references
+		Symbol("@quickactivate") ∈ top.references ||
+		Symbol("DrWatson.@quickactivate") ∈ top.references ||
+		Symbol("DrWatson.quickactivate") ∈ top.references
 		2
 	elseif Symbol("Pkg.API.add") ∈ top.references ||
 		Symbol("Pkg.add") ∈ top.references ||
