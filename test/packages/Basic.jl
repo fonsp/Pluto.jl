@@ -352,6 +352,30 @@ const pluto_test_registry_spec = Pkg.RegistrySpec(;
         WorkspaceManager.unmake_workspace((🍭, notebook))
     end
 
+    @testset "DrWatson cell" begin
+        fakeclient = ClientSession(:fake, nothing)
+        🍭 = ServerSession()            
+        🍭.options.evaluation.workspace_use_distributed = false
+        🍭.connected_clients[fakeclient.id] = fakeclient
+
+        notebook = Notebook([
+            Cell("using Plots"),
+            Cell("@quickactivate"),
+            Cell("using DrWatson"),
+        ])
+        fakeclient.connected_notebook = notebook
+
+        notebook.topology = Pluto.updated_topology(Pluto.NotebookTopology(), notebook, notebook.cells) |> Pluto.static_resolve_topology
+
+        @test !Pluto.use_plutopkg(notebook.topology)
+        order = collect(Pluto.topological_order(notebook))
+        index_order = map(order) do order_cell
+            findfirst(==(order_cell.cell_id), notebook.cell_order)
+        end
+
+        @test index_order == [3, 2, 1]
+    end
+
     pre_pkg_notebook = read(joinpath(@__DIR__, "old_import.jl"), String)
 
     local post_pkg_notebook = nothing
