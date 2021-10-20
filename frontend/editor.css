@@ -67,6 +67,7 @@ body:not(.disable_ui) main {
 
 body:not(.disable_ui) {
     overscroll-behavior-x: contain;
+    background: white;
 }
 
 /* | main=25px+700px+6px=731px | pluto-helpbox=350px - 500px | */
