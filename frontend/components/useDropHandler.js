@@ -2,6 +2,7 @@ import _ from "../imports/lodash.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { useState, useMemo, useContext } from "../imports/Preact.js"
 import { EditorView } from "../imports/CodemirrorPlutoSetup.js"
+import { alert, confirm } from "../common/alert_confirm.js"
 
 const MAGIC_TIMEOUT = 500
 const DEBOUNCE_MAGIC_MS = 250
@@ -39,11 +40,11 @@ export const useDropHandler = () => {
             set_saving_file(false)
             set_drag_active_fast(false)
             if (!success) {
-                alert("Pluto can't save this file 😥")
+                await alert("Pluto can't save this file 😥")
                 return "# File save failed"
             }
             if (code) return code
-            alert("Pluto doesn't know what to do with this file 😥. Do you have a suggestion? Open an issue at https://github.com/fonsp/Pluto.jl")
+            await alert("Pluto doesn't know what to do with this file 😥. Do you have a suggestion? Open an issue at https://github.com/fonsp/Pluto.jl")
             return ""
         }
         return (ev) => {

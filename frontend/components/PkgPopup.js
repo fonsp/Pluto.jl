@@ -8,6 +8,7 @@ import { PlutoContext } from "../common/PlutoContext.js"
 import { package_status, nbpkg_fingerprint_without_terminal } from "./PkgStatusMark.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { useDebouncedTruth } from "./RunArea.js"
+import { alert, confirm } from "../common/alert_confirm.js"
 
 export const PkgPopup = ({ notebook }) => {
     let pluto_actions = useContext(PlutoContext)
@@ -108,11 +109,11 @@ export const PkgPopup = ({ notebook }) => {
                 title="Update packages"
                 style=${(!!showupdate ? "" : "opacity: .4;") + (recent_event?.is_disable_pkg ? "display: none;" : "")}
                 href="#"
-                onClick=${(e) => {
+                onClick=${async (e) => {
                     if (busy) {
                         alert("Pkg is currently busy with other packages... come back later!")
                     } else {
-                        if (confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
+                        if (await confirm("Would you like to check for updates and install them? A backup of the notebook file will be created.")) {
                             console.warn("Pkg.updating!")
                             pluto_actions.send("pkg_update", {}, { notebook_id: notebook.notebook_id })
                         }

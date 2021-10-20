@@ -34,6 +34,8 @@ import { IsolatedCell } from './Cell.js'
 import { available as vscode_available } from '../common/VSCodeApi.js'
 
 const default_path = '...'
+import { alert, confirm } from '../common/alert_confirm.js'
+
 const DEBUG_DIFFING = false
 let pending_local_updates = 0
 // from our friends at https://stackoverflow.com/a/2117523
@@ -433,9 +435,10 @@ export class Editor extends Component {
                 return await this.actions.add_remote_cell_at(index + delta, code)
             },
             confirm_delete_multiple: async (verb, cell_ids) => {
-                if (cell_ids.length <= 1 || confirm(`${verb} ${cell_ids.length} cells?`)) {
+                console.log(confirm)
+                if (cell_ids.length <= 1 || (await confirm(`${verb} ${cell_ids.length} cells?`))) {
                     if (cell_ids.some((cell_id) => this.state.notebook.cell_results[cell_id].running || this.state.notebook.cell_results[cell_id].queued)) {
-                        if (confirm('This cell is still running - would you like to interrupt the notebook?')) {
+                        if (await confirm('This cell is still running - would you like to interrupt the notebook?')) {
                             this.actions.interrupt_remote(cell_ids[0])
                         }
                     } else {
@@ -840,7 +843,7 @@ patch: ${JSON.stringify(
                 return
             }
             if (!this.state.notebook.in_temp_dir) {
-                if (!confirm('Are you sure? Will move from\n\n' + old_path + '\n\nto\n\n' + new_path)) {
+                if (!(await confirm('Are you sure? Will move from\n\n' + old_path + '\n\nto\n\n' + new_path))) {
                     throw new Error('Declined by user')
                 }
             }

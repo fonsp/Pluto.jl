@@ -5,6 +5,7 @@ import { FilePicker } from "./FilePicker.js"
 import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
 import { PasteHandler } from "./PasteHandler.js"
+import { alert, confirm } from "../common/alert_confirm.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -219,20 +220,20 @@ export class Welcome extends Component {
                 document.body.classList.add("loading")
                 window.location.href = link_open_path(processed.path_or_url)
             } else {
-                if (confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
+                if (await confirm("Are you sure? This will download and run the file at\n\n" + processed.path_or_url)) {
                     document.body.classList.add("loading")
                     window.location.href = link_open_url(processed.path_or_url)
                 }
             }
         }
 
-        this.on_session_click = (nb) => {
+        this.on_session_click = async (nb) => {
             if (nb.transitioning) {
                 return
             }
             const running = nb.notebook_id != null
             if (running) {
-                if (confirm("Shut down notebook process?")) {
+                if (await confirm("Shut down notebook process?")) {
                     set_notebook_state(nb.path, {
                         running: false,
                         transitioning: true,
