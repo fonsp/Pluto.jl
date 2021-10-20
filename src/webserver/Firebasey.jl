@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -237,7 +237,7 @@ function diff(old::T, new::T) where T <: AbstractArray
 	end
 end
 
-# ╔═╡ 5e360fcd-9943-4a17-9672-f1fded2f7e3a
+# ╔═╡ c9d5d81c-b0b6-4d1a-b1de-96d3b3701700
 function diff(old::T, new::T) where T
 	if old == new
 		NoChanges
@@ -245,6 +245,9 @@ function diff(old::T, new::T) where T
 		JSONPatch[ReplacePatch([], new)]
 	end
 end
+
+# ╔═╡ 24389a0a-c3ac-4438-9dfe-1d14cd033d25
+diff(::Missing, ::Missing) = NoChanges
 
 # ╔═╡ 9cbaaec2-709c-4769-886c-ec92b12c18bc
 struct Deep{T} value::T end
@@ -616,11 +619,17 @@ end
 
 # ╔═╡ e924a0be-2de1-11eb-2170-71d56e117af2
 """
-	@displayonly expression
+	@skip_as_script expression
 
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
-macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
+macro skip_as_script(ex)
+	if skip_as_script(__module__)
+		esc(ex)
+	else
+		nothing
+	end
+end
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
@@ -715,7 +724,7 @@ end
 @skip_as_script @test 1 + 1 + 1 == x
 
 # ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
-@skip_as_script @test throw("Oh my god") == x
+@skip_as_script @test_throws String throw("Oh my god") == x
 
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"
@@ -976,7 +985,8 @@ end
 # ╟─daf9ec12-2de1-11eb-3a8d-59d9c2753134
 # ╠═0b50f6b2-8e85-4565-9f04-f99c913b4592
 # ╠═59e94cb2-c2f9-4f6c-9562-45e8c15931af
-# ╠═5e360fcd-9943-4a17-9672-f1fded2f7e3a
+# ╠═c9d5d81c-b0b6-4d1a-b1de-96d3b3701700
+# ╠═24389a0a-c3ac-4438-9dfe-1d14cd033d25
 # ╠═9cbaaec2-709c-4769-886c-ec92b12c18bc
 # ╠═db75df12-2de1-11eb-0726-d1995cebd382
 # ╠═dbc7f97a-2de1-11eb-362f-055a734d1a9e

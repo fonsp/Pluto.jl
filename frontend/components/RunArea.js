@@ -62,13 +62,14 @@ const prettytime = (time_ns) => {
     if (time_ns == null) {
         return "---"
     }
+    let result = time_ns
     const prefices = ["n", "μ", "m", ""]
     let i = 0
-    while (i < prefices.length - 1 && time_ns >= 1000.0) {
+    while (i < prefices.length - 1 && result >= 1000.0) {
         i += 1
-        time_ns /= 1000
+        result /= 1000
     }
-    const roundedtime = time_ns.toFixed(time_ns >= 100.0 ? 0 : 1)
+    const roundedtime = result.toFixed(time_ns < 10 || result >= 100.0 ? 0 : 1)
 
     return roundedtime + "\xa0" + prefices[i] + "s"
 }

@@ -94,6 +94,7 @@ export let LiveDocs = ({ desired_doc_query, on_update_doc_query, notebook }) => 
         <aside id="helpbox-wrapper" ref=${container_ref}>
             <pluto-helpbox class=${cl({ hidden: state.hidden, loading: state.loading, notfound: no_docs_found })}>
                 <header
+                    translate=${false}
                     onClick=${() => {
                         if (state.hidden) {
                             set_state((state) => ({ ...state, hidden: false }))
