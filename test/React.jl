@@ -177,6 +177,7 @@ import Distributed
         # and also that Pluto can figure out the execution order on its own
         @test all(noerror, notebook.cells)
 
+        WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
@@ -355,6 +356,7 @@ import Distributed
         @test notebook.cells[4] |> noerror
         @test notebook.cells[1].output.body == "\"double_december = 24\""
 
+        WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
@@ -376,6 +378,7 @@ import Distributed
         @test :conj ∈ notebook.topology.nodes[notebook.cells[1]].references
         @test notebook.cells[1].output.body == "200"
 
+        WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
     end
 
