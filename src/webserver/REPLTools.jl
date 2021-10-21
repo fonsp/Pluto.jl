@@ -71,7 +71,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
 
     workspace = WorkspaceManager.get_workspace((🙋.session, 🙋.notebook))
 
-    results_text, loc, found = if package_name_to_complete(query) !== nothing
+    results, loc, found = if package_name_to_complete(query) !== nothing
         p = package_name_to_complete(query)
         cs = package_completions(p) |> sort
         [(c,"package",true) for c in cs], (nextind(query, pos-length(p)):pos), true
@@ -96,7 +96,7 @@ responses[:complete] = function response_complete(🙋::ClientRequest)
         Dict(
             :start => start_utf8 - 1, # 1-based index (julia) to 0-based index (js)
             :stop => stop_utf8 - 1, # idem
-            :results => results_text
+            :results => results
             ), 🙋.notebook, nothing, 🙋.initiator)
 
     putclientupdates!(🙋.session, 🙋.initiator, msg)

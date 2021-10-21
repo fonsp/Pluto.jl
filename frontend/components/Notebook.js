@@ -81,15 +81,13 @@ let CellMemo = ({
 }
 
 /**
- * We render all cell outputs directly when the page loads. Rendering cell *inputs* can slow down the initial page load significantly, so we delay rendering them using this heuristic function to determine the length of the delay (as a function of the number of cells in the notebook).
+ * Rendering cell outputs can slow down the initial page load, so we delay rendering them using this heuristic function to determine the length of the delay (as a function of the number of cells in the notebook). Since using CodeMirror 6, cell inputs do not cause a slowdown when out-of-viewport, rendering is delayed until they come into view.
  * @param {Number} num_cells
  */
-const render_cell_inputs_delay = (num_cells) => 100 + 10 * num_cells
 const render_cell_outputs_delay = (num_cells) => (num_cells > 20 ? 100 : 0)
 /**
- * The first <x> cells will bypass the {@link render_cell_inputs_delay} heuristic and render directly.
+ * The first <x> cells will bypass the {@link render_cell_outputs_delay} heuristic and render directly.
  */
-const render_cell_inputs_minimum = 5
 const render_cell_outputs_minimum = 20
 
 /**
@@ -130,16 +128,8 @@ export const Notebook = ({
     }, [is_initializing, notebook.cell_order.length])
 
     // Only render the notebook partially during the first few seconds
-    const [cell_inputs_delayed, set_cell_inputs_delayed] = useState(true)
     const [cell_outputs_delayed, set_cell_outputs_delayed] = useState(true)
 
-    useEffect(() => {
-        if (cell_inputs_delayed && notebook.cell_order.length > 0) {
-            setTimeout(() => {
-                set_cell_inputs_delayed(false)
-            }, render_cell_inputs_delay(notebook.cell_order.length))
-        }
-    }, [cell_inputs_delayed, notebook.cell_order.length])
     useEffect(() => {
         if (cell_outputs_delayed && notebook.cell_order.length > 0) {
             setTimeout(() => {
@@ -173,7 +163,7 @@ export const Notebook = ({
                         selected=${selected_cells.includes(cell_id)}
                         selected_cells=${selected_cells}
                         focus_after_creation=${last_created_cell === cell_id}
-                        force_hide_input=${cell_inputs_delayed && i > render_cell_inputs_minimum}
+                        force_hide_input=${false}
                         is_process_ready=${is_process_ready}
                         disable_input=${disable_input}
                         nbpkg=${notebook.nbpkg}
