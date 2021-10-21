@@ -1,7 +1,7 @@
 import { html, Component, useRef, useLayoutEffect, useContext, useEffect, useMemo } from "../imports/Preact.js"
 
 import { ErrorMessage } from "./ErrorMessage.js"
-import { TreeView, TableView } from "./TreeView.js"
+import { TreeView, TableView, DivElement } from "./TreeView.js"
 
 import { add_bonds_listener, set_bound_elements_to_their_value } from "../common/Bond.js"
 import { cl } from "../common/ClassTable.js"
@@ -12,6 +12,7 @@ import register from "../imports/PreactCustomElement.js"
 
 import { EditorState, EditorView, julia_andrey, defaultHighlightStyle } from "../imports/CodemirrorPlutoSetup.js"
 import { pluto_syntax_colors } from "./CellInput.js"
+import { useState } from "../imports/Preact.js"
 
 import hljs from "https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.2.0/build/es/highlight.min.js"
 
@@ -143,7 +144,13 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
         case "application/vnd.pluto.stacktrace+object":
             return html`<div><${ErrorMessage} cell_id=${cell_id} ...${body} /></div>`
             break
-
+            body.cell_id
+        case "application/vnd.pluto.divelement+object":
+            return DivElement({ cell_id, ...body })
+            break
+        case "application/vnd.pluto.celloutputmirror+object":
+            return CellOutputMirror({ cell_id: body.cell_id })
+            break
         case "text/plain":
             if (body) {
                 return html`<div>
@@ -157,6 +164,37 @@ export const OutputBody = ({ mime, body, cell_id, persist_js_state = false, last
             return html``
             break
     }
+}
+
+export let CellOutputMirror = ({ cell_id }) => {
+    let [captured_editor_state, set_captured_editor_state] = useState(null)
+
+    useEffect(() => {
+        let still_running = true
+        const step = () => {
+            //@ts-ignore
+            const new_state = window.editor_state
+            if (captured_editor_state !== new_state) {
+                set_captured_editor_state(new_state)
+            }
+
+            if (still_running) {
+                requestAnimationFrame(step)
+            }
+        }
+        requestAnimationFrame(step)
+
+        return () => {
+            still_running = false
+        }
+    })
+
+    if (captured_editor_state == null) {
+        return null
+    }
+
+    let output = captured_editor_state?.notebook?.cell_results[cell_id]?.output
+    return html` <${CellOutput} ...${output} cell_id=${cell_id}> </${CellOutput}> `
 }
 
 register(OutputBody, "pluto-display", ["mime", "body", "cell_id", "persist_js_state", "last_run_timestamp"])
