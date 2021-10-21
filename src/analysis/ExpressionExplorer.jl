@@ -308,7 +308,7 @@ module MacroHasSpecialHeuristicInside
             codes=Pluto.DefaultDict(Pluto.ExprAnalysisCache, Dict(fake_cell => fake_expranalysiscache))
         )
 
-        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 8
+        return Pluto.cell_precedence_heuristic(fake_topology, fake_cell) < 9
     end
     # Having written this... I know I said I was lazy... I was wrong
 end
