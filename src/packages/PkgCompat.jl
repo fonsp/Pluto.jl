@@ -110,11 +110,11 @@ project_file(x::AbstractString) = joinpath(x, "Project.toml")
 manifest_file(x::AbstractString) = joinpath(x, "Manifest.toml")
 project_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Project.toml")
 manifest_file(ctx::PkgContext) = joinpath(env_dir(ctx), "Manifest.toml")
-function read_project_file(x)
+function read_project_file(x)::String
 	path = project_file(x)
 	isfile(path) ? read(path, String) : ""
 end
-function read_manifest_file(x)
+function read_manifest_file(x)::String
 	path = manifest_file(x)
 	isfile(path) ? read(path, String) : ""
 end

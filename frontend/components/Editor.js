@@ -29,6 +29,7 @@ import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
 import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js"
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
+import { ProgressBar } from "./ProgressBar.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -485,7 +486,7 @@ export class Editor extends Component {
                         immer((state) => {
                             for (let cell_id of cell_ids) {
                                 if (state.notebook.cell_results[cell_id] != null) {
-                                    state.notebook.cell_results[cell_id].queued = true
+                                    state.notebook.cell_results[cell_id].queued = this.is_process_ready()
                                 } else {
                                     // nothing
                                 }
@@ -730,6 +731,11 @@ patch: ${JSON.stringify(
                 count_stat(`editing/${window?.version_info?.pluto ?? "unknown"}`)
             }
         }, 1000 * 15 * 60)
+        setInterval(() => {
+            if (!this.state.static_preview && document.visibilityState === "visible") {
+                update_stored_recent_notebooks(this.state.notebook.path)
+            }
+        }, 1000 * 5)
 
         // Not completely happy with this yet, but it will do for now - DRAL
         this.bonds_changes_to_apply_when_done = []
@@ -743,6 +749,8 @@ patch: ${JSON.stringify(
                 !_.isEmpty(this.js_init_set)
             )
         }
+        this.is_process_ready = () =>
+            this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
 
         let last_update_notebook_task = Promise.resolve()
         /** @param {(notebook: NotebookData) => void} mutate_fn */
@@ -1075,6 +1083,7 @@ patch: ${JSON.stringify(
                 <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
                     <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
                     <${Scroller} active=${this.state.scroller} />
+                    <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
                             notebookfile_url=${export_url("notebookfile")}
@@ -1082,7 +1091,6 @@ patch: ${JSON.stringify(
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
-                        <loading-bar style=${`width: ${100 * this.state.binder_phase}vw`}></loading-bar>
                         ${
                             status.binder
                                 ? html`<div id="binder_spinners">
@@ -1161,9 +1169,7 @@ patch: ${JSON.stringify(
                             last_created_cell=${this.state.last_created_cell}
                             selected_cells=${this.state.selected_cells}
                             is_initializing=${this.state.initializing}
-                            is_process_ready=${
-                                this.state.notebook.process_status === ProcessStatus.starting || this.state.notebook.process_status === ProcessStatus.ready
-                            }
+                            is_process_ready=${this.is_process_ready()}
                         />
                         <${DropRuler} 
                             actions=${this.actions}
@@ -1238,13 +1244,14 @@ patch: ${JSON.stringify(
 
 // TODO This is now stored locally, lets store it somewhere central 😈
 export const update_stored_recent_notebooks = (recent_path, also_delete = undefined) => {
-    const storedString = localStorage.getItem("recent notebooks")
-    const storedList = storedString != null ? JSON.parse(storedString) : []
-    const oldpaths = storedList
-    const newpaths = [recent_path].concat(
-        oldpaths.filter((path) => {
-            return path !== recent_path && path !== also_delete
-        })
-    )
-    localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+    if (recent_path != null && recent_path !== default_path) {
+        const stored_string = localStorage.getItem("recent notebooks")
+        const stored_list = stored_string != null ? JSON.parse(stored_string) : []
+        const oldpaths = stored_list
+
+        const newpaths = [recent_path, ...oldpaths.filter((path) => path !== recent_path && path !== also_delete)]
+        if (!_.isEqual(oldpaths, newpaths)) {
+            localStorage.setItem("recent notebooks", JSON.stringify(newpaths.slice(0, 50)))
+        }
+    }
 }
