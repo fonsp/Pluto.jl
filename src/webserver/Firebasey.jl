@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.15.0
+# v0.16.1
 
 using Markdown
 using InteractiveUtils
@@ -619,11 +619,17 @@ end
 
 # ╔═╡ e924a0be-2de1-11eb-2170-71d56e117af2
 """
-	@displayonly expression
+	@skip_as_script expression
 
 Marks a expression as Pluto-only, which means that it won't be executed when running outside Pluto. Do not use this for your own projects.
 """
-macro skip_as_script(ex) skip_as_script(__module__) ? esc(ex) : nothing end
+macro skip_as_script(ex)
+	if skip_as_script(__module__)
+		esc(ex)
+	else
+		nothing
+	end
+end
 
 # ╔═╡ c2c2b057-a88f-4cc6-ada4-fc55ac29931e
 "The opposite of `@skip_as_script`"
@@ -718,7 +724,7 @@ end
 @skip_as_script @test 1 + 1 + 1 == x
 
 # ╔═╡ ea934d9c-2de1-11eb-3f1d-3b60465decde
-@skip_as_script @test throw("Oh my god") == x
+@skip_as_script @test_throws String throw("Oh my god") == x
 
 # ╔═╡ ee70e282-36d5-4772-8585-f50b9a67ca54
 md"## Track"
