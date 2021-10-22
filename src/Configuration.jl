@@ -55,6 +55,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook::Union{Nothing,String, Vector{<: String}} = nothing
     init_with_file_viewer::Bool=false
     simulated_lag::Real=0.0
+    collect_possible_bind_values::Bool=true
 end
 
 """

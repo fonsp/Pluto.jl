@@ -1449,15 +1449,44 @@ The first cell will show a slider as the cell's output, ranging from 0 until 100
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
 macro bind(def, element)
-	if def isa Symbol
-		quote
-			local el = $(esc(element))
+    _bind(def, element)
+end
+
+struct 🔖 end
+
+"@bind widgets should implement a method to this function to return the set of possible values for a particular instance of a widget."
+_get_possible_values(bind_instance) = 🔖()
+
+const PossibleBindValues = Ref{Union{Nothing,Dict{Symbol,Any}}}(nothing)
+
+function _set_possible_bind_values(def, bind_instance)
+    PossibleBindValues[] === nothing && throw("Tried to collect possible bind values without initializing the container")
+    PossibleBindValues[][def] = _get_possible_values(bind_instance)
+end
+
+function enable_collecting_possible_bind_values!()
+    PossibleBindValues[] === nothing && return
+    PossibleBindValues[] = Dict{Symbol,Any}();
+end
+
+function _bind_collect(def, element)
+    ex = _bind(def, element)
+
+    Expr(:block, ex.args[1:2],
+        Expr(:call, PlutoRunner._set_possible_bind_values, QuoteNode(def), ex.args[2].args[1]),
+        ex.args[3:end]...)
+end
+
+function _bind(def, element)
+    if def isa Symbol
+        quote
+            local el = $(esc(element))
             global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
-			PlutoRunner.Bond(el, $(Meta.quot(def)))
-		end
-	else
-		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
-	end
+            PlutoRunner.Bond(el, $(Meta.quot(def)))
+        end
+    else
+        :(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+    end
 end
 
 """

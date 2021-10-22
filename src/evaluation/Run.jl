@@ -6,12 +6,24 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
-  if !already_in_run && length(already_run) == 0
+function run_reactive!(
+	session::ServerSession,
+	notebook::Notebook,
+	old_topology::NotebookTopology,
+	new_topology::NotebookTopology,
+	roots::Vector{Cell};
+	deletion_hook::Function=WorkspaceManager.move_vars,
+	persist_js_state::Bool=false,
+	already_in_run::Bool=false,
+	already_run::Vector{Cell}=Cell[],
+)::TopologicalOrder
+	if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
 
-		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module((session, notebook))
+		sn = (session, notebook)
+		session.options.server.collect_possible_bind_values && WorkspaceManager.enable_collecting_possible_bind_values(sn)
+		old_workspace_name, new_workspace_name = WorkspaceManager.bump_workspace_module(sn)
 
 		if !is_resolved(new_topology)
 			unresolved_topology = new_topology
@@ -133,7 +145,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			update_dependency_cache!(notebook)
 			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true)
 		elseif !isempty(implicit_usings)
 			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
 			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -151,6 +163,12 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 	# allow other `run_reactive!` calls to be executed
 	put!(notebook.executetoken)
 	return new_order
+end
+
+"Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `PlutoRunner._get_possible_values(element)`"
+function possible_bond_values(session::ServerSession, notebook::Notebook, n::Symbol)
+	all_possible_values = WorkspaceManager.get_possible_bind_values((session, notebook))
+	all_possible_values[n]
 end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)
