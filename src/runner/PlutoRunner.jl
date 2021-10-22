@@ -1465,7 +1465,7 @@ function _set_possible_bind_values(def, bind_instance)
 end
 
 function enable_collecting_possible_bind_values!()
-    PossibleBindValues[] === nothing && return
+    PossibleBindValues[] !== nothing && return
     PossibleBindValues[] = Dict{Symbol,Any}();
 end
 
