@@ -14,7 +14,7 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
     notebookfile_hash.then((x) => console.log("Notebook file hash:", x))
 
     const bond_connections = notebookfile_hash
-        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + "/"))
+        .then((hash) => fetch(trailingslash(launch_params.slider_server_url) + "bondconnections/" + encodeURIComponent(hash) + ""))
         .then((r) => r.arrayBuffer())
         .then((b) => unpack(new Uint8Array(b)))
 
