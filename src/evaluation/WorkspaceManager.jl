@@ -148,7 +148,7 @@ function get_possible_bind_values(session_notebook::SN)
     pid = workspace.pid
 
     possible_values = Distributed.remotecall_eval(Main, pid, quote
-        PlutoRunner.sanitize_value(PlutoRunner.PossibleBindValues[])
+        PlutoRunner.PossibleBindValues[]
     end)
 
     @assert possible_values !== nothing "Tried to collect possible bind values when collection of possible bind values was not enabled"
