@@ -35,7 +35,12 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
             console.debug("Requesting bonds", bonds_to_set.current, to_send)
             bonds_to_set.current = new Set()
 
-            const mybonds_filtered = Object.fromEntries(Object.entries(mybonds).filter(([k, v]) => to_send.has(k)))
+            const mybonds_filtered = Object.fromEntries(
+                _.sortBy(
+                    Object.entries(mybonds).filter(([k, v]) => to_send.has(k)),
+                    ([k, v]) => k
+                )
+            )
 
             const packed = pack(mybonds_filtered)
 
@@ -75,11 +80,11 @@ export const slider_server_actions = ({ setStatePromise, launch_params, actions,
         set_bond: async (symbol, value, is_first_value) => {
             setStatePromise(
                 immer((state) => {
-                    state.notebook.bonds[symbol] = { value: value, is_first_value: is_first_value }
+                    state.notebook.bonds[symbol] = { value: value, is_first_value: true }
                 })
             )
             if (mybonds[symbol] == null || !_.isEqual(mybonds[symbol].value, value)) {
-                mybonds[symbol] = { value: _.cloneDeep(value), is_first_value: is_first_value }
+                mybonds[symbol] = { value: _.cloneDeep(value), is_first_value: true }
                 bonds_to_set.current.add(symbol)
                 await request_bond_response()
             }
