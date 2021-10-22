@@ -1644,17 +1644,6 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     (_module isa Module && startswith(String(nameof(_module)), "workspace#")) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 
-format_log(logmsg::String) = Text(logmsg)
-function format_log(logmsg)
-    try
-        # from https://github.com/JuliaLogging/ProgressLogging.jl/blob/4349269e9d930f49d8fff98fca3512c070ed3885/src/ProgressLogging.jl#L89
-        # we try to convert the ProgressString to an object.
-        sprint(print, logmsg.progress) |> Text
-    catch
-        logmsg
-    end
-end
-
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
 function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, file, line; kwargs...)
@@ -1663,7 +1652,7 @@ function Logging.handle_message(::PlutoLogger, level, msg, _module, group, id, f
     try
         put!(log_channel, Dict{String,Any}(
             "level" => string(level),
-            "msg" => format_output_default(format_log(msg)),
+            "msg" => format_output_default(msg isa String ? Text(msg) : msg),
             "group" => group,
             "id" => id,
             "file" => file,
