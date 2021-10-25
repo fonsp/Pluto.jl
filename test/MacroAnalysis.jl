@@ -442,7 +442,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         notebook = Notebook(Cell.([
             "x",
             "@b x",
-            raw"macro b(sym) esc(:($sym = 42))",
+            raw"macro b(sym) esc(:($sym = 42)) end",
         ]))
         update_run!(🍭, notebook, notebook.cells)
 
