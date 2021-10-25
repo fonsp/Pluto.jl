@@ -122,8 +122,9 @@ either press backspace when the input line is empty or press Ctrl+C._
 To run Pluto, run the following commands in your Julia REPL:
 
 ```julia
-julia> import Pluto
-julia> Pluto.run()
+julia> using Pluto: run
+
+julia> run()
 ```
 
 Pluto will open in your browser, and you can get started!
