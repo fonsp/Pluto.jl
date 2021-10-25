@@ -123,7 +123,6 @@ To run Pluto, run the following commands in your Julia REPL:
 
 ```julia
 julia> using Pluto: run
-
 julia> run()
 ```
 
