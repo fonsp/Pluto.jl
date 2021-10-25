@@ -15,7 +15,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 		if !is_resolved(new_topology)
 			unresolved_topology = new_topology
-			new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name)
+			new_topology = notebook.topology = resolve_topology(session, notebook, unresolved_topology, old_workspace_name; current_roots=roots)
 
 			# update cache and save notebook because the dependencies might have changed after expanding macros
 			update_dependency_cache!(notebook)
@@ -227,6 +227,9 @@ end
 
 collect_implicit_usings(topology::NotebookTopology, cell::Cell) = ExpressionExplorer.collect_implicit_usings(topology.codes[cell].module_usings_imports)
 
+"Returns the set of macros names defined by this cell"
+defined_macros(topology::NotebookTopology, cell::Cell) = filter(is_macro_identifier, topology.nodes[cell].funcdefs_without_signatures)
+
 "Tells whether or not a cell can 'unlock' the resolution of other cells"
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_code = topology.codes[cell]
@@ -236,8 +239,22 @@ function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
 	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
 end
 
-"We still have 'unresolved' macrocalls, use the current workspace to do macro-expansions"
-function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
+"""We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
+
+You can optionally specify the roots for the current reactive run. If a cell macro contains only macros that will
+be re-defined during this reactive run, we don't expand yet and expect the `can_help_resolve_cells` function above
+to be true for the cell defining the macro, triggering a new topology resolution without needing to fallback to the
+previous workspace.
+"""
+function resolve_topology(
+	session::ServerSession,
+	notebook::Notebook,
+	unresolved_topology::NotebookTopology,
+	old_workspace_name::Symbol;
+	current_roots::Vector{Cell}=Cell[],
+)::NotebookTopology
+
+
 	sn = (session, notebook)
 
 	function macroexpand_cell(cell)
@@ -251,34 +268,41 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 		res
 	end
 
-	function analyze_macrocell(cell::Cell, current_symstate)
+	# nothing means that the expansion has failed
+	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
-			return current_symstate, true
+			return nothing
 		end
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
-			# if expansion failed, we use the "shallow" symbols state
 			@debug "Expansion failed" err=result
-			current_symstate, false
+			nothing
 		else # otherwise, we use the expanded expression + the list of macrocalls
-			expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-			expanded_symbols_state, true
+			expanded_node = ExpressionExplorer.try_compute_symbolreferences(result) |> ReactiveNode
+			expanded_node
 		end
 	end
 
+	run_defined_macros = mapreduce(c -> defined_macros(unresolved_topology, c), union!, current_roots; init=Set{Symbol}())
+
 	# create new node & new codes for macrocalled cells
 	new_nodes = Dict{Cell,ReactiveNode}()
-	still_unresolved_nodes = Dict{Cell,SymbolsState}()
-	for (cell, current_symstate) in unresolved_topology.unresolved_cells
-			(new_symstate, succeeded) = analyze_macrocell(cell, current_symstate)
-			if succeeded
-				new_node = ReactiveNode(new_symstate)
+	still_unresolved_nodes = Set{Cell}()
+	for cell in unresolved_topology.unresolved_cells
+			if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
+				# Do not try to expand if a newer version of the macro is also scheduled to run in the
+				# current run. The recursive reactive runs will take care of it.
+				push!(still_unresolved_nodes, cell)
+			end
+
+			new_node = analyze_macrocell(cell)
+			if new_node !== nothing
 				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
 				union!(new_node.references, new_node.macrocalls)
 				new_nodes[cell] = new_node
 			else
-				still_unresolved_nodes[cell] = current_symstate
+				push!(still_unresolved_nodes, cell)
 			end
 	end
 
@@ -287,17 +311,19 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes, unresolved_cells=still_unresolved_nodes)
 end
 
-function static_macroexpand(topology::NotebookTopology, cell::Cell, old_symstate)
-	new_symstate = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
-		ExpressionExplorer.try_compute_symbolreferences
-	union!(new_symstate.macrocalls, old_symstate.macrocalls)
+function static_macroexpand(topology::NotebookTopology, cell::Cell)
+	cell_node = topology.nodes[cell].macrocalls
 
-	ReactiveNode(new_symstate)
+	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
+		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
+	union!(new_node.macrocalls, cell_node.macrocalls)
+
+	new_node
 end
 
 "The same as `resolve_topology` but does not require custom code execution, only works with a few `Base` & `PlutoRunner` macros"
 function static_resolve_topology(topology::NotebookTopology)
-	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell, symstate) for (cell, symstate) in topology.unresolved_cells)
+	new_nodes = Dict{Cell,ReactiveNode}(cell => static_macroexpand(topology, cell) for cell in topology.unresolved_cells)
 	all_nodes = merge(topology.nodes, new_nodes)
 
 	NotebookTopology(nodes=all_nodes, codes=topology.codes, unresolved_cells=topology.unresolved_cells)
