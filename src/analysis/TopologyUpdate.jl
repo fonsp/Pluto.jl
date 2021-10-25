@@ -6,9 +6,9 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 	
 	updated_codes = Dict{Cell,ExprAnalysisCache}()
 	updated_nodes = Dict{Cell,ReactiveNode}()
-	unresolved_cells = Set{Cell}()
+	unresolved_cells = copy(old_topology.unresolved_cells)
 	for cell in cells
-		if !(old_topology.codes[cell].code === cell.code)
+		if old_topology.codes[cell].code !== cell.code
 			new_code = updated_codes[cell] = ExprAnalysisCache(notebook, cell)
 			new_symstate = new_code.parsedcode |>
 				ExpressionExplorer.try_compute_symbolreferences
@@ -22,11 +22,14 @@ function updated_topology(old_topology::NotebookTopology, notebook::Notebook, ce
 			# The unresolved cells are the cells for wich we cannot create
 			# a ReactiveNode yet, because they contains macrocalls.
 			push!(unresolved_cells, cell) 
+		else
+			pop!(unresolved_cells, cell, nothing)
 		end
 	end
 	new_codes = merge(old_topology.codes, updated_codes)
 	new_nodes = merge(old_topology.nodes, updated_nodes)
-	new_unresolved_cells = union(old_topology.unresolved_cells, unresolved_cells)
+	# new_unresolved_cells = union(old_topology.unresolved_cells, unresolved_cells)
+	new_unresolved_cells = unresolved_cells
 
 	for removed_cell in setdiff(keys(old_topology.nodes), notebook.cells)
 		delete!(new_nodes, removed_cell)

@@ -437,6 +437,33 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test_broken noerror(cell(5); verbose=false)
     end
 
+    @testset "Weird behavior" begin
+        # https://github.com/fonsp/Pluto.jl/issues/1591
+
+        notebook = Notebook(Cell.([
+            "macro huh(_) throw(\"Fail!\") end",
+            "huh(e) = e",
+            "@huh(z)",
+            "z = 101010",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).errored == true
+
+        setcode(cell(3), "huh(z)")
+        update_run!(🍭, notebook, cell(3))
+
+        @test cell(3) |> noerror
+        @test cell(3).output.body == "101010"
+
+        setcode(cell(4), "z = 1234")
+        update_run!(🍭, notebook, cell(4))
+
+        @test cell(3) |> noerror
+        @test cell(3).output.body == "1234"
+    end
+
 
     @testset "Cell failing first not re-run?" begin
         notebook = Notebook(Cell.([
