@@ -168,7 +168,9 @@ end
 "Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `PlutoRunner._get_possible_values(element)`"
 function possible_bond_values(session::ServerSession, notebook::Notebook, n::Symbol)
 	all_possible_values = WorkspaceManager.get_possible_bind_values((session, notebook))
-	all_possible_values[n]
+	bond_possible_values = all_possible_values[n]
+	@assert !(bond_possible_values isa PlutoRunner.🔖) "The widget type for bind value $n has not specified its set of possible values"
+	bond_possible_values
 end
 
 run_reactive_async!(session::ServerSession, notebook::Notebook, to_run::Vector{Cell}; kwargs...) = run_reactive_async!(session, notebook, notebook.topology, notebook.topology, to_run; kwargs...)

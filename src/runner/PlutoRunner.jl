@@ -1452,6 +1452,7 @@ macro bind(def, element)
     _bind(def, element)
 end
 
+"Used to represent an undefined set of possible values"
 struct 🔖 end
 
 "@bind widgets should implement a method to this function to return the set of possible values for a particular instance of a widget."
