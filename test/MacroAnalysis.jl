@@ -376,6 +376,75 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test_broken noerror(cell(5); verbose=false)
     end
 
+    @testset "Explicitely running macrocalls updates the reactive node" begin
+        notebook = Notebook(Cell.([
+            "@b()",
+            "ref = Ref{Int}(0)",
+            raw"""macro b()
+                ex = if iseven(ref[])
+                    :(x = 10)
+                else
+                    :(y = 10)
+                end |> esc
+                ref[] += 1
+                ex
+            end""",
+            "x",
+            "y",
+        ]))
+        cell(i) = notebook.cells[i]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        @test cell(5).errored == true
+
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(4).errored == true
+        @test cell(5) |> noerror
+    end
+
+    @testset "Implicitely running macrocalls updates the reactive node" begin
+        notebook = Notebook(Cell.([
+            "updater; @b()",
+            "ref = Ref{Int}(0)",
+            raw"""macro b()
+                ex = if iseven(ref[])
+                    :(x = 10)
+                else
+                    :(y = 10)
+                end |> esc
+                ref[] += 1
+                ex
+            end""",
+            "x",
+            "y",
+            "updater = 1",
+        ]))
+        cell(i) = notebook.cells[i]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+        @test cell(4) |> noerror
+        @test cell(5).errored == true
+        @test cell(6) |> noerror
+
+        setcode(cell(6), "updater = 2")
+        update_run!(🍭, notebook, cell(6))
+
+        @test cell(4).errored == true
+
+        # Since the run of `@b()` was not explicit,
+        # the reactive node of cell(1) was not updated :'(
+        @test_broken noerror(cell(5); verbose=false)
+    end
+
+
     @testset "Cell failing first not re-run?" begin
         notebook = Notebook(Cell.([
             "x",

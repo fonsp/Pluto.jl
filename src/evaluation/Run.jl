@@ -122,7 +122,15 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 		implicit_usings = collect_implicit_usings(new_topology, cell)
 		if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
+			defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
+
+			# Also set unresolved the downstream cells using the defined macros
+			if !isempty(defined_macros_in_cell)
+				new_topology = set_unresolved(new_topology, where_referenced(notebook, new_topology, defined_macros_in_cell))
+			end
+
 			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
+
 
 			if !isempty(implicit_usings)
 				new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
@@ -234,7 +242,7 @@ defined_macros(topology::NotebookTopology, cell::Cell) = filter(is_macro_identif
 function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
     cell_code = topology.codes[cell]
     cell_node = topology.nodes[cell]
-    !isempty(cell_code.module_usings_imports.imports) ||
+    !isempty(cell_code.module_usings_imports.imports) || # <-- TODO(paul): check explicitely for `import Pkg: @macro` instead of any imports
 	!isempty(cell_code.module_usings_imports.usings) ||
 	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
 end

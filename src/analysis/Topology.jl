@@ -36,6 +36,10 @@ end
 
 is_resolved(topology::NotebookTopology) = isempty(topology.unresolved_cells)
 
+function set_unresolved(topology::NotebookTopology, unresolved_cells::Vector{Cell})
+    NotebookTopology(nodes=topology.nodes, codes=topology.codes, unresolved_cells=union(topology.unresolved_cells, unresolved_cells))
+end
+
 DefaultDict{K,V}(default::Union{Function,DataType}) where {K,V} = DefaultDict{K,V}(default, Dict{K,V}())
 
 function Base.getindex(aid::DefaultDict{K,V}, key::K)::V where {K,V}
