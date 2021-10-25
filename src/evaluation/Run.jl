@@ -319,12 +319,13 @@ function resolve_topology(
 	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes, unresolved_cells=still_unresolved_nodes)
 end
 
+"""Tries to add information about macro calls without running any code, using knowledge about common macros.
+So, the resulting reactive nodes may not be absolutely accurate. If you can run code in a session, use `resolve_topology` instead.
+"""
 function static_macroexpand(topology::NotebookTopology, cell::Cell)
-	cell_node = topology.nodes[cell].macrocalls
-
 	new_node = ExpressionExplorer.maybe_macroexpand(topology.codes[cell].parsedcode; recursive=true) |>
 		ExpressionExplorer.try_compute_symbolreferences |> ReactiveNode
-	union!(new_node.macrocalls, cell_node.macrocalls)
+	union!(new_node.macrocalls, topology.nodes[cell].macrocalls)
 
 	new_node
 end
