@@ -280,6 +280,117 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(1).output.body == "42"
     end
 
+    @testset "Redefines macro with new SymbolsState" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        notebook = Notebook(Cell.([
+            "@b x",
+            raw"""macro b(sym)
+                esc(:($sym = 42))
+            end""",
+            "x",
+            "y",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).output.body == "42"
+        @test cell(4).errored == true
+
+        setcode(cell(2), """macro b(_)
+            esc(:(y = 42))
+        end""")
+        update_run!(🍭, notebook, cell(2))
+
+        # Cell 4 is not re-executed because the ReactiveNode
+        # for @b(x) has not changed.
+        @test_broken cell(4).output.body == "42"
+        @test cell(3).errored == true
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+
+        notebook = Notebook(Cell.([
+            "@b x",
+            raw"""macro b(sym)
+                esc(:($sym = 42))
+            end""",
+            "x",
+            "y",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(3).output.body == "42"
+        @test cell(4).errored == true
+
+        setcode(cell(2), """macro b(_)
+            esc(:(y = 42))
+        end""")
+        update_run!(🍭, notebook, [cell(1), cell(2)])
+
+        # Cell 4 is executed even because cell(1) is in the root
+        # of the reactive run because the expansion is done with the new version
+        # of the macro in the new workspace because of the current_roots parameter of `resolve_topology`.
+        # See Run.jl#resolve_topology.
+        @test cell(4).output.body == "42"
+        @test cell(3).errored == true
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
+    @testset "Reactive macro update does not invalidate the macro calls" begin
+        notebook = Notebook(Cell.([
+            raw"""macro b(sym)
+                if z > 40
+                    esc(:($sym = $z))
+                else
+                    esc(:(y = $z))
+                end
+            end""",
+            "z = 42",
+            "@b(x)",
+            "x",
+            "y",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror        
+        @test cell(2) |> noerror        
+        @test cell(3) |> noerror        
+        @test cell(4) |> noerror        
+        @test cell(5).errored == true
+
+        setcode(cell(2), "z = 39")
+
+        # running only 2, running all cells here works however
+        update_run!(🍭, notebook, cell(2))
+
+        @test cell(1) |> noerror        
+        @test cell(2) |> noerror        
+        @test cell(3) |> noerror
+        @test cell(4).errored == true
+
+        # cell 5 should re-run because all cells calling @b should be invalidated
+        # at the reactive node level this is not yet the case
+        @test_broken noerror(cell(5); verbose=false)
+    end
+
+    @testset "Cell failing first not re-run?" begin
+        notebook = Notebook(Cell.([
+            "x",
+            "@b x",
+            raw"macro b(sym) esc(:($sym = 42))",
+        ]))
+        update_run!(🍭, notebook, notebook.cells)
+
+        # CELL 1 "x" was run first and failed because the definition
+        # of x was not yet found. However, it was not run re-run when the definition of
+        # x ("@b(x)") was run. Should it? Maybe set a higher precedence to cells that define
+        # macros inside the notebook.
+        @test_broken noerror(notebook.cells[1]; verbose=false)
+    end
+
     @testset "@a defines @b initial loading" begin
         notebook = Notebook(Cell.([
             "x",
