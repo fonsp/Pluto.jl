@@ -281,8 +281,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
     end
 
     @testset "Redefines macro with new SymbolsState" begin
-        🍭.options.evaluation.workspace_use_distributed = true
-
         notebook = Notebook(Cell.([
             "@b x",
             raw"""macro b(sym)
@@ -306,8 +304,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         # for @b(x) has not changed.
         @test_broken cell(4).output.body == "42"
         @test cell(3).errored == true
-
-        WorkspaceManager.unmake_workspace((🍭, notebook))
 
         notebook = Notebook(Cell.([
             "@b x",
@@ -333,9 +329,6 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         # See Run.jl#resolve_topology.
         @test cell(4).output.body == "42"
         @test cell(3).errored == true
-
-        WorkspaceManager.unmake_workspace((🍭, notebook))
-        🍭.options.evaluation.workspace_use_distributed = false
     end
 
     @testset "Reactive macro update does not invalidate the macro calls" begin
