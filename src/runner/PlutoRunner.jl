@@ -1460,6 +1460,9 @@ _get_possible_values(bind_instance) = 🔖()
 
 const PossibleBindValues = Ref{Union{Nothing,Dict{Symbol,Any}}}(nothing)
 
+"Whether or not the widget packages should define methods to `PlutoRunner._get_possible_values` at package init."
+should_set_possible_bind_values() = PossibleBindValues[] !== nothing
+
 function _set_possible_bind_values(def, bind_instance)
     PossibleBindValues[] === nothing && throw("Tried to collect possible bind values without initializing the container")
     PossibleBindValues[][def] = _get_possible_values(bind_instance)
