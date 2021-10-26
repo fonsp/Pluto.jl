@@ -463,6 +463,8 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
                 else
                     SymbolsState(funccalls=Set{FunctionName}([funcname]))
                 end
+            elseif funcname[1] ∈ scopestate.hiddenglobals
+                SymbolsState()
             else
                 SymbolsState(references=Set{Symbol}([funcname[1]]), funccalls=Set{FunctionName}([funcname]))
             end

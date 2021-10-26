@@ -267,6 +267,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
+        @test testee(:(let aa = blah; aa.f() end), [:blah], [], [], [])
+        @test testee(:(let aa = blah; aa.f(a, b, c) end), [:blah, :a, :b, :c], [], [], [])
+        @test testee(:(f(a) = a.b()), [], [], [], [:f => ([], [], [], [])])
 
         @test testee(:(function f()
             function hello()
