@@ -26,7 +26,7 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
-const ExpandedCallCells = Dict{UUID,Expr}()
+const ExpandedCallCells = Dict{UUID,NamedTuple{(:expr,:runtime),Tuple{Expr,UInt64}}}()
 
 
 
@@ -178,8 +178,11 @@ sanitize_value(other) = sanitize_expr(other)
 
 function try_macroexpand(mod, cell_uuid, expr)
     try
+        elapsed_ns = time_ns()
         expanded_expr = macroexpand(mod, expr)
-        ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
+        elapsed_ns = time_ns() - elapsed_ns
+
+        ExpandedCallCells[cell_uuid] = (;expr=no_workspace_ref(expanded_expr), runtime=elapsed_ns)
 
         return sanitize_expr(expanded_expr)
     catch e
@@ -323,15 +326,15 @@ function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::R
     end
 end
 
-
-visit_expand(_, other) = other
-function visit_expand(current_module::Module, expr::Expr)
-    if expr.head == :macrocall
-        no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
-    else
-        Expr(expr.head, map(arg -> visit_expand(current_module, arg), expr.args)...)
-    end
+function timed_visit_expand(current_module::Module, expr::Expr)::Tuple{Expr,UInt64}
+    elapsed = time_ns()
+    expanded_expr = no_workspace_ref(macroexpand(current_module, expr), nameof(current_module)) # visit_expand(current_module, expr)
+    elapsed = time_ns() - elapsed
+    (expanded_expr, elapsed)
 end
+
+add_runtimes(::Nothing, ::UInt64) = nothing
+add_runtimes(a::UInt64, b::UInt64) = a+b
 
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
@@ -345,22 +348,28 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     cell_published_objects[cell_id] = Dict{String,Any}()
 
     result, runtime = if function_wrapped_info === nothing
-        expr = pop!(ExpandedCallCells, cell_id, expr)
+        expanded = pop!(ExpandedCallCells, cell_id, (;expr,runtime=zero(UInt64)))
+        expr = expanded.expr
+        expansion_runtime = expanded.runtime
+
         proof = ReturnProof()
 
         # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
         if contains_user_defined_macrocalls
             try
-                expr = visit_expand(m, expr)
+                (expr, other_expansion_runtime) = timed_visit_expand(m, expr)
+                expansion_runtime = max(expansion_runtime, other_expansion_runtime)
                 wrapped = timed_expr(expr, proof)
-                run_inside_trycatch(m, wrapped, proof)
+                ans, runtime = run_inside_trycatch(m, wrapped, proof)
+                (ans, add_runtimes(runtime, expansion_runtime))
             catch ex
                 bt = stacktrace(catch_backtrace())
                 (CapturedException(ex, bt), nothing)
             end
         else
             wrapped = timed_expr(expr, proof)
-            run_inside_trycatch(m, wrapped, proof)
+            ans, runtime = run_inside_trycatch(m, wrapped, proof)
+            (ans, add_runtimes(runtime, expansion_runtime))
         end
     else
         key = expr_hash(expr)
