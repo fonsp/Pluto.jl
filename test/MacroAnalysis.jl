@@ -300,9 +300,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         end""")
         update_run!(🍭, notebook, cell(2))
 
-        # Cell 4 is not re-executed because the ReactiveNode
-        # for @b(x) has not changed.
-        @test_broken cell(4).output.body == "42"
+        @test cell(4).output.body == "42"
         @test cell(3).errored == true
 
         notebook = Notebook(Cell.([
@@ -362,11 +360,9 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(1) |> noerror        
         @test cell(2) |> noerror        
         @test cell(3) |> noerror
+        @test cell(4).output.body != "42"
         @test cell(4).errored == true
-
-        # cell 5 should re-run because all cells calling @b should be invalidated
-        # at the reactive node level this is not yet the case
-        @test_broken noerror(cell(5); verbose=false)
+        @test cell(5) |> noerror
     end
 
     @testset "Explicitely running macrocalls updates the reactive node" begin
@@ -424,17 +420,18 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(2) |> noerror
         @test cell(3) |> noerror
         @test cell(4) |> noerror
+        output_1 = cell(4).output.body
         @test cell(5).errored == true
         @test cell(6) |> noerror
 
         setcode(cell(6), "updater = 2")
         update_run!(🍭, notebook, cell(6))
 
-        @test cell(4).errored == true
-
-        # Since the run of `@b()` was not explicit,
-        # the reactive node of cell(1) was not updated :'(
-        @test_broken noerror(cell(5); verbose=false)
+        # the output of cell 4 has not changed since the underlying computer
+        # has not been regenerated. To update the reactive node and macrocall
+        # an explicit run of @b() must be done.
+        @test cell(4).output.body == output_1
+        @test cell(5).errored == true
     end
 
     @testset "Weird behavior" begin
@@ -501,6 +498,52 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test cell(3) |> noerror
         @test cell(4) |> noerror
         @test cell(1).output.body == "42"
+    end
+
+    @testset "Macro with long compile time gets function wrapped" begin
+        ms = 1e-3
+        ns = 1e-9
+        sleep_time = 40ms
+
+        notebook = Notebook(Cell.([
+            "updater; @b()",
+            """macro b()
+                x = rand()
+                sleep($sleep_time)
+                :(1+\$x)
+            end""",
+            "updater = :slow",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test noerror(cell(1))
+        runtime = cell(1).runtime*ns
+        output_1 = cell(1).output.body
+        @test sleep_time <= runtime <= 2sleep_time
+
+        setcode(cell(3), "updater = :fast")
+        update_run!(🍭, notebook, cell(3))
+
+        @test noerror(cell(1))
+        runtime = cell(1).runtime*ns
+        @test runtime < sleep_time # no recompilation!
+
+        # output is the same because no new compilation happens
+        @test output_1 == cell(1).output.body
+
+        # force recompilation by explicitely running the cell
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1) |> noerror
+        @test output_1 != cell(1).output.body
+        output_3 = cell(1).output.body
+
+        setcode(cell(1), "@b()") # changing code generates a new 💻
+        update_run!(🍭, notebook, cell(1))
+
+        @test cell(1) |> noerror
+        @test output_3 != cell(1).output.body
     end
 
     @testset "Macro Prefix" begin

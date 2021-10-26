@@ -120,15 +120,15 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 		
 		cell.running = false
 
+		defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
+
+		# Also set unresolved the downstream cells using the defined macros
+		if !isempty(defined_macros_in_cell)
+			new_topology = set_unresolved(new_topology, where_referenced(notebook, new_topology, defined_macros_in_cell))
+		end
+
 		implicit_usings = collect_implicit_usings(new_topology, cell)
 		if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
-			defined_macros_in_cell = defined_macros(new_topology, cell) |> Set{Symbol}
-
-			# Also set unresolved the downstream cells using the defined macros
-			if !isempty(defined_macros_in_cell)
-				new_topology = set_unresolved(new_topology, where_referenced(notebook, new_topology, defined_macros_in_cell))
-			end
-
 			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
 
@@ -200,6 +200,7 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		cell.cell_id, 
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
+		expr_cache.forced_expr_id,
 		cell.cell_dependencies.contains_user_defined_macrocalls,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
@@ -287,8 +288,10 @@ function resolve_topology(
 			@debug "Expansion failed" err=result
 			nothing
 		else # otherwise, we use the expanded expression + the list of macrocalls
-			expanded_node = ExpressionExplorer.try_compute_symbolreferences(result) |> ReactiveNode
-			expanded_node
+			(expr, computer_id) = result
+			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
+			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
+			(expanded_node, function_wrapped, computer_id)
 		end
 	end
 
@@ -296,7 +299,9 @@ function resolve_topology(
 
 	# create new node & new codes for macrocalled cells
 	new_nodes = Dict{Cell,ReactiveNode}()
+	new_codes = Dict{Cell,ExprAnalysisCache}()
 	still_unresolved_nodes = Set{Cell}()
+
 	for cell in unresolved_topology.unresolved_cells
 			if unresolved_topology.nodes[cell].macrocalls ⊆ run_defined_macros
 				# Do not try to expand if a newer version of the macro is also scheduled to run in the
@@ -304,19 +309,24 @@ function resolve_topology(
 				push!(still_unresolved_nodes, cell)
 			end
 
-			new_node = analyze_macrocell(cell)
-			if new_node !== nothing
+			result = analyze_macrocell(cell)
+			if result !== nothing
+				(new_node, function_wrapped, forced_expr_id) = result
 				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
 				union!(new_node.references, new_node.macrocalls)
 				new_nodes[cell] = new_node
+
+				# set function_wrapped to the function wrapped analysis of the expanded expression.
+				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
 				push!(still_unresolved_nodes, cell)
 			end
 	end
 
 	all_nodes = merge(unresolved_topology.nodes, new_nodes)
+	all_codes = merge(unresolved_topology.codes, new_codes)
 
-	NotebookTopology(nodes=all_nodes, codes=unresolved_topology.codes, unresolved_cells=still_unresolved_nodes)
+	NotebookTopology(nodes=all_nodes, codes=all_codes, unresolved_cells=still_unresolved_nodes)
 end
 
 """Tries to add information about macro calls without running any code, using knowledge about common macros.

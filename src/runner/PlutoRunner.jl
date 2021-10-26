@@ -182,9 +182,10 @@ function try_macroexpand(mod, cell_uuid, expr)
         expanded_expr = macroexpand(mod, expr)
         elapsed_ns = time_ns() - elapsed_ns
 
-        ExpandedCallCells[cell_uuid] = (;expr=no_workspace_ref(expanded_expr), runtime=elapsed_ns)
+        expr_to_save = no_workspace_ref(expanded_expr)
+        ExpandedCallCells[cell_uuid] = (;expr=expr_to_save, runtime=elapsed_ns)
 
-        return sanitize_expr(expanded_expr)
+        return (sanitize_expr(expanded_expr), expr_hash(expr_to_save))
     catch e
         return e
     end
@@ -343,14 +344,12 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing, contains_user_defined_macrocalls::Bool=false)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
+    (expr, expansion_runtime) = pop!(ExpandedCallCells, cell_id, (;expr,runtime=zero(UInt64)))
     result, runtime = if function_wrapped_info === nothing
-        expanded = pop!(ExpandedCallCells, cell_id, (;expr,runtime=zero(UInt64)))
-        expr = expanded.expr
-        expansion_runtime = expanded.runtime
 
         proof = ReturnProof()
 
@@ -372,7 +371,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             (ans, add_runtimes(runtime, expansion_runtime))
         end
     else
-        key = expr_hash(expr)
+        key = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
         local computer = get(computers, key, nothing)
         if computer === nothing
             try
@@ -389,7 +388,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         if (ans isa CapturedException) && (ans.ex isa UndefVarError)
             run_expression(m, expr, cell_id, nothing)
         else
-            ans, runtime
+            ans, add_runtimes(runtime, expansion_runtime)
         end
     end
 
