@@ -1226,7 +1226,9 @@ function can_be_function_wrapped(x::Expr)
         x.head === :module ||
         x.head === :function ||
         x.head === :macro ||
-        x.head === :macrocall || # we might want to get rid of this one, but that requires some work
+        # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
+        # See https://github.com/fonsp/Pluto.jl/pull/1597
+        x.head === :macrocall ||
         x.head === :struct ||
         x.head === :abstract ||
         (x.head === :(=) && is_function_assignment(x)) || # f(x) = ...
