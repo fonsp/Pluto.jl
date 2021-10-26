@@ -520,7 +520,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test noerror(cell(1))
         runtime = cell(1).runtime*ns
         output_1 = cell(1).output.body
-        @test sleep_time <= runtime <= 2sleep_time
+        @test sleep_time <= runtime
 
         setcode(cell(3), "updater = :fast")
         update_run!(🍭, notebook, cell(3))
