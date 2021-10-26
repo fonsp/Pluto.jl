@@ -159,6 +159,28 @@ import Distributed
         end
     end
 
+
+    # PlutoTest.jl is only working on Julia version >= 1.6
+    VERSION >= v"1.6" && @testset "Test Firebasey" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        file = tempname()
+        write(file, read(normpath(Pluto.project_relative_path("src", "webserver", "Firebasey.jl"))))
+
+        notebook = Pluto.load_notebook_nobackup(file)
+        fakeclient.connected_notebook = notebook
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        # Test that the resulting file is runnable
+        @test jl_is_runnable(file)
+        # and also that Pluto can figure out the execution order on its own
+        @test all(noerror, notebook.cells)
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
     @testset "Pkg topology workarounds" begin
         notebook = Notebook([
             Cell("1 + 1"),
@@ -334,6 +356,29 @@ import Distributed
         @test notebook.cells[4] |> noerror
         @test notebook.cells[1].output.body == "\"double_december = 24\""
 
+        WorkspaceManager.unmake_workspace((🍭, notebook))
+        🍭.options.evaluation.workspace_use_distributed = false
+    end
+
+    @testset "Function dependencies" begin
+        🍭.options.evaluation.workspace_use_distributed = true
+
+        notebook = Notebook(Cell.([
+            "a'b",
+            "import LinearAlgebra",
+            "LinearAlgebra.conj(b::Int) = 2b",
+            "a = 10",
+            "b = 10",
+        ]))
+
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].funcdefs_without_signatures
+        @test :conj ∈ notebook.topology.nodes[notebook.cells[1]].references
+        @test notebook.cells[1].output.body == "200"
+
+        WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
     end
 

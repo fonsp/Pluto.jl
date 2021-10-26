@@ -1,5 +1,5 @@
 import { syntaxTree, Facet, ViewPlugin, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
-import { has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
+import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
 let node_is_variable_usage = (node) => {
@@ -52,14 +52,14 @@ let node_is_variable_usage = (node) => {
 
 let get_variable_marks = (state, { used_variables }) => {
     let tree = syntaxTree(state)
-    let variable_nodes = []
+    let variable_nodes = new Set()
     tree.iterate({
         enter: (type, from, to, getNode) => {
             if (type.name === "Identifier") {
                 let node = getNode()
 
                 if (node_is_variable_usage(node)) {
-                    variable_nodes.push(node)
+                    variable_nodes.add(node)
                 }
             }
         },
@@ -70,7 +70,7 @@ let get_variable_marks = (state, { used_variables }) => {
         .map(([name, usage]) => name)
 
     return Decoration.set(
-        variable_nodes
+        Array.from(variable_nodes)
             .map((variable_node) => {
                 let text = state.doc.sliceString(variable_node.from, variable_node.to)
 
@@ -78,6 +78,7 @@ let get_variable_marks = (state, { used_variables }) => {
                     return Decoration.mark({
                         tagName: "a",
                         attributes: {
+                            "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
                             "data-pluto-variable": text,
                             "href": `#${text}`,
                         },
@@ -116,7 +117,7 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
 
         eventHandlers: {
             pointerdown: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.which === 1) {
+                if (has_ctrl_or_cmd_pressed(event) && event.which === 1 && event.target instanceof Element) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
                     if (!pluto_variable) return
 

@@ -96,7 +96,7 @@ export class Welcome extends Component {
             combined_notebooks: null, // will become an array
             connected: false,
         }
-        const set_notebook_state = (path, new_state_props) => {
+        const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
             this.setState((prevstate) => {
                 return {
                     combined_notebooks: prevstate.combined_notebooks.map((nb) => {
@@ -104,7 +104,7 @@ export class Welcome extends Component {
                     }),
                 }
             })
-        }
+        })
 
         const on_update = ({ message, type }) => {
             if (type === "notebook_list") {
@@ -294,7 +294,17 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
+                    <a
+                        href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
+                        title=${nb.path}
+                        onClick=${(e) => {
+                            document.body.classList.add("loading")
+                            this.set_notebook_state(nb.path, {
+                                transitioning: true,
+                            })
+                        }}
+                        >${shortest_path(nb.path, all_paths)}</a
+                    >
                 </li>`
             })
         }
