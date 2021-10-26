@@ -92,19 +92,20 @@ const try_close_socket_connection = (socket) => {
  * @typedef {{socket: WebSocket, send: Function}} WebsocketConnection
  * @param {string} address The WebSocket URL
  * @param {{on_message: Function, on_socket_close:Function}} callbacks
+ * @param {number} timeout_s Timeout for creating the websocket connection (seconds)
  * @return {Promise<WebsocketConnection>}
  */
-const create_ws_connection = (address, { on_message, on_socket_close }, timeout_ms = 30 * 1000) => {
+const create_ws_connection = (address, { on_message, on_socket_close }, timeout_s = 30) => {
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
-        var has_been_open = false
+        let has_been_open = false
 
         const timeout_handle = setTimeout(() => {
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
             try_close_socket_connection(socket)
             reject("Socket timeout")
-        }, timeout_ms)
+        }, timeout_s * 1000)
 
         const send_encoded = (message) => {
             const encoded = pack(message)
@@ -178,6 +179,62 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
     })
 }
 
+let next_tick_promise = () => {
+    return new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+/**
+ * batched_updates(send) creates a wrapper around the real send, and understands the update_notebook messages.
+ * Whenever those are sent, it will wait for a "tick" (basically the end of the code running now)
+ * and then send all updates from this tick at once. We use this to fix https://github.com/fonsp/Pluto.jl/issues/928
+ *
+ * I need to put it here so other code,
+ * like running cells, will also wait for the updates to complete.
+ * I SHALL MAKE IT MORE COMPLEX! (https://www.youtube.com/watch?v=aO3JgPUJ6iQ&t=195s)
+ * @param {Function} send
+ * @returns
+ */
+const batched_updates = (send) => {
+    let current_combined_updates_promise = null
+    let current_combined_updates = []
+    let current_combined_notebook_id = null
+
+    let batched = async (message_type, body, metadata, no_broadcast) => {
+        if (message_type === "update_notebook") {
+            if (current_combined_notebook_id != null && current_combined_notebook_id != metadata.notebook_id) {
+                // prettier-ignore
+                throw new Error("Switched notebook inbetween same-tick updates??? WHAT?!?!")
+            }
+            current_combined_updates = [...current_combined_updates, ...body.updates]
+            current_combined_notebook_id = metadata.notebook_id
+
+            if (current_combined_updates_promise == null) {
+                current_combined_updates_promise = next_tick_promise().then(async () => {
+                    let sending_current_combined_updates = current_combined_updates
+                    current_combined_updates_promise = null
+                    current_combined_updates = []
+                    current_combined_notebook_id = null
+                    return await send(message_type, { updates: sending_current_combined_updates }, metadata, no_broadcast)
+                })
+            }
+
+            return await current_combined_updates_promise
+        } else {
+            return await send(message_type, body, metadata, no_broadcast)
+        }
+    }
+
+    return batched
+}
+
+export const ws_address_from_base = (base_url) => {
+    const ws_url = new URL("./", base_url)
+    ws_url.protocol = ws_url.protocol.replace("http", "ws")
+    return String(ws_url)
+}
+
+const default_ws_address = () => ws_address_from_base(window.location.href)
+
 /**
  * @typedef PlutoConnection
  * @type {{
@@ -187,6 +244,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *  version_info: {
  *      julia: string,
  *      pluto: string,
+ *      dismiss_update_notification: boolean,
  *  },
  * }}
  */
@@ -206,10 +264,17 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
  *  on_reconnect: () => boolean,
  *  on_connection_status: (connection_status: boolean) => void,
  *  connect_metadata?: Object,
+ *  ws_address?: String,
  * }} options
  * @return {Promise<PlutoConnection>}
  */
-export const create_pluto_connection = async ({ on_unrequested_update, on_reconnect, on_connection_status, connect_metadata = {} }) => {
+export const create_pluto_connection = async ({
+    on_unrequested_update,
+    on_reconnect,
+    on_connection_status,
+    connect_metadata = {},
+    ws_address = default_ws_address(),
+}) => {
     var ws_connection = null // will be defined later i promise
     const client = {
         send: null,
@@ -218,11 +283,12 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         version_info: {
             julia: "unknown",
             pluto: "unknown",
+            dismiss_update_notification: false,
         },
     } // same
 
     const client_id = get_unique_short_id()
-    const sent_requests = {}
+    const sent_requests = new Map()
 
     /**
      * Send a message to the Pluto backend, and return a promise that resolves when the backend sends a response. Not all messages receive a response.
@@ -232,7 +298,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
      * @param {boolean} no_broadcast if false, the message will be emitteed to on_update
      * @returns {(undefined|Promise<Object>)}
      */
-    const send = (message_type, body = {}, metadata = {}, no_broadcast = true) => {
+    const send = async (message_type, body = {}, metadata = {}, no_broadcast = true) => {
         const request_id = get_unique_short_id()
 
         const message = {
@@ -243,30 +309,33 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
             ...metadata,
         }
 
-        var p = resolvable_promise()
+        // Note: Message to be sent: message
 
-        sent_requests[request_id] = (response_message) => {
+        let p = resolvable_promise()
+
+        sent_requests.set(request_id, (response_message) => {
             p.resolve(response_message)
             if (no_broadcast === false) {
                 on_unrequested_update(response_message, true)
             }
-        }
+        })
 
         ws_connection.send(message)
-        return p.current
+        return await p.current
     }
-    client.send = send
+
+    client.send = batched_updates(send)
 
     const connect = async () => {
         let update_url_with_binder_token = async () => {
             try {
                 const url = new URL(window.location.href)
                 const response = await fetch("possible_binder_token_please")
-                if (response.status !== 200) {
+                if (!response.ok) {
                     return
                 }
                 const possible_binder_token = await response.text()
-                if (possible_binder_token != "" && url.searchParams.get("token") !== possible_binder_token) {
+                if (possible_binder_token !== "" && url.searchParams.get("token") !== possible_binder_token) {
                     url.searchParams.set("token", possible_binder_token)
                     history.replaceState({}, "", url.toString())
                 }
@@ -276,11 +345,6 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
         }
         update_url_with_binder_token()
 
-        const ws_address = new URL(window.location.href)
-        ws_address.protocol = ws_address.protocol.replace("http", "ws")
-        ws_address.pathname = ws_address.pathname.replace("/edit", "/")
-        ws_address.hash = ""
-
         try {
             ws_connection = await create_ws_connection(String(ws_address), {
                 on_message: (update) => {
@@ -288,10 +352,10 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
                     const request_id = update.request_id
 
                     if (by_me && request_id) {
-                        const request = sent_requests[request_id]
+                        const request = sent_requests.get(request_id)
                         if (request) {
                             request(update)
-                            delete sent_requests[request_id]
+                            sent_requests.delete(request_id)
                             return
                         }
                     }
@@ -355,7 +419,7 @@ export const create_pluto_connection = async ({ on_unrequested_update, on_reconn
     return client
 }
 
-export const fetch_latest_pluto_version = async () => {
+export const fetch_pluto_releases = async () => {
     let response = await fetch("https://api.github.com/repos/fonsp/Pluto.jl/releases", {
         method: "GET",
         mode: "cors",
@@ -366,6 +430,5 @@ export const fetch_latest_pluto_version = async () => {
         redirect: "follow",
         referrerPolicy: "no-referrer",
     })
-    let json = await response.json()
-    return json[0].tag_name
+    return (await response.json()).reverse()
 }

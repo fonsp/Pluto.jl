@@ -1,8 +1,10 @@
+import _ from "../imports/lodash.js"
 import { html, Component } from "../imports/Preact.js"
 
 import { FilePicker } from "./FilePicker.js"
-import { create_pluto_connection, fetch_latest_pluto_version } from "../common/PlutoConnection.js"
+import { create_pluto_connection, fetch_pluto_releases } from "../common/PlutoConnection.js"
 import { cl } from "../common/ClassTable.js"
+import { PasteHandler } from "./PasteHandler.js"
 
 const create_empty_notebook = (path, notebook_id = null) => {
     return {
@@ -94,7 +96,7 @@ export class Welcome extends Component {
             combined_notebooks: null, // will become an array
             connected: false,
         }
-        const set_notebook_state = (path, new_state_props) => {
+        const set_notebook_state = (this.set_notebook_state = (path, new_state_props) => {
             this.setState((prevstate) => {
                 return {
                     combined_notebooks: prevstate.combined_notebooks.map((nb) => {
@@ -102,7 +104,7 @@ export class Welcome extends Component {
                     }),
                 }
             })
-        }
+        })
 
         const on_update = ({ message, type }) => {
             if (type === "notebook_list") {
@@ -157,49 +159,38 @@ export class Welcome extends Component {
             this.client.send("get_all_notebooks", {}, {}).then(({ message }) => {
                 const running = message.notebooks.map((nb) => create_empty_notebook(nb.path, nb.notebook_id))
 
-                // we are going to construct the combined list:
-                const combined_notebooks = [...running] // shallow copy but that's okay
-                get_stored_recent_notebooks().forEach((stored) => {
-                    if (!running.some((nb) => nb.path === stored.path)) {
-                        // if not already in the list...
-                        combined_notebooks.push(stored) // ...add it.
-                    }
-                })
+                const recent_notebooks = get_stored_recent_notebooks()
+
+                // show running notebooks first, in the order defined by the recent notebooks, then recent notebooks
+                const combined_notebooks = [
+                    ..._.sortBy(running, [(nb) => _.findIndex([...recent_notebooks, ...running], (r) => r.path === nb.path)]),
+                    ..._.differenceBy(recent_notebooks, running, (nb) => nb.path),
+                ]
 
                 this.setState({ combined_notebooks: combined_notebooks })
 
                 document.body.classList.remove("loading")
             })
 
-            fetch_latest_pluto_version()
-                .then((version) => {
-                    const remote = version
+            fetch_pluto_releases()
+                .then((releases) => {
                     const local = this.client.version_info.pluto
-
-                    const base1 = (n) => "1".repeat(n)
-
+                    const latest = releases[releases.length - 1].tag_name
                     console.log(`Pluto version ${local}`)
-                    if (remote != local) {
-                        const rs = remote.slice(1).split(".").map(Number)
-                        const ls = local.slice(1).split(".").map(Number)
-
-                        // if the semver can't be parsed correctly, we always show it to the user
-                        if (rs.length == 3 && ls.length == 3) {
-                            if (!rs.some(isNaN) && !ls.some(isNaN)) {
-                                // JS orders string arrays lexicographically, which - in base 1 - is exactly what we want
-                                if (rs.map(base1) <= ls.map(base1)) {
-                                    return
-                                }
-                            }
+                    const local_index = releases.findIndex((r) => r.tag_name === local)
+                    if (local_index !== -1) {
+                        const updates = releases.slice(local_index + 1)
+                        const recommended_updates = updates.filter((r) => r.body.toLowerCase().includes("recommended update"))
+                        if (recommended_updates.length > 0) {
+                            console.log(`Newer version ${latest} is available`)
+                            alert(
+                                "A new version of Pluto.jl is available! 🎉\n\n    You have " +
+                                    local +
+                                    ", the latest is " +
+                                    latest +
+                                    '.\n\nYou can update Pluto.jl using the julia package manager:\n    import Pkg; Pkg.update("Pluto")\nAfterwards, exit Pluto.jl and restart julia.'
+                            )
                         }
-                        console.log(`Newer version ${remote} is available`)
-                        alert(
-                            "A new version of Pluto.jl is available! 🎉\n\n    You have " +
-                                local +
-                                ", the latest is " +
-                                remote +
-                                '.\n\nYou can update Pluto.jl using the julia package manager:\n\nimport Pkg; Pkg.update("Pluto")\n\nAfterwards, exit Pluto.jl and restart julia.'
-                        )
                     }
                 })
                 .catch(() => {
@@ -289,7 +280,6 @@ export class Welcome extends Component {
         if (this.state.combined_notebooks == null) {
             recents = html`<li><em>Loading...</em></li>`
         } else {
-            console.log(this.state.combined_notebooks)
             const all_paths = this.state.combined_notebooks.map((nb) => nb.path)
             recents = this.state.combined_notebooks.map((nb) => {
                 const running = nb.notebook_id != null
@@ -304,12 +294,23 @@ export class Welcome extends Component {
                     <button onclick=${() => this.on_session_click(nb)} title=${running ? "Shut down notebook" : "Start notebook in background"}>
                         <span></span>
                     </button>
-                    <a href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)} title=${nb.path}>${shortest_path(nb.path, all_paths)}</a>
+                    <a
+                        href=${running ? link_edit(nb.notebook_id) : link_open_path(nb.path)}
+                        title=${nb.path}
+                        onClick=${(e) => {
+                            document.body.classList.add("loading")
+                            this.set_notebook_state(nb.path, {
+                                transitioning: true,
+                            })
+                        }}
+                        >${shortest_path(nb.path, all_paths)}</a
+                    >
                 </li>`
             })
         }
 
         return html`<p>New session:</p>
+            <${PasteHandler} />
             <ul id="new">
                 <li>Open a <a href="sample">sample notebook</a></li>
                 <li>Create a <a href="new">new notebook</a></li>
@@ -328,6 +329,6 @@ export class Welcome extends Component {
 
 const get_stored_recent_notebooks = () => {
     const storedString = localStorage.getItem("recent notebooks")
-    const storedList = !!storedString ? JSON.parse(storedString) : []
+    const storedList = storedString != null ? JSON.parse(storedString) : []
     return storedList.map((path) => create_empty_notebook(path))
 }

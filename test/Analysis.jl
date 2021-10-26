@@ -1,5 +1,5 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, updated_topology, is_just_text
+import Pluto: Notebook, ServerSession, ClientSession, Cell, updated_topology, static_resolve_topology, is_just_text
 
 @testset "Analysis" begin
     notebook = Notebook([
@@ -14,24 +14,36 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
             md"r \$x"
         end
         """),
-        Cell("html\"a \$b\""),
+        Cell("html\"a 7 \$b\""),
 
-        Cell("md\"a \$b\""),
-        Cell("@a md\"asdf\""),
+        Cell("md\"a 8 \$b\""),
+        Cell("@a md\"asdf 9\""),
         Cell("x()"),
         Cell("x() = y()"),
-        Cell("1 + 1"),
+        Cell("12 + 12"),
         Cell("import Dates"),
         Cell("import Dates"),
         Cell("while false end"),
-        Cell("for i in [1,2]; end"),
-        Cell("[i for i in [1,2]]"),
-        
+        Cell("for i in [16]; end"),
+        Cell("[i for i in [17]]"),
+        Cell("module x18 end"),
+        Cell("""
+        module x19
+            exit()
+        end
+        """),
+        Cell("""quote end"""),
+        Cell("""quote x = 21 end"""),
+        Cell("""quote \$(x = 22) end"""),
+        Cell("""asdf"23" """),
+        Cell("""@asdf("24") """),
+        Cell("""@x"""),
+        Cell("""@y z 26"""),
+        Cell("""f(g"27")"""),
     ])
 
-    update_caches!(notebook, notebook.cells)
     old = notebook.topology
-    new = notebook.topology = updated_topology(old, notebook, notebook.cells)
+    new = notebook.topology = updated_topology(old, notebook, notebook.cells) |> static_resolve_topology
 
     @testset "Only-text detection" begin
         @test is_just_text(new, notebook.cells[1])
@@ -52,5 +64,15 @@ import Pluto: Notebook, ServerSession, ClientSession, Cell, update_caches!, upda
         @test !is_just_text(new, notebook.cells[15])
         @test !is_just_text(new, notebook.cells[16])
         @test !is_just_text(new, notebook.cells[17])
+        @test !is_just_text(new, notebook.cells[18])
+        @test !is_just_text(new, notebook.cells[19])
+        @test !is_just_text(new, notebook.cells[20])
+        @test !is_just_text(new, notebook.cells[21])
+        @test !is_just_text(new, notebook.cells[22])
+        @test !is_just_text(new, notebook.cells[23])
+        @test !is_just_text(new, notebook.cells[24])
+        @test !is_just_text(new, notebook.cells[25])
+        @test !is_just_text(new, notebook.cells[26])
+        @test !is_just_text(new, notebook.cells[27])
     end
 end

@@ -1,6 +1,7 @@
 using Test
-import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new
+import Pluto: Notebook, ServerSession, ClientSession, Cell, load_notebook, load_notebook_nobackup, save_notebook, WorkspaceManager, cutename, numbered_until_new, readwrite, without_pluto_file_extension
 import Random
+import Pkg
 
 # We define some notebooks explicitly, and not as a .jl notebook file, to avoid circular reasoning 🤔
 function basic_notebook()
@@ -24,7 +25,7 @@ function basic_notebook()
         """),
         # test included InteractiveUtils import
         Cell("subtypes(Number)"),
-    ])
+    ]) |> init_packages!
 end
 
 function shuffled_notebook()
@@ -37,7 +38,7 @@ function shuffled_notebook()
         Cell("t = 1"),
         Cell("w = v"),
         Cell("u = t"),
-    ])
+    ]) |> init_packages!
 end
 
 function shuffled_with_imports_notebook()
@@ -60,7 +61,13 @@ function shuffled_with_imports_notebook()
             x
             using REPL
         end"""),
-    ])
+    ]) |> init_packages!
+end
+
+function init_packages!(nb::Notebook)
+    nb.topology = Pluto.updated_topology(nb.topology, nb, nb.cells)
+    Pluto.sync_nbpkg_core(nb)
+    return nb
 end
 
 function bad_code_notebook()
@@ -71,7 +78,7 @@ function bad_code_notebook()
         
         [[["""),
         Cell("using Aasdfdsf"),
-    ])
+    ]) |> init_packages!
 end
 
 function bonds_notebook()
@@ -87,11 +94,19 @@ function bonds_notebook()
         Cell("w = Wow(10)"),
         Cell("@bind z w"),
         Cell("@assert z == 10"),
-    ])
+    ]) |> init_packages!
+end
+
+
+function project_notebook()
+    Notebook([
+        Cell("using Dates"),
+        Cell("using Example"),
+    ]) |> init_packages!
 end
 
 @testset "Notebook Files" begin
-    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook]]
+    nbs = [String(nameof(f)) => f() for f in [basic_notebook, shuffled_notebook, shuffled_with_imports_notebook, bad_code_notebook, bonds_notebook, project_notebook]]
 
     @testset "Sample notebooks " begin
         # Also adds them to the `nbs` list
@@ -100,6 +115,7 @@ end
 
             @testset "$(file)" begin
                 nb = @test_nowarn load_notebook_nobackup(path)
+                @test length(nb.cells) > 0
                 push!(nbs, "sample " * file => nb)
             end
         end
@@ -117,11 +133,10 @@ end
 
     @testset "I/O basic" begin
         @testset "$(name)" for (name, nb) in nbs
-            @test let
-                save_notebook(nb)
-                result = load_notebook_nobackup(nb.path)
-                notebook_inputs_equal(nb, result)
-            end
+            save_notebook(nb)
+            # @info "File" name Text(read(nb.path,String))
+            result = load_notebook_nobackup(nb.path)
+            @test notebook_inputs_equal(nb, result)
         end
     end
 
@@ -142,8 +157,33 @@ end
         end
     end
 
+    @testset "Bijection test" begin
+        @testset "$(name)" for (name, nb) in nbs
+            new_path = tempname()
+            @assert !isfile(new_path)
+            readwrite(nb.path, new_path)
+
+            # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
+            # laod_notebook is how they are normally loaded, load_notebook_nobackup
+            new_nb = load_notebook(new_path)
+
+            before_contents = read(new_path, String)
+
+            after_path = tempname()
+            write(after_path, before_contents)
+
+            after = load_notebook(after_path)
+            after_contents = read(after_path, String)
+            
+            if name != String(nameof(bad_code_notebook))
+                @test Text(before_contents) == Text(after_contents)
+            end
+        end
+    end
+
     # Some notebooks are designed to error (inside/outside Pluto)
-    expect_error = [String(nameof(bad_code_notebook)), "sample Interactivity.jl"]
+    expect_error = [String(nameof(bad_code_notebook)), String(nameof(project_notebook)), "sample Interactivity.jl"]
+
 
     @testset "Runnable without Pluto" begin
         @testset "$(name)" for (name, nb) in nbs
@@ -151,8 +191,6 @@ end
             @assert !isfile(new_path)
             cp(nb.path, new_path)
 
-            # load_notebook also does parsing and analysis - this is needed to save the notebook with cells in their correct order
-            # laod_notebook is how they are normally loaded, load_notebook_nobackup
             new_nb = load_notebook(new_path)
 
             # println(read(new_nb.path, String))
@@ -199,19 +237,43 @@ end
             @test num_backups_in(new_dir) == 0
 
             # Delete last line
+            # cp(nb.path, new_path, force=true)
+            # to_write = readlines(new_path)[1:end - 1]
+            # write(new_path, join(to_write, '\n'))
+            # @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
+            # @test num_backups_in(new_dir) == 1
+
+            # Duplicate first line
             cp(nb.path, new_path, force=true)
-            to_write = readlines(new_path)[1:end - 1]
+            to_write = let
+                old_lines = readlines(new_path)
+                [old_lines[1], old_lines...]
+            end
             write(new_path, join(to_write, '\n'))
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
 
-            # Add a line
-            cp(nb.path, new_path, force=true)
-            to_write = push!(readlines(new_path), "1+1")
-            write(new_path, join(to_write, '\n'))
-            @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
-            @test num_backups_in(new_dir) == 2
+            @test readdir(new_dir) == ["nb backup 1.jl", "nb.jl"]
         end
+    end
+
+    @testset "Import & export HTML" begin
+        nb = basic_notebook()
+        export_html = Pluto.generate_html(nb)
+
+        embedded_jl = Pluto.embedded_notebookfile(export_html)
+        jl_path = tempname()
+        write(jl_path, embedded_jl)
+        
+        result = load_notebook_nobackup(jl_path)
+        @test notebook_inputs_equal(nb, result; check_paths_equality=false)
+
+        
+        filename = "howdy.jl"
+
+        export_html = Pluto.generate_html(nb; notebookfile_js=filename)
+        @test occursin(filename, export_html)
+        @test_throws ArgumentError Pluto.embedded_notebookfile(export_html)
     end
 
     @testset "Utilities" begin
@@ -224,6 +286,11 @@ end
             @test all(!isfile, [numbered_until_new(joinpath(trash, cutename()); create_file=false) for _ in 1:200])
         end
     end
+    
+    @test without_pluto_file_extension("julia编程.jl") == "julia编程"
+    @test without_pluto_file_extension("julia编程.jl🐼") == "julia编程.jl🐼"
+    @test without_pluto_file_extension("asdf.pluto.jl") == "asdf"
+    @test without_pluto_file_extension("asdf.jl") == "asdf"
 
     # TODO: test bad dirs, filenames, permissions
 end

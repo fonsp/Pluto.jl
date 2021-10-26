@@ -129,7 +129,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
 
         // Ctrl+A to select all cells
         const onkeydown = (e) => {
-            if (e.key === "a" && has_ctrl_or_cmd_pressed(e)) {
+            if (e.key.toLowerCase() === "a" && has_ctrl_or_cmd_pressed(e)) {
                 // if you are not writing text somewhere else
                 if (document.activeElement === document.body && window.getSelection().isCollapsed) {
                     on_selection(cell_order)
@@ -168,7 +168,7 @@ export const SelectionArea = ({ on_selection, set_scroller, cell_order }) => {
             style=${{
                 position: "absolute",
                 background: "rgba(40, 78, 189, 0.24)",
-                zIndex: 10,
+                zIndex: 1000000, // Yes, really
                 top: Math.min(selection_start.y, selection_end.y),
                 left: Math.min(selection_start.x, selection_end.x),
                 width: Math.abs(selection_start.x - selection_end.x),

@@ -1,9 +1,7 @@
-/* @import url("https://fonts.googleapis.com/css?family=Vollkorn:600,600i&display=swap&subset=latin-ext"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-vollkorn@3.0.3/600.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400.css");
+@import url("https://cdn.jsdelivr.net/npm/@fontsource/roboto-mono@4.4.5/400-italic.css");
 
-/* @import url("https://fonts.googleapis.com/css?family=Roboto+Mono:400,400i&display=swap&subset=cyrillic,cyrillic-ext,greek,greek-ext,latin-ext"); */
-@import url("https://cdn.jsdelivr.net/npm/fontsource-roboto-mono@3.0.3/400.css");
-
+@import url("vollkorn.css");
 @import url("juliamono.css");
 
 * {
@@ -22,8 +20,7 @@
     text-align: center;
 }
 
-body.error #title,
-body.statistics #title {
+body.error #title {
     margin-top: 10vh;
     /* text-align: left; */
 }
@@ -68,8 +65,7 @@ main {
     color: hsl(0, 0%, 60%);
 }
 
-body.error main,
-body.statistics main {
+body.error main {
     width: unset;
     max-width: 40em;
     padding: 0.5em;
@@ -112,26 +108,29 @@ pluto-filepicker {
     margin-top: 0.3rem;
 }
 
-pluto-filepicker .CodeMirror {
+pluto-filepicker .cm-editor {
     height: calc(1rem + 4px + 4px + 4px);
     display: inline-block;
     width: 100%;
-    opacity: 0.6;
     font-style: normal;
     font-weight: 500;
     font-family: "Roboto Mono", monospace;
     font-size: 0.75rem;
     letter-spacing: 1px;
     background: none;
-    border: 2px solid #818181;
+    color: #6f6f6f;
+    border: 2px solid #b2b2b2;
     border-radius: 3px;
     border-right: none;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
 
-pluto-filepicker .CodeMirror-scroll {
-    overflow: hidden !important;
+pluto-filepicker .cm-scroller {
+    scrollbar-width: none; /* Firefox */
+}
+pluto-filepicker .cm-scroller::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
 }
 
 pluto-filepicker button {
@@ -152,25 +151,76 @@ pluto-filepicker button {
     border-bottom-left-radius: 0;
 }
 
-li.file.new.CodeMirror-hint:before {
+.cm-editor .cm-tooltip {
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    box-shadow: 3px 3px 4px rgb(0 0 0 / 20%);
+    border-radius: 4px;
+}
+
+.cm-tooltip-autocomplete {
+    max-height: calc(20 * 16px);
+    box-sizing: content-box;
+    z-index: 100;
+}
+
+.cm-tooltip.cm-completionInfo.cm-completionInfo-right:empty {
+    /* https://github.com/codemirror/codemirror.next/issues/574 */
+    display: none;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li {
+    /* this is the line height rounded to an integer to prevent jiggle */
+    height: 16px;
+    /* font-size: 16px; */
+    line-height: 16px;
+    border-radius: 3px;
+    margin-bottom: unset;
+}
+
+.cm-editor .cm-tooltip.cm-tooltip-autocomplete > ul > li[aria-selected] {
+    color: white;
+    background: #16659d;
+}
+
+.cm-editor .cm-completionIcon {
+    opacity: 1;
+    width: 1em;
+    transform: translateY(-1.5px);
+}
+
+.cm-completionIcon::before {
+    content: "⚫";
+    color: transparent;
+    margin-right: 0.5em;
+    opacity: 1;
+}
+
+.cm-tooltip.cm-tooltip-autocomplete {
+    padding: 0;
+    margin-left: -1.5em;
+    background: white;
+}
+
+.cm-tooltip-autocomplete li.file.new:before {
     content: "👉 ";
 }
 
-li.file.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.file:before {
     content: "📄 ";
 }
 
-li.dir.CodeMirror-hint:before {
+.cm-tooltip-autocomplete li.dir:before {
     content: "📁 ";
 }
 
-ul.CodeMirror-hints {
+.cm-tooltip-autocomplete > ul {
     padding: 0;
 }
 
-ul.CodeMirror-hints {
+.cm-editor .cm-tooltip-autocomplete .cm-completionLabel {
     font-family: JuliaMono, monospace !important;
-    font-size: 0.75em;
+    font-variant-ligatures: none;
+    font-size: 0.75rem;
 }
 
 body.nosessions ul#new ~ * {
@@ -207,15 +257,15 @@ body.nosessions ul#new ~ * {
 }
 
 #recent li.running button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/close-circle.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle.svg);
 }
 
 #recent li.recent button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/caret-forward-circle-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
 }
 
 #recent li.transitioning button > span::after {
-    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.0.0/src/svg/ellipsis-horizontal-outline.svg);
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-outline.svg);
 }
 
 loading-bar {

@@ -2,6 +2,8 @@ import UUIDs: uuid1
 
 import TableIOInterface: get_example_code, is_extension_supported
 
+import .PkgCompat
+
 "Will hold all 'response handlers': functions that respond to a WebSocket request from the client."
 const responses = Dict{Symbol,Function}()
 
@@ -84,8 +86,11 @@ Firebasey.use_triple_equals_for_arrays[] = true
 
 # the only possible Arrays are:
 # - cell_order
+# - cell_execution_order
 # - cell_result > * > output > body
 # - bonds > * > value > *
+# - cell_dependencies > * > downstream_cells_map > * > 
+# - cell_dependencies > * > upstream_cells_map > * > 
 
 function notebook_to_js(notebook::Notebook)
     Dict{String,Any}(
@@ -94,33 +99,70 @@ function notebook_to_js(notebook::Notebook)
         "in_temp_dir" => startswith(notebook.path, new_notebooks_directory()),
         "shortpath" => basename(notebook.path),
         "process_status" => notebook.process_status,
+        "last_save_time" => notebook.last_save_time,
+        "last_hot_reload_time" => notebook.last_hot_reload_time,
         "cell_inputs" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
                 "code" => cell.code,
                 "code_folded" => cell.code_folded,
+                "running_disabled" => cell.running_disabled,
+            )
+        for (id, cell) in notebook.cells_dict),
+        "cell_dependencies" => Dict{UUID,Dict{String,Any}}(
+            id => Dict{String,Any}(
+                "cell_id" => cell.cell_id,
+                "downstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.downstream_cells_map
+                ),
+                "upstream_cells_map" => Dict{String,Vector{UUID}}(
+                    String(s) => cell_id.(r)
+                    for (s, r) in cell.cell_dependencies.upstream_cells_map
+                ),
+                "precedence_heuristic" => cell.cell_dependencies.precedence_heuristic,
             )
         for (id, cell) in notebook.cells_dict),
         "cell_results" => Dict{UUID,Dict{String,Any}}(
             id => Dict{String,Any}(
                 "cell_id" => cell.cell_id,
+                "depends_on_disabled_cells" => cell.depends_on_disabled_cells,
+                "output" => Dict(                
+                    "body" => cell.output.body,
+                    "mime" => cell.output.mime,
+                    "rootassignee" => cell.output.rootassignee,
+                    "last_run_timestamp" => cell.output.last_run_timestamp,
+                    "persist_js_state" => cell.output.persist_js_state,
+                ),
+                "published_objects" => cell.published_objects,
                 "queued" => cell.queued,
                 "running" => cell.running,
                 "errored" => cell.errored,
                 "runtime" => cell.runtime,
-                "output" => Dict(                
-                    "last_run_timestamp" => cell.last_run_timestamp,
-                    "persist_js_state" => cell.persist_js_state,
-                    "mime" => cell.repr_mime,
-                    "body" => cell.output_repr,
-                    "rootassignee" => cell.rootassignee,
-                ),
             )
         for (id, cell) in notebook.cells_dict),
         "cell_order" => notebook.cell_order,
         "bonds" => Dict{String,Dict{String,Any}}(
-            String(key) => Dict("value" => bondvalue.value)
+            String(key) => Dict(
+                "value" => bondvalue.value, 
+                # SHOULD always be false, but still putting it in here for completeness
+                "is_first_value" => bondvalue.is_first_value
+            )
         for (key, bondvalue) in notebook.bonds),
+        "nbpkg" => let
+            ctx = notebook.nbpkg_ctx
+            Dict{String,Any}(
+                "enabled" => ctx !== nothing,
+                "restart_recommended_msg" => notebook.nbpkg_restart_recommended_msg,
+                "restart_required_msg" => notebook.nbpkg_restart_required_msg,
+                # TODO: cache this
+                "installed_versions" => ctx === nothing ? Dict{String,String}() : notebook.nbpkg_installed_versions_cache,
+                "terminal_outputs" => notebook.nbpkg_terminal_outputs,
+                "busy_packages" => notebook.nbpkg_busy_packages,
+                "instantiated" => notebook.nbpkg_ctx_instantiated,
+            )
+        end,
+        "cell_execution_order" => cell_id.(collect(topological_order(notebook))),
     )
 end
 
@@ -169,9 +211,11 @@ A placeholder path. The path elements that it replaced will be given to the func
 """
 struct Wildcard end
 
-@enum Changed begin
-    CodeChanged
-    FileChanged
+abstract type Changed end
+struct CodeChanged <: Changed end
+struct FileChanged <: Changed end
+struct BondChanged <: Changed
+    bond_name::Symbol
 end
 
 # to support push!(x, y...) # with y = []
@@ -186,9 +230,9 @@ const effects_of_changed_state = Dict(
         # SessionActions.move(request.session, request.notebook, newpath)
 
         if isfile(newpath)
-            throw(UserError("File exists already - you need to delete the old file manually."))
+            error("File exists already - you need to delete the old file manually.")
         else
-            move_notebook!(request.notebook, newpath)
+            move_notebook!(request.notebook, newpath; disable_writing_notebook_files=request.session.options.server.disable_writing_notebook_files)
             putplutoupdates!(request.session, clientupdate_notebook_list(request.session.notebooks))
             WorkspaceManager.cd_workspace((request.session, request.notebook), newpath)
         end
@@ -205,32 +249,23 @@ const effects_of_changed_state = Dict(
             Firebasey.applypatch!(request.notebook, patch)
 
             if length(rest) == 0
-                [CodeChanged, FileChanged]
+                [CodeChanged(), FileChanged()]
             elseif length(rest) == 1 && Symbol(rest[1]) == :code
-                request.notebook.cells_dict[UUID(cell_id)].parsedcode = nothing
-                [CodeChanged, FileChanged]
+                [CodeChanged(), FileChanged()]
             else
-                [FileChanged]
+                [FileChanged()]
             end
         end,
     ),
     "cell_order" => function(; request::ClientRequest, patch::Firebasey.ReplacePatch)
         Firebasey.applypatch!(request.notebook, patch)
-        [FileChanged]
+        [FileChanged()]
     end,
     "bonds" => Dict(
         Wildcard() => function(name; request::ClientRequest, patch::Firebasey.JSONPatch)
             name = Symbol(name)
             Firebasey.applypatch!(request.notebook, patch)
-            set_bond_value_reactive(
-                session=request.session,
-                notebook=request.notebook,
-                name=name,
-                is_first_value=patch isa Firebasey.AddPatch,
-                run_async=true,
-            )
-            # [BondChanged]
-            return no_changes
+            [BondChanged(name)]
         end,
     )
 )
@@ -270,17 +305,21 @@ responses[:update_notebook] = function response_update_notebook(🙋::ClientRequ
             push!(changes, current_changes...)
         end
 
-        # if CodeChanged ∈ changes
-        #     update_caches!(notebook, cells)
-        #     old = notebook.topology
-        #     new = notebook.topology = updated_topology(old, notebook, cells)
-        # end
-
         # If CodeChanged ∈ changes, then the client will also send a request like run_multiple_cells, which will trigger a file save _before_ running the cells.
         # In the future, we should get rid of that request, and save the file here. For now, we don't save the file here, to prevent unnecessary file IO.
         # (You can put a log in save_notebook to track how often the file is saved)
-        if FileChanged ∈ changes && CodeChanged ∉ changes
-            save_notebook(notebook)
+        if FileChanged() ∈ changes && CodeChanged() ∉ changes
+             🙋.session.options.server.disable_writing_notebook_files || save_notebook(notebook)
+        end
+
+        let bond_changes = filter(x -> x isa BondChanged, changes)
+            bound_sym_names = Symbol[x.bond_name for x in bond_changes]
+            set_bond_values_reactive(;
+                session=🙋.session,
+                notebook=🙋.notebook,
+                bound_sym_names=bound_sym_names,
+                run_async=true,
+            )
         end
     
         send_notebook_changes!(🙋; commentary=Dict(:update_went_well => :👍))    
@@ -335,6 +374,7 @@ responses[:connect] = function response_connect(🙋::ClientRequest)
         :version_info => Dict(
             :pluto => PLUTO_VERSION_STR,
             :julia => JULIA_VERSION_STR,
+            :dismiss_update_notification => 🙋.session.options.server.dismiss_update_notification,
         ),
     ), nothing, nothing, 🙋.initiator))
 end
@@ -390,8 +430,9 @@ end
 
 without_initiator(🙋::ClientRequest) = ClientRequest(session=🙋.session, notebook=🙋.notebook)
 
-responses[:restart_process] = function response_restrart_process(🙋::ClientRequest)
+responses[:restart_process] = function response_restrart_process(🙋::ClientRequest; run_async::Bool=true)
     require_notebook(🙋)
+
     
     if 🙋.notebook.process_status != ProcessStatus.waiting_to_restart
         🙋.notebook.process_status = ProcessStatus.waiting_to_restart
@@ -402,7 +443,7 @@ responses[:restart_process] = function response_restrart_process(🙋::ClientReq
         🙋.notebook.process_status = ProcessStatus.starting
         send_notebook_changes!(🙋 |> without_initiator)
 
-        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=true, save=true)
+        update_save_run!(🙋.session, 🙋.notebook, 🙋.notebook.cells; run_async=run_async, save=true)
     end
 end
 
@@ -414,51 +455,14 @@ responses[:reshow_cell] = function response_reshow_cell(🙋::ClientRequest)
         🙋.notebook.cells_dict[cell_id]
     end
     run = WorkspaceManager.format_fetch_in_workspace((🙋.session, 🙋.notebook), cell.cell_id, ends_with_semicolon(cell.code), (parse(PlutoRunner.ObjectID, 🙋.body["objectid"], base=16), convert(Int64, 🙋.body["dim"])))
-    set_output!(cell, run)
+    set_output!(cell, run, ExprAnalysisCache(🙋.notebook, cell); persist_js_state=true)
     # send to all clients, why not
     send_notebook_changes!(🙋 |> without_initiator)
 end
 
 
-
-###
-# HANDLE NEW BOND VALUES
-###
-
-function set_bond_value_reactive(; session::ServerSession, notebook::Notebook, name::Symbol, is_first_value::Bool=false, kwargs...)
-    bound_sym = name
-    new_value = notebook.bonds[name].value
-
-    variable_exists = is_assigned_anywhere(notebook, notebook.topology, bound_sym)
-    if !variable_exists
-        # a bond was set while the cell is in limbo state
-        # we don't need to do anything
-        return
-    end
-
-    # TODO: Not checking for any dependents now
-    # any_dependents = is_referenced_anywhere(notebook, notebook.topology, bound_sym)
-
-    # fix for https://github.com/fonsp/Pluto.jl/issues/275
-    # if `Base.get` was defined to give an initial value (read more about this in the Interactivity sample notebook), then we want to skip the first value sent back from the bond. (if `Base.get` was not defined, then the variable has value `missing`)
-    # Check if the variable does not already have that value.
-    # because if the initial value is already set, then we don't want to run dependent cells again.
-    eq_tester = :(try !ismissing($bound_sym) && ($bound_sym == $new_value) catch; false end) # not just a === comparison because JS might send back the same value but with a different type (Float64 becomes Int64 in JS when it's an integer.)
-    if is_first_value && WorkspaceManager.eval_fetch_in_workspace((session, notebook), eq_tester)
-        return
-    end
-        
-    function custom_deletion_hook((session, notebook)::Tuple{ServerSession,Notebook}, to_delete_vars::Set{Symbol}, funcs_to_delete::Set{Tuple{UUID,FunctionName}}, to_reimport::Set{Expr}; to_run::AbstractVector{Cell})
-        to_delete_vars = Set([to_delete_vars..., bound_sym]) # also delete the bound symbol
-        WorkspaceManager.delete_vars((session, notebook), to_delete_vars, funcs_to_delete, to_reimport)
-        WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
-    end
-    to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}([bound_sym]))
-
-    update_save_run!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, save=false, persist_js_state=true, kwargs...)
-end
-
 responses[:write_file] = function (🙋::ClientRequest)
+    require_notebook(🙋)
     path = 🙋.notebook.path
     reldir = "$(path |> basename).assets"
     dir = joinpath(path |> dirname, reldir)
@@ -520,4 +524,25 @@ end"""
     else
         code = missing
     end
+end
+
+responses[:nbpkg_available_versions] = function response_nbpkg_available_versions(🙋::ClientRequest)
+    # require_notebook(🙋)
+    all_versions = PkgCompat.package_versions(🙋.body["package_name"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍕, Dict(
+        :versions => string.(all_versions),
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:package_completions] = function response_package_completions(🙋::ClientRequest)
+    results = PkgCompat.package_completions(🙋.body["query"])
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🍳, Dict(
+        :results => results,
+    ), nothing, nothing, 🙋.initiator))
+end
+
+responses[:pkg_update] = function response_pkg_update(🙋::ClientRequest)
+    require_notebook(🙋)
+    update_nbpkg(🙋.session, 🙋.notebook)
+    putclientupdates!(🙋.session, 🙋.initiator, UpdateMessage(:🦆, Dict(), nothing, nothing, 🙋.initiator))
 end

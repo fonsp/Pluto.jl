@@ -1,4 +1,16 @@
+"""
+The full list of keyword arguments that can be passed to [`Pluto.run`](@ref) (or [`Pluto.Configuration.from_flat_kwargs`](@ref)) is divided into four categories. Take a look at the documentation for:
+
+- [`Pluto.Configuration.CompilerOptions`](@ref) defines the command line arguments for notebook `julia` processes.
+- [`Pluto.Configuration.ServerOptions`](@ref) configures the HTTP server.
+- [`Pluto.Configuration.SecurityOptions`](@ref) configures the authentication options for Pluto's HTTP server. Change with caution.
+- [`Pluto.Configuration.EvaluationOptions`](@ref) is used internally during Pluto's testing.
+
+Note that Pluto is designed to be _zero-configuration_, and most users should not (have to) change these settings. Most 'customization' can be achieved using Julia's wide range of packages! That being said, the available settings are useful if you are using Pluto in a special environment, such as docker, mybinder, etc.
+"""
 module Configuration
+
+using Configurations # https://github.com/Roger-luo/Configurations.jl
 
 import ..Pluto: tamepath
 
@@ -8,27 +20,53 @@ function notebook_path_suggestion()
 end
 
 """
-The HTTP server options. See `SecurityOptions` for additional settings.
+    ServerOptions([; kwargs...])
+
+The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
+
+# Arguments
+
+- `root_url::Union{Nothing,String} = nothing`
+- `host::String = "127.0.0.1"`
+- `port::Union{Nothing,Integer} = nothing`
+- `launch_browser::Bool = true`
+- `dismiss_update_notification::Bool = false`
+- `show_file_system::Bool = true`
+- `notebook_path_suggestion::String = notebook_path_suggestion()`
+- `disable_writing_notebook_files::Bool = false`
+- `auto_reload_from_file::Bool = false` Watch notebook files for outside changes and update running notebook state automatically
+- `auto_reload_from_file_cooldown::Real = 0.5` Experimental, will be removed
+- `auto_reload_from_file_ignore_pkg::Bool = false` Experimental flag, will be removed
+- `notebook::Union{Nothing,String} = nothing` Optional path of notebook to launch at start
+- `simulated_lag::Real=0.0`
 """
-Base.@kwdef mutable struct ServerOptions
+@option mutable struct ServerOptions
     root_url::Union{Nothing,String} = nothing
     host::String = "127.0.0.1"
     port::Union{Nothing,Integer} = nothing
     launch_browser::Bool = true
+    dismiss_update_notification::Bool = false
     show_file_system::Bool = true
     notebook_path_suggestion::String = notebook_path_suggestion()
-    notebook::Union{Nothing,String} = nothing
+    disable_writing_notebook_files::Bool = false
+    auto_reload_from_file::Bool = false
+    auto_reload_from_file_cooldown::Real = 0.2
+    auto_reload_from_file_ignore_pkg::Bool = false
+    notebook::Union{Nothing,String, Vector{<: String}} = nothing
+    init_with_file_viewer::Bool=false
     simulated_lag::Real=0.0
 end
 
 """
     SecurityOptions([; kwargs...])
 
-Security settings for the HTTP server. Options are:
+Security settings for the HTTP server. 
+
+# Arguments
 
 - `require_secret_for_open_links::Bool = true`
 
-    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?path=http://www.a.b/c.jl` should be protected. 
+    Whether the links `http://localhost:1234/open?path=/a/b/c.jl`  and `http://localhost:1234/open?url=http://www.a.b/c.jl` should be protected. 
 
     Use `true` for almost every setup. Only use `false` if Pluto is running in a safe container (like mybinder.org), where arbitrary code execution is not a problem.
 
@@ -42,25 +80,42 @@ Security settings for the HTTP server. Options are:
 
 Note that Pluto is quickly evolving software, maintained by designers, educators and enthusiasts — not security experts. If security is a serious concern for your application, then we recommend running Pluto inside a container and verifying the relevant security aspects of Pluto yourself.
 """
-Base.@kwdef mutable struct SecurityOptions
+@option mutable struct SecurityOptions
     require_secret_for_open_links::Bool = true
     require_secret_for_access::Bool = true
 end
 
 """
-For internal use only.
+    EvaluationOptions([; kwargs...])
+
+Options to change Pluto's evaluation behaviour during internal testing. These options are not intended to be changed during normal use.
+
+- `run_notebook_on_load::Bool = true`
+- `workspace_use_distributed::Bool = true`
+- `lazy_workspace_creation::Bool = false`
 """
-Base.@kwdef mutable struct EvaluationOptions
+@option mutable struct EvaluationOptions
     run_notebook_on_load::Bool = true
     workspace_use_distributed::Bool = true
+    lazy_workspace_creation::Bool = false
 end
 
 """
-These options will be passed as command line argument to newly launched processes.
+    CompilerOptions([; kwargs...])
 
-The ServerSession contains a global version of this configuration, and each notebook can also have its own version.
+These options will be passed as command line argument to newly launched processes. See [the Julia documentation on command-line options](https://docs.julialang.org/en/v1/manual/command-line-options/).
+
+# Arguments
+- `compile::Union{Nothing,String} = nothing`
+- `sysimage::Union{Nothing,String} = nothing`
+- `banner::Union{Nothing,String} = nothing`
+- `optimize::Union{Nothing,Int} = nothing`
+- `math_mode::Union{Nothing,String} = nothing`
+- `startup_file::Union{Nothing,String} = "no"`
+- `history_file::Union{Nothing,String} = "no"`
+- `threads::Union{Nothing,String,Int} = default_number_of_threads()`
 """
-Base.@kwdef mutable struct CompilerOptions
+@option mutable struct CompilerOptions
     compile::Union{Nothing,String} = nothing
     sysimage::Union{Nothing,String} = nothing
     banner::Union{Nothing,String} = nothing
@@ -71,16 +126,17 @@ Base.@kwdef mutable struct CompilerOptions
     # the followings are different from
     # the default julia compiler options
 
-    # we use nothing to represent "@v#.#"
-    project::Union{Nothing,String} = "@."
     # we don't load startup file in notebook
     startup_file::Union{Nothing,String} = "no"
     # we don't load history file in notebook
     history_file::Union{Nothing,String} = "no"
 
-    @static if VERSION > v"1.5.0-"
-        threads::Union{Nothing,String} = get(ENV, "JULIA_NUM_THREADS", string(roughly_the_number_of_physical_cpu_cores()))
-    end
+    threads::Union{Nothing,String,Int} = default_number_of_threads()
+end
+
+function default_number_of_threads()
+    env_value = get(ENV, "JULIA_NUM_THREADS", "")
+    all(isspace, env_value) ? roughly_the_number_of_physical_cpu_cores() : parse(Int,env_value)
 end
 
 function roughly_the_number_of_physical_cpu_cores()
@@ -99,82 +155,14 @@ Collection of all settings that configure a Pluto session.
 
 `ServerSession` contains a `Configuration`.
 """
-Base.@kwdef struct Options
+@option struct Options
     server::ServerOptions = ServerOptions()
     security::SecurityOptions = SecurityOptions()
     evaluation::EvaluationOptions = EvaluationOptions()
     compiler::CompilerOptions = CompilerOptions()
 end
 
-# We don't us an abstract type because Base.@kwdef does not support subtyping in Julia 1.0, only in ≥1.1
-AbstractOptions = Union{EvaluationOptions,CompilerOptions,ServerOptions,SecurityOptions,Options}
-
-function overlayed(original::AbstractOptions; changes...)
-    new_kwargs = Dict()
-    for name in fieldnames(typeof(original))
-        new_kwargs[name] = get(changes, name, getfield(original, name))
-    end
-    return typeof(original)(;new_kwargs...)
-end
-
-# NOTE: printings are copy-pastable
-function Base.show(io::IO, x::AbstractOptions)
-    indent = get(io, :indent, 0)
-
-    summary(io, x)
-    println(io, "(")
-    fnames = fieldnames(typeof(x))
-    for each in fieldnames(typeof(x))
-        print(IOContext(io, :indent => 2), " "^indent, " "^2, each, " = ", repr(getfield(x, each)))
-        println(io, ", ")
-    end
-    print(io, " "^indent, ")")
-    return
-end
-
-function from_flat_kwargs(; kwargs...)::Options
-    server_options = Dict()
-    security_options = Dict()
-    evaluation_options = Dict()
-    compiler_options = Dict()
-
-    for (k, v) in kwargs
-        if k in fieldnames(EvaluationOptions)
-            evaluation_options[k] = v
-        elseif k in fieldnames(CompilerOptions)
-            compiler_options[k] = v
-        elseif k in fieldnames(ServerOptions)
-            server_options[k] = v
-        elseif k in fieldnames(SecurityOptions)
-            security_options[k] = v
-        else
-            throw(ArgumentError("""Key $k not recognised. Options are:\n$(join(
-            [
-                "Server Options:",
-                map(x -> " "^2 * string(x), fieldnames(ServerOptions))...,
-                "",
-                "Security Options:",
-                map(x -> " "^2 * string(x), fieldnames(SecurityOptions))...,
-                "",
-                "Evaluation Options:",
-                map(x -> " "^2 * string(x), fieldnames(EvaluationOptions))...,
-                "",
-                "Compiler Options:",
-                map(x -> " "^2 * string(x), fieldnames(CompilerOptions))...,
-            ], '\n'))
-            
-            These can be used as keywords arguments to Pluto.run, or to Pluto.from_flat_kwargs to create a Pluto.Options object."""))
-        end
-    end
-
-    return Options(
-        server=ServerOptions(; server_options...),
-        security=SecurityOptions(; security_options...),
-        evaluation=EvaluationOptions(; evaluation_options...),
-        compiler=CompilerOptions(; compiler_options...),
-    )
-end
-
+from_flat_kwargs(; kwargs...) = Configurations.from_field_kwargs(Options; kwargs...)
 
 function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::CompilerOptions
     if notebook.compiler_options === nothing
@@ -184,14 +172,9 @@ function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::C
     kwargs = Dict{Symbol,Any}()
     for each in fieldnames(CompilerOptions)
         # 1. not specified by notebook options
-        # 2. notebook specified project options
-        # 3. general notebook specified options
+        # 2. general notebook specified options
         if getfield(notebook.compiler_options, each) === nothing
             kwargs[each] = getfield(options, each)
-        elseif each === :project
-            # some specified processing for notebook project
-            # paths
-            kwargs[:project] = _resolve_notebook_project_path(notebook.path, notebook.compiler_options.project)
         else
             kwargs[each] = getfield(notebook.compiler_options, each)
         end
@@ -199,34 +182,16 @@ function _merge_notebook_compiler_options(notebook, options::CompilerOptions)::C
     return CompilerOptions(;kwargs...)
 end
 
-function _resolve_notebook_project_path(notebook_path::String, path::String)::String
-    # 1. notebook project specified as abspath, return
-    # 2. notebook project specified startswith "@", expand via `Base.load_path_expand`
-    # 3. notebook project specified as relative path, always assume it's relative to
-    #    the notebook.
-    if isabspath(path)
-        return tamepath(path)
-    elseif startswith(path, "@")
-        return Base.load_path_expand(path)
-    else
-        return tamepath(joinpath(dirname(notebook_path), path))
-    end
-end
-
 function _convert_to_flags(options::CompilerOptions)::Vector{String}
     option_list = String[]
 
     for name in fieldnames(CompilerOptions)
-        flagname = if name == :startup_file
-            "--startup-file"
-        elseif name == :history_file
-            "--history-file"
-        else
-            string("--", name)
-        end
+        flagname = string("--", replace(String(name), "_" => "-"))
         value = getfield(options, name)
         if value !== nothing
-            push!(option_list, string(flagname, "=", value))
+            if !(VERSION <= v"1.5.0-" && name === :threads)
+                push!(option_list, string(flagname, "=", value))
+            end
         end
     end
 

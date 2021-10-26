@@ -1,6 +1,5 @@
 using Test
 
-
 #= 
 `@test_broken` means that the test doesn't pass right now, but we want it to pass. Feel free to try to fix it and open a PR!
 Some of these @test_broken lines are commented out to prevent printing to the terminal, but we still want them fixed.
@@ -98,12 +97,15 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a ⊻= 1), [:a], [:a], [:⊻], [])
         @test testee(:(a[1] += 1), [:a], [], [:+], [])
         @test testee(:(x = let a = 1; a += b end), [:b], [:x], [:+], [])
+        @test testee(:(_ = a + 1), [:a], [], [:+], [])
+        @test testee(:(a = _ + 1), [], [:a], [:+], [])
     end
     @testset "Tuples" begin
         @test testee(:((a, b,)), [:a,:b], [], [], [])
         @test testee(:((a = b, c = 2, d = 123,)), [:b], [], [], [])
         @test testee(:((a = b,)), [:b], [], [], [])
         @test testee(:(a, b = 1, 2), [], [:a, :b], [], [])
+        @test testee(:(a, _, c, __ = 1, 2, 3, _d), [:_d], [:a, :c], [], [])
         @test testee(:(const a, b = 1, 2), [], [:a, :b], [], [])
         @test testee(:((a, b) = 1, 2), [], [:a, :b], [], [])
         @test testee(:(a = b, c), [:b, :c], [:a], [], [])
@@ -113,6 +115,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:((x, y), a, (b, c) = z, e, (f, g)), [:z, :e, :f, :g], [:x, :y, :a, :b, :c], [], [])
         @test testee(:((x[i], y.r), a, (b, c) = z, e, (f, g)), [:x, :i, :y, :z, :e, :f, :g], [:a, :b, :c], [], [])
         @test testee(:((a[i], b.r) = (c.d, 2)), [:a, :b, :i, :c], [], [], [])
+        @test testee(:((; a, b) = x), [:x], [:a, :b], [], [])
     end
     @testset "Broadcasting" begin
         @test testee(:(a .= b), [:b, :a], [], [], []) # modifies elements, doesn't set `a`
@@ -168,6 +171,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:(function f() g(x) = x; end), [], [], [], [
             :f => ([], [], [], []) # g is not a global def
+        ])
+        @test testee(:(function f(z) g(x) = x; g(z) end), [], [], [], [
+            :f => ([], [], [], [])
         ])
         @test testee(:(function f(x, y=1; r, s=3 + 3) r + s + x * y * z end), [], [], [], [
             :f => ([:z], [], [:+, :*], [])
@@ -241,6 +247,13 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f = function (a, b) a + b * n end), [:n], [:f], [:+, :*], [])
         @test testee(:(f = function () a + b end), [:a, :b], [:f], [:+], [])
 
+        @test testee(:(g(; b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(g(b=b) = b), [], [], [], [:g => ([:b], [], [], [])])
+        @test testee(:(f(x = y) = x), [], [], [], [:f => ([:y], [], [], [])])
+        @test testee(:(f(x, g=function(y=x) x + y + z end) = x * g(x)), [], [], [], [
+            :f => ([:z], [], [:+, :*], [])
+        ])
+
         @test testee(:(func(a)), [:a], [], [:func], [])
         @test testee(:(func(a; b=c)), [:a, :c], [], [:func], [])
         @test testee(:(func(a, b=c)), [:a, :c], [], [:func], [])
@@ -254,6 +267,26 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(a.b(c)(d)), [:a, :c, :d], [], [[:a,:b]], [])
         @test testee(:(a.b(c).d(e)), [:a, :c, :e], [], [[:a,:b]], [])
         @test testee(:(a.b[c].d(e)), [:a, :c, :e], [], [], [])
+
+        @test testee(:(function f()
+            function hello()
+            end
+            hello()
+        end), [], [], [], [:f => ([], [], [], [])])
+        @test testee(:(function a()
+            b() = Test()
+            b()
+        end), [], [], [], [:a => ([], [], [:Test], [])])
+        @test testee(:(begin
+            function f()
+                g() = z
+                g()
+            end
+            g()
+        end), [], [], [:g], [:f => ([:z], [], [], [])])
+    end
+    @testset "Julia lowering" begin
+        @test test_expression_explorer(expr=:(a'b), references=[:a, :b], funccalls=[:*, :adjoint])
     end
     @testset "Functions & types" begin
         @test testee(:(function f(y::Int64=a)::String string(y) end), [], [], [], [
@@ -271,9 +304,9 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(f(x)::String = x), [], [], [], [
             :f => ([:String], [], [], [])
         ])
-        @test testee(:(MIME"text/html"), [], [], [Symbol("@MIME_str")], [])
+        @test testee(:(MIME"text/html"), [], [], [], [], [Symbol("@MIME_str")])
         @test testee(:(function f(::MIME"text/html") 1 end), [], [], [], [
-            :f => ([], [], [Symbol("@MIME_str")], [])
+            :f => ([], [], [], [], [Symbol("@MIME_str")])
         ])
         @test testee(:(a(a::AbstractArray{T}) where T = 5), [], [], [], [
             :a => ([:AbstractArray], [], [], [])
@@ -311,6 +344,12 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         ])
         @test testee(:((::MyType)(x,y) = x + y), [], [], [], [
             :MyType => ([], [], [:+], [])
+        ])
+        @test testee(:((obj::typeof(Int64[]))(x, y::Float64) = obj + x + y), [], [], [], [
+            :anon => ([:Int64, :Float64], [], [:+, :typeof], [])
+        ])
+        @test testee(:((::Get(MyType))(x, y::OtherType) = y * x + z), [], [], [], [
+            :anon => ([:MyType, :z, :OtherType], [], [:Get, :*, :+], [])
         ])
     end
     @testset "Scope modifiers" begin
@@ -362,19 +401,19 @@ Some of these @test_broken lines are commented out to prevent printing to the te
             dx = a*x - b*x*y
             dy = -c*y + d*x*y
           end a b c d
-        end, [], [:f, :LotkaVolterra], [Symbol("@ode_def")], [])
+        end, [], [:f], [], [], [Symbol("@ode_def")])
         @test testee(quote
         f = @ode_def begin
             dx = a*x - b*x*y
             dy = -c*y + d*x*y
           end a b c d
-        end, [], [:f], [Symbol("@ode_def")], [])
+        end, [], [:f], [], [], [Symbol("@ode_def")])
         # flux
-        @test testee(:(@functor Asdf), [], [:Asdf], [Symbol("@functor")], [])
+        @test testee(:(@functor Asdf), [], [], [], [], [Symbol("@functor")])
         # symbolics
-        @test testee(:(@variables a b c), [], [:a, :b, :c], [Symbol("@variables")], [])
-        @test testee(:(@variables a b[1:2] c(t) d(..)), [], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
-        @test testee(:(@variables a b[1:x] c[1:10](t) d(..)), [:x], [:a, :b, :c, :d, :t], [:(:), Symbol("@variables")], [])
+        @test testee(:(@variables a b c), [], [], [], [], [Symbol("@variables")])
+        @test testee(:(@variables a b[1:2] c(t) d(..)), [], [], [], [], [Symbol("@variables")])
+        @test testee(:(@variables a b[1:x] c[1:10](t) d(..)), [], [], [], [], [Symbol("@variables")])
         @test_nowarn testee(:(@variables(m, begin
             x
             y[i=1:2] >= i, (start = i, base_name = "Y_$i")
@@ -394,37 +433,37 @@ Some of these @test_broken lines are commented out to prevent printing to the te
     # end)), [:m, :Bin], [:x, :y, :z], [Symbol("@variables")], [])
     end
     @testset "Macros" begin
-        @test testee(:(@time a = 2), [], [:a], [Symbol("@time")], [])
-        @test testee(:(@f(x; y=z)), [:x, :z], [], [Symbol("@f")], [])
-        @test testee(:(@f(x, y = z)), [:x, :z], [], [Symbol("@f")], []) # https://github.com/fonsp/Pluto.jl/issues/252
-        @test testee(:(Base.@time a = 2), [:Base], [:a], [[:Base, Symbol("@time")]], [])
+        # Macros tests are not just in ExpressionExplorer now
+
+        @test testee(:(@time a = 2), [], [], [], [], [Symbol("@time")])
+        @test testee(:(@f(x; y=z)), [], [], [], [], [Symbol("@f")])
+        @test testee(:(@f(x, y = z)), [], [], [], [], [Symbol("@f")]) # https://github.com/fonsp/Pluto.jl/issues/252
+        @test testee(:(Base.@time a = 2), [], [], [], [], [[:Base, Symbol("@time")]])
         # @test_nowarn testee(:(@enum a b = d c), [:d], [:a, :b, :c], [Symbol("@enum")], [])
         # @enum is tested in test/React.jl instead
-        @test testee(:(@gensym a b c), [], [:a, :b, :c], [:gensym, Symbol("@gensym")], [])
-        @test testee(:(Base.@gensym a b c), [:Base], [:a, :b, :c], [:gensym, [:Base, Symbol("@gensym")]], [])
-        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [:Base], [:A], [[:Base, Symbol("@kwdef")], [:Base, Symbol("@__doc__")]], [
-            :A => ([:Int, :two], [], [], [])
-        ])
-        @test testee(quote "asdf" f(x) = x end, [], [], [Symbol("@doc")], [:f => ([], [], [], [])])
+        @test testee(:(@gensym a b c), [], [:a, :b, :c], [:gensym], [], [Symbol("@gensym")])
+        @test testee(:(Base.@gensym a b c), [], [:a, :b, :c], [:gensym], [], [[:Base, Symbol("@gensym")]])
+        @test testee(:(Base.@kwdef struct A; x = 1; y::Int = two; z end), [], [], [], [], [[:Base, Symbol("@kwdef")]])
+        @test testee(quote "asdf" f(x) = x end, [], [], [], [], [Symbol("@doc")])
 
-        @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@bind")], [])
-        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], [:PlutoRunner, Symbol("@bind")]], [])
+        @test testee(:(@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
+        @test testee(:(PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [[:PlutoRunner, Symbol("@bind")]])
         @test_broken testee(:(Main.PlutoRunner.@bind a b), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], [:PlutoRunner, Symbol("@bind")]], [], verbose=false)
-        @test testee(:(let @bind a b end), [:b, :PlutoRunner, :Base, :Core], [:a], [[:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@bind")], [])
+        @test testee(:(let @bind a b end), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get]], [], [Symbol("@bind")])
 
-        @test testee(:(@asdf a = x1 b = x2 c = x3), [:x1, :x2, :x3], [:a], [Symbol("@asdf")], []) # https://github.com/fonsp/Pluto.jl/issues/670
+        @test testee(:(@asdf a = x1 b = x2 c = x3), [], [], [], [], [Symbol("@asdf")]) # https://github.com/fonsp/Pluto.jl/issues/670
 
-        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [:x, :y, :Float64], [:a], [[Symbol("@einsum")], [:*]], [])
-        @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [:x, :k, :z], [:a], [[Symbol("@tullio")], [:f], [:*], [:+]], [])
-        @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [:x, :y, :k, :Pack, :Float64], [:a], [[:Pack, Symbol("@asdf")], [:/], [:log]], [])
+        @test testee(:(@einsum a[i,j] := x[i]*y[j]), [], [], [], [], [Symbol("@einsum")])
+        @test testee(:(@tullio a := f(x)[i+2j, k[j]] init=z), [], [], [], [], [Symbol("@tullio")])
+        @test testee(:(Pack.@asdf a[1,k[j]] := log(x[i]/y[j])), [], [], [], [], [[:Pack, Symbol("@asdf")]])
 
-        @test testee(:(`hey $(a = 1) $(b)`), [:b], [], [:cmd_gen, Symbol("@cmd")], [])
-        @test testee(:(md"hey $(@bind a b) $(a)"), [:b, :PlutoRunner, :Base, :Core], [:a], [:getindex, [:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@md_str"), Symbol("@bind")], [])
-        @test testee(:(md"hey $(a) $(@bind a b)"), [:b, :a, :PlutoRunner, :Base, :Core], [:a], [:getindex, [:Base, :get], [:Core, :applicable], [:PlutoRunner, :Bond], Symbol("@md_str"), Symbol("@bind")], [])
-        @test testee(:(html"a $(b = c)"), [], [], [Symbol("@html_str")], [])
-        @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [:getindex, Symbol("@md_str")], [])
-        @test testee(:(md"\* $r"), [:r], [], [:getindex, Symbol("@md_str")], [])
-        @test testee(:(md"a \$(b = c)"), [], [], [:getindex, Symbol("@md_str")], [])
+        @test testee(:(`hey $(a = 1) $(b)`), [:b], [], [:cmd_gen], [], [Symbol("@cmd")])
+        @test testee(:(md"hey $(@bind a b) $(a)"), [:b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
+        @test testee(:(md"hey $(a) $(@bind a b)"), [:a, :b, :PlutoRunner, :Base, :Core], [:a], [[:PlutoRunner, :Bond], [:Core, :applicable], [:Base, :get], :getindex], [], [Symbol("@md_str"), Symbol("@bind")])
+        @test testee(:(html"a $(b = c)"), [], [], [], [], [Symbol("@html_str")])
+        @test testee(:(md"a $(b = c) $(b)"), [:c], [:b], [:getindex], [], [Symbol("@md_str")])
+        @test testee(:(md"\* $r"), [:r], [], [:getindex], [], [Symbol("@md_str")])
+        @test testee(:(md"a \$(b = c)"), [], [], [:getindex], [], [Symbol("@md_str")])
         @test testee(:(macro a() end), [], [], [], [
             Symbol("@a") => ([], [], [], [])
         ])
@@ -437,6 +476,73 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(macro a(); b = c; return b end), [], [], [], [
             Symbol("@a") => ([:c], [], [], [])
         ])
+        @test test_expression_explorer(
+            expr=:(@parent @child 10),
+            macrocalls=[Symbol("@parent"), Symbol("@child")],
+        )
+        @test test_expression_explorer(
+            expr=:(@parent begin @child 1 + @grandchild 10 end),
+            macrocalls=[Symbol("@parent"), Symbol("@child"), Symbol("@grandchild")],
+        )
+    end
+    @testset "Macros and heuristics" begin
+        @test test_expression_explorer(
+            expr=:(@macro import Pkg),
+            macrocalls=[Symbol("@macro")],
+            definitions=[:Pkg],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.activate("..")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :activate]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro Pkg.add("Pluto.jl")),
+            macrocalls=[Symbol("@macro")],
+            references=[:Pkg],
+            funccalls=[[:Pkg, :add]],
+        )
+        @test test_expression_explorer(
+            expr=:(@macro include("Firebasey.jl")),
+            macrocalls=[Symbol("@macro")],
+            funccalls=[[:include]],
+        )
+    end
+    @testset "Module imports" begin
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    import ..imported_from_outside
+                    import Y
+                    import ...where_would_this_even_come_from
+                    import .not_defined_but_sure
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X],
+        )
+        # More advanced, might not be possible easily
+        @test test_expression_explorer(
+            expr=quote
+                module X
+                    module Y
+                        import ...imported_from_outside
+                    end
+                end
+            end,
+            references=[:imported_from_outside],
+            definitions=[:X]
+        )
     end
     @testset "String interpolation & expressions" begin
         @test testee(:("a $b"), [:b], [], [], [])
@@ -444,7 +550,55 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         # @test_broken testee(:(`a $b`), [:b], [], [], [])
         # @test_broken testee(:(`a $(b = c)`), [:c], [:b], [], [])
         @test testee(:(ex = :(yayo)), [], [:ex], [], [])
-        @test testee(:(ex = :(yayo + $r)), [], [:ex], [], [])
-        # @test_broken testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [], verbose=false)
+        @test testee(:(ex = :(yayo + $r)), [:r], [:ex], [], [])
+        @test test_expression_explorer(
+            expr=:(quote $(x) end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(quote z = a + $(x) + b() end),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:($(x))),
+            references=[:x],
+        )
+        @test test_expression_explorer(
+            expr=:(:(z = a + $(x) + b())),
+            references=[:x],
+        )
+    end
+    @testset "Extracting `using` and `import`" begin
+        expr = quote
+            using A
+            import B
+            if x
+                using .C: r
+                import ..D.E: f, g
+            else
+                import H.I, J, K.L
+            end
+            
+            quote
+                using Nonono
+            end
+        end
+        result = ExpressionExplorer.compute_usings_imports(expr)
+        @test result.usings == Set{Expr}([
+            :(using A),
+            :(using .C: r),
+        ])
+        @test result.imports == Set{Expr}([
+            :(import B),
+            :(import ..D.E: f, g),
+            :(import H.I, J, K.L),
+        ])
+
+        @test ExpressionExplorer.external_package_names(result) == Set{Symbol}([
+            :A, :B, :H, :J, :K
+        ])
+
+        @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
+        @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
     end
 end

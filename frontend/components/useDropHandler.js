@@ -1,5 +1,7 @@
+import _ from "../imports/lodash.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 import { useState, useMemo, useContext } from "../imports/Preact.js"
+import { EditorView } from "../imports/CodemirrorPlutoSetup.js"
 
 const MAGIC_TIMEOUT = 500
 const DEBOUNCE_MAGIC_MS = 250
@@ -41,7 +43,7 @@ export const useDropHandler = () => {
                 return "# File save failed"
             }
             if (code) return code
-            alert("Pluto doesn't know what to do with this file 😥. Feel that's wrong? Open an issue!")
+            alert("Pluto doesn't know what to do with this file 😥. Do you have a suggestion? Open an issue at https://github.com/fonsp/Pluto.jl")
             return ""
         }
         return (ev) => {
@@ -61,7 +63,7 @@ export const useDropHandler = () => {
                     ev.preventDefault() // don't file open
                     const cell_element = (ev.path || ev.composedPath()).find((el) => el.tagName === "PLUTO-CELL")
                     const drop_cell_id = cell_element?.id || document.querySelector("pluto-cell:last-child")?.id
-                    const drop_cell_value = cell_element?.querySelector(".CodeMirror")?.CodeMirror?.getValue()
+                    const drop_cell_value = cell_element?.querySelector(".cm-editor")?.CodeMirror?.getValue()
                     const is_empty = drop_cell_value?.length === 0 && !cell_element?.classList?.contains("code_folded")
                     set_drag_active(false)
                     if (ev.dataTransfer.files.length === 0) {
@@ -72,7 +74,7 @@ export const useDropHandler = () => {
                             if (!is_empty) {
                                 pluto_actions.add_remote_cell(drop_cell_id, "after", code)
                             } else {
-                                pluto_actions.set_local_cell(drop_cell_id, code, () => pluto_actions.set_and_run_multiple([drop_cell_id]))
+                                pluto_actions.set_local_cell(drop_cell_id, code).then(() => pluto_actions.set_and_run_multiple([drop_cell_id]))
                             }
                         }
                     })
@@ -94,4 +96,34 @@ export const useDropHandler = () => {
         }
     }, [set_drag_active, set_drag_active_fast, set_saving_file, pluto_actions])
     return { saving_file, drag_active, handler }
+}
+
+export let drag_n_drop_plugin = (on_drag_drop_events) => {
+    return EditorView.domEventHandlers({
+        dragover: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+        drop: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                event.preventDefault()
+                return true
+            }
+        },
+        dragenter: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+        dragleave: (event, view) => {
+            if (event.dataTransfer.types[0] !== "text/plain") {
+                on_drag_drop_events(event)
+                return true
+            }
+        },
+    })
 }

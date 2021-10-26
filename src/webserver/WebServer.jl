@@ -12,22 +12,6 @@ end
 
 include("./WebSocketFix.jl")
 
-
-# to fix lots of false error messages from HTTP
-# https://github.com/JuliaWeb/HTTP.jl/pull/546
-# we do HTTP.Stream{HTTP.Messages.Request,S} instead of just HTTP.Stream to prevent the Julia warning about incremental compilation
-function HTTP.closebody(http::HTTP.Stream{HTTP.Messages.Request,S}) where S <: IO
-    if http.writechunked
-        http.writechunked = false
-        try
-            write(http.stream, "0\r\n\r\n")
-        catch end
-    end
-end
-
-# https://github.com/JuliaWeb/HTTP.jl/pull/609
-HTTP.URIs.escapeuri(query::Union{Vector,Dict}) = isempty(query) ? HTTP.URIs.absent : join((HTTP.URIs.escapeuri(k, v) for (k, v) in query), "&")
-
 # from https://github.com/JuliaLang/julia/pull/36425
 function detectwsl()
     Sys.islinux() &&
@@ -41,7 +25,7 @@ function open_in_default_browser(url::AbstractString)::Bool
             Base.run(`open $url`)
             true
         elseif Sys.iswindows() || detectwsl()
-            Base.run(`powershell.exe Start "$url"`)
+            Base.run(`powershell.exe Start "'$url'"`)
             true
         elseif Sys.islinux()
             Base.run(`xdg-open $url`)
@@ -96,10 +80,11 @@ end
 # Deprecation errors
 
 function run(host::String, port::Union{Nothing,Integer}=nothing; kwargs...)
-    @error "Deprecated in favor of:
+    @error """run(host, port) is deprecated in favor of:
     
-        run(;host=$host, port=$port)
-    "
+        run(;host="$host", port=$port)  
+    
+    """
 end
 
 function run(port::Integer; kwargs...)
@@ -113,12 +98,29 @@ function run(port::Integer; kwargs...)
     "
 end
 
+# open notebook(s) on startup
+
+open_notebook!(session:: ServerSession, notebook:: Nothing) = Nothing
+
+open_notebook!(session:: ServerSession, notebook:: AbstractString) = SessionActions.open(session, notebook)
+
+function open_notebook!(session:: ServerSession, notebook:: AbstractVector{<: AbstractString})
+    for nb in notebook
+        SessionActions.open(session, nb)
+    end
+end
+
+
 """
     run(session::ServerSession)
 
 Specifiy the [`Pluto.ServerSession`](@ref) to run the web server on, which includes the configuration. Passing a session as argument allows you to start the web server with some notebooks already running. See [`SessionActions`](@ref) to learn more about manipulating a `ServerSession`.
 """
 function run(session::ServerSession)
+
+    notebook_at_startup = session.options.server.notebook
+    open_notebook!(session, notebook_at_startup)
+
     pluto_router = http_router_for(session)
     host = session.options.server.host
     port = session.options.server.port
@@ -139,9 +141,12 @@ function run(session::ServerSession)
 
     servertask = @async HTTP.serve(hostIP, UInt16(port), stream=true, server=serversocket) do http::HTTP.Stream
         # messy messy code so that we can use the websocket on the same port as the HTTP server
-
         if HTTP.WebSockets.is_upgrade(http.message)
-            if is_authenticated(session, http.message)
+            secret_required = let
+                s = session.options.security
+                s.require_secret_for_access || s.require_secret_for_open_links
+            end
+            if !secret_required || is_authenticated(session, http.message)
                 try
 
                     HTTP.WebSockets.upgrade(http) do clientstream
@@ -152,7 +157,7 @@ function run(session::ServerSession)
                         while !eof(clientstream)
                             # This stream contains data received over the WebSocket.
                             # It is formatted and MsgPack-encoded by send(...) in PlutoConnection.js
-                            local parentbody
+                            local parentbody = nothing
                             try
                                 message = collect(WebsocketFix.readmessage(clientstream))
                                 parentbody = unpack(message)
@@ -220,12 +225,7 @@ function run(session::ServerSession)
             end
 
             request_body = IOBuffer(HTTP.payload(request))
-            if eof(request_body)
-                # no request body
-                response_body = HTTP.handle(pluto_router, request)
-            else
-                @warn "HTTP request contains a body, huh?" request_body
-            end
+            response_body = HTTP.handle(pluto_router, request)
     
             request.response::HTTP.Response = response_body
             request.response.request = request
@@ -284,6 +284,10 @@ function run(session::ServerSession)
     end
 end
 
+get_favorite_notebook(notebook:: Nothing) = nothing
+get_favorite_notebook(notebook:: String) = notebook
+get_favorite_notebook(notebook:: AbstractVector) = first(notebook)
+
 function pretty_address(session::ServerSession, hostIP, port)
     root = if session.options.server.root_url === nothing
         host_str = string(hostIP)
@@ -310,7 +314,7 @@ function pretty_address(session::ServerSession, hostIP, port)
     if session.options.security.require_secret_for_access
         url_params["secret"] = session.secret
     end
-    fav_notebook = session.options.server.notebook
+    fav_notebook = get_favorite_notebook(session.options.server.notebook)
     new_root = if fav_notebook !== nothing
         key = isurl(fav_notebook) ? "url" : "path"
         url_params[key] = string(fav_notebook)

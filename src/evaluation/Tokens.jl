@@ -15,8 +15,11 @@ Base.wait(token::Token) = Base.put!(token.c, Base.take!(token.c))
 
 function withtoken(f::Function, token::Token)
     take!(token)
-    result = f()
-    put!(token)
+    result = try
+        f()
+    finally
+        put!(token)
+    end
     result
 end
 
@@ -84,4 +87,23 @@ Promise(f::Function) = Promise{Any}(f)
 function Base.fetch(p::Promise{T})::T where T
 	wait(p.task)
 	something(p.value)
+end
+
+
+
+
+"Like @async except it prints errors to the terminal. 👶"
+macro asynclog(expr)
+	quote
+		@async begin
+			# because this is being run asynchronously, we need to catch exceptions manually
+			try
+				$(esc(expr))
+			catch ex
+				bt = stacktrace(catch_backtrace())
+				showerror(stderr, ex, bt)
+				rethrow(ex)
+			end
+		end
+	end
 end

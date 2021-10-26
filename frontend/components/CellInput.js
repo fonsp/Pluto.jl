@@ -1,32 +1,120 @@
-import { html, useState, useEffect, useLayoutEffect, useRef, useContext } from "../imports/Preact.js"
-import observablehq_for_myself from "../common/SetupCellEnvironment.js"
+import { html, useState, useEffect, useLayoutEffect, useRef, useContext, useMemo } from "../imports/Preact.js"
+import _ from "../imports/lodash.js"
 
 import { utf8index_to_ut16index } from "../common/UnicodeTools.js"
-import { map_cmd_to_ctrl_on_mac } from "../common/KeyboardShortcuts.js"
 import { PlutoContext } from "../common/PlutoContext.js"
+import { get_selected_doc_from_state } from "./CellInput/LiveDocsFromCursor.js"
+import { go_to_definition_plugin, UsedVariablesFacet } from "./CellInput/go_to_definition_plugin.js"
+import { detect_deserializer } from "../common/Serialization.js"
 
-// @ts-ignore
-const CodeMirror = window.CodeMirror
+import {
+    EditorState,
+    EditorSelection,
+    Compartment,
+    EditorView,
+    placeholder,
+    julia_andrey,
+    keymap,
+    history,
+    historyKeymap,
+    defaultKeymap,
+    indentMore,
+    indentLess,
+    tags,
+    HighlightStyle,
+    autocompletion,
+    lineNumbers,
+    highlightSpecialChars,
+    foldGutter,
+    drawSelection,
+    indentOnInput,
+    defaultHighlightStyle,
+    closeBrackets,
+    rectangularSelection,
+    highlightSelectionMatches,
+    closeBracketsKeymap,
+    searchKeymap,
+    foldKeymap,
+    commentKeymap,
+    completionKeymap,
+    syntaxTree,
+    Decoration,
+    ViewUpdate,
+    ViewPlugin,
+    WidgetType,
+    indentUnit,
+    StateField,
+    StateEffect,
+} from "../imports/CodemirrorPlutoSetup.js"
+import { pluto_autocomplete } from "./CellInput/pluto_autocomplete.js"
+import { NotebookpackagesFacet, pkgBubblePlugin } from "./CellInput/pkg_bubble_plugin.js"
+import { awesome_line_wrapping } from "./CellInput/awesome_line_wrapping.js"
+import { drag_n_drop_plugin } from "./useDropHandler.js"
+import { cell_movement_plugin } from "./CellInput/cell_movement_plugin.js"
+import { pluto_paste_plugin } from "./CellInput/pluto_paste_plugin.js"
+import { bracketMatching } from "./CellInput/block_matcher_plugin.js"
+import { cl } from "../common/ClassTable.js"
 
-const clear_selection = (cm) => {
-    const c = cm.getCursor()
-    cm.setSelection(c, c, { scroll: false })
+export const pluto_syntax_colors = HighlightStyle.define([
+    /* The following three need a specific version of the julia parser, will add that later (still messing with it 😈) */
+    // Symbol
+    { tag: tags.literal, color: "#5e7ad3", fontWeight: 700 },
+    { tag: tags.macroName, color: "#5668a4", fontWeight: 700 },
+    // `nothing` I guess... Any others?
+    { tag: tags.standard(tags.variableName), color: "#5e7ad3", fontWeight: 700 },
+
+    { tag: tags.bool, color: "#5e7ad3", fontWeight: 700 },
+
+    { tag: tags.keyword, color: "#fc6" },
+    { tag: tags.comment, color: "#e96ba8", fontStyle: "italic" },
+    { tag: tags.atom, color: "#815ba4" },
+    { tag: tags.number, color: "#815ba4" },
+    // { tag: tags.property, color: "#48b685" },
+    // { tag: tags.attribute, color: "#48b685" },
+    { tag: tags.keyword, color: "#ef6155" },
+    { tag: tags.string, color: "#da5616" },
+    { tag: tags.variableName, color: "#5668a4", fontWeight: 700 },
+    // { tag: tags.variable2, color: "#06b6ef" },
+    { tag: tags.definition(tags.variableName), color: "#f99b15" },
+    { tag: tags.bracket, color: "#41323f" },
+    { tag: tags.brace, color: "#41323f" },
+    { tag: tags.tagName, color: "#ef6155" },
+    { tag: tags.link, color: "#815ba4" },
+    { tag: tags.invalid, color: "#000", background: "#ef6155" },
+    // ...Object.keys(tags).map((x) => ({ tag: x, color: x })),
+])
+
+const getValue6 = (/** @type {EditorView} */ cm) => cm.state.doc.toString()
+const setValue6 = (/** @type {EditorView} */ cm, value) =>
+    cm.dispatch({
+        changes: { from: 0, to: cm.state.doc.length, insert: value },
+    })
+const replaceRange6 = (/** @type {EditorView} */ cm, text, from, to) =>
+    cm.dispatch({
+        changes: { from, to, insert: text },
+    })
+
+// Compartments: https://codemirror.net/6/examples/config/
+let editable = new Compartment()
+
+let useCompartment = (/** @type {import("../imports/Preact.js").Ref<EditorView>} */ codemirror_ref, value) => {
+    let compartment = useRef(new Compartment())
+    let initial_value = useRef(compartment.current.of(value))
+
+    compartment.current.of,
+        useLayoutEffect(() => {
+            codemirror_ref.current?.dispatch?.({
+                effects: compartment.current.reconfigure(value),
+            })
+        }, [value])
+
+    return initial_value.current
 }
 
-const last = (x) => x[x.length - 1]
-const all_equal = (x) => x.every((y) => y === x[0])
-
-// Adapted from https://gomakethings.com/how-to-test-if-an-element-is-in-the-viewport-with-vanilla-javascript/
-var offsetFromViewport = function (elem) {
-    let bounding = elem.getBoundingClientRect()
-    let is_in_viewport = bounding.top >= 0 && bounding.bottom <= window.innerHeight
-    if (is_in_viewport) {
-        return null
-    } else {
-        return {
-            top: bounding.top < 0 ? -bounding.top : window.innerHeight - bounding.bottom,
-        }
-    }
+let line_and_ch_to_cm6_position = (/** @type {import("../imports/CodemirrorPlutoSetup.js").Text} */ doc, { line, ch }) => {
+    let line_object = doc.line(_.clamp(line + 1, 1, doc.lines))
+    let ch_clamped = _.clamp(ch, 0, line_object.length)
+    return line_object.from + ch_clamped
 }
 
 /**
@@ -34,6 +122,7 @@ var offsetFromViewport = function (elem) {
  *  local_code: string,
  *  remote_code: string,
  *  scroll_into_view_after_creation: boolean,
+ *  cell_dependencies: import("./Editor.js").CellDependencyData,
  *  [key: string]: any,
  * }} props
  */
@@ -52,110 +141,80 @@ export const CellInput = ({
     on_update_doc_query,
     on_focus_neighbor,
     on_drag_drop_events,
+    nbpkg,
     cell_id,
     notebook_id,
+    running_disabled,
+    cell_dependencies,
 }) => {
     let pluto_actions = useContext(PlutoContext)
 
-    const cm_ref = useRef(null)
-    const text_area_ref = useRef(null)
+    const newcm_ref = useRef(/** @type {EditorView} */ (null))
     const dom_node_ref = useRef(/** @type {HTMLElement} */ (null))
     const remote_code_ref = useRef(null)
     const on_change_ref = useRef(null)
     on_change_ref.current = on_change
 
-    const time_last_being_force_focussed_ref = useRef(0)
-    const time_last_genuine_backspace = useRef(0)
+    let nbpkg_compartment = useCompartment(newcm_ref, NotebookpackagesFacet.of(nbpkg))
+    let used_variables_compartment = useCompartment(newcm_ref, UsedVariablesFacet.of(cell_dependencies.upstream_cells_map))
+    let editable_compartment = useCompartment(newcm_ref, EditorState.readOnly.of(disable_input))
 
-    useEffect(() => {
-        const current_value = cm_ref.current?.getValue() ?? ""
-        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
-            // this cell is being initialized with empty code, but it already has local code set.
-            // this happens when pasting or dropping cells
-            return
-        }
-        remote_code_ref.current = remote_code
-        if (current_value !== remote_code) {
-            cm_ref.current?.setValue(remote_code)
-        }
-    }, [remote_code])
+    let on_change_compartment = useCompartment(
+        newcm_ref,
+        // Functions are hard to compare, so I useMemo manually
+        useMemo(() => {
+            return EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                    on_change(update.state.doc.toString())
+                }
+            })
+        }, [on_change])
+    )
 
     useLayoutEffect(() => {
-        const cm = (cm_ref.current = CodeMirror.fromTextArea(text_area_ref.current, {
-            value: local_code,
-            lineNumbers: true,
-            mode: "julia",
-            lineWrapping: true,
-            viewportMargin: Infinity,
-            placeholder: "Enter cell code...",
-            indentWithTabs: true,
-            indentUnit: 4,
-            hintOptions: {
-                hint: juliahints,
-                pluto_actions: pluto_actions,
-                notebook_id: notebook_id,
-                on_update_doc_query: on_update_doc_query,
-                extraKeys: {
-                    ".": (cm, { pick }) => {
-                        pick()
-                        cm.replaceSelection(".")
-                        cm.showHint()
-                    },
-                    // "(": (cm, { pick }) => pick(),
-                },
-            },
-            matchBrackets: true,
-        }))
-
-        const keys = {}
-
-        keys["Shift-Enter"] = () => on_submit()
-        keys["Ctrl-Enter"] = async () => {
-            // we await to prevent an out-of-sync issue
-            await on_add_after()
-
-            const new_value = cm.getValue()
-            if (new_value !== remote_code_ref.current) {
-                on_submit()
-            }
+        const keyMapSubmit = () => {
+            on_submit()
+            return true
         }
-        // Page up and page down are fn+Up and fn+Down on recent apple keyboards
-        keys["PageUp"] = () => {
-            on_focus_neighbor(cell_id, -1, 0, 0)
-        }
-        keys["PageDown"] = () => {
-            on_focus_neighbor(cell_id, +1, 0, 0)
-        }
-        keys["Shift-Tab"] = "indentLess"
-        keys["Tab"] = on_tab_key
-        keys["Ctrl-Space"] = () => cm.showHint()
-        keys["Ctrl-D"] = () => {
-            if (cm.somethingSelected()) {
-                const sels = cm.getSelections()
-                if (all_equal(sels)) {
-                    // TODO
+        let run = async (fn) => await fn()
+        const keyMapRun = (/** @type {EditorView} */ cm) => {
+            run(async () => {
+                // we await to prevent an out-of-sync issue
+                await on_add_after()
+
+                const new_value = cm.state.doc.toString()
+                if (new_value !== remote_code_ref.current) {
+                    on_submit()
                 }
+            })
+            return true
+        }
+
+        let select_autocomplete_command = completionKeymap.find((keybinding) => keybinding.key === "Enter")
+        let keyMapTab = (/** @type {EditorView} */ cm) => {
+            // This will return true if the autocomplete select popup is open
+            if (select_autocomplete_command.run(cm)) {
+                return true
+            }
+
+            // TODO Multicursor?
+            let selection = cm.state.selection.main
+            if (!selection.empty) {
+                return indentMore(cm)
             } else {
-                const cursor = cm.getCursor()
-                const token = cm.getTokenAt(cursor)
-                cm.setSelection({ line: cursor.line, ch: token.start }, { line: cursor.line, ch: token.end })
+                cm.dispatch({
+                    changes: { from: selection.from, to: selection.to, insert: "\t" },
+                    selection: EditorSelection.cursor(selection.from + 1),
+                })
+                return true
             }
         }
-        keys["Ctrl-/"] = () => {
-            const old_value = cm.getValue()
-            cm.toggleComment({ indent: true })
-            const new_value = cm.getValue()
-            if (old_value === new_value) {
-                // the commenter failed for some reason
-                // this happens when lines start with `md"`, with no indent
-                cm.setValue(cm.lineCount() === 1 ? `# ${new_value}` : `#= ${new_value} =#`)
-                cm.execCommand("selectAll")
-            }
-        }
-        keys["Ctrl-M"] = () => {
-            const value = cm.getValue()
+        const keyMapMD = () => {
+            const cm = newcm_ref.current
+            const value = getValue6(cm)
             const trimmed = value.trim()
             const offset = value.length - value.trimStart().length
+            console.table({ value, trimmed, offset })
             if (trimmed.startsWith('md"') && trimmed.endsWith('"')) {
                 // Markdown cell, change to code
                 let start, end
@@ -170,7 +229,7 @@ export const CellInput = ({
                 }
                 if (start >= end || trimmed.substring(start, end).trim() == "") {
                     // Corner case: block is empty after removing markdown
-                    cm.setValue("")
+                    setValue6(cm, "")
                 } else {
                     while (/\s/.test(trimmed[start])) {
                         ++start
@@ -178,444 +237,313 @@ export const CellInput = ({
                     while (/\s/.test(trimmed[end - 1])) {
                         --end
                     }
+
                     // Keep the selection from [start, end) while maintaining cursor position
-                    cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
-                    cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
+                    replaceRange6(cm, "", end + offset, cm.state.doc.length)
+                    // cm.replaceRange("", cm.posFromIndex(end + offset), { line: cm.lineCount() })
+                    replaceRange6(cm, "", 0, start + offset)
+                    // cm.replaceRange("", { line: 0, ch: 0 }, cm.posFromIndex(start + offset))
                 }
             } else {
-                // Code cell, change to markdown
-                const old_selections = cm.listSelections()
-                cm.setValue(`md"""\n${value}\n"""`)
-                // Move all selections down a line
-                const new_selections = old_selections.map(({ anchor, head }) => {
-                    return {
-                        anchor: { ...anchor, line: anchor.line + 1 },
-                        head: { ...head, line: head.line + 1 },
-                    }
+                // Replacing ranges will maintain both the focus, the selections and the cursor
+                let prefix = `md"""\n`
+                let suffix = `\n"""`
+                // TODO Multicursor?
+                let selection = cm.state.selection.main
+                cm.dispatch({
+                    changes: [
+                        { from: 0, to: 0, insert: prefix },
+                        { from: cm.state.doc.length, to: cm.state.doc.length, insert: suffix },
+                    ],
+                    selection:
+                        selection.from === 0
+                            ? {
+                                  anchor: selection.from + prefix.length,
+                                  head: selection.to + prefix.length,
+                              }
+                            : undefined,
                 })
-                cm.setSelections(new_selections)
-            }
-        }
-        const swap = (a, i, j) => {
-            ;[a[i], a[j]] = [a[j], a[i]]
-        }
-        const range = (a, b) => {
-            const x = Math.min(a, b)
-            const y = Math.max(a, b)
-            return [...Array(y + 1 - x).keys()].map((i) => i + x)
-        }
-        const alt_move = (delta) => {
-            const selections = cm.listSelections()
-            const selected_lines = new Set([].concat(...selections.map((sel) => range(sel.anchor.line, sel.head.line))))
-            const final_line_number = delta === 1 ? cm.lineCount() - 1 : 0
-            if (!selected_lines.has(final_line_number)) {
-                Array.from(selected_lines)
-                    .sort((a, b) => (delta * a < delta * b ? 1 : -1))
-                    .forEach((line_number) => {
-                        const lines = cm.getValue().split("\n")
-                        swap(lines, line_number, line_number + delta)
-                        cm.setValue(lines.join("\n"))
-                        cm.indentLine(line_number + delta, "smart")
-                        cm.indentLine(line_number, "smart")
-                    })
-                cm.setSelections(
-                    selections.map((sel) => {
-                        return {
-                            head: {
-                                line: sel.head.line + delta,
-                                ch: sel.head.ch,
-                            },
-                            anchor: {
-                                line: sel.anchor.line + delta,
-                                ch: sel.anchor.ch,
-                            },
-                        }
-                    })
-                )
-            }
-        }
-        keys["Alt-Up"] = () => alt_move(-1)
-        keys["Alt-Down"] = () => alt_move(+1)
-
-        keys["Backspace"] = keys["Ctrl-Backspace"] = () => {
-            const BACKSPACE_CELL_DELETE_COOLDOWN = 300
-            const BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN = 300
-
-            if (cm.lineCount() === 1 && cm.getValue() === "") {
-                // I wanted to write comments, but I think my variable names are documentation enough
-                let enough_time_passed_since_last_backspace = Date.now() - time_last_genuine_backspace.current > BACKSPACE_CELL_DELETE_COOLDOWN
-                let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
-                if (enough_time_passed_since_last_backspace && enough_time_passed_since_force_focus) {
-                    on_focus_neighbor(cell_id, -1)
-                    on_delete()
-                }
             }
 
-            let enough_time_passed_since_force_focus = Date.now() - time_last_being_force_focussed_ref.current > BACKSPACE_AFTER_FORCE_FOCUS_COOLDOWN
-            if (enough_time_passed_since_force_focus) {
-                time_last_genuine_backspace.current = Date.now()
-                return CodeMirror.Pass
-            } else {
-                // Reset the force focus timer, as I want it to act like a debounce, not just a delay
-                time_last_being_force_focussed_ref.current = Date.now()
-            }
-        }
-        keys["Delete"] = keys["Ctrl-Delete"] = () => {
-            if (cm.lineCount() === 1 && cm.getValue() === "") {
-                on_focus_neighbor(cell_id, +1)
-                on_delete()
-            }
-            return CodeMirror.Pass
-        }
-
-        /** Basically any variable inside an useEffect is already a ref
-         * so I'll just roll with this abstraction
-         * @param {(time_since: Number) => any} fn
-         */
-        let with_time_since_last = (fn) => {
-            let last_invoke_time = -Infinity // This infinity is for you, Fons
-            return () => {
-                let result = fn(Date.now() - last_invoke_time)
-                last_invoke_time = Date.now()
-                return result
-            }
-        }
-        const isapprox = (a, b) => Math.abs(a - b) < 3.0
-        const at_first_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, 0.0)
-        keys["Up"] = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_first_line_visually()) {
-                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
-                // todo:
-                // on_focus_neighbor(cell_id, -1, Infinity, cm.getCursor().ch)
-                // but this does not work if the last line in the previous cell wraps
-                // and i can't figure out how to fix it in a simple way
-            } else {
-                return CodeMirror.Pass
-            }
-        })
-        const at_first_position = () => cm.findPosH(cm.getCursor(), -1, "char")?.hitSide === true
-        keys["Left"] = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_first_position()) {
-                on_focus_neighbor(cell_id, -1, Infinity, Infinity)
-            } else {
-                return CodeMirror.Pass
-            }
-        })
-        const at_last_line_visually = () => isapprox(cm.cursorCoords(null, "div").top, cm.cursorCoords({ line: Infinity, ch: Infinity }, "div").top)
-        keys["Down"] = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_last_line_visually()) {
-                on_focus_neighbor(cell_id, 1, 0, 0)
-                // todo:
-                // on_focus_neighbor(cell_id, 1, 0, cm.getCursor().ch)
-                // same here
-            } else {
-                return CodeMirror.Pass
-            }
-        })
-        const at_last_position = () => cm.findPosH(cm.getCursor(), 1, "char")?.hitSide === true
-        keys["Right"] = with_time_since_last((elapsed) => {
-            if (elapsed > 300 && at_last_position()) {
-                on_focus_neighbor(cell_id, 1, 0, 0)
-            } else {
-                return CodeMirror.Pass
-            }
-        })
-        const open_close_selection = (opening_char, closing_char) => () => {
-            if (cm.somethingSelected()) {
-                for (const selection of cm.getSelections()) {
-                    cm.replaceSelection(`${opening_char}${selection}${closing_char}`, "around")
-                }
-            } else {
-                return CodeMirror.Pass
-            }
-        }
-
-        ;["()", "{}", "[]"].forEach((pair) => {
-            const [opening_char, closing_char] = pair.split("")
-            keys[`'${opening_char}'`] = open_close_selection(opening_char, closing_char)
-        })
-
-        cm.setOption("extraKeys", map_cmd_to_ctrl_on_mac(keys))
-
-        let is_good_token = (token) => {
-            if (token.type == null && token.string === "]") {
-                return true
-            }
-
-            // Symbol, and symbols don't have autocomplete 🤷‍♀️
-            if (token.type === "builtin" && token.string.startsWith(":") && !token.string.startsWith("::")) {
-                return false
-            }
-            let bad_token_types = ["number", "string", null]
-            if (bad_token_types.includes(token.type)) {
-                return false
-            }
             return true
         }
-
-        cm.on("dragover", (cm_, e) => {
-            if (e.dataTransfer.types[0] !== "text/plain") {
-                on_drag_drop_events(e)
+        const keyMapDelete = (/** @type {EditorView} */ cm) => {
+            if (cm.state.facet(EditorState.readOnly)) {
+                return false
+            }
+            if (cm.state.doc.length === 0) {
+                on_focus_neighbor(cell_id, +1)
+                on_delete()
                 return true
             }
-        })
-        cm.on("drop", (cm_, e) => {
-            if (e.dataTransfer.types[0] !== "text/plain") {
-                on_drag_drop_events(e)
-                e.preventDefault()
-                return true
-            }
-        })
-        cm.on("dragenter", (cm_, e) => {
-            if (e.dataTransfer.types[0] !== "text/plain") {
-                on_drag_drop_events(e)
-                return true
-            }
-        })
-        cm.on("dragleave", (cm_, e) => {
-            if (e.dataTransfer.types[0] !== "text/plain") {
-                on_drag_drop_events(e)
-                return true
-            }
-        })
-
-        cm.on("cursorActivity", () => {
-            setTimeout(() => {
-                if (!cm.hasFocus()) return
-                if (cm.somethingSelected()) {
-                    const sel = cm.getSelection()
-                    if (!/[\s]/.test(sel)) {
-                        // no whitespace
-                        on_update_doc_query(sel)
-                    }
-                } else {
-                    const cursor = cm.getCursor()
-                    const token = cm.getTokenAt(cursor)
-                    if (token.start === 0 && token.type === "operator" && token.string === "?") {
-                        // https://github.com/fonsp/Pluto.jl/issues/321
-                        const second_token = cm.getTokenAt({ ...cursor, ch: 2 })
-                        on_update_doc_query(second_token.string)
-                    } else {
-                        const token_before_cursor = cm.getTokenAt(cursor)
-                        const token_after_cursor = cm.getTokenAt({ ...cursor, ch: cursor.ch + 1 })
-
-                        let before_and_after_token = [token_before_cursor, token_after_cursor]
-
-                        // Fix for string macros
-                        for (let possibly_string_macro of before_and_after_token) {
-                            let match = possibly_string_macro.string.match(/([a-zA-Z]+)"/)
-                            if (possibly_string_macro.type === "string" && match != null) {
-                                return on_update_doc_query(`@${match[1]}_str`)
-                            }
-                        }
-
-                        let good_token = before_and_after_token.find((x) => is_good_token(x))
-                        if (good_token) {
-                            let tokens = cm.getLineTokens(cursor.line)
-                            let current_token = tokens.findIndex((x) => x.start === good_token.start && x.end === good_token.end)
-                            on_update_doc_query(
-                                module_expanded_selection({
-                                    tokens_before_cursor: tokens.slice(0, current_token + 1),
-                                    tokens_after_cursor: tokens.slice(current_token + 1),
-                                })
-                            )
-                        }
-                    }
-                }
-            }, 0)
-        })
-
-        cm.on("change", (_, e) => {
-            const new_value = cm.getValue()
-            if (new_value.length > 1 && new_value[0] === "?") {
-                window.dispatchEvent(new CustomEvent("open_live_docs"))
-            }
-            on_change_ref.current(new_value)
-        })
-
-        cm.on("blur", () => {
-            // NOT a debounce:
-            setTimeout(() => {
-                if (document.hasFocus()) {
-                    clear_selection(cm)
-                    set_cm_forced_focus(null)
-                }
-            }, 100)
-        })
-
-        cm.on("paste", (cm, e) => {
-            const topaste = e.clipboardData.getData("text/plain")
-            if (topaste.match(/# ╔═╡ ........-....-....-....-............/g)?.length) {
-                pluto_actions.add_deserialized_cells(topaste, -1)
-                e.stopImmediatePropagation()
-                e.preventDefault()
-                e.codemirrorIgnore = true
-            }
-            e.stopPropagation()
-        })
-
-        if (focus_after_creation) {
-            // TODO Smooth scroll into view?
-            cm.focus()
         }
 
-        // @ts-ignore
-        document.fonts.ready.then(() => {
-            cm.refresh()
+        const keyMapBackspace = (/** @type {EditorView} */ cm) => {
+            if (cm.state.facet(EditorState.readOnly)) {
+                return
+            }
+
+            // Previously this was a very elaborate timed implementation......
+            // But I found out that keyboard events have a `.repeated` property which is perfect for what we want...
+            // So now this is just the cell deleting logic (and the repeated stuff is in a separate plugin)
+            if (cm.state.doc.length === 0) {
+                on_focus_neighbor(cell_id, -1)
+                on_delete()
+                return true
+            }
+        }
+
+        const plutoKeyMaps = [
+            { key: "Shift-Enter", run: keyMapSubmit },
+            { key: "Ctrl-Enter", mac: "Cmd-Enter", run: keyMapRun },
+            { key: "Ctrl-Enter", run: keyMapRun },
+            { key: "Tab", run: keyMapTab, shift: indentLess },
+            { key: "Ctrl-m", mac: "Cmd-m", run: keyMapMD },
+            { key: "Ctrl-m", run: keyMapMD },
+            // Codemirror6 doesn't like capslock
+            { key: "Ctrl-M", run: keyMapMD },
+            // TODO Move Delete and backspace to cell movement plugin
+            { key: "Delete", run: keyMapDelete },
+            { key: "Ctrl-Delete", run: keyMapDelete },
+            { key: "Backspace", run: keyMapBackspace },
+            { key: "Ctrl-Backspace", run: keyMapBackspace },
+        ]
+
+        let DOCS_UPDATER_VERBOSE = true
+        const docs_updater = EditorView.updateListener.of((update) => {
+            if (!update.view.hasFocus) {
+                return
+            }
+
+            if (update.docChanged || update.selectionSet) {
+                let state = update.state
+                DOCS_UPDATER_VERBOSE && console.groupCollapsed("Selection")
+                let result = get_selected_doc_from_state(state, DOCS_UPDATER_VERBOSE)
+                DOCS_UPDATER_VERBOSE && console.log("Result:", result)
+                DOCS_UPDATER_VERBOSE && console.groupEnd()
+
+                if (result != null) {
+                    on_update_doc_query(result)
+                }
+            }
         })
+
+        // TODO remove me
+        //@ts-ignore
+        window.tags = tags
+        const newcm = (newcm_ref.current = new EditorView({
+            /** Migration #0: New */
+            state: EditorState.create({
+                doc: local_code,
+
+                extensions: [
+                    // Compartments coming from react state/props
+                    nbpkg_compartment,
+                    used_variables_compartment,
+                    editable_compartment,
+
+                    pkgBubblePlugin({ pluto_actions, notebook_id }),
+                    pluto_syntax_colors,
+                    lineNumbers(),
+                    highlightSpecialChars(),
+                    history(),
+                    drawSelection(),
+                    EditorState.allowMultipleSelections.of(true),
+                    // Multiple cursors with `alt` instead of the default `ctrl` (which we use for go to definition)
+                    EditorView.clickAddsSelectionRange.of((event) => event.altKey && !event.shiftKey),
+                    indentOnInput(),
+                    defaultHighlightStyle.fallback,
+                    // Experimental: Also add closing brackets for tripple string
+                    // TODO also add closing string when typing a string macro
+                    EditorState.languageData.of((state, pos, side) => {
+                        return [{ closeBrackets: { brackets: ["(", "[", "{"] } }]
+                    }),
+                    closeBrackets(),
+                    rectangularSelection({
+                        eventFilter: (e) => e.altKey && e.shiftKey && e.button == 0,
+                    }),
+                    highlightSelectionMatches(),
+                    bracketMatching(),
+                    docs_updater,
+                    // Remove selection on blur
+                    EditorView.domEventHandlers({
+                        blur: (event, view) => {
+                            view.dispatch({
+                                selection: {
+                                    anchor: view.state.selection.main.head,
+                                    head: view.state.selection.main.head,
+                                },
+                            })
+                            set_cm_forced_focus(null)
+                        },
+                    }),
+                    pluto_paste_plugin({
+                        pluto_actions: pluto_actions,
+                        cell_id: cell_id,
+                    }),
+                    // Update live docs when in a cell that starts with `?`
+                    EditorView.updateListener.of((update) => {
+                        if (!update.docChanged) return
+                        if (update.state.doc.length > 0 && update.state.sliceDoc(0, 1) === "?") {
+                            window.dispatchEvent(new CustomEvent("open_live_docs"))
+                        }
+                    }),
+                    drag_n_drop_plugin(on_drag_drop_events),
+                    EditorState.tabSize.of(4),
+                    indentUnit.of("\t"),
+                    julia_andrey(),
+                    go_to_definition_plugin,
+                    pluto_autocomplete({
+                        request_autocomplete: async ({ text }) => {
+                            let { message } = await pluto_actions.send("complete", { query: text }, { notebook_id: notebook_id })
+                            return {
+                                start: utf8index_to_ut16index(text, message.start),
+                                stop: utf8index_to_ut16index(text, message.stop),
+                                results: message.results,
+                            }
+                        },
+                        on_update_doc_query: on_update_doc_query,
+                    }),
+
+                    // I put plutoKeyMaps separately because I want make sure we have
+                    // higher priority 😈
+                    keymap.of(plutoKeyMaps),
+                    // Before default keymaps (because we override some of them)
+                    // but after the autocomplete plugin, because we don't want to move cell when scrolling through autocomplete
+                    cell_movement_plugin({ focus_on_neighbor: ({ cell_delta, line, character }) => on_focus_neighbor(cell_id, cell_delta, line, character) }),
+                    keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, ...foldKeymap, ...commentKeymap]),
+                    placeholder("Enter cell code..."),
+
+                    EditorView.lineWrapping,
+                    // Disabled awesome_line_wrapping because it still fails in a lot of cases
+                    // awesome_line_wrapping,
+
+                    on_change_compartment,
+                ],
+            }),
+            parent: dom_node_ref.current,
+        }))
+
+        // For use from useDropHandler
+        // @ts-ignore
+        newcm.dom.CodeMirror = {
+            getValue: () => getValue6(newcm),
+            setValue: (x) => setValue6(newcm, x),
+        }
+
+        if (focus_after_creation) {
+            setTimeout(() => {
+                let view = newcm_ref.current
+                view.dom.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                })
+                view.dispatch({
+                    selection: {
+                        anchor: view.state.doc.length,
+                        head: view.state.doc.length,
+                    },
+                })
+                view.focus()
+            })
+        }
     }, [])
 
-    // useEffect(() => {
-    //     if (!remote_code.submitted_by_me) {
-    //         cm_ref.current.setValue(remote_code.body)
-    //     }
-    // }, [remote_code.timestamp])
+    // Effect to apply "remote_code" to the cell when it changes...
+    // ideally this won't be necessary as we'll have actual multiplayer,
+    // or something to tell the user that the cell is out of sync.
+    useEffect(() => {
+        if (newcm_ref.current == null) return // Not sure when and why this gave an error, but now it doesn't
+
+        const current_value = getValue6(newcm_ref.current) ?? ""
+        if (remote_code_ref.current == null && remote_code === "" && current_value !== "") {
+            // this cell is being initialized with empty code, but it already has local code set.
+            // this happens when pasting or dropping cells
+            return
+        }
+        remote_code_ref.current = remote_code
+        if (current_value !== remote_code) {
+            setValue6(newcm_ref.current, remote_code)
+        }
+    }, [remote_code])
 
     useEffect(() => {
-        cm_ref.current.options.disableInput = disable_input
-    }, [disable_input])
-
-    useEffect(() => {
+        const cm = newcm_ref.current
         if (cm_forced_focus == null) {
-            clear_selection(cm_ref.current)
+            cm.dispatch({
+                selection: {
+                    anchor: cm.state.selection.main.head,
+                    head: cm.state.selection.main.head,
+                },
+            })
         } else {
-            time_last_being_force_focussed_ref.current = Date.now()
-            let cm_forced_focus_mapped = cm_forced_focus.map((x) => (x.line === Infinity ? { ...x, line: cm_ref.current.lastLine() } : x))
-            cm_ref.current.focus()
-            cm_ref.current.setSelection(...cm_forced_focus_mapped)
+            let new_selection = {
+                anchor: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[0]),
+                head: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[1]),
+            }
+
+            let dom = /** @type {HTMLElement} */ (cm.dom)
+            dom.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+                // UNCOMMENT THIS AND SEE, this feels amazing but I feel like people will not like it
+                // block: "center",
+            })
+
+            newcm_ref.current.focus()
+            newcm_ref.current.dispatch({
+                selection: new_selection,
+            })
         }
     }, [cm_forced_focus])
 
-    // fix a visual glitch where the input is only 5px high after unfolding the cell
-    useEffect(() => {
-        if (show_input) {
-            cm_ref.current.refresh()
-        }
-    }, [show_input])
-
-    // TODO effect hook for disable_input?
-
     return html`
-        <pluto-input ref=${dom_node_ref}>
-            <button onClick=${on_delete} class="delete_cell" title="Delete cell"><span></span></button>
-            <textarea ref=${text_area_ref}></textarea>
+        <pluto-input ref=${dom_node_ref} translate=${false}>
+            <${InputContextMenu} on_delete=${on_delete} cell_id=${cell_id} run_cell=${on_submit} running_disabled=${running_disabled} />
         </pluto-input>
     `
 }
 
-const no_autocomplete = " \t\r\n([])+-=/,;'\"!#$%^&*~`<>|"
-
-const on_tab_key = (cm) => {
-    const cursor = cm.getCursor()
-    const old_line = cm.getLine(cursor.line)
-
-    if (cm.somethingSelected()) {
-        cm.indentSelection()
-    } else {
-        if (cursor.ch > 0 && no_autocomplete.indexOf(old_line[cursor.ch - 1]) == -1) {
-            cm.showHint()
-        } else {
-            cm.replaceSelection("\t")
-        }
+const InputContextMenu = ({ on_delete, cell_id, run_cell, running_disabled }) => {
+    const timeout = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const [open, setOpen] = useState(false)
+    const mouseenter = () => {
+        clearTimeout(timeout.current)
     }
-}
-
-const juliahints = (cm, options) => {
-    const cursor = cm.getCursor()
-    const old_line = cm.getLine(cursor.line)
-    const old_line_sliced = old_line.slice(0, cursor.ch)
-
-    return options.pluto_actions.send("complete", { query: old_line_sliced }, { notebook_id: options.notebook_id }).then(({ message }) => {
-        const completions = {
-            list: message.results.map(([text, type_description, is_exported]) => ({
-                text: text,
-                className: (is_exported ? "" : "c_notexported ") + (type_description == null ? "" : "c_" + type_description),
-                // render: (el) => el.appendChild(observablehq_for_myself.html`<div></div>`),
-            })),
-            from: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.start)),
-            to: CodeMirror.Pos(cursor.line, utf8index_to_ut16index(old_line, message.stop)),
-        }
-        CodeMirror.on(completions, "select", (val) => {
-            let text = typeof val === "string" ? val : val.text
-            let doc_query = module_expanded_selection({
-                tokens_before_cursor: [
-                    { type: "variable", string: old_line_sliced.slice(0, completions.from.ch) },
-                    { type: "variable", string: text },
-                ],
-                tokens_after_cursor: [],
-            })
-            options.on_update_doc_query(doc_query)
+    const toggle_running_disabled = async (e) => {
+        const new_val = !running_disabled
+        e.preventDefault()
+        e.stopPropagation()
+        await pluto_actions.update_notebook((notebook) => {
+            notebook.cell_inputs[cell_id].running_disabled = new_val
         })
-        return completions
-    })
-}
-
-// https://github.com/fonsp/Pluto.jl/issues/239
-const module_expanded_selection = ({ tokens_before_cursor, tokens_after_cursor }) => {
-    // Fix for :: type definitions, more specifically :: type definitions with { ... } generics
-    // e.g. ::AbstractArray{String} gets parsed by codemirror as [`::AbstractArray{`, `String}`] ??
-    let i_guess_current_token = tokens_before_cursor[tokens_before_cursor.length - 1]
-    if (i_guess_current_token?.type === "builtin" && i_guess_current_token.string.startsWith("::")) {
-        let typedef_tokens = []
-        typedef_tokens.push(i_guess_current_token.string.slice(2))
-        for (let token of tokens_after_cursor) {
-            if (token.type !== "builtin") break
-            typedef_tokens.push(token.string)
-        }
-        return typedef_tokens.join("")
+        // we also 'run' the cell if it is disabled, this will make the backend propage the disabled state to dependent cells
+        await run_cell()
     }
 
-    // Fix for multi-character operators (|>, &&, ||), codemirror splits these up, so we have to stitch them back together.
-    if (i_guess_current_token?.type === "operator") {
-        let operator_tokens = []
-        for (let token of tokens_before_cursor.reverse()) {
-            if (token.type !== "operator") {
-                break
-            }
-            operator_tokens.unshift(token.string)
-        }
-        for (let token of tokens_after_cursor) {
-            if (token.type !== "operator") {
-                break
-            }
-            operator_tokens.push(token.string)
-        }
-        return operator_tokens.join("")
-    }
-
-    let found = []
-    /** @type {"top" | "in-ref"} */
-    let state = "top"
-    for (let token of tokens_before_cursor.slice().reverse()) {
-        if (state === "top") {
-            if (token.type == null && token.string == "]") {
-                state = "in-ref"
-                found.push(token.string)
-                continue
-            }
-            if (token.type == null) {
-                break
-            }
-            if (token.type === "number") {
-                break
-            }
-            if (token.type === "builtin" && token.string.startsWith("::")) {
-                found.push(token.string.slice(2))
-                break
-            }
-            found.push(token.string)
-        } else if (state === "in-ref") {
-            if (token.type == null && token.string == "[") {
-                state = "top"
-                found.push(token.string)
-                continue
-            }
-            if (token.type === "number" || token.type === "string") {
-                found.push(token.string)
-                continue
-            }
-            break
-        }
-    }
-    return found.reverse().join("").replace(/\.$/, "")
+    return html` <button
+        onClick=${() => setOpen(!open)}
+        onBlur=${() => setOpen(false)}
+        class=${cl({
+            input_context_menu: true,
+            open,
+        })}
+        title="Actions"
+    >
+        <span class="icon"></span>
+        ${open
+            ? html`<ul onMouseenter=${mouseenter}>
+                  <li onClick=${on_delete} title="Delete"><span class="delete_icon" />Delete cell</li>
+                  <li
+                      onClick=${toggle_running_disabled}
+                      title=${running_disabled ? "Enable and run the cell" : "Disable this cell, and all cells that depend on it"}
+                  >
+                      ${running_disabled ? html`<span class="enable_cell_icon" />` : html`<span class="disable_cell_icon" />`}
+                      ${running_disabled ? html`<b>Enable cell</b>` : html`Disable cell`}
+                  </li>
+                  <li class="coming_soon" title=""><span class="bandage_icon" /><em>Coming soon…</em></li>
+              </ul>`
+            : html``}
+    </button>`
 }
