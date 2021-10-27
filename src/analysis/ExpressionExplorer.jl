@@ -1196,6 +1196,9 @@ function external_package_names(ex::Expr)::Set{Symbol}
 	else
 		out = Set{Symbol}()
 		for a in ex.args
+            if Meta.isexpr(a, :as)
+                a = a.args[1]
+            end
 			if Meta.isexpr(a, :(.))
 				if a.args[1] != :(.)
 					push!(out, a.args[1])
