@@ -13,7 +13,6 @@ function mime_fromfilename(filename)
 end
 
 function asset_response(path)
-    @info "PATH"
     if !isfile(path) && !endswith(path, ".html")
         return asset_response(path * ".html")
     end
