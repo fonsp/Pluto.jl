@@ -367,6 +367,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(let global k += 3 end), [:k], [:k], [:+], [])
         @test testee(:(let global k; k = 4 end), [], [:k], [], [])
         @test testee(:(let global k; b = 5 end), [], [], [], [])
+        @test testee(:(let global x, y, z; b = 5; x = 1; (y,z) = 3 end), [], [:x, :y, :z], [], [])
+        @test testee(:(let global x, z; b = 5; x = 1; end), [], [:x], [], [])
         @test testee(:(let a = 1, b = 2; show(a + b) end), [], [], [:show, :+], [])
 
         @test testee(:(begin local a, b = 1, 2 end), [], [], [], [])
@@ -378,6 +380,8 @@ Some of these @test_broken lines are commented out to prevent printing to the te
         @test testee(:(begin local k; k = 4 end), [], [], [], [])
         @test testee(:(begin local k; b = 5 end), [], [:b], [], [])
         @test testee(:(begin local r[1] = 5 end), [:r], [], [], [])
+        @test testee(:(begin local a, b; a = 1; b = 2 end), [], [], [], [])
+        @test testee(:(begin a; local a, b; a = 1; b = 2 end), [:a], [], [], [])
         @test_broken testee(:(begin begin local a = 2 end; a end), [:a], [], [], []; verbose=false)
         
         @test testee(:(function f(x) global k = x end), [], [], [], [

@@ -608,6 +608,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
     elseif ex.head == :global
         # Does not create scope
 
+        # global x, y, z
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:global, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
+
         # We have one of:
         # global x;
         # global x = 1;
@@ -636,6 +641,11 @@ function explore!(ex::Expr, scopestate::ScopeState)::SymbolsState
         return symstate
     elseif ex.head == :local
         # Does not create scope
+
+        # Turn `local x, y` in `local x; local y
+        if length(ex.args) > 1
+            return mapfoldl(arg -> explore!(Expr(:local, arg), scopestate), union!, ex.args; init=SymbolsState())
+        end
 
         localisee = ex.args[1]
 
