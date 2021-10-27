@@ -610,5 +610,7 @@ Some of these @test_broken lines are commented out to prevent printing to the te
 
         @test ExpressionExplorer.external_package_names(:(using Plots, Something.Else, .LocalModule)) == Set([:Plots, :Something])
         @test ExpressionExplorer.external_package_names(:(import Plots.A: b, c)) == Set([:Plots])
+
+        @test ExpressionExplorer.external_package_names(:(import Foo as Bar, Baz.Naz as Jazz)) == Set([:Foo, :Baz])
     end
 end
