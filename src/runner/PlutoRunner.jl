@@ -653,7 +653,7 @@ The MIMEs that Pluto supports, in order of how much I like them.
 
 `text/plain` should always match - the difference between `show(::IO, ::MIME"text/plain", x)` and `show(::IO, x)` is an unsolved mystery.
 """
-const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
+const allmimes = [MIME"application/vnd.pluto.table+object"(); MIME"application/vnd.pluto.divelement+object"(); MIME"text/html"(); imagemimes; MIME"application/vnd.pluto.tree+object"(); MIME"text/latex"(); MIME"text/plain"()]
 
 
 """
@@ -817,6 +817,8 @@ function show_richest(io::IO, @nospecialize(x))::Tuple{<:Any,MIME}
         tree_data(x, IOContext(io, :compact => true)), mime
     elseif mime isa MIME"application/vnd.pluto.table+object"
         table_data(x, IOContext(io, :compact => true)), mime
+    elseif mime isa MIME"application/vnd.pluto.divelement+object"
+        tree_data(x, io), mime
     elseif mime ∈ imagemimes
         show(io, mime, x)
         nothing, mime
@@ -1623,7 +1625,28 @@ using HypertextLiteral
 """
 embed_display(x) = EmbeddableDisplay(x, rand('a':'z',16) |> join)
 
+# if an embedded display is being rendered _directly by Pluto's viewer_, then rendered the embedded object directly. When interpolating an embedded display into HTML, the user code will render the embedded display to HTML using the HTML show method above, and this shortcut is not called.
+# We add this short-circuit to increase performance for UI that uses an embedded display when it is not necessary.
+format_output_default(@nospecialize(val::EmbeddableDisplay), @nospecialize(context=default_iocontext)) = format_output_default(val.x, context)
 
+###
+# EMBEDDED CELL OUTPUT
+###
+
+Base.@kwdef struct DivElement
+    children::Vector
+    style::String=""
+    class::Union{String,Nothing}=nothing
+end
+
+tree_data(@nospecialize(e::DivElement), context::IOContext) = Dict{Symbol, Any}(
+    :style => e.style, 
+    :classname => e.class, 
+    :children => Any[
+        format_output_default(value, context) for value in e.children
+    ],
+)
+pluto_showable(::MIME"application/vnd.pluto.divelement+object", ::DivElement) = true
 
 
 ###
