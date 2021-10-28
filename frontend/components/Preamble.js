@@ -23,7 +23,7 @@ export const Preamble = ({ any_code_differs, last_update_time, last_hot_reload_t
     const reload_timeout_ref = useRef(null)
 
     useEffect(() => {
-        console.log("code differs", any_code_differs)
+        // console.log("code differs", any_code_differs)
         clearTimeout(timeout_ref?.current)
         if (any_code_differs) {
             set_state("ask_to_save")
