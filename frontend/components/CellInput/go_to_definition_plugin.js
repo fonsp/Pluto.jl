@@ -157,7 +157,7 @@ let explore_variable_usage = (
         definitions: new Map(),
     }
 ) => {
-    console.group(`Explorer: ${cursor.toString()}`)
+    // console.group(`Explorer: ${cursor.toString()}`)
     try {
         if (cursor.name === "CompoundExpression") {
             // begin ... end, go through all the children one by one and keep adding their definitions
@@ -186,7 +186,6 @@ let explore_variable_usage = (
                 try {
                     for (let variable_node of get_variables_from_assignment(cursor)) {
                         let name = doc.sliceString(variable_node.from, variable_node.to)
-                        console.log(`name:`, name)
                         nested_scope.definitions.set(name, {
                             from: variable_node.from,
                             to: variable_node.to,
@@ -257,14 +256,11 @@ let explore_variable_usage = (
             // 2. Go through the function in a nested scope
 
             try {
-                console.log(`cursor.name:`, cursor.name)
                 // @ts-ignore
                 // If we are at "function", skip it
                 if (cursor.name === "function") {
                     cursor.nextSibling()
                 }
-
-                console.log(`cursor.name:`, cursor.name)
                 // @ts-ignore
                 // Function name, add to current scope
                 if (cursor.name === "Identifier") {
@@ -277,14 +273,12 @@ let explore_variable_usage = (
                     usages: new Set(),
                     definitions: new Map(scopestate.definitions),
                 }
-                console.log(`cursor.name:`, cursor.name)
                 // @ts-ignore
                 // Cycle through arguments
                 if (cursor.name === "ArgumentList") {
                     if (cursor.firstChild()) {
                         try {
                             do {
-                                console.log(`cursor.name:`, cursor.name)
                                 for (let variable_node of get_variables_from_assignment(cursor)) {
                                     let name = doc.sliceString(variable_node.from, variable_node.to)
                                     nested_scope.definitions.set(name, {
@@ -342,7 +336,7 @@ let explore_variable_usage = (
                     cursor.parent()
                 }
             }
-        } else if (cursor.name === "Identifier") {
+        } else if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
             let name = doc.sliceString(cursor.from, cursor.to)
             if (scopestate.definitions.has(name)) {
                 scopestate.usages.add({
@@ -361,7 +355,59 @@ let explore_variable_usage = (
                     definition: null,
                 })
             }
-        } else if ((cursor.name === "ArrayComprehensionExpression" || cursor.name === "GeneratorExpression") && cursor.firstChild()) {
+        } else if (cursor.name === "ForClause" || cursor.name === "IfClause") {
+            // Nothing, this should be handled by ArrayComprehensionExpression
+        } else if (cursor.name === "ArrayComprehensionExpression" || cursor.name === "GeneratorExpression") {
+            let node = cursor.node
+            let for_binding = node.getChild("ForClause")?.getChild("ForBinding")
+            let binding = for_binding?.firstChild
+            let from = for_binding?.lastChild
+            let if_clause = node.getChild("IfClause")
+
+            // Because of the weird way this is parsed, we need `sort = true` in the Decorations.set below
+
+            if (binding != null || from != null) {
+                // Get usage for the generator
+                scopestate = merge_scope_state(scopestate, explore_variable_usage(from.cursor, doc, scopestate))
+
+                let nested_scope = {
+                    usages: new Set(),
+                    definitions: new Map(scopestate.definitions),
+                }
+
+                // Add definition from the binding
+                for (let variable_node of get_variables_from_assignment(binding.cursor)) {
+                    let name = doc.sliceString(variable_node.from, variable_node.to)
+                    nested_scope.definitions.set(name, {
+                        from: variable_node.from,
+                        to: variable_node.to,
+                    })
+                }
+
+                if (if_clause != null) {
+                    do {
+                        let if_clause_cursor = if_clause.cursor
+                        if_clause_cursor.lastChild()
+                        nested_scope = merge_scope_state(nested_scope, explore_variable_usage(if_clause_cursor, doc, nested_scope))
+                    } while (cursor.nextSibling())
+                }
+
+                if (cursor.firstChild()) {
+                    try {
+                        do {
+                            nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                        } while (cursor.nextSibling())
+                    } finally {
+                        cursor.parent()
+                    }
+                }
+
+                scopestate = {
+                    usages: new Set([...scopestate.usages, ...nested_scope.usages]),
+                    definitions: scopestate.definitions,
+                }
+            }
+
             // cursor.nextSibling()
             // // @ts-ignore
             // if (cursor.name === "ForClause" && cursor.firstChild()) {
@@ -373,14 +419,12 @@ let explore_variable_usage = (
             //     } while (cursor.nextSibling())
             //     cursor.parent()
             // }
-            cursor.parent()
         } else {
             // In most cases we "just" go through all the children separately
-            console.log("Name:", cursor.name)
             if (cursor.firstChild()) {
                 try {
                     do {
-                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc))
+                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
                     } while (cursor.nextSibling())
                 } finally {
                     cursor.parent()
@@ -389,7 +433,7 @@ let explore_variable_usage = (
         }
         return scopestate
     } finally {
-        console.groupEnd()
+        // console.groupEnd()
     }
 }
 
@@ -399,27 +443,22 @@ let get_variable_marks = (state, { used_variables }) => {
     let cursor = tree.cursor()
     let scopestate = explore_variable_usage(cursor, state.doc)
 
-    console.log(`scopestate:`, scopestate)
-
     let variables_with_origin_cell = Object.entries(used_variables || {})
         .filter(([name, usage]) => usage.length > 0)
         .map(([name, usage]) => name)
 
     console.log(`variables_with_origin_cell:`, variables_with_origin_cell)
+    console.log(`scopestate:`, scopestate)
 
     return Decoration.set(
         Array.from(scopestate.usages)
             .map(({ definition, usage }) => {
                 let text = state.doc.sliceString(usage.from, usage.to)
 
-                console.log(`text:`, text)
-                console.log(`definition:`, definition)
-
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
-                    if (true || variables_with_origin_cell.includes(text)) {
-                        console.log("Hi")
+                    if (variables_with_origin_cell.includes(text)) {
                         return Decoration.mark({
                             tagName: "a",
                             attributes: {
@@ -457,7 +496,8 @@ let get_variable_marks = (state, { used_variables }) => {
                     return null
                 }
             })
-            .filter((x) => x != null)
+            .filter((x) => x != null),
+        true
     )
 }
 

@@ -2132,16 +2132,17 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 [data-pluto-variable] {
-    text-decoration: none;
+    /* text-decoration: none; */
     font-weight: inherit;
 }
 
 [data-pluto-variable],
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
-    border: 2px solid #193bf35e;
+    /* border: 2px solid #193bf35e;
     padding: 0px 2px;
-    border-radius: 2px;
+    border-radius: 2px; */
     font-weight: bold;
+    text-decoration: underline;
 }
 
 body.ctrl_down [data-pluto-variable]:hover {
