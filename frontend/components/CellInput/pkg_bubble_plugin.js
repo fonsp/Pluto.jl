@@ -32,7 +32,7 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
 
     const add_widget = (package_name, target) => {
         if (package_name !== "Base" && package_name !== "Core" && !seen_packages.has(package_name)) {
-            seen_packages.add(package_name);
+            seen_packages.add(package_name)
             let deco = Decoration.widget({
                 widget: new ReactWidget(html`
                     <${PkgStatusMark}
@@ -47,13 +47,13 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
             })
             widgets.push(deco.range(target))
         }
-    };
+    }
 
     for (let { from, to } of view.visibleRanges) {
         let in_import = false
         let in_selected_import = false
         let is_inside_quote = false
-        
+
         let is_inside_rename_import = false
         let is_renamed_package_bubbled = false
 
@@ -122,14 +122,14 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     let package_name = view.state.doc.sliceString(from, to)
                     // console.warn(type)
                     // console.warn("Found", package_name)
-                    add_widget(package_name, to);
+                    add_widget(package_name, to)
 
                     if (in_selected_import) {
                         in_import = false
                     }
                 }
             },
-            leave: (type, from, to) => {
+            leave: (type, from, to, getNode) => {
                 if (type.name === "QuoteExpression" || type.name === "QuoteStatement") {
                     is_inside_quote = false
                 }
@@ -150,15 +150,18 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     in_selected_import = false
                 }
                 if (type.name === "ScopedIdentifier" && !in_selected_import) {
-                    is_inside_scoped_identifier = false
-                    let package_name = view.state.doc.sliceString(from, to)
+                    let node = getNode()
+                    if (node.parent.name === "Import") {
+                        is_inside_scoped_identifier = false
+                        let package_name = view.state.doc.sliceString(from, to)
 
-                    if (package_name.startsWith(".")) {
-                        return
+                        if (package_name.startsWith(".")) {
+                            return
+                        }
+
+                        package_name = package_name.split(".")[0]
+                        add_widget(package_name, to)
                     }
-
-                    package_name = package_name.split(".")[0];
-                    add_widget(package_name, to);
                 }
             },
         })
