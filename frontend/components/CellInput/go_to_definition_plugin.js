@@ -1,4 +1,4 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -337,23 +337,25 @@ let explore_variable_usage = (
                 }
             }
         } else if (cursor.name === "Identifier" || cursor.name === "MacroIdentifier") {
-            let name = doc.sliceString(cursor.from, cursor.to)
-            if (scopestate.definitions.has(name)) {
-                scopestate.usages.add({
-                    usage: {
-                        from: cursor.from,
-                        to: cursor.to,
-                    },
-                    definition: scopestate.definitions.get(name),
-                })
-            } else {
-                scopestate.usages.add({
-                    usage: {
-                        from: cursor.from,
-                        to: cursor.to,
-                    },
-                    definition: null,
-                })
+            if (node_is_variable_usage(cursor.node)) {
+                let name = doc.sliceString(cursor.from, cursor.to)
+                if (scopestate.definitions.has(name)) {
+                    scopestate.usages.add({
+                        usage: {
+                            from: cursor.from,
+                            to: cursor.to,
+                        },
+                        definition: scopestate.definitions.get(name),
+                    })
+                } else {
+                    scopestate.usages.add({
+                        usage: {
+                            from: cursor.from,
+                            to: cursor.to,
+                        },
+                        definition: null,
+                    })
+                }
             }
         } else if (cursor.name === "ForClause" || cursor.name === "IfClause") {
             // Nothing, this should be handled by ArrayComprehensionExpression
@@ -437,17 +439,8 @@ let explore_variable_usage = (
     }
 }
 
-let get_variable_marks = (state, { used_variables }) => {
-    let tree = syntaxTree(state)
-
-    let cursor = tree.cursor()
-    let scopestate = explore_variable_usage(cursor, state.doc)
-
-    let variables_with_origin_cell = Object.entries(used_variables || {})
-        .filter(([name, usage]) => usage.length > 0)
-        .map(([name, usage]) => name)
-
-    console.log(`variables_with_origin_cell:`, variables_with_origin_cell)
+let get_variable_marks = (state, { scopestate, used_variables }) => {
+    console.log(`variables_with_origin_cell:`, used_variables)
     console.log(`scopestate:`, scopestate)
 
     return Decoration.set(
@@ -458,7 +451,7 @@ let get_variable_marks = (state, { used_variables }) => {
                 if (definition == null) {
                     // TODO variables_with_origin_cell should be notebook wide, not just in the current cell
                     // .... Because now it will only show variables after it has run once
-                    if (variables_with_origin_cell.includes(text)) {
+                    if (used_variables[text]) {
                         return Decoration.mark({
                             tagName: "a",
                             attributes: {
@@ -506,20 +499,49 @@ export const UsedVariablesFacet = Facet.define({
     compare: _.isEqual,
 })
 
+/**
+ * @type {StateField<ScopeState>}
+ */
+export let ScopeStateField = StateField.define({
+    create(state) {
+        let cursor = syntaxTree(state).cursor()
+        let scopestate = explore_variable_usage(cursor, state.doc)
+        return scopestate
+    },
+
+    update(value, tr) {
+        if (tr.docChanged) {
+            let cursor = syntaxTree(tr.state).cursor()
+            let scopestate = explore_variable_usage(cursor, tr.state.doc)
+            return scopestate
+        } else {
+            return value
+        }
+    },
+})
+
 export const go_to_definition_plugin = ViewPlugin.fromClass(
     class {
+        /**
+         * @param {EditorView} view
+         */
         constructor(view) {
             let used_variables = view.state.facet(UsedVariablesFacet)
-            this.decorations = get_variable_marks(view.state, { used_variables })
-            this.used_variables = view.state.facet(UsedVariablesFacet)
+            this.decorations = get_variable_marks(view.state, {
+                scopestate: view.state.field(ScopeStateField),
+                used_variables,
+            })
         }
 
         update(update) {
             // My best take on getting this to update when UsedVariablesFacet does 🤷‍♀️
             let used_variables = update.state.facet(UsedVariablesFacet)
-            if (update.docChanged || update.viewportChanged || used_variables !== this.used_variables)
-                this.decorations = get_variable_marks(update.state, { used_variables })
-            this.used_variables = used_variables
+            if (update.docChanged || update.viewportChanged || used_variables !== update.startState.facet(UsedVariablesFacet)) {
+                this.decorations = get_variable_marks(update.state, {
+                    scopestate: update.state.field(ScopeStateField),
+                    used_variables,
+                })
+            }
         }
     },
     {
@@ -549,11 +571,11 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
 
                     // TODO Something fancy where we actually emit the identifier we are looking for,
                     // .... and the cell then selects exactly that definition (using lezer and cool stuff)
-                    if (used_variables[variable].length > 0) {
+                    if (used_variables[variable]) {
                         window.dispatchEvent(
                             new CustomEvent("cell_focus", {
                                 detail: {
-                                    cell_id: used_variables[variable][0],
+                                    cell_id: used_variables[variable],
                                     line: 0, // 1-based to 0-based index
                                 },
                             })

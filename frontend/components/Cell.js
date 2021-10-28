@@ -39,6 +39,9 @@ export const Cell = ({
 }) => {
     let pluto_actions = useContext(PlutoContext)
     const notebook = pluto_actions.get_notebook()
+    let variables_in_all_notebook = Object.fromEntries(
+        Object.values(notebook?.cell_dependencies ?? {}).flatMap((x) => Object.keys(x.downstream_cells_map).map((variable) => [variable, x.cell_id]))
+    )
     const variables = Object.keys(notebook?.cell_dependencies?.[cell_id]?.downstream_cells_map || {})
     // cm_forced_focus is null, except when a line needs to be highlighted because it is part of a stack trace
     const [cm_forced_focus, set_cm_forced_focus] = useState(null)
@@ -153,6 +156,7 @@ export const Cell = ({
                 local_code=${cell_input_local?.code ?? code}
                 remote_code=${code}
                 cell_dependencies=${cell_dependencies}
+                variables_in_all_notebook=${variables_in_all_notebook}
                 disable_input=${disable_input}
                 focus_after_creation=${focus_after_creation}
                 cm_forced_focus=${cm_forced_focus}
