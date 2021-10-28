@@ -1442,7 +1442,7 @@ function show(io::IO, ::MIME"text/html", bond::Bond)
     end
 end
 
-const initial_value_getter_ref = useRef{Function}(bond -> missing)
+const initial_value_getter_ref = Ref{Function}(bond -> missing)
 
 """
     `@bind symbol element`
