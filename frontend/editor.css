@@ -2132,7 +2132,7 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 */
 
 [data-pluto-variable] {
-    /* text-decoration: none; */
+    /* text-decoration-thickness: 3px; */
     font-weight: inherit;
 }
 
@@ -2143,9 +2143,15 @@ Based on "Paraíso (Light)" by Jan T. Sott:
     border-radius: 2px; */
     font-weight: bold;
     text-decoration: underline;
+    text-decoration-color: #ced2ef;
+    text-decoration-thickness: 3px;
 }
 
-body.ctrl_down [data-pluto-variable]:hover {
+body.ctrl_down [data-pluto-variable] {
+    text-decoration-color: #d177e6;
+    cursor: pointer;
+}
+body.ctrl_down [data-cell-variable]:hover {
     text-decoration: underline;
     cursor: pointer;
 }
