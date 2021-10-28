@@ -436,8 +436,10 @@ export let highlight = (code_element, language) => {
                 state: EditorState.create({
                     // Remove references to `Main.workspace#xx.` in the docs since
                     // its shows up as a comment and can be confusing
-                    doc: code_element.innerText.trim().replace(/Main.workspace#\d+\./, "")
-                        .replace(/Main.workspace#(\d+)/, "Main.var\"workspace#$1\""),
+                    doc: code_element.innerText
+                        .trim()
+                        .replace(/Main.workspace#\d+\./, "")
+                        .replace(/Main.workspace#(\d+)/, 'Main.var"workspace#$1"'),
 
                     extensions: [
                         pluto_syntax_colors,
