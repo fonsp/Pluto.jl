@@ -123,7 +123,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 
 		implicit_usings = collect_implicit_usings(new_topology, cell)
 		if !is_resolved(new_topology) && can_help_resolve_cells(new_topology, cell)
-			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name; skip_reimports=true)
+			notebook.topology = new_new_topology = resolve_topology(session, notebook, new_topology, old_workspace_name)
 
 			if !isempty(implicit_usings)
 				new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
@@ -237,39 +237,17 @@ function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
 	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
 end
 
-"We still have 'unresolved' macrocalls, use the pre-created workspace to do macro-expansions"
-function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol; skip_reimports::Bool=false)
+"We still have 'unresolved' macrocalls, use the current workspace to do macro-expansions"
+function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
 	sn = (session, notebook)
-
-	if !skip_reimports
-	    to_reimport = union!(Set{Expr}(), map(c -> unresolved_topology.codes[c].module_usings_imports.usings, notebook.cells)...)
-	    WorkspaceManager.do_reimports(sn, to_reimport)
-	end
 
 	function macroexpand_cell(cell)
 		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) =
 			macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
-		# Several trying steps
-		# 1. Try in the new module with moved imports
-		# 2. Try in the previous module
-		# 3. Move imports and re-try in the new module
-		res = try_macroexpand() # 1.
-		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
-			# We have not found the macro in the new workspace after reimports
-			# this most likely means that the macro is user defined, we try to expand it
-			# in the old workspace to see whether or not it is defined there
 
-			res = try_macroexpand(old_workspace_name) # 2.
-			# It was not defined previously, we try searching modules in our own batch
-			if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
-				to_import_from_batch = mapreduce(union, unresolved_topology.codes) do (_, cache)
-				    union(cache.module_usings_imports.imports,
-					  cache.module_usings_imports.usings)
-				end
-				WorkspaceManager.do_reimports(sn, to_import_from_batch)
-				# Last try and we leave
-				res = try_macroexpand() # 3.
-			end
+		res = try_macroexpand()
+		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
+			res = try_macroexpand(old_workspace_name)
 		end
 		res
 	end
@@ -281,13 +259,12 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
-		    # if expansion failed, we use the "shallow" symbols state
-		    err = result
-		    @debug "Expansion failed" err
-		    current_symstate, false
+			# if expansion failed, we use the "shallow" symbols state
+			@debug "Expansion failed" err=result
+			current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
-		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    expanded_symbols_state, true
+			expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+			expanded_symbols_state, true
 		end
 	end
 
