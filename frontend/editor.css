@@ -2138,13 +2138,11 @@ Based on "Paraíso (Light)" by Jan T. Sott:
 
 [data-pluto-variable],
 .cm-editor .cm-tooltip.cm-tooltip-autocomplete li.c_from_notebook .cm-completionLabel {
-    /* border: 2px solid #193bf35e;
-    padding: 0px 2px;
-    border-radius: 2px; */
     font-weight: bold;
     text-decoration: underline;
     text-decoration-color: #ced2ef;
     text-decoration-thickness: 3px;
+    text-decoration-skip-ink: none;
 }
 
 body.ctrl_down [data-pluto-variable] {

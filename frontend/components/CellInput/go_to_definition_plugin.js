@@ -2,6 +2,10 @@ import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, Edit
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
+/**
+ * This function work bottom up: you give it an identifier, and it will look at it parents to figure out what it is...
+ * Ideally we use the top-down approach for everything, like we do in `explore_variable_usage`.
+ */
 let node_is_variable_usage = (node) => {
     let parent = node.parent
 
@@ -430,62 +434,77 @@ let explore_variable_usage = (
             } finally {
                 cursor.parent()
             }
-        } else if (cursor.name === "FunctionDefinition" && cursor.firstChild()) {
-            // Two things
-            // 1. Add the function name to the current scope
-            // 2. Go through the function in a nested scope
+        } else if (cursor.name === "FunctionDefinition" || cursor.name === "MacroDefinition") {
+            let full_node = cursor.node
+            if (cursor.firstChild()) {
+                // Two things
+                // 1. Add the function name to the current scope
+                // 2. Go through the function in a nested scope
 
-            try {
-                // @ts-ignore
-                // If we are at "function", skip it
-                if (cursor.name === "function") {
-                    cursor.nextSibling()
-                }
-                // @ts-ignore
-                // Function name, add to current scope
-                if (cursor.name === "Identifier") {
-                    let name = doc.sliceString(cursor.from, cursor.to)
-                    scopestate.definitions.set(name, { from: cursor.from, to: cursor.to })
-                    cursor.nextSibling()
-                }
-
-                let nested_scope = {
-                    usages: new Set(),
-                    definitions: new Map(scopestate.definitions),
-                }
-                // @ts-ignore
-                // Cycle through arguments
-                if (cursor.name === "ArgumentList" && cursor.firstChild()) {
-                    try {
-                        do {
-                            // I tried doing this the way it is, but lezer-julia isn't there yet.
-                            // It is too hard (and not worth it) to do it the way it is now.
-                            // So we only take simple identifiers, and we don't care about the rest.
-                            for (let variable_node of get_variables_from_assignment(cursor)) {
-                                let name = doc.sliceString(variable_node.from, variable_node.to)
-                                nested_scope.definitions.set(name, {
-                                    from: variable_node.from,
-                                    to: variable_node.to,
-                                })
-                            }
-                        } while (cursor.nextSibling())
-                    } finally {
-                        cursor.parent()
+                try {
+                    // @ts-ignore
+                    // If we are at "function", skip it
+                    if (cursor.name === "function") {
+                        cursor.nextSibling()
                     }
+                    let in_macro = false
+                    // @ts-ignore
+                    // If we are at "function", skip it
+                    if (cursor.name === "macro") {
+                        in_macro = true // So we add `@` to the name
+                        cursor.nextSibling()
+                    }
+                    // @ts-ignore
+                    // Function name, add to current scope
+                    if (cursor.name === "Identifier") {
+                        let name = doc.sliceString(cursor.from, cursor.to)
+                        if (in_macro) {
+                            name = `@${name}`
+                        }
+                        // Add the full node as position, so it selects the whole thing
+                        // scopestate.definitions.set(name, { from: full_node.from, to: full_node.to })
+                        scopestate.definitions.set(name, { from: cursor.from, to: cursor.to })
+                        cursor.nextSibling()
+                    }
+
+                    let nested_scope = {
+                        usages: new Set(),
+                        definitions: new Map(scopestate.definitions),
+                    }
+                    // @ts-ignore
+                    // Cycle through arguments
+                    if (cursor.name === "ArgumentList" && cursor.firstChild()) {
+                        try {
+                            do {
+                                // I tried doing this the way it is, but lezer-julia isn't there yet.
+                                // It is too hard (and not worth it) to do it the way it is now.
+                                // So we only take simple identifiers, and we don't care about the rest.
+                                for (let variable_node of get_variables_from_assignment(cursor)) {
+                                    let name = doc.sliceString(variable_node.from, variable_node.to)
+                                    nested_scope.definitions.set(name, {
+                                        from: variable_node.from,
+                                        to: variable_node.to,
+                                    })
+                                }
+                            } while (cursor.nextSibling())
+                        } finally {
+                            cursor.parent()
+                        }
+                    }
+
+                    cursor.nextSibling()
+
+                    do {
+                        nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                    } while (cursor.nextSibling())
+
+                    scopestate = {
+                        usages: new Set([...scopestate.usages, ...nested_scope.usages]),
+                        definitions: scopestate.definitions,
+                    }
+                } finally {
+                    cursor.parent()
                 }
-
-                cursor.nextSibling()
-
-                do {
-                    nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
-                } while (cursor.nextSibling())
-
-                scopestate = {
-                    usages: new Set([...scopestate.usages, ...nested_scope.usages]),
-                    definitions: scopestate.definitions,
-                }
-            } finally {
-                cursor.parent()
             }
         } else if (cursor.name === "LetStatement" && cursor.firstChild()) {
             try {
