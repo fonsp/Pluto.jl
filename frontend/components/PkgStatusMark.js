@@ -1,5 +1,5 @@
 import _ from "../imports/lodash.js"
-import { html, useEffect, useState } from "../imports/Preact.js"
+import { html, useEffect, useRef, useState } from "../imports/Preact.js"
 
 export const nbpkg_fingerprint = (nbpkg) => (nbpkg == null ? [null] : Object.entries(nbpkg).flat())
 
@@ -69,19 +69,34 @@ export const package_status = ({ nbpkg, package_name, available_versions, is_dis
 export const PkgStatusMark = ({ package_name, pluto_actions, notebook_id, nbpkg }) => {
     const [available_versions, set_available_versions] = useState(null)
 
+    const age_ref = useRef(-1)
+    age_ref.current += 1
+
     useEffect(() => {
         let available_version_promise = pluto_actions.get_avaible_versions({ package_name, notebook_id }) ?? Promise.resolve([])
+        console.log("Getting available versions for: ", { package_name, notebook_id })
+
         available_version_promise.then((available_versions) => {
+            console.log("Found available versions: ", available_versions)
             set_available_versions(available_versions)
         })
     }, [package_name])
 
     const { status, hint_raw } = package_status({
+        nbpkg,
+        package_name,
+        is_disable_pkg: false,
+        available_versions,
+    })
+
+    console.log({
         nbpkg: nbpkg,
         package_name: package_name,
         is_disable_pkg: false,
         available_versions: available_versions,
+        age: age_ref.current,
     })
+    console.log(status)
 
     return html`
         <pkg-status-mark
