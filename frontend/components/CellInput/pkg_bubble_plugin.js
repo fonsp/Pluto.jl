@@ -120,8 +120,8 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                     }
 
                     let package_name = view.state.doc.sliceString(from, to)
-                    // console.warn(type)
-                    // console.warn("Found", package_name)
+                    console.warn(type)
+                    console.warn("Found", package_name)
                     add_widget(package_name, to)
 
                     if (in_selected_import) {
@@ -149,9 +149,9 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                 if (type.name === "SelectedImport") {
                     in_selected_import = false
                 }
-                if (type.name === "ScopedIdentifier" && !in_selected_import) {
+                if (type.name === "ScopedIdentifier") {
                     let node = getNode()
-                    if (node.parent.name === "Import") {
+                    if (node.parent.name === "Import" || node.parent.name === "SelectedImport") {
                         is_inside_scoped_identifier = false
                         let package_name = view.state.doc.sliceString(from, to)
 
@@ -161,6 +161,10 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
 
                         package_name = package_name.split(".")[0]
                         add_widget(package_name, to)
+
+                        if (in_selected_import) {
+                            in_import = false
+                        }
                     }
                 }
             },
