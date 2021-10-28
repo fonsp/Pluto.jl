@@ -28,10 +28,37 @@ export const pkg_disablers = [
  */
 function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
     let widgets = []
+    let seen_packages = new Set()
+
+    const add_widget = (package_name, target) => {
+        if (package_name !== "Base" && package_name !== "Core" && !seen_packages.has(package_name)) {
+            seen_packages.add(package_name)
+            let deco = Decoration.widget({
+                widget: new ReactWidget(html`
+                    <${PkgStatusMark}
+                        key=${package_name}
+                        package_name=${package_name}
+                        pluto_actions=${pluto_actions}
+                        notebook_id=${notebook_id}
+                        nbpkg=${nbpkg}
+                    />
+                `),
+                side: 1,
+            })
+            widgets.push(deco.range(target))
+        }
+    }
+
     for (let { from, to } of view.visibleRanges) {
         let in_import = false
         let in_selected_import = false
         let is_inside_quote = false
+
+        let is_inside_rename_import = false
+        let is_renamed_package_bubbled = false
+
+        let is_inside_scoped_identifier = false
+
         syntaxTree(view.state).iterate({
             from,
             to,
@@ -67,45 +94,51 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                 if (type.name === "SelectedImport") {
                     in_selected_import = true
                 }
-
-                // `import .X` or `import ..X`
-                if (type.name === "ScopedIdentifier") {
-                    in_import = false
-                    in_selected_import = false
-                    return false
+                if (type.name === "RenamedIdentifier") {
+                    is_inside_rename_import = true
+                }
+                // Don't show a buble next to the name `B` in `import A as B`
+                if (is_inside_rename_import && is_renamed_package_bubbled) {
+                    return
                 }
 
-                if (in_import && type.name === "Identifier") {
-                    let package_name = view.state.doc.sliceString(from, to)
-                    // console.warn(type)
-                    // console.warn("Found", package_name)
-                    if (package_name !== "Base" && package_name !== "Core") {
-                        let deco = Decoration.widget({
-                            widget: new ReactWidget(html`
-                                <${PkgStatusMark}
-                                    key=${package_name}
-                                    package_name=${package_name}
-                                    pluto_actions=${pluto_actions}
-                                    notebook_id=${notebook_id}
-                                    nbpkg=${nbpkg}
-                                />
-                            `),
-                            side: 1,
-                        })
-                        widgets.push(deco.range(to))
+                // `import .X` or `import ..X` or `import Flux.Zygote`
+                // handled when leaving the ScopedIdentifier
+                if (in_import && type.name === "ScopedIdentifier") {
+                    is_inside_scoped_identifier = true
+
+                    if (is_inside_rename_import && !is_renamed_package_bubbled) {
+                        is_renamed_package_bubbled = true
                     }
+
+                    return
+                }
+
+                if (in_import && type.name === "Identifier" && !is_inside_scoped_identifier) {
+                    if (is_inside_rename_import && !is_renamed_package_bubbled) {
+                        is_renamed_package_bubbled = true
+                    }
+
+                    let package_name = view.state.doc.sliceString(from, to)
+                    console.warn(type)
+                    console.warn("Found", package_name)
+                    add_widget(package_name, to)
 
                     if (in_selected_import) {
                         in_import = false
                     }
                 }
             },
-            leave: (type, from, to) => {
+            leave: (type, from, to, getNode) => {
                 if (type.name === "QuoteExpression" || type.name === "QuoteStatement") {
                     is_inside_quote = false
                 }
                 if (type.name === "InterpolationExpression") {
                     is_inside_quote = true
+                }
+                if (type.name === "RenamedIdentifier") {
+                    is_inside_rename_import = false
+                    is_renamed_package_bubbled = false
                 }
                 if (is_inside_quote) return
 
@@ -115,6 +148,24 @@ function pkg_decorations(view, { pluto_actions, notebook_id, nbpkg }) {
                 }
                 if (type.name === "SelectedImport") {
                     in_selected_import = false
+                }
+                if (type.name === "ScopedIdentifier") {
+                    let node = getNode()
+                    if (node.parent.name === "Import" || node.parent.name === "SelectedImport") {
+                        is_inside_scoped_identifier = false
+                        let package_name = view.state.doc.sliceString(from, to)
+
+                        if (package_name.startsWith(".")) {
+                            return
+                        }
+
+                        package_name = package_name.split(".")[0]
+                        add_widget(package_name, to)
+
+                        if (in_selected_import) {
+                            in_import = false
+                        }
+                    }
                 }
             },
         })
