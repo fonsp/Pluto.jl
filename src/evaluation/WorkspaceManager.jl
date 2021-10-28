@@ -115,16 +115,34 @@ function start_relaying_logs((session, notebook)::SN, log_channel::Distributed.R
 
             fn = next_log["file"]
             match = findfirst("#==#", fn)
-            cell_id = if match !== nothing
-                UUID(fn[findfirst("#==#", fn)[end]+1:end])
-            else
-                next_log["cell_id"]
+            
+            # We always show the log at the currently running cell, which is given by
+            running_cell_id = UUID(next_log["cell_id"])
+            running_cell = notebook.cells_dict[running_cell_id]
+            
+            # Some logs originate from outside of the running code, through function calls. Some code here to deal with that:
+            begin
+                source_cell_id = if match !== nothing
+                    # the log originated from within the notebook
+                    
+                    UUID(fn[findfirst("#==#", fn)[end]+1:end])
+                else
+                    # the log originated from a function call defined outside of the notebook
+                    
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                    UUID(next_log["cell_id"])
+                end
+                
+                if running_cell_id != source_cell_id
+                    # the log originated from a function in another cell of the notebook
+                    # we will show the log at the currently running cell, at "line -1", i.e. without line info.
+                    next_log["line"] = -1
+                end
             end
 
-            cell = notebook.cells_dict[cell_id]
-            push!(cell.logs, next_log)
+            push!(running_cell.logs, next_log)
             Pluto.@asynclog update_throttled()
-            # putnotebookupdates!(session, notebook, UpdateMessage(:log, next_log, notebook))
         catch e
             if !isopen(log_channel)
                 break
