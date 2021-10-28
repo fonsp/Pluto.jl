@@ -581,7 +581,7 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
-    load_integration_if_needed.(integrations)
+    load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
@@ -1118,6 +1118,14 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
+        id = Base.PkgId(UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
+        code = quote
+            if v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
+                initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            end
+        end,
+    ),
+    Integration(
         id = Base.PkgId(UUID("0c5d862f-8b57-4792-8d23-62f2024744c7"), "Symbolics"),
         code = quote
             pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Symbolics.Arr) = false
@@ -1224,6 +1232,8 @@ function load_integration_if_needed(integration::Integration)
         load_integration(integration)
     end
 end
+
+load_integrations_if_needed() = load_integration_if_needed.(integrations)
 
 function load_integration(integration::Integration)
     integration.loaded[] = true
@@ -1432,6 +1442,8 @@ function show(io::IO, ::MIME"text/html", bond::Bond)
     end
 end
 
+const initial_value_getter_ref = useRef{Function}(bond -> missing)
+
 """
     `@bind symbol element`
 
@@ -1450,11 +1462,12 @@ x^2
 The first cell will show a slider as the cell's output, ranging from 0 until 100.
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
-macro bind(def, element)
+macro bind(def, element)    
 	if def isa Symbol
 		quote
+            $(load_integrations_if_needed)()
 			local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
 			PlutoRunner.Bond(el, $(Meta.quot(def)))
 		end
 	else
@@ -1467,8 +1480,9 @@ Will be inserted in saved notebooks that use the @bind macro, make sure that the
 """
 const fake_bind = """macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = \$(esc(element))
-        global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end"""
