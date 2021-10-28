@@ -1,5 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
+import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
@@ -58,6 +59,9 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
+    run_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
+    end)
     module_name = create_emptyworkspacemodule(pid)
     
     original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
@@ -71,6 +75,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     )
 
     @async start_relaying_logs((session, notebook), log_channel)
+    @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
 
@@ -100,6 +105,22 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
         end)
     else
         # uhmmmmmm TODO
+    end
+end
+
+function start_relaying_self_updates((session, notebook)::SN, run_channel::Distributed.RemoteChannel)
+    while true
+        try
+            next_run_uuid = take!(run_channel)
+
+            cell_to_run = notebook.cells_dict[next_run_uuid]
+            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; persist_js_state=true)
+        catch e
+            if !isopen(run_channel)
+                break
+            end
+            @error "Failed to relay self-update" exception=(e, catch_backtrace())
+        end
     end
 end
 

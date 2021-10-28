@@ -237,7 +237,6 @@ expr_hash(x) = objectid(x)
 const computers = Dict{UUID,Computer}()
 const computer_workspace = Main
 
-
 "Registers a new computer for the cell, cleaning up the old one if there is one."
 function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
     proof = ReturnProof()
@@ -424,7 +423,31 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
+# Channel to trigger implicits run
+const run_channel = Channel{UUID}(10)
 
+# internal api, be careful as this can trigger an infinite loop
+function _self_run(cell_id::UUID)
+    # if cell_id != currently_running_cell_id[]
+    #     @warn "_self_run($cell_id) called from outside the cell (from $(currently_running_cell_id[])), this can lead to infinite loops"
+    # end
+
+    # make sure only one of this cell_id is in the run channel
+    # by emptying it and filling it again
+    new_uuids = UUID[]
+    while isready(run_channel)
+        uuid = take!(run_channel)
+        if uuid != cell_id
+            push!(new_uuids, uuid)
+        end
+    end
+    size = length(new_uuids)
+    for uuid in new_uuids
+        put!(run_channel, uuid)
+    end
+
+    put!(run_channel, cell_id)
+end
 
 
 
