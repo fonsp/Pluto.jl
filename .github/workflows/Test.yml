@@ -27,6 +27,7 @@ jobs:
                 # We test quite a lot of versions because we do some OS and version specific things unfortunately
                 julia-version: ["1.5", "1.6", "^1.7.0-0"] #, "nightly"]
                 os: [ubuntu-latest, macOS-latest, windows-latest]
+                runner-id: [0,1,2]
 
         steps:
             # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -40,3 +41,6 @@ jobs:
             # 🚗
             - uses: julia-actions/julia-runtest@v1
               continue-on-error: ${{ matrix.julia-version == 'nightly' }}
+              env:
+                PLUTO_TEST_NUM_RUNNERS: 3
+                PLUTO_TEST_RUNNER_ID: ${{ matrix.julia-version }}
