@@ -224,6 +224,8 @@ const return_error = "Pluto: You can only use return inside a function."
 
 struct Computer
     f::Function
+    expr_id::ObjectID
+    cleanup_funcs::Set{Function}
     return_proof::ReturnProof
     input_globals::Vector{Symbol}
     output_globals::Vector{Symbol}
@@ -231,13 +233,13 @@ end
 
 expr_hash(e::Expr) = objectid(e.head) + mapreduce(p -> objectid((p[1], expr_hash(p[2]))), +, enumerate(e.args); init=zero(ObjectID))
 expr_hash(x) = objectid(x)
-# TODO: clear key when a cell is deleted furever
-const computers = Dict{ObjectID,Computer}()
 
+const computers = Dict{UUID,Computer}()
 const computer_workspace = Main
 
 
-function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
+"Registers a new computer for the cell, cleaning up the old one if there is one."
+function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
     proof = ReturnProof()
 
     @gensym result
@@ -251,7 +253,29 @@ function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, outpu
 
     f = Core.eval(computer_workspace, e)
 
-    computers[key] = Computer(f, proof, input_globals, output_globals)
+    if haskey(computers, cell_id)
+        delete_computer!(computers, cell_id)
+    end
+
+    computers[cell_id] = Computer(f, key, Set{Function}([]), proof, input_globals, output_globals)
+end
+
+function delete_computer!(computers::Dict{UUID,Computer}, cell_id::UUID)
+    computer = pop!(computers, cell_id)
+    for cleanup_func in computer.cleanup_funcs
+        cleanup_func()
+    end
+    Base.visit(Base.delete_method, methods(computer.f).mt) # Make the computer function uncallable
+end
+
+parse_cell_id(filename::Symbol) = filename |> string |> parse_cell_id
+parse_cell_id(filename::AbstractString) =
+    match(r"#==#(.*)", filename).captures |> only |> UUID
+
+function register_cleanup(f::Function, cell_id::UUID)
+    @assert haskey(computers, cell_id) "The cell $cell_id is not function wrapped"
+    push!(computers[cell_id].cleanup_funcs, f)
+    nothing
 end
 
 quote_if_needed(x) = x
@@ -371,11 +395,11 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             (ans, add_runtimes(runtime, expansion_runtime))
         end
     else
-        key = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
-        local computer = get(computers, key, nothing)
-        if computer === nothing
+        expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+        local computer = get(computers, cell_id, nothing)
+        if computer === nothing || computer.expr_id !== expr_id
             try
-                computer = register_computer(expr, key, collect.(function_wrapped_info)...)
+                computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
                 return run_expression(m, expr, cell_id, nothing)
@@ -386,6 +410,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
         # The fix is to detect this situation and run the expression in the classical way.
         if (ans isa CapturedException) && (ans.ex isa UndefVarError)
+            # @warn "Got variable that does not exist" ex=ans
             run_expression(m, expr, cell_id, nothing)
         else
             ans, add_runtimes(runtime, expansion_runtime)
