@@ -43,4 +43,4 @@ jobs:
               continue-on-error: ${{ matrix.julia-version == 'nightly' }}
               env:
                 PLUTO_TEST_NUM_RUNNERS: 3
-                PLUTO_TEST_RUNNER_ID: ${{ matrix.julia-version }}
+                PLUTO_TEST_RUNNER_ID: ${{ matrix.runner-id }}
