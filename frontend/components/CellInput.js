@@ -485,6 +485,17 @@ export const CellInput = ({
                 head: line_and_ch_to_cm6_position(cm.state.doc, cm_forced_focus[1]),
             }
 
+            if (cm_forced_focus[2]?.definition_of) {
+                let scopestate = cm.state.field(ScopeStateField)
+                let definition = scopestate?.definitions.get(cm_forced_focus[2]?.definition_of)
+                if (definition) {
+                    new_selection = {
+                        anchor: definition.from,
+                        head: definition.to,
+                    }
+                }
+            }
+
             let dom = /** @type {HTMLElement} */ (cm.dom)
             dom.scrollIntoView({
                 behavior: "smooth",

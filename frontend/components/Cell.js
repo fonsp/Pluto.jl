@@ -52,9 +52,17 @@ export const Cell = ({
                 if (e.detail.line != null) {
                     const ch = e.detail.ch
                     if (ch == null) {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: 0 }, { line: e.detail.line, ch: Infinity }, { scroll: true }])
+                        set_cm_forced_focus([
+                            { line: e.detail.line, ch: 0 },
+                            { line: e.detail.line, ch: Infinity },
+                            { scroll: true, definition_of: e.detail.definition_of },
+                        ])
                     } else {
-                        set_cm_forced_focus([{ line: e.detail.line, ch: ch }, { line: e.detail.line, ch: ch }, { scroll: true }])
+                        set_cm_forced_focus([
+                            { line: e.detail.line, ch: ch },
+                            { line: e.detail.line, ch: ch },
+                            { scroll: true, definition_of: e.detail.definition_of },
+                        ])
                     }
                 }
             }

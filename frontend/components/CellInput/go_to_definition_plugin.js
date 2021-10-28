@@ -1,4 +1,4 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -68,6 +68,8 @@ let empty_variables = []
  * @returns {ScopeState}
  */
 let merge_scope_state = (a, b) => {
+    if (a === b) return a
+
     let usages = new Set([...a.usages, ...b.usages])
     let definitions = new Map(a.definitions)
     for (let [key, value] of b.definitions) {
@@ -146,8 +148,23 @@ let get_variables_from_assignment = (cursor) => {
 
 /**
  * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
+ */
+let go_through_quoted_expression_looking_for_interpolations = function* (cursor) {
+    if (cursor.name !== "QuoteExpression") throw new Error("Expected QuotedExpression")
+
+    while (cursor.next()) {
+        // @ts-ignore
+        if (cursor.name === "InterpolationExpression") {
+            yield cursor
+        }
+    }
+}
+
+/**
+ * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
  * @param {any} doc
  * @param {ScopeState} scopestate
+ * @returns {ScopeState}
  */
 let explore_variable_usage = (
     cursor,
@@ -159,97 +176,260 @@ let explore_variable_usage = (
 ) => {
     // console.group(`Explorer: ${cursor.toString()}`)
     try {
-        if (cursor.name === "CompoundExpression") {
-            // begin ... end, go through all the children one by one and keep adding their definitions
-            if (cursor.firstChild()) {
-                try {
-                    do {
-                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
-                    } while (cursor.nextSibling())
-                } finally {
-                    cursor.parent()
+        if (cursor.name === "Symbol") {
+            // Nothing, ha!
+        } else if (cursor.name === "AbstractDefinition") {
+            // Also nothing!
+        } else if (cursor.name === "StructDefinition" && cursor.firstChild()) {
+            try {
+                // @ts-ignore
+                if (cursor.name === "mutable") cursor.nextSibling()
+                // @ts-ignore
+                if (cursor.name === "struct") cursor.nextSibling()
+
+                // We're at the identifier (possibly ParameterizedIdentifier)
+                // @ts-ignore
+                if (cursor.name === "Identifier") {
+                    let name = doc.sliceString(cursor.from, cursor.to)
+                    scopestate.definitions.set(name, {
+                        from: cursor.from,
+                        to: cursor.to,
+                    })
+                    cursor.nextSibling()
                 }
-            }
-        } else if (cursor.name === "ForStatement" && cursor.firstChild()) {
-            let nested_scope = {
-                usages: new Set(),
-                definitions: new Map(scopestate.definitions),
-            }
-
-            // @ts-ignore
-            if (cursor.name === "for") {
-                cursor.nextSibling()
-            }
-
-            // @ts-ignore
-            if (cursor.name === "ForBinding" && cursor.firstChild()) {
-                try {
-                    for (let variable_node of get_variables_from_assignment(cursor)) {
-                        let name = doc.sliceString(variable_node.from, variable_node.to)
-                        nested_scope.definitions.set(name, {
-                            from: variable_node.from,
-                            to: variable_node.to,
+                // @ts-ignore
+                if (cursor.name === "ParameterizedIdentifier" && cursor.firstChild()) {
+                    try {
+                        let name = doc.sliceString(cursor.from, cursor.to)
+                        scopestate.definitions.set(name, {
+                            from: cursor.from,
+                            to: cursor.to,
                         })
+
+                        cursor.nextSibling() // Typed part
+                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                    } finally {
+                        cursor.parent()
                     }
                     cursor.nextSibling()
+                }
 
-                    // @ts-ignore
-                    if (cursor.name === "in") {
-                        cursor.nextSibling()
-                    }
-
-                    // Right hand side of `for ... in ...`
+                // @ts-ignore
+                if (cursor.name === "TypedExpression" && cursor.node.getChildren("Identifier").length === 1) {
                     scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
-                } finally {
+                    cursor.nextSibling()
+                }
+
+                // We are now in the actual struct body
+                do {
+                    // @ts-ignore
+                    if (cursor.name === "Identifier") {
+                        // Nothing, this is just the name inside the struct blegh get it out of here
+                    }
+                    // @ts-ignore
+                    if (cursor.name === "TypedExpression") {
+                        // We're in X::Y, and Y is a reference
+                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor.node.lastChild.cursor, doc, scopestate))
+                    }
+                    // I'm not so sure about this
+                    // @ts-ignore
+                    if (cursor.name === "AssignmentExpression" && cursor.firstChild()) {
+                        try {
+                            if (cursor.name === "Identifier") {
+                                // Nothing, this is just the name inside the struct blegh get it out of here
+                            }
+                            if (cursor.name === "TypedExpression") {
+                                // We're in X::Y, and Y is a reference
+                                scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor.node.lastChild.cursor, doc, scopestate))
+                            }
+
+                            cursor.nextSibling()
+                            cursor.nextSibling()
+
+                            // We're in X::Y, and Y is a reference
+                            scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                        } finally {
+                            cursor.parent()
+                        }
+                    }
+                } while (cursor.nextSibling())
+            } finally {
+                cursor.parent()
+            }
+        } else if (cursor.name === "QuoteExpression") {
+            for (let interpolation_cursor of go_through_quoted_expression_looking_for_interpolations(cursor)) {
+                scopestate = merge_scope_state(scopestate, explore_variable_usage(interpolation_cursor, doc, scopestate))
+            }
+        } else if (cursor.name === "ModuleDefinition" && cursor.firstChild()) {
+            // Ugh..
+            try {
+                // First child is "module", next child is the name
+                cursor.nextSibling()
+                let name = doc.sliceString(cursor.from, cursor.to)
+                scopestate.definitions.set(name, {
+                    from: cursor.from,
+                    to: cursor.to,
+                })
+
+                // Next children are the body
+                // These have a new scope, not even escaping definitions
+                /** @type {ScopeState} */
+                let module_scopestate = {
+                    usages: new Set(),
+                    definitions: new Map(),
+                }
+                while (cursor.nextSibling()) {
+                    module_scopestate = merge_scope_state(module_scopestate, explore_variable_usage(cursor, doc, module_scopestate))
+                }
+                // We still merge the module scopestate with the global scopestate, but only the usages that don't escape.
+                // (Later we can have also shadowed definitions for the dimming of unused variables)
+                scopestate = merge_scope_state(scopestate, {
+                    usages: new Set(Array.from(module_scopestate.usages).filter((x) => x.definition != null)),
+                    definitions: new Map(),
+                })
+            } finally {
+                cursor.parent()
+            }
+        } else if (cursor.name === "CompoundExpression" && cursor.firstChild()) {
+            // begin ... end, go through all the children one by one and keep adding their definitions
+            try {
+                do {
+                    scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                } while (cursor.nextSibling())
+            } finally {
+                cursor.parent()
+            }
+        } else if (cursor.name === "ImportStatement" && cursor.firstChild()) {
+            try {
+                // let is_using = cursor.name === "using"
+                cursor.nextSibling()
+
+                // @ts-ignore
+                if (cursor.name === "Import" && cursor.firstChild()) {
+                    do {
+                        let node = cursor.node
+                        if (cursor.name === "Identifier") {
+                            // node = node 🤷‍♀️
+                        }
+                        if (cursor.name === "RenamedIdentifier") {
+                            node = node.lastChild
+                        }
+
+                        let name = doc.sliceString(node.from, node.to)
+                        scopestate.definitions.set(name, {
+                            from: cursor.from,
+                            to: cursor.to,
+                        })
+                    } while (cursor.nextSibling())
                     cursor.parent()
                 }
+
+                // @ts-ignore
+                if (cursor.name === "SelectedImport" && cursor.firstChild()) {
+                    // First child is the module we are importing from, so we skip to the next child
+                    do {
+                        let node = cursor.node
+                        if (cursor.name === "Identifier") {
+                            // node = node 🤷‍♀️
+                        }
+                        if (cursor.name === "RenamedImport") {
+                            node = node.lastChild
+                        }
+                        let name = doc.sliceString(node.from, node.to)
+                        scopestate.definitions.set(name, {
+                            from: cursor.from,
+                            to: cursor.to,
+                        })
+                    } while (cursor.nextSibling())
+                }
+            } finally {
+                cursor.parent()
             }
+        } else if (cursor.name === "ForStatement" && cursor.firstChild()) {
+            try {
+                let nested_scope = {
+                    usages: new Set(),
+                    definitions: new Map(scopestate.definitions),
+                }
 
-            cursor.nextSibling()
+                // @ts-ignore
+                if (cursor.name === "for") {
+                    cursor.nextSibling()
+                }
 
-            // Go through the expressions in the for body
-            do {
-                nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
-            } while (cursor.nextSibling())
+                // @ts-ignore
+                if (cursor.name === "ForBinding" && cursor.firstChild()) {
+                    try {
+                        for (let variable_node of get_variables_from_assignment(cursor)) {
+                            let name = doc.sliceString(variable_node.from, variable_node.to)
+                            nested_scope.definitions.set(name, {
+                                from: variable_node.from,
+                                to: variable_node.to,
+                            })
+                        }
+                        cursor.nextSibling()
 
-            scopestate = {
-                usages: new Set([...scopestate.usages, ...nested_scope.usages]),
-                definitions: scopestate.definitions,
+                        // @ts-ignore
+                        if (cursor.name === "in") {
+                            cursor.nextSibling()
+                        }
+
+                        // Right hand side of `for ... in ...`
+                        scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
+                    } finally {
+                        cursor.parent()
+                    }
+                }
+
+                cursor.nextSibling()
+
+                // Go through the expressions in the for body
+                do {
+                    nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                } while (cursor.nextSibling())
+
+                scopestate = {
+                    usages: new Set([...scopestate.usages, ...nested_scope.usages]),
+                    definitions: scopestate.definitions,
+                }
+            } finally {
+                cursor.parent()
             }
-            cursor.parent()
         } else if (cursor.name === "DoClause" && cursor.firstChild()) {
-            // It's not yet possible to be SURE that we have the arguments, because of the way @lezer/julia works...
-            // But imma do my best, and soon contribute to @lezer/julia
+            try {
+                // It's not yet possible to be SURE that we have the arguments, because of the way @lezer/julia works...
+                // But imma do my best, and soon contribute to @lezer/julia
 
-            cursor.nextSibling() // We are now supposed to be in the argumentlist..
-            // Problem is: we might also be in the first statement of the function...
-            // So we'll make sure that we have something that is valid as arguments,
-            // but then still someone MIGHT have a plain identifier in the first statement.
+                cursor.nextSibling() // We are now supposed to be in the argumentlist..
+                // Problem is: we might also be in the first statement of the function...
+                // So we'll make sure that we have something that is valid as arguments,
+                // but then still someone MIGHT have a plain identifier in the first statement.
 
-            let nested_scope = {
-                usages: new Set(),
-                definitions: new Map(scopestate.definitions),
+                let nested_scope = {
+                    usages: new Set(),
+                    definitions: new Map(scopestate.definitions),
+                }
+                for (let variable_node of get_variables_from_assignment(cursor)) {
+                    let name = doc.sliceString(variable_node.from, variable_node.to)
+                    nested_scope.definitions.set(name, {
+                        from: variable_node.from,
+                        to: variable_node.to,
+                    })
+                }
+
+                cursor.nextSibling()
+
+                do {
+                    nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
+                } while (cursor.nextSibling())
+
+                scopestate = {
+                    usages: new Set([...scopestate.usages, ...nested_scope.usages]),
+                    definitions: scopestate.definitions,
+                }
+            } finally {
+                cursor.parent()
             }
-            for (let variable_node of get_variables_from_assignment(cursor)) {
-                let name = doc.sliceString(variable_node.from, variable_node.to)
-                nested_scope.definitions.set(name, {
-                    from: variable_node.from,
-                    to: variable_node.to,
-                })
-            }
-
-            cursor.nextSibling()
-
-            do {
-                nested_scope = merge_scope_state(nested_scope, explore_variable_usage(cursor, doc, nested_scope))
-            } while (cursor.nextSibling())
-
-            scopestate = {
-                usages: new Set([...scopestate.usages, ...nested_scope.usages]),
-                definitions: scopestate.definitions,
-            }
-
-            cursor.parent()
         } else if (cursor.name === "FunctionDefinition" && cursor.firstChild()) {
             // Two things
             // 1. Add the function name to the current scope
@@ -275,21 +455,22 @@ let explore_variable_usage = (
                 }
                 // @ts-ignore
                 // Cycle through arguments
-                if (cursor.name === "ArgumentList") {
-                    if (cursor.firstChild()) {
-                        try {
-                            do {
-                                for (let variable_node of get_variables_from_assignment(cursor)) {
-                                    let name = doc.sliceString(variable_node.from, variable_node.to)
-                                    nested_scope.definitions.set(name, {
-                                        from: variable_node.from,
-                                        to: variable_node.to,
-                                    })
-                                }
-                            } while (cursor.nextSibling())
-                        } finally {
-                            cursor.parent()
-                        }
+                if (cursor.name === "ArgumentList" && cursor.firstChild()) {
+                    try {
+                        do {
+                            // I tried doing this the way it is, but lezer-julia isn't there yet.
+                            // It is too hard (and not worth it) to do it the way it is now.
+                            // So we only take simple identifiers, and we don't care about the rest.
+                            for (let variable_node of get_variables_from_assignment(cursor)) {
+                                let name = doc.sliceString(variable_node.from, variable_node.to)
+                                nested_scope.definitions.set(name, {
+                                    from: variable_node.from,
+                                    to: variable_node.to,
+                                })
+                            }
+                        } while (cursor.nextSibling())
+                    } finally {
+                        cursor.parent()
                     }
                 }
 
@@ -440,9 +621,6 @@ let explore_variable_usage = (
 }
 
 let get_variable_marks = (state, { scopestate, used_variables }) => {
-    console.log(`variables_with_origin_cell:`, used_variables)
-    console.log(`scopestate:`, scopestate)
-
     return Decoration.set(
         Array.from(scopestate.usages)
             .map(({ definition, usage }) => {
@@ -463,7 +641,6 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
                     } else {
                         // This could be used to trigger @edit when clicked, to open
                         // in whatever editor the person wants to use.
-
                         // return Decoration.mark({
                         //     tagName: "a",
                         //     attributes: {
@@ -476,16 +653,16 @@ let get_variable_marks = (state, { scopestate, used_variables }) => {
                     }
                 } else {
                     // Could be used to select the definition of a variable inside the current cell
-                    // return Decoration.mark({
-                    //     tagName: "a",
-                    //     attributes: {
-                    //         "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
-                    //         "data-cell-variable": text,
-                    //         "data-cell-variable-from": `${definition.from}`,
-                    //         "data-cell-variable-to": `${definition.to}`,
-                    //         "href": `#`,
-                    //     },
-                    // }).range(usage.from, usage.to)
+                    return Decoration.mark({
+                        tagName: "a",
+                        attributes: {
+                            "title": `${ctrl_or_cmd_name}-Click to jump to the definition of ${text}.`,
+                            "data-cell-variable": text,
+                            "data-cell-variable-from": `${definition.from}`,
+                            "data-cell-variable-to": `${definition.to}`,
+                            "href": `#`,
+                        },
+                    }).range(usage.from, usage.to)
                     return null
                 }
             })
@@ -549,37 +726,52 @@ export const go_to_definition_plugin = ViewPlugin.fromClass(
 
         eventHandlers: {
             pointerdown: (event, view) => {
-                if (has_ctrl_or_cmd_pressed(event) && event.which === 1 && event.target instanceof Element) {
+                if (has_ctrl_or_cmd_pressed(event) && event.button === 0 && event.target instanceof Element) {
                     let pluto_variable = event.target.closest("[data-pluto-variable]")
-                    if (!pluto_variable) return
+                    if (pluto_variable) {
+                        let variable = pluto_variable.getAttribute("data-pluto-variable")
 
-                    let variable = pluto_variable.getAttribute("data-pluto-variable")
+                        event.preventDefault()
+                        let scrollto_selector = `[id='${encodeURI(variable)}']`
+                        document.querySelector(scrollto_selector).scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                        })
 
-                    event.preventDefault()
-                    let scrollto_selector = `[id='${encodeURI(variable)}']`
-                    document.querySelector(scrollto_selector).scrollIntoView({
-                        behavior: "smooth",
-                        block: "center",
-                    })
+                        // TODO Something fancy where it counts going to definition as a page in history,
+                        // .... so pressing/swiping back will go back to where you clicked on the definition.
+                        // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
+                        // window.history.pushState({ scrollTo: scrollto_selector }, null)
 
-                    // TODO Something fancy where it counts going to definition as a page in history,
-                    // .... so pressing/swiping back will go back to where you clicked on the definition.
-                    // window.history.replaceState({ scrollTop: document.documentElement.scrollTop }, null)
-                    // window.history.pushState({ scrollTo: scrollto_selector }, null)
+                        let used_variables = view.state.facet(UsedVariablesFacet)
 
-                    let used_variables = view.state.facet(UsedVariablesFacet)
+                        // TODO Something fancy where we actually emit the identifier we are looking for,
+                        // .... and the cell then selects exactly that definition (using lezer and cool stuff)
+                        if (used_variables[variable]) {
+                            window.dispatchEvent(
+                                new CustomEvent("cell_focus", {
+                                    detail: {
+                                        cell_id: used_variables[variable],
+                                        line: 0, // 1-based to 0-based index
+                                        definition_of: variable,
+                                    },
+                                })
+                            )
+                            return true
+                        }
+                    }
 
-                    // TODO Something fancy where we actually emit the identifier we are looking for,
-                    // .... and the cell then selects exactly that definition (using lezer and cool stuff)
-                    if (used_variables[variable]) {
-                        window.dispatchEvent(
-                            new CustomEvent("cell_focus", {
-                                detail: {
-                                    cell_id: used_variables[variable],
-                                    line: 0, // 1-based to 0-based index
-                                },
-                            })
-                        )
+                    let cell_variable = event.target.closest("[data-cell-variable]")
+                    if (cell_variable) {
+                        let variable_name = cell_variable.getAttribute("data-cell-variable")
+                        let variable_from = Number(cell_variable.getAttribute("data-cell-variable-from"))
+                        let variable_to = Number(cell_variable.getAttribute("data-cell-variable-to"))
+
+                        view.dispatch({
+                            selection: { anchor: variable_from, head: variable_to },
+                        })
+                        view.focus()
+                        return true
                     }
                 }
             },

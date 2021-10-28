@@ -130,6 +130,10 @@ export let get_selected_doc_from_state = (/** @type {EditorState} */ state, verb
                     }
                 }
 
+                if (cursor.name === "AbstractDefinition") {
+                    return "abstract type"
+                }
+
                 // `callee(...)` should yield "callee"
                 // (Only if it is on the `(` or `)`, or in like a space,
                 //    not on arguments (those are handle later))

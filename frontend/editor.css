@@ -2151,9 +2151,18 @@ body.ctrl_down [data-pluto-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
-body.ctrl_down [data-cell-variable]:hover {
-    text-decoration: underline;
+body.ctrl_down [data-pluto-variable]:hover * {
+    color: #af5bc3 !important;
+}
+
+/* Variable that is declared in the same cell */
+[data-cell-variable] {
+    /* Can give this cool styles later as well, but not for now nahhh */
+    text-decoration: none;
     cursor: pointer;
+}
+body.ctrl_down [data-cell-variable]:hover * {
+    color: #af5bc3 !important;
 }
 
 .cm-tooltip.cm-tooltip-autocomplete {
