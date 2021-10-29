@@ -2,7 +2,7 @@ import { html, Component, useState, useEffect, useMemo } from "../imports/Preact
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
-import { create_pluto_connection } from "../common/PlutoConnection.js"
+import { create_pluto_connection, timeout_promise } from "../common/PlutoConnection.js"
 import { init_feedback } from "../common/Feedback.js"
 import { serialize_cells, deserialize_cells, detect_deserializer } from "../common/Serialization.js"
 
@@ -22,7 +22,7 @@ import { slice_utf8, length_utf8 } from "../common/UnicodeTools.js"
 import { has_ctrl_or_cmd_pressed, ctrl_or_cmd_name, is_mac_keyboard, in_textarea_or_input } from "../common/KeyboardShortcuts.js"
 import { handle_log } from "../common/Logging.js"
 import { PlutoContext, PlutoBondsContext, PlutoJSInitializingContext } from "../common/PlutoContext.js"
-import { unpack } from "../common/MsgPack.js"
+import { pack, unpack } from "../common/MsgPack.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PkgTerminalView } from "./PkgTerminalView.js"
 import { start_binder, BinderPhase, count_stat } from "../common/Binder.js"
@@ -30,6 +30,10 @@ import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { base64_arraybuffer, blob_url_to_data_url } from "../common/PlutoHash.js"
+import { now, require } from "../common/SetupCellEnvironment.js"
+import { create_recorder } from "../common/AudioRecording.js"
+import { AudioPlayer } from "./AudioPlayer.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -175,6 +179,10 @@ const launch_params = {
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
     slider_server_url: url_params.get("slider_server_url") ?? window.pluto_slider_server_url,
+    //@ts-ignore
+    recording: url_params.get("recording") ?? window.pluto_recording,
+    //@ts-ignore
+    recording_audio_url: url_params.get("recording_audio_url") ?? window.pluto_recording_audio_url,
 }
 
 /**
@@ -230,7 +238,16 @@ export class Editor extends Component {
             selected_cells: [],
 
             update_is_ongoing: false,
+
+            recording: null,
+            recording_start: null,
         }
+
+        // const original_setState = this.setState
+
+        // this.setState = (change, callback) => {
+        //     original_setState(change, callback)
+        // }
 
         this.setStatePromise = (fn) => new Promise((r) => this.setState(fn, r))
 
@@ -602,6 +619,9 @@ patch: ${JSON.stringify(
                                 console.warn(`cells_stuck_in_limbo:`, cells_stuck_in_limbo)
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
+                            if (state.recording != null) {
+                                state.recording.steps = [...state.recording.steps, [Date.now() - state.recording_start, patches]]
+                            }
                             state.notebook = new_notebook
                         }),
                         resolve
@@ -666,6 +686,11 @@ patch: ${JSON.stringify(
 
             return true
         }
+
+        this.export_url = (/** @type {string} */ u) =>
+            this.state.binder_session_url == null
+                ? `./${u}?id=${this.state.notebook.notebook_id}`
+                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         this.client = {}
 
@@ -805,6 +830,13 @@ patch: ${JSON.stringify(
                         this.setStatePromise({
                             notebook: new_notebook,
                             last_update_time: Date.now(),
+                            recording:
+                                this.state.recording == null
+                                    ? null
+                                    : {
+                                          ...this.state.recording,
+                                          steps: [...this.state.recording.steps, [Date.now() - this.state.recording_start, changes]],
+                                      },
                         }),
                     ])
                 } finally {
@@ -871,6 +903,92 @@ patch: ${JSON.stringify(
             const cells_to_serialize = cell_id == null || this.state.selected_cells.includes(cell_id) ? this.state.selected_cells : [cell_id]
             if (cells_to_serialize.length) {
                 return serialize_cells(cells_to_serialize.map((id) => this.state.notebook.cell_inputs[id]))
+            }
+        }
+
+        this.start_recording = async () => {
+            const audio_recorder = await create_recorder()
+
+            let audio_record_start_promise = audio_recorder.start()
+
+            let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
+
+            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://e6f7-84-164-246-37.ngrok.io/")
+
+            console.log(initial_html)
+
+            await audio_record_start_promise
+            this.setState({
+                recording: {
+                    initial_html,
+                    initial_state: this.state.notebook,
+                    steps: [],
+                    audio_recorder,
+                },
+                recording_start: Date.now(),
+            })
+        }
+
+        this.stop_recording = async () => {
+            const { audio_recorder } = this.state.recording
+
+            const audio_blob_url = await audio_recorder.stop()
+            console.log(audio_blob_url)
+
+            const audio_data_url = await blob_url_to_data_url(audio_blob_url)
+
+            console.log(audio_data_url)
+
+            const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
+            const output_html = this.state.recording.initial_html.replace(
+                magic_tag,
+                `
+                <script>
+            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: this.state.recording.steps }))}";
+            window.pluto_recording_audio_url = "${audio_data_url}";
+            </script>
+            ${magic_tag}`
+            )
+
+            console.log(this.state.recording)
+
+            console.log(output_html)
+
+            let element = document.createElement("a")
+            element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
+            element.setAttribute("download", "recording.html")
+
+            element.style.display = "none"
+            document.body.appendChild(element)
+            element.click()
+            document.body.removeChild(element)
+
+            this.setState({
+                recording: null,
+                recording_start: null,
+            })
+        }
+        
+        this.loaded_recording = Promise.resolve().then(async () => {
+            return unpack(new Uint8Array(await (await fetch(launch_params.recording)).arrayBuffer()))
+        })
+
+        this.play_recording = async () => {
+            const deserialized = await this.loaded_recording
+
+            console.log(deserialized)
+
+            let last_time = 0
+            for (const [time, next_steps] of deserialized.steps) {
+                await new Promise((r) => {
+                    setTimeout(() => {
+                        r()
+                    }, time - last_time)
+                })
+                last_time = time
+
+                console.log({ next_steps })
+                apply_notebook_patches(next_steps)
             }
         }
 
@@ -1073,10 +1191,6 @@ patch: ${JSON.stringify(
             }}
             >${text}</a
         >`
-        const export_url = (u) =>
-            this.state.binder_session_url == null
-                ? `./${u}?id=${this.state.notebook.notebook_id}`
-                : `${this.state.binder_session_url}${u}?id=${this.state.notebook.notebook_id}&token=${this.state.binder_session_token}`
 
         return html`
             <${PlutoContext.Provider} value=${this.actions}>
@@ -1086,8 +1200,8 @@ patch: ${JSON.stringify(
                     <${ProgressBar} notebook=${this.state.notebook} binder_phase=${this.state.binder_phase} status=${status}/>
                     <header className=${export_menu_open ? "show_export" : ""}>
                         <${ExportBanner}
-                            notebookfile_url=${export_url("notebookfile")}
-                            notebookexport_url=${export_url("notebookexport")}
+                            notebookfile_url=${this.export_url("notebookfile")}
+                            notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
                         />
@@ -1111,7 +1225,7 @@ patch: ${JSON.stringify(
                             <div class="flex_grow_1"></div>
                             ${
                                 this.state.binder_phase === BinderPhase.ready
-                                    ? html`<pluto-filepicker><a href=${export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
+                                    ? html`<pluto-filepicker><a href=${this.export_url("notebookfile")} target="_blank">Save notebook...</a></pluto-filepicker>`
                                     : html`<${FilePicker}
                                           client=${this.client}
                                           value=${notebook.in_temp_dir ? "" : notebook.path}
@@ -1125,6 +1239,13 @@ patch: ${JSON.stringify(
                                       />`
                             }
                             <div class="flex_grow_2"></div>
+                            <button title="Start recording" onClick=${() => {
+                                if (this.state.recording == null) {
+                                    this.start_recording()
+                                } else {
+                                    this.stop_recording()
+                                }
+                            }} class="start_stop_recording ${this.state.recording ? "stop" : ""}" ><span></span></button>
                             <button class="toggle_export" title="Export..." onClick=${() => {
                                 this.setState({ export_menu_open: !export_menu_open })
                             }}><span></span></button>
@@ -1147,6 +1268,13 @@ patch: ${JSON.stringify(
                             }</div>
                         </nav>
                     </header>
+                    ${
+                        launch_params.recording
+                            ? html`<${AudioPlayer} src=${launch_params.recording_audio_url} length=${this.state.recording.} onPlay=${() => this.play_recording()}>`
+                            : null
+                    }
+                    
+                    
                     <${BinderButton} binder_phase=${this.state.binder_phase} start_binder=${() =>
             start_binder({ setStatePromise: this.setStatePromise, connect: this.connect, launch_params: launch_params })} notebookfile=${
             launch_params.notebookfile == null ? null : new URL(launch_params.notebookfile, window.location.href).href
