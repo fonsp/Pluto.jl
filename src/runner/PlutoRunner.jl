@@ -393,8 +393,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
     # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
     # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
-    original_expr = expr
-    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr != original_expr
+    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr != expr
         try
             try_macroexpand(m, cell_id, expr)
         catch e
@@ -405,9 +404,12 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         end
     end
 
+    # We can be sure there is a cached expression now, yay
     expanded_cache = cell_expanded_exprs[cell_id]
     expr = expanded_cache.expanded_expr
-    # Only mention the expansion time once
+
+    # We add the time it took to macroexpand to the time for the first call,
+    # but we make sure we don't mention it on subsequent calls
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
         # Is this really the easiest way to clone a struct with some changes? Pfffft
         cell_expanded_exprs[cell_id] = CachedMacroExpansion(
@@ -443,18 +445,18 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 return run_expression(m, expr, cell_id, nothing)
             end
         end
-        ans, runtime = run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-        # The fix is to "detect" this situation and run the expression in the classical way.
-        # TODO This error originates from our own `getfield.([m], input_globals)`... we can put a check there that
-        # .... throws a more specific error instead of this one that could come from inside the cell code as well.
-        if (ans isa CapturedException) && (ans.ex isa UndefVarError)
-            # @warn "Got variable that does not exist" ex=ans
+        # The fix is to detect this situation and run the expression in the classical way.
+        ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+            # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+            # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
             run_expression(m, expr, cell_id, nothing)
         else
-            ans, add_runtimes(runtime, expansion_runtime)
+            run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
         end
+
+        ans, add_runtimes(runtime, expansion_runtime)
     end
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
