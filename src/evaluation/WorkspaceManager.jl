@@ -277,7 +277,6 @@ function eval_format_fetch_in_workspace(
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
-    contains_user_defined_macrocalls::Bool=false
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
 
     workspace = get_workspace(session_notebook)
@@ -302,7 +301,6 @@ function eval_format_fetch_in_workspace(
             $cell_id, 
             $function_wrapped_info,
             $forced_expr_id,
-            $contains_user_defined_macrocalls,
         )))
         put!(workspace.dowork_token)
         nothing
@@ -360,11 +358,7 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
     expr = quote
         PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
     end
-    try
-        return Distributed.remotecall_eval(Main, workspace.pid, expr)
-    catch e
-        return e
-    end
+    return Distributed.remotecall_eval(Main, workspace.pid, expr)
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."

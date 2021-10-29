@@ -201,7 +201,6 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
 		expr_cache.forced_expr_id,
-		cell.cell_dependencies.contains_user_defined_macrocalls,
 	)
 	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
 	if session_notebook isa Tuple && run.process_exited
@@ -248,6 +247,15 @@ function can_help_resolve_cells(topology::NotebookTopology, cell::Cell)
 	any(is_macro_identifier, cell_node.funcdefs_without_signatures)
 end
 
+# Sorry couldn't help myself - DRAL
+abstract type Result end
+struct Success <: Result
+	result
+end
+struct Failure <: Result
+	error
+end
+
 """We still have 'unresolved' macrocalls, use the current and maybe previous workspace to do macro-expansions.
 
 You can optionally specify the roots for the current reactive run. If a cell macro contains only macros that will
@@ -267,31 +275,37 @@ function resolve_topology(
 	sn = (session, notebook)
 
 	function macroexpand_cell(cell)
-		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) =
-			macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
-
-		res = try_macroexpand()
-		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
-			res = try_macroexpand(old_workspace_name)
+		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) = try
+			Success(macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name))
+		catch e
+			Failure(e)
 		end
-		res
+
+		result = try_macroexpand()
+		if result isa Success
+			result
+		else
+			if (result.error isa LoadError && result.error.error isa UndefVarError) || result.error isa UndefVarError
+				try_macroexpand(old_workspace_name)
+			else
+				result
+			end
+		end
 	end
 
-	# nothing means that the expansion has failed
 	function analyze_macrocell(cell::Cell)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
 			return nothing
 		end
 
 		result = macroexpand_cell(cell)
-		if result isa Exception
-			@debug "Expansion failed" err=result
-			nothing
-		else # otherwise, we use the expanded expression + the list of macrocalls
-			(expr, computer_id) = result
+		if result isa Success
+			(expr, computer_id) = result.result
 			expanded_node = ExpressionExplorer.try_compute_symbolreferences(expr) |> ReactiveNode
 			function_wrapped = ExpressionExplorer.can_be_function_wrapped(expr)
-			(expanded_node, function_wrapped, computer_id)
+			Success((expanded_node, function_wrapped, computer_id))
+		else
+			result
 		end
 	end
 
@@ -310,8 +324,8 @@ function resolve_topology(
 			end
 
 			result = analyze_macrocell(cell)
-			if result !== nothing
-				(new_node, function_wrapped, forced_expr_id) = result
+			if result isa Success
+				(new_node, function_wrapped, forced_expr_id) = result.result
 				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
 				union!(new_node.references, new_node.macrocalls)
 				new_nodes[cell] = new_node
@@ -319,6 +333,7 @@ function resolve_topology(
 				# set function_wrapped to the function wrapped analysis of the expanded expression.
 				new_codes[cell] = ExprAnalysisCache(unresolved_topology.codes[cell]; forced_expr_id, function_wrapped)
 			else
+				@debug "Expansion failed" err=result.error
 				push!(still_unresolved_nodes, cell)
 			end
 	end

@@ -26,7 +26,14 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
-const ExpandedCallCells = Dict{UUID,NamedTuple{(:expr,:runtime),Tuple{Expr,UInt64}}}()
+
+Base.@kwdef struct CachedMacroExpansion
+    original_expr::Expr
+    expanded_expr::Expr
+    expansion_duration::UInt64
+    did_mention_expansion_time::Bool=false
+end
+const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
 
 
@@ -87,10 +94,15 @@ function wrap_dot(name)
 end
 
 """
-Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
+    no_workspace_ref(ref::Union{GlobalRef,Expr}, mod_name::Symbol=nothing)
+
+Goes through an expression and removes all "global" references to workspace modules (e.g. Main.workspace#XXX).
+
+This is useful for us because when we macroexpand, the global refs will normally point to the module it was built in.
+We don't re-build the macro in every workspace, so we need to remove these refs manually in order to point to the new module instead.
+
+TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
-no_workspace_ref(other, _=nothing) = other
-no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
 function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
     test_mod_name = nameof(ref.mod) |> string
     if startswith(test_mod_name, "workspace#") &&
@@ -102,6 +114,8 @@ function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
         ref
     end
 end
+no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
+no_workspace_ref(other, _=nothing) = other
 
 function sanitize_expr(symbol::Symbol)
     symbol
@@ -177,18 +191,21 @@ sanitize_value(other) = sanitize_expr(other)
 
 
 function try_macroexpand(mod, cell_uuid, expr)
-    try
-        elapsed_ns = time_ns()
-        expanded_expr = macroexpand(mod, expr)
-        elapsed_ns = time_ns() - elapsed_ns
+    elapsed_ns = time_ns()
+    expanded_expr = macroexpand(mod, expr)
+    elapsed_ns = time_ns() - elapsed_ns
 
-        expr_to_save = no_workspace_ref(expanded_expr)
-        ExpandedCallCells[cell_uuid] = (;expr=expr_to_save, runtime=elapsed_ns)
+    # Removes baked in references to the module this was macroexpanded in.
+    # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
+    expr_to_save = no_workspace_ref(expanded_expr)
 
-        return (sanitize_expr(expanded_expr), expr_hash(expr_to_save))
-    catch e
-        return e
-    end
+    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+        original_expr=expr,
+        expanded_expr=expr_to_save,
+        expansion_duration=elapsed_ns
+    )
+
+    return (sanitize_expr(expanded_expr), expr_hash(expr_to_save))
 end
 
 function get_module_names(workspace_module, module_ex::Expr)
@@ -350,15 +367,16 @@ function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::R
     end
 end
 
-function timed_visit_expand(current_module::Module, expr::Expr)::Tuple{Expr,UInt64}
-    elapsed = time_ns()
-    expanded_expr = no_workspace_ref(macroexpand(current_module, expr), nameof(current_module)) # visit_expand(current_module, expr)
-    elapsed = time_ns() - elapsed
-    (expanded_expr, elapsed)
-end
-
 add_runtimes(::Nothing, ::UInt64) = nothing
 add_runtimes(a::UInt64, b::UInt64) = a+b
+
+contains_macrocall(expr::Expr) = if expr.head === :macrocall
+    true
+else
+    any(arg -> contains_macrocall(arg), expr.args)
+end
+contains_macrocall(other) = false
+
 
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
@@ -367,32 +385,53 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing, contains_user_defined_macrocalls::Bool=false)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing)
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
-    (expr, expansion_runtime) = pop!(ExpandedCallCells, cell_id, (;expr,runtime=zero(UInt64)))
-    result, runtime = if function_wrapped_info === nothing
+    # If the cell contains macro calls, we want those macro calls to preserve their identity,
+    # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
+    # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
+    # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
+    original_expr = expr
+    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr != original_expr
+        try
+            try_macroexpand(m, cell_id, expr)
+        catch e
+            bt = stacktrace(catch_backtrace())
+            result = CapturedException(e, bt)
+            cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
+            return (result, nothing)
+        end
+    end
 
+    expanded_cache = cell_expanded_exprs[cell_id]
+    expr = expanded_cache.expanded_expr
+    # Only mention the expansion time once
+    expansion_runtime = if expanded_cache.did_mention_expansion_time === false
+        # Is this really the easiest way to clone a struct with some changes? Pfffft
+        cell_expanded_exprs[cell_id] = CachedMacroExpansion(
+            original_expr=expanded_cache.original_expr,
+            expanded_expr=expanded_cache.expanded_expr,
+            expansion_duration=expanded_cache.expansion_duration,
+            did_mention_expansion_time=true,
+        )
+        expanded_cache.expansion_duration
+    else
+        zero(UInt64)
+    end
+
+    if contains_macrocall(expr)
+        @error "Expression contains a macrocall" expr
+        throw("Expression still contains macro calls!!")
+    end
+
+    result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
 
-        # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
-        if contains_user_defined_macrocalls
-            try
-                (expr, other_expansion_runtime) = timed_visit_expand(m, expr)
-                expansion_runtime = max(expansion_runtime, other_expansion_runtime)
-                wrapped = timed_expr(expr, proof)
-                ans, runtime = run_inside_trycatch(m, wrapped, proof)
-                (ans, add_runtimes(runtime, expansion_runtime))
-            catch ex
-                bt = stacktrace(catch_backtrace())
-                (CapturedException(ex, bt), nothing)
-            end
-        else
-            wrapped = timed_expr(expr, proof)
-            ans, runtime = run_inside_trycatch(m, wrapped, proof)
-            (ans, add_runtimes(runtime, expansion_runtime))
-        end
+        wrapped = timed_expr(expr, proof)
+        ans, runtime = run_inside_trycatch(m, wrapped, proof)
+        (ans, add_runtimes(runtime, expansion_runtime))
     else
         expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
         local computer = get(computers, cell_id, nothing)
@@ -407,7 +446,9 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
-        # The fix is to detect this situation and run the expression in the classical way.
+        # The fix is to "detect" this situation and run the expression in the classical way.
+        # TODO This error originates from our own `getfield.([m], input_globals)`... we can put a check there that
+        # .... throws a more specific error instead of this one that could come from inside the cell code as well.
         if (ans isa CapturedException) && (ans.ex isa UndefVarError)
             # @warn "Got variable that does not exist" ex=ans
             run_expression(m, expr, cell_id, nothing)
