@@ -1,16 +1,20 @@
-import { createSilentAudio } from "../common/AudioRecording"
+import { createSilentAudio } from "../common/AudioRecording.js"
 import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
 
-export const AudioPlayer = ({ onPlay, src, length }) => {
+let run = (x) => x()
+
+export const AudioPlayer = ({ onPlay, src, loaded_recording }) => {
     const element_ref = useRef()
 
     useLayoutEffect(() => {
-        if (src == null) {
-            let sourceje = createSilentAudio(length)
-            element_ref.current.src = sourceje
-        } else {
-            element_ref.current.src = src
-        }
+        run(async () => {
+            if (src == null) {
+                let fake_source = createSilentAudio((await loaded_recording).steps.length)
+                element_ref.current.src = fake_source
+            } else {
+                element_ref.current.src = src
+            }
+        })
     }, [])
 
     return html`<audio ref=${element_ref} onPlay=${onPlay} controls></audio>`

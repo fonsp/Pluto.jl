@@ -915,8 +915,6 @@ patch: ${JSON.stringify(
 
             initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://e6f7-84-164-246-37.ngrok.io/")
 
-            console.log(initial_html)
-
             await audio_record_start_promise
             this.setState({
                 recording: {
@@ -933,11 +931,7 @@ patch: ${JSON.stringify(
             const { audio_recorder } = this.state.recording
 
             const audio_blob_url = await audio_recorder.stop()
-            console.log(audio_blob_url)
-
             const audio_data_url = await blob_url_to_data_url(audio_blob_url)
-
-            console.log(audio_data_url)
 
             const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
             const output_html = this.state.recording.initial_html.replace(
@@ -951,8 +945,6 @@ patch: ${JSON.stringify(
             )
 
             console.log(this.state.recording)
-
-            console.log(output_html)
 
             let element = document.createElement("a")
             element.setAttribute("href", "data:text/html;charset=utf-8," + encodeURIComponent(output_html))
@@ -968,9 +960,13 @@ patch: ${JSON.stringify(
                 recording_start: null,
             })
         }
-        
+
         this.loaded_recording = Promise.resolve().then(async () => {
-            return unpack(new Uint8Array(await (await fetch(launch_params.recording)).arrayBuffer()))
+            if (launch_params.recording) {
+                return unpack(new Uint8Array(await (await fetch(launch_params.recording)).arrayBuffer()))
+            } else {
+                return null
+            }
         })
 
         this.play_recording = async () => {
@@ -1270,7 +1266,11 @@ patch: ${JSON.stringify(
                     </header>
                     ${
                         launch_params.recording
-                            ? html`<${AudioPlayer} src=${launch_params.recording_audio_url} length=${this.state.recording.} onPlay=${() => this.play_recording()}>`
+                            ? html`<${AudioPlayer}
+                                  src=${launch_params.recording_audio_url}
+                                  loaded_recording=${this.loaded_recording}
+                                  onPlay=${() => this.play_recording()}
+                              ></${AudioPlayer}>`
                             : null
                     }
                     
