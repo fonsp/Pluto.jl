@@ -28,7 +28,7 @@ const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
 
 Base.@kwdef struct CachedMacroExpansion
-    original_expr::Expr
+    original_expr_hash::UInt64
     expanded_expr::Expr
     expansion_duration::UInt64
     did_mention_expansion_time::Bool=false
@@ -200,7 +200,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_to_save = no_workspace_ref(expanded_expr)
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
-        original_expr=expr,
+        original_expr_hash=expr_hash(expr),
         expanded_expr=expr_to_save,
         expansion_duration=elapsed_ns
     )
@@ -400,7 +400,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
     # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
     # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
-    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr != expr
+    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
         try
             try_macroexpand(m, cell_id, expr)
         catch e
@@ -420,7 +420,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     expansion_runtime = if expanded_cache.did_mention_expansion_time === false
         # Is this really the easiest way to clone a struct with some changes? Pfffft
         cell_expanded_exprs[cell_id] = CachedMacroExpansion(
-            original_expr=expanded_cache.original_expr,
+            original_expr_hash=expanded_cache.original_expr_hash,
             expanded_expr=expanded_cache.expanded_expr,
             expansion_duration=expanded_cache.expansion_duration,
             did_mention_expansion_time=true,
