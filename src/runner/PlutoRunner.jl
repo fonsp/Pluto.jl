@@ -263,7 +263,7 @@ function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globa
         Expr(:(=), result, timed_expr(expr, proof)),
         Expr(:tuple,
             result,
-            Expr(:tuple, output_globals...)
+            Expr(:tuple, map(x -> :(@isdefined($(x)) ? $(x) : $(NotDefined())),output_globals)...)
         )
     ))
 
@@ -297,6 +297,8 @@ end
 quote_if_needed(x) = x
 quote_if_needed(x::Union{Expr, Symbol, QuoteNode, LineNumberNode}) = QuoteNode(x)
 
+struct NotDefined end
+
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
     # this might error if the global does not exist, which is exactly what we want
@@ -308,7 +310,12 @@ function compute(m::Module, computer::Computer)
         result, output_global_values = out
 
         for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
+            # Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
+            Core.eval(m, quote
+                if $(quote_if_needed(val)) === $(NotDefined())
+                    $(name) = $(quote_if_needed(val))
+                end
+            end)
         end
 
         result
