@@ -37,7 +37,7 @@ const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
 
 
-
+struct GiveMeCellID end
 
 
 
@@ -117,18 +117,24 @@ end
 no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
 no_workspace_ref(other, _=nothing) = other
 
+
+replace_pluto_properties_in_expr(::GiveMeCellID; cell_id) = cell_id
+replace_pluto_properties_in_expr(expr::Expr; cell_id) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg, cell_id=cell_id), expr.args)...)
+replace_pluto_properties_in_expr(other; cell_id) = other
+
+
 function sanitize_expr(symbol::Symbol)
     symbol
 end
 
-function sanitize_expr(dt::Union{DataType,Enum})
-    Symbol(dt)
-end
+# function sanitize_expr(dt::Union{DataType,Enum})
+#     Symbol(dt)
+# end
 
 function sanitize_expr(ref::GlobalRef)
     test_mod_name = nameof(ref.mod) |> string
     if startswith(test_mod_name, "workspace#")
-        ref.name
+        sanitize_expr(ref.name)
     else
         wrap_dot(ref)
     end
@@ -140,54 +146,55 @@ end
 
 # a function as part of an Expr is most likely a closure
 # returned from a macro
-function sanitize_expr(func::Function)
-    mt = typeof(func).name.mt
-    GlobalRef(mt.module, mt.name) |> sanitize_expr
-end
+# function sanitize_expr(func::Function)
+#     mt = typeof(func).name.mt
+#     GlobalRef(mt.module, mt.name) |> sanitize_expr
+# end
 
-function sanitize_expr(union_all::UnionAll)
-    sanitize_expr(union_all.body)
-end
+# function sanitize_expr(union_all::UnionAll)
+#     sanitize_expr(union_all.body)
+# end
 
-function sanitize_expr(vec::AbstractVector)
-    Expr(:vect, sanitize_value.(vec)...)
-end
+# function sanitize_expr(vec::AbstractVector)
+#     Expr(:vect, sanitize_value.(vec)...)
+# end
 
-function sanitize_expr(tuple::Tuple)
-    Expr(:tuple, sanitize_value.(tuple)...)
-end
+# function sanitize_expr(tuple::Tuple)
+#     Expr(:tuple, sanitize_value.(tuple)...)
+# end
 
-function sanitize_expr(dict::Dict)
-    Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
-end
+# function sanitize_expr(dict::Dict)
+#     Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
+# end
 
-function sanitize_expr(pair::Pair)
-    Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
-end
+# function sanitize_expr(pair::Pair)
+#     Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
+# end
 
-function sanitize_expr(set::Set)
-    Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
-end
+# function sanitize_expr(set::Set)
+#     Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
+# end
 
-function sanitize_expr(mod::Module)
-    fullname(mod) |> wrap_dot
-end
+# function sanitize_expr(mod::Module)
+#     fullname(mod) |> wrap_dot
+# end
 
 # An instanciation of a struct as part of an Expr
 # will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
 function sanitize_expr(other)
-    typename = other |> typeof
-    typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
-        other :
-        Symbol(typename)
+    # typename = other |> typeof
+    # typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
+    #     other :
+    #     Symbol(typename)
+    nothing
 end
 
 # A vector of Symbols need to be serialized as QuoteNode(sym)
-sanitize_value(sym::Symbol) = QuoteNode(sym)
+# sanitize_value(sym::Symbol) = QuoteNode(sym)
 
-sanitize_value(ex::Expr) = Expr(:quote, ex)
+# sanitize_value(ex::Expr) = Expr(:quote, ex)
 
-sanitize_value(other) = sanitize_expr(other)
+# sanitize_value(other) = sanitize_expr(other)
 
 
 function try_macroexpand(mod, cell_uuid, expr)
@@ -198,6 +205,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
     expr_to_save = no_workspace_ref(expanded_expr)
+    expr_to_save = replace_pluto_properties_in_expr(expanded_expr, cell_id=cell_uuid)
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
         original_expr_hash=expr_hash(expr),

@@ -326,7 +326,12 @@ function resolve_topology(
 				push!(still_unresolved_nodes, cell)
 			end
 
-			result = analyze_macrocell(cell)
+			result = try
+				analyze_macrocell(cell)
+			catch error
+				@error "Macro call expansion failed with a non-macroexpand error" error
+				Failure(error)
+			end
 			if result isa Success
 				(new_node, function_wrapped, forced_expr_id) = result.result
 				union!(new_node.macrocalls, unresolved_topology.nodes[cell].macrocalls)
