@@ -448,7 +448,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             try
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
-                # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
+                @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
                 return run_expression(m, expr, cell_id, nothing)
             end
         end
@@ -457,7 +457,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         # The fix is to detect this situation and run the expression in the classical way.
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
-            # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+            @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
             run_expression(m, expr, cell_id, nothing)
         else
             run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)

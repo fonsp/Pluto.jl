@@ -351,14 +351,17 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
 end
 
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)
+function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
-    expr = quote
-        PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
-    end
-    return Distributed.remotecall_eval(Main, workspace.pid, expr)
+    Distributed.remotecall_eval(Main, workspace.pid, quote
+        try
+            (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
+        catch e
+            (false, e)
+        end
+    end)
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."
