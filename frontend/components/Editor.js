@@ -921,6 +921,41 @@ patch: ${JSON.stringify(
 
             initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://1a77-78-55-172-245.ngrok.io/")
 
+            const scroll_handler = _.debounce(() => {
+                let y = window.scrollY + window.innerHeight / 2
+
+                /** @type {Array<HTMLElement>} */
+                const cell_nodes = Array.from(document.querySelectorAll("pluto-notebook > pluto-cell"))
+
+                let best_index = ""
+                let relative_distance = 0
+
+                cell_nodes.forEach((el, i) => {
+                    let cy = el.offsetTop
+                    if (cy <= y) {
+                        best_index = el.id
+                        relative_distance = (y - cy) / el.offsetHeight
+                    }
+                })
+
+                this.setStatePromise(
+                    immer((state) => {
+                        state.recording.scrolls = [
+                            ...state.recording.scrolls,
+                            [
+                                (Date.now() - state.recording_start) / 1000,
+                                {
+                                    cell_id: best_index,
+                                    relative_distance,
+                                },
+                            ],
+                        ]
+                    })
+                )
+            }, 500)
+
+            window.addEventListener("scroll", scroll_handler)
+
             try {
                 await audio_record_start_promise
             } catch (e) {
@@ -932,6 +967,8 @@ patch: ${JSON.stringify(
                     initial_html,
                     initial_state: this.state.notebook,
                     steps: [],
+                    scrolls: [],
+                    scroll_handler,
                     audio_recorder,
                 },
                 recording_start: Date.now(),
@@ -939,7 +976,8 @@ patch: ${JSON.stringify(
         }
 
         this.stop_recording = async () => {
-            const { audio_recorder, initial_html, steps } = this.state.recording
+            const { audio_recorder, initial_html, steps, scrolls, scroll_handler } = this.state.recording
+            window.removeEventListener("scroll", scroll_handler)
 
             const audio_blob_url = await audio_recorder?.stop()
             const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
@@ -949,7 +987,7 @@ patch: ${JSON.stringify(
                 magic_tag,
                 `
                 <script>
-            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps }))}";
+            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps, scrolls: scrolls }))}";
             window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
             </script>
             ${magic_tag}`
@@ -994,6 +1032,19 @@ patch: ${JSON.stringify(
 
             const audio = this.recording_audio_player_ref.current
             let new_timestamp = audio.currentTime
+
+            let scrolls_in_time_window = deserialized.scrolls.filter(
+                ([t, s]) => Math.min(current_state_timestamp, new_timestamp) < t && t <= Math.max(current_state_timestamp, new_timestamp)
+            )
+            if (scrolls_in_time_window.length > 0) {
+                let { cell_id, relative_distance } = (new_timestamp > current_state_timestamp ? _.last : _.first)(scrolls_in_time_window)[1]
+
+                const cell = document.getElementById(cell_id)
+                window.scrollTo({
+                    top: cell.offsetTop + relative_distance * cell.offsetHeight - window.innerHeight / 2,
+                    behavior: "smooth",
+                })
+            }
 
             if (new_timestamp < current_state_timestamp) {
                 console.warn("audio went back in time... WHOOPS")
