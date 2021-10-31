@@ -1,4 +1,26 @@
+import vmsg from "https://cdn.jsdelivr.net/npm/vmsg@0.4.0/vmsg.js"
+
 export const create_recorder = async () => {
+    const recorder = new vmsg.Recorder({
+        wasmURL: "https://unpkg.com/vmsg@0.4.0/vmsg.wasm",
+    })
+
+    return {
+        start: async () => {
+            await recorder.initAudio()
+            await recorder.initWorker()
+            recorder.startRecording()
+        },
+        stop: async () => {
+            const blob = await recorder.stopRecording()
+
+            return window.URL.createObjectURL(blob)
+        },
+    }
+}
+
+// really nice but it can only record to audio/ogg or sometihng, nothing that works across all browsers
+export const create_recorder_native = async () => {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
 
     let chunks = []
