@@ -26,7 +26,7 @@ const Square = ({ fill }) => html`
     </svg>
 `
 
-export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url }) => {
+export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url, start_recording }) => {
     return html`
         <aside id="export">
             <div id="container">
@@ -45,9 +45,17 @@ export const ExportBanner = ({ onClose, notebookfile_url, notebookexport_url }) 
                     <section>A static <b>.pdf</b> file for print or email.</section>
                 </a>
                 <div class="export_title">record</div>
-                <a class="export_card">
+                <a
+                    href="#"
+                    onClick=${(e) => {
+                        start_recording()
+                        onClose()
+                        e.preventDefault()
+                    }}
+                    class="export_card"
+                >
                     <header><${Circle} fill="#E86F51" /> Recording</header>
-                    <section>Publish an interactive notebook online.</section>
+                    <section>Capture the entire notebook, and any changes you make.</section>
                 </a>
 
                 <button title="Close" class="toggle_export" onClick=${() => onClose()}>

@@ -777,6 +777,33 @@ body.binder.loading #binder_spinners {
     }
 }
 
+#outline-frame {
+    z-index: 9999;
+    pointer-events: none;
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100vw;
+    height: 100vh;
+    /* outline: red inset 15px; */
+    box-sizing: border-box;
+}
+
+body.recording #outline-frame {
+    border: 12px solid #dc3535ba;
+}
+
+div#stop-record-container {
+    position: fixed;
+    top: 3px;
+    z-index: 9999;
+    /* background: pink; */
+    border-color: #e86f6c;
+}
+div#stop-record-container span.stop-recording-icon::after {
+    background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
+}
+
 /* PREAMBLE */
 
 main > preamble {
@@ -790,11 +817,7 @@ main > preamble {
     pointer-events: none;
 }
 
-main > preamble #saveall-container {
-    margin-left: auto;
-    pointer-events: all;
-    right: min(0px, 700px + 25px - 100vw);
-    position: relative;
+.overlay-button {
     background: #ffffff;
     padding: 5px 8px;
     border: 3px solid #e3e3e3;
@@ -802,6 +825,13 @@ main > preamble #saveall-container {
     height: 35px;
     font-family: "Segoe UI Emoji", "Roboto Mono", monospace;
     font-size: 0.75rem;
+    pointer-events: all;
+}
+
+main > preamble #saveall-container {
+    margin-left: auto;
+    right: min(0px, 700px + 25px - 100vw);
+    position: relative;
 }
 
 @media screen and (min-width: calc(700px + 25px + 6px + 500px)) {
@@ -820,6 +850,7 @@ main > preamble #saveall-container.saved > span {
     opacity: 0.5;
 }
 
+span.stop-recording-icon::after,
 main > preamble span.saved-icon::after,
 main > preamble span.saving-icon::after {
     content: "";
@@ -837,9 +868,6 @@ main > preamble span.saving-icon::after {
 
 main > preamble span.saved-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
-}
-main > preamble button {
-    position: relative;
 }
 
 #saveall-container .only-on-hover {
@@ -1019,7 +1047,7 @@ pluto-cell.running_disabled > pluto-input .cm-editor {
 
 /* UI */
 
-preamble button,
+.overlay-button button,
 pluto-cell > button,
 pluto-input > button,
 pluto-runarea > button,
@@ -1038,6 +1066,10 @@ nav#slide_controls > button {
     font-size: 0.75rem;
     z-index: 30;
     /* CodeMirror is 2 */
+}
+
+.overlay-button button {
+    position: relative;
 }
 
 /* CELL SHOULDER */
@@ -1292,7 +1324,7 @@ pluto-input > button > span {
     }
     button.toggle_export:hover,
     button.start_stop_recording:hover,
-    preamble button:hover,
+    .overlay-button button:hover,
     pluto-cell > button:hover,
     pluto-cell > pluto-input > button:hover,
     pluto-cell > pluto-runarea > button:hover,

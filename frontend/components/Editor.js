@@ -88,6 +88,7 @@ const statusmap = (state) => ({
     code_differs: state.notebook.cell_order.some(
         (cell_id) => state.cell_inputs_local[cell_id] != null && state.notebook.cell_inputs[cell_id].code !== state.cell_inputs_local[cell_id].code
     ),
+    recording: !!state.recording,
 })
 
 const first_true_key = (obj) => {
@@ -907,13 +908,18 @@ patch: ${JSON.stringify(
         }
 
         this.start_recording = async () => {
-            const audio_recorder = await create_recorder()
+            let audio_recorder
+            try {
+                audio_recorder = await create_recorder()
+            } catch (e) {
+                console.warn("Failed to create audio recorder ", e)
+            }
 
-            let audio_record_start_promise = audio_recorder.start()
+            let audio_record_start_promise = audio_recorder?.start()
 
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
-            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://e6f7-84-164-246-37.ngrok.io/")
+            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://1a77-78-55-172-245.ngrok.io/")
 
             await audio_record_start_promise
             this.setState({
@@ -928,18 +934,18 @@ patch: ${JSON.stringify(
         }
 
         this.stop_recording = async () => {
-            const { audio_recorder } = this.state.recording
+            const { audio_recorder, initial_html, steps } = this.state.recording
 
-            const audio_blob_url = await audio_recorder.stop()
-            const audio_data_url = await blob_url_to_data_url(audio_blob_url)
+            const audio_blob_url = await audio_recorder?.stop()
+            const audio_data_url = audio_blob_url == null ? null : await blob_url_to_data_url(audio_blob_url)
 
             const magic_tag = "<!-- [automatically generated launch parameters can be inserted here] -->"
-            const output_html = this.state.recording.initial_html.replace(
+            const output_html = initial_html.replace(
                 magic_tag,
                 `
                 <script>
-            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: this.state.recording.steps }))}";
-            window.pluto_recording_audio_url = "${audio_data_url}";
+            window.pluto_recording = "data:;base64,${await base64_arraybuffer(pack({ steps: steps }))}";
+            window.pluto_recording_audio_url = ${audio_data_url == null ? null : `"${audio_data_url}"`};
             </script>
             ${magic_tag}`
             )
@@ -1200,6 +1206,7 @@ patch: ${JSON.stringify(
                             notebookexport_url=${this.export_url("notebookexport")}
                             open=${export_menu_open}
                             onClose=${() => this.setState({ export_menu_open: false })}
+                            start_recording=${this.start_recording}
                         />
                         ${
                             status.binder
@@ -1235,13 +1242,6 @@ patch: ${JSON.stringify(
                                       />`
                             }
                             <div class="flex_grow_2"></div>
-                            <button title="Start recording" onClick=${() => {
-                                if (this.state.recording == null) {
-                                    this.start_recording()
-                                } else {
-                                    this.stop_recording()
-                                }
-                            }} class="start_stop_recording ${this.state.recording ? "stop" : ""}" ><span></span></button>
                             <button class="toggle_export" title="Export..." onClick=${() => {
                                 this.setState({ export_menu_open: !export_menu_open })
                             }}><span></span></button>
@@ -1349,6 +1349,20 @@ patch: ${JSON.stringify(
                             })
                         }}
                     />
+                    <div id="outline-frame"></div>
+                    ${
+                        this.state.recording
+                            ? html`<div id="stop-record-container" class="overlay-button">
+                                  <button
+                                      onclick=${() => {
+                                          this.stop_recording()
+                                      }}
+                                  >
+                                      <span><b>Stop recording</b><span class="stop-recording-icon"></span></span>
+                                  </button>
+                              </div>`
+                            : null
+                    }
                     <${SlideControls} />
                     <footer>
                         <div id="info">
