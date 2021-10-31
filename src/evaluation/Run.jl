@@ -356,6 +356,32 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
+function notebook_differences(from::Notebook, to::Notebook)
+	old_codes = Dict(
+		id => c.code
+		for (id,c) in from.cells_dict
+	)
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in to.cells_dict
+	)
+
+	(
+		# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
+		added = setdiff(keys(new_codes), keys(old_codes)),
+		removed = setdiff(keys(old_codes), keys(new_codes)),
+		changed = let
+			remained = keys(old_codes) ∩ keys(new_codes)
+			filter(id -> old_codes[id] != new_codes[id], remained)
+		end,
+		
+		order_changed = from.cell_order != to.cell_order,
+		nbpkg_changed = !is_nbpkg_equal(from.nbpkg_ctx, to.nbpkg_ctx),
+	)
+end
+
+notebook_differences(from_filename::String, to_filename::String) = notebook_differences(load_notebook_nobackup(from_filename), load_notebook_nobackup(to_filename))
+
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
 	
@@ -366,28 +392,17 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		return
 	end::Notebook
 
-	old_codes = Dict(
-		id => c.code
-		for (id,c) in notebook.cells_dict
-	)
-	new_codes = Dict(
-		id => c.code
-		for (id,c) in just_loaded.cells_dict
-	)
-
-	# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
-	added = setdiff(keys(new_codes), keys(old_codes))
-	removed = setdiff(keys(old_codes), keys(new_codes))
-	changed = let
-		remained = keys(old_codes) ∩ keys(new_codes)
-		filter(id -> old_codes[id] != new_codes[id], remained)
-	end
-
+	d = notebook_differences(notebook, just_loaded)
+	
+	added = d.added
+	removed = d.removed
+	changed = d.changed
+	
 	# @show added removed changed
 	
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
-	order_changed = notebook.cell_order != just_loaded.cell_order
-	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+	order_changed = d.order_changed
+	nbpkg_changed = d.nbpkg_changed
 		
 	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
 	
