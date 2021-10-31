@@ -1,4 +1,4 @@
-import { html, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
+import { html, createRef, Component, useState, useEffect, useMemo } from "../imports/Preact.js"
 import immer, { applyPatches, produceWithPatches } from "../imports/immer.js"
 import _ from "../imports/lodash.js"
 
@@ -621,7 +621,7 @@ patch: ${JSON.stringify(
                                 new_notebook.cell_order = new_notebook.cell_order.filter((cell_id) => new_notebook.cell_inputs[cell_id] != null)
                             }
                             if (state.recording != null) {
-                                state.recording.steps = [...state.recording.steps, [Date.now() - state.recording_start, patches]]
+                                state.recording.steps = [...state.recording.steps, [(Date.now() - state.recording_start) / 1000, patches]]
                             }
                             state.notebook = new_notebook
                         }),
@@ -836,7 +836,7 @@ patch: ${JSON.stringify(
                                     ? null
                                     : {
                                           ...this.state.recording,
-                                          steps: [...this.state.recording.steps, [Date.now() - this.state.recording_start, changes]],
+                                          steps: [...this.state.recording.steps, [(Date.now() - this.state.recording_start) / 1000, changes]],
                                       },
                         }),
                     ])
@@ -908,20 +908,25 @@ patch: ${JSON.stringify(
         }
 
         this.start_recording = async () => {
-            let audio_recorder
+            let audio_recorder, audio_record_start_promise
             try {
                 audio_recorder = await create_recorder()
+                audio_record_start_promise = audio_recorder.start()
             } catch (e) {
                 console.warn("Failed to create audio recorder ", e)
+                audio_recorder = null
             }
-
-            let audio_record_start_promise = audio_recorder?.start()
 
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
             initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://1a77-78-55-172-245.ngrok.io/")
 
-            await audio_record_start_promise
+            try {
+                await audio_record_start_promise
+            } catch (e) {
+                console.warn("Failed to create audio recorder ", e)
+                audio_recorder = null
+            }
             this.setState({
                 recording: {
                     initial_html,
@@ -974,23 +979,52 @@ patch: ${JSON.stringify(
                 return null
             }
         })
+        this.loaded_recording.then(console.log)
 
-        this.play_recording = async () => {
+        /** @type {import("../imports/Preact.js").Ref<HTMLAudioElement>} */
+        this.recording_audio_player_ref = createRef()
+
+        let match_state_to_playback_running = false
+        let current_state_timestamp = 0
+
+        const match_state_to_playback = async () => {
+            match_state_to_playback_running = true
+
             const deserialized = await this.loaded_recording
 
-            console.log(deserialized)
+            const audio = this.recording_audio_player_ref.current
+            let new_timestamp = audio.currentTime
 
-            let last_time = 0
-            for (const [time, next_steps] of deserialized.steps) {
-                await new Promise((r) => {
-                    setTimeout(() => {
-                        r()
-                    }, time - last_time)
-                })
-                last_time = time
+            if (new_timestamp < current_state_timestamp) {
+                console.warn("audio went back in time... WHOOPS")
 
-                console.log({ next_steps })
-                apply_notebook_patches(next_steps)
+                await this.setStatePromise(
+                    immer((state) => {
+                        state.notebook = this.original_state
+                    })
+                )
+                current_state_timestamp = 0
+            }
+            let steps_in_time_window = deserialized.steps.filter(([t, s]) => current_state_timestamp < t && t <= new_timestamp)
+
+            let patches = steps_in_time_window.flatMap(([t, s]) => s)
+            if (patches.length > 0) {
+                await apply_notebook_patches(patches)
+            }
+            current_state_timestamp = new_timestamp
+
+            if (audio.paused) {
+                match_state_to_playback_running = false
+            } else {
+                requestAnimationFrame(match_state_to_playback)
+            }
+        }
+
+        this.on_audio_playback_change = (e) => {
+            // console.log(e)
+
+            if (!match_state_to_playback_running) {
+                match_state_to_playback()
             }
         }
 
@@ -1130,6 +1164,14 @@ patch: ${JSON.stringify(
         })
     }
 
+    componentDidMount() {
+        if (this.recording_audio_player_ref.current) {
+            ;["seeked", "suspend", "play", "pause", "ended", "waiting"].forEach((en) => {
+                this.recording_audio_player_ref.current.addEventListener(en, this.on_audio_playback_change)
+            })
+        }
+    }
+
     componentDidUpdate(old_props, old_state) {
         //@ts-ignore
         window.editor_state = this.state
@@ -1267,9 +1309,9 @@ patch: ${JSON.stringify(
                     ${
                         launch_params.recording
                             ? html`<${AudioPlayer}
+                                  audio_element_ref=${this.recording_audio_player_ref}
                                   src=${launch_params.recording_audio_url}
                                   loaded_recording=${this.loaded_recording}
-                                  onPlay=${() => this.play_recording()}
                               ></${AudioPlayer}>`
                             : null
                     }

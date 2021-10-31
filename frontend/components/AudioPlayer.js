@@ -1,21 +1,21 @@
+import _ from "../imports/lodash.js"
 import { createSilentAudio } from "../common/AudioRecording.js"
 import { html, useEffect, useState, useRef, useLayoutEffect } from "../imports/Preact.js"
 
 let run = (x) => x()
 
-export const AudioPlayer = ({ onPlay, src, loaded_recording }) => {
-    const element_ref = useRef()
-
+export const AudioPlayer = ({ onPlay, src, loaded_recording, audio_element_ref }) => {
     useLayoutEffect(() => {
         run(async () => {
             if (src == null) {
-                let fake_source = createSilentAudio((await loaded_recording).steps.length)
-                element_ref.current.src = fake_source
+                console.log(Math.ceil(_.last((await loaded_recording).steps)[0] + 0.1))
+                let fake_source = createSilentAudio(Math.ceil(_.last((await loaded_recording).steps)[0] + 0.1))
+                audio_element_ref.current.src = fake_source
             } else {
-                element_ref.current.src = src
+                audio_element_ref.current.src = src
             }
         })
     }, [])
 
-    return html`<audio ref=${element_ref} onPlay=${onPlay} controls></audio>`
+    return html`<div class="recording-playback"><audio ref=${audio_element_ref} onPlay=${onPlay} controls></audio></div>`
 }

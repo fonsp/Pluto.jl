@@ -804,6 +804,16 @@ div#stop-record-container span.stop-recording-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
 }
 
+div.recording-playback {
+    width: min(500px, 90vw);
+    position: fixed;
+    bottom: 16px;
+    z-index: 9999;
+}
+div.recording-playback audio {
+    width: 100%;
+}
+
 /* PREAMBLE */
 
 main > preamble {
