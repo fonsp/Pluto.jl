@@ -342,7 +342,16 @@ This function is memoized: running the same expression a second time will simply
 """
 function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
     currently_running_cell_id[] = cell_id
+    
+    # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
+    
+    # reset registered bonds
+    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
+        delete!(registered_bond_elements, s)
+    end
+    cell_registered_bond_names[cell_id] = Set{Symbol}()
+    
 
     result, runtime = if function_wrapped_info === nothing
         expr = pop!(ExpandedCallCells, cell_id, expr)
@@ -570,6 +579,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 const cell_results = Dict{UUID,Any}()
 const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
 const cell_published_objects = Dict{UUID,Dict{String,Any}}()
+const cell_registered_bond_names = Dict{UUID,Set{Symbol}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -1128,6 +1138,7 @@ const integrations = Integration[
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
+                AbstractPlutoDingetjes.Bonds.transform_value,
             )
         end,
     ),
@@ -1414,6 +1425,13 @@ end
 # BONDS
 ###
 
+const registered_bond_elements = Dict{Symbol, Any}()
+
+function transform_bond_value(s::Symbol, value_from_js)
+    element = get(registered_bond_elements, s, nothing)
+    return transform_value_ref[](element, value_from_js)
+end
+
 """
 _“The name is Bond, James Bond.”_
 
@@ -1441,6 +1459,12 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
+function create_bond(element, defines::Symbol)
+    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+    registered_bond_elements[defines] = element
+    Bond(element, defines)
+end
+
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
     withtag(io, :bond, :def => bond.defines) do
@@ -1448,7 +1472,8 @@ function show(io::IO, ::MIME"text/html", bond::Bond)
     end
 end
 
-const initial_value_getter_ref = Ref{Function}(bond -> missing)
+const initial_value_getter_ref = Ref{Function}(element -> missing)
+const transform_value_ref = Ref{Function}((element, x) -> x)
 
 """
     `@bind symbol element`
@@ -1474,7 +1499,7 @@ macro bind(def, element)
             $(load_integrations_if_needed)()
 			local el = $(esc(element))
             global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
-			PlutoRunner.Bond(el, $(Meta.quot(def)))
+			PlutoRunner.create_bond(el, $(Meta.quot(def)))
 		end
 	else
 		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
