@@ -1429,7 +1429,12 @@ const registered_bond_elements = Dict{Symbol, Any}()
 
 function transform_bond_value(s::Symbol, value_from_js)
     element = get(registered_bond_elements, s, nothing)
-    return transform_value_ref[](element, value_from_js)
+    return try
+        transform_value_ref[](element, value_from_js)
+    catch e
+        @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
+        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()))
+    end
 end
 
 """
