@@ -391,6 +391,11 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
 		return
 	end::Notebook
+	
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in to.cells_dict
+	)
 
 	d = notebook_differences(notebook, just_loaded)
 	
