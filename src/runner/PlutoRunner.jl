@@ -29,7 +29,7 @@ const ObjectDimPair = Tuple{ObjectID,Int64}
 const ExpandedCallCells = Dict{UUID,Expr}()
 
 
-
+const supported_integration_features = Any[]
 
 
 
@@ -643,7 +643,7 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true)
+const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -1118,11 +1118,17 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
-        id = Base.PkgId(UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
+        id = Base.PkgId(Base.UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
         code = quote
-            if v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
-                initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
-            end
+            @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
+            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
+            
+            push!(supported_integration_features,
+                AbstractPlutoDingetjes,
+                AbstractPlutoDingetjes.Bonds,
+                AbstractPlutoDingetjes.Bonds.initial_value,
+            )
         end,
     ),
     Integration(
