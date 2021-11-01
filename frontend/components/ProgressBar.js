@@ -18,15 +18,12 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
     const [recently_running, set_recently_running] = useState([])
     const [currently_running, set_currently_running] = useState([])
 
-    console.log({ currently_running, recently_running })
-
     useEffect(
         () => {
             const currently = Object.values(notebook.cell_results)
                 .filter((c) => c.running || c.queued)
                 .map((c) => c.cell_id)
 
-            console.log({ currently, recently_running })
             set_currently_running(currently)
 
             if (currently.length === 0) {
@@ -36,8 +33,6 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
                 // add any new running cells to our pile
                 set_recently_running(_.union(currently, recently_running))
             }
-
-            // console.log(Object.values(notebook.cell_results))
         },
         Object.values(notebook.cell_results).map((c) => c.running || c.queued)
     )
