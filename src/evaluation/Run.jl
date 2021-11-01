@@ -394,7 +394,7 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	
 	new_codes = Dict(
 		id => c.code
-		for (id,c) in to.cells_dict
+		for (id,c) in just_loaded.cells_dict
 	)
 
 	d = notebook_differences(notebook, just_loaded)
