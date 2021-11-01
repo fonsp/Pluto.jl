@@ -919,8 +919,9 @@ patch: ${JSON.stringify(
 
             let initial_html = await (await fetch(this.export_url("notebookexport"))).text()
 
-            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://1a77-78-55-172-245.ngrok.io/")
+            initial_html = initial_html.replaceAll("https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@0.17.0/frontend/", "https://cdn.jsdelivr.net/gh/fonsp/Pluto.jl@90a47a1/frontend/")
 
+            
             const scroll_handler = _.debounce(() => {
                 let y = window.scrollY + window.innerHeight / 2
 
