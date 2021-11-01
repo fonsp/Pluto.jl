@@ -101,9 +101,9 @@ const juliaWrapper = parseMixed((node, input) => {
     } else if (tag === "@javascript") {
         return {
             parser: javascriptLanguage.parser,
-            overlay: defaultOverlay
+            overlay: defaultOverlay,
         }
-    } else if (tag === "py") {
+    } else if (tag === "py" || tag === "pyr" || tag === "python") {
         return {
             parser: pythonParser,
             overlay: defaultOverlay,
