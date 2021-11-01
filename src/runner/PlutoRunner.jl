@@ -144,50 +144,11 @@ function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
 
-# a function as part of an Expr is most likely a closure
-# returned from a macro
-# function sanitize_expr(func::Function)
-#     mt = typeof(func).name.mt
-#     GlobalRef(mt.module, mt.name) |> sanitize_expr
-# end
-
-# function sanitize_expr(union_all::UnionAll)
-#     sanitize_expr(union_all.body)
-# end
-
-# function sanitize_expr(vec::AbstractVector)
-#     Expr(:vect, sanitize_value.(vec)...)
-# end
-
-# function sanitize_expr(tuple::Tuple)
-#     Expr(:tuple, sanitize_value.(tuple)...)
-# end
-
-# function sanitize_expr(dict::Dict)
-#     Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
-# end
-
-# function sanitize_expr(pair::Pair)
-#     Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
-# end
-
-# function sanitize_expr(set::Set)
-#     Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
-# end
-
-# function sanitize_expr(mod::Module)
-#     fullname(mod) |> wrap_dot
-# end
-
-# An instanciation of a struct as part of an Expr
-# will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
-function sanitize_expr(other)
-    # typename = other |> typeof
-    # typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
-    #     other :
-    #     Symbol(typename)
-    nothing
-end
+sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
+sanitize_expr(bool::Bool) = bool
+# In all cases of more complex objects, we just don't send it.
+# It's not like the expression explorer will look into them at all.
+sanitize_expr(other) = nothing
 
 # A vector of Symbols need to be serialized as QuoteNode(sym)
 # sanitize_value(sym::Symbol) = QuoteNode(sym)
@@ -297,6 +258,9 @@ parse_cell_id(filename::AbstractString) =
     match(r"#==#(.*)", filename).captures |> only |> UUID
 
 function register_cleanup(f::Function, cell_id::UUID)
+    # TODO Don't need this, everything is "function wrapped" for hook purposes,
+    # .... because of the cached macro expansion.. This does however mean we need
+    # .... a separate store for cleanup functions 
     @assert haskey(computers, cell_id) "The cell $cell_id is not function wrapped"
     push!(computers[cell_id].cleanup_funcs, f)
     nothing
