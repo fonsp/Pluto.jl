@@ -374,12 +374,65 @@ import Distributed
         fakeclient.connected_notebook = notebook
         update_run!(🍭, notebook, notebook.cells)
 
-        @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].funcdefs_without_signatures
+        @test :conj ∈ notebook.topology.nodes[notebook.cells[3]].soft_definitions
         @test :conj ∈ notebook.topology.nodes[notebook.cells[1]].references
         @test notebook.cells[1].output.body == "200"
 
         WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
+    end
+    
+    @testset "Function use inv in its def but also has a method on inv" begin
+        notebook = Notebook(Cell.([
+            """
+            struct MyStruct
+                s
+
+                MyStruct(x) = new(inv(x))
+            end
+            """,
+            """
+            Base.inv(s::MyStruct) = inv(s.s)
+            """,
+            "MyStruct(1.) |> inv"
+        ]))
+        cell(idx) = notebook.cells[idx]
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test cell(1) |> noerror
+        @test cell(2) |> noerror
+        @test cell(3) |> noerror
+    end
+
+    @testset "Reactive methods definitions" begin
+        notebook = Notebook(Cell.([
+            raw"""
+            Base.sqrt(s::String) = "sqrt($s)"
+            """,
+            """
+            string((sqrt("🍕"), rand()))
+            """,
+            "",
+        ]))
+        cell(idx) = notebook.cells[idx]
+        fakeclient.connected_notebook = notebook
+        update_run!(🍭, notebook, notebook.cells)
+
+        output_21 = cell(2).output.body
+        @test contains(output_21, "sqrt(🍕)")
+
+        setcode(cell(3), """
+        Base.sqrt(x::Int) = sqrt(Float64(x)^2)
+        """)
+        update_run!(🍭, notebook, cell(3))
+
+        output_22 = cell(2).output.body
+        @test cell(3) |> noerror
+        @test cell(2) |> noerror
+        @test cell(1) |> noerror
+        @test output_21 != output_22 # cell2 re-run
+        @test contains(output_22, "sqrt(🍕)")
     end
 
     @testset "Multiple methods across cells" begin
