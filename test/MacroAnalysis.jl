@@ -173,7 +173,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
     @testset "Expr sanitization" begin
         struct A; end
         f(x) = x
-        unserializable_expr = Expr(:call, f, A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr)
+        unserializable_expr = :($(f)(A(), A[A(), A(), A()], PlutoRunner, PlutoRunner.sanitize_expr))
 
         get_expr_types(other) = typeof(other)
         get_expr_types(ex::Expr) = get_expr_types.(ex.args)
@@ -185,11 +185,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         types = sanitized_expr |> get_expr_types |> flatten |> Set
 
         # Checks that no fancy type is part of the serialized expression
-        @test Set([Symbol, QuoteNode]) == types
-
-        @test Meta.isexpr(sanitized_expr.args[3], :vect, 3)
-        @test sanitized_expr.args[2] == :A
-        @test sanitized_expr.args[1] == :(Main.f)
+        @test Set([Nothing]) == types
     end
 
     @testset "Macrodef cells not root of run" begin
