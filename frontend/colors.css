@@ -1,0 +1,98 @@
+:root {
+    --main-bg-color: rgb(42, 43, 46);
+    --main-bg-color: white;
+    --rule-color: rgba(0,0,0,0.15);
+    --kbd-border-color: #dfdfdf;
+    --header-border-color: rgba(0,0,0,0.1);
+    --atag-color: black;
+    
+    /*Cells*/
+    --normal-cell-color: rgba(0,0,0,0.1);
+    --dark-normal-cell-color: rgba(0,0,0,0.2);
+    --selected-cell-color: rgba(40, 78, 189, 0.4);
+    --code-differs-cell-color: hsla(46, 70%, 37%, 0.68);
+    --error-cell-color: hsla(0, 70%, 80%, 0.7);
+    --bright-error-cell-color: hsla(0, 70%, 80%, 1);
+    --light-error-cell-color: hsla(0,70%,80%,0.05);
+    --drop-target-bg-color: rgba(255,255,255,0.75);
+    --drop-target-text-color: black;
+    --drop-target-saving-file-color: white;
+    --drop-target-saving-file-bg-color: rgba(3, 92, 151, 0.75);
+    --drop-invalid-color: rgba(0,0,0,0.85);
+    --drop-invalid-bg-color: #ece5e5bf;
+
+    /*Export styling*/
+    --export-bg-color: rgb(60, 67, 101);
+    --export-color: rgba(255, 255, 255, 0.7);
+    --export-card-bg-color: rgba(255, 255, 255, 0.8);
+    --export-card-title-color: rgba(0,0,0,0.7);
+    --export-card-text-color: rgba(0,0,0,0.5);
+    --export-card-shadow-color: #00000029;
+
+    /*Pluto output styling */
+    --pluto-output-color: hsl(0, 0%, 25%);
+    --pluto-output-h-color: hsl(0, 0%, 12%);
+    --pluto-output-bg-color: #f2f2f2;
+    --blockquote-color: #555;
+    --admonition-bg-color: rgba(68, 149, 28, 0.2);
+    --admonition-focus-color: rgb(158, 200, 137);
+    --admonition-note-main-color: rgba(50, 115, 200, 0.2);
+    --admonition-note-focus-color: rgb(148, 182, 226);
+    --admonition-warn-main-color: rgba(162, 148, 30, 0.2);
+    --admonition-warn-focus-color: rgb(207, 199, 138);
+    --admonition-danger-main-color: rgba(200, 67, 50, 0.2);
+    --admonition-danger-focus-color: rgb(226, 157, 148);
+    --footnote-border-color: rgba(23,115,119,0.15);
+    --table-border-color: rgba(0,0,0,0.2);
+    --table-bg-hover-color: rgba(159, 158, 224, 0.15);
+    
+    /*pluto cell styling*/
+    --disabled-cell-bg-color: rgba(139, 139, 139, 0.25);
+    --selected-cell-bg-color: rgba(40, 78, 189, 0.24);
+    --hover-scrollbar-color-1: rgba(0, 0, 0, 0.15);
+    --hover-scrollbar-color-2: rgba(0, 0, 0, 0.05);
+    --code-differs-border-color: hsla(46, 70%, 37%, 0.68);
+
+    /* Pluto shoulders */
+    --shoulder-hover-bg-color: rgba(0,0,0,0.05);
+
+    /*Top navbar styling*/
+    --nav-h1-text-color: black;
+    --nav-filepicker-color: #6f6f6f;
+    --nav-filepicker-border-color: #b2b2b2;
+    --nav-process-status-bg-color: white;
+
+    /*header*/
+    --restart-recc-header-color: rgba(114, 192, 255, 0.56);
+    --restart-req-header-color: rgba(170, 41, 32, 0.56);
+    --dead-process-header-color: rgb(230 88 46 / 38%);
+    --loading-header-color: hsla(290, 10%, 80%, 0.5);
+    --disconnected-header-color: rgba(255, 169, 114, 0.56);
+    --binder-loading-header-color:  hsl(51deg 64% 90% / 50%);
+
+    /*loading bar*/
+    --loading-grad-color-1: #f1dba9;
+    --loading-grad-color-2: #d7d7d0;
+
+    /*saveall container*/
+    --saveall-bg-color: #645f5f;
+    --saveall-border-color: #e3e3e3;
+
+    /*input_context_menu*/
+    --input-context-menu-border-color: rgba(0,0,0,0.1);
+    --input-context-menu-bg-color: white;
+    --input-context-menu-soon-color: #55555544;
+    --input-context-menu-hover-bg-color: rgba(0,0,0,0.1);
+
+    /*Pkg status*/
+    --pkg-status-bg-color: #d3752538;
+    --pkg-status-color: #00000060;
+}
+
+/*
+@media (prefers-color-scheme: dark) {
+    :root {
+        --main-bg-color: rgb(42, 43, 46);
+    }
+}
+*/
