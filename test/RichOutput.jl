@@ -198,7 +198,6 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         end
     end
 
-    
     @testset "Table viewer" begin
         🍭.options.evaluation.workspace_use_distributed = true
         notebook = Notebook([
