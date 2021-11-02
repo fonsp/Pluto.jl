@@ -20,7 +20,7 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                         Pkg.UPDATED_REGISTRY_THIS_SESSION[] = true
                     catch; end
                     Pkg.activate(mktempdir())
-                    Pkg.add(Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="0494e5a"))
+                    Pkg.add(Pkg.PackageSpec(name="AbstractPlutoDingetjes", rev="30f4f76"))
                     import AbstractPlutoDingetjes
                     const APD = AbstractPlutoDingetjes
                     import AbstractPlutoDingetjes.Bonds
