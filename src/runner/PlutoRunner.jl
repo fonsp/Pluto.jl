@@ -146,16 +146,11 @@ end
 
 sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
 sanitize_expr(bool::Bool) = bool
+sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
+
 # In all cases of more complex objects, we just don't send it.
 # It's not like the expression explorer will look into them at all.
 sanitize_expr(other) = nothing
-
-# A vector of Symbols need to be serialized as QuoteNode(sym)
-# sanitize_value(sym::Symbol) = QuoteNode(sym)
-
-# sanitize_value(ex::Expr) = Expr(:quote, ex)
-
-# sanitize_value(other) = sanitize_expr(other)
 
 
 function try_macroexpand(mod, cell_uuid, expr)
