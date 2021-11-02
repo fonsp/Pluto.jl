@@ -21,6 +21,7 @@ const JULIA_VERSION_STR = 'v' * string(VERSION)
 include("./notebook/PathHelpers.jl")
 include("./notebook/Export.jl")
 include("./Configuration.jl")
+include("./evaluation/ChildProcesses.jl")
 
 include("./evaluation/Tokens.jl")
 include("./runner/PlutoRunner.jl")

@@ -385,7 +385,7 @@ function update_save_run!(session::ServerSession, notebook::Notebook, cells::Arr
 	session.options.server.disable_writing_notebook_files || (save && save_notebook(notebook))
 
 	# _assume `prerender_text == false` if you want to skip some details_
-	to_run_online = if !prerender_text
+	to_run_online = if !prerender_text || true
 		cells
 	else
 		# this code block will run cells that only contain text offline, i.e. on the server process, before doing anything else

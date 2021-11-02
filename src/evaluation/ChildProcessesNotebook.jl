@@ -1,0 +1,752 @@
+### A Pluto.jl notebook ###
+# v0.17.0
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ 6925ffbb-fd9e-402c-a483-c78f28f892a5
+import Serialization
+
+# ╔═╡ 8c97d5cb-e346-4b94-b2a1-4fb5ff093bd5
+import UUIDs: UUID, uuid4
+
+# ╔═╡ a6e50946-dd3d-4738-adc1-26534e184776
+md"""
+## Binary message frame thing
+
+Functions to send and read binary messages over a stable connection, also functions to serialize to a bytearray.
+
+Pretty simple right now, might want to add cooler stuff later.
+"""
+
+# ╔═╡ 131a123b-e319-4939-90bf-7fb035ab2e75
+MessageLength = Int
+
+# ╔═╡ e393ff80-3995-11ec-1217-b3642a509067
+function read_message(stream)
+	message_length_buffer = Vector{UInt8}(undef, 8)
+	bytesread = readbytes!(stream, message_length_buffer, 8)
+	how_long_will_the_message_be = reinterpret(MessageLength, message_length_buffer)[1]
+		
+	message_buffer = Vector{UInt8}(undef, how_long_will_the_message_be)
+	_bytesread = readbytes!(stream, message_buffer, how_long_will_the_message_be)
+
+	message_buffer
+end
+
+# ╔═╡ 52495855-a52d-4edf-9c7c-811a5060e641
+function to_binary(message)
+	io = PipeBuffer()
+	serialized = Serialization.serialize(io, message)
+	read(io)
+end
+
+# ╔═╡ 7da416d1-5dfb-4510-9d32-62c1464a83d4
+function from_binary(message)
+	Serialization.deserialize(IOBuffer(message))
+end
+
+# ╔═╡ 87612815-7981-4a69-a65b-4465f48c9fd9
+struct ReadMessages
+	io::IO
+end
+
+# ╔═╡ 009ad714-b759-420a-b49a-6caed7ee3faf
+function Base.iterate(message_reader::ReadMessages, state=nothing)
+	@warn "Iterating!"
+	if eof(message_reader.io)
+		@warn "Pfff"
+		return nothing
+	end
+	@warn "Nice"
+
+	message = from_binary(read_message(message_reader.io))
+	(message, nothing)
+end
+
+# ╔═╡ faf3c68e-d0fb-4dd9-ac1b-1ff8d922134b
+function send_message(stream, bytes)
+	# bytes = Vector{UInt8}(message)
+	message_length = convert(MessageLength, length(bytes))
+	# @info "message_length" message_length bytes
+	how_long_will_the_message_be = reinterpret(UInt8, [message_length])
+
+	@warn "Writing to stream!!!"
+	_1 = write(stream, how_long_will_the_message_be)
+	_2 = write(stream, bytes)
+	@warn "WROTE TO STREAM"
+
+	_1 + _2
+	@info "Write" bytesavailable(stream.in) _1 _2
+end
+
+# ╔═╡ de680a32-e053-4655-a1cd-111d81a037e6
+md"""
+## Child process side
+"""
+
+# ╔═╡ ce2acdd1-b4bb-4a8f-8346-a56dfa55f56b
+Base.@kwdef mutable struct ParentProcess
+	parent_to_child=stdin
+	child_to_parent=stdout
+	channels::Dict{UUID,AbstractChannel}=Dict{UUID,AbstractChannel}()
+	lock=ReentrantLock()
+end
+
+# ╔═╡ 87182605-f5a1-46a7-968f-bdfb9d0e08fa
+function setup_parent_process()
+	real_stdout = stdout
+	# Redirect things written to stdout to stderr,
+	# stderr will showup in the Pluto with_terminal view.
+	redirect_stdout(stderr)
+
+	# TODO Maybe redirect stdin too, just to be sure?
+
+	ParentProcess(
+		parent_to_child=stdin,
+		child_to_parent=real_stdout,
+	)
+end
+
+# ╔═╡ b05be9c7-8cc1-47f9-8baa-db66ac83c24f
+Base.@kwdef struct ParentChannel
+	process::ParentProcess
+	channel_id::UUID
+	result_channel::AbstractChannel
+end
+
+# ╔═╡ 17cb5a65-2a72-4e7d-8fba-901452b2c19f
+md"""
+## Parent process side
+"""
+
+# ╔═╡ 85920c27-d8a6-4b5c-93b6-41daa5866f9d
+Base.@kwdef mutable struct ChildProcess
+	process::Base.AbstractPipe
+	channels::Dict{UUID,AbstractChannel}=Dict{UUID,AbstractChannel}()
+	lock=ReentrantLock()
+end
+
+# ╔═╡ 63531683-e295-4ba6-811f-63b0d384ba0f
+Base.@kwdef struct ChildProcessException <: Exception
+	process::ChildProcess
+	captured::CapturedException
+end
+
+# ╔═╡ e6b3d1d9-0245-4dc8-a0a5-5831c254479b
+Base.@kwdef struct ProcessExitedException <: Exception
+	process::ChildProcess
+end
+
+# ╔═╡ af4f0720-f7f7-4d8a-bd8c-8cf5abaf10a0
+Base.kill(process::ChildProcess) = Base.kill(process.process)
+
+# ╔═╡ d4da756e-fa81-49d8-8c39-d76f9d15e96f
+Base.process_running(p::ChildProcess) = Base.process_running(p.process)
+
+# ╔═╡ e787d8bd-499d-4a41-8913-62b3d9346748
+Base.wait(process::ChildProcess) = Base.wait(process.process)
+
+# ╔═╡ 3a62b419-eca2-4de1-89a4-fc9ad6f68372
+struct SingleTakeChannel end
+
+# ╔═╡ 61410bd1-8456-4608-92d9-3c863f65b89c
+function Base.take!(::SingleTakeChannel)
+	nothing
+end
+
+# ╔═╡ 409707ff-b1ea-453d-b933-0a4b1e5f44c8
+function Base.iterate(::SingleTakeChannel, _=nothing)
+	(nothing, nothing)
+end
+
+# ╔═╡ 0feb758e-38d4-48c0-a5e9-9d1129b1b1b2
+function Base.isopen(::SingleTakeChannel)
+	true
+end
+
+# ╔═╡ abe897ff-6e86-40eb-a1a6-2918b6c3c5a7
+struct LocalSandbox end
+
+# ╔═╡ 934d18d4-936e-4ee0-aa6e-86aa6f66774c
+juliapath() = joinpath(Sys.BINDIR::String, Base.julia_exename())
+
+# ╔═╡ b48f36d1-e3d2-408e-a705-93e609f2fd04
+fieldnames(Base.Process)
+
+# ╔═╡ 884e103a-8925-477d-a264-f15d02a49aa9
+md"""
+## ChildChannel
+
+I guess this is similar to Distributed.ChildChannel.
+It communicates all actions that happen on it (take!, put!, close) to the other side. There is a local channel stored that is used as buffer.
+"""
+
+# ╔═╡ b8865d63-19fa-4438-87a2-ccb531bd73a4
+Base.@kwdef struct ChildChannel{T} <: AbstractChannel{T}
+	process::ChildProcess
+	id::UUID=uuid4()
+	local_channel::AbstractChannel{T}
+end
+
+# ╔═╡ fc0ca4b5-e03b-4c08-b43d-913ee12269c7
+abstract type Message end
+
+# ╔═╡ adfb2d12-07a0-4d5e-8e24-1676c07107c7
+struct CreateChildChannelMessage <: Message
+	expr
+end
+
+# ╔═╡ e8256f1f-c778-4fb3-a2d3-12da0e1cb3da
+struct BaseMessage <: Message
+	value::Any
+end
+
+# ╔═╡ f9270f05-fa22-4027-a2ca-7db61d057c56
+struct ErrorMessage <: Message
+	error::Exception
+end
+
+# ╔═╡ 0ba318bc-7b4c-4d0f-a46c-2f9dca756926
+struct ChannelPushMessage <: Message
+	value::Any
+end
+
+# ╔═╡ c83f2936-3768-4724-9c5c-335d7a4aae03
+struct ChannelCloseMessage <: Message
+end
+
+# ╔═╡ 441c27e4-6884-4887-9cd5-bc55d0c49760
+struct ChannelTakeMessage <: Message
+end
+
+# ╔═╡ f81ff6f7-f230-4373-b60b-76e8a0eba929
+Base.@kwdef struct Envelope
+	channel_id::UUID
+	message::Message
+end
+
+# ╔═╡ 590a7882-3d69-48b0-bb1b-f476c7f8a885
+function respond_to_parent(; to::ParentProcess, about::UUID, with::Message)
+	binary_message = to_binary(Envelope(
+		channel_id=about,
+		message=with,
+	))
+	lock(to.lock)
+	try
+		# @info "Message out" about message=typeof(with)
+		send_message(to.child_to_parent, binary_message)
+	finally
+	    unlock(to.lock)
+	end
+
+end
+
+# ╔═╡ 20f66652-bca0-4e47-a4b7-502cfbcb3db5
+function send_message_without_response(process::ChildProcess, envelope::Envelope)
+	if !process_running(process)
+		throw(ProcessExitedException(process=process))
+	end
+	
+	lock(process.lock)
+	try
+		@info "Message out" message=typeof(envelope.message)
+		send_message(process.process, to_binary(envelope))
+		return envelope
+	finally
+	    unlock(process.lock)
+	end
+end
+
+# ╔═╡ e1e79669-8d0a-4b04-a7fd-469e7d8e65b1
+function Base.take!(channel::ChildChannel)
+	if !isopen(channel.local_channel)
+		# Trigger InvalidStateException
+		eval(:(@error "ChildChannel closed D:"))
+		take!(channel.local_channel)
+	end
+	
+	send_message_without_response(channel.process, Envelope(
+		channel_id=channel.id,
+		message=ChannelTakeMessage(),
+	))
+	take!(channel.local_channel)
+end
+
+# ╔═╡ d3ce3ecf-c1e4-4484-ac38-b332a4b13034
+begin
+	import Base: close
+	close(process::ChildProcess) = close(process.process)
+	function close(channel::ChildChannel)
+		if isopen(channel.local_channel)
+			try
+				close(channel.local_channel)
+				if process_running(channel.process.process)
+					send_message_without_response(channel.process, Envelope(
+						channel_id=channel.id,
+						message=ChannelCloseMessage()
+					))
+				end
+			catch e
+				@error "Problem with closing?" e stack=stacktrace(catch_backtrace())
+				nothing
+			end
+		end
+		delete!(channel.process.channels, channel.id)
+	end
+	function close(::SingleTakeChannel) end
+end
+
+# ╔═╡ 6a7aa0ce-0ae3-4e7d-a93a-bfdebe406220
+begin
+	function handle_child_message(;
+		message,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		@warn "Unknown message type" message
+	end
+
+	function handle_child_message(;
+		message::ChannelPushMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		put!(output_channel, message.value)
+	end
+
+	function handle_child_message(;
+		message::ChannelCloseMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		close(output_channel)
+	end
+
+	function handle_child_message(;
+		message::ErrorMessage,
+		process::ChildProcess,
+		input_channel::AbstractChannel,
+		output_channel::AbstractChannel,
+	)
+		close(input_channel, ChildProcessException(
+			process=process,
+			captured=message.error,
+		))
+	end
+end
+
+# ╔═╡ f99f4659-f71e-4f2e-a674-67ba69289817
+function create_channel(process::ChildProcess, expr)
+	channel_id = uuid4()
+	envelope = send_message_without_response(process, Envelope(
+		channel_id=channel_id,
+		message=CreateChildChannelMessage(expr)
+	))
+
+	response_channel = Channel{Message}()
+	process.channels[channel_id] = response_channel
+
+	@info "CREATING CHANNEL"
+	actual_values_channes = Channel(Inf) do ch
+		try
+			for message in response_channel
+				@info "MESSAGE FROM CHILD CHANNEL" channel_id message
+				handle_child_message(
+					message=message,
+					process=process,
+					input_channel=response_channel,
+					output_channel=ch,
+				)
+			end
+		catch e
+			@error "ERROR???" e
+			close(ch, e)
+		finally
+			close(ch)
+			close(response_channel)
+		end
+	end
+
+	ChildChannel(
+		process=process,
+		id=channel_id,
+		local_channel=actual_values_channes,
+	)
+end
+
+# ╔═╡ 2342d663-030f-4ed2-b1d5-5be1910b6d4c
+function create_channel(fn, process::ChildProcess, message)
+	remote_channel = create_channel(process, message)
+	
+	try
+		return fn(remote_channel)
+	finally
+		close(remote_channel)
+	end
+end
+
+# ╔═╡ 4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
+function call(process::ChildProcess, expr)
+	create_channel(process, quote
+		Channel() do ch
+			put!(ch, $expr)
+		end
+	end) do channel
+		@info "Taking"
+		take!(channel)
+	end
+end
+
+# ╔═╡ e3e16a8b-7124-4678-8fe7-12ed449e1954
+function call_without_fetch(process::ChildProcess, expr)
+	create_channel(process, quote
+		$expr
+		$(SingleTakeChannel())
+	end) do channel
+		take!(channel)
+	end
+end
+
+# ╔═╡ 54a03cba-6d00-4632-8bd6-c60753c15ae6
+function start_from_child_loop(child_process)
+	try
+		for result in ReadMessages(child_process.process)
+			if !(result isa Envelope && result.channel_id !== nothing)
+				throw("Huh")
+			end
+
+			@warn "MESSAGE FROM CHILD" result.message
+			
+			if haskey(child_process.channels, result.channel_id)
+				message = result.message
+				channel = child_process.channels[result.channel_id]
+				put!(channel, message)
+			else
+				@error "No channel to push to"
+				throw("No channel to push to")
+			end
+		end
+	catch error
+		@error "Error in main processing" error bt=stacktrace(catch_backtrace())
+		close(child_process.process)
+	finally
+		for (channel_id, channel) in collect(child_process.channels)
+			close(channel, ProcessExitedException(process=child_process))
+		end
+	end
+end
+
+# ╔═╡ d3fe8144-6ba8-4dd9-b0e3-941a96422267
+function create_child_process(; custom_stderr=stderr, exeflags=["--history-file=no"])
+	this_file = split(@__FILE__(), "#")[1]
+	this_module = string(nameof(@__MODULE__))
+	
+	code = """
+	# Make sure this library is included in main
+	var"$this_module" = @eval Main module var"$this_module"
+		include("$this_file")
+	end
+	
+	@info "Booted up!"
+	
+	const parent_process = var"$this_module".setup_parent_process()
+	
+	try
+		@info "Startin..."
+		var"$this_module".listen_for_messages_from_parent(parent_process)
+		@info "Done?"
+	catch error
+		@error "Shutdown error" error
+		rethrow(error)
+	end
+	"""
+	
+	process = open(
+		pipeline(`$(juliapath()) $exeflags -e $code`, stderr=custom_stderr),
+		read=true,
+		write=true,
+	)
+
+	child_process = ChildProcess(process=process)
+	schedule(Task() do
+		start_from_child_loop(child_process)
+	end)
+	child_process
+end
+
+# ╔═╡ 5fb65aec-3512-4f48-98ce-300ab9fdadfe
+begin
+	function Base.iterate(channel::ChildChannel)
+		send_message_without_response(channel.process, Envelope(
+			channel_id=channel.id,
+			message=ChannelTakeMessage(),
+		))
+		Base.iterate(channel.local_channel)
+	end
+	function Base.iterate(channel::ChildChannel, x)
+		send_message_without_response(channel.process, Envelope(
+			channel_id=channel.id,
+			message=ChannelTakeMessage(),
+		))
+		Base.iterate(channel.local_channel, x)
+	end
+end
+
+# ╔═╡ 46d905fc-d41e-4c9a-a808-14710f64293a
+begin
+	function handle_message_from_parent_channel(;
+		parent_channel::ParentChannel,
+		message::ChannelTakeMessage,
+	)
+		@info "Channel message taken!"
+		next = iterate(parent_channel.result_channel)
+		if next === nothing
+			respond_to_parent(
+				to=parent_channel.process,
+				about=parent_channel.channel_id,
+				with=ChannelCloseMessage(),
+			)
+			true
+		else
+			respond_to_parent(
+				to=parent_channel.process,
+				about=parent_channel.channel_id,
+				with=ChannelPushMessage(next[1])
+			)
+			false
+		end
+	end
+	
+	function handle_message_from_parent_channel(;
+		parent_channel::ParentChannel,
+		message::ChannelCloseMessage,
+	)
+		if isopen(parent_channel.result_channel)
+			close(parent_channel.result_channel)
+		end
+		false
+	end
+	
+	function handle_message_from_parent_channel(;
+		parent_channel::ParentChannel,
+		message::Message,
+	)
+		@warn "Unknown channel message type" message
+		false
+	end
+end
+
+# ╔═╡ 13089c5d-f833-4fb7-b8cd-4158b1a57103
+function create_parent_channel(; process, channel_id, result_channel)
+	parent_channel = ParentChannel(
+		process=process,
+		channel_id=channel_id,
+		result_channel=result_channel,
+	)
+	Channel(Inf) do input_channel
+		try
+			for message in input_channel
+				@info "Applying message" message
+				@timed if handle_message_from_parent_channel(
+					parent_channel=parent_channel,
+					message=message,
+				)
+					break
+				end
+			end
+		catch error
+			if error isa InterruptException
+				rethrow(error)
+			else
+				@error "Error in channel" error
+				respond_to_parent(
+					to=process,
+					about=channel_id,
+					with=ErrorMessage(CapturedException(error, catch_backtrace()))
+				)
+			end
+		finally
+			close(input_channel)
+		end
+	end
+end
+
+# ╔═╡ 38ca1c5b-e27e-4458-98a7-786b2d302ba3
+begin
+	function handle_message_from_parent(;
+		process::ParentProcess,
+		channel_id::UUID,
+		message
+	)
+		@warn "Unknown message type from parent" message
+	end
+
+	function handle_message_from_parent(;
+		process::ParentProcess,
+		channel_id::UUID,
+		message::CreateChildChannelMessage
+	)
+		result_channel = Main.eval(message.expr)
+		channels[channel_id] = create_parent_channel(
+			process=process,
+			channel_id=channel_id,
+			result_channel=result_channel,
+		)
+	end
+
+	function handle_message_from_parent(;
+		process::ParentProcess,
+		channel_id::UUID,
+		message::ChannelCloseMessage
+	)
+		if haskey(process.channels, channel_id) && isopen(process.channels[channel_id])
+			put!(process.channels[channel_id], message)
+		end
+	end
+
+	function handle_message_from_parent(;
+		process::ParentProcess,
+		channel_id::UUID,
+		message::ChannelTakeMessage
+	)
+		if haskey(process.channels, channel_id) && isopen(process.channels[channel_id])
+			put!(process.channels[channel_id], message)
+		else
+			respond_to_parent(
+				to=process,
+				about=channel_id,
+				with=ChannelCloseMessage(),
+			)
+		end
+	end
+end
+
+# ╔═╡ e4109311-8252-4793-87b8-eae807df7997
+function listen_for_messages_from_parent(parent_process::ParentProcess)
+	channels = parent_process.channels
+
+	locks = Dict{UUID, ReentrantLock}()
+
+	@info "Well..." parent_process.parent_to_child
+	for envelope in ReadMessages(parent_process.parent_to_child)
+		@info "Message from parent!" envelope
+		channel_lock = get!(locks, envelope.channel_id) do 
+			ReentrantLock()
+		end
+		schedule(Task() do
+			lock(channel_lock)
+			try
+				handle_message_from_parent(
+					process=parent_process,
+					channel_id=envelope.channel_id,
+					message=envelope.message,
+				)
+			catch error
+				respond_to_parent(
+					to=parent_process,
+					about=envelope.channel_id, 
+					with=ErrorMessage(CapturedException(error, catch_backtrace()))
+				)
+			finally
+				unlock(channel_lock)
+			end
+		end)
+	end
+	@warn "oh no"
+end
+
+# ╔═╡ 1f868b3c-df9a-4d4d-a6a9-9a196298a3af
+md"---"
+
+# ╔═╡ bd530d27-ad17-45ef-8d8b-4b9e956f438d
+
+
+# ╔═╡ 00000000-0000-0000-0000-000000000001
+PLUTO_PROJECT_TOML_CONTENTS = """
+[deps]
+Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+"""
+
+# ╔═╡ 00000000-0000-0000-0000-000000000002
+PLUTO_MANIFEST_TOML_CONTENTS = """
+# This file is machine-generated - editing it directly is not advised
+
+[[Random]]
+deps = ["Serialization"]
+uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[SHA]]
+uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+
+[[Serialization]]
+uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
+
+[[UUIDs]]
+deps = ["Random", "SHA"]
+uuid = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+"""
+
+# ╔═╡ Cell order:
+# ╠═6925ffbb-fd9e-402c-a483-c78f28f892a5
+# ╠═8c97d5cb-e346-4b94-b2a1-4fb5ff093bd5
+# ╠═63531683-e295-4ba6-811f-63b0d384ba0f
+# ╠═e6b3d1d9-0245-4dc8-a0a5-5831c254479b
+# ╟─a6e50946-dd3d-4738-adc1-26534e184776
+# ╠═131a123b-e319-4939-90bf-7fb035ab2e75
+# ╠═e393ff80-3995-11ec-1217-b3642a509067
+# ╠═faf3c68e-d0fb-4dd9-ac1b-1ff8d922134b
+# ╟─52495855-a52d-4edf-9c7c-811a5060e641
+# ╟─7da416d1-5dfb-4510-9d32-62c1464a83d4
+# ╟─87612815-7981-4a69-a65b-4465f48c9fd9
+# ╠═009ad714-b759-420a-b49a-6caed7ee3faf
+# ╟─de680a32-e053-4655-a1cd-111d81a037e6
+# ╠═ce2acdd1-b4bb-4a8f-8346-a56dfa55f56b
+# ╠═87182605-f5a1-46a7-968f-bdfb9d0e08fa
+# ╠═b05be9c7-8cc1-47f9-8baa-db66ac83c24f
+# ╠═590a7882-3d69-48b0-bb1b-f476c7f8a885
+# ╠═46d905fc-d41e-4c9a-a808-14710f64293a
+# ╠═13089c5d-f833-4fb7-b8cd-4158b1a57103
+# ╠═38ca1c5b-e27e-4458-98a7-786b2d302ba3
+# ╠═e4109311-8252-4793-87b8-eae807df7997
+# ╟─17cb5a65-2a72-4e7d-8fba-901452b2c19f
+# ╠═85920c27-d8a6-4b5c-93b6-41daa5866f9d
+# ╠═af4f0720-f7f7-4d8a-bd8c-8cf5abaf10a0
+# ╠═d4da756e-fa81-49d8-8c39-d76f9d15e96f
+# ╠═e787d8bd-499d-4a41-8913-62b3d9346748
+# ╠═20f66652-bca0-4e47-a4b7-502cfbcb3db5
+# ╠═6a7aa0ce-0ae3-4e7d-a93a-bfdebe406220
+# ╠═f99f4659-f71e-4f2e-a674-67ba69289817
+# ╠═3a62b419-eca2-4de1-89a4-fc9ad6f68372
+# ╠═61410bd1-8456-4608-92d9-3c863f65b89c
+# ╠═409707ff-b1ea-453d-b933-0a4b1e5f44c8
+# ╠═0feb758e-38d4-48c0-a5e9-9d1129b1b1b2
+# ╠═2342d663-030f-4ed2-b1d5-5be1910b6d4c
+# ╠═abe897ff-6e86-40eb-a1a6-2918b6c3c5a7
+# ╠═4b42e233-1f06-49c9-8c6a-9dc21c21ffb7
+# ╠═e3e16a8b-7124-4678-8fe7-12ed449e1954
+# ╠═934d18d4-936e-4ee0-aa6e-86aa6f66774c
+# ╠═b48f36d1-e3d2-408e-a705-93e609f2fd04
+# ╠═54a03cba-6d00-4632-8bd6-c60753c15ae6
+# ╠═d3fe8144-6ba8-4dd9-b0e3-941a96422267
+# ╟─884e103a-8925-477d-a264-f15d02a49aa9
+# ╠═b8865d63-19fa-4438-87a2-ccb531bd73a4
+# ╠═e1e79669-8d0a-4b04-a7fd-469e7d8e65b1
+# ╠═d3ce3ecf-c1e4-4484-ac38-b332a4b13034
+# ╠═5fb65aec-3512-4f48-98ce-300ab9fdadfe
+# ╠═fc0ca4b5-e03b-4c08-b43d-913ee12269c7
+# ╠═adfb2d12-07a0-4d5e-8e24-1676c07107c7
+# ╠═e8256f1f-c778-4fb3-a2d3-12da0e1cb3da
+# ╠═f9270f05-fa22-4027-a2ca-7db61d057c56
+# ╠═0ba318bc-7b4c-4d0f-a46c-2f9dca756926
+# ╠═c83f2936-3768-4724-9c5c-335d7a4aae03
+# ╠═441c27e4-6884-4887-9cd5-bc55d0c49760
+# ╠═f81ff6f7-f230-4373-b60b-76e8a0eba929
+# ╟─1f868b3c-df9a-4d4d-a6a9-9a196298a3af
+# ╠═bd530d27-ad17-45ef-8d8b-4b9e956f438d
+# ╟─00000000-0000-0000-0000-000000000001
+# ╟─00000000-0000-0000-0000-000000000002
