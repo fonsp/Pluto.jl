@@ -185,7 +185,7 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         types = sanitized_expr |> get_expr_types |> flatten |> Set
 
         # Checks that no fancy type is part of the serialized expression
-        @test Set([Nothing]) == types
+        @test Set([Nothing, Symbol, QuoteNode]) == types
     end
 
     @testset "Macrodef cells not root of run" begin
