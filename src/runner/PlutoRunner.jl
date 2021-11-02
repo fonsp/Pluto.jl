@@ -205,7 +205,7 @@ function try_macroexpand(mod, cell_uuid, expr)
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
     expr_to_save = no_workspace_ref(expanded_expr)
-    expr_to_save = replace_pluto_properties_in_expr(expanded_expr, cell_id=cell_uuid)
+    expr_to_save = replace_pluto_properties_in_expr(expr_to_save, cell_id=cell_uuid)
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
         original_expr_hash=expr_hash(expr),
