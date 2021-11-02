@@ -142,6 +142,15 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
                     count[] += 1
                 end
                 """),
+                Cell("""
+                @assert x_old == 1
+                """),
+                Cell("""
+                @assert x_new == 1
+                """),
+                Cell("""
+                @assert x_transform == "x"
+                """),
             ])
         fakeclient.connected_notebook = notebook
 
@@ -183,6 +192,9 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         @test noerror(notebook.cells[23])
         @test noerror(notebook.cells[24])
         @test noerror(notebook.cells[25])
+        @test noerror(notebook.cells[26])
+        @test noerror(notebook.cells[27])
+        @test noerror(notebook.cells[28])
         
         
         function set_bond_value(name, value, is_first_value=false)
@@ -238,6 +250,16 @@ import Pluto: update_run!, WorkspaceManager, ClientSession, ServerSession, Noteb
         
         WorkspaceManager.unmake_workspace((🍭, notebook))
         🍭.options.evaluation.workspace_use_distributed = false
+        
+        
+        @test jl_is_runnable(notebook.path)
+        
+        # should_not_run = """
+        # @assert 1 == 2
+        # """
+        # p = tempname()
+        # write(p, should_not_run)
+        # @test !jl_is_runnable(p)
         
     end
 end
