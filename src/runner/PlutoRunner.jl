@@ -38,12 +38,10 @@ const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
 const supported_integration_features = Any[]
 
-struct GiveMeCellID end
-struct GiveMeRerunCellFunction end
-struct GiveMeRegisterCleanupFunction end
-
-
-
+abstract type SpecialPlutoExprValue end
+struct GiveMeCellID <: SpecialPlutoExprValue end
+struct GiveMeRerunCellFunction <: SpecialPlutoExprValue end
+struct GiveMeRegisterCleanupFunction <: SpecialPlutoExprValue end
 
 ###
 # WORKSPACE MANAGER
@@ -528,11 +526,6 @@ end
 const run_channel = Channel{UUID}(10)
 
 function rerun_cell_from_notebook(cell_id::UUID)
-    if cell_id != currently_running_cell_id[]
-        error("Cell($cell_id) rerun triggered from Cell($(currently_running_cell_id[])), this can lead to infinite loops so it is prohibited for now.")
-        # @warn "rerun_cell_from_notebook($cell_id) called from outside the cell (from $(currently_running_cell_id[])), this can lead to infinite loops"
-    end
-
     # make sure only one of this cell_id is in the run channel
     # by emptying it and filling it again
     new_uuids = UUID[]
