@@ -158,6 +158,50 @@ sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
 sanitize_expr(other) = nothing
 
 
+"""
+All code necessary for throwing errors when cells return.
+Right now it just throws an error from the position of the return,
+    this is nice because you get to the line number of the return.
+However, now it is suddenly possibly to catch the return error...
+    so we might want to actually return the error instead of throwing it,
+    and then handle it in `run_expression` or something.
+"""
+module CantReturnInPluto
+    struct CantReturnInPlutoException end
+    function Base.showerror(io::IO, ::CantReturnInPlutoException)
+        print(io, "Pluto: You can only use return inside a function.")
+    end
+
+    """
+    We do macro expansion now, so we can also check for `return` statements "statically".
+    This method goes through an expression and replaces all `return` statements with `throw(CantReturnInPlutoException())`
+    """
+    function replace_returns_with_error(expr::Expr)
+        if expr.head == :return
+            :(throw($(CantReturnInPlutoException())))
+        elseif expr.head == :quote
+            Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
+            expr
+        else
+            Expr(expr.head, map(arg -> replace_returns_with_error(arg), expr.args)...)
+        end
+    end
+    replace_returns_with_error(other) = other
+
+    "Go through a quoted expression and remove returns"
+    function replace_returns_with_error_in_interpolation(ex::Expr)
+        if ex.head == :$
+            Expr(:$, replace_returns_with_error_in_interpolation(ex.args[1]))
+        else
+            # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
+            Expr(expr.head, map(arg -> replace_returns_with_error_in_interpolation(arg), expr.args)...)
+        end
+    end
+    replace_returns_with_error_in_interpolation(ex) = ex
+end
+
+
 function try_macroexpand(mod, cell_uuid, expr)
     # Remove toplevel block, as that screws with the computer and everything
     expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
@@ -173,7 +217,8 @@ function try_macroexpand(mod, cell_uuid, expr)
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
-    expr_without_globalrefs = globalref_to_workspaceref(expanded_expr)
+    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
+    expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
     expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
         cell_id=cell_uuid,
         rerun_cell_function=() -> Main.PlutoRunner.rerun_cell_from_notebook(cell_uuid),
@@ -217,14 +262,10 @@ end
 # EVALUATING NOTEBOOK CODE
 ###
 
-struct ReturnProof end
-const return_error = "Pluto: You can only use return inside a function."
-
 struct Computer
     f::Function
     expr_id::ObjectID
     cleanup_funcs::Set{Function}
-    return_proof::ReturnProof
     input_globals::Vector{Symbol}
     output_globals::Vector{Symbol}
 end
@@ -237,11 +278,9 @@ const computer_workspace = Main
 
 "Registers a new computer for the cell, cleaning up the old one if there is one."
 function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
-    proof = ReturnProof()
-
     @gensym result
     e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block,
-        Expr(:(=), result, timed_expr(expr, proof)),
+        Expr(:(=), result, timed_expr(expr)),
         Expr(:tuple,
             result,
             Expr(:tuple, map(x -> :(@isdefined($(x)) ? $(x) : $(OutputNotDefined())), output_globals)...)
@@ -254,7 +293,7 @@ function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globa
         delete_computer!(computers, cell_id)
     end
 
-    computers[cell_id] = Computer(f, key, Set{Function}([]), proof, input_globals, output_globals)
+    computers[cell_id] = Computer(f, key, Set{Function}([]), input_globals, output_globals)
 end
 
 function delete_computer!(computers::Dict{UUID,Computer}, cell_id::UUID)
@@ -290,26 +329,22 @@ function compute(m::Module, computer::Computer)
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
-    if out isa Tuple{Any,Tuple}
-        result, output_global_values = out
+    result, output_global_values = out
 
-        for (name, val) in zip(computer.output_globals, output_global_values)
-            # Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
-            Core.eval(m, quote
-                if $(quote_if_needed(val)) !== $(OutputNotDefined())
-                    $(name) = $(quote_if_needed(val))
-                end
-            end)
-        end
-
-        result
-    else
-        throw(return_error)
+    for (name, val) in zip(computer.output_globals, output_global_values)
+        # Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
+        Core.eval(m, quote
+            if $(quote_if_needed(val)) !== $(OutputNotDefined())
+                $(name) = $(quote_if_needed(val))
+            end
+        end)
     end
+
+    result
 end
 
 "Wrap `expr` inside a timing block."
-function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
+function timed_expr(expr::Expr)::Expr
     # @assert ExpressionExplorer.is_toplevel_expr(expr)
 
     @gensym result
@@ -319,34 +354,21 @@ function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
         :(local $elapsed_ns = time_ns()),
         :(local $result = $expr),
         :($elapsed_ns = time_ns() - $elapsed_ns),
-        :(($result, $elapsed_ns, $return_proof)),
+        :(($result, $elapsed_ns)),
     )
 end
 
 """
 Run the expression or function inside a try ... catch block, and verify its "return proof".
 """
-function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::ReturnProof)
-    # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
-    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
-
-    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
-    # way to protect people from finding this obscure bug in some way - DRAL
-
-    ans, runtime = try
-        local invocation = if f isa Expr
+function run_inside_trycatch(m::Module, f::Union{Expr,Function})::Tuple{Any,UInt64}
+    return try
+        if f isa Expr
             # We eval `f` in the global scope of the workspace module:
             Core.eval(m, f)
         else
             # f is a function
             f()
-        end
-
-        if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
-            throw(return_error)
-        else
-            local ans, runtime, _ = invocation
-            (ans, runtime)
         end
     catch ex
         bt = stacktrace(catch_backtrace())
@@ -419,11 +441,10 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     end
 
     result, runtime = if function_wrapped_info === nothing
-        proof = ReturnProof()
 
         toplevel_expr = Expr(:toplevel, expr)
-        wrapped = timed_expr(toplevel_expr, proof)
-        ans, runtime = run_inside_trycatch(m, wrapped, proof)
+        wrapped = timed_expr(toplevel_expr)
+        ans, runtime = run_inside_trycatch(m, wrapped)
         (ans, add_runtimes(runtime, expansion_runtime))
     else
         expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
@@ -444,7 +465,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
             run_expression(m, expr, cell_id, nothing)
         else
-            run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
+            run_inside_trycatch(m, () -> compute(m, computer))
         end
 
         ans, add_runtimes(runtime, expansion_runtime)
