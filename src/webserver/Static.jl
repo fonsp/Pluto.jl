@@ -32,7 +32,12 @@ function error_response(status_code::Integer, title, advice, body="")
     template = read(project_relative_path("frontend", "error.jl.html"), String)
 
     body_title = body == "" ? "" : "Error message:"
-    filled_in = replace(replace(replace(replace(template, "\$TITLE" => title), "\$ADVICE" => advice), "\$BODYTITLE" => body_title), "\$BODY" => htmlesc(body))
+    filled_in = replace(replace(replace(replace(replace(template, 
+        "\$STYLE" => """<style>$(read(project_relative_path("frontend", "index.css"), String))</style>"""), 
+        "\$TITLE" => title), 
+        "\$ADVICE" => advice), 
+        "\$BODYTITLE" => body_title), 
+        "\$BODY" => htmlesc(body))
 
     response = HTTP.Response(status_code, filled_in)
     push!(response.headers, "Content-Type" => string(mime_fromfilename(".html")))

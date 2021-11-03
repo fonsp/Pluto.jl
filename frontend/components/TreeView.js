@@ -28,6 +28,9 @@ const SimpleOutputBody = ({ mime, body, cell_id, persist_js_state }) => {
         case "application/vnd.pluto.table+object":
             return html` <${TableView} cell_id=${cell_id} body=${body} persist_js_state=${persist_js_state} />`
             break
+        case "application/vnd.pluto.divelement+object":
+            return DivElement({ cell_id, ...body })
+            break
         case "text/plain":
             return html`<pre class="no-block">${body}</pre>`
         default:
@@ -163,4 +166,10 @@ export const TableView = ({ mime, body, cell_id, persist_js_state }) => {
     return html`<table class="pluto-table" ref=${node_ref}>
         ${thead}${tbody}
     </table>`
+}
+
+export let DivElement = ({ cell_id, style, classname, children }) => {
+    const mimepair_output = (pair) => html`<${SimpleOutputBody} cell_id=${cell_id} mime=${pair[1]} body=${pair[0]} persist_js_state=${false} />`
+
+    return html`<div style=${style} class=${classname}>${children.map(mimepair_output)}</div>`
 }

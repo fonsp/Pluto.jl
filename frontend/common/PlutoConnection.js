@@ -99,7 +99,7 @@ const create_ws_connection = (address, { on_message, on_socket_close }, timeout_
     return new Promise((resolve, reject) => {
         const socket = new WebSocket(address)
 
-        var has_been_open = false
+        let has_been_open = false
 
         const timeout_handle = setTimeout(() => {
             console.warn("Creating websocket timed out", new Date().toLocaleTimeString())
@@ -278,17 +278,17 @@ export const create_pluto_connection = async ({
     var ws_connection = null // will be defined later i promise
     const client = {
         send: null,
-        kill: null,
         session_options: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
         },
+        kill: null,
     } // same
 
     const client_id = get_unique_short_id()
-    const sent_requests = {}
+    const sent_requests = new Map()
 
     /**
      * Send a message to the Pluto backend, and return a promise that resolves when the backend sends a response. Not all messages receive a response.
@@ -311,14 +311,14 @@ export const create_pluto_connection = async ({
 
         // Note: Message to be sent: message
 
-        var p = resolvable_promise()
+        let p = resolvable_promise()
 
-        sent_requests[request_id] = (response_message) => {
+        sent_requests.set(request_id, (response_message) => {
             p.resolve(response_message)
             if (no_broadcast === false) {
                 on_unrequested_update(response_message, true)
             }
-        }
+        })
 
         ws_connection.send(message)
         return await p.current
@@ -352,10 +352,10 @@ export const create_pluto_connection = async ({
                     const request_id = update.request_id
 
                     if (by_me && request_id) {
-                        const request = sent_requests[request_id]
+                        const request = sent_requests.get(request_id)
                         if (request) {
                             request(update)
-                            delete sent_requests[request_id]
+                            sent_requests.delete(request_id)
                             return
                         }
                     }
@@ -385,7 +385,7 @@ export const create_pluto_connection = async ({
             client.session_options = u.message.options
             client.version_info = u.message.version_info
 
-            console.log(client)
+            console.log("Client object: ", client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55
