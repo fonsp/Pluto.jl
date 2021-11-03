@@ -7,6 +7,23 @@ import { cl } from "../common/ClassTable.js"
 import { useDropHandler } from "./useDropHandler.js"
 import { PlutoContext } from "../common/PlutoContext.js"
 
+const useCellApi = (node_ref, published_objects, pluto_actions) => {
+    const [cell_api_ready, set_cell_api_ready] = useState(false)
+    const published_objects_ref = useRef(published_objects)
+    published_objects_ref.current = published_objects
+    
+    useLayoutEffect(() => {
+        Object.assign(node_ref.current, {
+            getPublishedObject: (id) => published_objects_ref.current[id],
+            _internal_pluto_actions: pluto_actions,
+        })
+
+        set_cell_api_ready(true)
+    })
+
+    return cell_api_ready
+}
+
 /**
  * @param {{
  *  cell_result: import("./Editor.js").CellResultData,
@@ -91,23 +108,13 @@ export const Cell = ({
 
     const node_ref = useRef(null)
 
-    const [cell_api_ready, set_cell_api_ready] = useState(false)
-    const published_objects_ref = useRef(published_objects)
-    published_objects_ref.current = published_objects
     const disable_input_ref = useRef(disable_input)
     disable_input_ref.current = disable_input
     const should_set_waiting_to_run_ref = useRef(true)
     should_set_waiting_to_run_ref.current = !running_disabled && !depends_on_disabled_cells
     const set_waiting_to_run_smart = (x) => set_waiting_to_run(x && should_set_waiting_to_run_ref.current)
 
-    useLayoutEffect(() => {
-        Object.assign(node_ref.current, {
-            getPublishedObject: (id) => published_objects_ref.current[id],
-            _internal_pluto_actions: pluto_actions,
-        })
-
-        set_cell_api_ready(true)
-    })
+    const cell_api_ready = useCellApi(node_ref, published_objects, pluto_actions)
 
     return html`
         <pluto-cell
@@ -226,6 +233,27 @@ export const Cell = ({
             >
                 <span></span>
             </button>
+        </pluto-cell>
+    `
+}
+
+
+export const IsolatedCell = ({
+    cell_id,
+    cell_results: { output, published_objects },
+    hidden
+}) => {
+    const node_ref = useRef(null)
+    let pluto_actions = useContext(PlutoContext)
+    const cell_api_ready = useCellApi(node_ref, published_objects, pluto_actions)
+
+    return html`
+        <pluto-cell
+            ref=${node_ref}
+            id=${cell_id}
+            class=${hidden ? 'hidden-cell' : 'isolated-cell'}
+        >
+            ${cell_api_ready ? html`<${CellOutput} ...${output} cell_id=${cell_id} />` : html``}
         </pluto-cell>
     `
 }
