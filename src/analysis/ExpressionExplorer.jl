@@ -1242,7 +1242,9 @@ function can_be_function_wrapped(x::Expr)
         x.head === :using ||
         x.head === :import ||
         x.head === :module ||
-        x.head === :function ||
+        # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
+        # TODO Named functions INSIDE other functions should be fine too
+        (x.head === :function && x.args[1].head != :tuple) ||
         x.head === :macro ||
         # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
         # See https://github.com/fonsp/Pluto.jl/pull/1597
