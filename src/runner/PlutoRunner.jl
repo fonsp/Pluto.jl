@@ -238,8 +238,8 @@ function try_macroexpand(mod, cell_uuid, expr)
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
     expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
         cell_id=cell_uuid,
-        rerun_cell_function=() -> Main.PlutoRunner.rerun_cell_from_notebook(cell_uuid),
-        register_cleanup_function=(fn) -> Main.PlutoRunner.register_cleanup(fn, cell_uuid),
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
     )
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
@@ -282,7 +282,6 @@ end
 struct Computer
     f::Function
     expr_id::ObjectID
-    cleanup_funcs::Set{Function}
     input_globals::Vector{Symbol}
     output_globals::Vector{Symbol}
 end
@@ -310,14 +309,12 @@ function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globa
         delete_computer!(computers, cell_id)
     end
 
-    computers[cell_id] = Computer(f, key, Set{Function}([]), input_globals, output_globals)
+    computers[cell_id] = Computer(f, key, input_globals, output_globals)
 end
 
 function delete_computer!(computers::Dict{UUID,Computer}, cell_id::UUID)
     computer = pop!(computers, cell_id)
-    for cleanup_func in computer.cleanup_funcs
-        cleanup_func()
-    end
+    UseEffectCleanups.trigger_cleanup(cell_id)
     Base.visit(Base.delete_method, methods(computer.f).mt) # Make the computer function uncallable
 end
 
@@ -325,13 +322,27 @@ parse_cell_id(filename::Symbol) = filename |> string |> parse_cell_id
 parse_cell_id(filename::AbstractString) =
     match(r"#==#(.*)", filename).captures |> only |> UUID
 
-function register_cleanup(f::Function, cell_id::UUID)
-    # TODO Don't need this, everything is "function wrapped" for hook purposes,
-    # .... because of the cached macro expansion.. This does however mean we need
-    # .... a separate store for cleanup functions 
-    @assert haskey(computers, cell_id) "The cell $cell_id is not function wrapped"
-    push!(computers[cell_id].cleanup_funcs, f)
-    nothing
+module UseEffectCleanups
+    import UUIDs: UUID
+
+    const cell_cleanup_functions = Dict{UUID,Set{Function}}()
+
+    function register_cleanup(f::Function, cell_id::UUID)
+        cleanup_functions = get!(cell_cleanup_functions, cell_id, Set{Function}())
+        push!(cleanup_functions, f)
+        nothing
+    end
+
+    function trigger_cleanup(cell_id::UUID)
+        for cleanup_func in get!(cell_cleanup_functions, cell_id, Set{Function}())
+            try
+                cleanup_func()
+            catch error
+                @warn "Cleanup function gave an error" cell_id error stacktrace=stacktrace(catch_backtrace())
+            end
+        end
+        delete!(cell_cleanup_functions, cell_id)
+    end
 end
 
 quote_if_needed(x) = x
@@ -414,7 +425,14 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing; user_requested_run::Bool=true)
+    if user_requested_run
+        # TODO Time elapsed? Possibly relays errors in cleanup function?
+        UseEffectCleanups.trigger_cleanup(cell_id)
+
+        # TODO Could also put explicit `try_macroexpand` here, to make clear that user_requested_run => fresh macro identity
+    end
+
     currently_running_cell_id[] = cell_id
     cell_published_objects[cell_id] = Dict{String,Any}()
 
@@ -471,7 +489,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
                 computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, expr, cell_id, nothing)
+                return run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
             end
         end
 
@@ -480,7 +498,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
             # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
             # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
-            run_expression(m, expr, cell_id, nothing)
+            run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
         else
             run_inside_trycatch(m, () -> compute(m, computer))
         end

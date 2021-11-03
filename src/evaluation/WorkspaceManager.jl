@@ -114,7 +114,7 @@ function start_relaying_self_updates((session, notebook)::SN, run_channel::Distr
             next_run_uuid = take!(run_channel)
 
             cell_to_run = notebook.cells_dict[next_run_uuid]
-            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; persist_js_state=true)
+            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; user_requested_run=false)
         catch e
             if !isopen(run_channel)
                 break
@@ -277,6 +277,7 @@ function eval_format_fetch_in_workspace(
     ends_with_semicolon::Bool=false,
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
+    user_requested_run::Bool=true,
 )::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
 
     workspace = get_workspace(session_notebook)
@@ -301,6 +302,7 @@ function eval_format_fetch_in_workspace(
             $cell_id, 
             $function_wrapped_info,
             $forced_expr_id,
+            user_requested_run=$user_requested_run,
         )))
         put!(workspace.dowork_token)
         nothing
@@ -359,7 +361,7 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
         try
             (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
         catch e
-            (false, e)
+            (false, sprint(showerror, e))
         end
     end)
 end

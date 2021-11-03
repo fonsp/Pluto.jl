@@ -6,7 +6,7 @@ import .WorkspaceManager: macroexpand_in_workspace
 Base.push!(x::Set{Cell}) = x
 
 "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
-function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
+function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, user_requested_run::Bool=true, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
   if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
 		take!(notebook.executetoken)
@@ -113,7 +113,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			run = run_single!(
 				(session, notebook), cell, 
 				new_topology.nodes[cell], new_topology.codes[cell]; 
-				persist_js_state=(persist_js_state || cell ∉ roots)
+				user_requested_run=(user_requested_run && cell ∈ roots)
 			)
 			any_interrupted |= run.interrupted
 		end
@@ -141,7 +141,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			update_dependency_cache!(notebook)
 			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
 			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
 			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
@@ -150,7 +150,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			update_dependency_cache!(notebook)
 			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, user_requested_run=user_requested_run, already_in_run=true, already_run=to_run[1:i])
 		end
 	end
 
@@ -193,7 +193,7 @@ function defined_functions(topology::NotebookTopology, cells)
 end
 
 "Run a single cell non-reactively, set its output, return run information."
-function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; persist_js_state::Bool=false)
+function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},WorkspaceManager.Workspace}, cell::Cell, reactive_node::ReactiveNode, expr_cache::ExprAnalysisCache; user_requested_run::Bool=true)
 	run = WorkspaceManager.eval_format_fetch_in_workspace(
 		session_notebook, 
 		expr_cache.parsedcode, 
@@ -201,8 +201,9 @@ function run_single!(session_notebook::Union{Tuple{ServerSession,Notebook},Works
 		ends_with_semicolon(cell.code), 
 		expr_cache.function_wrapped ? (filter(!is_joined_funcname, reactive_node.references), reactive_node.definitions) : nothing,
 		expr_cache.forced_expr_id,
+		user_requested_run,
 	)
-	set_output!(cell, run, expr_cache; persist_js_state=persist_js_state)
+	set_output!(cell, run, expr_cache; persist_js_state=!user_requested_run)
 	if session_notebook isa Tuple && run.process_exited
 		session_notebook[2].process_status = ProcessStatus.no_process
 	end
