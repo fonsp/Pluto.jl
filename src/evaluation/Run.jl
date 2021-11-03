@@ -240,7 +240,16 @@ end
 function resolve_topology(session::ServerSession, notebook::Notebook, unresolved_topology::NotebookTopology, old_workspace_name::Symbol)
 	sn = (session, notebook)
 
-	macroexpand_cell(cell) = macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id)
+	function macroexpand_cell(cell)
+		try_macroexpand(module_name::Union{Nothing,Symbol}=nothing) =
+			macroexpand_in_workspace(sn, unresolved_topology.codes[cell].parsedcode, cell.cell_id, module_name)
+
+		res = try_macroexpand()
+		if (res isa LoadError && res.error isa UndefVarError) || res isa UndefVarError
+			res = try_macroexpand(old_workspace_name)
+		end
+		res
+	end
 
 	function analyze_macrocell(cell::Cell, current_symstate)
 		if unresolved_topology.nodes[cell].macrocalls ⊆ ExpressionExplorer.can_macroexpand
@@ -249,13 +258,12 @@ function resolve_topology(session::ServerSession, notebook::Notebook, unresolved
 
 		result = macroexpand_cell(cell)
 		if result isa Exception
-		    # if expansion failed, we use the "shallow" symbols state
-		    err = result
-		    @debug "Expansion failed" err
-		    current_symstate, false
+			# if expansion failed, we use the "shallow" symbols state
+			@debug "Expansion failed" err=result
+			current_symstate, false
 		else # otherwise, we use the expanded expression + the list of macrocalls
-		    expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
-		    expanded_symbols_state, true
+			expanded_symbols_state = ExpressionExplorer.try_compute_symbolreferences(result)
+			expanded_symbols_state, true
 		end
 	end
 
@@ -348,6 +356,32 @@ end
 update_save_run!(session::ServerSession, notebook::Notebook, cell::Cell; kwargs...) = update_save_run!(session, notebook, [cell]; kwargs...)
 update_run!(args...) = update_save_run!(args...; save=false)
 
+function notebook_differences(from::Notebook, to::Notebook)
+	old_codes = Dict(
+		id => c.code
+		for (id,c) in from.cells_dict
+	)
+	new_codes = Dict(
+		id => c.code
+		for (id,c) in to.cells_dict
+	)
+
+	(
+		# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
+		added = setdiff(keys(new_codes), keys(old_codes)),
+		removed = setdiff(keys(old_codes), keys(new_codes)),
+		changed = let
+			remained = keys(old_codes) ∩ keys(new_codes)
+			filter(id -> old_codes[id] != new_codes[id], remained)
+		end,
+		
+		order_changed = from.cell_order != to.cell_order,
+		nbpkg_changed = !is_nbpkg_equal(from.nbpkg_ctx, to.nbpkg_ctx),
+	)
+end
+
+notebook_differences(from_filename::String, to_filename::String) = notebook_differences(load_notebook_nobackup(from_filename), load_notebook_nobackup(to_filename))
+
 function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 	include_nbpg = !session.options.server.auto_reload_from_file_ignore_pkg
 	
@@ -357,29 +391,23 @@ function update_from_file(session::ServerSession, notebook::Notebook; kwargs...)
 		@error "Skipping hot reload because loading the file went wrong" exception=(e,catch_backtrace())
 		return
 	end::Notebook
-
-	old_codes = Dict(
-		id => c.code
-		for (id,c) in notebook.cells_dict
-	)
+	
 	new_codes = Dict(
 		id => c.code
 		for (id,c) in just_loaded.cells_dict
 	)
 
-	# it's like D3 joins: https://observablehq.com/@d3/learn-d3-joins#cell-528
-	added = setdiff(keys(new_codes), keys(old_codes))
-	removed = setdiff(keys(old_codes), keys(new_codes))
-	changed = let
-		remained = keys(old_codes) ∩ keys(new_codes)
-		filter(id -> old_codes[id] != new_codes[id], remained)
-	end
-
+	d = notebook_differences(notebook, just_loaded)
+	
+	added = d.added
+	removed = d.removed
+	changed = d.changed
+	
 	# @show added removed changed
 	
 	cells_changed = !(isempty(added) && isempty(removed) && isempty(changed))
-	order_changed = notebook.cell_order != just_loaded.cell_order
-	nbpkg_changed = !is_nbpkg_equal(notebook.nbpkg_ctx, just_loaded.nbpkg_ctx)
+	order_changed = d.order_changed
+	nbpkg_changed = d.nbpkg_changed
 		
 	something_changed = cells_changed || order_changed || (include_nbpg && nbpkg_changed)
 	

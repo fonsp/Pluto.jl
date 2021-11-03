@@ -40,11 +40,11 @@ declare abstract class Text implements Iterable<string> {
     /**
     Get the line description around the given position.
     */
-    lineAt(pos: number): Line;
+    lineAt(pos: number): Line$1;
     /**
     Get the description for the given (1-based) line number.
     */
-    line(n: number): Line;
+    line(n: number): Line$1;
     /**
     Replace a range of the text with the given content.
     */
@@ -118,7 +118,7 @@ declare class LineCursor implements TextIterator {
 This type describes a line in the document. It is created
 on-demand when lines are [queried](https://codemirror.net/6/docs/ref/#text.Text.lineAt).
 */
-declare class Line {
+declare class Line$1 {
     /**
     The position of the start of the line.
     */
@@ -1320,6 +1320,10 @@ interface Input {
     readonly lineChunks: boolean;
     read(from: number, to: number): string;
 }
+declare type ParseWrapper = (inner: PartialParse, input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+    from: number;
+    to: number;
+}[]) => PartialParse;
 
 declare class NodeProp<T> {
     perNode: boolean;
@@ -1479,6 +1483,89 @@ declare class TreeCursor {
     get tree(): Tree | null;
 }
 
+interface NestedParse {
+    parser: Parser;
+    overlay?: readonly {
+        from: number;
+        to: number;
+    }[] | ((node: TreeCursor) => {
+        from: number;
+        to: number;
+    } | boolean);
+}
+declare function parseMixed(nest: (node: TreeCursor, input: Input) => NestedParse | null): ParseWrapper;
+
+declare class Stack {
+    pos: number;
+    get context(): any;
+    canShift(term: number): boolean;
+    get parser(): LRParser;
+    dialectEnabled(dialectID: number): boolean;
+    private shiftContext;
+    private reduceContext;
+    private updateContext;
+}
+
+declare class InputStream {
+    private chunk2;
+    private chunk2Pos;
+    next: number;
+    pos: number;
+    private rangeIndex;
+    private range;
+    resolveOffset(offset: number, assoc: -1 | 1): number;
+    peek(offset: number): any;
+    acceptToken(token: number, endOffset?: number): void;
+    private getChunk;
+    private readNext;
+    advance(n?: number): number;
+    private setDone;
+}
+interface Tokenizer {
+}
+interface ExternalOptions {
+    contextual?: boolean;
+    fallback?: boolean;
+    extend?: boolean;
+}
+declare class ExternalTokenizer implements Tokenizer {
+    constructor(token: (input: InputStream, stack: Stack) => void, options?: ExternalOptions);
+}
+
+declare class ContextTracker<T> {
+    constructor(spec: {
+        start: T;
+        shift?(context: T, term: number, stack: Stack, input: InputStream): T;
+        reduce?(context: T, term: number, stack: Stack, input: InputStream): T;
+        reuse?(context: T, node: Tree, stack: Stack, input: InputStream): T;
+        hash?(context: T): number;
+        strict?: boolean;
+    });
+}
+interface ParserConfig {
+    props?: readonly NodePropSource[];
+    top?: string;
+    dialect?: string;
+    tokenizers?: {
+        from: ExternalTokenizer;
+        to: ExternalTokenizer;
+    }[];
+    contextTracker?: ContextTracker<any>;
+    strict?: boolean;
+    wrap?: ParseWrapper;
+    bufferLength?: number;
+}
+declare class LRParser extends Parser {
+    readonly nodeSet: NodeSet;
+    createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+        from: number;
+        to: number;
+    }[]): PartialParse;
+    configure(config: ParserConfig): LRParser;
+    getName(term: number): string;
+    get topNode(): NodeType;
+}
+
 /**
 A language object manages parsing and per-language
 [metadata](https://codemirror.net/6/docs/ref/#state.EditorState.languageDataAt). Parse data is
@@ -1547,6 +1634,39 @@ declare class Language {
     get allowsNesting(): boolean;
 }
 /**
+A subclass of [`Language`](https://codemirror.net/6/docs/ref/#language.Language) for use with Lezer
+[LR parsers](https://lezer.codemirror.net/docs/ref#lr.LRParser)
+parsers.
+*/
+declare class LRLanguage extends Language {
+    readonly parser: LRParser;
+    private constructor();
+    /**
+    Define a language from a parser.
+    */
+    static define(spec: {
+        /**
+        The parser to use. Should already have added editor-relevant
+        node props (and optionally things like dialect and top rule)
+        configured.
+        */
+        parser: LRParser;
+        /**
+        [Language data](https://codemirror.net/6/docs/ref/#state.EditorState.languageDataAt)
+        to register for this language.
+        */
+        languageData?: {
+            [name: string]: any;
+        };
+    }): LRLanguage;
+    /**
+    Create a new instance of this language with a reconfigured
+    version of its parser.
+    */
+    configure(options: ParserConfig): LRLanguage;
+    get allowsNesting(): boolean;
+}
+/**
 Get the syntax tree for a state, which is the current (possibly
 incomplete) parse tree of active [language](https://codemirror.net/6/docs/ref/#language.Language),
 or the empty tree if there is no language available.
@@ -1592,6 +1712,85 @@ declare class LanguageSupport {
     in its own set of support extensions.
     */
     support?: Extension);
+}
+/**
+Language descriptions are used to store metadata about languages
+and to dynamically load them. Their main role is finding the
+appropriate language for a filename or dynamically loading nested
+parsers.
+*/
+declare class LanguageDescription {
+    /**
+    The name of this language.
+    */
+    readonly name: string;
+    /**
+    Alternative names for the mode (lowercased, includes `this.name`).
+    */
+    readonly alias: readonly string[];
+    /**
+    File extensions associated with this language.
+    */
+    readonly extensions: readonly string[];
+    /**
+    Optional filename pattern that should be associated with this
+    language.
+    */
+    readonly filename: RegExp | undefined;
+    private loadFunc;
+    /**
+    If the language has been loaded, this will hold its value.
+    */
+    support: LanguageSupport | undefined;
+    private loading;
+    private constructor();
+    /**
+    Start loading the the language. Will return a promise that
+    resolves to a [`LanguageSupport`](https://codemirror.net/6/docs/ref/#language.LanguageSupport)
+    object when the language successfully loads.
+    */
+    load(): Promise<LanguageSupport>;
+    /**
+    Create a language description.
+    */
+    static of(spec: {
+        /**
+        The language's name.
+        */
+        name: string;
+        /**
+        An optional array of alternative names.
+        */
+        alias?: readonly string[];
+        /**
+        An optional array of extensions associated with this language.
+        */
+        extensions?: readonly string[];
+        /**
+        An optional filename pattern associated with this language.
+        */
+        filename?: RegExp;
+        /**
+        A function that will asynchronously load the language.
+        */
+        load: () => Promise<LanguageSupport>;
+    }): LanguageDescription;
+    /**
+    Look for a language in the given array of descriptions that
+    matches the filename. Will first match
+    [`filename`](https://codemirror.net/6/docs/ref/#language.LanguageDescription.filename) patterns,
+    and then [extensions](https://codemirror.net/6/docs/ref/#language.LanguageDescription.extensions),
+    and return the first language that matches.
+    */
+    static matchFilename(descs: readonly LanguageDescription[], filename: string): LanguageDescription | null;
+    /**
+    Look for a language whose name or alias matches the the given
+    name (case-insensitively). If `fuzzy` is true, and no direct
+    matchs is found, this'll also search for a language whose name
+    or alias occurs in the string (for names shorter than three
+    characters, only when surrounded by non-word characters).
+    */
+    static matchLanguageName(descs: readonly LanguageDescription[], name: string, fuzzy?: boolean): LanguageDescription | null;
 }
 /**
 Facet for overriding the unit by which indentation happens.
@@ -2543,7 +2742,9 @@ declare class ViewUpdate {
     */
     readonly startState: EditorState;
     /**
-    Tells you whether the viewport changed in this update.
+    Tells you whether the [viewport](https://codemirror.net/6/docs/ref/#view.EditorView.viewport) or
+    [visible ranges](https://codemirror.net/6/docs/ref/#view.EditorView.visibleRanges) changed in this
+    update.
     */
     get viewportChanged(): boolean;
     /**
@@ -2779,6 +2980,7 @@ declare class EditorView {
     private contentAttrs;
     private styleModules;
     private bidiCache;
+    private destroyed;
     /**
     Construct a new view. You'll usually want to put `view.dom` into
     your document after creating a view, so that the user can see
@@ -3009,7 +3211,7 @@ declare class EditorView {
     left-to-right, the leftmost spans come first, otherwise the
     rightmost spans come first.
     */
-    bidiSpans(line: Line): readonly BidiSpan[];
+    bidiSpans(line: Line$1): readonly BidiSpan[];
     /**
     Check whether the editor has focus.
     */
@@ -3619,9 +3821,13 @@ declare const tags: {
     */
     tagName: Tag;
     /**
-    A property, field, or attribute [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
+    A property or field [name](https://codemirror.net/6/docs/ref/#highlight.tags.name).
     */
     propertyName: Tag;
+    /**
+    An attribute name (subtag of [`propertyName`](https://codemirror.net/6/docs/ref/#highlight.tags.propertyName)).
+    */
+    attributeName: Tag;
     /**
     The [name](https://codemirror.net/6/docs/ref/#highlight.tags.name) of a class.
     */
@@ -3654,6 +3860,10 @@ declare const tags: {
     A character literal (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
     */
     character: Tag;
+    /**
+    An attribute value (subtag of [string](https://codemirror.net/6/docs/ref/#highlight.tags.string)).
+    */
+    attributeValue: Tag;
     /**
     A number [literal](https://codemirror.net/6/docs/ref/#highlight.tags.literal).
     */
@@ -4314,4 +4524,321 @@ Default key bindings for this package.
 */
 declare const commentKeymap: readonly KeyBinding[];
 
-export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, indentLess, indentMore, indentOnInput, indentUnit, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, placeholder, rectangularSelection, searchKeymap, syntaxTree, tags };
+declare class LeafBlock {
+    readonly start: number;
+    content: string;
+}
+declare class Line {
+    text: string;
+    baseIndent: number;
+    basePos: number;
+    pos: number;
+    indent: number;
+    next: number;
+    skipSpace(from: number): number;
+    moveBase(to: number): void;
+    moveBaseColumn(indent: number): void;
+    addMarker(elt: Element$1): void;
+    countIndent(to: number, from?: number, indent?: number): number;
+    findColumn(goal: number): number;
+}
+declare type BlockResult = boolean | null;
+declare class BlockContext implements PartialParse {
+    readonly parser: MarkdownParser;
+    private line;
+    private atEnd;
+    private fragments;
+    private to;
+    stoppedAt: number | null;
+    lineStart: number;
+    get parsedPos(): number;
+    advance(): Tree;
+    stopAt(pos: number): void;
+    private reuseFragment;
+    nextLine(): boolean;
+    private moveRangeI;
+    private lineChunkAt;
+    prevLineEnd(): number;
+    startComposite(type: string, start: number, value?: number): void;
+    addElement(elt: Element$1): void;
+    addLeafElement(leaf: LeafBlock, elt: Element$1): void;
+    private finish;
+    private addGaps;
+    elt(type: string, from: number, to: number, children?: readonly Element$1[]): Element$1;
+    elt(tree: Tree, at: number): Element$1;
+}
+interface NodeSpec {
+    name: string;
+    block?: boolean;
+    composite?(cx: BlockContext, line: Line, value: number): boolean;
+}
+interface InlineParser {
+    name: string;
+    parse(cx: InlineContext, next: number, pos: number): number;
+    before?: string;
+    after?: string;
+}
+interface BlockParser {
+    name: string;
+    parse?(cx: BlockContext, line: Line): BlockResult;
+    leaf?(cx: BlockContext, leaf: LeafBlock): LeafBlockParser | null;
+    endLeaf?(cx: BlockContext, line: Line): boolean;
+    before?: string;
+    after?: string;
+}
+interface LeafBlockParser {
+    nextLine(cx: BlockContext, line: Line, leaf: LeafBlock): boolean;
+    finish(cx: BlockContext, leaf: LeafBlock): boolean;
+}
+interface MarkdownConfig {
+    props?: readonly NodePropSource[];
+    defineNodes?: readonly (string | NodeSpec)[];
+    parseBlock?: readonly BlockParser[];
+    parseInline?: readonly InlineParser[];
+    remove?: readonly string[];
+    wrap?: ParseWrapper;
+}
+declare type MarkdownExtension = MarkdownConfig | readonly MarkdownExtension[];
+declare class MarkdownParser extends Parser {
+    readonly nodeSet: NodeSet;
+    createParse(input: Input, fragments: readonly TreeFragment[], ranges: readonly {
+        from: number;
+        to: number;
+    }[]): PartialParse;
+    configure(spec: MarkdownExtension): MarkdownParser;
+    parseInline(text: string, offset: number): any[];
+}
+declare class Element$1 {
+    readonly type: number;
+    readonly from: number;
+    readonly to: number;
+}
+interface DelimiterType {
+    resolve?: string;
+    mark?: string;
+}
+declare class InlineContext {
+    readonly parser: MarkdownParser;
+    readonly text: string;
+    readonly offset: number;
+    char(pos: number): number;
+    get end(): number;
+    slice(from: number, to: number): string;
+    addDelimiter(type: DelimiterType, from: number, to: number, open: boolean, close: boolean): number;
+    addElement(elt: Element$1): number;
+    findOpeningDelimiter(type: DelimiterType): number;
+    takeContent(startIndex: number): any[];
+    skipSpace(from: number): number;
+    elt(type: string, from: number, to: number, children?: readonly Element$1[]): Element$1;
+    elt(tree: Tree, at: number): Element$1;
+}
+
+/**
+Language support for [GFM](https://github.github.com/gfm/) plus
+subscript, superscript, and emoji syntax.
+*/
+declare const markdownLanguage: Language;
+/**
+Markdown language support.
+*/
+declare function markdown(config?: {
+    /**
+    When given, this language will be used by default to parse code
+    blocks.
+    */
+    defaultCodeLanguage?: Language | LanguageSupport;
+    /**
+    A collection of language descriptions to search through for a
+    matching language (with
+    [`LanguageDescription.matchLanguageName`](https://codemirror.net/6/docs/ref/#language.LanguageDescription^matchLanguageName))
+    when a fenced code block has an info string.
+    */
+    codeLanguages?: readonly LanguageDescription[];
+    /**
+    Set this to false to disable installation of the Markdown
+    [keymap](https://codemirror.net/6/docs/ref/#lang-markdown.markdownKeymap).
+    */
+    addKeymap?: boolean;
+    /**
+    Markdown parser
+    [extensions](https://github.com/lezer-parser/markdown#user-content-markdownextension)
+    to add to the parser.
+    */
+    extensions?: MarkdownExtension;
+    /**
+    The base language to use. Defaults to
+    [`commonmarkLanguage`](https://codemirror.net/6/docs/ref/#lang-markdown.commonmarkLanguage).
+    */
+    base?: Language;
+}): LanguageSupport;
+
+/**
+A language provider based on the [Lezer HTML
+parser](https://github.com/lezer-parser/html), extended with the
+JavaScript and CSS parsers to parse the content of `<script>` and
+`<style>` tags.
+*/
+declare const htmlLanguage: LRLanguage;
+/**
+Language support for HTML, including
+[`htmlCompletion`](https://codemirror.net/6/docs/ref/#lang-html.htmlCompletion) and JavaScript and
+CSS support extensions.
+*/
+declare function html(config?: {
+    /**
+    By default, the syntax tree will highlight mismatched closing
+    tags. Set this to `false` to turn that off (for example when you
+    expect to only be parsing a fragment of HTML text, not a full
+    document).
+    */
+    matchClosingTags?: boolean;
+    /**
+    Determines whether [`autoCloseTags`](https://codemirror.net/6/docs/ref/#lang-html.autoCloseTags)
+    is included in the support extensions. Defaults to true.
+    */
+    autoCloseTags?: boolean;
+}): LanguageSupport;
+
+/**
+A language provider based on the [Lezer JavaScript
+parser](https://github.com/lezer-parser/javascript), extended with
+highlighting and indentation information.
+*/
+declare const javascriptLanguage: LRLanguage;
+/**
+JavaScript support. Includes [snippet](https://codemirror.net/6/docs/ref/#lang-javascript.snippets)
+completion.
+*/
+declare function javascript(config?: {
+    jsx?: boolean;
+    typescript?: boolean;
+}): LanguageSupport;
+
+declare type SQLDialectSpec = {
+    /**
+    A space-separated list of keywords for the dialect.
+    */
+    keywords?: string;
+    /**
+    A space-separated string of built-in identifiers for the dialect.
+    */
+    builtin?: string;
+    /**
+    A space-separated string of type names for the dialect.
+    */
+    types?: string;
+    /**
+    Controls whether regular strings allow backslash escapes.
+    */
+    backslashEscapes?: boolean;
+    /**
+    Controls whether # creates a line comment.
+    */
+    hashComments?: boolean;
+    /**
+    Controls whether `//` creates a line comment.
+    */
+    slashComments?: boolean;
+    /**
+    When enabled `--` comments are only recognized when there's a
+    space after the dashes.
+    */
+    spaceAfterDashes?: boolean;
+    /**
+    When enabled, things quoted with double quotes are treated as
+    strings, rather than identifiers.
+    */
+    doubleQuotedStrings?: boolean;
+    /**
+    Enables strings like `_utf8'str'` or `N'str'`.
+    */
+    charSetCasts?: boolean;
+    /**
+    The set of characters that make up operators. Defaults to
+    `"*+\-%<>!=&|~^/"`.
+    */
+    operatorChars?: string;
+    /**
+    The set of characters that start a special variable name.
+    Defaults to `"?"`.
+    */
+    specialVar?: string;
+    /**
+    The characters that can be used to quote identifiers. Defaults
+    to `"\""`.
+    */
+    identifierQuotes?: string;
+};
+/**
+Represents an SQL dialect.
+*/
+declare class SQLDialect {
+    /**
+    The language for this dialect.
+    */
+    readonly language: LRLanguage;
+    /**
+    Returns the language for this dialect as an extension.
+    */
+    get extension(): Extension;
+    /**
+    Define a new dialect.
+    */
+    static define(spec: SQLDialectSpec): SQLDialect;
+}
+/**
+Options used to configure an SQL extension.
+*/
+interface SQLConfig {
+    /**
+    The [dialect](https://codemirror.net/6/docs/ref/#lang-sql.SQLDialect) to use. Defaults to
+    [`StandardSQL`](https://codemirror.net/6/docs/ref/#lang-sql.StandardSQL).
+    */
+    dialect?: SQLDialect;
+    /**
+    An object that maps table names to options (columns) that can
+    be completed for that table. Use lower-case names here.
+    */
+    schema?: {
+        [table: string]: readonly (string | Completion)[];
+    };
+    /**
+    By default, the completions for the table names will be
+    generated from the `schema` object. But if you want to
+    customize them, you can pass an array of completions through
+    this option.
+    */
+    tables?: readonly Completion[];
+    /**
+    When given, columns from the named table can be completed
+    directly at the top level.
+    */
+    defaultTable?: string;
+    /**
+    When set to true, keyword completions will be upper-case.
+    */
+    upperCaseKeywords?: boolean;
+}
+/**
+SQL language support for the given SQL dialect, with keyword
+completion, and, if provided, schema-based completion as extra
+extensions.
+*/
+declare function sql(config?: SQLConfig): LanguageSupport;
+/**
+Dialect for [PostgreSQL](https://www.postgresql.org).
+*/
+declare const PostgreSQL: SQLDialect;
+
+/**
+A language provider based on the [Lezer Python
+parser](https://github.com/lezer-parser/python), extended with
+highlighting and indentation information.
+*/
+declare const pythonLanguage: LRLanguage;
+/**
+Python language support.
+*/
+declare function python(): LanguageSupport;
+
+export { Compartment, Decoration, EditorSelection, EditorState, EditorView, Facet, HighlightStyle, NodeProp, PostgreSQL, SelectionRange, StateEffect, StateField, StreamLanguage, Text, Transaction, TreeCursor, ViewPlugin, ViewUpdate, WidgetType, autocompletion, bracketMatching, closeBrackets, closeBracketsKeymap, combineConfig, commentKeymap, completionKeymap, defaultHighlightStyle, defaultKeymap, drawSelection, foldGutter, foldKeymap, highlightSelectionMatches, highlightSpecialChars, history, historyKeymap, html, htmlLanguage, indentLess, indentMore, indentOnInput, indentUnit, javascript, javascriptLanguage, julia as julia_andrey, julia$1 as julia_legacy, keymap, lineNumbers, markdown, markdownLanguage, parseMixed, placeholder, python, pythonLanguage, rectangularSelection, searchKeymap, sql, syntaxTree, tags };

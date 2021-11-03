@@ -83,7 +83,8 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
         end
     end
 
-    session.options.server.auto_reload_from_file && @asynclog while true
+    in_session() = get(session.notebooks, nb.notebook_id, nothing) === nb
+    session.options.server.auto_reload_from_file && @asynclog while in_session()
         if !isfile(nb.path)
             # notebook file deleted... let's ignore this, changing the notebook will cause it to save again. Fine for now
             sleep(2)
@@ -103,6 +104,9 @@ function add(session::ServerSession, nb::Notebook; run_async::Bool=true)
             
             # current_time = time()
             # @info "File changed" (current_time - nb.last_save_time) (modified_time - nb.last_save_time) (current_time - modified_time)
+            if !in_session()
+                break
+            end
             
             # if current_time - nb.last_save_time < 2.0
                 # @info "Notebook was saved by me very recently, not reloading from file."
