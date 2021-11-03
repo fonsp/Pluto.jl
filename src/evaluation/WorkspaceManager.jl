@@ -1,5 +1,6 @@
 module WorkspaceManager
 import UUIDs: UUID
+import ..Pluto
 import ..Pluto: Configuration, Notebook, Cell, ProcessStatus, ServerSession, ExpressionExplorer, pluto_filename, Token, withtoken, Promise, tamepath, project_relative_path, putnotebookupdates!, UpdateMessage
 import ..Pluto.PkgCompat
 import ..Configuration: CompilerOptions, _merge_notebook_compiler_options, _convert_to_flags
@@ -58,6 +59,9 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     log_channel = Core.eval(Main, quote
         $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.log_channel)), $pid)
     end)
+    run_channel = Core.eval(Main, quote
+        $(Distributed).RemoteChannel(() -> eval(:(Main.PlutoRunner.run_channel)), $pid)
+    end)
     module_name = create_emptyworkspacemodule(pid)
     
     original_LOAD_PATH, original_ACTIVE_PROJECT = Distributed.remotecall_eval(Main, pid, :(Base.LOAD_PATH, Base.ACTIVE_PROJECT[]))
@@ -71,6 +75,7 @@ function make_workspace((session, notebook)::SN; force_offline::Bool=false)::Wor
     )
 
     @async start_relaying_logs((session, notebook), log_channel)
+    @async start_relaying_self_updates((session, notebook), run_channel)
     cd_workspace(workspace, notebook.path)
     use_nbpkg_environment((session, notebook), workspace)
 
@@ -100,6 +105,22 @@ function use_nbpkg_environment((session, notebook)::SN, workspace=nothing)
         end)
     else
         # uhmmmmmm TODO
+    end
+end
+
+function start_relaying_self_updates((session, notebook)::SN, run_channel::Distributed.RemoteChannel)
+    while true
+        try
+            next_run_uuid = take!(run_channel)
+
+            cell_to_run = notebook.cells_dict[next_run_uuid]
+            Pluto.run_reactive!(session, notebook, notebook.topology, notebook.topology, Cell[cell_to_run]; user_requested_run=false)
+        catch e
+            if !isopen(run_channel)
+                break
+            end
+            @error "Failed to relay self-update" exception=(e, catch_backtrace())
+        end
     end
 end
 
@@ -249,7 +270,16 @@ end
 "Evaluate expression inside the workspace - output is fetched and formatted, errors are caught and formatted. Returns formatted output and error flags.
 
 `expr` has to satisfy `ExpressionExplorer.is_toplevel_expr`."
-function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, expr::Expr, cell_id::UUID, ends_with_semicolon::Bool=false, function_wrapped_info::Union{Nothing,Tuple}=nothing, contains_user_defined_macrocalls::Bool=false)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function eval_format_fetch_in_workspace(
+    session_notebook::Union{SN,Workspace},
+    expr::Expr,
+    cell_id::UUID,
+    ends_with_semicolon::Bool=false,
+    function_wrapped_info::Union{Nothing,Tuple}=nothing,
+    forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
+    user_requested_run::Bool=true,
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+
     workspace = get_workspace(session_notebook)
 
     # if multiple notebooks run on the same process, then we need to `cd` between the different notebook paths
@@ -271,7 +301,8 @@ function eval_format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, e
             $(QuoteNode(expr)), 
             $cell_id, 
             $function_wrapped_info,
-            $contains_user_defined_macrocalls,
+            $forced_expr_id,
+            user_requested_run=$user_requested_run,
         )))
         put!(workspace.dowork_token)
         nothing
@@ -322,19 +353,24 @@ function collect_soft_definitions(session_notebook::SN, modules::Set{Expr})
 end
 
 
-function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)
+function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macrocall, cell_uuid, module_name = nothing)::Tuple{Bool, Any}
     workspace = get_workspace(session_notebook)
     module_name = module_name === nothing ? workspace.module_name : module_name
 
-    expr = quote
-        PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode))
-    end
-    try
-        result = Distributed.remotecall_eval(Main, workspace.pid, expr)
-        return result
-    catch e
-        return e
-    end
+    Distributed.remotecall_eval(Main, workspace.pid, quote
+        try
+            (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
+        catch error
+            # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
+            # which normally would be very useful for debugging, but we can't serialize it!
+            # So we make sure we only serialize the exception we know about, and string-ify the others.
+            if (error isa LoadError && error.error isa UndefVarError) || error isa UndefVarError
+                (false, error)
+            else
+                (false, ErrorException(sprint(showerror, error)))
+            end
+        end
+    end)
 end
 
 "Evaluate expression inside the workspace - output is returned. For internal use."

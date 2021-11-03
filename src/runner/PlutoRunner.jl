@@ -27,14 +27,21 @@ export @bind
 MimedOutput = Tuple{Union{String,Vector{UInt8},Dict{Symbol,Any}},MIME}
 const ObjectID = typeof(objectid("hello computer"))
 const ObjectDimPair = Tuple{ObjectID,Int64}
-const ExpandedCallCells = Dict{UUID,Expr}()
 
+Base.@kwdef struct CachedMacroExpansion
+    original_expr_hash::UInt64
+    expanded_expr::Expr
+    expansion_duration::UInt64
+    did_mention_expansion_time::Bool=false
+end
+const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
 const supported_integration_features = Any[]
 
-
-
-
+abstract type SpecialPlutoExprValue end
+struct GiveMeCellID <: SpecialPlutoExprValue end
+struct GiveMeRerunCellFunction <: SpecialPlutoExprValue end
+struct GiveMeRegisterCleanupFunction <: SpecialPlutoExprValue end
 
 ###
 # WORKSPACE MANAGER
@@ -88,103 +95,165 @@ function wrap_dot(name)
 end
 
 """
-Returns an Expr with no GlobalRef to `Main.workspaceXX` so that reactive updates will work.
+    collect_and_eliminate_globalrefs!(ref::Union{GlobalRef,Expr}, mutable_ref_list::Vector{Pair{Symbol,Symbol}}=[])
+
+Goes through an expression and removes all "global" references to workspace modules (e.g. Main.workspace#XXX).
+It collects the names that we replaced these references with, so that we can add assignments to these special names later.
+
+This is useful for us because when we macroexpand, the global refs will normally point to the module it was built in.
+We don't re-build the macro in every workspace, so we need to remove these refs manually in order to point to the new module instead.
+
+TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
-no_workspace_ref(other, _=nothing) = other
-no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
-function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
+function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
     test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#") &&
-        (mod_name === nothing ||
-            startswith(string(ref.name), ".") ||  # workaround for https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
-            string(mod_name)[9:end] !== test_mod_name[9:end])
-        ref.name
+    if startswith(test_mod_name, "workspace#")
+        new_name = gensym(ref.name)
+        push!(mutable_ref_list, ref.name => new_name)
+        new_name
     else
         ref
     end
 end
-
-function sanitize_expr(symbol::Symbol)
-    symbol
-end
-
-function sanitize_expr(dt::Union{DataType,Enum})
-    Symbol(dt)
-end
-
-function sanitize_expr(ref::GlobalRef)
-    if is_pluto_workspace(ref.mod)
-        ref.name
+function collect_and_eliminate_globalrefs!(expr::Expr, mutable_ref_list=[])
+    # Fix for .+ and .|> inside macros
+    # https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
+    # I'm unsure if this was all necessary but 🤷‍♀️
+    # I take the :call with a GlobalRef to `.|>` or `.+` as args[1],
+    #   and then I convert it into a `:.` expr, which is basically (|>).(args...)
+    #   which is consistent for us to handle.
+    if expr.head == :call && expr.args[1] isa GlobalRef && startswith(string(expr.args[1].name), ".")
+        old_globalref = expr.args[1]
+        non_broadcast_name = string(old_globalref.name)[begin+1:end]
+        new_globalref = GlobalRef(old_globalref.mod, Symbol(non_broadcast_name))
+        new_expr = Expr(:., new_globalref, Expr(:tuple, expr.args[begin+1:end]...))
+        result = collect_and_eliminate_globalrefs!(new_expr, mutable_ref_list)
+        return result
     else
-        wrap_dot(ref)
+        Expr(expr.head, map(arg -> collect_and_eliminate_globalrefs!(arg, mutable_ref_list), expr.args)...)
     end
 end
+collect_and_eliminate_globalrefs!(other, mutable_ref_list=[]) = other
 
+function globalref_to_workspaceref(expr)
+    mutable_ref_list = Pair{Symbol, Symbol}[]
+    new_expr = collect_and_eliminate_globalrefs!(expr, mutable_ref_list)
+
+    Expr(:block,
+        # Create new lines to assign to the replaced names of the global refs.
+        # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
+        # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
+        map(mutable_ref_list) do ref
+            # I can just do Expr(:isdefined, ref[1]) here, but it feels better to macroexpand,
+            #   because it's more obvious what's going on, and when they ever change the ast, we're safe :D
+            macroexpand(Main, quote
+                if @isdefined($(ref[1]))
+                    $(ref[2]) = $(ref[1])
+                end
+            end)
+        end...,
+        new_expr,
+    )
+end
+
+
+replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
+replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
+replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
+replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
+replace_pluto_properties_in_expr(other; kwargs...) = other
+
+
+function sanitize_expr(ref::GlobalRef)
+    wrap_dot(ref)
+end
 function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
+sanitize_expr(symbol::Symbol) = symbol
+sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
+sanitize_expr(bool::Bool) = bool
+sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
 
-# a function as part of an Expr is most likely a closure
-# returned from a macro
-function sanitize_expr(func::Function)
-    mt = typeof(func).name.mt
-    GlobalRef(mt.module, mt.name) |> sanitize_expr
+# In all cases of more complex objects, we just don't send it.
+# It's not like the expression explorer will look into them at all.
+sanitize_expr(other) = nothing
+
+
+"""
+All code necessary for throwing errors when cells return.
+Right now it just throws an error from the position of the return,
+    this is nice because you get to the line number of the return.
+However, now it is suddenly possibly to catch the return error...
+    so we might want to actually return the error instead of throwing it,
+    and then handle it in `run_expression` or something.
+"""
+module CantReturnInPluto
+    struct CantReturnInPlutoException end
+    function Base.showerror(io::IO, ::CantReturnInPlutoException)
+        print(io, "Pluto: You can only use return inside a function.")
+    end
+
+    """
+    We do macro expansion now, so we can also check for `return` statements "statically".
+    This method goes through an expression and replaces all `return` statements with `throw(CantReturnInPlutoException())`
+    """
+    function replace_returns_with_error(expr::Expr)
+        if expr.head == :return
+            :(throw($(CantReturnInPlutoException())))
+        elseif expr.head == :quote
+            Expr(:quote, replace_returns_with_error_in_interpolation(expr.args[1]))
+        elseif expr.head == :function || expr.head == :macro || expr.head == :(->)
+            expr
+        else
+            Expr(expr.head, map(arg -> replace_returns_with_error(arg), expr.args)...)
+        end
+    end
+    replace_returns_with_error(other) = other
+
+    "Go through a quoted expression and remove returns"
+    function replace_returns_with_error_in_interpolation(ex::Expr)
+        if ex.head == :$
+            Expr(:$, replace_returns_with_error_in_interpolation(ex.args[1]))
+        else
+            # We are still in a quote, so we do go deeper, but we keep ignoring everything except :$'s
+            Expr(expr.head, map(arg -> replace_returns_with_error_in_interpolation(arg), expr.args)...)
+        end
+    end
+    replace_returns_with_error_in_interpolation(ex) = ex
 end
-
-function sanitize_expr(union_all::UnionAll)
-    sanitize_expr(union_all.body)
-end
-
-function sanitize_expr(vec::AbstractVector)
-    Expr(:vect, sanitize_value.(vec)...)
-end
-
-function sanitize_expr(tuple::Tuple)
-    Expr(:tuple, sanitize_value.(tuple)...)
-end
-
-function sanitize_expr(dict::Dict)
-    Expr(:call, :Dict, (sanitize_value(pair) for pair in dict)...)
-end
-
-function sanitize_expr(pair::Pair)
-    Expr(:call, :(=>), sanitize_value(pair.first), sanitize_value(pair.second))
-end
-
-function sanitize_expr(set::Set)
-    Expr(:call, :Set, Expr(:vect, sanitize_value.(set)...))
-end
-
-function sanitize_expr(mod::Module)
-    fullname(mod) |> wrap_dot
-end
-
-# An instanciation of a struct as part of an Expr
-# will not de-serializable in the Pluto process, only send if it is a child of PlutoRunner, Base or Core
-function sanitize_expr(other)
-    typename = other |> typeof
-    typename |> parentmodule |> Symbol ∈ [:Core, :PlutoRunner, :Base] ?
-        other :
-        Symbol(typename)
-end
-
-# A vector of Symbols need to be serialized as QuoteNode(sym)
-sanitize_value(sym::Symbol) = QuoteNode(sym)
-
-sanitize_value(ex::Expr) = Expr(:quote, ex)
-
-sanitize_value(other) = sanitize_expr(other)
 
 
 function try_macroexpand(mod, cell_uuid, expr)
-    try
-        expanded_expr = macroexpand(mod, expr)
-        ExpandedCallCells[cell_uuid] = no_workspace_ref(expanded_expr)
-
-        return sanitize_expr(expanded_expr)
-    catch e
-        return e
+    # Remove toplevel block, as that screws with the computer and everything
+    expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
+        Expr(:block, expr.args...)
+    else
+        @warn "try_macroexpression expression not :toplevel or :block" expr
+        Expr(:block, expr)
     end
+    
+    elapsed_ns = time_ns()
+    expanded_expr = macroexpand(mod, expr_not_toplevel)
+    elapsed_ns = time_ns() - elapsed_ns
+
+    # Removes baked in references to the module this was macroexpanded in.
+    # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
+    expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
+    expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
+    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
+        cell_id=cell_uuid,
+        rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
+        register_cleanup_function=(fn) -> UseEffectCleanups.register_cleanup(fn, cell_uuid),
+    )
+
+    cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
+        original_expr_hash=expr_hash(expr),
+        expanded_expr=expr_to_save,
+        expansion_duration=elapsed_ns
+    )
+
+    return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
 end
 
 function get_module_names(workspace_module, module_ex::Expr)
@@ -215,43 +284,76 @@ end
 # EVALUATING NOTEBOOK CODE
 ###
 
-struct ReturnProof end
-const return_error = "Pluto: You can only use return inside a function."
-
 struct Computer
     f::Function
-    return_proof::ReturnProof
+    expr_id::ObjectID
     input_globals::Vector{Symbol}
     output_globals::Vector{Symbol}
 end
 
 expr_hash(e::Expr) = objectid(e.head) + mapreduce(p -> objectid((p[1], expr_hash(p[2]))), +, enumerate(e.args); init=zero(ObjectID))
 expr_hash(x) = objectid(x)
-# TODO: clear key when a cell is deleted furever
-const computers = Dict{ObjectID,Computer}()
 
+const computers = Dict{UUID,Computer}()
 const computer_workspace = Main
 
-
-function register_computer(expr::Expr, key, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
-    proof = ReturnProof()
-
+"Registers a new computer for the cell, cleaning up the old one if there is one."
+function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
     @gensym result
     e = Expr(:function, Expr(:call, gensym(:function_wrapped_cell), input_globals...), Expr(:block,
-        Expr(:(=), result, timed_expr(expr, proof)),
+        Expr(:(=), result, timed_expr(expr)),
         Expr(:tuple,
             result,
-            Expr(:tuple, output_globals...)
+            Expr(:tuple, map(x -> :(@isdefined($(x)) ? $(x) : $(OutputNotDefined())), output_globals)...)
         )
     ))
 
     f = Core.eval(computer_workspace, e)
 
-    computers[key] = Computer(f, proof, input_globals, output_globals)
+    if haskey(computers, cell_id)
+        delete_computer!(computers, cell_id)
+    end
+
+    computers[cell_id] = Computer(f, key, input_globals, output_globals)
+end
+
+function delete_computer!(computers::Dict{UUID,Computer}, cell_id::UUID)
+    computer = pop!(computers, cell_id)
+    UseEffectCleanups.trigger_cleanup(cell_id)
+    Base.visit(Base.delete_method, methods(computer.f).mt) # Make the computer function uncallable
+end
+
+parse_cell_id(filename::Symbol) = filename |> string |> parse_cell_id
+parse_cell_id(filename::AbstractString) =
+    match(r"#==#(.*)", filename).captures |> only |> UUID
+
+module UseEffectCleanups
+    import UUIDs: UUID
+
+    const cell_cleanup_functions = Dict{UUID,Set{Function}}()
+
+    function register_cleanup(f::Function, cell_id::UUID)
+        cleanup_functions = get!(cell_cleanup_functions, cell_id, Set{Function}())
+        push!(cleanup_functions, f)
+        nothing
+    end
+
+    function trigger_cleanup(cell_id::UUID)
+        for cleanup_func in get!(cell_cleanup_functions, cell_id, Set{Function}())
+            try
+                cleanup_func()
+            catch error
+                @warn "Cleanup function gave an error" cell_id error stacktrace=stacktrace(catch_backtrace())
+            end
+        end
+        delete!(cell_cleanup_functions, cell_id)
+    end
 end
 
 quote_if_needed(x) = x
 quote_if_needed(x::Union{Expr, Symbol, QuoteNode, LineNumberNode}) = QuoteNode(x)
+
+struct OutputNotDefined end
 
 function compute(m::Module, computer::Computer)
     # 1. get the referenced global variables
@@ -260,62 +362,46 @@ function compute(m::Module, computer::Computer)
 
     # 2. run the function
     out = Base.invokelatest(computer.f, input_global_values...)
-    if out isa Tuple{Any,Tuple}
-        result, output_global_values = out
+    result, output_global_values = out
 
-        for (name, val) in zip(computer.output_globals, output_global_values)
-            Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
-        end
-
-        result
-    else
-        throw(return_error)
+    for (name, val) in zip(computer.output_globals, output_global_values)
+        # Core.eval(m, Expr(:(=), name, quote_if_needed(val)))
+        Core.eval(m, quote
+            if $(quote_if_needed(val)) !== $(OutputNotDefined())
+                $(name) = $(quote_if_needed(val))
+            end
+        end)
     end
+
+    result
 end
 
 "Wrap `expr` inside a timing block."
-function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
+function timed_expr(expr::Expr)::Expr
     # @assert ExpressionExplorer.is_toplevel_expr(expr)
-
-    linenumbernode = expr.args[1]
-    root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
 
     @gensym result
     @gensym elapsed_ns
     # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
     Expr(:block,
         :(local $elapsed_ns = time_ns()),
-        linenumbernode,
-        :(local $result = $root),
+        :(local $result = $expr),
         :($elapsed_ns = time_ns() - $elapsed_ns),
-        :(($result, $elapsed_ns, $return_proof)),
+        :(($result, $elapsed_ns)),
     )
 end
 
 """
 Run the expression or function inside a try ... catch block, and verify its "return proof".
 """
-function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::ReturnProof)
-    # We user return_proof to make sure the result from the `expr` went through `timed_expr`, as opposed to when `expr`
-    # has an explicit `return` that causes it to jump to the result of `Core.eval` directly.
-
-    # This seems a bit like a petty check ("I don't want people to play with Pluto!!!") but I see it more as a
-    # way to protect people from finding this obscure bug in some way - DRAL
-
-    ans, runtime = try
-        local invocation = if f isa Expr
+function run_inside_trycatch(m::Module, f::Union{Expr,Function})::Tuple{Any,Union{UInt64,Nothing}}
+    return try
+        if f isa Expr
             # We eval `f` in the global scope of the workspace module:
             Core.eval(m, f)
         else
             # f is a function
             f()
-        end
-
-        if !isa(invocation, Tuple{Any,Number,Any}) || invocation[3] !== return_proof
-            throw(return_error)
-        else
-            local ans, runtime, _ = invocation
-            (ans, runtime)
         end
     catch ex
         bt = stacktrace(catch_backtrace())
@@ -323,15 +409,19 @@ function run_inside_trycatch(m::Module, f::Union{Expr,Function}, return_proof::R
     end
 end
 
+add_runtimes(::Nothing, ::UInt64) = nothing
+add_runtimes(a::UInt64, b::UInt64) = a+b
 
-visit_expand(_, other) = other
-function visit_expand(current_module::Module, expr::Expr)
-    if expr.head == :macrocall
-        no_workspace_ref(macroexpand(current_module, expr), nameof(current_module))
-    else
-        Expr(expr.head, map(arg -> visit_expand(current_module, arg), expr.args)...)
-    end
+contains_macrocall(expr::Expr) = if expr.head == :macrocall
+    true
+elseif expr.head == :module
+    # Modules don't get expanded, sadly, so we don't touch it
+    false
+else
+    any(arg -> contains_macrocall(arg), expr.args)
 end
+contains_macrocall(other) = false
+
 
 """
 Run the given expression in the current workspace module. If the third argument is `nothing`, then the expression will be `Core.eval`ed. The result and runtime are stored inside [`cell_results`](@ref) and [`cell_runtimes`](@ref).
@@ -340,7 +430,14 @@ If the third argument is a `Tuple{Set{Symbol}, Set{Symbol}}` containing the refe
 
 This function is memoized: running the same expression a second time will simply call the same generated function again. This is much faster than evaluating the expression, because the function only needs to be Julia-compiled once. See https://github.com/fonsp/Pluto.jl/pull/720
 """
-function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
+function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, forced_expr_id::Union{ObjectID,Nothing}=nothing; user_requested_run::Bool=true)
+    if user_requested_run
+        # TODO Time elapsed? Possibly relays errors in cleanup function?
+        UseEffectCleanups.trigger_cleanup(cell_id)
+
+        # TODO Could also put explicit `try_macroexpand` here, to make clear that user_requested_run => fresh macro identity
+    end
+
     currently_running_cell_id[] = cell_id
     
     # reset published objects
@@ -353,44 +450,75 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     cell_registered_bond_names[cell_id] = Set{Symbol}()
     
 
-    result, runtime = if function_wrapped_info === nothing
-        expr = pop!(ExpandedCallCells, cell_id, expr)
-        proof = ReturnProof()
-
-        # Note: fix for https://github.com/fonsp/Pluto.jl/issues/1112
-        if contains_user_defined_macrocalls
-            try
-                expr = visit_expand(m, expr)
-                wrapped = timed_expr(expr, proof)
-                run_inside_trycatch(m, wrapped, proof)
-            catch ex
-                bt = stacktrace(catch_backtrace())
-                (CapturedException(ex, bt), nothing)
-            end
-        else
-            wrapped = timed_expr(expr, proof)
-            run_inside_trycatch(m, wrapped, proof)
+    # If the cell contains macro calls, we want those macro calls to preserve their identity,
+    # so we macroexpand this earlier (during expression explorer stuff), and then we find it here.
+    # NOTE Turns out sometimes there is no macroexpanded version even though the expression contains macro calls...
+    # .... So I macroexpand when there is no cached version just to be sure 🤷‍♀️
+    if !haskey(cell_expanded_exprs, cell_id) || cell_expanded_exprs[cell_id].original_expr_hash != expr_hash(expr)
+        try
+            try_macroexpand(m, cell_id, expr)
+        catch e
+            # On error during macroexpand, we override the stacktrace with this faux one
+            bt = [StackTraces.StackFrame(Symbol("Macro Expansion"), Symbol("pluto-cell"), 1, nothing, false, false, 0)]
+            result = CapturedException(e, bt)
+            cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
+            return (result, nothing)
         end
+    end
+
+    # We can be sure there is a cached expression now, yay
+    expanded_cache = cell_expanded_exprs[cell_id]
+    expr = expanded_cache.expanded_expr
+
+    # We add the time it took to macroexpand to the time for the first call,
+    # but we make sure we don't mention it on subsequent calls
+    expansion_runtime = if expanded_cache.did_mention_expansion_time === false
+        # Is this really the easiest way to clone a struct with some changes? Pfffft
+        cell_expanded_exprs[cell_id] = CachedMacroExpansion(
+            original_expr_hash=expanded_cache.original_expr_hash,
+            expanded_expr=expanded_cache.expanded_expr,
+            expansion_duration=expanded_cache.expansion_duration,
+            did_mention_expansion_time=true,
+        )
+        expanded_cache.expansion_duration
     else
-        key = expr_hash(expr)
-        local computer = get(computers, key, nothing)
-        if computer === nothing
+        zero(UInt64)
+    end
+
+    if contains_macrocall(expr)
+        @error "Expression contains a macrocall" expr
+        throw("Expression still contains macro calls!!")
+    end
+
+    result, runtime = if function_wrapped_info === nothing
+
+        toplevel_expr = Expr(:toplevel, expr)
+        wrapped = timed_expr(toplevel_expr)
+        ans, runtime = run_inside_trycatch(m, wrapped)
+        (ans, add_runtimes(runtime, expansion_runtime))
+    else
+        expr_id = forced_expr_id !== nothing ? forced_expr_id : expr_hash(expr)
+        local computer = get(computers, cell_id, nothing)
+        if computer === nothing || computer.expr_id !== expr_id
             try
-                computer = register_computer(expr, key, collect.(function_wrapped_info)...)
+                computer = register_computer(expr, expr_id, cell_id, collect.(function_wrapped_info)...)
             catch e
                 # @error "Failed to generate computer function" expr exception=(e,stacktrace(catch_backtrace()))
-                return run_expression(m, expr, cell_id, nothing)
+                return run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
             end
         end
-        ans, runtime = run_inside_trycatch(m, () -> compute(m, computer), computer.return_proof)
 
         # This check solves the problem of a cell like `false && variable_that_does_not_exist`. This should run without error, but will fail in our function-wrapping-magic because we get the value of `variable_that_does_not_exist` before calling the generated function.
         # The fix is to detect this situation and run the expression in the classical way.
-        if (ans isa CapturedException) && (ans.ex isa UndefVarError)
-            run_expression(m, expr, cell_id, nothing)
+        ans, runtime = if any(name -> !isdefined(m, name), computer.input_globals)
+            # Do run_expression but with function_wrapped_info=nothing so it doesn't go in a Computer()
+            # @warn "Got variables that don't exist, running outside of computer" not_existing=filter(name -> !isdefined(m, name), computer.input_globals)
+            run_expression(m, expr, cell_id, nothing; user_requested_run=user_requested_run)
         else
-            ans, runtime
+            run_inside_trycatch(m, () -> compute(m, computer))
         end
+
+        ans, add_runtimes(runtime, expansion_runtime)
     end
 
     if (result isa CapturedException) && (result.ex isa InterruptException)
@@ -400,7 +528,26 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     cell_results[cell_id], cell_runtimes[cell_id] = result, runtime
 end
 
+# Channel to trigger implicits run
+const run_channel = Channel{UUID}(10)
 
+function rerun_cell_from_notebook(cell_id::UUID)
+    # make sure only one of this cell_id is in the run channel
+    # by emptying it and filling it again
+    new_uuids = UUID[]
+    while isready(run_channel)
+        uuid = take!(run_channel)
+        if uuid != cell_id
+            push!(new_uuids, uuid)
+        end
+    end
+    size = length(new_uuids)
+    for uuid in new_uuids
+        put!(run_channel, uuid)
+    end
+
+    put!(run_channel, cell_id)
+end
 
 
 
@@ -698,7 +845,9 @@ function format_output(val::CapturedException; context=default_iocontext)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s, _) in val.processed_bt]
 
-    function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+
+    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
     if function_wrap_index === nothing
         for _ in 1:2
