@@ -5,6 +5,7 @@ import .WorkspaceManager: macroexpand_in_workspace
 
 Base.push!(x::Set{Cell}) = x
 
+ "Run given cells and all the cells that depend on them, based on the topology information before and after the changes."
 function run_reactive!(session::ServerSession, notebook::Notebook, old_topology::NotebookTopology, new_topology::NotebookTopology, roots::Vector{Cell}; deletion_hook::Function=WorkspaceManager.move_vars, persist_js_state::Bool=false, already_in_run::Bool=false, already_run::Vector{Cell}=Cell[])::TopologicalOrder
   if !already_in_run && length(already_run) == 0
 		# make sure that we're the only `run_reactive!` being executed - like a semaphor
@@ -132,7 +133,7 @@ function run_reactive!(session::ServerSession, notebook::Notebook, old_topology:
 			update_dependency_cache!(notebook)
 			session.options.server.disable_writing_notebook_files || save_notebook(notebook)
 
-			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true)
+			return run_reactive!(session, notebook, new_topology, new_new_topology, to_run; deletion_hook=deletion_hook, persist_js_state=persist_js_state, already_in_run=true, already_run=to_run[1:i])
 		elseif !isempty(implicit_usings)
 			new_soft_definitions = WorkspaceManager.collect_soft_definitions((session, notebook), implicit_usings)
 			notebook.topology = new_new_topology = with_new_soft_definitions(new_topology, cell, new_soft_definitions)
