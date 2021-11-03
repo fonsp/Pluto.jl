@@ -4,6 +4,7 @@
 # These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
+# The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
 
 module PlutoRunner
 
@@ -1420,7 +1421,7 @@ end
 # REPL THINGS
 ###
 
-function basic_completion_priority((s, description, exported))
+function basic_completion_priority((s, description, exported, from_notebook))
 	c = first(s)
 	if islowercase(c)
 		1 - 10exported
@@ -1445,9 +1446,14 @@ catch
 end
 completion_description(::Completion) = nothing
 
+function is_pluto_workspace(m::Module)
+    mod_name = nameof(m) |> string
+    startswith(mod_name, "workspace#")
+end
+
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = Set(c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(m => string.(names(m, all=false, imported=true)) for m in completed_modules)
+    completed_modules = (c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(m => string.(names(m, all=is_pluto_workspace(m), imported=true)) for m in completed_modules)
 
     map(cs) do c
         if c isa ModuleCompletion
@@ -1457,6 +1463,9 @@ function completions_exported(cs::Vector{<:Completion})
         end
     end
 end
+
+completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
+completion_from_notebook(c::Completion) = false
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -1473,8 +1482,9 @@ function completion_fetcher(query, pos, workspace::Module)
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
+    from_notebook = completion_from_notebook.(results)
 
-    smooshed_together = collect(zip(texts, descriptions, exported))
+    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook))
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1863,7 +1873,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    (_module isa Module && startswith(String(nameof(_module)), "workspace#")) || convert(Logging.LogLevel, level) >= Logging.Info
+    (_module isa Module && is_pluto_workspace(_module)) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false
