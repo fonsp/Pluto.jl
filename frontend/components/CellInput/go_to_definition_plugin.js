@@ -532,10 +532,10 @@ let explore_variable_usage = (
                             to: variable_node.to,
                         })
                     }
-                    // in `a = b + c`, this will explore `b + c`
-                    do {
+                    // explore the right-hand side of the assignment
+                    if (cursor.nextSibling()) {
                         scopestate = merge_scope_state(scopestate, explore_variable_usage(cursor, doc, scopestate))
-                    } while (cursor.nextSibling())
+                    }
                 } finally {
                     cursor.parent()
                 }
