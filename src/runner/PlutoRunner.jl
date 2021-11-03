@@ -1454,7 +1454,7 @@ function possible_bond_values(s::Symbol)
         possible_bond_values_ref[](element)
     catch e
         @error "Could not collect possible bond values for $s" exception=(e, catch_backtrace())
-        rethrow(e)
+        rethrow("Could not collect possible bond values for $s, err = $(string(e))")
     end
 end
 
