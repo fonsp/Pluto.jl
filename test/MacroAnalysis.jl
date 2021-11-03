@@ -725,4 +725,53 @@ import Pluto: PlutoRunner, Notebook, WorkspaceManager, Cell, ServerSession, Clie
         @test :option_type ∈ notebook.topology.nodes[cell(1)].references
         @test cell(1) |> noerror
     end
+
+    @testset "GlobalRefs in macros should be respected" begin
+        notebook = Notebook(Cell.([
+            """
+            macro identity(expr)
+                expr
+            end
+            """,
+            """
+            x = 20
+            """,
+            """
+            let x = 10
+                @identity(x)
+            end
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2,3]) .|> noerror)
+        @test cell(3).output.body == "20"
+    end
+
+    @testset "GlobalRefs shouldn't break unreached undefined references" begin
+        notebook = Notebook(Cell.([
+            """
+            macro get_x_but_actually_not()
+                quote
+                    if false
+                        x
+                    else
+                        :this_should_be_returned
+                    end
+                end
+            end
+            """,
+            """
+            @get_x_but_actually_not()
+            """,
+        ]))
+        cell(idx) = notebook.cells[idx]
+
+        update_run!(🍭, notebook, notebook.cells)
+
+        @test all(cell.([1,2]) .|> noerror)
+        @test cell(2).output.body == ":this_should_be_returned"
+    end
 end

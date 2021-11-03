@@ -144,7 +144,13 @@ function globalref_to_workspaceref(expr)
         # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
         # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
         map(mutable_ref_list) do ref
-            :($(ref[2]) = $(ref[1]))
+            # I can just do Expr(:isdefined, ref[1]) here, but it feels better to macroexpand,
+            #   because it's more obvious what's going on, and when they ever change the ast, we're safe :D
+            macroexpand(Main, quote
+                if @isdefined($(ref[1]))
+                    $(ref[2]) = $(ref[1])
+                end
+            end)
         end...,
         new_expr,
     )
