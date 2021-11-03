@@ -361,7 +361,7 @@ end
 """
 Run the expression or function inside a try ... catch block, and verify its "return proof".
 """
-function run_inside_trycatch(m::Module, f::Union{Expr,Function})::Tuple{Any,UInt64}
+function run_inside_trycatch(m::Module, f::Union{Expr,Function})::Tuple{Any,Union{UInt64,Nothing}}
     return try
         if f isa Expr
             # We eval `f` in the global scope of the workspace module:
