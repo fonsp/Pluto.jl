@@ -50,7 +50,7 @@ The HTTP server options. See [`SecurityOptions`](@ref) for additional settings.
     notebook_path_suggestion::String = notebook_path_suggestion()
     disable_writing_notebook_files::Bool = false
     auto_reload_from_file::Bool = false
-    auto_reload_from_file_cooldown::Real = 0.2
+    auto_reload_from_file_cooldown::Real = 0.4
     auto_reload_from_file_ignore_pkg::Bool = false
     notebook::Union{Nothing,String, Vector{<: String}} = nothing
     init_with_file_viewer::Bool=false

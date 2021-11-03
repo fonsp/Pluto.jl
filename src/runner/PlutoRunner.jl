@@ -4,6 +4,7 @@
 # These baby processes don't import Pluto, they only import this module. Functions from this module are called by WorkspaceManager.jl, using Distributed
 
 # So when reading this file, pretend that you are living in process 2, and you are communicating with Pluto's server, who lives in process 1.
+# The package environment that this file is loaded with is the NotebookProcessProject.toml file in this directory.
 
 module PlutoRunner
 
@@ -29,7 +30,7 @@ const ObjectDimPair = Tuple{ObjectID,Int64}
 const ExpandedCallCells = Dict{UUID,Expr}()
 
 
-
+const supported_integration_features = Any[]
 
 
 
@@ -112,8 +113,7 @@ function sanitize_expr(dt::Union{DataType,Enum})
 end
 
 function sanitize_expr(ref::GlobalRef)
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
+    if is_pluto_workspace(ref.mod)
         ref.name
     else
         wrap_dot(ref)
@@ -342,7 +342,16 @@ This function is memoized: running the same expression a second time will simply
 """
 function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_info::Union{Nothing,Tuple{Set{Symbol},Set{Symbol}}}=nothing, contains_user_defined_macrocalls::Bool=false)
     currently_running_cell_id[] = cell_id
+    
+    # reset published objects
     cell_published_objects[cell_id] = Dict{String,Any}()
+    
+    # reset registered bonds
+    for s in get(cell_registered_bond_names, cell_id, Set{Symbol}())
+        delete!(registered_bond_elements, s)
+    end
+    cell_registered_bond_names[cell_id] = Set{Symbol}()
+    
 
     result, runtime = if function_wrapped_info === nothing
         expr = pop!(ExpandedCallCells, cell_id, expr)
@@ -570,6 +579,7 @@ const alive_world_val = getfield(methods(Base.sqrt).ms[1], deleted_world) # type
 const cell_results = Dict{UUID,Any}()
 const cell_runtimes = Dict{UUID,Union{Nothing,UInt64}}()
 const cell_published_objects = Dict{UUID,Dict{String,Any}}()
+const cell_registered_bond_names = Dict{UUID,Set{Symbol}}()
 
 const tree_display_limit = 30
 const tree_display_limit_increase = 40
@@ -581,7 +591,7 @@ const table_column_display_limit_increase = 30
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
 function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
-    load_integration_if_needed.(integrations)
+    load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
 
     extra_items = if showmore === nothing
@@ -643,7 +653,7 @@ end
 Base.IOContext(io::IOContext, ::Nothing) = io
 
 "The `IOContext` used for converting arbitrary objects to pretty strings."
-const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true)
+const default_iocontext = IOContext(devnull, :color => false, :limit => true, :displaysize => (18, 88), :is_pluto => true, :pluto_supported_integration_features => supported_integration_features)
 
 const imagemimes = [MIME"image/svg+xml"(), MIME"image/png"(), MIME"image/jpg"(), MIME"image/jpeg"(), MIME"image/bmp"(), MIME"image/gif"()]
 # in descending order of coolness
@@ -1118,6 +1128,21 @@ end
 # This is similar to how Requires.jl works, except we don't use a callback, we just check every time.
 const integrations = Integration[
     Integration(
+        id = Base.PkgId(Base.UUID(reinterpret(Int128, codeunits("Paul Berg Berlin")) |> first), "AbstractPlutoDingetjes"),
+        code = quote
+            @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
+            initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
+            transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
+            
+            push!(supported_integration_features,
+                AbstractPlutoDingetjes,
+                AbstractPlutoDingetjes.Bonds,
+                AbstractPlutoDingetjes.Bonds.initial_value,
+                AbstractPlutoDingetjes.Bonds.transform_value,
+            )
+        end,
+    ),
+    Integration(
         id = Base.PkgId(UUID("0c5d862f-8b57-4792-8d23-62f2024744c7"), "Symbolics"),
         code = quote
             pluto_showable(::MIME"application/vnd.pluto.tree+object", ::Symbolics.Arr) = false
@@ -1225,6 +1250,8 @@ function load_integration_if_needed(integration::Integration)
     end
 end
 
+load_integrations_if_needed() = load_integration_if_needed.(integrations)
+
 function load_integration(integration::Integration)
     integration.loaded[] = true
     try
@@ -1244,7 +1271,7 @@ end
 # REPL THINGS
 ###
 
-function basic_completion_priority((s, description, exported))
+function basic_completion_priority((s, description, exported, from_notebook))
 	c = first(s)
 	if islowercase(c)
 		1 - 10exported
@@ -1269,9 +1296,14 @@ catch
 end
 completion_description(::Completion) = nothing
 
+function is_pluto_workspace(m::Module)
+    mod_name = nameof(m) |> string
+    startswith(mod_name, "workspace#")
+end
+
 function completions_exported(cs::Vector{<:Completion})
-    completed_modules = Set(c.parent for c in cs if c isa ModuleCompletion)
-    completed_modules_exports = Dict(m => string.(names(m, all=false, imported=true)) for m in completed_modules)
+    completed_modules = (c.parent for c in cs if c isa ModuleCompletion)
+    completed_modules_exports = Dict(m => string.(names(m, all=is_pluto_workspace(m), imported=true)) for m in completed_modules)
 
     map(cs) do c
         if c isa ModuleCompletion
@@ -1281,6 +1313,9 @@ function completions_exported(cs::Vector{<:Completion})
         end
     end
 end
+
+completion_from_notebook(c::ModuleCompletion) = is_pluto_workspace(c.parent) && c.mod != "include" && c.mod != "eval"
+completion_from_notebook(c::Completion) = false
 
 "You say Linear, I say Algebra!"
 function completion_fetcher(query, pos, workspace::Module)
@@ -1297,8 +1332,9 @@ function completion_fetcher(query, pos, workspace::Module)
     texts = completion_text.(results)
     descriptions = completion_description.(results)
     exported = completions_exported(results)
+    from_notebook = completion_from_notebook.(results)
 
-    smooshed_together = collect(zip(texts, descriptions, exported))
+    smooshed_together = collect(zip(texts, descriptions, exported, from_notebook))
 
     p = if endswith(query, '.')
         sortperm(smooshed_together; alg=MergeSort, by=basic_completion_priority)
@@ -1398,6 +1434,18 @@ end
 # BONDS
 ###
 
+const registered_bond_elements = Dict{Symbol, Any}()
+
+function transform_bond_value(s::Symbol, value_from_js)
+    element = get(registered_bond_elements, s, nothing)
+    return try
+        transform_value_ref[](element, value_from_js)
+    catch e
+        @error "AbstractPlutoDingetjes: Bond value transformation errored." exception=(e, catch_backtrace())
+        (Text("❌ AbstractPlutoDingetjes: Bond value transformation errored."), e, stacktrace(catch_backtrace()))
+    end
+end
+
 """
 _“The name is Bond, James Bond.”_
 
@@ -1425,12 +1473,21 @@ struct Bond
     Bond(element, defines::Symbol) = showable(MIME"text/html"(), element) ? new(element, defines) : error("""Can only bind to html-showable objects, ie types T for which show(io, ::MIME"text/html", x::T) is defined.""")
 end
 
+function create_bond(element, defines::Symbol)
+    push!(cell_registered_bond_names[currently_running_cell_id[]], defines)
+    registered_bond_elements[defines] = element
+    Bond(element, defines)
+end
+
 import Base: show
 function show(io::IO, ::MIME"text/html", bond::Bond)
     withtag(io, :bond, :def => bond.defines) do
         show(io, MIME"text/html"(), bond.element)
     end
 end
+
+const initial_value_getter_ref = Ref{Function}(element -> missing)
+const transform_value_ref = Ref{Function}((element, x) -> x)
 
 """
     `@bind symbol element`
@@ -1450,49 +1507,17 @@ x^2
 The first cell will show a slider as the cell's output, ranging from 0 until 100.
 The second cell will show the square of `x`, and is updated in real-time as the slider is moved.
 """
-macro bind(def, element)
-    _bind(def, element)
-end
-
-"Used to represent an undefined set of possible values"
-struct 🔖 end
-
-"@bind widgets should implement a method to this function to return the set of possible values for a particular instance of a widget."
-_get_possible_values(bind_instance) = 🔖()
-
-const PossibleBindValues = Ref{Union{Nothing,Dict{Symbol,Any}}}(nothing)
-
-"Whether or not the widget packages should define methods to `PlutoRunner._get_possible_values` at package init."
-should_set_possible_bind_values() = PossibleBindValues[] !== nothing
-
-function _set_possible_bind_values(def, bind_instance)
-    PossibleBindValues[] === nothing && throw("Tried to collect possible bind values without initializing the container")
-    PossibleBindValues[][def] = _get_possible_values(bind_instance)
-end
-
-function enable_collecting_possible_bind_values!()
-    PossibleBindValues[] !== nothing && return
-    PossibleBindValues[] = Dict{Symbol,Any}();
-end
-
-function _bind_collect(def, element)
-    ex = _bind(def, element)
-
-    Expr(:block, ex.args[1:2],
-        Expr(:call, PlutoRunner._set_possible_bind_values, QuoteNode(def), ex.args[2].args[1]),
-        ex.args[3:end]...)
-end
-
-function _bind(def, element)
-    if def isa Symbol
-        quote
-            local el = $(esc(element))
-            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
-            PlutoRunner.Bond(el, $(Meta.quot(def)))
-        end
-    else
-        :(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
-    end
+macro bind(def, element)    
+	if def isa Symbol
+		quote
+            $(load_integrations_if_needed)()
+			local el = $(esc(element))
+            global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : $(initial_value_getter_ref)[](el)
+			PlutoRunner.create_bond(el, $(Meta.quot(def)))
+		end
+	else
+		:(throw(ArgumentError("""\nMacro example usage: \n\n\t@bind my_number html"<input type='range'>"\n\n""")))
+	end
 end
 
 """
@@ -1500,8 +1525,9 @@ Will be inserted in saved notebooks that use the @bind macro, make sure that the
 """
 const fake_bind = """macro bind(def, element)
     quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = \$(esc(element))
-        global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        global \$(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
 end"""
@@ -1697,7 +1723,7 @@ function Logging.shouldlog(::PlutoLogger, level, _module, _...)
     # Accept logs
     # - From the user's workspace module
     # - Info level and above for other modules
-    (_module isa Module && startswith(String(nameof(_module)), "workspace#")) || convert(Logging.LogLevel, level) >= Logging.Info
+    (_module isa Module && is_pluto_workspace(_module)) || convert(Logging.LogLevel, level) >= Logging.Info
 end
 Logging.min_enabled_level(::PlutoLogger) = Logging.Debug
 Logging.catch_exceptions(::PlutoLogger) = false

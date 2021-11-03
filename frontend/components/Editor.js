@@ -30,6 +30,7 @@ import { read_Uint8Array_with_progress, FetchProgress } from "./FetchProgress.js
 import { BinderButton } from "./BinderButton.js"
 import { slider_server_actions, nothing_actions } from "../common/SliderServerClient.js"
 import { ProgressBar } from "./ProgressBar.js"
+import { IsolatedCell } from "./Cell.js"
 
 const default_path = "..."
 const DEBUG_DIFFING = false
@@ -171,6 +172,8 @@ const launch_params = {
     notebookfile: url_params.get("notebookfile") ?? window.pluto_notebookfile,
     //@ts-ignore
     disable_ui: !!(url_params.get("disable_ui") ?? window.pluto_disable_ui),
+    //@ts-ignore
+    isolated_cell_ids: url_params.getAll("isolated_cell_id") ?? window.isolated_cell_id,
     //@ts-ignore
     binder_url: url_params.get("binder_url") ?? window.pluto_binder_url,
     //@ts-ignore
@@ -879,6 +882,9 @@ patch: ${JSON.stringify(
         })
         document.addEventListener("visibilitychange", (e) => {
             document.body.classList.toggle("ctrl_down", false)
+            setTimeout(() => {
+                document.body.classList.toggle("ctrl_down", false)
+            }, 100)
         })
 
         document.addEventListener("keydown", (e) => {
@@ -1059,6 +1065,26 @@ patch: ${JSON.stringify(
 
         const status = this.cached_status ?? statusmap(this.state)
         const statusval = first_true_key(status)
+
+        if(launch_params.isolated_cell_ids.length > 0) {
+            return html`
+                <${PlutoContext.Provider} value=${this.actions}>
+                    <${PlutoBondsContext.Provider} value=${this.state.notebook.bonds}>
+                        <${PlutoJSInitializingContext.Provider} value=${this.js_init_set}>
+                            <div style="width: 100%">
+                                ${this.state.notebook.cell_order.map((cell_id, i) => html`
+                                    <${IsolatedCell}
+                                        cell_id=${cell_id}
+                                        cell_results=${this.state.notebook.cell_results[cell_id]}
+                                        hidden=${!launch_params.isolated_cell_ids.includes(cell_id)}
+                                    />
+                                `)}
+                            </div>
+                        </${PlutoJSInitializingContext.Provider}>
+                    </${PlutoBondsContext.Provider}>
+                </${PlutoContext.Provider}>
+            `
+        }
 
         const restart_button = (text) => html`<a
             href="#"
