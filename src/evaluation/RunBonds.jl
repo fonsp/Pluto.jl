@@ -38,7 +38,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
         to_delete_vars = Set([to_delete_vars..., to_set...]) # also delete the bound symbols
         WorkspaceManager.move_vars((session, notebook), old_workspace_name, new_workspace_name, to_delete_vars, methods_to_delete, to_reimport)
         for (bound_sym, new_value) in zip(to_set, new_values)
-            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = $(new_value)))
+            WorkspaceManager.eval_in_workspace((session, notebook), :($(bound_sym) = Main.PlutoRunner.transform_bond_value($(QuoteNode(bound_sym)), $(new_value))))
         end
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
