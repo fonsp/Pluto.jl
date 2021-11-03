@@ -250,10 +250,49 @@ end
                 [old_lines[1], old_lines...]
             end
             write(new_path, join(to_write, '\n'))
+            
+            @test_nowarn load_notebook(new_path)
+            @test num_backups_in(new_dir) == 0
+            @test readdir(new_dir) == ["nb.jl"]
+            
+            
+            # Extra stuff in preamble
+            cp(nb.path, new_path, force=true)
+            to_write = let
+                old_content = read(new_path, String)
+                replace(old_content, "using Markdown" => "using Markdown\n1 + 1")
+            end
+            write(new_path, to_write)
+            
+            @test_nowarn load_notebook(new_path)
+            @test num_backups_in(new_dir) == 0
+            @test readdir(new_dir) == ["nb.jl"]
+            
+            
+            
+            
+            # Extra stuff at the end of the file
+            cp(nb.path, new_path, force=true)
+            to_write = let
+                old_lines = readlines(new_path)
+                [old_lines..., "", "1 + 1", Pluto._cell_id_delimiter * "heyyyy", "# coolio"]
+            end
+            
+            write(new_path, join(to_write, '\n'))
+            
             @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
             @test num_backups_in(new_dir) == 1
 
             @test readdir(new_dir) == ["nb backup 1.jl", "nb.jl"]
+            
+            # AGAIN
+            
+            write(new_path, join(to_write, '\n'))
+            
+            @test_logs (:warn, r"Backup saved to") load_notebook(new_path)
+            @test num_backups_in(new_dir) == 2
+
+            @test Set(readdir(new_dir)) == Set(["nb backup 2.jl", "nb backup 1.jl", "nb.jl"] )
         end
     end
 

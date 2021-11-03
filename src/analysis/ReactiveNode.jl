@@ -1,4 +1,4 @@
-import .ExpressionExplorer: SymbolsState, FunctionName, FunctionNameSignaturePair, try_compute_symbolreferences
+import .ExpressionExplorer: SymbolsState, FunctionName, FunctionNameSignaturePair, try_compute_symbolreferences, generate_funcnames
 
 "Every cell is a node in the reactive graph. The nodes/point/vertices are the _cells_, and the edges/lines/arrows are the _dependencies between cells_. In a reactive notebook, these dependencies are the **global variable references and definitions**. (For the mathies: a reactive notebook is represented by a _directed multigraph_. A notebook without reactivity errors is an _acyclic directed multigraph_.) This struct contains the back edges (`references`) and forward edges (`definitions`, `soft_definitions`, `funcdefs_with_signatures`, `funcdefs_without_signatures`) of a single node.
 
@@ -44,12 +44,24 @@ function ReactiveNode(symstate::SymbolsState)
 	union!(result, (ReactiveNode(body_symstate) for (_, body_symstate) in symstate.funcdefs)...)
 
 	# now we will add the function names to our edges:
-	union!(result.references, symstate.funccalls .|> join_funcname_parts)
+	funccalls = Set{Symbol}(symstate.funccalls .|> join_funcname_parts)
+	FunctionDependencies.maybe_add_dependent_funccalls!(funccalls)
+	union!(result.references, funccalls)
+
 	union!(result.references, macrocalls)
 
 	for (namesig, body_symstate) in symstate.funcdefs
 		push!(result.funcdefs_with_signatures, namesig)
 		push!(result.funcdefs_without_signatures, join_funcname_parts(namesig.name))
+
+		generated_names = generate_funcnames(namesig.name)
+		new_sigs = map(name -> FunctionNameSignaturePair(name, namesig.canonicalized_head), generated_names)
+
+		union!(result.funcdefs_with_signatures, new_sigs)
+
+		generated_names_syms = Set{Symbol}(join_funcname_parts.(generated_names))
+		union!(result.funcdefs_without_signatures, generated_names_syms)
+		filter!(!∈(generated_names_syms), result.references) # don't reference defined functions (simulated recursive calls)
 	end
 
 	return result
