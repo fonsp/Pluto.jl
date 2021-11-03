@@ -360,8 +360,15 @@ function macroexpand_in_workspace(session_notebook::Union{SN,Workspace}, macroca
     Distributed.remotecall_eval(Main, workspace.pid, quote
         try
             (true, PlutoRunner.try_macroexpand($(module_name), $(cell_uuid), $(macrocall |> QuoteNode)))
-        catch e
-            (false, sprint(showerror, e))
+        catch error
+            # We have to be careful here, for example a thrown `MethodError()` will contain the called method and arguments.
+            # which normally would be very useful for debugging, but we can't serialize it!
+            # So we make sure we only serialize the exception we know about, and string-ify the others.
+            if (error isa LoadError && error.error isa UndefVarError) || error isa UndefVarError
+                (false, error)
+            else
+                (false, ErrorException(sprint(showerror, error)))
+            end
         end
     end)
 end

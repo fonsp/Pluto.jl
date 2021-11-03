@@ -453,7 +453,8 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
         try
             try_macroexpand(m, cell_id, expr)
         catch e
-            bt = stacktrace(catch_backtrace())
+            # On error during macroexpand, we override the stacktrace with this faux one
+            bt = [StackTraces.StackFrame(Symbol("Macro Expansion"), Symbol("pluto-cell"), 1, nothing, false, false, 0)]
             result = CapturedException(e, bt)
             cell_results[cell_id], cell_runtimes[cell_id] = (result, nothing)
             return (result, nothing)
