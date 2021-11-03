@@ -38,6 +38,8 @@ const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
 
 
 struct GiveMeCellID end
+struct GiveMeRerunCellFunction end
+struct GiveMeRegisterCleanupFunction end
 
 
 
@@ -94,56 +96,59 @@ function wrap_dot(name)
 end
 
 """
-    no_workspace_ref(ref::Union{GlobalRef,Expr}, mod_name::Symbol=nothing)
+    collect_and_eliminate_globalrefs!(ref::Union{GlobalRef,Expr}, mutable_ref_list::Vector{Pair{Symbol,Symbol}}=[])
 
 Goes through an expression and removes all "global" references to workspace modules (e.g. Main.workspace#XXX).
+It collects the names that we replaced these references with, so that we can add assignments to these special names later.
 
 This is useful for us because when we macroexpand, the global refs will normally point to the module it was built in.
 We don't re-build the macro in every workspace, so we need to remove these refs manually in order to point to the new module instead.
 
 TODO? Don't remove the refs, but instead replace them with a new ref pointing to the new module?
 """
-function no_workspace_ref(ref::GlobalRef, mod_name=nothing)
+function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
     test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#") &&
-        (mod_name === nothing ||
-            startswith(string(ref.name), ".") ||  # workaround for https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
-            string(mod_name)[9:end] !== test_mod_name[9:end])
-        ref.name
+    if startswith(test_mod_name, "workspace#")
+        new_name = gensym(ref.name)
+        push!(mutable_ref_list, ref.name => new_name)
+        new_name
     else
         ref
     end
 end
-no_workspace_ref(expr::Expr, mod_name=nothing) = Expr(expr.head, map(arg -> no_workspace_ref(arg, mod_name), expr.args)...)
-no_workspace_ref(other, _=nothing) = other
+collect_and_eliminate_globalrefs!(expr::Expr, mutable_ref_list=[]) = Expr(expr.head, map(arg -> collect_and_eliminate_globalrefs!(arg, mutable_ref_list), expr.args)...)
+collect_and_eliminate_globalrefs!(other, mutable_ref_list=[]) = other
 
+function globalref_to_workspaceref(expr)
+    mutable_ref_list = Pair{Symbol, Symbol}[]
+    new_expr = collect_and_eliminate_globalrefs!(expr, mutable_ref_list)
 
-replace_pluto_properties_in_expr(::GiveMeCellID; cell_id) = cell_id
-replace_pluto_properties_in_expr(expr::Expr; cell_id) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg, cell_id=cell_id), expr.args)...)
-replace_pluto_properties_in_expr(other; cell_id) = other
-
-
-function sanitize_expr(symbol::Symbol)
-    symbol
+    Expr(:block,
+        # Create new lines to assign to the replaced names of the global refs.
+        # This way the expression explorer doesn't care (it just sees references to variables outside of the workspace), 
+        # and the variables don't get overwriten by local assigments to the same name (because we have special names). 
+        map(mutable_ref_list) do ref
+            :($(ref[2]) = $(ref[1]))
+        end...,
+        new_expr,
+    )
 end
 
-# function sanitize_expr(dt::Union{DataType,Enum})
-#     Symbol(dt)
-# end
+
+replace_pluto_properties_in_expr(::GiveMeCellID; cell_id, kwargs...) = cell_id
+replace_pluto_properties_in_expr(::GiveMeRerunCellFunction; rerun_cell_function, kwargs...) = rerun_cell_function
+replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_cleanup_function, kwargs...) = register_cleanup_function
+replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
+replace_pluto_properties_in_expr(other; kwargs...) = other
+
 
 function sanitize_expr(ref::GlobalRef)
-    test_mod_name = nameof(ref.mod) |> string
-    if startswith(test_mod_name, "workspace#")
-        sanitize_expr(ref.name)
-    else
-        wrap_dot(ref)
-    end
+    wrap_dot(ref)
 end
-
 function sanitize_expr(expr::Expr)
     Expr(expr.head, sanitize_expr.(expr.args)...)
 end
-
+sanitize_expr(symbol::Symbol) = symbol
 sanitize_expr(linenumbernode::LineNumberNode) = linenumbernode
 sanitize_expr(bool::Bool) = bool
 sanitize_expr(quoted::QuoteNode) = QuoteNode(sanitize_expr(quoted.value))
@@ -154,14 +159,26 @@ sanitize_expr(other) = nothing
 
 
 function try_macroexpand(mod, cell_uuid, expr)
+    # Remove toplevel block, as that screws with the computer and everything
+    expr_not_toplevel = if expr.head == :toplevel || expr.head == :block
+        Expr(:block, expr.args...)
+    else
+        @warn "try_macroexpression expression not :toplevel or :block" expr
+        Expr(:block, expr)
+    end
+    
     elapsed_ns = time_ns()
-    expanded_expr = macroexpand(mod, expr)
+    expanded_expr = macroexpand(mod, expr_not_toplevel)
     elapsed_ns = time_ns() - elapsed_ns
 
     # Removes baked in references to the module this was macroexpanded in.
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
-    expr_to_save = no_workspace_ref(expanded_expr)
-    expr_to_save = replace_pluto_properties_in_expr(expr_to_save, cell_id=cell_uuid)
+    expr_without_globalrefs = globalref_to_workspaceref(expanded_expr)
+    expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
+        cell_id=cell_uuid,
+        rerun_cell_function=() -> Main.PlutoRunner.rerun_cell_from_notebook(cell_uuid),
+        register_cleanup_function=(fn) -> Main.PlutoRunner.register_cleanup(fn, cell_uuid),
+    )
 
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
         original_expr_hash=expr_hash(expr),
@@ -169,7 +186,7 @@ function try_macroexpand(mod, cell_uuid, expr)
         expansion_duration=elapsed_ns
     )
 
-    return (sanitize_expr(expanded_expr), expr_hash(expr_to_save))
+    return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
 end
 
 function get_module_names(workspace_module, module_ex::Expr)
@@ -295,16 +312,12 @@ end
 function timed_expr(expr::Expr, return_proof::Any=nothing)::Expr
     # @assert ExpressionExplorer.is_toplevel_expr(expr)
 
-    linenumbernode = expr.args[1]
-    root = expr.args[2] # pretty much equal to what `Meta.parse(cell.code)` would give
-
     @gensym result
     @gensym elapsed_ns
     # we don't use `quote ... end` here to avoid the LineNumberNodes that it adds (these would taint the stack trace).
     Expr(:block,
         :(local $elapsed_ns = time_ns()),
-        linenumbernode,
-        :(local $result = $root),
+        :(local $result = $expr),
         :($elapsed_ns = time_ns() - $elapsed_ns),
         :(($result, $elapsed_ns, $return_proof)),
     )
@@ -344,8 +357,11 @@ end
 add_runtimes(::Nothing, ::UInt64) = nothing
 add_runtimes(a::UInt64, b::UInt64) = a+b
 
-contains_macrocall(expr::Expr) = if expr.head === :macrocall
+contains_macrocall(expr::Expr) = if expr.head == :macrocall
     true
+elseif expr.head == :module
+    # Modules don't get expanded, sadly, so we don't touch it
+    false
 else
     any(arg -> contains_macrocall(arg), expr.args)
 end
@@ -405,7 +421,8 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
     result, runtime = if function_wrapped_info === nothing
         proof = ReturnProof()
 
-        wrapped = timed_expr(expr, proof)
+        toplevel_expr = Expr(:toplevel, expr)
+        wrapped = timed_expr(toplevel_expr, proof)
         ans, runtime = run_inside_trycatch(m, wrapped, proof)
         (ans, add_runtimes(runtime, expansion_runtime))
     else
@@ -443,11 +460,11 @@ end
 # Channel to trigger implicits run
 const run_channel = Channel{UUID}(10)
 
-# internal api, be careful as this can trigger an infinite loop
-function _self_run(cell_id::UUID)
-    # if cell_id != currently_running_cell_id[]
-    #     @warn "_self_run($cell_id) called from outside the cell (from $(currently_running_cell_id[])), this can lead to infinite loops"
-    # end
+function rerun_cell_from_notebook(cell_id::UUID)
+    if cell_id != currently_running_cell_id[]
+        error("Cell($cell_id) rerun triggered from Cell($(currently_running_cell_id[])), this can lead to infinite loops so it is prohibited for now.")
+        # @warn "rerun_cell_from_notebook($cell_id) called from outside the cell (from $(currently_running_cell_id[])), this can lead to infinite loops"
+    end
 
     # make sure only one of this cell_id is in the run channel
     # by emptying it and filling it again
@@ -761,7 +778,9 @@ function format_output(val::CapturedException; context=default_iocontext)
     ## We hide the part of the stacktrace that belongs to Pluto's evalling of user code.
     stack = [s for (s, _) in val.processed_bt]
 
-    function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+    # function_wrap_index = findfirst(f -> occursin("function_wrapped_cell", String(f.func)), stack)
+
+    function_wrap_index = findlast(f -> occursin("#==#", String(f.file)), stack)
 
     if function_wrap_index === nothing
         for _ in 1:2
