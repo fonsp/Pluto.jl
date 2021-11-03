@@ -153,7 +153,11 @@ function new(session::ServerSession; run_async=true)
         Notebook([Cell(), Cell(code=file_viewer_code, code_folded=true)])
 
     else
-        emptynotebook()
+        if session.options.compiler.sysimage === nothing
+            emptynotebook()
+        else
+            Notebook([Cell("import Pkg"), Cell("# This cell disables Pluto's package manager and activates the global environment. Click on ? inside the bubble next to Pkg.activate to learn more.\n# (added automatically because a sysimage is used)\nPkg.activate()"), Cell()])
+        end
     end
     update_save_run!(session, nb, nb.cells; run_async=run_async, prerender_text=true)
     
