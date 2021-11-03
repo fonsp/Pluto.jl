@@ -1133,12 +1133,14 @@ const integrations = Integration[
             @assert v"1.0.0" <= AbstractPlutoDingetjes.MY_VERSION < v"2.0.0"
             initial_value_getter_ref[] = AbstractPlutoDingetjes.Bonds.initial_value
             transform_value_ref[] = AbstractPlutoDingetjes.Bonds.transform_value
-            
+            possible_bond_values_ref[] = AbstractPlutoDingetjes.Bonds.possible_values
+
             push!(supported_integration_features,
                 AbstractPlutoDingetjes,
                 AbstractPlutoDingetjes.Bonds,
                 AbstractPlutoDingetjes.Bonds.initial_value,
                 AbstractPlutoDingetjes.Bonds.transform_value,
+                AbstractPlutoDingetjes.Bonds.possible_values,
             )
         end,
     ),
@@ -1446,6 +1448,16 @@ function transform_bond_value(s::Symbol, value_from_js)
     end
 end
 
+function possible_bond_values(s::Symbol)
+    element = get(registered_bond_elements, s, nothing)
+    return try
+        possible_bond_values_ref[](element)
+    catch e
+        @error "Could not collect possible bond values for $s" exception=(e, catch_backtrace())
+        rethrow(e)
+    end
+end
+
 """
 _“The name is Bond, James Bond.”_
 
@@ -1488,6 +1500,7 @@ end
 
 const initial_value_getter_ref = Ref{Function}(element -> missing)
 const transform_value_ref = Ref{Function}((element, x) -> x)
+const possible_bond_values_ref = Ref{Function}(_ -> throw("AbstractPlutoDingetjes is not loaded, could not collect possible bind values"))
 
 """
     `@bind symbol element`
