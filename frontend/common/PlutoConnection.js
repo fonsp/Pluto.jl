@@ -278,13 +278,13 @@ export const create_pluto_connection = async ({
     var ws_connection = null // will be defined later i promise
     const client = {
         send: null,
-        kill: null,
         session_options: null,
         version_info: {
             julia: "unknown",
             pluto: "unknown",
             dismiss_update_notification: false,
         },
+        kill: null,
     } // same
 
     const client_id = get_unique_short_id()
@@ -385,7 +385,7 @@ export const create_pluto_connection = async ({
             client.session_options = u.message.options
             client.version_info = u.message.version_info
 
-            console.log(client)
+            console.log("Client object: ", client)
 
             if (connect_metadata.notebook_id != null && !u.message.notebook_exists) {
                 // https://github.com/fonsp/Pluto.jl/issues/55

@@ -1,3 +1,4 @@
+import _ from "../imports/lodash.js"
 import { html, useContext, useEffect, useMemo, useState } from "../imports/Preact.js"
 
 export const useDelayed = (value, delay = 500) => {
@@ -19,12 +20,19 @@ export const ProgressBar = ({ notebook, binder_phase, status }) => {
 
     useEffect(
         () => {
-            const currently = Object.values(notebook.cell_results).filter((c) => c.running || c.queued)
+            const currently = Object.values(notebook.cell_results)
+                .filter((c) => c.running || c.queued)
+                .map((c) => c.cell_id)
+
             set_currently_running(currently)
-            if (recently_running.length === 0 || currently.length === 0) {
-                set_recently_running(currently)
+
+            if (currently.length === 0) {
+                // all cells completed
+                set_recently_running([])
+            } else {
+                // add any new running cells to our pile
+                set_recently_running(_.union(currently, recently_running))
             }
-            // console.log(Object.values(notebook.cell_results))
         },
         Object.values(notebook.cell_results).map((c) => c.running || c.queued)
     )
