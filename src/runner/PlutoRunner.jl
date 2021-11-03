@@ -116,7 +116,24 @@ function collect_and_eliminate_globalrefs!(ref::GlobalRef, mutable_ref_list=[])
         ref
     end
 end
-collect_and_eliminate_globalrefs!(expr::Expr, mutable_ref_list=[]) = Expr(expr.head, map(arg -> collect_and_eliminate_globalrefs!(arg, mutable_ref_list), expr.args)...)
+function collect_and_eliminate_globalrefs!(expr::Expr, mutable_ref_list=[])
+    # Fix for .+ and .|> inside macros
+    # https://github.com/fonsp/Pluto.jl/pull/1032#issuecomment-868819317
+    # I'm unsure if this was all necessary but 🤷‍♀️
+    # I take the :call with a GlobalRef to `.|>` or `.+` as args[1],
+    #   and then I convert it into a `:.` expr, which is basically (|>).(args...)
+    #   which is consistent for us to handle.
+    if expr.head == :call && expr.args[1] isa GlobalRef && startswith(string(expr.args[1].name), ".")
+        old_globalref = expr.args[1]
+        non_broadcast_name = string(old_globalref.name)[begin+1:end]
+        new_globalref = GlobalRef(old_globalref.mod, Symbol(non_broadcast_name))
+        new_expr = Expr(:., new_globalref, Expr(:tuple, expr.args[begin+1:end]...))
+        result = collect_and_eliminate_globalrefs!(new_expr, mutable_ref_list)
+        return result
+    else
+        Expr(expr.head, map(arg -> collect_and_eliminate_globalrefs!(arg, mutable_ref_list), expr.args)...)
+    end
+end
 collect_and_eliminate_globalrefs!(other, mutable_ref_list=[]) = other
 
 function globalref_to_workspaceref(expr)
