@@ -136,6 +136,7 @@ export const Cell = ({
                 show_input: show_input,
                 drop_target: drag_active,
                 saving_file: saving_file,
+                hooked_up: output?.has_pluto_hook_features ?? false,
             })}
             id=${cell_id}
         >

@@ -32,6 +32,7 @@ Base.@kwdef struct CachedMacroExpansion
     original_expr_hash::UInt64
     expanded_expr::Expr
     expansion_duration::UInt64
+    has_pluto_hook_features::Bool
     did_mention_expansion_time::Bool=false
 end
 const cell_expanded_exprs = Dict{UUID,CachedMacroExpansion}()
@@ -163,6 +164,12 @@ replace_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction; register_clean
 replace_pluto_properties_in_expr(expr::Expr; kwargs...) = Expr(expr.head, map(arg -> replace_pluto_properties_in_expr(arg; kwargs...), expr.args)...)
 replace_pluto_properties_in_expr(other; kwargs...) = other
 
+"Similar to [`replace_pluto_properties_in_expr`](@ref), but just checks for existance and doesn't check for [`GiveMeCellID`](@ref)"
+has_hook_style_pluto_properties_in_expr(::GiveMeRerunCellFunction) = true
+has_hook_style_pluto_properties_in_expr(::GiveMeRegisterCleanupFunction) = true
+has_hook_style_pluto_properties_in_expr(expr::Expr) = any(has_hook_style_pluto_properties_in_expr, expr.args)
+has_hook_style_pluto_properties_in_expr(other) = false
+
 
 function sanitize_expr(ref::GlobalRef)
     wrap_dot(ref)
@@ -241,6 +248,8 @@ function try_macroexpand(mod, cell_uuid, expr)
     # Fix for https://github.com/fonsp/Pluto.jl/issues/1112
     expr_without_return = CantReturnInPluto.replace_returns_with_error(expanded_expr)
     expr_without_globalrefs = globalref_to_workspaceref(expr_without_return)
+
+    has_pluto_hook_features = has_hook_style_pluto_properties_in_expr(expr_without_globalrefs)
     expr_to_save = replace_pluto_properties_in_expr(expr_without_globalrefs,
         cell_id=cell_uuid,
         rerun_cell_function=() -> rerun_cell_from_notebook(cell_uuid),
@@ -250,7 +259,8 @@ function try_macroexpand(mod, cell_uuid, expr)
     cell_expanded_exprs[cell_uuid] = CachedMacroExpansion(
         original_expr_hash=expr_hash(expr),
         expanded_expr=expr_to_save,
-        expansion_duration=elapsed_ns
+        expansion_duration=elapsed_ns,
+        has_pluto_hook_features=has_pluto_hook_features,
     )
 
     return (sanitize_expr(expr_to_save), expr_hash(expr_to_save))
@@ -296,6 +306,8 @@ expr_hash(x) = objectid(x)
 
 const computers = Dict{UUID,Computer}()
 const computer_workspace = Main
+
+const cells_with_hook_functionality_active = Set{UUID}()
 
 "Registers a new computer for the cell, cleaning up the old one if there is one."
 function register_computer(expr::Expr, key::ObjectID, cell_id::UUID, input_globals::Vector{Symbol}, output_globals::Vector{Symbol})
@@ -479,6 +491,7 @@ function run_expression(m::Module, expr::Any, cell_id::UUID, function_wrapped_in
             expanded_expr=expanded_cache.expanded_expr,
             expansion_duration=expanded_cache.expansion_duration,
             did_mention_expansion_time=true,
+            has_pluto_hook_features=expanded_cache.has_pluto_hook_features,
         )
         expanded_cache.expansion_duration
     else
@@ -737,7 +750,7 @@ const table_column_display_limit_increase = 30
 
 const tree_display_extra_items = Dict{UUID,Dict{ObjectDimPair,Int64}}()
 
-function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore::Union{ObjectDimPair,Nothing}=nothing, workspace::Module=Main)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     load_integrations_if_needed()
     currently_running_cell_id[] = cell_id
 
@@ -749,6 +762,7 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
         old
     end
 
+    has_pluto_hook_features = cell_expanded_exprs[cell_id].has_pluto_hook_features
     ans = cell_results[cell_id]
     errored = ans isa CapturedException
 
@@ -764,6 +778,7 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
         process_exited = false, 
         runtime = get(cell_runtimes, cell_id, nothing),
         published_objects = get(cell_published_objects, cell_id, Dict{String,Any}()),
+        has_pluto_hook_features = has_pluto_hook_features,
     )
 end
 

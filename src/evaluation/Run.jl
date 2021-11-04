@@ -217,6 +217,7 @@ function set_output!(cell::Cell, run, expr_cache::ExprAnalysisCache; persist_js_
 		rootassignee=ends_with_semicolon(expr_cache.code) ? nothing : ExpressionExplorer.get_rootassignee(expr_cache.parsedcode),
 		last_run_timestamp=time(),
 		persist_js_state=persist_js_state,
+		has_pluto_hook_features=run.has_pluto_hook_features,
 	)
 	cell.published_objects = run.published_objects
 	cell.runtime = run.runtime

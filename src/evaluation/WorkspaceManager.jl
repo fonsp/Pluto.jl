@@ -278,7 +278,7 @@ function eval_format_fetch_in_workspace(
     function_wrapped_info::Union{Nothing,Tuple}=nothing,
     forced_expr_id::Union{PlutoRunner.ObjectID,Nothing}=nothing,
     user_requested_run::Bool=true,
-)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
 
     workspace = get_workspace(session_notebook)
 
@@ -325,7 +325,7 @@ function eval_in_workspace(session_notebook::Union{SN,Workspace}, expr)
     nothing
 end
 
-function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any}}}
+function format_fetch_in_workspace(session_notebook::Union{SN,Workspace}, cell_id, ends_with_semicolon, showmore_id::Union{PlutoRunner.ObjectDimPair,Nothing}=nothing)::NamedTuple{(:output_formatted, :errored, :interrupted, :process_exited, :runtime, :published_objects, :has_pluto_hook_features),Tuple{PlutoRunner.MimedOutput,Bool,Bool,Bool,Union{UInt64,Nothing},Dict{String,Any},Bool}}
     workspace = get_workspace(session_notebook)
     
     # instead of fetching the output value (which might not make sense in our context, since the user can define structs, types, functions, etc), we format the cell output on the worker, and fetch the formatted output.
