@@ -124,7 +124,8 @@ const first_true_key = (obj) => {
  *      last_run_timestamp: number,
  *      mime: string,
  *      rootassignee: ?string,
- *  }
+ *      has_pluto_hook_features: boolean,
+ *  },
  *  published_objects: object,
  * }}
  */

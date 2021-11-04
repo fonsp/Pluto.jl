@@ -43,7 +43,7 @@ function set_bond_values_reactive(; session::ServerSession, notebook::Notebook, 
     end
     to_reeval = where_referenced(notebook, notebook.topology, Set{Symbol}(to_set))
 
-    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, persist_js_state=true, run_async=false, kwargs...)
+    run_reactive_async!(session, notebook, to_reeval; deletion_hook=custom_deletion_hook, user_requested_run=false, run_async=false, kwargs...)
 end
 
 "Returns the set of all possible values for the binded variable `n` as returned by the widget implementation using `AbstractPlutoDingetjes.possible_bond_values(element)`"
