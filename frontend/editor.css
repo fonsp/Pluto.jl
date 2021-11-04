@@ -2158,6 +2158,7 @@ body.ctrl_down [data-pluto-variable] {
     text-decoration-color: #d177e6;
     cursor: pointer;
 }
+body.ctrl_down [data-pluto-variable]:hover,
 body.ctrl_down [data-pluto-variable]:hover * {
     color: #af5bc3 !important;
 }
