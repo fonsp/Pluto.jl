@@ -224,6 +224,7 @@ function distributed_exception_result(ex::Base.IOError, workspace::Workspace)
         process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
         runtime=nothing,
         published_objects=Dict{String,Any}(),
+        has_pluto_hook_features=false,
     )
 end
 
@@ -243,6 +244,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=false,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     elseif ex isa Distributed.ProcessExitedException
         (
@@ -252,6 +254,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=true && !workspace.discarded, # don't report a process exit if the workspace was discarded on purpose
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     else
         @error "Unkown error during eval_format_fetch_in_workspace" ex
@@ -262,6 +265,7 @@ function distributed_exception_result(exs::CompositeException, workspace::Worksp
             process_exited=false,
             runtime=nothing,
             published_objects=Dict{String,Any}(),
+            has_pluto_hook_features=false,
         )
     end
 end

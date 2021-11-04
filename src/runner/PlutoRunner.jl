@@ -762,7 +762,7 @@ function formatted_result_of(cell_id::UUID, ends_with_semicolon::Bool, showmore:
         old
     end
 
-    has_pluto_hook_features = cell_expanded_exprs[cell_id].has_pluto_hook_features
+    has_pluto_hook_features = haskey(cell_expanded_exprs, cell_id) && cell_expanded_exprs[cell_id].has_pluto_hook_features
     ans = cell_results[cell_id]
     errored = ans isa CapturedException
 
