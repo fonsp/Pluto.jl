@@ -1,4 +1,4 @@
-import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection } from "../../imports/CodemirrorPlutoSetup.js"
+import { syntaxTree, Facet, ViewPlugin, Decoration, StateField, EditorView, EditorSelection, EditorState } from "../../imports/CodemirrorPlutoSetup.js"
 import { ctrl_or_cmd_name, has_ctrl_or_cmd_pressed } from "../../common/KeyboardShortcuts.js"
 import _ from "../../imports/lodash.js"
 
@@ -150,15 +150,33 @@ let get_variables_from_assignment = (cursor) => {
     return []
 }
 
+let children = function* (cursor) {
+    if (cursor.firstChild()) {
+        try {
+            do {
+                yield cursor
+            } while (cursor.nextSibling())
+        } finally {
+            cursor.parent()
+        }
+    }
+}
+
+let all_children = function* (cursor) {
+    for (let child of children(cursor)) {
+        yield* all_children(child)
+    }
+}
+
 /**
  * @param {import("../../imports/CodemirrorPlutoSetup.js").TreeCursor} cursor
  */
 let go_through_quoted_expression_looking_for_interpolations = function* (cursor) {
     if (cursor.name !== "QuoteExpression") throw new Error("Expected QuotedExpression")
 
-    while (cursor.next()) {
+    for (let child of all_children(cursor)) {
         // @ts-ignore
-        if (cursor.name === "InterpolationExpression") {
+        if (child.name === "InterpolationExpression") {
             yield cursor
         }
     }
@@ -176,9 +194,15 @@ let explore_variable_usage = (
     scopestate = {
         usages: new Set(),
         definitions: new Map(),
-    }
+    },
+    verbose = false
 ) => {
-    // console.group(`Explorer: ${cursor.toString()}`)
+    let start_node = null
+    if (verbose) {
+        verbose && console.group(`Explorer: ${cursor.toString()}`)
+        verbose && console.log("Full text:", doc.sliceString(cursor.from, cursor.to))
+        start_node = cursor.node
+    }
     try {
         if (cursor.name === "Symbol") {
             // Nothing, ha!
@@ -662,9 +686,14 @@ let explore_variable_usage = (
                 }
             }
         }
+                console.log(`cursor:`, cursor.toString(), doc.sliceString(cursor.from, cursor.to))
+                throw new Error("Cursor is at a different node at the end of explore_variable_usage :O")
+            }
+        }
+
         return scopestate
     } finally {
-        // console.groupEnd()
+        verbose && console.groupEnd()
     }
 }
 
