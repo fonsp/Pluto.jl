@@ -1227,6 +1227,9 @@ is_toplevel_expr(::Any)::Bool = false
 function get_rootassignee(ex::Expr, recurse::Bool=true)::Union{Symbol,Nothing}
     if is_toplevel_expr(ex) && recurse
         get_rootassignee(ex.args[2], false)
+    elseif Meta.isexpr(ex, :const, 1)
+        rooter_assignee = get_rootassignee(ex.args[1], false)
+        Symbol("const " * String(rooter_assignee))
     elseif ex.head == :(=) && ex.args[1] isa Symbol
         ex.args[1]
     else
@@ -1244,7 +1247,7 @@ function can_be_function_wrapped(x::Expr)
         x.head === :module ||
         # Only bail on named functions, but anonymous functions (args[1].head == :tuple) are fine.
         # TODO Named functions INSIDE other functions should be fine too
-        (x.head === :function && x.args[1].head != :tuple) ||
+        (x.head === :function && !Meta.isexpr(x.args[1], :tuple)) ||
         x.head === :macro ||
         # Cells containing macrocalls will actually be function wrapped using the expanded version of the expression
         # See https://github.com/fonsp/Pluto.jl/pull/1597
