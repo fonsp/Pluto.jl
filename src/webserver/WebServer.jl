@@ -360,7 +360,7 @@ function process_ws_message(session::ServerSession, parentbody::Dict, clientstre
         try
             responsefunc(ClientRequest(session, notebook, body, Initiator(client, request_id)))
         catch ex
-            @warn "Response function to message of type $(messagetype) failed"
+            @warn "Response function to message of type $(repr(messagetype)) failed"
             rethrow(ex)
         end
     else
