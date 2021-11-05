@@ -394,7 +394,7 @@ let explore_variable_usage = (
                             from: cursor.from,
                             to: cursor.to,
                         })
-                    } while (cursor.nextSibling())
+                    }
                 }
             } finally {
                 cursor.parent()
