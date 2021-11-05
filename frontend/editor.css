@@ -555,6 +555,7 @@ nav#at_the_top > a {
 nav#at_the_top img {
     height: 39px;
     margin-bottom: -8px;
+    filter: invert(var(--invert-image-colors));
 }
 
 nav#at_the_top h1 {
@@ -633,10 +634,12 @@ button.toggle_export span {
 
 nav#at_the_top button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/shapes-outline.svg);
+    filter: invert(var(--invert-image-colors));
+
 }
 aside#export button.toggle_export span {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-outline.svg);
-    filter: invert();
+    filter: invert(var(--invert-image-colors));
 }
 nav#at_the_top:after {
     margin-left: auto;
@@ -828,10 +831,12 @@ main > preamble span.saving-icon::after {
     background-repeat: no-repeat;
     background-position-x: right;
     background-position-y: 1px;
+    filter: invert(var(--invert-image-colors));
 }
 
 main > preamble span.saved-icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 main > preamble button {
     position: relative;
@@ -1084,6 +1089,7 @@ pluto-shoulder > button > span::after {
 
 pluto-cell.code_folded > pluto-shoulder > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/eye-off-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 /* TRAFFIC LIGHT */
@@ -1372,6 +1378,8 @@ pluto-cell > button.add_cell.after {
 pluto-cell > button.add_cell > span::after {
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-circle-outline.svg); */
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/add-outline.svg);
+    filter: invert(var(--invert-image-colors));
+
 }
 pluto-input > button.input_context_menu ul {
     --width: 156px;
@@ -1453,18 +1461,22 @@ pluto-input > button.input_context_menu ul {
 .bandage_icon {
     filter: opacity(0.3);
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/bandage-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 .enable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 .disable_cell_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ban-outline.svg);
     background-size: 15px;
     background-repeat: no-repeat;
+    filter: invert(var(--invert-image-colors));
 }
 .delete_icon {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/close-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 pluto-input > button.input_context_menu {
@@ -1480,6 +1492,7 @@ pluto-input > button.input_context_menu.open {
 
 pluto-input > button.input_context_menu > span.icon::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/ellipsis-horizontal-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 /* PKG UI */
@@ -1518,11 +1531,13 @@ pkg-status-mark > button > span::after {
 
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/time-outline.svg);
     opacity: 0.3;
+    filter: invert(var(--invert-image-colors));
 }
 
 pkg-status-mark.installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/checkmark-outline.svg);
     /* background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-done-outline.svg); */
+    filter: invert(var(--invert-image-colors));
 }
 pkg-status-mark.busy > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/sync-outline.svg);
@@ -1531,14 +1546,17 @@ pkg-status-mark.busy > button > span::after {
 pkg-status-mark.not_found > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-offline-outline.svg);
     opacity: 0.6;
+    filter: invert(var(--invert-image-colors));
 }
 pkg-status-mark.will_be_installed > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/cloud-download-outline.svg);
     opacity: 0.6;
+    filter: invert(var(--invert-image-colors));
 }
 pkg-status-mark.disable_pkg > button > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chatbox-ellipses-outline.svg);
     opacity: 0.6;
+    filter: invert(var(--invert-image-colors));
 }
 pkg-status-mark select {
     width: 100%;
@@ -1716,17 +1734,21 @@ pluto-runarea > button.runcell {
 
 pluto-runarea > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/caret-forward-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 pluto-runarea.interrupt > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/stop-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 pluto-runarea.jump > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-redo-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 pluto-runarea.save > button.runcell > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-forward-circle-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 pluto-cell:not(.show_input) > pluto-runarea {
@@ -1858,6 +1880,7 @@ pluto-helpbox > header > button > span {
     height: 1em;
     width: 1em;
     background-image: url("https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/chevron-down-outline.svg");
+    filter: invert(var(--invert-image-colors));
 }
 pluto-helpbox.hidden {
     height: initial;
@@ -1984,9 +2007,9 @@ footer input {
 body > header pluto-filepicker button,
 footer button {
     margin: 0px;
-    background: var(--footer-filepicler-focus-color);
+    background: var(--footer-filepicker-focus-color);
     border-radius: 0 3px 3px 0;
-    border: 2px solid var(--footer-filepicler-focus-color);
+    border: 2px solid var(--footer-filepicker-focus-color);
     color: var(--footer-filepicker-button-color);
     /* border: none; */
     font-family: inherit;
@@ -2081,9 +2104,11 @@ body > nav#slide_controls > button > span::after {
 }
 body > nav#slide_controls > button.prev > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-back-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 body > nav#slide_controls > button.next > span::after {
     background-image: url(https://cdn.jsdelivr.net/gh/ionic-team/ionicons@5.5.1/src/svg/arrow-forward-outline.svg);
+    filter: invert(var(--invert-image-colors));
 }
 
 /* CODEMIRROR HINTS */
