@@ -74,6 +74,11 @@ export const process_path_or_url = async (path_or_url) => {
             path_or_url: u.href,
         }
     } catch (ex) {
+        /* Remove eventual double quotes from the path */
+        const last_char = path_or_url[path_or_url.length-1]
+        if (last_char == '"' || last_char == "'") {
+            path_or_url = path_or_url.replace(/^['"]/,"").replace(/['"]$/,"")
+        } 
         return {
             type: "path",
             path_or_url: path_or_url,
