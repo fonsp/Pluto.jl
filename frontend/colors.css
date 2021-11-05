@@ -1,5 +1,5 @@
 :root {
-    --invert-image-colors: 1;
+    --invert-image-colors: 0;
 
     --main-bg-color: white;
     --rule-color: rgba(0,0,0,0.15);
@@ -121,7 +121,7 @@
     --footer-atag-color: black;
     --footer-input-border-color: #818181;
     --footer-filepicker-button-color: white;
-    --footer-filepicler-focus-color: #896c6c;
+    --footer-filepicker-focus-color: #896c6c;
 
     /* undo delete cell*/
     --undo-delete-color: white;
