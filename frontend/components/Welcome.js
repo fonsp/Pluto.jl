@@ -74,10 +74,11 @@ export const process_path_or_url = async (path_or_url) => {
             path_or_url: u.href,
         }
     } catch (ex) {
-        /* Remove eventual double quotes from the path */
+        /* Remove eventual single/double quotes from the path if they surround it, see
+         * https://github.com/fonsp/Pluto.jl/issues/1639 */
         const last_char = path_or_url[path_or_url.length-1]
-        if (last_char == '"' || last_char == "'") {
-            path_or_url = path_or_url.replace(/^['"]/,"").replace(/['"]$/,"")
+        if (last_char == path_or_url[0] && (last_char == '"' || last_char == "'")) {
+            path_or_url = path_or_url.substring(1,path_or_url.length-1) /* Remove first and last character */
         } 
         return {
             type: "path",
