@@ -75,11 +75,10 @@ export const process_path_or_url = async (path_or_url) => {
         }
     } catch (ex) {
         /* Remove eventual single/double quotes from the path if they surround it, see
-         * https://github.com/fonsp/Pluto.jl/issues/1639 */
-        const last_char = path_or_url[path_or_url.length-1]
-        if (last_char == path_or_url[0] && (last_char == '"' || last_char == "'")) {
-            path_or_url = path_or_url.substring(1,path_or_url.length-1) /* Remove first and last character */
-        } 
+          https://github.com/fonsp/Pluto.jl/issues/1639 */
+        if (path_or_url[path_or_url.length - 1] === '"' && path_or_url[0] === '"') {
+            path_or_url = path_or_url.slice(1, -1) /* Remove first and last character */
+        }
         return {
             type: "path",
             path_or_url: path_or_url,
@@ -216,6 +215,7 @@ export class Welcome extends Component {
 
         this.on_open_path = async (new_path) => {
             const processed = await process_path_or_url(new_path)
+            console.log(processed)
             if (processed.type === "path") {
                 document.body.classList.add("loading")
                 window.location.href = link_open_path(processed.path_or_url)
